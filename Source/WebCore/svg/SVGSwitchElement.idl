@@ -25,10 +25,7 @@
 
 [
     Conditional=SVG
-] interface SVGSwitchElement : SVGStyledElement,
-                                               SVGTests,
-                                               SVGLangSpace,
-                                               SVGExternalResourcesRequired,
-                                               SVGTransformable {
+] interface SVGSwitchElement : SVGGraphicsElement {
 };
 
+SVGSwitchElement implements SVGExternalResourcesRequired;

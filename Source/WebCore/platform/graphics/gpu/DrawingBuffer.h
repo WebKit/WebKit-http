@@ -45,7 +45,6 @@
 
 namespace WebCore {
 class GraphicsContext3D;
-class ImageData;
 
 // Manages a rendering target (framebuffer + attachment) for a canvas.  Can publish its rendering
 // results to a PlatformLayer for compositing.
@@ -112,8 +111,6 @@ public:
 
     Platform3DObject framebuffer() const;
 
-    PassRefPtr<ImageData> paintRenderingResultsToImageData();
-
     // Immediately releases ownership of all resources. Call upon loss of the
     // graphics context to prevent freeing invalid resources.
     void discardResources();
@@ -122,11 +119,8 @@ public:
 
 #if USE(ACCELERATED_COMPOSITING)
     PlatformLayer* platformLayer();
-    void prepareBackBuffer();
-    bool requiresCopyFromBackToFrontBuffer() const;
     unsigned frontColorBuffer() const;
     void paintCompositedResultsToCanvas(ImageBuffer*);
-    void clearPlatformLayer();
 #endif
 
     GraphicsContext3D* graphicsContext3D() const { return m_context.get(); }

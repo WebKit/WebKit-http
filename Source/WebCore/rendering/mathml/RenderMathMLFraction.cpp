@@ -79,10 +79,10 @@ void RenderMathMLFraction::updateFromElement()
     else if (equalIgnoringCase(thickness, "thick"))
         m_lineThickness = gLineThick;
     else {
-        bool converted = false;
-        int thicknessIntValue = thickness.toIntStrict(&converted);
-        if (converted)
-            m_lineThickness = thicknessIntValue;
+        // This function parses the thickness attribute using gLineMedium as
+        // the default value. If the parsing fails, m_lineThickness will not be
+        // modified i.e. the default value will be used.
+        parseMathMLLength(thickness, m_lineThickness, style(), false);
     }
 
     // Update the style for the padding of the denominator for the line thickness
@@ -143,7 +143,7 @@ void RenderMathMLFraction::layout()
 void RenderMathMLFraction::paint(PaintInfo& info, const LayoutPoint& paintOffset)
 {
     RenderMathMLBlock::paint(info, paintOffset);
-    if (info.context->paintingDisabled() || info.phase != PaintPhaseForeground)
+    if (info.context->paintingDisabled() || info.phase != PaintPhaseForeground || style()->visibility() != VISIBLE)
         return;
     
     RenderBox* denominatorWrapper = lastChildBox();

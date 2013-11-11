@@ -27,9 +27,8 @@
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedLength.h"
 #include "SVGExternalResourcesRequired.h"
-#include "SVGLangSpace.h"
-#include "SVGStyledTransformableElement.h"
-#include "SVGTests.h"
+#include "SVGGraphicsElement.h"
+#include "SVGNames.h"
 #include "SVGURIReference.h"
 
 namespace WebCore {
@@ -37,9 +36,7 @@ namespace WebCore {
 class CachedSVGDocument;
 class SVGElementInstance;
 
-class SVGUseElement FINAL : public SVGStyledTransformableElement,
-                            public SVGTests,
-                            public SVGLangSpace,
+class SVGUseElement FINAL : public SVGGraphicsElement,
                             public SVGExternalResourcesRequired,
                             public SVGURIReference,
                             public CachedSVGDocumentClient {
@@ -116,11 +113,6 @@ private:
     Document* referencedDocument() const;
     void setCachedDocument(CachedResourceHandle<CachedSVGDocument>);
 
-    // SVGTests
-    virtual void synchronizeRequiredFeatures() { SVGTests::synchronizeRequiredFeatures(this); }
-    virtual void synchronizeRequiredExtensions() { SVGTests::synchronizeRequiredExtensions(this); }
-    virtual void synchronizeSystemLanguage() { SVGTests::synchronizeSystemLanguage(this); }
-
     // SVGExternalResourcesRequired
     virtual void setHaveFiredLoadEvent(bool haveFiredLoadEvent) { m_haveFiredLoadEvent = haveFiredLoadEvent; }
     virtual bool isParserInserted() const { return m_wasInsertedByParser; }
@@ -134,6 +126,12 @@ private:
     CachedResourceHandle<CachedSVGDocument> m_cachedDocument;
     Timer<SVGElement> m_svgLoadEventTimer;
 };
+
+inline SVGUseElement* toSVGUseElement(Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(SVGNames::useTag));
+    return static_cast<SVGUseElement*>(node);
+}
 
 }
 

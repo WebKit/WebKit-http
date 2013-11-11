@@ -104,6 +104,7 @@ class HTMLHeadElement;
 class HTMLIFrameElement;
 class HTMLMapElement;
 class HTMLNameCollection;
+class HTMLScriptElement;
 class HitTestRequest;
 class HitTestResult;
 class IntPoint;
@@ -680,7 +681,6 @@ public:
     void setActiveElement(PassRefPtr<Element>);
     Element* activeElement() const { return m_activeElement.get(); }
 
-    void focusedNodeRemoved();
     void removeFocusedNodeOfSubtree(Node*, bool amongChildrenOnly = false);
     void hoveredElementDidDetach(Element*);
     void elementInActiveChainDidDetach(Element*);
@@ -877,6 +877,10 @@ public:
     Document* topDocument() const;
     
     ScriptRunner* scriptRunner() { return m_scriptRunner.get(); }
+
+    HTMLScriptElement* currentScript() const { return !m_currentScriptStack.isEmpty() ? m_currentScriptStack.last().get() : 0; }
+    void pushCurrentScript(PassRefPtr<HTMLScriptElement>);
+    void popCurrentScript();
 
 #if ENABLE(XSLT)
     void applyXSLTransform(ProcessingInstruction* pi);
@@ -1404,6 +1408,8 @@ private:
     bool m_overMinimumLayoutThreshold;
     
     OwnPtr<ScriptRunner> m_scriptRunner;
+
+    Vector<RefPtr<HTMLScriptElement> > m_currentScriptStack;
 
 #if ENABLE(XSLT)
     OwnPtr<TransformSource> m_transformSource;

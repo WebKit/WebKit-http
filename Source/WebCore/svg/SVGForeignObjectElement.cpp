@@ -31,6 +31,7 @@
 #include "SVGElementInstance.h"
 #include "SVGLength.h"
 #include "SVGNames.h"
+#include "XLinkNames.h"
 #include <wtf/Assertions.h>
 
 namespace WebCore {
@@ -50,12 +51,11 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGForeignObjectElement)
     REGISTER_LOCAL_ANIMATED_PROPERTY(height)
     REGISTER_LOCAL_ANIMATED_PROPERTY(href)
     REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGStyledTransformableElement)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGTests)
+    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGGraphicsElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
 inline SVGForeignObjectElement::SVGForeignObjectElement(const QualifiedName& tagName, Document* document)
-    : SVGStyledTransformableElement(tagName, document)
+    : SVGGraphicsElement(tagName, document)
     , m_x(LengthModeWidth)
     , m_y(LengthModeHeight)
     , m_width(LengthModeWidth)
@@ -74,7 +74,6 @@ bool SVGForeignObjectElement::isSupportedAttribute(const QualifiedName& attrName
 {
     DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, supportedAttributes, ());
     if (supportedAttributes.isEmpty()) {
-        SVGTests::addSupportedAttributes(supportedAttributes);
         SVGLangSpace::addSupportedAttributes(supportedAttributes);
         SVGExternalResourcesRequired::addSupportedAttributes(supportedAttributes);
         supportedAttributes.add(SVGNames::xAttr);
@@ -82,7 +81,7 @@ bool SVGForeignObjectElement::isSupportedAttribute(const QualifiedName& attrName
         supportedAttributes.add(SVGNames::widthAttr);
         supportedAttributes.add(SVGNames::heightAttr);
     }
-    return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
+    return supportedAttributes.contains<SVGAttributeHashTranslator>(attrName);
 }
 
 void SVGForeignObjectElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -90,7 +89,7 @@ void SVGForeignObjectElement::parseAttribute(const QualifiedName& name, const At
     SVGParsingError parseError = NoError;
 
     if (!isSupportedAttribute(name))
-        SVGStyledTransformableElement::parseAttribute(name, value);
+        SVGGraphicsElement::parseAttribute(name, value);
     else if (name == SVGNames::xAttr)
         setXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
@@ -99,8 +98,7 @@ void SVGForeignObjectElement::parseAttribute(const QualifiedName& name, const At
         setWidthBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::heightAttr)
         setHeightBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
-    else if (SVGTests::parseAttribute(name, value)
-               || SVGLangSpace::parseAttribute(name, value)
+    else if (SVGLangSpace::parseAttribute(name, value)
                || SVGExternalResourcesRequired::parseAttribute(name, value)) {
     } else
         ASSERT_NOT_REACHED();
@@ -111,7 +109,7 @@ void SVGForeignObjectElement::parseAttribute(const QualifiedName& name, const At
 void SVGForeignObjectElement::svgAttributeChanged(const QualifiedName& attrName)
 {
     if (!isSupportedAttribute(attrName)) {
-        SVGStyledTransformableElement::svgAttributeChanged(attrName);
+        SVGGraphicsElement::svgAttributeChanged(attrName);
         return;
     }
 
@@ -124,9 +122,6 @@ void SVGForeignObjectElement::svgAttributeChanged(const QualifiedName& attrName)
 
     if (isLengthAttribute)
         updateRelativeLengthsInformation();
-
-    if (SVGTests::handleAttributeChange(this, attrName))
-        return;
 
     if (RenderObject* renderer = this->renderer())
         RenderSVGResource::markForLayoutAndParentResourceInvalidation(renderer);
@@ -162,7 +157,7 @@ bool SVGForeignObjectElement::rendererIsNeeded(const NodeRenderingContext& conte
         ancestor = ancestor->parentElement();
     }
 
-    return SVGStyledTransformableElement::rendererIsNeeded(context);
+    return SVGGraphicsElement::rendererIsNeeded(context);
 }
 
 bool SVGForeignObjectElement::selfHasRelativeLengths() const

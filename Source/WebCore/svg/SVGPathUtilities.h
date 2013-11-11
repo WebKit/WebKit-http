@@ -21,9 +21,8 @@
 #define SVGPathUtilities_h
 
 #if ENABLE(SVG)
-#include "SVGPathByteStream.h"
 #include "SVGPathConsumer.h"
-#include "SVGPathSeg.h"
+#include "SVGPoint.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -32,6 +31,7 @@ namespace WebCore {
 class Path;
 class SVGPathByteStream;
 class SVGPathElement;
+class SVGPathSeg;
 class SVGPathSegList;
 
 // String/SVGPathByteStream -> Path
@@ -55,7 +55,7 @@ bool addToSVGPathByteStream(SVGPathByteStream*, SVGPathByteStream*, unsigned rep
 
 bool getSVGPathSegAtLengthFromSVGPathByteStream(SVGPathByteStream*, float length, unsigned& pathSeg);
 bool getTotalLengthOfSVGPathByteStream(SVGPathByteStream*, float& totalLength);
-bool getPointAtLengthOfSVGPathByteStream(SVGPathByteStream*, float length, FloatPoint&);
+bool getPointAtLengthOfSVGPathByteStream(SVGPathByteStream*, float length, SVGPoint&);
 
 } // namespace WebCore
 

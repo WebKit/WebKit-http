@@ -1,3 +1,79 @@
+2013-07-15  Kwang Yul Seo  <skyul@company100.net>
+
+        NetworkStorageSession::createDefaultSession is only implemented by Soup
+        https://bugs.webkit.org/show_bug.cgi?id=118679
+
+        Reviewed by Alexey Proskuryakov.
+
+        Replace NetworkStorageSession::createDefaultSession() with
+        NetworkStorageSession::defaultStorageSession().
+
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+        (EWKPrivate::storageSession):
+
+2013-07-09  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Add ewk_view_device_pixel_ratio_set
+        https://bugs.webkit.org/show_bug.cgi?id=118521
+
+        Reviewed by Gyuyoung Kim.
+
+        ewebkit and ewebkit2 have different approach about getting device pixel ratio.
+        ewebkit depends on deprecatedTargetDPI and ecore_x_dpi_get,
+        but ewebkit2 use Page::deviceScaleFactor.
+
+        This patch will add ewk_view_device_pixel_ratio_set and use Page::deviceScaleFactor()
+        instead of ViewportArguments::deprecatedTargetDPI like ewebkit2.
+
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+        (_ewk_view_viewport_attributes_compute): Use Page::deviceScaleFactor().
+        (ewk_view_viewport_attributes_get): Ditto.
+        (ewk_view_device_pixel_ratio_set): Added.
+        (ewk_view_device_pixel_ratio_get):
+        * ewk/ewk_view.h:
+        Update document of ewk_view_device_pixel_ratio_get (from ewebkit2) and
+        added ewk_view_device_pixel_ratio_set.
+
+2013-06-27  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLInputElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118130
+
+        Reviewed by Antti Koivisto.
+
+        To enhance readability, this patch adopts is/toHTMLInputElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * ewk/ewk_view.cpp:
+        (ewk_view_input_method_state_set):
+
+2013-06-26  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][REGRESSION] Crash after r151540 with debug build
+        https://bugs.webkit.org/show_bug.cgi?id=118111
+
+        Reviewed by Gyuyoung Kim.
+
+        * ewk/ewk_view.cpp:
+        (ewk_view_scroll): Fixed ASSERT conditions wrongly refactored.
+
+2013-06-21  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        REGRESSION (r150663): Using webkitAudioContext in Inspector makes it undefined everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=117825
+
+        Reviewed by Kentaro Hara.
+
+        Use Settings to enable Web Audio instead of RuntimeEnabledFeatures.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::setWebAudioEnabled):
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+
 2013-06-17  Seokju Kwon  <seokju.kwon@gmail.com>
 
         [EFL] Remove unneeded WebCore namespace in FrameLoaderClientEfl

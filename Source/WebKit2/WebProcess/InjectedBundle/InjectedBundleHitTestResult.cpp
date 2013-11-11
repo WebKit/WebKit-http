@@ -104,8 +104,16 @@ bool InjectedBundleHitTestResult::mediaIsInFullscreen() const
     return m_hitTestResult.mediaIsInFullscreen();
 }
 
-BundleHitTestResultMediaType InjectedBundleHitTestResult::getMediaType() const
+bool InjectedBundleHitTestResult::mediaHasAudio() const
 {
+    return m_hitTestResult.mediaHasAudio();
+}
+
+BundleHitTestResultMediaType InjectedBundleHitTestResult::mediaType() const
+{
+#if !ENABLE(VIDEO)
+    return BundleHitTestResultMediaTypeNone;
+#else
     WebCore::Node* node = m_hitTestResult.innerNonSharedNode();
     if (!node->isElementNode())
         return BundleHitTestResultMediaTypeNone;
@@ -114,6 +122,7 @@ BundleHitTestResultMediaType InjectedBundleHitTestResult::getMediaType() const
         return BundleHitTestResultMediaTypeNone;
     
     return m_hitTestResult.mediaIsVideo() ? BundleHitTestResultMediaTypeVideo : BundleHitTestResultMediaTypeAudio;    
+#endif
 }
 
 String InjectedBundleHitTestResult::linkLabel() const

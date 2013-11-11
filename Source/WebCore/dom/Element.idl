@@ -120,9 +120,6 @@
     [ImplementedAs=insertionParentForBinding] readonly attribute Node webkitInsertionParent;
 #endif
 
-    // DOM 4
-    [RaisesException] void remove();
-
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     // CSSOM View Module API
     ClientRectList getClientRects();
@@ -141,6 +138,10 @@
 
     // W3C version
     void webkitRequestFullscreen();
+#endif
+
+#if defined(ENABLE_INDIE_UI) && ENABLE_INDIE_UI
+    [Reflect] attribute DOMString uiactions;
 #endif
 
     [Conditional=POINTER_LOCK] void webkitRequestPointerLock();
@@ -225,4 +226,6 @@
     [NotEnumerable, Conditional=FULLSCREEN_API] attribute EventListener onwebkitfullscreenerror;
 #endif
 };
+
+Element implements ChildNode;
 

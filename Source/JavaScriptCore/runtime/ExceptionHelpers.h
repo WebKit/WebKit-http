@@ -33,19 +33,22 @@
 
 namespace JSC {
 
+typedef JSObject* (*ErrorFactory)(ExecState*, const String&);
+
 JSObject* createTerminatedExecutionException(VM*);
 bool isTerminatedExecutionException(JSObject*);
 JS_EXPORT_PRIVATE bool isTerminatedExecutionException(JSValue);
-
+JS_EXPORT_PRIVATE JSObject* createError(ExecState*, ErrorFactory, JSValue, const String&);
 JS_EXPORT_PRIVATE JSObject* createStackOverflowError(ExecState*);
 JSObject* createStackOverflowError(JSGlobalObject*);
 JSObject* createOutOfMemoryError(JSGlobalObject*);
 JSObject* createUndefinedVariableError(ExecState*, const Identifier&);
 JSObject* createNotAnObjectError(ExecState*, JSValue);
-JSObject* createInvalidParamError(ExecState*, const char* op, JSValue);
+JSObject* createInvalidParameterError(ExecState*, const char* op, JSValue);
 JSObject* createNotAConstructorError(ExecState*, JSValue);
 JSObject* createNotAFunctionError(ExecState*, JSValue);
 JSObject* createErrorForInvalidGlobalAssignment(ExecState*, const String&);
+JSString* errorDescriptionForValue(ExecState*, JSValue);
 
 JSObject* throwOutOfMemoryError(ExecState*);
 JSObject* throwStackOverflowError(ExecState*);

@@ -399,6 +399,7 @@ public:
         return document()->inQuirksMode() && style()->logicalHeight().isAuto() && !isFloatingOrOutOfFlowPositioned() && (isRoot() || isBody()) && !document()->shouldDisplaySeamlesslyWithParent() && !isInline();
     }
 
+    virtual LayoutSize intrinsicSize() const { return LayoutSize(); }
     LayoutUnit intrinsicLogicalWidth() const { return style()->isHorizontalWritingMode() ? intrinsicSize().width() : intrinsicSize().height(); }
     LayoutUnit intrinsicLogicalHeight() const { return style()->isHorizontalWritingMode() ? intrinsicSize().height() : intrinsicSize().width(); }
 
@@ -460,7 +461,8 @@ public:
 
     virtual LayoutRect localCaretRect(InlineBox*, int caretOffset, LayoutUnit* extraWidthToEndOfLine = 0);
 
-    virtual LayoutRect overflowClipRect(const LayoutPoint& location, RenderRegion*, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize);
+    virtual LayoutRect overflowClipRect(const LayoutPoint& location, RenderRegion*, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, PaintPhase = PaintPhaseBlockBackground);
+    virtual LayoutRect overflowClipRectForChildLayers(const LayoutPoint& location, RenderRegion* region, OverlayScrollbarSizeRelevancy relevancy) { return overflowClipRect(location, region, relevancy); }
     LayoutRect clipRect(const LayoutPoint& location, RenderRegion*);
     virtual bool hasControlClip() const { return false; }
     virtual LayoutRect controlClipRect(const LayoutPoint&) const { return LayoutRect(); }
@@ -530,7 +532,7 @@ public:
     LayoutRect logicalLayoutOverflowRectForPropagation(RenderStyle*) const;
     LayoutRect layoutOverflowRectForPropagation(RenderStyle*) const;
 
-    RenderOverflow* hasRenderOverflow() const { return m_overflow.get(); }    
+    bool hasRenderOverflow() const { return m_overflow; }    
     bool hasVisualOverflow() const { return m_overflow && !borderBoxRect().contains(m_overflow->visualOverflowRect()); }
 
     virtual bool needsPreferredWidthsRecalculation() const;
@@ -546,24 +548,22 @@ public:
 
     bool hasHorizontalLayoutOverflow() const
     {
-        if (RenderOverflow* overflow = hasRenderOverflow()) {
-            LayoutRect layoutOverflowRect = overflow->layoutOverflowRect();
-            flipForWritingMode(layoutOverflowRect);
-            return layoutOverflowRect.x() < x() || layoutOverflowRect.maxX() > x() + logicalWidth();
-        }
+        if (!m_overflow)
+            return false;
 
-        return false;
+        LayoutRect layoutOverflowRect = m_overflow->layoutOverflowRect();
+        flipForWritingMode(layoutOverflowRect);
+        return layoutOverflowRect.x() < x() || layoutOverflowRect.maxX() > x() + logicalWidth();
     }
 
     bool hasVerticalLayoutOverflow() const
     {
-        if (RenderOverflow* overflow = hasRenderOverflow()) {
-            LayoutRect layoutOverflowRect = overflow->layoutOverflowRect();
-            flipForWritingMode(layoutOverflowRect);
-            return layoutOverflowRect.y() < y() || layoutOverflowRect.maxY() > y() + logicalHeight();
-        }
+        if (!m_overflow)
+            return false;
 
-        return false;
+        LayoutRect layoutOverflowRect = m_overflow->layoutOverflowRect();
+        flipForWritingMode(layoutOverflowRect);
+        return layoutOverflowRect.y() < y() || layoutOverflowRect.maxY() > y() + logicalHeight();
     }
 
     virtual RenderBox* createAnonymousBoxWithSameTypeAs(const RenderObject*) const
@@ -641,7 +641,6 @@ private:
 
     LayoutUnit viewLogicalHeightForPercentages() const;
 
-    virtual LayoutSize intrinsicSize() const { return LayoutSize(); }
     void computePositionedLogicalHeight(LogicalExtentComputedValues&) const;
     void computePositionedLogicalWidthUsing(Length logicalWidth, const RenderBoxModelObject* containerBlock, TextDirection containerDirection,
                                             LayoutUnit containerLogicalWidth, LayoutUnit bordersPlusPadding,

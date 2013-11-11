@@ -1022,7 +1022,7 @@ void RenderThemeEfl::setDefaultFontSize(int size)
     defaultFontSize = size;
 }
 
-void RenderThemeEfl::systemFont(int, FontDescription& fontDescription) const
+void RenderThemeEfl::systemFont(CSSValueID, FontDescription& fontDescription) const
 {
     // It was called by RenderEmbeddedObject::paintReplaced to render alternative string.
     // To avoid cairo_error while rendering, fontDescription should be passed.
@@ -1129,7 +1129,7 @@ bool RenderThemeEfl::paintMediaFullscreenButton(RenderObject* object, const Pain
     if (!mediaNode || !mediaNode->isElementNode() || !toElement(mediaNode)->isMediaElement())
         return false;
 
-    HTMLMediaElement* mediaElement = static_cast<HTMLMediaElement*>(mediaNode);
+    HTMLMediaElement* mediaElement = toHTMLMediaElement(mediaNode);
     if (!emitMediaButtonSignal(FullScreenButton, mediaElement->isFullscreen() ? MediaExitFullscreenButton : MediaEnterFullscreenButton, rect))
         return false;
 
@@ -1144,7 +1144,7 @@ bool RenderThemeEfl::paintMediaMuteButton(RenderObject* object, const PaintInfo&
     if (!mediaNode || !mediaNode->isElementNode() || !toElement(mediaNode)->isMediaElement())
         return false;
 
-    HTMLMediaElement* mediaElement = static_cast<HTMLMediaElement*>(mediaNode);
+    HTMLMediaElement* mediaElement = toHTMLMediaElement(mediaNode);
 
     if (!emitMediaButtonSignal(MuteUnMuteButton, mediaElement->muted() ? MediaMuteButton : MediaUnMuteButton, rect))
         return false;
@@ -1286,7 +1286,7 @@ bool RenderThemeEfl::paintMediaToggleClosedCaptionsButton(RenderObject* object, 
     if (!mediaNode || (!mediaNode->hasTagName(videoTag)))
         return false;
 
-    HTMLMediaElement* mediaElement = static_cast<HTMLMediaElement*>(mediaNode);
+    HTMLMediaElement* mediaElement = toHTMLMediaElement(mediaNode);
     if (!emitMediaButtonSignal(ToggleCaptionsButton, mediaElement->webkitClosedCaptionsVisible() ? MediaShowClosedCaptionsButton : MediaHideClosedCaptionsButton, rect))
         return false;
 

@@ -136,7 +136,7 @@ void SubresourceLoader::willSendRequest(ResourceRequest& newRequest, const Resou
             memoryCache()->revalidationFailed(m_resource);
         }
         
-        if (!m_documentLoader->cachedResourceLoader()->canRequest(m_resource->type(), newRequest.url())) {
+        if (!m_documentLoader->cachedResourceLoader()->canRequest(m_resource->type(), newRequest.url(), options())) {
             cancel();
             return;
         }
@@ -188,7 +188,10 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
     m_resource->responseReceived(response);
     if (reachedTerminalState())
         return;
+
     ResourceLoader::didReceiveResponse(response);
+    if (reachedTerminalState())
+        return;
 
     // FIXME: Main resources have a different set of rules for multipart than images do.
     // Hopefully we can merge those 2 paths.
@@ -205,7 +208,9 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
 
     RefPtr<ResourceBuffer> buffer = resourceData();
     if (m_loadingMultipartContent && buffer && buffer->size()) {
-        m_resource->finishLoading(buffer.get());
+        // The resource data will change as the next part is loaded, so we need to make a copy.
+        RefPtr<ResourceBuffer> copiedData = ResourceBuffer::create(buffer->data(), buffer->size());
+        m_resource->finishLoading(copiedData.get());
         clearResourceData();
         // Since a subresource loader does not load multipart sections progressively, data was delivered to the loader all at once.        
         // After the first multipart section is complete, signal to delegates that this load is "finished" 
@@ -329,6 +334,9 @@ void SubresourceLoader::willCancel(const ResourceError& error)
 
 void SubresourceLoader::didCancel(const ResourceError&)
 {
+    if (m_state == Uninitialized)
+        return;
+
     m_resource->cancelLoad();
     notifyDone();
 }

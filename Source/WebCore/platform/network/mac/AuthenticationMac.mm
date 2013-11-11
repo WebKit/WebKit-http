@@ -283,6 +283,9 @@ NSURLProtectionSpace *mac(const ProtectionSpace& coreSpace)
         case ProtectionSpaceAuthenticationSchemeNTLM:
             method = NSURLAuthenticationMethodNTLM;
             break;
+        case ProtectionSpaceAuthenticationSchemeNegotiate:
+            method = NSURLAuthenticationMethodNegotiate;
+            break;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
         case ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested:
             method = NSURLAuthenticationMethodServerTrust;
@@ -389,6 +392,8 @@ ProtectionSpace core(NSURLProtectionSpace *macSpace)
         scheme = ProtectionSpaceAuthenticationSchemeHTMLForm;
     else if ([method isEqualToString:NSURLAuthenticationMethodNTLM])
         scheme = ProtectionSpaceAuthenticationSchemeNTLM;
+    else if ([method isEqualToString:NSURLAuthenticationMethodNegotiate])
+        scheme = ProtectionSpaceAuthenticationSchemeNegotiate;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     else if ([method isEqualToString:NSURLAuthenticationMethodClientCertificate])
         scheme = ProtectionSpaceAuthenticationSchemeClientCertificateRequested;

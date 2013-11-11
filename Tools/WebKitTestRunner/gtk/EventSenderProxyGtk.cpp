@@ -155,12 +155,11 @@ static void dispatchEvent(GdkEvent* event)
 void EventSenderProxy::replaySavedEvents()
 {
     while (!m_eventQueue.isEmpty()) {
-        WTREventQueueItem item = m_eventQueue.first();
+        WTREventQueueItem item = m_eventQueue.takeFirst();
         if (item.delay)
             g_usleep(item.delay * 1000);
 
         dispatchEvent(item.event);
-        m_eventQueue.remove(0);
     }
 }
 
@@ -378,6 +377,10 @@ void EventSenderProxy::mouseMoveTo(double x, double y)
 
 void EventSenderProxy::mouseScrollBy(int horizontal, int vertical)
 {
+    // Copy behaviour of Qt and EFL - just return in case of (0,0) mouse scroll
+    if (!horizontal && !vertical)
+        return;
+
     GdkEvent* event = gdk_event_new(GDK_SCROLL);
     event->scroll.x = m_position.x;
     event->scroll.y = m_position.y;

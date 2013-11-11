@@ -964,7 +964,7 @@ static String findFontFallback(const char* pathOrUrl)
     String pathToFontFallback = WebCore::directoryName(pathOrUrl);
 
     wchar_t fullPath[_MAX_PATH];
-    if (!_wfullpath(fullPath, pathToFontFallback.charactersWithNullTermination(), _MAX_PATH))
+    if (!_wfullpath(fullPath, pathToFontFallback.charactersWithNullTermination().data(), _MAX_PATH))
         return emptyString();
 
     if (!::PathIsDirectoryW(fullPath))
@@ -995,7 +995,7 @@ static String findFontFallback(const char* pathOrUrl)
     for (Vector<String>::iterator pos = possiblePaths.begin(); pos != possiblePaths.end(); ++pos) {
         pathToFontFallback = WebCore::pathByAppendingComponent(*pos, "resources\\"); 
 
-        if (::PathIsDirectoryW(pathToFontFallback.charactersWithNullTermination()))
+        if (::PathIsDirectoryW(pathToFontFallback.charactersWithNullTermination().data()))
             return pathToFontFallback;
     }
 
@@ -1009,7 +1009,7 @@ static void addFontFallbackIfPresent(const String& fontFallbackPath)
 
     String fontFallback = WebCore::pathByAppendingComponent(fontFallbackPath, "Mac-compatible-font-fallback.css");
 
-    if (!::PathFileExistsW(fontFallback.charactersWithNullTermination()))
+    if (!::PathFileExistsW(fontFallback.charactersWithNullTermination().data()))
         return;
 
     ::setPersistentUserStyleSheetLocation(fontFallback.createCFString().get());
@@ -1022,7 +1022,7 @@ static void removeFontFallbackIfPresent(const String& fontFallbackPath)
 
     String fontFallback = WebCore::pathByAppendingComponent(fontFallbackPath, "Mac-compatible-font-fallback.css");
 
-    if (!::PathFileExistsW(fontFallback.charactersWithNullTermination()))
+    if (!::PathFileExistsW(fontFallback.charactersWithNullTermination().data()))
         return;
 
     ::setPersistentUserStyleSheetLocation(0);
@@ -1349,6 +1349,7 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(int argc, cons
     standardPreferences->setJavaScriptEnabled(TRUE);
     standardPreferences->setDefaultFontSize(16);
     standardPreferences->setAcceleratedCompositingEnabled(true);
+    standardPreferences->setAVFoundationEnabled(TRUE);
     standardPreferences->setContinuousSpellCheckingEnabled(TRUE);
 
     if (printSupportedFeatures) {

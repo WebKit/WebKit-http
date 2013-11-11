@@ -25,12 +25,7 @@
 
 [
     Conditional=SVG
-] interface SVGImageElement : SVGStyledElement,
-                                              SVGURIReference,
-                                              SVGTests,
-                                              SVGLangSpace,
-                                              SVGExternalResourcesRequired,
-                                              SVGTransformable {
+] interface SVGImageElement : SVGGraphicsElement {
     readonly attribute SVGAnimatedLength x;
     readonly attribute SVGAnimatedLength y;
     readonly attribute SVGAnimatedLength width;
@@ -38,3 +33,5 @@
     readonly attribute SVGAnimatedPreserveAspectRatio preserveAspectRatio;
 };
 
+SVGImageElement implements SVGExternalResourcesRequired;
+SVGImageElement implements SVGURIReference;

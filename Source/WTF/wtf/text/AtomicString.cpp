@@ -75,7 +75,7 @@ static inline PassRefPtr<StringImpl> addToStringTable(const T& value)
 {
     AtomicStringTableLocker locker;
 
-    HashSet<StringImpl*>::AddResult addResult = stringTable().add<T, HashTranslator>(value);
+    HashSet<StringImpl*>::AddResult addResult = stringTable().add<HashTranslator>(value);
 
     // If the string is newly-translated, then we need to adopt it.
     // The boolean in the pair tells us if that is so.
@@ -377,23 +377,29 @@ PassRefPtr<StringImpl> AtomicString::addFromLiteralData(const char* characters, 
     return addToStringTable<CharBuffer, CharBufferFromLiteralDataTranslator>(buffer);
 }
 
-PassRefPtr<StringImpl> AtomicString::addSlowCase(StringImpl* r)
+PassRefPtr<StringImpl> AtomicString::addSlowCase(StringImpl* string)
 {
-    if (!r->length())
+    if (!string->length())
         return StringImpl::empty();
 
+    ASSERT_WITH_MESSAGE(!string->isAtomic(), "AtomicString should not hit the slow case if the string is already atomic.");
+
     AtomicStringTableLocker locker;
-    StringImpl* result = *stringTable().add(r).iterator;
-    if (result == r)
-        r->setIsAtomic(true);
-    return result;
+    HashSet<StringImpl*>::AddResult addResult = stringTable().add(string);
+
+    if (addResult.isNewEntry) {
+        ASSERT(*addResult.iterator == string);
+        string->setIsAtomic(true);
+    }
+
+    return *addResult.iterator;
 }
 
 template<typename CharacterType>
 static inline HashSet<StringImpl*>::iterator findString(const StringImpl* stringImpl)
 {
     HashAndCharacters<CharacterType> buffer = { stringImpl->existingHash(), stringImpl->getCharacters<CharacterType>(), stringImpl->length() };
-    return stringTable().find<HashAndCharacters<CharacterType>, HashAndCharactersTranslator<CharacterType> >(buffer);
+    return stringTable().find<HashAndCharactersTranslator<CharacterType> >(buffer);
 }
 
 AtomicStringImpl* AtomicString::find(const StringImpl* stringImpl)
@@ -415,10 +421,14 @@ AtomicStringImpl* AtomicString::find(const StringImpl* stringImpl)
     return static_cast<AtomicStringImpl*>(*iterator);
 }
 
-void AtomicString::remove(StringImpl* r)
+void AtomicString::remove(StringImpl* string)
 {
+    ASSERT(string->isAtomic());
     AtomicStringTableLocker locker;
-    stringTable().remove(r);
+    HashSet<StringImpl*>& atomicStringTable = stringTable();
+    HashSet<StringImpl*>::iterator iterator = atomicStringTable.find(string);
+    ASSERT_WITH_MESSAGE(iterator != atomicStringTable.end(), "The string being removed is atomic in the string table of an other thread!");
+    atomicStringTable.remove(iterator);
 }
 
 AtomicString AtomicString::lower() const
@@ -426,11 +436,15 @@ AtomicString AtomicString::lower() const
     // Note: This is a hot function in the Dromaeo benchmark.
     StringImpl* impl = this->impl();
     if (UNLIKELY(!impl))
-        return *this;
-    RefPtr<StringImpl> newImpl = impl->lower();
-    if (LIKELY(newImpl == impl))
-        return *this;
-    return AtomicString(newImpl);
+        return AtomicString();
+
+    RefPtr<StringImpl> lowerImpl = impl->lower();
+    AtomicString returnValue;
+    if (LIKELY(lowerImpl == impl))
+        returnValue.m_string = lowerImpl.release();
+    else
+        returnValue.m_string = addSlowCase(lowerImpl.get());
+    return returnValue;
 }
 
 AtomicString AtomicString::fromUTF8Internal(const char* charactersStart, const char* charactersEnd)
@@ -446,6 +460,14 @@ AtomicString AtomicString::fromUTF8Internal(const char* charactersStart, const c
     atomicString.m_string = addToStringTable<HashAndUTF8Characters, HashAndUTF8CharactersTranslator>(buffer);
     return atomicString;
 }
+
+#if !ASSERT_DISABLED
+bool AtomicString::isInAtomicStringTable(StringImpl* string)
+{
+    AtomicStringTableLocker locker;
+    return stringTable().contains(string);
+}
+#endif
 
 #ifndef NDEBUG
 void AtomicString::show() const

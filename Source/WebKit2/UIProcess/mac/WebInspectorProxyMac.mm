@@ -50,7 +50,7 @@
 #import <WebCore/SoftLinking.h>
 #import <wtf/text/WTFString.h>
 
-SOFT_LINK_STAGED_FRAMEWORK_OPTIONAL(WebInspectorUI, PrivateFrameworks, A)
+SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
 
 using namespace WebCore;
 using namespace WebKit;

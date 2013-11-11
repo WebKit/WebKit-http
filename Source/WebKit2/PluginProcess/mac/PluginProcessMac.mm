@@ -186,6 +186,17 @@ static void carbonWindowHidden(WindowRef window)
 #endif
 }
 
+static bool openCFURLRef(CFURLRef url, int32_t& status, CFURLRef* launchedURL)
+{
+    String launchedURLString;
+    if (!PluginProcess::shared().openURL(KURL(url).string(), status, launchedURLString))
+        return false;
+
+    if (!launchedURLString.isNull() && launchedURL)
+        *launchedURL = KURL(ParsedURLString, launchedURLString).createCFURL().leakRef();
+    return true;
+}
+
 #endif
 
 static void setModal(bool modalWindowIsShowing)
@@ -243,6 +254,7 @@ static void initializeShim()
         carbonWindowShown,
         carbonWindowHidden,
         setModal,
+        openCFURLRef,
     };
 
     PluginProcessShimInitializeFunc initFunc = reinterpret_cast<PluginProcessShimInitializeFunc>(dlsym(RTLD_DEFAULT, "WebKitPluginProcessShimInitialize"));
@@ -267,12 +279,38 @@ static void replacedNSConcreteTask_launch(NSTask *self, SEL _cmd)
     NSConcreteTask_launch(self, _cmd);
 }
 
+static NSRunningApplication *(*NSWorkspace_launchApplicationAtURL_options_configuration_error)(NSWorkspace *, SEL, NSURL *, NSWorkspaceLaunchOptions, NSDictionary *, NSError **);
+
+static NSRunningApplication *replacedNSWorkspace_launchApplicationAtURL_options_configuration_error(NSWorkspace *self, SEL _cmd, NSURL *url, NSWorkspaceLaunchOptions options, NSDictionary *configuration, NSError **error)
+{
+    Vector<String> arguments;
+    if (NSArray *argumentsArray = [configuration objectForKey:NSWorkspaceLaunchConfigurationArguments]) {
+        if ([argumentsArray isKindOfClass:[NSArray array]]) {
+            for (NSString *argument in argumentsArray) {
+                if ([argument isKindOfClass:[NSString class]])
+                    arguments.append(argument);
+            }
+        }
+    }
+
+    if (PluginProcess::shared().launchApplicationAtURL(KURL(url).string(), arguments)) {
+        if (error)
+            *error = nil;
+        return nil;
+    }
+
+    return NSWorkspace_launchApplicationAtURL_options_configuration_error(self, _cmd, url, options, configuration, error);
+}
+
 static void initializeCocoaOverrides()
 {
     // Override -[NSConcreteTask launch:]
     Method launchMethod = class_getInstanceMethod(objc_getClass("NSConcreteTask"), @selector(launch));
-
     NSConcreteTask_launch = method_setImplementation(launchMethod, reinterpret_cast<IMP>(replacedNSConcreteTask_launch));
+
+    // Override -[NSWorkspace launchApplicationAtURL:options:configuration:error:]
+    Method launchApplicationAtURLOptionsConfigurationErrorMethod = class_getInstanceMethod(objc_getClass("NSWorkspace"), @selector(launchApplicationAtURL:options:configuration:error:));
+    NSWorkspace_launchApplicationAtURL_options_configuration_error = reinterpret_cast<NSRunningApplication *(*)(NSWorkspace *, SEL, NSURL *, NSWorkspaceLaunchOptions, NSDictionary *, NSError **)>(method_setImplementation(launchApplicationAtURLOptionsConfigurationErrorMethod, reinterpret_cast<IMP>(replacedNSWorkspace_launchApplicationAtURL_options_configuration_error)));
 
     // Override -[NSApplication runModalForWindow:]
     Method runModalForWindowMethod = class_getInstanceMethod(objc_getClass("NSApplication"), @selector(runModalForWindow:));
@@ -310,6 +348,24 @@ bool PluginProcess::launchProcess(const String& launchPath, const Vector<String>
 {
     bool result;
     if (!parentProcessConnection()->sendSync(Messages::PluginProcessProxy::LaunchProcess(launchPath, arguments), Messages::PluginProcessProxy::LaunchProcess::Reply(result), 0))
+        return false;
+
+    return result;
+}
+
+bool PluginProcess::launchApplicationAtURL(const String& urlString, const Vector<String>& arguments)
+{
+    bool result = false;
+    if (!parentProcessConnection()->sendSync(Messages::PluginProcessProxy::LaunchApplicationAtURL(urlString, arguments), Messages::PluginProcessProxy::LaunchProcess::Reply(result), 0))
+        return false;
+
+    return result;
+}
+
+bool PluginProcess::openURL(const String& urlString, int32_t& status, String& launchedURLString)
+{
+    bool result;
+    if (!parentProcessConnection()->sendSync(Messages::PluginProcessProxy::OpenURL(urlString), Messages::PluginProcessProxy::OpenURL::Reply(result, status, launchedURLString), 0))
         return false;
 
     return result;

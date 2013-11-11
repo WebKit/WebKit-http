@@ -44,13 +44,20 @@ public:
         InsecurePluginVersion,
     };
     void setPluginUnavailabilityReason(PluginUnavailabilityReason);
-    bool showsUnavailablePluginIndicator() const;
+    void setPluginUnavailabilityReasonWithDescription(PluginUnavailabilityReason, const String& description);
+
+    bool isPluginUnavailable() const { return m_isPluginUnavailable; }
+    bool showsUnavailablePluginIndicator() const { return isPluginUnavailable() && !m_isUnavailablePluginIndicatorHidden; }
+
+    void setUnavailablePluginIndicatorIsHidden(bool);
 
     // FIXME: This belongs on HTMLObjectElement.
     bool hasFallbackContent() const { return m_hasFallbackContent; }
     void setHasFallbackContent(bool hasFallbackContent) { m_hasFallbackContent = hasFallbackContent; }
 
     void handleUnavailablePluginIndicatorEvent(Event*);
+
+    bool isReplacementObscured() const;
 
 #if USE(ACCELERATED_COMPOSITING)
     virtual bool allowsAcceleratedCompositing() const;
@@ -89,7 +96,8 @@ private:
     void setUnavailablePluginIndicatorIsPressed(bool);
     bool isInUnavailablePluginIndicator(MouseEvent*) const;
     bool isInUnavailablePluginIndicator(const LayoutPoint&) const;
-    bool getReplacementTextGeometry(const LayoutPoint& accumulatedOffset, FloatRect& contentRect, Path&, FloatRect& replacementTextRect, Font&, TextRun&, float& textWidth) const;
+    bool getReplacementTextGeometry(const LayoutPoint& accumulatedOffset, FloatRect& contentRect, Path&, FloatRect& replacementTextRect, FloatRect& arrowRect, Font&, TextRun&, float& textWidth) const;
+    LayoutRect unavailablePluginIndicatorBounds(const LayoutPoint&) const;
 
     virtual bool canHaveChildren() const;
     virtual RenderObjectChildList* virtualChildren() { return children(); }
@@ -99,12 +107,14 @@ private:
 
     bool m_hasFallbackContent; // FIXME: This belongs on HTMLObjectElement.
 
-    bool m_showsUnavailablePluginIndicator;
+    bool m_isPluginUnavailable;
+    bool m_isUnavailablePluginIndicatorHidden;
     PluginUnavailabilityReason m_pluginUnavailabilityReason;
     String m_unavailablePluginReplacementText;
     bool m_unavailablePluginIndicatorIsPressed;
     bool m_mouseDownWasInUnavailablePluginIndicator;
     RenderObjectChildList m_children;
+    String m_unavailabilityDescription;
 };
 
 inline RenderEmbeddedObject* toRenderEmbeddedObject(RenderObject* object)

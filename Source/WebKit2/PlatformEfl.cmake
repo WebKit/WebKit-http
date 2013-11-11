@@ -49,6 +49,7 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/API/C/CoordinatedGraphics/WKView.cpp
 
+    UIProcess/API/C/efl/WKEventEfl.cpp
     UIProcess/API/C/efl/WKPageEfl.cpp
     UIProcess/API/C/efl/WKPopupItem.cpp
     UIProcess/API/C/efl/WKPopupMenuListener.cpp
@@ -104,6 +105,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/efl/ContextHistoryClientEfl.cpp
     UIProcess/efl/ContextMenuClientEfl.cpp
     UIProcess/efl/DownloadManagerEfl.cpp
+    UIProcess/efl/EwkTouchEvent.cpp
+    UIProcess/efl/EwkTouchPoint.cpp
     UIProcess/efl/FindClientEfl.cpp
     UIProcess/efl/FormClientEfl.cpp
     UIProcess/efl/InputMethodContextEfl.cpp
@@ -225,6 +228,7 @@ list(APPEND WebKit2_LIBRARIES
     ${CAIRO_LIBRARIES}
     ${ECORE_LIBRARIES}
     ${ECORE_EVAS_LIBRARIES}
+    ${ECORE_IMF_EVAS_LIBRARIES}
     ${EDJE_LIBRARIES}
     ${EFREET_LIBRARIES}
     ${EINA_LIBRARIES}
@@ -280,7 +284,11 @@ endif ()
 if (ENABLE_ECORE_X)
     list(APPEND WebProcess_LIBRARIES
         ${ECORE_X_LIBRARIES}
-        ${X11_Xext_LIB})
+        ${X11_Xext_LIB}
+    )
+    list(APPEND WebKit2_LIBRARIES
+        ${ECORE_X_LIBRARIES}
+    )
 endif ()
 
 add_custom_target(forwarding-headerEfl
@@ -353,6 +361,12 @@ if (ENABLE_PLUGIN_PROCESS)
     set(PluginProcess_LIBRARIES
         WebKit2
     )
+
+    if (ENABLE_ECORE_X)
+        list(APPEND PluginProcess_LIBRARIES
+            ${ECORE_X_LIBRARIES}
+        )
+    endif ()
 
     add_executable(PluginProcess ${PluginProcess_SOURCES})
     target_link_libraries(PluginProcess ${PluginProcess_LIBRARIES})

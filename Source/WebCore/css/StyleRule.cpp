@@ -260,6 +260,44 @@ void StyleRule::setProperties(PassRefPtr<StylePropertySet> properties)
     m_properties = properties;
 }
 
+PassRefPtr<StyleRule> StyleRule::create(int sourceLine, const Vector<const CSSSelector*>& selectors, PassRefPtr<StylePropertySet> properties)
+{
+    CSSSelector* selectorListArray = reinterpret_cast<CSSSelector*>(fastMalloc(sizeof(CSSSelector) * selectors.size()));
+    for (unsigned i = 0; i < selectors.size(); ++i)
+        new (NotNull, &selectorListArray[i]) CSSSelector(*selectors.at(i));
+    selectorListArray[selectors.size() - 1].setLastInSelectorList();
+    RefPtr<StyleRule> rule = StyleRule::create(sourceLine);
+    rule->parserAdoptSelectorArray(selectorListArray);
+    rule->setProperties(properties);
+    return rule.release();
+}
+
+Vector<RefPtr<StyleRule> > StyleRule::splitIntoMultipleRulesWithMaximumSelectorComponentCount(unsigned maxCount) const
+{
+    ASSERT(selectorList().componentCount() > maxCount);
+
+    Vector<RefPtr<StyleRule> > rules;
+    Vector<const CSSSelector*> componentsSinceLastSplit;
+
+    for (const CSSSelector* selector = selectorList().first(); selector; selector = CSSSelectorList::next(selector)) {
+        Vector<const CSSSelector*, 8> componentsInThisSelector;
+        for (const CSSSelector* component = selector; component; component = component->tagHistory())
+            componentsInThisSelector.append(component);
+
+        if (componentsInThisSelector.size() + componentsSinceLastSplit.size() > maxCount) {
+            rules.append(create(sourceLine(), componentsSinceLastSplit, m_properties));
+            componentsSinceLastSplit.clear();
+        }
+
+        componentsSinceLastSplit.appendVector(componentsInThisSelector);
+    }
+
+    if (!componentsSinceLastSplit.isEmpty())
+        rules.append(create(sourceLine(), componentsSinceLastSplit, m_properties));
+
+    return rules;
+}
+
 StyleRulePage::StyleRulePage()
     : StyleRuleBase(Page)
 {

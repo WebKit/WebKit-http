@@ -28,7 +28,6 @@
 #include "Attribute.h"
 #include "CSSImageValue.h"
 #include "CSSPropertyNames.h"
-#include "CSSStyleSheet.h"
 #include "CSSValueKeywords.h"
 #include "CSSValuePool.h"
 #include "ExceptionCode.h"
@@ -41,7 +40,6 @@
 #include "HTMLTableSectionElement.h"
 #include "RenderTable.h"
 #include "StylePropertySet.h"
-#include "Text.h"
 
 namespace WebCore {
 
@@ -413,7 +411,7 @@ void HTMLTableElement::parseAttribute(const QualifiedName& name, const AtomicStr
     }
 }
 
-static StylePropertySet* leakBorderStyle(int value)
+static StylePropertySet* leakBorderStyle(CSSValueID value)
 {
     RefPtr<MutableStylePropertySet> style = MutableStylePropertySet::create();
     style->setProperty(CSSPropertyBorderTopStyle, value);

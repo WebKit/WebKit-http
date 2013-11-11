@@ -1,3 +1,34 @@
+2013-07-14  Kwang Yul Seo  <skyul@company100.net>
+
+        Add Company100 to team.html
+        https://bugs.webkit.org/show_bug.cgi?id=118633
+
+        Reviewed by Andreas Kling.
+
+        * team.html:
+
+2013-07-11  Bruno de Oliveira Abinader  <bruno.d@partner.samsung.com>
+
+        Add 'partner.samsung.com' to domain affiliations
+        https://bugs.webkit.org/show_bug.cgi?id=118580
+
+        Reviewed by Antonio Gomes.
+
+        * team.html:
+
+2013-07-01  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add screenshot of the inspector color picker for the blog
+
+        * blog-files/last-week-in-webkit: Added.
+        * blog-files/last-week-in-webkit/Inspector_color_picker.png: Added.
+
+2013-06-27  Roger Fong  <roger_fong@apple.com>
+
+        Update required tools for Windows instructions.
+
+        * building/tools.html:
+
 2013-06-18  Denis Nomiyama  <d.nomiyama@samsung.com>
 
         The page title of technical-articles.html is incorrect.

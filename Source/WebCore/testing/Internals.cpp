@@ -78,6 +78,7 @@
 #include "PrintContext.h"
 #include "PseudoElement.h"
 #include "Range.h"
+#include "RenderEmbeddedObject.h"
 #include "RenderMenuList.h"
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
@@ -143,6 +144,10 @@
 #include "DOMWindowSpeechSynthesis.h"
 #include "PlatformSpeechSynthesizerMock.h"
 #include "SpeechSynthesis.h"
+#endif
+
+#if ENABLE(VIBRATION)
+#include "Vibration.h"
 #endif
 
 namespace WebCore {
@@ -699,7 +704,7 @@ String Internals::visiblePlaceholder(Element* element)
 #if ENABLE(INPUT_TYPE_COLOR)
 void Internals::selectColorInColorChooser(Element* element, const String& colorValue)
 {
-    if (!element->hasTagName(inputTag))
+    if (!isHTMLInputElement(element))
         return;
     HTMLInputElement* inputElement = element->toInputElement();
     if (!inputElement)
@@ -930,7 +935,7 @@ bool Internals::wasLastChangeUserEdit(Element* textField, ExceptionCode& ec)
 
     // FIXME: We should be using hasTagName instead but Windows port doesn't link QualifiedNames properly.
     if (textField->tagName() == "TEXTAREA")
-        return static_cast<HTMLTextAreaElement*>(textField)->lastChangeWasUserEdit();
+        return toHTMLTextAreaElement(textField)->lastChangeWasUserEdit();
 
     ec = INVALID_NODE_TYPE_ERR;
     return false;
@@ -2041,7 +2046,7 @@ String Internals::getImageSourceURL(Element* element, ExceptionCode& ec)
 void Internals::simulateAudioInterruption(Node* node)
 {
 #if USE(GSTREAMER)
-    HTMLMediaElement* element = toMediaElement(node);
+    HTMLMediaElement* element = toHTMLMediaElement(node);
     element->player()->simulateAudioInterruption();
 #else
     UNUSED_PARAM(node);
@@ -2051,7 +2056,7 @@ void Internals::simulateAudioInterruption(Node* node)
 
 bool Internals::isSelectPopupVisible(Node* node)
 {
-    if (!isHTMLSelectElement(node))
+    if (!node->hasTagName(HTMLNames::selectTag))
         return false;
 
     HTMLSelectElement* select = toHTMLSelectElement(node);
@@ -2159,6 +2164,33 @@ PassRefPtr<ClientRect> Internals::selectionBounds(ExceptionCode& ec)
     }
 
     return ClientRect::create(document->frame()->selection()->bounds());
+}
+
+#if ENABLE(VIBRATION)
+bool Internals::isVibrating()
+{
+    Page* page = contextDocument()->page();
+    ASSERT(page);
+
+    return Vibration::from(page)->isVibrating();
+}
+#endif
+
+bool Internals::isPluginUnavailabilityIndicatorObscured(Element* element, ExceptionCode& ec)
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return false;
+    }
+
+    RenderObject* renderer = element->renderer();
+    if (!renderer || !renderer->isEmbeddedObject()) {
+        ec = INVALID_ACCESS_ERR;
+        return false;
+    }
+
+    RenderEmbeddedObject* embed = toRenderEmbeddedObject(renderer);
+    return embed->isReplacementObscured();
 }
 
 }

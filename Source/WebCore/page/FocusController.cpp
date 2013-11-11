@@ -44,7 +44,9 @@
 #include "FrameView.h"
 #include "HTMLAreaElement.h"
 #include "HTMLImageElement.h"
+#include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "HTMLTextAreaElement.h"
 #include "HitTestResult.h"
 #include "KeyboardEvent.h"
 #include "NodeRenderingTraversal.h"
@@ -583,7 +585,7 @@ static void clearSelectionIfNeeded(Frame* oldFocusedFrame, Frame* newFocusedFram
                 return;
 
             if (Node* shadowAncestorNode = root->deprecatedShadowAncestorNode()) {
-                if (!shadowAncestorNode->hasTagName(inputTag) && !shadowAncestorNode->hasTagName(textareaTag))
+                if (!isHTMLInputElement(shadowAncestorNode) && !isHTMLTextAreaElement(shadowAncestorNode))
                     return;
             }
         }
@@ -873,8 +875,8 @@ bool FocusController::advanceFocusDirectionally(FocusDirection direction, Keyboa
         if (!hasOffscreenRect(focusedElement)) {
             container = scrollableEnclosingBoxOrParentFrameForNodeInDirection(direction, focusedElement);
             startingRect = nodeRectInAbsoluteCoordinates(focusedElement, true /* ignore border */);
-        } else if (focusedElement->hasTagName(areaTag)) {
-            HTMLAreaElement* area = static_cast<HTMLAreaElement*>(focusedElement);
+        } else if (isHTMLAreaElement(focusedElement)) {
+            HTMLAreaElement* area = toHTMLAreaElement(focusedElement);
             container = scrollableEnclosingBoxOrParentFrameForNodeInDirection(direction, area->imageElement());
             startingRect = virtualRectForAreaElementAndDirection(area, direction);
         }

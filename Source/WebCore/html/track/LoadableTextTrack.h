@@ -30,7 +30,6 @@
 
 #include "TextTrack.h"
 #include "TextTrackLoader.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -60,6 +59,7 @@ public:
 
     size_t trackElementIndex();
     HTMLTrackElement* trackElement() { return m_trackElement; }
+    void setTrackElement(HTMLTrackElement*);
     virtual Element* element() OVERRIDE;
 
     virtual bool isDefault() const OVERRIDE { return m_isDefault; }

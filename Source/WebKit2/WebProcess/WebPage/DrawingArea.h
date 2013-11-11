@@ -79,16 +79,16 @@ public:
     virtual void setPageOverlayOpacity(PageOverlay*, float) { }
     // If this function returns false, PageOverlay should apply opacity when painting.
     virtual bool pageOverlayShouldApplyFadeWhenPainting() const { return true; }
-    virtual void pageCustomRepresentationChanged() { }
 
     virtual void setPaintingEnabled(bool) { }
     virtual void updatePreferences(const WebPreferencesStore&) { }
     virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) { }
 
     virtual void setExposedRect(const WebCore::FloatRect&) { }
+    virtual void setClipsToExposedRect(bool) { }
     virtual void mainFrameScrollabilityChanged(bool) { }
 
-    virtual void didChangeScrollOffsetForAnyFrame() {}
+    virtual void didChangeScrollOffsetForAnyFrame() { }
 
 #if USE(ACCELERATED_COMPOSITING)
     virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() { return 0; }

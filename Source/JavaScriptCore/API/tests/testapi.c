@@ -28,6 +28,7 @@
 #include "JSContextRefPrivate.h"
 #include "JSObjectRefPrivate.h"
 #include "JSScriptRefPrivate.h"
+#include "JSStringRefPrivate.h"
 #include <math.h>
 #define ASSERT_DISABLED 0
 #include <wtf/Assertions.h>
@@ -1205,6 +1206,11 @@ int main(int argc, char* argv[])
     free(buffer);
     JSValueRef jsCFEmptyStringWithCharacters = JSValueMakeString(context, jsCFEmptyIStringWithCharacters);
 
+    JSChar constantString[] = { 'H', 'e', 'l', 'l', 'o', };
+    JSStringRef constantStringRef = JSStringCreateWithCharactersNoCopy(constantString, sizeof(constantString) / sizeof(constantString[0]));
+    ASSERT(JSStringGetCharactersPtr(constantStringRef) == constantString);
+    JSStringRelease(constantStringRef);
+
     ASSERT(JSValueGetType(context, NULL) == kJSTypeNull);
     ASSERT(JSValueGetType(context, jsUndefined) == kJSTypeUndefined);
     ASSERT(JSValueGetType(context, jsNull) == kJSTypeNull);
@@ -1239,6 +1245,14 @@ int main(int argc, char* argv[])
     } else
         printf("PASS: returned null when accessing character pointer of a null String.\n");
 
+    JSStringRef emptyString = JSStringCreateWithCFString(CFSTR(""));
+    characters = JSStringGetCharactersPtr(emptyString);
+    if (!characters) {
+        printf("FAIL: Returned null when accessing character pointer of an empty String.\n");
+        failed = 1;
+    } else
+        printf("PASS: returned empty when accessing character pointer of an empty String.\n");
+
     size_t length = JSStringGetLength(nullString);
     if (length) {
         printf("FAIL: Didn't return 0 length for null String.\n");
@@ -1246,6 +1260,14 @@ int main(int argc, char* argv[])
     } else
         printf("PASS: returned 0 length for null String.\n");
     JSStringRelease(nullString);
+
+    length = JSStringGetLength(emptyString);
+    if (length) {
+        printf("FAIL: Didn't return 0 length for empty String.\n");
+        failed = 1;
+    } else
+        printf("PASS: returned 0 length for empty String.\n");
+    JSStringRelease(emptyString);
 
     JSObjectRef propertyCatchalls = JSObjectMake(context, PropertyCatchalls_class(context), NULL);
     JSStringRef propertyCatchallsString = JSStringCreateWithUTF8CString("PropertyCatchalls");

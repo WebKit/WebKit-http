@@ -32,7 +32,7 @@ using namespace WebCore;
 
 namespace TestWebKitAPI {
 
-class WebCore: public testing::Test {
+class KURLTest : public testing::Test {
 public:
     virtual void SetUp()
     {
@@ -40,21 +40,19 @@ public:
     }
 };
 
-TEST_F(WebCore, KURLConstructorDefault)
+TEST_F(KURLTest, KURLConstructorDefault)
 {
     KURL kurl;
 
-    EXPECT_FALSE(kurl.hasPath());
     EXPECT_TRUE(kurl.isEmpty());
     EXPECT_TRUE(kurl.isNull());
     EXPECT_FALSE(kurl.isValid());
 }
 
-TEST_F(WebCore, KURLConstructorConstChar)
+TEST_F(KURLTest, KURLConstructorConstChar)
 {
     KURL kurl(ParsedURLString, "http://username:password@www.example.com:8080/index.html?var=val#fragment");
 
-    EXPECT_TRUE(kurl.hasPath());
     EXPECT_FALSE(kurl.isEmpty());
     EXPECT_FALSE(kurl.isNull());
     EXPECT_TRUE(kurl.isValid());
@@ -70,6 +68,15 @@ TEST_F(WebCore, KURLConstructorConstChar)
     EXPECT_EQ(String("var=val"), kurl.query());
     EXPECT_TRUE(kurl.hasFragmentIdentifier());
     EXPECT_EQ(String("fragment"), kurl.fragmentIdentifier());
+}
+
+TEST_F(KURLTest, KURLDataURIStringSharing)
+{
+    KURL baseURL(ParsedURLString, "http://www.webkit.org/");
+    String threeApples = "data:text/plain;charset=utf-8;base64,76O/76O/76O/";
+
+    KURL url(baseURL, threeApples);
+    EXPECT_EQ(threeApples.impl(), url.string().impl());
 }
 
 } // namespace TestWebKitAPI

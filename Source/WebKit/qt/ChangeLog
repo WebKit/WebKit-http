@@ -1,3 +1,116 @@
+2013-07-23  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        Remove deprecated and unused compositing settings
+        https://bugs.webkit.org/show_bug.cgi?id=119014
+
+        Reviewed by Andreas Kling.
+
+        Remove A set of settings to control accelerated compositing that have long been
+        replaced with triggers returned by ChromeClient, but haven't been fully removed.
+
+        They are only set by the Qt port but not read anywhere.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply):
+
+2013-07-18  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt][WK1] Mark failing API tests as XFAIL
+
+        Reviewed by Csaba Osztrogonác.
+
+        * tests/qgraphicswebview/tst_qgraphicswebview.cpp:
+        (tst_QGraphicsWebView::widgetsRenderingThroughCache):
+        (tst_QGraphicsWebView::windowResizeEvent):
+        * tests/qwebelement/tst_qwebelement.cpp:
+        (tst_QWebElement::addElementToHead):
+        * tests/qwebframe/tst_qwebframe.cpp:
+        (tst_QWebFrame::setHtmlWithImageResource):
+        (tst_QWebFrame::setHtmlWithStylesheetResource):
+        (tst_QWebFrame::setHtmlWithJSAlert):
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage::geolocationRequestJS):
+        (tst_QWebPage::popupFormSubmission):
+        (tst_QWebPage::originatingObjectInNetworkRequests):
+        (tst_QWebPage::testStopScheduledPageRefresh):
+
+2013-07-16  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt] Replace Nokia references.
+        https://bugs.webkit.org/show_bug.cgi?id=118728
+
+        Reviewed by Simon Hausmann.
+
+        * Api/qwebkitplatformplugin.h:
+        * examples/platformplugin/qwebkitplatformplugin.h:
+
+2013-07-14  Kangil Han  <kangil.han@samsung.com>
+
+        Introduce toHTMLVideoElement
+        https://bugs.webkit.org/show_bug.cgi?id=118582
+
+        Reviewed by Ryosuke Niwa.
+
+        To avoid direct use of static_cast, this patch introduces toHTMLVideoElement.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::mediaContentUrlByElementId):
+        * WebCoreSupport/FullScreenVideoQt.cpp:
+        (WebCore::FullScreenVideoQt::enterFullScreenForNode):
+        (WebCore::FullScreenVideoQt::exitFullScreenForNode):
+
+2013-07-01  Jochen Eisinger  <jochen@chromium.org>
+
+        Remove support for consumable user gestures
+        https://bugs.webkit.org/show_bug.cgi?id=118247
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        (WebCore::NotificationPresenterClientQt::notificationClicked):
+
+2013-06-27  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLInputElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118130
+
+        Reviewed by Antti Koivisto.
+
+        To enhance readability, this patch adopts is/toHTMLInputElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * WebCoreSupport/EditorClientQt.cpp:
+        (WebCore::EditorClientQt::setInputMethodState):
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::inputMethodQuery):
+
+2013-06-26  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Rename WorkerContext to WorkerGlobalScope
+        https://bugs.webkit.org/show_bug.cgi?id=118059
+
+        Reviewed by Kentaro Hara.
+
+        Update calls to ScriptExecutionContext::isWorkerContext() as it was
+        renamed to ScriptExecutionContext::isWorkerGlobalScope().
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        (WebCore::NotificationPresenterClientQt::show):
+        (WebCore::NotificationPresenterClientQt::toPage):
+        (WebCore::NotificationPresenterClientQt::toFrame):
+
+2013-06-21  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        REGRESSION (r150663): Using webkitAudioContext in Inspector makes it undefined everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=117825
+
+        Reviewed by Kentaro Hara.
+
+        Use Settings to enable Web Audio instead of RuntimeEnabledFeatures.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply):
+
 2013-06-17  Michael Brüning  <michael.bruning@digia.com>
 
         [Qt] Remove Qt specific QTKIT flagged code.

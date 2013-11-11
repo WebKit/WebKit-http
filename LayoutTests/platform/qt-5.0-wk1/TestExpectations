@@ -1,4 +1,3 @@
-
 # Tests failing on WK1 only (working on WK2)
 
 # Failing compositing tests - need more investigation
@@ -26,6 +25,7 @@ compositing/geometry/vertical-scroll-composited.html
 compositing/geometry/video-opacity-overlay.html
 compositing/iframes/iframe-in-composited-layer.html
 compositing/iframes/resizer.html
+compositing/iframes/iframe-position-absolute-with-padding-percentage-crash.html
 compositing/layer-creation/fixed-position-scroll.html
 compositing/layers-inside-overflow-scroll.html
 compositing/plugins/composited-plugin.html
@@ -153,8 +153,18 @@ webkit.org/b/114619 http/tests/ssl/ping-with-unsafe-redirect.html [ Skip ]
 webkit.org/b/116809 http/tests/globalhistory/history-delegate-basic-refresh-redirect.html [ Skip ]
 
 # [Qt][WK1][CSS Regions]  New test fast/regions/hover-on-child-parent-different-regions.html fails
+webkit.org/b/117035 fast/regions/hover-in-region-parent-skip-inlines-anonymous.html [ Skip ]
 webkit.org/b/117035 fast/regions/hover-on-child-parent-different-regions.html [ Skip ]
 webkit.org/b/117035 fast/regions/hover-on-child-in-region.html [ Skip ]
 
 # [Qt] css3/filters/composited-during-animation-layertree.html flaky after r151110
 webkit.org/b/117336 css3/filters/composited-during-animation-layertree.html [ Skip ]
+
+# [EFL][GTK][Qt] css3/flexbox/image-percent-max-height.html ref test fail after r151997
+webkit.org/b/118126 css3/flexbox/image-percent-max-height.html [ Skip ]
+
+# SHADOW_DOM not enabled on WK1
+editing/pasteboard/paste-noplugin.html [ Skip ]
+
+# [Qt][WK1] New fast/events/ime-composition-events-001.html fails after r152668.
+webkit.org/b/118722 fast/events/ime-composition-events-001.html [ Skip ]

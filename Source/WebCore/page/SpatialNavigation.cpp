@@ -60,17 +60,15 @@ FocusCandidate::FocusCandidate(Node* node, FocusDirection direction)
     , focusableNode(0)
     , enclosingScrollableBox(0)
     , distance(maxDistance())
-    , parentDistance(maxDistance())
     , alignment(None)
-    , parentAlignment(None)
     , isOffscreen(true)
     , isOffscreenAfterScrolling(true)
 {
     ASSERT(node);
     ASSERT(node->isElementNode());
 
-    if (node->hasTagName(HTMLNames::areaTag)) {
-        HTMLAreaElement* area = static_cast<HTMLAreaElement*>(node);
+    if (isHTMLAreaElement(node)) {
+        HTMLAreaElement* area = toHTMLAreaElement(node);
         HTMLImageElement* image = area->imageElement();
         if (!image || !image->renderer())
             return;
@@ -450,6 +448,10 @@ Node* scrollableEnclosingBoxOrParentFrameForNodeInDirection(FocusDirection direc
 bool canScrollInDirection(const Node* container, FocusDirection direction)
 {
     ASSERT(container);
+
+    if (container->hasTagName(HTMLNames::selectTag))
+        return false;
+
     if (container->isDocumentNode())
         return canScrollInDirection(toDocument(container)->frame(), direction);
 
@@ -606,7 +608,7 @@ bool areElementsOnSameLine(const FocusCandidate& firstCandidate, const FocusCand
     if (!firstCandidate.rect.intersects(secondCandidate.rect))
         return false;
 
-    if (firstCandidate.focusableNode->hasTagName(HTMLNames::areaTag) || secondCandidate.focusableNode->hasTagName(HTMLNames::areaTag))
+    if (isHTMLAreaElement(firstCandidate.focusableNode) || isHTMLAreaElement(secondCandidate.focusableNode))
         return false;
 
     if (!firstCandidate.visibleNode->renderer()->isRenderInline() || !secondCandidate.visibleNode->renderer()->isRenderInline())

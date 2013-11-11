@@ -32,6 +32,7 @@
 
 #import "AccessibilityController.h"
 #import "CheckedMalloc.h"
+#import "DefaultPolicyDelegate.h"
 #import "DumpRenderTreeDraggingInfo.h"
 #import "DumpRenderTreePasteboard.h"
 #import "DumpRenderTreeWindow.h"
@@ -148,6 +149,7 @@ static EditingDelegate *editingDelegate;
 static ResourceLoadDelegate *resourceLoadDelegate;
 static HistoryDelegate *historyDelegate;
 PolicyDelegate *policyDelegate;
+DefaultPolicyDelegate *defaultPolicyDelegate;
 StorageTrackerDelegate *storageDelegate;
 
 static int dumpPixelsForAllTests = NO;
@@ -236,7 +238,7 @@ static bool shouldIgnoreWebCoreNodeLeaks(const string& URLString)
 
 static NSSet *allowedFontFamilySet()
 {
-    static NSSet *fontFamiliySet = [[NSSet setWithObjects:
+    static NSSet *fontFamilySet = [[NSSet setWithObjects:
         @"Ahem",
         @"Al Bayan",
         @"American Typewriter",
@@ -331,6 +333,8 @@ static NSSet *allowedFontFamilySet()
         @"Sathu",
         @"Silom",
         @"Skia",
+        @"Songti SC",
+        @"Songti TC",
         @"STFangsong",
         @"STHeiti",
         @"STIXGeneral",
@@ -353,7 +357,16 @@ static NSSet *allowedFontFamilySet()
         @"Zapfino",
         nil] retain];
     
-    return fontFamiliySet;
+    return fontFamilySet;
+}
+
+static NSSet *systemHiddenFontFamilySet()
+{
+    static NSSet *fontFamilySet = [[NSSet setWithObjects:
+        @".LucidaGrandeUI",
+        nil] retain];
+
+    return fontFamilySet;
 }
 
 static IMP appKitAvailableFontFamiliesIMP;
@@ -389,7 +402,11 @@ static NSArray *drt_NSFontManager_availableFonts(id self, SEL _cmd)
             [availableFontList addObject:[fontInfo objectAtIndex:0]];
         }
     }
-    
+
+    for (NSString *hiddenFontFamily in systemHiddenFontFamilySet()) {
+        [availableFontList addObject:hiddenFontFamily];
+    }
+
     availableFonts = availableFontList;
     return availableFonts;
 }
@@ -769,6 +786,7 @@ static void allocateGlobalControllers()
     policyDelegate = [[PolicyDelegate alloc] init];
     historyDelegate = [[HistoryDelegate alloc] init];
     storageDelegate = [[StorageTrackerDelegate alloc] init];
+    defaultPolicyDelegate = [[DefaultPolicyDelegate alloc] init];
 }
 
 // ObjC++ doens't seem to let me pass NSObject*& sadly.
@@ -1269,7 +1287,7 @@ static void resetWebViewToConsistentStateBeforeTesting()
     [webView _scaleWebView:1.0 atOrigin:NSZeroPoint];
     [webView _setCustomBackingScaleFactor:0];
     [webView setTabKeyCyclesThroughElements:YES];
-    [webView setPolicyDelegate:nil];
+    [webView setPolicyDelegate:defaultPolicyDelegate];
     [policyDelegate setPermissive:NO];
     [policyDelegate setControllerToNotifyDone:0];
     [frameLoadDelegate resetToConsistentState];

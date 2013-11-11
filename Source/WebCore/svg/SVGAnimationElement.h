@@ -26,12 +26,10 @@
 #define SVGAnimationElement_h
 
 #if ENABLE(SVG)
-#include "ElementTimeControl.h"
 #include "SMILTime.h"
 #include "SVGAnimatedBoolean.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGSMILElement.h"
-#include "SVGStringList.h"
 #include "SVGTests.h"
 #include "UnitBezier.h"
 
@@ -68,19 +66,17 @@ class SVGAnimatedType;
 
 class SVGAnimationElement : public SVGSMILElement,
                             public SVGTests,
-                            public SVGExternalResourcesRequired,
-                            public ElementTimeControl {
+                            public SVGExternalResourcesRequired {
 public:
     // SVGAnimationElement
     float getStartTime() const;
     float getCurrentTime() const;
     float getSimpleDuration(ExceptionCode&) const;
 
-    // ElementTimeControl
-    virtual void beginElement();
-    virtual void beginElementAt(float offset);
-    virtual void endElement();
-    virtual void endElementAt(float offset);
+    void beginElement();
+    void beginElementAt(float offset);
+    void endElement();
+    void endElementAt(float offset);
 
     static bool isTargetAttributeCSSProperty(SVGElement*, const QualifiedName&);
 

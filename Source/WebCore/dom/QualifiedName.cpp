@@ -33,6 +33,7 @@
 #include <wtf/Assertions.h>
 #include <wtf/HashSet.h>
 #include <wtf/StaticConstructors.h>
+#include <wtf/text/StringBuilder.h>
 
 #if ENABLE(MATHML)
 #include "MathMLNames.h"
@@ -76,14 +77,16 @@ struct QNameComponentsTranslator {
     }
 };
 
-static QNameSet* gNameCache;
+static inline QNameSet& qualifiedNameCache()
+{
+    DEFINE_STATIC_LOCAL(QNameSet, nameCache, ());
+    return nameCache;
+}
 
 QualifiedName::QualifiedName(const AtomicString& p, const AtomicString& l, const AtomicString& n)
 {
-    if (!gNameCache)
-        gNameCache = new QNameSet;
     QualifiedNameComponents components = { p.impl(), l.impl(), n.isEmpty() ? nullAtom.impl() : n.impl() };
-    QNameSet::AddResult addResult = gNameCache->add<QualifiedNameComponents, QNameComponentsTranslator>(components);
+    QNameSet::AddResult addResult = qualifiedNameCache().add<QNameComponentsTranslator>(components);
     m_impl = *addResult.iterator;
     if (!addResult.isNewEntry)
         m_impl->ref();
@@ -106,19 +109,15 @@ void QualifiedName::deref()
 
 QualifiedName::QualifiedNameImpl::~QualifiedNameImpl()
 {
-    gNameCache->remove(this);
+    qualifiedNameCache().remove(this);
 }
 
 String QualifiedName::toString() const
 {
-    String local = localName();
-    if (hasPrefix()) {
-        String result = prefix().string();
-        result.append(":");
-        result.append(local);
-        return result;
-    }
-    return local;
+    if (!hasPrefix())
+        return localName();
+
+    return prefix().string() + ':' + localName().string();
 }
 
 // Global init routines
@@ -126,14 +125,14 @@ DEFINE_GLOBAL(QualifiedName, anyName, nullAtom, starAtom, starAtom)
 
 void QualifiedName::init()
 {
-    static bool initialized;
-    if (!initialized) {
-        // Use placement new to initialize the globals.
-        
-        AtomicString::init();
-        new (NotNull, (void*)&anyName) QualifiedName(nullAtom, starAtom, starAtom);
-        initialized = true;
-    }
+    static bool initialized = false;
+    if (initialized)
+        return;
+
+    // Use placement new to initialize the globals.
+    AtomicString::init();
+    new (NotNull, (void*)&anyName) QualifiedName(nullAtom, starAtom, starAtom);
+    initialized = true;
 }
 
 const QualifiedName& nullQName()

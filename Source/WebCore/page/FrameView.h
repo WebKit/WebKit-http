@@ -197,6 +197,8 @@ public:
     virtual bool shouldRubberBandInDirection(ScrollDirection) const;
     virtual bool requestScrollPositionUpdate(const IntPoint&) OVERRIDE;
     virtual bool isRubberBandInProgress() const OVERRIDE;
+    virtual IntPoint minimumScrollPosition() const OVERRIDE;
+    virtual IntPoint maximumScrollPosition() const OVERRIDE;
 
     // This is different than visibleContentRect() in that it ignores negative (or overly positive)
     // offsets from rubber-banding, and it takes zooming into account. 
@@ -293,7 +295,7 @@ public:
 
     void incrementVisuallyNonEmptyCharacterCount(unsigned);
     void incrementVisuallyNonEmptyPixelCount(const IntSize&);
-    void setIsVisuallyNonEmpty();
+    void updateIsVisuallyNonEmpty();
     bool isVisuallyNonEmpty() const { return m_isVisuallyNonEmpty; }
     void enableAutoSizeMode(bool enable, const IntSize& minSize, const IntSize& maxSize);
 
@@ -432,6 +434,8 @@ public:
     void setVisualUpdatesAllowedByClient(bool);
 
     void resumeAnimatingImages();
+    
+    void setScrollPinningBehavior(ScrollPinningBehavior);
 
 protected:
     virtual bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);
@@ -529,6 +533,8 @@ private:
     FrameView* parentFrameView() const;
 
     bool doLayoutWithFrameFlattening(bool allowSubtree);
+
+    bool qualifiesAsVisuallyNonEmpty() const;
 
     virtual AXObjectCache* axObjectCache() const;
     void notifyWidgetsInAllFrames(WidgetNotification);
@@ -644,6 +650,9 @@ private:
     static double s_maxDeferredRepaintDelayDuringLoading;
     static double s_deferredRepaintDelayIncrementDuringLoading;
 
+    static const unsigned visualCharacterThreshold = 200;
+    static const unsigned visualPixelThreshold = 32 * 32;
+
 #if ENABLE(CSS_FILTERS)
     bool m_hasSoftwareFilters;
 #endif
@@ -654,6 +663,8 @@ private:
 #endif
 
     bool m_visualUpdatesAllowedByClient;
+    
+    ScrollPinningBehavior m_scrollPinningBehavior;
 };
 
 inline void FrameView::incrementVisuallyNonEmptyCharacterCount(unsigned count)
@@ -661,11 +672,9 @@ inline void FrameView::incrementVisuallyNonEmptyCharacterCount(unsigned count)
     if (m_isVisuallyNonEmpty)
         return;
     m_visuallyNonEmptyCharacterCount += count;
-    // Use a threshold value to prevent very small amounts of visible content from triggering didFirstVisuallyNonEmptyLayout.
-    // The first few hundred characters rarely contain the interesting content of the page.
-    static const unsigned visualCharacterThreshold = 200;
-    if (m_visuallyNonEmptyCharacterCount > visualCharacterThreshold)
-        setIsVisuallyNonEmpty();
+    if (m_visuallyNonEmptyCharacterCount <= visualCharacterThreshold)
+        return;
+    updateIsVisuallyNonEmpty();
 }
 
 inline void FrameView::incrementVisuallyNonEmptyPixelCount(const IntSize& size)
@@ -673,10 +682,9 @@ inline void FrameView::incrementVisuallyNonEmptyPixelCount(const IntSize& size)
     if (m_isVisuallyNonEmpty)
         return;
     m_visuallyNonEmptyPixelCount += size.width() * size.height();
-    // Use a threshold value to prevent very small amounts of visible content from triggering didFirstVisuallyNonEmptyLayout
-    static const unsigned visualPixelThreshold = 32 * 32;
-    if (m_visuallyNonEmptyPixelCount > visualPixelThreshold)
-        setIsVisuallyNonEmpty();
+    if (m_visuallyNonEmptyPixelCount <= visualPixelThreshold)
+        return;
+    updateIsVisuallyNonEmpty();
 }
 
 inline int FrameView::mapFromLayoutToCSSUnits(LayoutUnit value)

@@ -44,7 +44,7 @@
 namespace WebCore {
 
     class ScriptExecutionContext;
-    class WorkerContextProxy;
+    class WorkerGlobalScopeProxy;
     class WorkerScriptLoader;
 
     typedef int ExceptionCode;
@@ -71,6 +71,8 @@ namespace WebCore {
     private:
         explicit Worker(ScriptExecutionContext*);
 
+        void notifyNetworkStateChange(bool isOnline);
+
         // WorkerScriptLoaderClient callbacks
         virtual void didReceiveResponse(unsigned long identifier, const ResourceResponse&) OVERRIDE;
         virtual void notifyFinished() OVERRIDE;
@@ -78,8 +80,10 @@ namespace WebCore {
         virtual void refEventTarget() OVERRIDE { ref(); }
         virtual void derefEventTarget() OVERRIDE { deref(); }
 
+        friend void networkStateChanged(bool isOnLine);
+
         RefPtr<WorkerScriptLoader> m_scriptLoader;
-        WorkerContextProxy* m_contextProxy; // The proxy outlives the worker to perform thread shutdown.
+        WorkerGlobalScopeProxy* m_contextProxy; // The proxy outlives the worker to perform thread shutdown.
     };
 
 } // namespace WebCore

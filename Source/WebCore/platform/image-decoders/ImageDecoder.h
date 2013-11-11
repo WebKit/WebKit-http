@@ -77,6 +77,7 @@ namespace WebCore {
         // These do not touch other metadata, only the raw pixel data.
         void clearPixelData();
         void zeroFillPixelData();
+        void zeroFillFrameRect(const IntRect&);
 
         // Makes this frame have an independent copy of the provided image's
         // pixel data, so that modifications in one frame are not reflected in
@@ -131,6 +132,11 @@ namespace WebCore {
         inline PixelData* getAddr(int x, int y)
         {
             return m_bytes + (y * width()) + x;
+        }
+
+        inline bool hasPixelData() const
+        {
+            return m_bytes;
         }
 
         // Use fix point multiplier instead of integer division or floating point math.
@@ -273,6 +279,12 @@ namespace WebCore {
 
         // Make the best effort guess to check if the requested frame has alpha channel.
         virtual bool frameHasAlphaAtIndex(size_t) const;
+
+        // Whether or not the frame is fully received.
+        virtual bool frameIsCompleteAtIndex(size_t) const;
+
+        // Duration for displaying a frame in seconds. This method is used by animated images only.
+        virtual float frameDurationAtIndex(size_t) const { return 0; }
 
         // Number of bytes in the decoded frame requested. Return 0 if not yet decoded.
         virtual unsigned frameBytesAtIndex(size_t) const;

@@ -26,11 +26,7 @@
 
 [
     Conditional=SVG
-] interface SVGRectElement : SVGStyledElement,
-                                             SVGTests,
-                                             SVGLangSpace,
-                                             SVGExternalResourcesRequired,
-                                             SVGTransformable {
+] interface SVGRectElement : SVGGraphicsElement {
     readonly attribute SVGAnimatedLength x;
     readonly attribute SVGAnimatedLength y;
     readonly attribute SVGAnimatedLength width;
@@ -39,3 +35,4 @@
     readonly attribute SVGAnimatedLength ry;
 };
 
+SVGRectElement implements SVGExternalResourcesRequired;

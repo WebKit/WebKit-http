@@ -98,6 +98,9 @@ public:
     virtual bool isPressed() const;
     virtual bool isReadOnly() const;
     virtual bool isRequired() const;
+    virtual bool supportsRequiredAttribute() const;
+
+    virtual bool canSetSelectedAttribute() const OVERRIDE;
 
     void setNode(Node*);
     virtual Node* node() const { return m_node; }
@@ -117,7 +120,7 @@ public:
     virtual AccessibilityButtonState checkboxOrRadioValue() const;
 
     virtual unsigned hierarchicalLevel() const;
-    virtual String textUnderElement() const;
+    virtual String textUnderElement(AccessibilityTextUnderElementMode = TextUnderElementModeSkipIgnoredChildren) const;
     virtual String accessibilityDescription() const;
     virtual String helpText() const;
     virtual String title() const;

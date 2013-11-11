@@ -43,6 +43,12 @@ PassRefPtr<CoordinatedSurface> CoordinatedSurface::create(const IntSize& size, F
     return s_factory(size, flags);
 }
 
+CoordinatedSurface::CoordinatedSurface(const IntSize& size, Flags flags)
+    : m_size(size)
+    , m_flags(flags)
+{
+}
+
 } // namespace WebCore
 
 #endif // USE(COORDINATED_GRAPHICS)

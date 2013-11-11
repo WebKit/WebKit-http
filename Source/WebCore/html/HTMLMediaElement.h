@@ -88,11 +88,7 @@ typedef CueIntervalTree::IntervalType CueInterval;
 typedef Vector<CueInterval> CueList;
 #endif
 
-// FIXME: The inheritance from MediaPlayerClient here should be private inheritance.
-// But it can't be until the Chromium WebMediaPlayerClientImpl class is fixed so it
-// no longer depends on typecasting a MediaPlayerClient to an HTMLMediaElement.
-
-class HTMLMediaElement : public HTMLElement, public MediaPlayerClient, public MediaPlayerSupportsTypeClient, private MediaCanStartListener, public ActiveDOMObject, public MediaControllerInterface
+class HTMLMediaElement : public HTMLElement, private MediaPlayerClient, public MediaPlayerSupportsTypeClient, private MediaCanStartListener, public ActiveDOMObject, public MediaControllerInterface
 #if ENABLE(VIDEO_TRACK)
     , private AudioTrackClient
     , private TextTrackClient
@@ -105,7 +101,7 @@ class HTMLMediaElement : public HTMLElement, public MediaPlayerClient, public Me
 public:
     MediaPlayer* player() const { return m_player.get(); }
 
-    virtual bool isVideo() const = 0;
+    virtual bool isVideo() const { return false; }
     virtual bool hasVideo() const { return false; }
     virtual bool hasAudio() const;
 
@@ -714,6 +710,7 @@ private:
 
     bool m_isFullscreen : 1;
     bool m_closedCaptionsVisible : 1;
+    bool m_webkitLegacyClosedCaptionOverride : 1;
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     bool m_needWidgetUpdate : 1;
@@ -805,7 +802,7 @@ inline bool isMediaElement(Node* node)
     return node && node->isElementNode() && toElement(node)->isMediaElement();
 }
 
-inline HTMLMediaElement* toMediaElement(Node* node)
+inline HTMLMediaElement* toHTMLMediaElement(Node* node)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!node || isMediaElement(node));
     return static_cast<HTMLMediaElement*>(node);

@@ -22,11 +22,12 @@
 #define SVGPathTraversalStateBuilder_h
 
 #if ENABLE(SVG)
-#include "FloatPoint.h"
-#include "PathTraversalState.h"
 #include "SVGPathConsumer.h"
+#include "SVGPoint.h"
 
 namespace WebCore {
+
+class PathTraversalState;
 
 class SVGPathTraversalStateBuilder : public SVGPathConsumer {
 public:
@@ -34,7 +35,7 @@ public:
 
     unsigned pathSegmentIndex();
     float totalLength();
-    FloatPoint currentPoint();
+    SVGPoint currentPoint();
 
     void setCurrentTraversalState(PathTraversalState* traversalState) { m_traversalState = traversalState; }
     void setDesiredLength(float);

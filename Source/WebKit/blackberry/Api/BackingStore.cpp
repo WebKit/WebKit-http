@@ -284,6 +284,9 @@ void BackingStorePrivate::resumeScreenUpdates(BackingStore::ResumeUpdateOperatio
 
     // Render visible contents if necessary.
     if (op == BackingStore::RenderAndBlit) {
+        if (m_webPage->isVisible())
+            requestLayoutIfNeeded();
+
         updateTileMatrixIfNeeded();
         TileIndexList visibleTiles = visibleTileIndexes(frontState());
         TileIndexList renderedTiles = render(visibleTiles);
@@ -1081,8 +1084,6 @@ TileIndexList BackingStorePrivate::render(const TileIndexList& tileIndexList)
     if (!m_webPage->isVisible())
         return TileIndexList();
 
-    requestLayoutIfNeeded();
-
     // If no tiles available for us to draw to, someone else has to render the root layer.
     if (!isActive())
         return TileIndexList();
@@ -1171,8 +1172,11 @@ TileIndexList BackingStorePrivate::render(const TileIndexList& tileIndexList)
         const Platform::FloatPoint documentDirtyRectOrigin = viewportAccessor->toDocumentContents(dirtyRect.location(), currentScale);
         const Platform::IntRect dstRect(dirtyRect.location() - tileOrigin, dirtyRect.size());
 
-        if (!renderContents(nativeBuffer, dstRect, currentScale, documentDirtyRectOrigin, RenderRootLayer))
+        if (!renderContents(nativeBuffer, dstRect, currentScale, documentDirtyRectOrigin, RenderRootLayer)) {
+            // Put the buffer back into the surface pool so it doesn't get lost.
+            SurfacePool::globalSurfacePool()->addBackBuffer(backBuffer);
             continue;
+        }
 
         // Add the newly rendered region to the tile so it can keep track for blits.
         backBuffer->addRenderedRegion(dirtyRect);

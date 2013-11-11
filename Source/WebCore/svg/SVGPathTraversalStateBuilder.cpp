@@ -25,6 +25,8 @@
 #if ENABLE(SVG)
 #include "SVGPathTraversalStateBuilder.h"
 
+#include "PathTraversalState.h"
+
 namespace WebCore {
 
 SVGPathTraversalStateBuilder::SVGPathTraversalStateBuilder()
@@ -87,7 +89,7 @@ float SVGPathTraversalStateBuilder::totalLength()
     return m_traversalState->m_totalLength;
 }
 
-FloatPoint SVGPathTraversalStateBuilder::currentPoint()
+SVGPoint SVGPathTraversalStateBuilder::currentPoint()
 {
     ASSERT(m_traversalState);
     return m_traversalState->m_current;

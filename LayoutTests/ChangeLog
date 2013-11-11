@@ -1,3 +1,3964 @@
+2013-07-24  Daniel Bates  <dabates@apple.com>
+
+        Add DRT test to ensure don't override z-index for overflow: scroll, -webkit-overflow-scrolling: touch
+        https://bugs.webkit.org/show_bug.cgi?id=119071
+
+        Reviewed by Simon Fraser.
+
+        Add a DRT test to ensure we don't regress the fix for <https://bugs.webkit.org/show_bug.cgi?id=119066>.
+
+        * compositing/overflow/should-not-override-z-index-for-element-with-non-auto-z-index-and-overflow-scroll-and-touch-expected.txt: Added.
+        * compositing/overflow/should-not-override-z-index-for-element-with-non-auto-z-index-and-overflow-scroll-and-touch.html: Added.
+
+2013-07-24  Robert Hogan  <robert@webkit.org>
+
+        Border drawing incorrect when using both border-collapse: collapse and overflow: hidden on a table
+        https://bugs.webkit.org/show_bug.cgi?id=18305
+
+        Reviewed by David Hyatt.
+
+        * fast/table/overflow-table-collapsed-borders-cell-painting-expected.png: Added.
+        * fast/table/overflow-table-collapsed-borders-cell-painting-expected.txt: Added.
+        * fast/table/overflow-table-collapsed-borders-cell-painting-table-self-painting-layer-expected.png: Added.
+        * fast/table/overflow-table-collapsed-borders-cell-painting-table-self-painting-layer-expected.txt: Added.
+        * fast/table/overflow-table-collapsed-borders-cell-painting-table-self-painting-layer.html: Added.
+        * fast/table/overflow-table-collapsed-borders-cell-painting.html: Added.
+        * fast/table/overflow-table-collapsed-borders-section-layer-painting-expected.png: Added.
+        * fast/table/overflow-table-collapsed-borders-section-layer-painting-expected.txt: Added.
+        * fast/table/overflow-table-collapsed-borders-section-layer-painting.html: Added.
+        * fast/table/overflow-table-collapsed-borders-section-layer-table-self-painting-layer-expected.png: Added.
+        * fast/table/overflow-table-collapsed-borders-section-layer-table-self-painting-layer-expected.txt: Added.
+        * fast/table/overflow-table-collapsed-borders-section-layer-table-self-painting-layer.html: Added.
+        * fast/table/overflow-table-collapsed-borders-section-self-painting-layer-painting-expected.png: Added.
+        * fast/table/overflow-table-collapsed-borders-section-self-painting-layer-painting-expected.txt: Added.
+        * fast/table/overflow-table-collapsed-borders-section-self-painting-layer-painting.html: Added.
+        * fast/table/overflow-table-collapsed-borders-section-self-painting-layer-table-self-painting-layer-expected.png: Added.
+        * fast/table/overflow-table-collapsed-borders-section-self-painting-layer-table-self-painting-layer-expected.txt: Added.
+        * fast/table/overflow-table-collapsed-borders-section-self-painting-layer-table-self-painting-layer.html: Added.
+        * fast/table/table-overflow-expected.html: Added.
+        * fast/table/table-overflow.html: Added.
+        * platform/qt/fast/table/overflowHidden-expected.txt:
+
+2013-07-24  Frédéric Wang  <fred.wang@free.fr>
+
+        Graphical elements inside mphantom should not be visible.
+        https://bugs.webkit.org/show_bug.cgi?id=116600.
+
+        Reviewed by Chris Fleizach.
+
+        * mathml/presentation/phantom-expected.html: Added.
+        * mathml/presentation/phantom.html: Added.
+
+2013-07-24  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. Add expectations for flaky test.
+
+        * platform/gtk/TestExpectations: Mark svg/stroke/non-scaling-stroke-pattern.svg
+        as flaky.
+
+2013-07-24  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        [EFL] Unreviewed gardening
+        https://bugs.webkit.org/show_bug.cgi?id=118826
+
+        Unreviewed EFL gardening.
+
+        * platform/efl-wk2/TestExpectations: Update test expectations after r134890 and r139491.
+
+2013-07-24  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. Added expectations for flaky tests.
+
+        * platform/gtk/TestExpectations: Marked animations/resume-after-page-cache.html,
+        css3/calc/img-size.html and perf/nested-combined-selectors.html as flaky.
+
+2013-07-23  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG string concatenation optimizations might emit speculative nodes after emitting nodes that kill the original inputs
+        https://bugs.webkit.org/show_bug.cgi?id=119032
+
+        Reviewed by Oliver Hunt.
+
+        * fast/js/dfg-strcat-over-objects-then-exit-on-it-expected.txt: Added.
+        * fast/js/dfg-strcat-over-objects-then-exit-on-it.html: Added.
+        * fast/js/script-tests/dfg-strcat-over-objects-then-exit-on-it.js: Added.
+        (foo):
+        (bar):
+        (x):
+
+2013-07-23  Mark Lam  <mark.lam@apple.com>
+
+        Added ExpressionRangeInfo for BinaryOpNodes that can throw exceptions
+        due to type coersion.
+        https://bugs.webkit.org/show_bug.cgi?id=116853.
+
+        Reviewed by Geoffrey Garen.
+
+        Added the test case from bugzilla which exercises the general binary op
+        type coersion case, plus another for exercising the strcat case.
+
+        * fast/js/line-column-numbers-expected.txt:
+        * fast/js/line-column-numbers.html:
+        * fast/js/script-tests/line-column-numbers.js:
+
+2013-07-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The computed values of fix length padding should be subpixel precision like margin
+        https://bugs.webkit.org/show_bug.cgi?id=118936
+
+        Reviewed by Simon Fraser.
+
+        Add a regression test for obtaining the computed values of floating point padding and margin.
+        They shouldn't be rounded to whole pixels.
+
+        * fast/css/getComputedStyle/getComputedStyle-padding-margin-subpixel-length-expected.txt: Added.
+        * fast/css/getComputedStyle/getComputedStyle-padding-margin-subpixel-length.html: Added.
+        * fast/shapes/shape-inside/shape-inside-shape-logical-top-expected.html: Use a different technique to detect
+        the subpixel layout since paddings
+
+2013-07-23  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] New positioning model: support for rounded rectangle shape-outside
+        https://bugs.webkit.org/show_bug.cgi?id=118081
+
+        Reviewed by Dean Jackson.
+
+        Update the shape-outside rounded rectangle tests and import them from
+        the CSS WG's repository. They have been moved to the CSS WG repository
+        so they can be part of the spec test suite for CSS Shapes.
+
+        * TestExpectations: Remove skipping for tests that have been replaced.
+        * csswg/submitted/shapes/shape-outside/resources/rounded-rectangle.js: Added.
+        (ellipseXIntercept):
+        (scanConvertRoundedRectangleOutside):
+        (genLeftRightRoundedRectFloatShapeOutsideRefTest):
+        (genLeftRoundedRectFloatShapeOutsideRefTest):
+        (genRightRoundedRectFloatShapeOutsideRefTest):
+        * csswg/submitted/shapes/shape-outside/resources/subpixel-utils.js: Added.
+        (SubPixelLayout):
+        (SubPixelLayout.):
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-001-expected.html: Renamed from LayoutTests/fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-001-expected.html.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-001.html: Renamed from LayoutTests/fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-001.html.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-002-expected.html: Renamed from LayoutTests/fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-002-expected.html.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-002.html: Renamed from LayoutTests/fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-002.html.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-003-expected.html: Renamed from LayoutTests/fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-003-expected.html.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-003.html: Renamed from LayoutTests/fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-003.html.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-004-expected.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-rounded-rectangle-004.html: Added.
+        * csswg/submitted/shapes/shape-outside/w3c-import.log:
+
+2013-07-23  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r152313): Links in certain twitter postings don't warp correctly on page
+        https://bugs.webkit.org/show_bug.cgi?id=118435
+
+        Reviewed by David Hyatt.
+
+        When we find an empty inline in the middle of the word, prefer breaking it before 
+        instead of after to match other browsers' rendering.
+
+        * fast/text/whitespace/inline-whitespace-wrapping-12-expected.html: Added.
+        * fast/text/whitespace/inline-whitespace-wrapping-12.html: Added.
+
+2013-07-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Dictionary hotkey does not work on vertical text
+        https://bugs.webkit.org/show_bug.cgi?id=118993
+        <rdar://problem/14478260>
+
+        Reviewed by Enrica Casucci.
+
+        * platform/mac/editing/input/caret-primary-bidi-expected.txt: Old results had
+        some collapsed positions have a rect of width 1. Now they are all consistently 0.
+
+        * platform/mac/editing/input/firstrectforcharacterrange-vertical-expected.txt: Added.
+        * platform/mac/editing/input/firstrectforcharacterrange-vertical.html: Added.
+        * platform/wk2/TestExpectations: Skipping the new test, as WKTR doesn't implement firstRectForCharacterRange.
+
+2013-07-23  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] New positioning model: Borders
+        https://bugs.webkit.org/show_bug.cgi?id=118822
+
+        Reviewed by Dean Jackson.
+
+        Test that the shape is properly respected when the float has a border.
+
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-square-border-000-expected.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-square-border-000.html: Added.
+        * csswg/submitted/shapes/shape-outside/w3c-import.log: Updated with new
+            import information.
+
+2013-07-23  Andrei Bucur  <abucur@adobe.com>
+
+        [CSS Regions] Convert percentage-margins-* tests to ref-tests
+        https://bugs.webkit.org/show_bug.cgi?id=118723
+
+        Reviewed by Andreas Kling.
+
+        The patch converts the percentage margins tests for regions in ref tests.
+
+        * fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.html: Added.
+        * fast/regions/percentage-margins-mixed-ltr-dominant-regions.html:
+        * fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.html: Added.
+        * fast/regions/percentage-margins-mixed-rtl-dominant-regions.html:
+        * fast/regions/percentage-margins-rtl-variable-width-regions-expected.html: Added.
+        * fast/regions/percentage-margins-rtl-variable-width-regions.html:
+        * fast/regions/percentage-margins-variable-width-regions-expected.html: Added.
+        * fast/regions/percentage-margins-variable-width-regions.html:
+        * platform/efl/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Removed.
+        * platform/efl/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Removed.
+        * platform/efl/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Removed.
+        * platform/efl/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Removed.
+        * platform/efl/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Removed.
+        * platform/efl/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Removed.
+        * platform/efl/fast/regions/percentage-margins-variable-width-regions-expected.png: Removed.
+        * platform/efl/fast/regions/percentage-margins-variable-width-regions-expected.txt: Removed.
+        * platform/gtk/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Removed.
+        * platform/gtk/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Removed.
+        * platform/gtk/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Removed.
+        * platform/gtk/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Removed.
+        * platform/gtk/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Removed.
+        * platform/gtk/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Removed.
+        * platform/gtk/fast/regions/percentage-margins-variable-width-regions-expected.png: Removed.
+        * platform/gtk/fast/regions/percentage-margins-variable-width-regions-expected.txt: Removed.
+        * platform/mac/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Removed.
+        * platform/mac/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Removed.
+        * platform/mac/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Removed.
+        * platform/mac/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Removed.
+        * platform/mac/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Removed.
+        * platform/mac/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Removed.
+        * platform/mac/fast/regions/percentage-margins-variable-width-regions-expected.png: Removed.
+        * platform/mac/fast/regions/percentage-margins-variable-width-regions-expected.txt: Removed.
+        * platform/qt/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Removed.
+        * platform/qt/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Removed.
+        * platform/qt/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Removed.
+        * platform/qt/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Removed.
+        * platform/qt/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Removed.
+        * platform/qt/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Removed.
+        * platform/qt/fast/regions/percentage-margins-variable-width-regions-expected.png: Removed.
+        * platform/qt/fast/regions/percentage-margins-variable-width-regions-expected.txt: Removed.
+
+2013-07-23  Tim Horton  <timothy_horton@apple.com>
+
+        Add a test for plug-in unavailability indicator obscurity detection
+        https://bugs.webkit.org/show_bug.cgi?id=119007
+
+        Reviewed by Anders Carlsson.
+
+        Add a test that ensures that RenderEmbeddedObject accurately detects the
+        various different ways the unavailable plugin dialog can be obscured.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        * plugins/unavailable-plugin-indicator-obscurity-expected.txt: Added.
+        * plugins/unavailable-plugin-indicator-obscurity.html: Added.
+
+2013-07-23  Zoltan Horvath  <zoltan@webkit.org>
+
+        [Qt] REGRESSION(r152906) Modified fast/shapes/shape-inside/shape-inside-overflow.html ref test fails.
+        https://bugs.webkit.org/show_bug.cgi?id=118964
+
+        Reviewed by Andreas Kling.
+
+        I modified the test to use Ahem font. Now it's working well on Qt as well.
+
+        * fast/shapes/shape-inside/shape-inside-overflow-expected.html:
+        * fast/shapes/shape-inside/shape-inside-overflow.html:
+
+2013-07-23  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Unreviewed gardening. Added expectations for flaky tests.
+
+        * platform/gtk/TestExpectations: Added new expectations.
+
+2013-07-23  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. Unskip passing tests.
+        https://bugs.webkit.org/show_bug.cgi?id=119008
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: unskip editing/selection/mixed-editability-10.html,
+        editing/selection/5825350-1.html and editing/selection/5825350-2.html since they have new
+        baselines, unskip http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html
+        after r152778, unskip fast/images/webgl-teximage2d.html after r152531 and
+        svg/custom/xlink-prefix-in-attributes.html after r152785
+
+2013-07-23  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Unreviewed gardening. Baseline and rebaseline needed after r152612 and r152911.
+
+        * platform/gtk/editing/caret/caret-color-expected.txt: Added.
+        * platform/gtk/fast/multicol/shrink-to-column-height-for-pagination-expected.txt: Updated.
+
+2013-07-23  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Unreviewed gardening. Added needed baselines after r104133.
+
+        * platform/gtk/perf/nested-combined-selectors-expected.txt: Added.
+
+2013-07-23  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. New baselines after r152941.
+        https://bugs.webkit.org/show_bug.cgi?id=119005
+
+        Unreviewed GTK gardening.
+
+        GTK's DumpRenderTree prints CONFIRM instead of CONFIRM NAVIGATION, so we need
+        platform-specific expectations.
+
+        * platform/gtk/fast/loader/show-only-one-beforeunload-dialog-expected.txt: Added.
+        * platform/gtk/http/tests/misc/iframe-beforeunload-dialog-matching-ancestor-securityorigin-expected.txt: Added.
+
+2013-07-23  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. Skip failing test.
+        https://bugs.webkit.org/show_bug.cgi?id=119006
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: mathml/presentation/fenced-mi.html fails
+        after being converted to ref test.
+
+2013-07-23  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Unreviewed gardening. Added needed baselines for GTK+.
+
+        * platform/gtk/fast/block/lineboxcontain/block-with-ideographs-expected.txt: Added.
+        * platform/gtk/fast/css-generated-content/details-summary-before-after-expected.txt: Added.
+        * platform/gtk/fast/css3-text/css3-text-decoration/text-decoration-line-scaled-expected.txt: Added.
+        * platform/gtk/fast/regions/region-dynamic-after-before-expected.txt: Added.
+        * platform/gtk/fast/regions/region-generated-content-before-after-expected.txt: Added.
+        * platform/gtk/fast/text/text-combine-different-fonts-expected.txt: Added.
+        * platform/gtk/svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures-expected.txt: Added.
+
+2013-07-23  Frédéric Wang  <fred.wang@free.fr>
+
+        Enable some MathML reftests on Windows and EFL ports.
+        https://bugs.webkit.org/show_bug.cgi?id=118916
+
+        Reviewed by Chris Fleizach.
+
+        * platform/efl/TestExpectations: do not skip over.html
+        * platform/win/TestExpectations: enable most of the non-pixel tests
+
+2013-07-22  Zalan Bujtas  <zalan@apple.com>
+
+        segfault in RenderLayerCompositor when the iframe's position attribute is changed and it embeds <object>.
+        https://bugs.webkit.org/show_bug.cgi?id=118965
+
+        Reviewed by Simon Fraser.
+
+        Do not change the composition state unless we can reliably figure out the iframe's size.
+        If the renderer is not yet attached, its size is not computable.
+
+        * compositing/iframes/iframe-position-absolute-with-padding-percentage-crash-expected.txt: Added.
+        * compositing/iframes/iframe-position-absolute-with-padding-percentage-crash.html: Added.
+        * compositing/iframes/resources/embed-tag-with-composition.html: Added.
+        * platform/efl/TestExpectations: skip
+        * platform/efl-wk2/TestExpectations: skip
+        * platform/qt-5.0-wk1/TestExpectations: skip
+        * platform/qt-5.0-wk2/TestExpectations: skip
+
+2013-07-22  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver only read the first column in a safari table
+        https://bugs.webkit.org/show_bug.cgi?id=118992
+
+        Reviewed by Tim Horton.
+
+        * accessibility/table-with-mismatch-column-count-in-initial-section-expected.txt: Added.
+        * accessibility/table-with-mismatch-column-count-in-initial-section.html: Added.
+
+2013-07-22  Beth Dakin  <bdakin@apple.com>
+
+        StickyPositionContraints should not need to change to account for a RenderLayer's 
+        scrollOffset
+        https://bugs.webkit.org/show_bug.cgi?id=118958
+        -and corresponding-
+        <rdar://problem/12469203>
+
+        Reviewed by Simon Fraser.
+
+        This tests stick in overflow areas where the sticky’s containing block overflows 
+        the overflow area. The sticky object should not extend beyond the overflow area in 
+        that case. 
+
+        * fast/css/sticky/sticky-top-overflow-container-overflow-expected.html: Added.
+        * fast/css/sticky/sticky-top-overflow-container-overflow.html: Added.
+
+2013-07-22  Joone Hur  <joone.hur@intel.com>
+
+        Rebaseline the caret color test for the Mac port after r152612
+        https://bugs.webkit.org/show_bug.cgi?id=118961
+
+        Reviewed by Alexey Proskuryakov.
+    
+        Added expected results of the caret color test for the Mac port.
+
+        * platform/mac-wk2/editing/caret/caret-color-expected.png: Added.
+        * platform/mac/TestExpectations:
+        * platform/mac/editing/caret/caret-color-expected.png: Added.
+        * platform/mac/editing/caret/caret-color-expected.txt: Added.
+
+2013-07-22  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r152227) Images with compositing layer don't show up unless the containing window is resized.
+        https://bugs.webkit.org/show_bug.cgi?id=118951
+
+        Reviewed by Simon Fraser.
+
+        Ensure that the content rect is initialized when the image is set on the graphics layer.
+
+        RenderLayerBacking::updateGraphicsLayerGeometry() only updates the contents rect when
+        the associated graphics layer has a content layer. Since the image gets committed 
+        on the graphics layer after the update calls, the contents rect is left uninitialized.
+
+        * compositing/images/positioned-image-content-rect-expected.html: Added.
+        * compositing/images/positioned-image-content-rect.html: Added.
+
+2013-07-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r152968.
+        http://trac.webkit.org/changeset/152968
+        https://bugs.webkit.org/show_bug.cgi?id=118975
+
+        "I forgot to add a test" (Requested by abucur on #webkit).
+
+        * fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.html: Removed.
+        * fast/regions/percentage-margins-mixed-ltr-dominant-regions.html:
+        * fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.html: Removed.
+        * fast/regions/percentage-margins-mixed-rtl-dominant-regions.html:
+        * fast/regions/percentage-margins-rtl-variable-width-regions-expected.html: Removed.
+        * fast/regions/percentage-margins-rtl-variable-width-regions.html:
+        * platform/efl/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Added.
+        * platform/efl/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Added.
+        * platform/efl/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Added.
+        * platform/efl/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Added.
+        * platform/efl/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Added.
+        * platform/efl/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Added.
+        * platform/efl/fast/regions/percentage-margins-variable-width-regions-expected.png: Added.
+        * platform/efl/fast/regions/percentage-margins-variable-width-regions-expected.txt: Added.
+        * platform/gtk/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Added.
+        * platform/gtk/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Added.
+        * platform/gtk/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Added.
+        * platform/gtk/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Added.
+        * platform/gtk/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Added.
+        * platform/gtk/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Added.
+        * platform/gtk/fast/regions/percentage-margins-variable-width-regions-expected.png: Added.
+        * platform/gtk/fast/regions/percentage-margins-variable-width-regions-expected.txt: Added.
+        * platform/mac/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Added.
+        * platform/mac/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Added.
+        * platform/mac/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Added.
+        * platform/mac/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Added.
+        * platform/mac/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Added.
+        * platform/mac/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Added.
+        * platform/qt/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Added.
+        * platform/qt/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Added.
+        * platform/qt/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Added.
+        * platform/qt/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Added.
+        * platform/qt/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Added.
+        * platform/qt/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Added.
+        * platform/qt/fast/regions/percentage-margins-variable-width-regions-expected.png: Added.
+        * platform/qt/fast/regions/percentage-margins-variable-width-regions-expected.txt: Added.
+
+2013-07-22  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed gardening of AppleWin port. Skip some crashing tests.
+
+        * platform/win/TestExpectations:
+
+2013-07-22  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Unreviewed gardening. Added baselines needed after r110542.
+
+        * platform/gtk/fast/forms/label/labelable-elements-expected.txt: Added.
+
+2013-07-22  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Rebase after r152814.
+
+        * platform/qt-5.0-wk1/http/tests/security/contentSecurityPolicy/object-src-none-allowed-expected.txt:
+
+2013-07-22  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed gardening. Added new baselines for GTK+ after r152911.
+
+        * platform/gtk/fast/multicol/pagination/BottomToTop-bt-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/BottomToTop-lr-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/BottomToTop-rl-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/BottomToTop-tb-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/LeftToRight-bt-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/LeftToRight-lr-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/LeftToRight-rl-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/LeftToRight-tb-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/RightToLeft-bt-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/RightToLeft-lr-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/RightToLeft-rl-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/RightToLeft-tb-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/TopToBottom-bt-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/TopToBottom-lr-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/TopToBottom-rl-expected.txt: Added.
+        * platform/gtk/fast/multicol/pagination/TopToBottom-tb-expected.txt: Added.
+
+2013-07-22  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed gardening. Added baselines for GTK+ related to subpixel layout.
+
+        * platform/gtk/editing/selection/mixed-editability-10-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/animate-elem-22-b-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/animate-elem-23-t-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/coords-units-03-b-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/filters-comptran-01-b-expected.txt: Added.
+        * platform/gtk/svg/W3C-SVG-1.1/filters-example-01-b-expected.txt: Added.
+        * platform/gtk/svg/custom/pattern-with-transformation-expected.txt: Added.
+        * platform/gtk/svg/text/text-midpoint-split-bug-expected.txt: Added.
+
+2013-07-22  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed gardening. Added needed baselines for GTK after r149088.
+
+        * platform/gtk/editing/selection/5825350-1-expected.txt: Added.
+        * platform/gtk/editing/selection/5825350-2-expected.txt: Added.
+
+2013-07-22  Andrei Bucur  <abucur@adobe.com>
+
+        [CSS Regions] Convert percentage-margins-* tests to ref-tests
+        https://bugs.webkit.org/show_bug.cgi?id=118723
+
+        Reviewed by Andreas Kling.
+
+        The patch converts the percentage margins tests for regions in ref tests.
+
+        * fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.html: Added.
+        * fast/regions/percentage-margins-mixed-ltr-dominant-regions.html:
+        * fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.html: Added.
+        * fast/regions/percentage-margins-mixed-rtl-dominant-regions.html:
+        * fast/regions/percentage-margins-rtl-variable-width-regions-expected.html: Added.
+        * fast/regions/percentage-margins-rtl-variable-width-regions.html:
+        * platform/efl/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Removed.
+        * platform/efl/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Removed.
+        * platform/efl/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Removed.
+        * platform/efl/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Removed.
+        * platform/efl/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Removed.
+        * platform/efl/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Removed.
+        * platform/efl/fast/regions/percentage-margins-variable-width-regions-expected.png: Removed.
+        * platform/efl/fast/regions/percentage-margins-variable-width-regions-expected.txt: Removed.
+        * platform/gtk/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Removed.
+        * platform/gtk/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Removed.
+        * platform/gtk/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Removed.
+        * platform/gtk/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Removed.
+        * platform/gtk/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Removed.
+        * platform/gtk/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Removed.
+        * platform/gtk/fast/regions/percentage-margins-variable-width-regions-expected.png: Removed.
+        * platform/gtk/fast/regions/percentage-margins-variable-width-regions-expected.txt: Removed.
+        * platform/mac/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Removed.
+        * platform/mac/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Removed.
+        * platform/mac/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Removed.
+        * platform/mac/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Removed.
+        * platform/mac/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Removed.
+        * platform/mac/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Removed.
+        * platform/qt/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.png: Removed.
+        * platform/qt/fast/regions/percentage-margins-mixed-ltr-dominant-regions-expected.txt: Removed.
+        * platform/qt/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.png: Removed.
+        * platform/qt/fast/regions/percentage-margins-mixed-rtl-dominant-regions-expected.txt: Removed.
+        * platform/qt/fast/regions/percentage-margins-rtl-variable-width-regions-expected.png: Removed.
+        * platform/qt/fast/regions/percentage-margins-rtl-variable-width-regions-expected.txt: Removed.
+        * platform/qt/fast/regions/percentage-margins-variable-width-regions-expected.png: Removed.
+        * platform/qt/fast/regions/percentage-margins-variable-width-regions-expected.txt: Removed.
+
+2013-07-22  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed gardening. Add accesibility/lists.html as 'Missing' expectation.
+
+        * platform/gtk/TestExpectations: Added test.
+
+2013-07-22  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skipping failing tests.
+
+        * platform/qt-5.0-wk1/TestExpectations:
+        * platform/qt/TestExpectations:
+
+2013-07-22  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Regression: Multiple tests fail after r152701 changed how unavailable plugins are handled
+        https://bugs.webkit.org/show_bug.cgi?id=118730
+
+        Unreviewed GTK gardening. Unskip tests no longer failing.
+
+        Changes from r152701 were reverted in r152814 and later reworked in r152824,
+        so the tests no longer fail.
+
+        * platform/gtk/TestExpectations:
+
+2013-07-22  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed gardening. Update test expectations for GTK.
+
+        * platform/gtk/accessibility/aria-option-role-expected.txt: Update
+        expectations to match those from EFL.
+        * platform/gtk/TestExpectations: Removed test from failures expectations,
+        now it's running as expected.
+
+2013-07-22  Ádám Kallai  <kadam@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Update platform specific expectations.
+
+        * platform/qt-5.0-wk1/fast/loader/show-only-one-beforeunload-dialog-expected.txt: Added after r152941.
+        * platform/qt-5.0-wk1/http/tests/misc/iframe-beforeunload-dialog-matching-ancestor-securityorigin-expected.txt: Added after r152941.
+        * platform/qt-5.0-wk2/fast/multicol/shrink-to-column-height-for-pagination-expected.png: Removed.
+        * platform/qt/fast/multicol/shrink-to-column-height-for-pagination-expected.png: Added after r152911.
+        * platform/qt/fast/multicol/shrink-to-column-height-for-pagination-expected.txt: Renamed from LayoutTests/platform/qt-5.0-wk2/fast/multicol/shrink-to-column-height-for-pagination-expected.txt.
+
+2013-07-19  Brady Eidson  <beidson@apple.com>
+
+        Pages should not be able to abuse users inside beforeunload handlers.
+        <rdar://problem/14475779> and https://bugs.webkit.org/show_bug.cgi?id=118871.
+
+        Reviewed by Alexey Proskuryakov.
+
+        In addition to the new tests, updated some results of previous tests that were relying on "alert"
+        as a poor man's logging method.
+
+        * fast/events/onbeforeunload-focused-iframe-expected.txt:
+        * fast/events/onbeforeunload-focused-iframe.html:
+        * fast/events/onunload-clears-onbeforeunload-expected.txt:
+        * fast/events/onunload-clears-onbeforeunload.html:
+        * fast/loader/page-dismissal-modal-dialogs-expected.txt:
+        * fast/loader/page-dismissal-modal-dialogs.html:
+        * fast/loader/recursive-before-unload-crash-expected.txt:
+        * fast/loader/recursive-before-unload-crash.html:
+        * fast/loader/resources/iframe-with-beforeunload.html: Added.
+        * fast/loader/show-only-one-beforeunload-dialog-expected.txt: Added.
+        * fast/loader/show-only-one-beforeunload-dialog.html: Added.
+        * http/tests/misc/iframe-beforeunload-dialog-matching-ancestor-securityorigin-expected.txt: Added.
+        * http/tests/misc/iframe-beforeunload-dialog-matching-ancestor-securityorigin.html: Added.
+        * http/tests/misc/iframe-beforeunload-dialog-not-matching-ancestor-securityorigin-expected.txt: Added.
+        * http/tests/misc/iframe-beforeunload-dialog-not-matching-ancestor-securityorigin.html: Added.
+        * http/tests/misc/resources/iframe-with-beforeunload.html: Added.
+        * http/tests/misc/resources/notify-done.html: Added.
+
+2013-07-19  Stephanie Lewis  <slewis@apple.com>
+
+        Some compositing tests fail on ML WK2 Debugi
+        https://bugs.webkit.org/show_bug.cgi?id=118925
+
+        Unreviewed.
+
+        * platform/mac-wk2/TestExpectations:
+
+2013-07-19  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Skip failing tests to make WinEWS bots happy.
+
+        * platform/win/TestExpectations:
+
+2013-07-19  Roger Fong  <roger_fong@apple.com>
+
+        Unskip flaky tests on AppleWin. 
+        Flakiness is not an issue with the tests themselves but with the test infrastructure.
+
+        * platform/win/TestExpectations:
+
+2013-07-19  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Skip some flaky tests on AppleWin port.
+
+        * platform/win/TestExpectations:
+
+2013-07-19  Frédéric Wang  <fred.wang@free.fr>
+
+        More conversions from MathML pixel tests to reftests.
+        https://bugs.webkit.org/show_bug.cgi?id=118853
+
+        Reviewed by Chris Fleizach.
+
+        * mathml/presentation/fenced-expected.html: Added.
+        * mathml/presentation/fenced-mi-expected.html: Added.
+        * mathml/presentation/fenced-mi.html: Added.
+        * mathml/presentation/fenced-mi.xhtml: Removed.
+        * mathml/presentation/fenced.html: Added.
+        * mathml/presentation/fenced.xhtml: Removed.
+        * mathml/presentation/mroot-pref-width-expected.html: Added.
+        * mathml/presentation/mroot-pref-width.html:
+        * mathml/presentation/row-alignment.xhtml: Removed.
+        * mathml/presentation/style-border-padding-background-expected.html: Added.
+        * mathml/presentation/style-border-padding-background.html: Added.
+        * mathml/presentation/style-color-sqrt-expected-mismatch.html: Added.
+        * mathml/presentation/style-color-sqrt.html: Added.
+        * mathml/presentation/style.xhtml: Removed.
+        * mathml/presentation/tables-columnalign-expected.html: Added.
+        * mathml/presentation/tables-columnalign.html: Added.
+        * mathml/presentation/tables-simple-expected.html: Added.
+        * mathml/presentation/tables-simple.html: Added.
+        * mathml/presentation/tables-spans-dynamic-expected.html: Added.
+        * mathml/presentation/tables-spans-dynamic.html: Added.
+        * mathml/presentation/tables-spans-expected.html: Added.
+        * mathml/presentation/tables-spans.html: Added.
+        * mathml/presentation/tables.xhtml: Removed.
+        * mathml/xHeight.xhtml: Removed.
+        * platform/efl/mathml/presentation/fenced-expected.png: Removed.
+        * platform/efl/mathml/presentation/fenced-expected.txt: Removed.
+        * platform/efl/mathml/presentation/fenced-mi-expected.png: Removed.
+        * platform/efl/mathml/presentation/fenced-mi-expected.txt: Removed.
+        * platform/efl/mathml/presentation/mroot-pref-width-expected.png: Removed.
+        * platform/efl/mathml/presentation/mroot-pref-width-expected.txt: Removed.
+        * platform/efl/mathml/presentation/row-alignment-expected.png: Removed.
+        * platform/efl/mathml/presentation/row-alignment-expected.txt: Removed.
+        * platform/efl/mathml/presentation/style-expected.png: Removed.
+        * platform/efl/mathml/presentation/style-expected.txt: Removed.
+        * platform/efl/mathml/presentation/tables-expected.png: Removed.
+        * platform/efl/mathml/presentation/tables-expected.txt: Removed.
+        * platform/efl/mathml/xHeight-expected.png: Removed.
+        * platform/efl/mathml/xHeight-expected.txt: Removed.
+        * platform/gtk/mathml/presentation/fenced-expected.png: Removed.
+        * platform/gtk/mathml/presentation/fenced-expected.txt: Removed.
+        * platform/gtk/mathml/presentation/fenced-mi-expected.png: Removed.
+        * platform/gtk/mathml/presentation/fenced-mi-expected.txt: Removed.
+        * platform/gtk/mathml/presentation/mroot-pref-width-expected.png: Removed.
+        * platform/gtk/mathml/presentation/mroot-pref-width-expected.txt: Removed.
+        * platform/gtk/mathml/presentation/row-alignment-expected.png: Removed.
+        * platform/gtk/mathml/presentation/row-alignment-expected.txt: Removed.
+        * platform/gtk/mathml/presentation/style-expected.png: Removed.
+        * platform/gtk/mathml/presentation/style-expected.txt: Removed.
+        * platform/gtk/mathml/presentation/tables-expected.png: Removed.
+        * platform/gtk/mathml/presentation/tables-expected.txt: Removed.
+        * platform/gtk/mathml/xHeight-expected.png: Removed.
+        * platform/gtk/mathml/xHeight-expected.txt: Removed.
+        * platform/mac/TestExpectations:
+        * platform/mac/mathml/presentation/fenced-expected.png: Removed.
+        * platform/mac/mathml/presentation/fenced-expected.txt: Removed.
+        * platform/mac/mathml/presentation/fenced-mi-expected.png: Removed.
+        * platform/mac/mathml/presentation/fenced-mi-expected.txt: Removed.
+        * platform/mac/mathml/presentation/mroot-pref-width-expected.png: Removed.
+        * platform/mac/mathml/presentation/mroot-pref-width-expected.txt: Removed.
+        * platform/mac/mathml/presentation/row-alignment-expected.png: Removed.
+        * platform/mac/mathml/presentation/row-alignment-expected.txt: Removed.
+        * platform/mac/mathml/presentation/style-expected.png: Removed.
+        * platform/mac/mathml/presentation/style-expected.txt: Removed.
+        * platform/mac/mathml/presentation/tables-expected.png: Removed.
+        * platform/mac/mathml/presentation/tables-expected.txt: Removed.
+        * platform/mac/mathml/xHeight-expected.png: Removed.
+        * platform/mac/mathml/xHeight-expected.txt: Removed.
+
+2013-07-19  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Skip some flaky tests on AppleWin port.
+
+        * platform/win/TestExpectations:
+
+2013-07-19  Abhijeet Kandalkar  <abhijeet.k@samsung.com>
+
+        Spatial Navigation handling of space key in <select> appears to confuse listIndex and optionIndex.
+        https://bugs.webkit.org/show_bug.cgi?id=99525
+
+        Added testcase to test support of option group within HTMLSelect element.
+
+        Reviewed by Joseph Pecoraro.
+
+        * fast/spatial-navigation/snav-multiple-select-optgroup-expected.txt: Added.
+        * fast/spatial-navigation/snav-multiple-select-optgroup.html: Added.
+
+2013-07-19  David Hyatt  <hyatt@apple.com>
+
+        OSX: ePub: Unable to select text in vertical Japanese book
+        https://bugs.webkit.org/show_bug.cgi?id=118864
+        <rdar://problem/14109351>
+
+        Reviewed by Dan Bernstein and Sam Weinig.
+
+        * fast/multicol/pagination: Added.
+        * fast/multicol/pagination/BottomToTop-bt.html: Added.
+        * fast/multicol/pagination/BottomToTop-lr.html: Added.
+        * fast/multicol/pagination/BottomToTop-rl.html: Added.
+        * fast/multicol/pagination/BottomToTop-tb.html: Added.
+        * fast/multicol/pagination/LeftToRight-bt.html: Added.
+        * fast/multicol/pagination/LeftToRight-lr.html: Added.
+        * fast/multicol/pagination/LeftToRight-rl.html: Added.
+        * fast/multicol/pagination/LeftToRight-tb.html: Added.
+        * fast/multicol/pagination/RightToLeft-bt.html: Added.
+        * fast/multicol/pagination/RightToLeft-lr.html: Added.
+        * fast/multicol/pagination/RightToLeft-rl.html: Added.
+        * fast/multicol/pagination/RightToLeft-tb.html: Added.
+        * fast/multicol/pagination/TopToBottom-bt.html: Added.
+        * fast/multicol/pagination/TopToBottom-lr.html: Added.
+        * fast/multicol/pagination/TopToBottom-rl.html: Added.
+        * fast/multicol/pagination/TopToBottom-tb.html: Added.
+        * platform/mac/fast/multicol/pagination: Added.
+        * platform/mac/fast/multicol/pagination/BottomToTop-bt-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/BottomToTop-bt-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/BottomToTop-lr-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/BottomToTop-lr-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/BottomToTop-rl-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/BottomToTop-rl-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/BottomToTop-tb-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/BottomToTop-tb-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/LeftToRight-bt-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/LeftToRight-bt-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/LeftToRight-lr-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/LeftToRight-lr-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/LeftToRight-rl-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/LeftToRight-rl-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/LeftToRight-tb-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/LeftToRight-tb-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/RightToLeft-bt-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/RightToLeft-bt-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/RightToLeft-lr-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/RightToLeft-lr-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/RightToLeft-rl-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/RightToLeft-rl-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/RightToLeft-tb-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/RightToLeft-tb-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/TopToBottom-bt-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/TopToBottom-bt-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/TopToBottom-lr-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/TopToBottom-lr-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/TopToBottom-rl-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/TopToBottom-rl-expected.txt: Added.
+        * platform/mac/fast/multicol/pagination/TopToBottom-tb-expected.png: Added.
+        * platform/mac/fast/multicol/pagination/TopToBottom-tb-expected.txt: Added.
+        * platform/mac/fast/multicol/shrink-to-column-height-for-pagination-expected.png:
+        * platform/mac/fast/multicol/shrink-to-column-height-for-pagination-expected.txt:
+
+2013-07-19  Radu Stavila  <stavila@adobe.com>
+
+        Hover doesn't work for block elements inside a href element
+        https://bugs.webkit.org/show_bug.cgi?id=118907
+
+        Reviewed by David Hyatt.
+
+        Don't skip all anonymous objects when searching for the hover ancestor, only the ones
+        directly flowed into a region.
+
+        * fast/css/hover-display-block-expected.txt: Added.
+        * fast/css/hover-display-block.html: Added.
+
+2013-07-19  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Clear overflowing line's segments in pushShapeContentOverflowBelowTheContentBox
+        https://bugs.webkit.org/show_bug.cgi?id=118002
+
+        Reviewed by David Hyatt.
+
+        When the last line in the shape overlaps with the shape bottom boundaries we need to clear the computed segments. (We need to compute
+        the segments anyway, since shape-outside's code uses the same code path to determine its segments and the line containing is not a
+        requirement in that case.) Rather then doing the job in RenderBlock::LineBreaker::nextLineBreak I moved the functionality to its correct
+        place to pushShapeContentOverflowBelowTheContentBox. Now all the overflow related functionality is located in one function. I fixed the
+        corresponding layout test.
+
+        * fast/shapes/shape-inside/shape-inside-overflow-expected.html:
+        * fast/shapes/shape-inside/shape-inside-overflow.html:
+
+2013-07-19  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes][CSS Regions] Modify existing tests to test overflow also when padding is applied on the container
+        https://bugs.webkit.org/show_bug.cgi?id=117881
+
+        Reviewed by David Hyatt.
+
+        Currently, we don't have tests which test the overflow behavior when there is padding applied on the container.
+        I modified the existing tests to cover these cases as well and increase our test coverage.
+
+        * fast/shapes/shape-inside/shape-inside-overflow-fixed-dimensions-expected.html:
+        * fast/shapes/shape-inside/shape-inside-overflow-fixed-dimensions.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-block-content-overflow-bottom-positioned-multiple-shapes-expected.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-block-content-overflow-bottom-positioned-multiple-shapes.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-inline-content-overflow-bottom-positioned-multiple-shapes-expected.html:
+        * fast/regions/shape-inside/shape-inside-on-regions-inline-content-overflow-bottom-positioned-multiple-shapes.html:
+
+2013-07-19  Frédéric Wang  <fred.wang@free.fr>
+
+        Update test expectations for MathML after r152840.
+        https://bugs.webkit.org/show_bug.cgi?id=118053
+
+        Reviewed by Chris Fleizach.
+
+        * TestExpectations: unskip mspace tests
+        * platform/mac/TestExpectations: ImageOnlyFailure for mspace-units
+
+2013-07-19  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. Update expectations after r152793, r152777 and r152872
+        https://bugs.webkit.org/show_bug.cgi?id=118906
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Mark svg/animations/svgenum-animation-6.html as flaky, and
+        mathml/presentation/bug95404.html, introduced in r152777, as ImageOnlyFailure.
+        * platform/gtk/editing/pasteboard/emacs-cntl-y-001-expected.txt: New baseline after r152872.
+        * platform/gtk/editing/pasteboard/emacs-ctrl-k-y-001-expected.txt: Ditto.
+        * platform/gtk/fast/dom/Range/getClientRects-expected.txt: Ditto.
+        * platform/gtk/fast/js/function-length-expected.txt: Ditto.
+        * platform/gtk/plugins/npruntime/object-from-destroyed-plugin-expected.txt: Added after r152872.
+        * platform/gtk/plugins/npruntime/object-from-destroyed-plugin-in-subframe-expected.txt: Added after r152872.
+        * platform/gtk/tables/mozilla/marvin/backgr_index-expected.txt: New baseline after r152793.
+
+2013-07-19  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        [Qt][WK2] More unreviewed cleanup for pixel tester bot.
+
+        * platform/qt-5.0-wk2/TestExpectations:
+
+2013-07-19  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        [Qt][WK2] Unreviewed cleanup for pixel tester bot.
+
+        * platform/qt-5.0-wk2/TestExpectations:
+
+2013-07-19  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK] media/video-seek-multiple.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=117580
+
+        Reviewed by Philippe Normand.
+
+        Change expectation for media/video-seek-multiple.html test
+
+        * platform/gtk/TestExpectations:
+
+2013-07-19  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Rebase failing tests.
+
+        * platform/qt-5.0-wk2/tables/mozilla/marvin/backgr_index-expected.png:
+        * platform/qt-5.0-wk2/tables/mozilla/marvin/backgr_index-expected.txt: Copied from LayoutTests/platform/qt/tables/mozilla/marvin/backgr_index-expected.txt.
+        * platform/qt/fast/lists/inlineBoxWrapperNullCheck-expected.txt:
+        * platform/qt/http/tests/security/contentSecurityPolicy/object-src-none-blocked-expected.txt:
+        * platform/qt/tables/mozilla/marvin/backgr_index-expected.txt:
+
+2013-07-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r152801.
+        http://trac.webkit.org/changeset/152801
+        https://bugs.webkit.org/show_bug.cgi?id=118876
+
+        Un-rebaseline some plugin tests since r152789 was rolled out
+        (Requested by rfong on #webkit).
+
+        * platform/win/editing/pasteboard/paste-noplugin-expected.txt: Removed.
+        * platform/win/platform/win/plugins/draws-gradient-expected.txt:
+
+2013-07-18  Chris Curtis  <chris_curtis@apple.com>
+
+        Fixed ASSERTION FAILED: callFrame == vm->topCallFrame in JSC::Interpreter::addStackTraceIfNecessary
+        https://bugs.webkit.org/show_bug.cgi?id=118498
+
+        Reviewed by Geoffrey Garen.
+
+        New Tests to see if JSC evaluates user code after exception creation
+
+        * fast/js/not-a-constructor-to-string-expected.txt: Added.
+        * fast/js/not-a-constructor-to-string.html: Added.
+        * fast/js/not-a-function-to-string-expected.txt: Added.
+        * fast/js/not-a-function-to-string.html: Added.
+
+        Modified test output of the object that was being evaluated at the time of the 
+        error. Only the error message has changed.
+
+        * fast/dom/MutationObserver/mutation-record-constructor-expected.txt:
+        * fast/dom/NodeList/nodelist-item-call-as-function-expected.txt:
+        * fast/dom/Range/getClientRects-expected.txt:
+        * fast/dom/SelectorAPI/dumpNodeList-almost-strict-expected.txt:
+        * fast/dom/SelectorAPI/dumpNodeList-expected.txt:
+        * fast/dom/call-a-constructor-as-a-function-expected.txt:
+        * fast/dom/setPrimitiveValue-exceptions-expected.txt:
+        * fast/events/window-onerror-exception-in-attr-expected.txt:
+        * fast/forms/select-namedItem-expected.txt:
+        * fast/js/arguments-expected.txt:
+        * fast/js/array-prototype-properties-expected.txt:
+        * fast/js/basic-strict-mode-expected.txt:
+        * fast/js/date-toisostring-expected.txt:
+        * fast/js/delete-getters-setters-expected.txt:
+        * fast/js/dfg-check-structure-elimination-for-non-cell-expected.txt:
+        * fast/js/dfg-compare-final-object-to-final-object-or-other-when-both-proven-final-object-expected.txt:
+        * fast/js/dfg-compare-final-object-to-final-object-or-other-when-proven-final-object-expected.txt:
+        * fast/js/dfg-inline-arguments-use-from-all-the-places-broken-expected.txt:
+        * fast/js/dfg-peephole-compare-final-object-to-final-object-or-other-when-both-proven-final-object-expected.txt:
+        * fast/js/dfg-peephole-compare-final-object-to-final-object-or-other-when-proven-final-object-expected.txt:
+        * fast/js/exception-expression-offset-expected.txt:
+        * fast/js/exception-for-nonobject-expected.txt:
+        * fast/js/exception-thrown-from-new-expected.txt:
+        * fast/js/function-bind-expected.txt:
+        * fast/js/instance-of-immediates-expected.txt:
+        * fast/js/object-prototype-properties-expected.txt:
+        * fast/regex/cross-frame-callable-expected.txt:
+        * fast/xsl/transform-xhr-doc-expected.txt:
+        * http/tests/security/aboutBlank/xss-DENIED-navigate-opener-document-write-expected.txt:
+        * http/tests/security/aboutBlank/xss-DENIED-navigate-opener-javascript-url-expected.txt:
+        * http/tests/security/aboutBlank/xss-DENIED-set-opener-expected.txt:
+        * http/tests/security/document-all-expected.txt:
+        * http/tests/security/srcdoc-in-sandbox-cannot-access-parent-expected.txt:
+        * http/tests/security/window-named-proto-expected.txt:
+        * inspector/console/console-exception-stack-traces-expected.txt:
+        * platform/efl/css3/selectors3/xhtml/css3-modsel-15c-expected.txt:
+        * platform/efl/css3/selectors3/xml/css3-modsel-15c-expected.txt:
+        * platform/efl/fast/events/updateLayoutForHitTest-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug92868_1-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-15c-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-15c-expected.txt:
+        * platform/gtk/fast/events/updateLayoutForHitTest-expected.txt:
+        * platform/gtk/svg/custom/createelement-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug92868_1-expected.txt:
+        * platform/mac-wk2/editing/spelling/markers-expected.txt:
+        * platform/mac-wk2/plugins/npruntime/object-from-destroyed-plugin-expected.txt: Added.
+        * platform/mac-wk2/plugins/npruntime/object-from-destroyed-plugin-in-subframe-expected.txt: Added.
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-15c-expected.txt:
+        * platform/mac/css3/selectors3/xml/css3-modsel-15c-expected.txt:
+        * platform/mac/fast/events/updateLayoutForHitTest-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug92868_1-expected.txt:
+        * platform/qt/css3/selectors3/xhtml/css3-modsel-15c-expected.txt:
+        * platform/qt/css3/selectors3/xml/css3-modsel-15c-expected.txt:
+        * platform/qt/svg/custom/createelement-expected.txt:
+        * platform/qt/tables/mozilla_expected_failures/bugs/bug92868_1-expected.txt:
+        * platform/win/fast/dom/call-a-constructor-as-a-function-expected.txt:
+        * plugins/npruntime/object-from-destroyed-plugin-expected.txt:
+        * plugins/npruntime/object-from-destroyed-plugin-in-subframe-expected.txt:
+        * plugins/npruntime/plugin-scriptable-object-invoke-default-expected.txt:
+        * sputnik/Conformance/08_Types/8.6_The_Object_Type/8.6.2_Internal_Properties_and_Methods/S8.6.2_A7-expected.txt:
+        * sputnik/Conformance/13_Function_Definition/S13_A17_T2-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/S15.1_A1_T1-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/S15.1_A1_T2-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/S15.1_A2_T1-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.2_Object.prototype.toString/S15.2.4.2_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.3_Object.prototype.toLocaleString/S15.2.4.3_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.4_Object.prototype.valueOf/S15.2.4.4_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.5_Object.prototype.hasOwnProperty/S15.2.4.5_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.6_Object.prototype.isPrototypeOf/S15.2.4.6_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/15.2.4.7_Object.prototype.propertyIsEnumerable/S15.2.4.7_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/S15.2.4_A3-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.2_Object/15.2.4/S15.2.4_A4-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.3_Function/15.3.4/15.3.4.2_Function.prototype.toString/S15.3.4.2_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.3_Function/15.3.4/S15.3.4_A5-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.12_String.prototype.search/S15.5.4.12_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.13_String.prototype.slice/S15.5.4.13_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.15_String.prototype.substring/S15.5.4.15_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.17_String.prototype.toLocaleLowerCase/S15.5.4.17_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.7_String.prototype.indexOf/S15.5.4.7_A7-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.8_String.prototype.lastIndexOf/S15.5.4.8_A7-expected.txt:
+        * svg/custom/createelement-expected.txt:
+        * svg/custom/use-nested-missing-target-removed-expected.txt:
+        * svg/dom/svgpath-out-of-bounds-getPathSeg-expected.txt:
+
+2013-07-18  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Make atob() / btoa() argument non optional
+        https://bugs.webkit.org/show_bug.cgi?id=118844
+
+        Reviewed by Kentaro Hara.
+
+        Update and rebaseline fast/dom/Window/atob-btoa.html as atob() /
+        btoa() 's behavior has changed to match the specification and
+        the behavior in other browsers.
+
+        * fast/dom/Window/atob-btoa-expected.txt:
+        * fast/dom/Window/atob-btoa.html:
+
+2013-07-18  Frédéric Wang  <fred.wang@free.fr>
+
+        Convert MathML fraction tests to reftests.
+        https://bugs.webkit.org/show_bug.cgi?id=118812
+
+        Reviewed by Chris Fleizach.
+
+        fractions-vertical-alignment and fractions are converted to reftests.
+
+        * mathml/presentation/fractions-box-expected.html: Added.
+        * mathml/presentation/fractions-box.html: Added.
+        * mathml/presentation/fractions-color-expected-mismatch.html: Added.
+        * mathml/presentation/fractions-color.html: Added.
+        * mathml/presentation/fractions-invalid-expected.html: Added.
+        * mathml/presentation/fractions-invalid.html: Added.
+        * mathml/presentation/fractions-linethickness-expected.html: Added.
+        * mathml/presentation/fractions-linethickness.html: Added.
+        * mathml/presentation/fractions-mrow-expected.html: Added.
+        * mathml/presentation/fractions-mrow.html: Added.
+        * mathml/presentation/fractions-numalign-denomalign-expected.html: Added.
+        * mathml/presentation/fractions-numalign-denomalign.html: Added.
+        * mathml/presentation/fractions-positions-expected.html: Added.
+        * mathml/presentation/fractions-positions.html: Added.
+        * mathml/presentation/fractions-vertical-alignment-expected.html: Added.
+        * mathml/presentation/fractions-vertical-alignment.html: Added.
+        * mathml/presentation/fractions-vertical-alignment.xhtml: Removed.
+        * mathml/presentation/fractions.xhtml: Removed.
+        * platform/efl/mathml/presentation/fractions-expected.png: Removed.
+        * platform/efl/mathml/presentation/fractions-expected.txt: Removed.
+        * platform/efl/mathml/presentation/fractions-vertical-alignment-expected.png: Removed.
+        * platform/efl/mathml/presentation/fractions-vertical-alignment-expected.txt: Removed.
+        * platform/gtk/mathml/presentation/fractions-expected.png: Removed.
+        * platform/gtk/mathml/presentation/fractions-expected.txt: Removed.
+        * platform/gtk/mathml/presentation/fractions-vertical-alignment-expected.png: Removed.
+        * platform/gtk/mathml/presentation/fractions-vertical-alignment-expected.txt: Removed.
+        * platform/mac/mathml/presentation/fractions-expected.png: Removed.
+        * platform/mac/mathml/presentation/fractions-expected.txt: Removed.
+        * platform/mac/mathml/presentation/fractions-vertical-alignment-expected.png: Removed.
+        * platform/mac/mathml/presentation/fractions-vertical-alignment-expected.txt: Removed.
+
+2013-07-18  Zalan Bujtas  <zalan@apple.com>
+
+        fullscreen/full-screen-iframe-with-max-width-height.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=118820
+
+        Reviewed by Andreas Kling.
+
+        Don't start the test until after the iframe has finished loading.
+
+        * fullscreen/full-screen-iframe-with-max-width-height-expected.txt:
+        * fullscreen/full-screen-iframe-with-max-width-height.html:
+        * platform/mac/TestExpectations:
+
+2013-07-18  Praveen R Jadhav  <praveen.j@samsung.com>
+
+        Only the first call to 'stop' method of AudioBufferSourceNode must be entertained.
+        https://bugs.webkit.org/show_bug.cgi?id=118776
+
+        Reviewed by Jer Noble.
+
+        Test case updated to check subsequent calls to 'stop' for a given AudioBufferSourceNode.
+
+        * webaudio/audiobuffersource-exception-expected.txt:
+        * webaudio/audiobuffersource-exception.html:
+
+2013-07-18  Zalan Bujtas  <zalan@apple.com>
+
+        Unskip mathml tests after r152840.
+        https://bugs.webkit.org/show_bug.cgi?id=118842
+
+        Unreviewed.
+
+        * platform/mac/TestExpectations:
+
+2013-07-18  Zalan Bujtas  <zalan@apple.com>
+
+        Incorrect calculated width for mspace.
+        https://bugs.webkit.org/show_bug.cgi?id=118601
+
+        Reviewed by Chris Fleizach.
+
+        Use intrinsic logical widths to size <mspace> properly.
+        This patch also fixes an assert on isPreferredLogicalHeightDirty(), which occurs
+        while layouting <mspace>. The assert fix is required, so that the sizing can be
+        fixed.
+
+        * mathml/presentation/mspace-prefered-width-expected.html: Added.
+        * mathml/presentation/mspace-prefered-width.html: Added.
+        * platform/mac/mathml/presentation/fractions-expected.png: Rebaseline: float->LayoutUnit.
+        * platform/mac/mathml/presentation/fractions-expected.txt: Rebaseline: float->LayoutUnit.
+
+2013-07-18  Santosh Mahto  <santosh.ma@samsung.com>
+
+        ASSERTION FAILED: !listItems().size() || m_activeSelectionAnchorIndex >= 0 in WebCore::HTMLSelectElement::updateListBoxSelection
+        https://bugs.webkit.org/show_bug.cgi?id=118591
+
+        Reviewed by Kent Tamura.
+
+        * fast/forms/select/selectall-command-crash-expected.txt: Added.
+        * fast/forms/select/selectall-command-crash.html: Added.
+
+2013-07-18  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Refactor spin.edc not to use offset
+        https://bugs.webkit.org/show_bug.cgi?id=118830
+
+        Reviewed by Gyuyoung Kim.
+
+        Updated pixel tests reults.
+
+        * platform/efl/fast/forms/number/number-appearance-rtl-expected.png:
+        * platform/efl/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.png:
+        * platform/efl/fast/forms/number/number-appearance-spinbutton-layer-expected.png:
+
+2013-07-17  Jacky Jiang  <zhajiang@blackberry.com>
+
+        Dereference null pointer crash in Length::decrementCalculatedRef()
+        https://bugs.webkit.org/show_bug.cgi?id=118686
+
+        Reviewed by Simon Fraser.
+
+        * transitions/transition-transform-translate-calculated-length-crash-expected.txt: Added.
+        * transitions/transition-transform-translate-calculated-length-crash.html: Added.
+
+2013-07-18  Stephanie Lewis  <slewis@apple.com>
+
+        Compositing pattern tests fail on Lion WK1 Debug.
+        https://bugs.webkit.org/show_bug.cgi?id=118870
+
+        Unreviewed.
+
+        Update Lion expectations after http://trac.webkit.org/changeset/152470
+
+        * platform/mac-lion/TestExpectations:
+
+2013-07-17  Stephanie Lewis  <slewis@apple.com>
+
+        Skip crashing MathML tests while waiting for a fix for 
+        https://bugs.webkit.org/show_bug.cgi?id=118601
+
+        Unreviewed.
+
+        * platform/mac/TestExpectations:
+
+2013-07-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r152701, r152703, r152739, r152754,
+        and r152756.
+        http://trac.webkit.org/changeset/152701
+        http://trac.webkit.org/changeset/152703
+        http://trac.webkit.org/changeset/152739
+        http://trac.webkit.org/changeset/152754
+        http://trac.webkit.org/changeset/152756
+        https://bugs.webkit.org/show_bug.cgi?id=118821
+
+        this was a buggy fix and we're going to try something
+        different (Requested by thorton on #webkit).
+
+        * editing/pasteboard/paste-noplugin-expected.txt:
+        * http/tests/security/contentSecurityPolicy/object-src-url-blocked-expected.txt:
+        * platform/mac/accessibility/plugin-expected.txt:
+
+2013-07-17  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG assumes that NewFunction will never pass its input through
+        https://bugs.webkit.org/show_bug.cgi?id=118798
+
+        Reviewed by Sam Weinig.
+
+        * fast/js/dfg-use-function-as-variable-expected.txt: Added.
+        * fast/js/dfg-use-function-as-variable-merge-structure-expected.txt: Added.
+        * fast/js/dfg-use-function-as-variable-merge-structure.html: Added.
+        * fast/js/dfg-use-function-as-variable-not-constant-expected.txt: Added.
+        * fast/js/dfg-use-function-as-variable-not-constant.html: Added.
+        * fast/js/dfg-use-function-as-variable-with-closure-expected.txt: Added.
+        * fast/js/dfg-use-function-as-variable-with-closure.html: Added.
+        * fast/js/dfg-use-function-as-variable.html: Added.
+        * fast/js/jsc-test-list:
+        * fast/js/script-tests/dfg-use-function-as-variable-merge-structure.js: Added.
+        (.x):
+        (run_tests):
+        * fast/js/script-tests/dfg-use-function-as-variable-not-constant.js: Added.
+        (run_tests.x):
+        (run_tests):
+        * fast/js/script-tests/dfg-use-function-as-variable-with-closure.js: Added.
+        (run_tests.x):
+        (run_tests.y):
+        (run_tests):
+        * fast/js/script-tests/dfg-use-function-as-variable.js: Added.
+        (run_tests.x):
+        (run_tests):
+
+2013-07-17  Alex Christensen  <achristensen@apple.com>
+
+        Unreviewed. Skip more failing WebGL tests on Mac.
+
+        * platform/mac-lion/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2013-07-17  Stephanie Lewis  <slewis@apple.com>
+
+        fullscreen/full-screen-iframe-with-max-width-height.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=118820
+
+        Unreviewed.
+
+        Label a flaky test as flaky
+
+        * platform/mac/TestExpectations:
+
+2013-07-17  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed gardening after r152800.
+        https://bugs.webkit.org/show_bug.cgi?id=118810.
+
+        CSS_SHAPES not yet supported on AppleWin port.
+
+        * platform/win/TestExpectations:
+
+2013-07-17  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed gardening. 
+        Skip some tests on AppleWin port that requires AVFoundation, since it does not support it yet.
+
+        * platform/win/TestExpectations:
+
+2013-07-17  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Rebaseline tests for AppleWin port after r152789.
+
+        * platform/win/editing/pasteboard/paste-noplugin-expected.txt: Added.
+        * platform/win/platform/win/plugins/draws-gradient-expected.txt:
+
+2013-07-17  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes][CSS Exclusions] Cleanup tests to reflect split between CSS Shapes and CSS Exclusions
+        https://bugs.webkit.org/show_bug.cgi?id=117164
+
+        Reviewed by Alexandru Chiculita.
+
+        Moving shapes tests from the fast/exclusions directory to the new fast/shapes directory.
+        In addition, some parsing tests which included both exclusions and shapes properties
+        have been split in order for each piece of functionality to sit within its own directory.
+
+        * fast/exclusions/parsing/script-tests/parsing-test-utils.js:
+        * fast/shapes/css-shapes-disabled-expected.txt: Added.
+        * fast/shapes/css-shapes-disabled.html: Added.
+        * fast/shapes/css-shapes-enabled-expected.txt: Added.
+        * fast/shapes/css-shapes-enabled.html: Added.
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt: Added.
+        * fast/shapes/parsing/parsing-shape-inside.html: Added.
+        * fast/shapes/parsing/parsing-shape-lengths-expected.txt: Added.
+        * fast/shapes/parsing/parsing-shape-lengths.html: Added.
+        * fast/shapes/parsing/parsing-shape-margin-expected.txt: Added.
+        * fast/shapes/parsing/parsing-shape-margin.html: Added.
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt: Added.
+        * fast/shapes/parsing/parsing-shape-outside.html: Added.
+        * fast/shapes/parsing/parsing-shape-padding-expected.txt: Added.
+        * fast/shapes/parsing/parsing-shape-padding.html: Added.
+        * fast/shapes/parsing/script-tests/parsing-shape-inside.js: Added.
+        * fast/shapes/parsing/script-tests/parsing-shape-lengths.js: Added.
+        * fast/shapes/parsing/script-tests/parsing-shape-margin.js: Added.
+        * fast/shapes/parsing/script-tests/parsing-shape-outside.js: Added.
+        * fast/shapes/parsing/script-tests/parsing-shape-padding.js: Added.
+        * fast/shapes/parsing/script-tests/parsing-test-utils.js: Added.
+        * fast/shapes/resources/multi-segment-polygon.js: Added.
+        * fast/shapes/resources/rounded-rectangle.js: Added.
+        * fast/shapes/resources/simple-polygon.js: Added.
+        * fast/shapes/resources/simple-rectangle.js: Added.
+        * fast/shapes/resources/subpixel-utils.js: Added.
+        * fast/shapes/shape-inside/shape-inside-animation-expected.txt: Added.
+        * fast/shapes/shape-inside/shape-inside-animation.html: Added.
+        * fast/shapes/shape-inside/shape-inside-bottom-edge-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-bottom-edge.html: Added.
+        * fast/shapes/shape-inside/shape-inside-box-sizing-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-box-sizing.html: Added.
+        * fast/shapes/shape-inside/shape-inside-circle-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-circle-padding-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-circle-padding.html: Added.
+        * fast/shapes/shape-inside/shape-inside-circle.html: Added.
+        * fast/shapes/shape-inside/shape-inside-coincident-vertices-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-coincident-vertices.html: Added.
+        * fast/shapes/shape-inside/shape-inside-collinear-vertices-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-collinear-vertices.html: Added.
+        * fast/shapes/shape-inside/shape-inside-counterclockwise-polygon-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-counterclockwise-polygon.html: Added.
+        * fast/shapes/shape-inside/shape-inside-dynamic-nested-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-dynamic-nested.html: Added.
+        * fast/shapes/shape-inside/shape-inside-dynamic-shape-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-dynamic-shape.html: Added.
+        * fast/shapes/shape-inside/shape-inside-dynamic-text-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-dynamic-text.html: Added.
+        * fast/shapes/shape-inside/shape-inside-ellipse-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-ellipse-padding-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-ellipse-padding.html: Added.
+        * fast/shapes/shape-inside/shape-inside-ellipse.html: Added.
+        * fast/shapes/shape-inside/shape-inside-empty-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-empty-segments-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-empty-segments.html: Added.
+        * fast/shapes/shape-inside/shape-inside-empty.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-001-horizontal-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-001-horizontal.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-001-vertical-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-001-vertical.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-002-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-002.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-003-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-003.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-004-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-004.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-reflex-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-first-fit-reflex.html: Added.
+        * fast/shapes/shape-inside/shape-inside-floats-simple-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-floats-simple.html: Added.
+        * fast/shapes/shape-inside/shape-inside-inline-elements-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-inline-elements.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-blocks-dynamic-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-blocks-dynamic.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-blocks-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-blocks-vertical-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-blocks-vertical.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-blocks.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-segments-001-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-segments-001.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-segments-002-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-segments-002.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-segments-003-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-segments-003.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-segments-004-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-multiple-segments-004.html: Added.
+        * fast/shapes/shape-inside/shape-inside-on-nested-container-with-unresolved-height-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-on-nested-container-with-unresolved-height.html: Added.
+        * fast/shapes/shape-inside/shape-inside-outside-shape-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-outside-shape.html: Added.
+        * fast/shapes/shape-inside/shape-inside-overflow-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-overflow-fixed-dimensions-block-content-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-overflow-fixed-dimensions-block-content.html: Added.
+        * fast/shapes/shape-inside/shape-inside-overflow-fixed-dimensions-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-overflow-fixed-dimensions.html: Added.
+        * fast/shapes/shape-inside/shape-inside-overflow.html: Added.
+        * fast/shapes/shape-inside/shape-inside-partial-fill-001-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-partial-fill-001.html: Added.
+        * fast/shapes/shape-inside/shape-inside-partial-fill-002-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-partial-fill-002.html: Added.
+        * fast/shapes/shape-inside/shape-inside-percentage-auto-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-percentage-auto.html: Added.
+        * fast/shapes/shape-inside/shape-inside-percentage-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-percentage.html: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-layout-expected.txt: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-layout.html: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-padding-001-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-padding-001.html: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-padding-002-expected.txt: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-padding-002.html: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-padding-003-expected.txt: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-padding-003.html: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-rectangle-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-rectangle.html: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-zoom-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-polygon-zoom.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rectangle-padding-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rectangle-padding.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rectilinear-polygon-001-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rectilinear-polygon-001.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rectilinear-polygon-002-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rectilinear-polygon-002.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rectilinear-polygon-003-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rectilinear-polygon-003.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rectilinear-polygon-004-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rectilinear-polygon-004.html: Added.
+        * fast/shapes/shape-inside/shape-inside-recursive-layout-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-recursive-layout.html: Added.
+        * fast/shapes/shape-inside/shape-inside-regular-polygon16-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-regular-polygon16.html: Added.
+        * fast/shapes/shape-inside/shape-inside-regular-polygon8-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-regular-polygon8.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-001-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-001.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-002-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-002.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-003-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-003.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-004-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-004.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-001-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-001.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-002-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-002.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-003-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-fit-003.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-large-radius-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-large-radius.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-padding-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-rounded-rectangle-padding.html: Added.
+        * fast/shapes/shape-inside/shape-inside-shape-logical-top-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-shape-logical-top.html: Added.
+        * fast/shapes/shape-inside/shape-inside-sibling-block-dimension-change-needs-relayout-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-sibling-block-dimension-change-needs-relayout.html: Added.
+        * fast/shapes/shape-inside/shape-inside-simple-polygon-001-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-simple-polygon-001.html: Added.
+        * fast/shapes/shape-inside/shape-inside-simple-polygon-002-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-simple-polygon-002.html: Added.
+        * fast/shapes/shape-inside/shape-inside-simple-polygon-003-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-simple-polygon-003.html: Added.
+        * fast/shapes/shape-inside/shape-inside-simple-polygon-004-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-simple-polygon-004.html: Added.
+        * fast/shapes/shape-inside/shape-inside-subsequent-blocks-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-subsequent-blocks.html: Added.
+        * fast/shapes/shape-inside/shape-inside-text-align-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-text-align.html: Added.
+        * fast/shapes/shape-inside/shape-inside-text-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-text.html: Added.
+        * fast/shapes/shape-inside/shape-inside-vertical-text-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-vertical-text.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-diamond-margin-polygon-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-diamond-margin-polygon.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-bottom-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-bottom.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-left-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-left.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-right-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-margin-right.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-left-margin-polygon-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-left-margin-polygon.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-right-margin-polygon-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-right-margin-polygon.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-rounded-rectangle-large-radius-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-rounded-rectangle-large-radius.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-circle-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-circle.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-ellipse-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-ellipse.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-inset-rectangle-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-inset-rectangle-percentage-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-inset-rectangle-percentage.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-inset-rectangle.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-polygon-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-polygon.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rectangle-horizontal-multiple-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rectangle-horizontal-multiple.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rectangle-percentage-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rectangle-percentage.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-inset-rectangle-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-inset-rectangle.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-001-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-002-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-002.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-003-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle-003.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-stacked-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-stacked.html: Added.
+
+2013-07-17  Zalan Bujtas  <zalan@apple.com>
+
+        Wrong linebox height, when block element parent has vertical-align property defined.
+        https://bugs.webkit.org/show_bug.cgi?id=118245
+
+        Reviewed by David Hyatt.
+
+        Do not push the current element to the next, when it is still considered empty, even with
+        some object(s) in front. Behave as if it was actually empty.
+        Inline elements like <span></span> generate such lines.
+
+        * fast/css/empty-span-with-parent-div-and-vertical-align-expected.html: Added.
+        * fast/css/empty-span-with-parent-div-and-vertical-align.html: Added.
+        * platform/mac/fast/lists/inlineBoxWrapperNullCheck-expected.png: Rebased.
+        * platform/mac/fast/lists/inlineBoxWrapperNullCheck-expected.txt: Rebased.
+        * platform/mac/tables/mozilla/marvin/backgr_index-expected.png: Rebased.
+        * platform/mac/tables/mozilla/marvin/backgr_index-expected.txt: Rebased.
+
+2013-07-17  Alex Christensen  <achristensen@apple.com>
+
+        Unreviewed. Skip failing WebGL tests.
+
+        * platform/mac/TestExpectations:
+
+2013-07-17  Andreas Kling  <akling@apple.com>
+
+        CSS selector list splitting should be by component, not by selector.
+        <http://webkit.org/b/118761>
+        <rdar://problem/14421609>
+
+        Reviewed by Antti Koivisto.
+
+        Added more cases to the already existing selector list splitting test.
+
+        * fast/css/rule-selector-overflow-expected.txt:
+        * fast/css/rule-selector-overflow.html:
+
+2013-07-17  Rob Buis  <rwlbuis@webkit.org>
+
+        [Mac] REGRESSION(r152685): svg/custom/xlink-prefix-in-attributes.html failed unexpectedly
+        https://bugs.webkit.org/show_bug.cgi?id=118701
+
+        Reviewed by Ryosuke Niwa.
+
+        * platform/mac/TestExpectations:
+        * platform/qt/TestExpectations:
+
+2013-07-17  Chris Fleizach  <cfleizach@apple.com>
+
+        Regression: columnheader/rowheader roles not exposed correctly
+        https://bugs.webkit.org/show_bug.cgi?id=113628
+
+        Reviewed by Tim Horton.
+
+        * platform/mac/accessibility/aria-columnrowheaders-expected.txt: Added.
+        * platform/mac/accessibility/aria-columnrowheaders.html: Added.
+
+2013-07-17  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Make DRT obbey testRunner's addURLToRedirect
+        https://bugs.webkit.org/show_bug.cgi?id=118239
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Unskip http/tests/loading/cross-origin-XHR-willLoadRequest.html now that DRT obbeys
+        testRunner's addURLToRedirect.
+
+        * platform/gtk/TestExpectations:
+
+2013-07-17  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewd gardening. Rebase and skip failing tests.
+
+        * platform/qt-5.0-wk2/TestExpectations:
+        * platform/qt-5.0-wk2/fast/replaced/border-radius-clip-expected.png: Added.
+        * platform/qt-5.0-wk2/fast/replaced/border-radius-clip-expected.txt: Added.
+
+2013-07-17  Frédéric Wang  <fred.wang@free.fr>
+
+        Replace MathML pixel tests by reftests.
+        https://bugs.webkit.org/show_bug.cgi?id=118599
+
+        Reviewed by Chris Fleizach.
+
+        - attributes.xhtml is replaced by attributes*.html
+
+        - underover.xhtml, under.xhtml, sub.xhtml, sup.xhtml, over.xhtml and subsup.xhtml are replaced by scripts*.html and bug*.html.
+
+        - tokenElements.xhtml is replaced by replaced tokenElements-mathvariant.html
+
+        * mathml/presentation/attributes-background-color-expected.html: Added.
+        * mathml/presentation/attributes-background-color.html: Added.
+        * mathml/presentation/attributes-display-expected.html: Added.
+        * mathml/presentation/attributes-display.html: Added.
+        * mathml/presentation/attributes-mathsize-expected.html: Added.
+        * mathml/presentation/attributes-mathsize.html: Added.
+        * mathml/presentation/attributes-mathvariant-expected.html: Added.
+        * mathml/presentation/attributes-mathvariant.html: Added.
+        * mathml/presentation/attributes-style-expected-mismatch.html: Added.
+        * mathml/presentation/attributes-style.html: Added.
+        * mathml/presentation/attributes.xhtml: Removed.
+        * mathml/presentation/bug95015-expected.html: Added.
+        * mathml/presentation/bug95015.html: Added.
+        * mathml/presentation/bug95404-expected.html: Added.
+        * mathml/presentation/bug95404.html: Added.
+        * mathml/presentation/bug97990-expected.html: Added.
+        * mathml/presentation/bug97990.html: Added.
+        * mathml/presentation/over.xhtml: Removed.
+        * mathml/presentation/scripts-font-size-expected-mismatch.html: Added.
+        * mathml/presentation/scripts-font-size.html: Added.
+        * mathml/presentation/scripts-height-expected.html: Added.
+        * mathml/presentation/scripts-height.html: Added.
+        * mathml/presentation/scripts-mrow-expected.html: Added.
+        * mathml/presentation/scripts-mrow.html: Added.
+        * mathml/presentation/scripts-subsup-expected.html: Added.
+        * mathml/presentation/scripts-subsup.html: Added.
+        * mathml/presentation/scripts-underover-expected.html: Added.
+        * mathml/presentation/scripts-underover.html: Added.
+        * mathml/presentation/scripts-width-expected.html: Added.
+        * mathml/presentation/scripts-width.html: Added.
+        * mathml/presentation/sub.xhtml: Removed.
+        * mathml/presentation/subsup.xhtml: Removed.
+        * mathml/presentation/sup.xhtml: Removed.
+        * mathml/presentation/tokenElements-mathvariant-expected.html: Added.
+        * mathml/presentation/tokenElements-mathvariant.html: Added.
+        * mathml/presentation/tokenElements.xhtml: Removed.
+        * mathml/presentation/under.xhtml: Removed.
+        * mathml/presentation/underover.xhtml: Removed.
+
+2013-07-17  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Remove setCSSShapesEnabled(true) from shape-inside-on-first-region-inline-content-expected.html since it's no longer using shapes 
+        https://bugs.webkit.org/show_bug.cgi?id=117952
+
+        Reviewed by Alexandru Chiculita.
+
+        * fast/regions/shape-inside/shape-inside-on-first-region-inline-content-expected.html:
+
+2013-07-17  Mihai Maerean  <mmaerean@adobe.com>
+
+        ASSERTION FAILED: layoutState->m_renderer == this in WebCore::RenderBlock::offsetFromLogicalTopOfFirstPage
+        https://bugs.webkit.org/show_bug.cgi?id=118587
+
+        Reviewed by David Hyatt.
+
+        * fast/regions/crash-div-outside-body-vertical-rl-expected.html: Added.
+        * fast/regions/crash-div-outside-body-vertical-rl.html: Added.
+
+2013-07-16  Alex Christensen  <achristensen@apple.com>
+
+        Added passing WebGL tests.
+        https://bugs.webkit.org/show_bug.cgi?id=118696
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac/TestExpectations: Replaced webgl directory with list of failing webgl tests.
+
+2013-07-16  Filip Pizlo  <fpizlo@apple.com>
+
+        MakeRope fixup shouldn't lead to an Identity without kids
+        https://bugs.webkit.org/show_bug.cgi?id=118745
+
+        Reviewed by Mark Hahnenberg.
+
+        * fast/js/dfg-make-rope-all-empty-strings.html: Added.
+        * fast/js/dfg-make-rope-all-empty-strings-expected.txt: Added.
+        * fast/js/jsc-test-list:
+        * fast/js/script-tests/dfg-make-rope-all-empty-strings.js: Added.
+        (foo):
+        (bar):
+
+2013-07-16  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed rebaseline test added in r152612 for Apple Windows port.
+
+        * platform/win/editing/caret: Added.
+        * platform/win/editing/caret/caret-color-expected.txt: Added.
+
+2013-07-16  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed rebaselines, AppleWin port.
+
+        * platform/win/fast/js/global-constructors-attributes-dedicated-worker-expected.txt:
+        * platform/win/fast/js/global-constructors-attributes-shared-worker-expected.txt:
+
+2013-07-16  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Adjust test and update results for AppleWin port after r151868.
+
+        * platform/win/accessibility/multiple-select-element-role-expected.txt:
+        * platform/win/accessibility/multiple-select-element-role.html:
+
+2013-07-16  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed rebaselines, AppleWin port.
+
+        * platform/win/fast/js/global-constructors-attributes-dedicated-worker-expected.txt: Added.
+        * platform/win/fast/js/global-constructors-attributes-shared-worker-expected.txt: Added.
+
+2013-07-16  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed gardening. -webkit-user-select: all not supported on AppleWin port.
+        https://bugs.webkit.org/show_bug.cgi?id=118740
+
+        * platform/win/TestExpectations:
+
+2013-07-16  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. Update test expectations after r152701
+        https://bugs.webkit.org/show_bug.cgi?id=118731
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Skip failing tests after r152701.
+
+2013-07-16  Eric Carlson  <eric.carlson@apple.com>
+
+        HTMLMediaElement should not add cues for disabled text tracks
+        https://bugs.webkit.org/show_bug.cgi?id=118682
+
+        Merge https://src.chromium.org/viewvc/blink?view=rev&revision=153810
+
+        Reviewed by Ryosuke Niwa.
+
+        * media/track/track-disabled-addcue-expected.txt: Added.
+        * media/track/track-disabled-addcue.html: Added.
+        * media/track/track-disabled-expected.txt: Added.
+        * media/track/track-disabled.html: Added.
+
+2013-07-16  Anton Obzhirov  <a.obzhirov@samsung.com>
+
+        [GTK] fast/events/platform-wheelevent-with-delta-zero-crash.html is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=110222
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * platform/gtk/TestExpectations:
+
+2013-07-16  Krzysztof Czech  <k.czech@ymail.com>
+
+        [ATK] Adds support for aria-haspopup property.
+        https://bugs.webkit.org/show_bug.cgi?id=117834
+
+        Reviewed by Christophe Dumez.
+
+        Moving accessibility tests related to aria-haspopup property.
+
+        * accessibility/element-haspopup-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/element-haspopup-expected.txt.
+        * accessibility/element-haspopup.html: Renamed from LayoutTests/platform/mac/accessibility/element-haspopup.html.
+        * accessibility/popup-button-title-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/popup-button-title-expected.txt.
+        * accessibility/popup-button-title.html: Renamed from LayoutTests/platform/mac/accessibility/popup-button-title.html.
+
+2013-07-16  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt]Unreviewed gardening. New baseline and skip failing tests.
+
+        * platform/qt-5.0-wk1/TestExpectations:
+        * platform/qt-5.0-wk1/http/tests/security/contentSecurityPolicy/object-src-none-allowed-expected.txt: Added.
+        * platform/qt/TestExpectations:
+        * platform/qt/editing/caret/caret-color-expected.png: Added.
+        * platform/qt/editing/caret/caret-color-expected.txt: Added.
+        * platform/qt/http/tests/security/contentSecurityPolicy/object-src-none-blocked-expected.txt: Added.
+
+2013-07-15  Yuta Kitamura  <yutak@chromium.org>
+
+        NULL ptr in WebCore::Range::processAncestorsAndTheirSiblings
+        https://bugs.webkit.org/show_bug.cgi?id=77614
+
+        Reviewed by Ryosuke Niwa.
+
+        This change is ported from Blink revision 153483:
+        https://src.chromium.org/viewvc/blink?revision=153483&view=revision
+
+        * fast/dom/Range/detach-range-during-deletecontents-expected.txt: Added.
+        * fast/dom/Range/detach-range-during-deletecontents.html: Added.
+        * fast/dom/Range/resources/detach-range-during-deletecontents-iframe.xhtml: Added.
+
+2013-07-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Input element that becomes visible during a simulated click event from an associated label element doesn't get focused
+        https://bugs.webkit.org/show_bug.cgi?id=118700
+
+        Reviewed by Kent Tamura.
+
+        Add a regression test.
+
+        * fast/forms/label/label-becomes-visible-while-clicking-on-label-expected.txt: Added.
+        * fast/forms/label/label-becomes-visible-while-clicking-on-label.html: Added.
+
+2013-07-15  Tim Horton  <timothy_horton@apple.com>
+
+        Unreviewed rebaselines after r152701.
+
+        * editing/pasteboard/paste-noplugin-expected.txt:
+        * http/tests/security/contentSecurityPolicy/object-src-url-blocked-expected.txt:
+        * platform/mac/accessibility/plugin-expected.txt:
+
+2013-07-15  Chris Rogers  <crogers@google.com>
+
+        Add support for WaveShaperNode.oversample
+        https://bugs.webkit.org/show_bug.cgi?id=117435
+
+        Reviewed by Kenneth Russell.
+
+        * webaudio/resources/waveshaper-testing.js: Added.
+        (T0):
+        (T1):
+        (T2):
+        (T3):
+        (T4):
+        (generateWaveShapingCurve):
+        (checkShapedCurve):
+        (createImpulseBuffer):
+        (runWaveShaperOversamplingTest):
+        * webaudio/waveshaper-oversample-2x-expected.txt: Added.
+        * webaudio/waveshaper-oversample-2x.html: Added.
+        * webaudio/waveshaper-oversample-4x-expected.txt: Added.
+        * webaudio/waveshaper-oversample-4x.html: Added.
+
+2013-07-15  Jeffrey Pfau  <jpfau@apple.com>
+
+        Mark svg/custom/xlink-prefix-in-attributes.html as failing on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=118701
+
+        Unreviewed, changing test expectations
+
+        * platform/mac/TestExpectations:
+
+2013-07-15  Rob Buis  <rwlbuis@webkit.org>
+
+        XMLSerializer doesn't include namespaces on nodes in HTML documents
+        https://bugs.webkit.org/show_bug.cgi?id=16496
+
+        Reviewed by Ryosuke Niwa.
+
+        The updated tests are progressions and match FF.
+
+        * fast/dom/Element/getAttribute-check-case-sensitivity-expected.txt:
+        * fast/dom/Element/script-tests/getAttribute-check-case-sensitivity.js:
+        * fast/dom/XMLSerializer-xml-namespace-expected.txt:
+        * fast/dom/dom-serialize-namespace-expected.txt: Added.
+        * fast/dom/dom-serialize-namespace.html: Added.
+        * fast/xsl/xslt-processor-expected.txt:
+        * inspector/elements/set-outer-html-expected.txt:
+        * svg/custom/xlink-prefix-in-attributes-expected.txt:
+
+2013-07-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        compositionstart event should contain the text to be replaced
+        https://bugs.webkit.org/show_bug.cgi?id=118684
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a test case.
+
+        * fast/events/ime-composition-events-001-expected.txt:
+        * fast/events/ime-composition-events-001.html:
+
+2013-07-15  Antoine Quint  <graouts@apple.com>
+
+        Text with "text-overflow:ellipsis" and an SVG font do not render correctly
+        https://bugs.webkit.org/show_bug.cgi?id=118669
+
+        Reviewed by David Kilzer.
+
+        * platform/mac/svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures-expected.png: Added.
+        * platform/mac/svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures-expected.txt: Added.
+        * svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures.html: Added.
+
+2013-07-14  Jon Lee  <jonlee@apple.com>
+
+        [WK2] Calling Notification.requestPermission() without a callback crashes
+        https://bugs.webkit.org/show_bug.cgi?id=118654
+        <rdar://problem/14293352>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/notifications/notification-request-permission-expected.txt:
+        * http/tests/notifications/notification-request-permission.html: Add additional subtests that check
+        that the call succeeds even after granting or denying permission.
+
+        * http/tests/notifications/notification-request-permission-no-callback-expected.txt: Added.
+        * http/tests/notifications/notification-request-permission-no-callback.html: Added. Similar test to
+        notification-request-permission, without the callback function.
+
+2013-07-15  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        [Qt][WK2] Unreviewed cleanup for pixel tester bot.
+
+        * platform/qt-5.0-wk2/TestExpectations:
+        * platform/qt-5.0-wk2/editing/deleting/delete-image-002-expected.png:
+        * platform/qt-5.0-wk2/editing/selection/move-by-character-004-expected.png:
+        * platform/qt-5.0-wk2/fast/canvas/setWidthResetAfterForcedRender-expected.png:
+
+2013-07-15  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        [Qt][WK2] Unreviewed gardening. Skipping bad pixel results.
+
+        * platform/qt-5.0-wk2/TestExpectations:
+
+2013-07-15  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        [Qt][WK2] Unreviewed gardening. Skipping bad pixel results.
+
+        * platform/qt-5.0-wk2/TestExpectations:
+
+2013-07-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        apply-style-command-crash.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=118634
+
+        Reviewed by Andreas Kling.
+        
+        Merge https://chromium.googlesource.com/chromium/blink/+/a30dad44ded92d24ed56761434cf6041688659a0.
+
+        Also replace CRLF to LF and get rid of svn:executable.
+
+        * editing/execCommand/apply-style-command-crash.html:
+
+2013-07-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        apply-style-command-crash.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=118634
+
+        Reviewed by Andreas Kling.
+        
+        Merge https://chromium.googlesource.com/chromium/blink/+/a30dad44ded92d24ed56761434cf6041688659a0.
+
+        * editing/execCommand/apply-style-command-crash.html:
+
+2013-07-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        apply-style-command-crash.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=118634
+
+        Reviewed by Andreas Kling.
+        
+        Merge https://chromium.googlesource.com/chromium/blink/+/a30dad44ded92d24ed56761434cf6041688659a0.
+
+        * editing/execCommand/apply-style-command-crash.html:
+
+2013-07-13  Joone Hur  <joone.hur@intel.com>
+
+        Caret should respect text background color
+        https://bugs.webkit.org/show_bug.cgi?id=117493
+
+        Reviewed by Ryosuke Niwa.
+
+        This tests to make sure that the caret is visible in the black background 
+        by getting the caret color from the color of the element(span) containing 
+        the text, not the parent element(div) that has the contentEditable
+        attribute.
+
+        * editing/caret/caret-color-expected.txt: Added.
+        * editing/caret/caret-color.html: Added.
+        * platform/efl/editing/caret/caret-color-expected.png: Added.
+        * platform/mac/TestExpectations: Skip this test case.
+
+2013-07-12  Chris Curtis  <chris_curtis@apple.com>
+
+        By optimizing when the stack is added a two tests needed to be modifed to show correct results.
+        https://bugs.webkit.org/show_bug.cgi?id=118328
+
+        Reviewed by Geoffrey Garen.
+
+        * inspector/console/console-exception-stack-traces.html: This test compares the console's currect 
+        stack with the error object's stack. The test was failing on decodeURI() and eval() which create 
+        a new frame on the stack to execute. The console's stack was unaware of these calls and the size 
+        of the stacks would not match. I added a check to pass if it was the specific case with decodeURI
+        or eval.
+
+2013-07-12  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skipping new failing test on Qt.
+        https://bugs.webkit.org/show_bug.cgi?id=118595
+
+        * platform/qt/TestExpectations:
+
+2013-07-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed typo fix.
+
+        * fast/css-grid-layout/grid-element-change-columns-repaint-expected.txt:
+        * fast/css-grid-layout/grid-element-change-columns-repaint.html:
+        * platform/qt-5.0-wk2/fast/css-grid-layout/grid-element-change-columns-repaint-expected.txt:
+
+2013-07-11  Roger Fong  <roger_fong@apple.com>
+
+        Replace simple_blank.swf with lines.swf for snapshotting tests.
+        https://bugs.webkit.org/show_bug.cgi?id=118581.
+
+        Reviewed by Tim Horton.
+
+        * plugins/resources/lines.swf: Added.
+        * plugins/snapshotting/autoplay-dominant.html:
+        * plugins/snapshotting/autoplay-similar-to-dominant-after-delay.html:
+        * plugins/snapshotting/autoplay-similar-to-dominant.html:
+        * plugins/snapshotting/plugin-receives-click-event.html:
+        * plugins/snapshotting/restart.html:
+        * plugins/snapshotting/simple.html:
+
+2013-07-10  Roger Fong  <roger_fong@apple.com>
+
+        Plugins that don't support snapshotting should not all autostart.
+        https://bugs.webkit.org/show_bug.cgi?id=118572
+        <rdar://problem/14324391>.
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac-wk2/plugins/snapshotting/quicktime-plugin-snapshotted-expected.txt: Added.
+        * plugins/snapshotting/quicktime-plugin-snapshotted.html: Added.
+
+2013-07-11  Mario Sanchez Prada  <mario@webkit.org>
+
+        [GTK] Unreviewed gardening. Added expected failures after r152574.
+
+        * platform/gtk/TestExpectations: Added test failures.
+
+2013-07-11  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Layout Test accessibility/deleting-iframe-destroys-axcache.html, platform/gtk/accessibility/replaced-objects-in-anonymous-blocks.html are failing
+        https://bugs.webkit.org/show_bug.cgi?id=118552
+
+        Reviewed by Chris Fleizach.
+
+        Remove tests that are no longer expected to crash.
+
+        * platform/gtk/TestExpectations: Removed tests.
+
+2013-07-10  Oliver Hunt  <oliver@apple.com>
+
+        NativeExecutable cache needs to use both call and construct functions for key
+        https://bugs.webkit.org/show_bug.cgi?id=118545
+
+        Reviewed by Geoffrey Garen.
+
+        Make sure we don't decide that all bound functions aren't constructors.
+
+        * fast/js/function-bind-expected.txt:
+        * fast/js/script-tests/function-bind.js:
+
+2013-07-11  Andrei Bucur  <abucur@adobe.com>
+
+        [CSS Regions] In a region chain with auto-height regions, lines get their length based only on the first region
+        https://bugs.webkit.org/show_bug.cgi?id=118531
+
+        Reviewed by Alexandru Chiculita.
+
+        Add tests verifying the lines widths are correctly computed in auto-height regions with and without a max-height set.
+
+        * fast/regions/autoheight-correct-region-for-lines-2-expected.html: Added.
+        * fast/regions/autoheight-correct-region-for-lines-2.html: Added.
+        * fast/regions/autoheight-correct-region-for-lines-expected.html: Added.
+        * fast/regions/autoheight-correct-region-for-lines.html: Added.
+
+2013-07-11  Radu Stavila  <stavila@adobe.com>
+
+        NamedFlowCollection getters should follow the same pattern as HTMLCollection
+        https://bugs.webkit.org/show_bug.cgi?id=118561
+
+        Reviewed by Christophe Dumez.
+
+        Updated test for NamedFlowCollection getters when no named flows are created.
+
+        * fast/regions/webkit-named-flow-collection-empty-getters-expected.txt: Renamed from LayoutTests/fast/regions/webkit-named-flow-collection-undefined-expected.txt.
+        * fast/regions/webkit-named-flow-collection-empty-getters.html: Renamed from LayoutTests/fast/regions/webkit-named-flow-collection-undefined.html.
+
+2013-07-11  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Unreviewed gardening. Added crash expectations in debug builds after r152537
+
+        * platform/gtk/TestExpectations: Added two crashing tests.
+
+2013-07-10  Sam Weinig  <sam@webkit.org>
+
+        Range.getClientRects() not working correctly for partially contained vertically styled text nodes
+        <rdar://problem/14305675>
+        https://bugs.webkit.org/show_bug.cgi?id=118447
+
+        Reviewed by David Hyatt.
+
+        * fast/dom/Range/getClientRects-vertical-expected.txt: Added.
+        * fast/dom/Range/getClientRects-vertical.html: Added.
+
+2013-07-10  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] every enabled text track should be listed in the track menu
+        https://bugs.webkit.org/show_bug.cgi?id=118477
+
+        Reviewed by Jer Noble.
+
+        * media/trackmenu-test.js: Add some new utility functions.
+
+        * media/video-controls-captions-trackmenu-includes-enabled-track-expected.txt: Added.
+        * media/video-controls-captions-trackmenu-includes-enabled-track.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/qt/TestExpectations:
+        * platform/win/TestExpectations:
+
+2013-07-10  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Remove ElementTimeControl and expose SVGAnimationElement
+        https://bugs.webkit.org/show_bug.cgi?id=118349
+
+        Reviewed by Rob Buis.
+
+        Rebaseline several test cases now that SVGAnimationElement is exposed
+        on the global Window object.
+
+        * fast/js/global-constructors-attributes-expected.txt:
+        * platform/efl/fast/js/global-constructors-attributes-expected.txt:
+        * platform/gtk/fast/js/global-constructors-attributes-expected.txt:
+        * platform/mac-lion/fast/js/global-constructors-attributes-expected.txt:
+        * platform/qt/fast/js/global-constructors-attributes-expected.txt:
+        * svg/custom/global-constructors-expected.txt:
+
+2013-07-09  Roger Fong  <roger_fong@apple.com>
+
+        HTMLPluginElement's state should be Playing before firing mouse click event.
+        https://bugs.webkit.org/show_bug.cgi?id=118398.
+        <rdar://problem/14262126>
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac-wk2/plugins/snapshotting/plugin-receives-click-event-expected.txt: Added.
+        * plugins/snapshotting/plugin-receives-click-event.html: Added.
+
+2013-07-10  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        AX: Allow requesting the full plain text for an object with textUnderElement()
+        https://bugs.webkit.org/show_bug.cgi?id=105214
+
+        Reviewed by Chris Fleizach.
+
+        Removed tests that are not longer expected to fail.
+
+        * platform/gtk/TestExpectations: Removed tests.
+
+2013-07-10  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. Update new baselines after r152494 and r152478
+        https://bugs.webkit.org/show_bug.cgi?id=118527
+
+        Unreviewed GTK gardening
+
+        * platform/gtk/editing/deleting/delete-br-002-expected.txt: Updated after r152478.
+        * platform/gtk/editing/execCommand/outdent-blockquote-test1-expected.txt: Removed to pick general one after r152494.
+        * platform/gtk/editing/execCommand/outdent-blockquote-test2-expected.txt: Ditto.
+        * platform/gtk/editing/execCommand/outdent-blockquote-test3-expected.txt: Ditto.
+        * platform/gtk/editing/execCommand/outdent-blockquote-test4-expected.txt: Ditto.
+        * platform/gtk/fast/events/remove-target-with-shadow-in-drag-expected.txt: Updated after r152494.
+        * platform/gtk/http/tests/w3c/webperf/approved/navigation-timing/html/test_timing_xserver_redirect-expected.txt: Updated after r152494.
+
+2013-07-10  James Craig  <james@cookiecrook.com>
+
+        AX: AccessibilityNodeObject::supportsRequiredAttribute() should switch on CellRole
+        https://bugs.webkit.org/show_bug.cgi?id=117817
+
+        Reviewed by Chris Fleizach.
+
+        CellRole supports the required attribute now for accessibility, according to ARIA spec.
+
+        * platform/mac/accessibility/table-attributes-expected.txt:
+        * platform/mac/accessibility/table-cell-spans-expected.txt:
+        * platform/mac/accessibility/table-cells-expected.txt:
+        * platform/mac/accessibility/table-sections-expected.txt:
+
+2013-07-10  Ádám Kallai  <kadam@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening.
+        Remove platform specific expetations after r152494 because the generic is good for Qt.
+
+        * platform/qt/editing/execCommand/outdent-blockquote-test1-expected.txt: Removed after r152494.
+        * platform/qt/editing/execCommand/outdent-blockquote-test2-expected.txt: Removed after r152494.
+        * platform/qt/editing/execCommand/outdent-blockquote-test3-expected.txt: Removed after r152494.
+        * platform/qt/editing/execCommand/outdent-blockquote-test4-expected.txt: Removed after r152494.
+
+2013-07-09  James Craig  <james@cookiecrook.com>
+
+        @readonly and @aria-readonly="false" are not exposed correctly to accessibility
+        https://bugs.webkit.org/show_bug.cgi?id=118475
+
+        Reviewed by Chris Fleizach.
+
+        Updated existing test to account for implicit and explicit @readonly/@aria-readonly mismatches. 
+
+        * accessibility/aria-readonly-expected.txt:
+        * accessibility/aria-readonly.html:
+
+2013-07-09  Mark Lam  <mark.lam@apple.com>
+
+        Fix 30% JSBench regression (caused by adding column numbers to stack traces).
+        https://bugs.webkit.org/show_bug.cgi?id=118481.
+
+        Reviewed by Mark Hahnenberg and Geoffrey Garen.
+
+        The fix now computes line and column numbers more accurately. As a result,
+        some of the test results need to be re-baselined. Among other fixes, one
+        major source of difference is that the old code was incorrectly computing
+        0-based column numbers. This has now been fixed to be 1-based.
+        Note: line numbers were always 1-based.
+
+        Also added a new test: fast/js/line-column-numbers.html, which tests line
+        and column numbers for source code in various configurations.
+
+        * editing/execCommand/outdent-blockquote-test1-expected.txt:
+        * editing/execCommand/outdent-blockquote-test2-expected.txt:
+        * editing/execCommand/outdent-blockquote-test3-expected.txt:
+        * editing/execCommand/outdent-blockquote-test4-expected.txt:
+        * editing/pasteboard/copy-paste-float-expected.txt:
+        * editing/pasteboard/paste-blockquote-before-blockquote-expected.txt:
+        * editing/pasteboard/paste-double-nested-blockquote-before-blockquote-expected.txt:
+        * fast/dom/Window/window-resize-contents-expected.txt:
+        * fast/events/remove-target-with-shadow-in-drag-expected.txt:
+        * fast/js/line-column-numbers-expected.txt: Added.
+        * fast/js/line-column-numbers.html: Added.
+        * fast/js/script-tests/line-column-numbers.js: Added.
+        (try.doThrow4b):
+        (doThrow5b.try.innerFunc):
+        (doThrow5b):
+        (doThrow6b.try.innerFunc):
+        (doThrow6b):
+        (catch):
+        (try.doThrow11b):
+        (try.doThrow14b):
+        * fast/js/stack-trace-expected.txt:
+        * inspector/console/console-url-line-column-expected.txt:
+
+2013-07-09  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening.
+
+        * platform/qt-mac/TestExpectations: Skip failing test after r151546.
+
+2013-07-09  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening.
+
+        * platform/qt-5.0-wk2/TestExpectations: Skip flaky svg tests.
+        * platform/qt-mac/TestExpectations: Skip failing CSS Shape tests.
+
+2013-07-09  Praveen R Jadhav  <praveen.j@samsung.com>
+
+        Update Exception handling in WebAudio.
+        https://bugs.webkit.org/show_bug.cgi?id=118405.
+
+        Reviewed by Chris Rogers.
+
+        New test cases to check exception handling in AnalyserNode and
+        AudioBufferSourceNode.
+
+        * webaudio/analyser-exception-expected.txt: Added.
+        * webaudio/analyser-exception.html: Added.
+        * webaudio/audiobuffersource-exception-expected.txt: Added.
+        * webaudio/audiobuffersource-exception.html: Added.
+
+2013-07-09  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Rebaselining after r152479.
+
+        * platform/qt-5.0-wk2/fast/css-grid-layout/grid-element-change-columns-repaint-expected.txt:
+        * platform/qt-5.0-wk2/fast/css-grid-layout/grid-element-change-rows-repaint-expected.txt:
+
+2013-07-09  Ádám Kallai  <kadam@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening.
+
+        * platform/qt/TestExpectations: Skip failing composting test after r152303.
+        * platform/qt/editing/deleting/delete-br-002-expected.png: Update after r152478.
+        * platform/qt/editing/deleting/delete-br-002-expected.txt: Update after r152478.
+
+2013-07-08  Martin Robinson  <mrobinson@igalia.com>
+
+        [CSS Grid Layout] Rename grid-{rows|columns} to grid-definition-{rows|columns}
+        https://bugs.webkit.org/show_bug.cgi?id=103336
+
+        Reviewed by Tony Chang.
+
+        Update tests to reflect the rename of -webkit-grid-{rows|columns} to
+        -webkit-grid-definition-{rows|columns}.
+
+        * fast/css-grid-layout: Mass search and replace for the new name.
+
+2013-07-08  Enrica Casucci  <enrica@apple.com>
+
+        DeleteSelectionCommand does not handle correctly deletion with two consecutive BR element.
+        https://bugs.webkit.org/show_bug.cgi?id=118457
+        <rdar://problem/14160912>
+
+        Reviewed by Simon Fraser.
+
+        * editing/deleting/delete-image-followed-by-two-br-expected.txt: Added.
+        * editing/deleting/delete-image-followed-by-two-br.html: Added.
+        * platform/mac/editing/deleting/delete-br-002-expected.txt: Rebased.
+
+2013-07-08  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Multiple compositing/patterns test fail
+        https://bugs.webkit.org/show_bug.cgi?id=118490
+
+        * platform/mac/TestExpectations: The failures appear to be WK2 only in my testing,
+        so moved the expectations to mac-wk2.
+
+        * platform/mac-wk2/TestExpectations: Updated bug numbers.
+
+2013-07-08  Radu Stavila  <stavila@adobe.com>
+
+        NamedFlowCollection getters should return undefined when there's no NamedFlow
+        https://bugs.webkit.org/show_bug.cgi?id=118463
+
+        Reviewed by Christophe Dumez.
+
+        Added test that validates that NamedFlowCollection getters return undefined
+        when no named flows exist.
+
+        * fast/regions/webkit-named-flow-collection-undefined-expected.txt: Added.
+        * fast/regions/webkit-named-flow-collection-undefined.html: Added.
+
+2013-07-08  David Farler  <dfarler@apple.com>
+
+        fast/repaint/fixed-right-in-page-scale.html also crashing on Mountain Lion.
+        https://bugs.webkit.org/show_bug.cgi?id=118479
+
+        Moved expectation to higher-level mac and marked as [ Pass Crash ].
+        * platform/mac-lion/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2013-07-08  David Farler  <dfarler@apple.com>
+
+        Mark fast/text/international/synthesized-italic-vertical-latin.html as failing on Lion.
+        https://bugs.webkit.org/show_bug.cgi?id=118480
+
+        Unreviewed TestExpectation change.
+
+        * platform/mac-lion/TestExpectations:
+        Mark fast/text/international/synthesized-italic-vertical-latin.html as Failure.
+
+2013-07-08  David Farler  <dfarler@apple.com>
+
+        Skip fast/repaint/fixed-right-in-page-scale.html on Lion.
+        https://bugs.webkit.org/show_bug.cgi?id=118479
+
+        Unreviewed: test marked as crashing.
+
+        * platform/mac-lion/TestExpectations:
+        Skip fast/repaint/fixed-right-in-page-scale.html.
+
+2013-07-08  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r125294): A style rule with more than 8192 selectors can cause style corruption.
+        <http://webkit.org/b/118369>
+        <rdar://problem/14291428>
+
+        Reviewed by Antti Koivisto.
+
+        Added a test to document the new cap of 8192 selectors per CSS rule.
+
+        * fast/css/rule-selector-overflow-expected.txt: Added.
+        * fast/css/rule-selector-overflow.html: Added.
+
+2013-07-08  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. Update TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=118462
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Skip media/track/track-legacyapi-with-automatic-mode.html
+        and mark media/media-element-play-after-eos.html as flaky.
+
+2013-07-08  Krzysztof Czech  <k.czech@ymail.com>
+
+        Unreviewed EFL gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=118453
+
+        Added new baseline for EFL after r151841
+
+        * platform/efl/accessibility/aria-tab-role-on-buttons-expected.txt: Added.
+
+2013-07-08  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        vibrate function have to return boolean value.
+        https://bugs.webkit.org/show_bug.cgi?id=118288
+
+        Reviewed by Gyuyoung Kim.
+
+        Update navigator-vibration.html to adjust latest spec.
+        Add vibration/cancelVibration-during-pattern-vibrating.html to TestExpactations
+        until Vibration API support visibilitychane event.
+
+        * platform/efl/TestExpectations:
+        * vibration/navigator-vibration-expected.txt:
+        * vibration/navigator-vibration.html:
+
+2013-07-06  Rob Buis  <rbuis@rim.com>
+
+        createElement("image") creates an HTMLImageElement, although this hack should exist in parser only
+        https://bugs.webkit.org/show_bug.cgi?id=88360
+
+        Reviewed by Sam Weinig.
+
+        Update tests to reflect new behavior. This matches FireFox and Opera 12.
+
+        * fast/canvas/webgl/context-lost.html:
+        * fast/dom/prefixed-image-tag-expected.txt:
+        * fast/dom/prefixed-image-tag.xhtml:
+        * fast/dom/wrapper-classes-expected.txt:
+        * fast/dom/wrapper-classes.html:
+        * platform/mac/fast/dom/wrapper-classes-objc-expected.txt:
+        * platform/mac/fast/dom/wrapper-classes-objc.html:
+
+2013-07-05  Zalan Bujtas  <zalan@apple.com>
+
+        iframe constrained by max-width in full screen
+        https://bugs.webkit.org/show_bug.cgi?id=118250
+
+        Reviewed by Antti Koivisto.
+
+        Ensure that contents inside iframe can go full screen properly.
+
+        Set max-width and max-height values to the default 'none', so that iframes are not
+        constrained when entering full screen.
+
+        * fullscreen/full-screen-iframe-with-max-width-height-expected.txt: Added.
+        * fullscreen/full-screen-iframe-with-max-width-height.html: Added.
+
+2013-07-05  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] .webkitClosedCaptionsVisible doesn't work with "Automatic" caption mode
+        https://bugs.webkit.org/show_bug.cgi?id=118319
+
+        Reviewed by Jer Noble.
+
+        * media/track/track-legacyapi-with-automatic-mode-expected.txt: Added.
+        * media/track/track-legacyapi-with-automatic-mode.html: Added.
+
+2013-07-05  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed gardening. Updated TestExpectations file.
+
+        Added accessibility/listitem-list.html to the list of expected
+        failures, which will get fixed once bug 105214 is fixed.
+
+        * platform/gtk/TestExpectations: Added new test.
+
+2013-07-05  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Update TestExpectations with crashing and failing tests
+        https://bugs.webkit.org/show_bug.cgi?id=118424
+
+        Unreviewed GTK gardening.
+
+        Updated TestExpectations with tests crashing and failing.
+
+        * platform/gtk/TestExpectations:
+
+2013-07-05  Mihai Maerean  <mmaerean@adobe.com>
+
+        [New multicol] Change test to follow the pattern of the other tests
+        https://bugs.webkit.org/show_bug.cgi?id=117698
+
+        Reviewed by Andreas Kling.
+
+        Test is a ref test against the old multicol code, like all the other tests in LayoutTests/fast/multicol/newmulticol/
+        This is a follow up of bug 116614, testing that flow threads don't end up being cloned in region based multi
+        columns with columns:1 where the only child has column-span:all.
+
+        * fast/multicol/newmulticol/direct-child-column-span-all-expected.html: Added.
+        * fast/multicol/newmulticol/direct-child-column-span-all-expected.txt: Removed.
+        * fast/multicol/newmulticol/direct-child-column-span-all.html:
+
+2013-07-05  Denis Nomiyama  <d.nomiyama@samsung.com>
+
+        [GTK] fast/text/font-kerning.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=76048
+
+        Reviewed by Martin Robinson.
+
+        Added kerning to the list of features for hb_shade() according to FontDescription::kerning().
+        Removed font-kerning.html from gtk/TestExpectations, which was failing before this fix.
+
+        * platform/gtk/TestExpectations:
+
+2013-07-04  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Have SVGTextContentElement inherit SVGGraphicsElement
+        https://bugs.webkit.org/show_bug.cgi?id=118351
+
+        Reviewed by Dirk Schulze.
+
+        Fix conversion to absolute (user agent) coordinates in the svg/text
+        tests to use SVGGraphicsElement::getScreenCTM() instead of
+        SVGGraphicsElement::getTransformToElement(). The previous code was
+        working until now due to a bug in getTransformToElement(), which
+        was not taking into consideration the CTM of the SVGTextElement (as
+        it was not recognized as a "locatable" element). Now that
+        SVGTextElement inherits from SVGGraphicsElement, it is properly
+        recognized as a "locatable" element by getTransformToElement().
+
+        * svg/text/resources/SelectionTestCase.js:
+        (toAbsoluteCoordinates):
+        * svg/text/selection-doubleclick.svg:
+
+2013-07-04  KyungTae Kim  <ktf.kim@samsung.com>
+
+        [EFL] Gardening. Unskip tests related with editing
+        https://bugs.webkit.org/show_bug.cgi?id=118379
+
+        Unreviewed gardening.
+
+        * platform/efl-wk2/TestExpectations:
+          Unskip editing/selection/doubleclick-beside-cr-span.html and
+          editing/selection/doubleclick-whitespace.html, which are passed after r150289
+        * platform/efl/editing/style/5065910-expected.txt: Removed (wrong expected result).
+        * platform/efl/editing/style/5065910-expected.png: Removed (wrong expected result).
+
+2013-07-04  Balazs Kelemen  <b.kelemen@samsung.com>
+
+        [GStreamer] support preload="metadata"
+        https://bugs.webkit.org/show_bug.cgi?id=116817
+
+        Reviewed by Eric Carlson.
+
+        * media/video-load-preload-metadata.html: Added.
+
+2013-07-03  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Items the img aria role aren't inserting an object replacement character
+        https://bugs.webkit.org/show_bug.cgi?id=118259
+
+        Reviewed by Reviewed by Tim Horton.
+
+        * accessibility/non-native-image-crash-expected.txt:
+        * platform/mac/accessibility/aria-image-emits-object-replacement-expected.txt: Added.
+        * platform/mac/accessibility/aria-image-emits-object-replacement.html: Added.
+        * platform/mac/accessibility/img-fallsback-to-title-expected.txt:
+             Update expected tests where role="img" now emits replacement character.
+
+2013-07-03  Simon Pena  <simon.pena@samsung.com>
+
+        WebTextCheckerClient doesn't initialize output arguments.
+        https://bugs.webkit.org/show_bug.cgi?id=83683
+
+        Reviewed by Martin Robinson.
+
+        Unskip editing/pasteboard/pasting-empty-html-falls-back-to-text.html, which no longer
+        crashes after the fix.
+
+        * platform/gtk-wk2/TestExpectations:
+
+2013-07-03  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skipping test to paint the debug bot green.
+
+        * platform/qt/TestExpectations:
+
+2013-07-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r152318.
+        http://trac.webkit.org/changeset/152318
+        https://bugs.webkit.org/show_bug.cgi?id=118333
+
+        This patch broke media/track/track-automatic-subtitles.html on
+        Mac (Requested by dfarler on #webkit).
+
+        * media/track/track-legacyapi-with-automatic-mode-expected.txt: Removed.
+        * media/track/track-legacyapi-with-automatic-mode.html: Removed.
+
+2013-07-02  Ruth Fong  <ruth_fong@apple.com>
+
+        Change event should not be dispatched by clicking a scrollbar of select listbox
+        https://bugs.webkit.org/show_bug.cgi?id=118019
+        <rdar://problem/14297760>
+
+        Reviewed by Dean Jackson.
+
+        Merge the following:
+        http://src.chromium.org/viewvc/blink?view=revision&revision=151689
+        https://chromium.googlesource.com/chromium/blink/+/492549b0fcaa58a85aa0797446b62985a263704f
+
+        * fast/forms/select/listbox-click-on-scrollbar-expected.txt: Added.
+        * fast/forms/select/listbox-click-on-scrollbar.html: Added.
+        Tests that an onChange() event is not fired when the scrollbar of a 
+        <select multiple> element is clicked.
+
+2013-07-02  David Farler  <dfarler@apple.com>
+
+        Unreviewed rebaseline of media/video-controls-captions-trackmenu-localized after r151697.
+
+        * platform/mac-lion/media/video-controls-captions-trackmenu-localized-expected.txt: Removed.
+        "Unknown SDH" -> "Unknown".
+
+2013-07-02  David Farler  <dfarler@apple.com>
+
+        Unreviewed rebaseline of Mac Lion fast/js/global-constructors-attributes after r151914.
+
+        * platform/mac-lion/fast/js/global-constructors-attributes-expected.txt:
+        WaveTable -> PeriodicWave
+
+2013-07-02  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Improve implementation of elements in region being flowed to another flow thread
+        https://bugs.webkit.org/show_bug.cgi?id=118300
+
+        Reviewed by David Hyatt.
+
+        * fast/regions/flow-body-in-html.html:
+        * fast/regions/region-content-flown-into-region-expected.html:
+        * fast/regions/region-content-flown-into-region.html:
+        * fast/regions/universal-selector-children-to-the-same-region.html:
+
+2013-07-02  David Farler  <dfarler@apple.com>
+
+        Skip cache partitioning tests on Lion.
+
+        Rubber stamped by Jeffrey Pfau.
+
+        * platform/mac-lion/TestExpectations:
+        http/tests/cache/partitioned-cache.html
+        http/tests/cache/partitioned-cache-iframe.html
+
+2013-07-02  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] .webkitClosedCaptionsVisible doesn't work with "Automatic" caption mode
+        https://bugs.webkit.org/show_bug.cgi?id=118319
+
+        Reviewed by Darin Adler.
+
+        * media/track/track-legacyapi-with-automatic-mode-expected.txt: Added.
+        * media/track/track-legacyapi-with-automatic-mode.html: Added.
+
+2013-06-26  Robert Hogan  <robert@webkit.org>
+
+        empty inlines should not affect line-wrapping
+        https://bugs.webkit.org/show_bug.cgi?id=25638
+
+        Reviewed by David Hyatt.
+
+        * fast/text/whitespace/inline-whitespace-wrapping-11-expected.html: Added.
+        * fast/text/whitespace/inline-whitespace-wrapping-11.html: Added.
+
+2013-07-02  Tim Horton  <timothy_horton@apple.com>
+
+        constrainScrollPositionForOverhang needs to handle scrollOrigin correctly
+        https://bugs.webkit.org/show_bug.cgi?id=118176
+        <rdar://problem/14301271>
+
+        Reviewed by Anders Carlsson.
+
+        Add a test that ensures that fixed position works with a scrollable document
+        and direction: rtl, which is one case where scrollOrigin is set.
+
+        Disable the test on Mac WebKit1 because of https://bugs.webkit.org/show_bug.cgi?id=118269.
+
+        * compositing/geometry/fixed-position-flipped-writing-mode-expected.txt: Added.
+        * compositing/geometry/fixed-position-flipped-writing-mode.html: Added.
+        * platform/mac/compositing/geometry/fixed-position-flipped-writing-mode-expected.png: Added.
+        * platform/mac/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2013-07-02  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed gardening. Added new common expectations for test after r151665.
+
+        * accessibility/box-styled-lists-expected.txt: Added shared expectation.
+        * platform/efl/TestExpectations: Removed failure expectation.
+        * platform/gtk/TestExpectations: Ditto.
+
+2013-07-02  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed gardening. Added new baselines for GTK after revision r151841 and r151868.
+
+        * accessibility/listitem-title-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/listitem-title-expected.txt.
+        * platform/gtk/accessibility/aria-tab-role-on-buttons-expected.txt: Added.
+
+2013-07-02  Mihai Tica  <mitica@adobe.com>
+
+        Unreviewed gardening. Rebaseline background blend mode default test result.
+
+        * platform/mac/css3/compositing/background-blend-mode-default-value-expected.png:
+
+2013-07-02  Andreas Kling  <akling@apple.com>
+
+        Skip fast/dom/timer-throttling-hidden-page.html after r152202.
+        <http://webkit.org/b/118301>
+
+        * TestExpectations:
+
+2013-07-02  Andreas Kling  <akling@apple.com>
+
+        Skip 3 MathML tests that are failing after r152235.
+        <http://webkit.org/b/118298>
+
+        * TestExpectations:
+
+2013-07-02  Catalin Badea  <badea@adobe.com>
+
+        [CSS-Regions] OverrideLogicalHeight used by both regions and flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=118057
+
+        Reviewed by David Hyatt.
+
+        Add test for auto-height regions and flexbox containers.
+
+        * fast/regions/autoheight-flexbox-expected.html: Added.
+        * fast/regions/autoheight-flexbox.html: Added.
+
+2013-07-01  Frédéric Wang  <fred.wang@free.fr>
+
+        Add Support for mspace element
+        https://bugs.webkit.org/show_bug.cgi?id=115610
+
+        Reviewed by Chris Fleizach.
+
+        Add a reftest for the mspace element (width, height and depth) and
+        the parsing of MathML lengths. Import a reftest from Gecko to check
+        positive namedspace values.
+
+        * mathml/presentation/mspace-expected.html: Added.
+        * mathml/presentation/mspace-units-expected.html: Added.
+        * mathml/presentation/mspace-units.html: Added.
+        * mathml/presentation/mspace.html: Added.
+        * mathml/presentation/positive-namedspace-expected.html: Added.
+        * mathml/presentation/positive-namedspace.html: Added.
+
+2013-07-01  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skipping unsupported tests.
+
+        * platform/qt/TestExpectations:
+
+2013-06-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening. Rebaselining whatever can be rebaselined and adding failure expectations for other current failures.
+
+        * platform/gtk-wk1/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/editing/selection/user-select-all-image-with-single-click-expected.txt: Added.
+        * platform/gtk/editing/selection/user-select-all-with-single-click-expected.txt: Added.
+        * platform/gtk/fast/events/ondragenter-expected.txt: Added.
+        * platform/gtk/fast/js/global-constructors-attributes-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug85016-expected.txt:
+
+2013-06-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        An element with -webkit-user-select: all should be selected on single click
+        https://bugs.webkit.org/show_bug.cgi?id=117864
+
+        Reviewed by Darin Adler.
+
+        Add tests for single clicking on an element with user-select: all.
+        We select the entire element regardless of whether the user had clicked on text or an image
+        to be consistent even though Firefox requires a double click on the latter case.
+
+        * editing/selection/user-select-all-with-image-single-click-expected.txt: Added.
+        * editing/selection/user-select-all-with-image-single-click.html: Added.
+        * editing/selection/user-select-all-with-single-click-expected.txt: Added.
+        * editing/selection/user-select-all-with-single-click.html: Added.
+
+2013-06-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        -webkit-line-break: after-white-space sometimes truncates DOM on copy & paste
+        https://bugs.webkit.org/show_bug.cgi?id=118164
+
+        Reviewed by Sam Weinig.
+
+        Add a regression test.
+
+        * editing/pasteboard/simplfiying-markup-should-not-strip-content-expected.txt: Added.
+        * editing/pasteboard/simplfiying-markup-should-not-strip-content.html: Added.
+
+2013-06-28  Jer Noble  <jer.noble@apple.com>
+
+        media/video-currentTime.html flakey
+        https://bugs.webkit.org/show_bug.cgi?id=118198
+
+        Reviewed by Jessie Berlin.
+
+        Update video-currentTime.html so that it listens for timeupdate events, and ends the test
+        after the first one with a >0 currentTime. Add a 3s watchdog for the failure case.
+
+        * media/video-currentTime-expected.txt:
+        * media/video-currentTime.html:
+
+2013-06-28  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Update TestExpectations so new Shapes tests are skipped where the old ones were
+        https://bugs.webkit.org/show_bug.cgi?id=118192
+
+        Reviewed by Brent Fulgham.
+
+        Shapes still aren't enabled on some ports, so skip the tests there.
+        As part of this patch, it was discovered that they work on EFL, so the
+        skipping has been removed from there.
+
+        * platform/efl/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2013-06-28  Morten Stenshorne  <mstensho@opera.com>
+
+        SVG relayout problem when displayed with different image box heights
+        https://bugs.webkit.org/show_bug.cgi?id=118140
+
+        Reviewed by Philip Rogers.
+
+        * svg/as-image/same-source-different-height-expected.html: Added.
+        * svg/as-image/same-source-different-height.html: Added.
+
+2013-06-28  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        accessibility/media-element.html does not support platforms without subroles
+        https://bugs.webkit.org/show_bug.cgi?id=118187
+
+        Reviewed by Chris Fleizach.
+
+        Update the test to be more friendly with platforms not supporting subroles.
+
+        * accessibility/media-element.html: Updated test.
+
+2013-06-28  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Introduce SVGGraphicsElement IDL interface
+        https://bugs.webkit.org/show_bug.cgi?id=118178
+
+        Reviewed by Kentaro Hara.
+
+        Rebaseline js/global-constructors-attributes.html test case now that
+        SVGGraphicsElement is exposed on the global Window object.
+
+        * fast/js/global-constructors-attributes-expected.txt:
+        * platform/efl/fast/js/global-constructors-attributes-expected.txt:
+        * platform/gtk/fast/js/global-constructors-attributes-expected.txt:
+        * platform/mac-lion/fast/js/global-constructors-attributes-expected.txt:
+        * platform/qt/fast/js/global-constructors-attributes-expected.txt:
+
+2013-06-28  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skipping failing tests, and mathml tests because not yet supported.
+
+        * platform/qt-5.0-wk2/TestExpectations:
+        * platform/qt/TestExpectations:
+
+2013-06-28  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Add new schemes to content utils.
+        https://bugs.webkit.org/show_bug.cgi?id=118181
+
+        Reviewed by Christophe Dumez.
+
+        Add new schemes as well as change SYNTAX_ERR, SECURITY_ERR.
+
+        * fast/dom/register-protocol-handler-expected.txt:
+        * fast/dom/register-protocol-handler.html:
+        * fast/dom/unregister-protocol-handler-expected.txt:
+        * fast/dom/unregister-protocol-handler.html:
+        * platform/efl/fast/dom/register-protocol-handler-expected.txt:
+        * platform/efl/fast/dom/unregister-protocol-handler-expected.txt:
+
+2013-06-28  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. Unskip and reorganize tests no longer failing in GTK-WK and GTK-WK2
+        https://bugs.webkit.org/show_bug.cgi?id=118180
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk-wk2/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2013-06-28  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL rebaseline.
+
+        SECURITY_ERR and SYNTAX_ERR have been changed with SecurityError and SyntaxError since r135162.
+
+        * platform/efl/fast/dom/register-protocol-handler-expected.txt:
+        * platform/efl/fast/dom/unregister-protocol-handler-expected.txt:
+
+2013-06-27  Frédéric Wang  <fred.wang@free.fr>
+
+        Implement parsing of MathML lengths.
+        https://bugs.webkit.org/show_bug.cgi?id=118053
+
+        Reviewed by Chris Fleizach.
+
+        Add some reftests for mfrac@linethickness. Better tests for the parsing
+        of MathML lengths will be provided when mspace is implemented
+        (bug 115610)
+
+        * mathml/presentation/mfrac-linethickness1-expected-mismatch.html: Added.
+        * mathml/presentation/mfrac-linethickness1.html: Added.
+        * mathml/presentation/mfrac-linethickness2-expected.html: Added.
+        * mathml/presentation/mfrac-linethickness2.html: Added.
+        * mathml/presentation/mfrac-linethickness3-expected-mismatch.html: Added.
+        * mathml/presentation/mfrac-linethickness3.html: Added.
+
+2013-06-27  Jessie Berlin  <jberlin@apple.com>
+
+        [Mac WK2] compositing/repaint/positioned-movement.html flaky, missing repaint
+        https://bugs.webkit.org/show_bug.cgi?id=118153
+
+        Update the expectation to reflect that the test is also flakey on release and other
+        platforms
+
+        * platform/mac-wk2/TestExpectations:
+
+2013-06-27  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] New positioning model: basic support for rectangle shape-outside
+        https://bugs.webkit.org/show_bug.cgi?id=118080
+
+        Reviewed by David Hyatt.
+
+        Added new tests for the new model. These tests are also spec tests, so
+        their canonical location is now in the CSS WG's repository. They have
+        been imported to WebKit using the import-w3c-tests script, and that's
+        why they live under the csswg directory.
+
+        The new tests replace the shape-outside-floats-simple-rectangle.html
+        test, which was anything but simple.
+
+        Tests that have not been rewritten yet have been marked as skipped.
+        Tests for the old positioning behavior that are not applicable to the
+        new behavior have been deleted.
+
+        * TestExpectations: Skip all the tests that need to be rewritten.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-000-expected.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-000.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-001-expected.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-001.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-002-expected.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-horizontal-rectangle-002.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-square-000-expected.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-square-000.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-000-expected.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-000.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-001-expected.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-001.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-002-expected.html: Added.
+        * csswg/submitted/shapes/shape-outside/shape-outside-floats-vertical-rectangle-002.html: Added.
+        * csswg/submitted/shapes/shape-outside/w3c-import.log: Added.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-margin-is-ignored-expected.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-margin-is-ignored.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-non-zero-y-expected.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-non-zero-y.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-overflow-hidden-expected.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-overflow-hidden.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-overhang-expected.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-overhang.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-positioning-expected.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-positioning.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-simple-rectangle-expected.html: Removed.
+        * fast/exclusions/shape-outside-floats/shape-outside-floats-simple-rectangle.html: Removed.
+
+2013-06-27  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: IOS: crash while navigating with SVG
+        https://bugs.webkit.org/show_bug.cgi?id=118101
+
+        Reviewed by Stephen Chenney.
+
+        * platform/iphone-simulator/accessibility/svg-path-crash-expected.txt: Added.
+        * platform/iphone-simulator/accessibility/svg-path-crash.html: Added.
+
+2013-06-27  Simon Pena  <simon.pena@samsung.com>
+
+        [GTK] Unreviewed gardening. Unskip tests no longer timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=118135
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk-wk1/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2013-06-27  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Remove [NoInterfaceObject] from WorkerGlobalScope
+        https://bugs.webkit.org/show_bug.cgi?id=118071
+
+        Reviewed by Kentaro Hara.
+
+        Split fast/js/global-constructors-attributes-worker.html test into 2 for both
+        shared and dedicated workers, as the output is now different.
+
+        * fast/js/global-constructors-attributes-dedicated-worker-expected.txt: Copied from LayoutTests/fast/js/global-constructors-attributes-worker-expected.txt.
+        * fast/js/global-constructors-attributes-dedicated-worker.html: Copied from LayoutTests/fast/js/global-constructors-attributes-worker.html.
+        * fast/js/global-constructors-attributes-shared-worker-expected.txt: Renamed from LayoutTests/fast/js/global-constructors-attributes-worker-expected.txt.
+        * fast/js/global-constructors-attributes-shared-worker.html: Renamed from LayoutTests/fast/js/global-constructors-attributes-worker.html.
+        * fast/js/script-tests/global-constructors-attributes.js:
+        (.self.postMessage):
+        (.self.onconnect.self.postMessage):
+        (.self.onconnect):
+        * platform/efl/fast/js/global-constructors-attributes-dedicated-worker-expected.txt: Copied from LayoutTests/platform/gtk/fast/js/global-constructors-attributes-worker-expected.txt.
+        * platform/efl/fast/js/global-constructors-attributes-shared-worker-expected.txt: Copied from LayoutTests/platform/gtk/fast/js/global-constructors-attributes-worker-expected.txt.
+        * platform/gtk/fast/js/global-constructors-attributes-dedicated-worker-expected.txt: Renamed from LayoutTests/platform/gtk/fast/js/global-constructors-attributes-worker-expected.txt.
+        * platform/gtk/fast/js/global-constructors-attributes-shared-worker-expected.txt: Renamed from LayoutTests/platform/efl/fast/js/global-constructors-attributes-worker-expected.txt.
+
+2013-06-27  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        [Qt] Unreviewed gardening
+        https://bugs.webkit.org/show_bug.cgi?id=118100
+
+        Unreviewed Qt gardening.
+
+        Moved hover-display-block-none.html from fast/regions to fast/css.
+
+        * platform/qt/TestExpectations:
+
+2013-06-27  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Rebase the previous test.
+
+        * platform/qt/tables/mozilla_expected_failures/bugs/bug85016-expected.txt:
+
+2013-06-27  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Rebase and skipping failing tests.
+
+        * platform/qt-5.0-wk1/TestExpectations:
+        * platform/qt/TestExpectations:
+        * platform/qt/tables/mozilla_expected_failures/bugs/bug85016-expected.png:
+
+2013-06-27  Timothy Hatcher  <timothy@apple.com>
+
+        Notify the debugger about functions created from source code via new Function() or WebCore::JSLazyEventListener.
+
+        https://bugs.webkit.org/show_bug.cgi?id=118063
+
+        Reviewed by Geoffrey Garen.
+
+        * inspector/debugger/debugger-script-preprocessor-expected.txt: Updated.
+
+2013-06-27  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Unreviewed EFL gardening.
+
+        Rebaseline fast/js/global-constructors-attributes.html for EFL port
+        after r151914. WaveTable was renamed to PeriodicWave.
+
+        * platform/efl/fast/js/global-constructors-attributes-expected.txt:
+
+2013-06-27  Horia Iosif Olaru  <olaru@adobe.com>
+
+        Add an extra test to check if tiled background images get blended as expected. This test passed before this change. The tests for this change are the existing background-blend-mode tests.
+        
+        https://bugs.webkit.org/show_bug.cgi?id=117619
+
+        Reviewed by Dean Jackson.
+
+        * css3/compositing/effect-background-blend-mode-tiled-expected.txt: Added.
+        * css3/compositing/effect-background-blend-mode-tiled.html: Added.
+        * platform/mac/css3/compositing/effect-background-blend-mode-tiled-expected.png: Added.
+
+2013-06-26  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        Vibration cannot be canceled during pattern vibration.
+        https://bugs.webkit.org/show_bug.cgi?id=117822
+
+        Reviewed by Gyuyoung Kim.
+
+        Add a test case for vibration cancelation during pattern vibration.
+        In addition, restore visibilityState before executing cancelVibration-after-pagevisibility-changed-to-hidden.html.
+
+        * vibration/cancelVibration-after-pagevisibility-changed-to-hidden.html:
+        * vibration/cancelVibration-during-pattern-vibrating-expected.txt: Added.
+        * vibration/cancelVibration-during-pattern-vibrating.html: Added.
+
+2013-06-26  Jer Noble  <jer.noble@apple.com>
+
+        Potential use-after-free after neutering AudioBuffer's underlying ArrayBuffer.
+        https://bugs.webkit.org/show_bug.cgi?id=118040
+
+        Reviewed by Filip Pizlo.
+
+        * webaudio/audiobuffer-neuter.html: Added.
+        * webaudio/audiobuffer-neuter-expected.txt: Added.
+
+2013-06-26  Yuki Sekiguchi  <yuki.sekiguchi@access-company.com>
+
+        getComputedStyle().width wrong after text changed
+        https://bugs.webkit.org/show_bug.cgi?id=106611
+
+        Reviewed by Dean Jackson.
+
+        * fast/dynamic/empty-absolute-innerhtml-transcoding-text-expected.html: Added.
+        * fast/dynamic/empty-absolute-innerhtml-transcoding-text.html: Added.
+
+2013-06-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Set Attr.ownerDocument in Element#setAttributeNode()
+        https://bugs.webkit.org/show_bug.cgi?id=118031
+
+        Reviewed by Andreas Kling.
+
+        Add a regression test.
+
+        * fast/dom/Attr/set-attribute-node-from-iframe-expected.txt: Added.
+        * fast/dom/Attr/set-attribute-node-from-iframe.html: Added.
+
+2013-06-25  David Hyatt  <hyatt@apple.com>
+
+        Flex boxes (both old and new) don't handle max-height images correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=118000
+
+        Reviewed by Beth Dakin.
+
+        * css3/flexbox/image-percent-max-height-expected.html: Added.
+        * css3/flexbox/image-percent-max-height.html: Added.
+        * css3/flexbox/resources/hero.png: Added.
+        * fast/flexbox/image-percent-max-height-expected.html: Added.
+        * fast/flexbox/image-percent-max-height.html: Added.
+        * fast/flexbox/resources/hero.png: Added.
+
+2013-06-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        editing/selection/doubleclick-crash.html can be flaky
+        https://bugs.webkit.org/show_bug.cgi?id=118017
+
+        Reviewed by Jessie Berlin.
+
+        Merge https://chromium.googlesource.com/chromium/blink/+/45ac882064589ac41a63762905f0618fc035cd44.
+
+        * editing/selection/doubleclick-crash.html:
+
+2013-06-26  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Get rid of multiple inheritence for SVGViewElement interface
+        https://bugs.webkit.org/show_bug.cgi?id=118014
+
+        Reviewed by Kentaro Hara.
+
+        Update / Rebaseline several SVG test cases now that SVGZoomAndPan interface
+        is no longer exposed.
+
+        * fast/js/global-constructors-attributes-expected.txt:
+        * platform/efl/fast/js/global-constructors-attributes-expected.txt:
+        * platform/gtk/fast/js/global-constructors-attributes-expected.txt:
+        * platform/mac-lion/fast/js/global-constructors-attributes-expected.txt:
+        * platform/qt/fast/js/global-constructors-attributes-expected.txt:
+        * svg/custom/global-constructors-expected.txt:
+        * svg/custom/js-svg-constructors-expected.txt:
+        * svg/custom/js-svg-constructors.svg:
+        * svg/custom/script-tests/global-constructors.js:
+        * svg/dom/SVGViewSpec-defaults-expected.txt:
+        * svg/dom/SVGViewSpec-expected.txt:
+        * svg/dom/resources/viewspec-parser.js:
+        (zoomAndPanToString):
+        (viewSpecToString):
+        * svg/dom/script-tests/SVGViewSpec-defaults.js:
+        * svg/dom/script-tests/SVGViewSpec.js:
+        (continueTesting):
+
+2013-06-25  Krzysztof Czech  <k.czech@samsung.com>
+
+        [AX][ATK] Update accessibility baselines after r151953
+        https://bugs.webkit.org/show_bug.cgi?id=117983
+
+        Reviewed by Chris Fleizach.
+
+        Updating aria-option-role-expected.txt for EFL and GTK after the changes in aria-option-role.html test (r151953).
+        Moving platform aria-checkbox-text.html to LayoutTests/accessibility. Baseline is the same for mac, gtk, efl. Windows port has it's own specific version.
+
+        * accessibility/aria-checkbox-text-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/aria-checkbox-text-expected.txt.
+        * platform/efl/accessibility/aria-checkbox-text-expected.txt: Removed.
+        * platform/efl/accessibility/aria-option-role-expected.txt:
+        * platform/gtk/accessibility/aria-checkbox-text-expected.txt: Removed.
+        * platform/gtk/accessibility/aria-option-role-expected.txt:
+
+2013-06-25  Denis Nomiyama  <d.nomiyama@samsung.com>
+
+        [GTK] Add bug report into TestExpectations for fast/text/international/synthesized-italic-vertical-latin.html
+        https://bugs.webkit.org/show_bug.cgi?id=117976
+
+        Unreviewed gardening.
+
+        TestExpectations was missing a bug number for a skip test (http://webkit.org/b/117975).
+
+        * platform/gtk/TestExpectations:
+
+2013-06-25  Ádám Kallai  <kadam@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skip failing inspector test.
+
+        * platform/qt/TestExpectations:
+
+2013-06-24  Brent Fulgham  <bfulgham@gmail.com>
+
+        [Mac] Build correction.
+
+        * platform/mac/accessibility/aria-tab-roles-expected.txt:
+
+2013-06-24  Kangil Han  <kangil.han@samsung.com>
+
+        Add support for document.currentScript
+        https://bugs.webkit.org/show_bug.cgi?id=104221
+
+        Reviewed by Ryosuke Niwa.
+
+        Merge http://src.chromium.org/viewvc/blink?view=revision&revision=152230
+        document.currentScript reflects the script that is currently being executed.
+
+        Merge http://src.chromium.org/viewvc/blink?view=revision&revision=152237
+        Following up patch for code clean-up.
+
+        * fast/dom/Document/document-current-script-async-expected.txt: Added.
+        * fast/dom/Document/document-current-script-async.html: Added.
+        * fast/dom/Document/document-current-script-expected.txt: Added.
+        * fast/dom/Document/document-current-script.html: Added.
+        * fast/dom/Document/resources/log-current-script-b.js: Added.
+        * fast/dom/Document/resources/log-current-script-d.js: Added.
+        * fast/dom/Document/resources/log-current-script-f.js: Added.
+        * fast/dom/Document/resources/log-current-script.js: Added.
+
+2013-06-24  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] media/video-played-collapse.html is flakey on certain platforms.
+        https://bugs.webkit.org/show_bug.cgi?id=117034
+
+        Reviewed by Beth Dakin.
+
+        This test does not wait until a seek completes before issuing a play()
+        command during its subtests. This can cause flakiness on some platforms
+        where playback will begin from the pre-seek currentTime. Wait for the seek
+        to complete before continuing the sub-tests.
+
+        Additionally, a 2s watchdog timeout is present to catch stalled tests. This
+        timeout is fine for short-duration sub-tests, but longer tests' durations
+        approach this 2s timeout period. Make the timeout the test duration + 2s.
+
+        * media/video-played-collapse-expected.txt:
+        * media/video-played-collapse.html:
+        * media/video-played.js:
+        (playForMillisecs.callPauseIfTimeIsReached):
+        (playForMillisecs):
+        * platform/mac-wk2/TestExpectations:
+
+2013-06-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix various crashes on sites with fixed backgrounds
+        https://bugs.webkit.org/show_bug.cgi?id=117959
+
+        Reviewed by Andy Estes.
+        
+        Test that does a document.write on a page with a fixed background on the body.
+
+        * platform/mac-wk2/tiled-drawing/fixed-background/fixed-background-removal-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/fixed-background/fixed-background-removal.html: Added.
+
+2013-06-24  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] split test shape-inside-first-fit-001.html into 800x600 parts
+        https://bugs.webkit.org/show_bug.cgi?id=117939
+
+        Reviewed by Dirk Schulze.
+
+        Split the test into two parts, to ensure that it first within the 800x600 limit.
+
+        * fast/exclusions/shape-inside/shape-inside-first-fit-001-horizontal-expected.html: Copied from LayoutTests/fast/exclusions/shape-inside/shape-inside-first-fit-001-expected.html.
+        * fast/exclusions/shape-inside/shape-inside-first-fit-001-horizontal.html: Copied from LayoutTests/fast/exclusions/shape-inside/shape-inside-first-fit-001.html.
+        * fast/exclusions/shape-inside/shape-inside-first-fit-001-vertical-expected.html: Renamed from LayoutTests/fast/exclusions/shape-inside/shape-inside-first-fit-001-expected.html.
+        * fast/exclusions/shape-inside/shape-inside-first-fit-001-vertical.html: Renamed from LayoutTests/fast/exclusions/shape-inside/shape-inside-first-fit-001.html.
+
+2013-06-24  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Remove setCSSShapesEnabled(true) from shape-inside-empty-expected.html since it isn't using shapes 
+        https://bugs.webkit.org/show_bug.cgi?id=117945
+
+        Reviewed by Dirk Schulze.
+
+        * fast/exclusions/shape-inside/shape-inside-empty-expected.html:
+
+2013-06-24  Brent Fulgham  <bfulgham@apple.com>
+
+        AX: Make tests usable on Mac and Windows
+        https://bugs.webkit.org/show_bug.cgi?id=117901
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-checkbox-text.html:
+        * accessibility/aria-hidden-expected.txt:
+        * accessibility/aria-hidden-with-elements-expected.txt:
+        * accessibility/aria-hidden-with-elements.html:
+        * accessibility/aria-hidden.html:
+        * accessibility/aria-labelledby-overrides-label-expected.txt:
+        * accessibility/aria-labelledby-overrides-label.html:
+        * accessibility/aria-option-role.html:
+        * accessibility/aria-presentational-role-expected.txt:
+        * accessibility/aria-presentational-role.html:
+        * accessibility/aria-tab-roles-expected.txt:
+        * accessibility/aria-tab-roles.html:
+        * accessibility/empty-image-with-title-expected.txt:
+        * accessibility/empty-image-with-title.html:
+        * accessibility/html-html-element-is-ignored-expected.txt:
+        * accessibility/html-html-element-is-ignored.html:
+        * accessibility/img-aria-button-alt-tag-expected.txt:
+        * accessibility/img-aria-button-alt-tag.html:
+        * accessibility/input-image-alt-expected.txt:
+        * accessibility/input-image-alt.html:
+        * platform/mac/accessibility/aria-checkbox-text-expected.txt:
+        * platform/mac/accessibility/aria-option-role-expected.txt:
+        * platform/win/accessibility/aria-checkbox-text-expected.txt: Added.
+        * platform/win/accessibility/aria-hidden-expected.txt: Added.
+        * platform/win/accessibility/aria-hidden-with-elements-expected.txt: Added.
+        * platform/win/accessibility/aria-labelledby-overrides-label-expected.txt: Added.
+        * platform/win/accessibility/aria-option-role-expected.txt: Added.
+        * platform/win/accessibility/aria-presentational-role-expected.txt: Added.
+        * platform/win/accessibility/aria-tab-roles-expected.txt: Added.
+        * platform/win/accessibility/empty-image-with-title-expected.txt: Added.
+        * platform/win/accessibility/html-html-element-is-ignored-expected.txt: Added.
+        * platform/win/accessibility/img-aria-button-alt-tag-expected.txt: Added.
+        * platform/win/accessibility/input-image-alt-expected.txt: Added.
+        * platform/win/aria-labelledby-on-input-expected.txt: Removed.
+        * platform/win/aria-menubar-menuitems-expected.txt: Removed.
+        * platform/win/aria-roles-expected.txt: Removed.
+
+2013-06-24  Chris Rogers  <crogers@google.com>
+
+        WaveTable name has changed to PeriodicWave
+        https://bugs.webkit.org/show_bug.cgi?id=117748
+
+        Reviewed by Jer Noble.
+
+        * fast/js/global-constructors-attributes-expected.txt:
+        * webaudio/oscillator-basic-expected.txt:
+        * webaudio/oscillator-basic.html:
+        * webaudio/oscillator-custom.html:
+        * webaudio/resources/oscillator-testing.js:
+        (generateExponentialOscillatorSweep):
+
+2013-06-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Unreviewed build correction after r151868
+        New test expecation had been placed in the wrong directory.
+
+        * platform/mac/accessibility/listitem-title-expected.txt: Copied from platform/mac/listitem-title-actual.txt.
+        * platform/mac/listitem-title-actual.txt: Removed.
+
+2013-06-24  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skipping the crashing tests on debug bots.
+        https://bugs.webkit.org/show_bug.cgi?id=94458
+
+        * platform/qt/TestExpectations:
+
+2013-06-24  Zalan Bujtas  <zalan@apple.com>
+
+        Hittest finds the truncated text instead of the floating input, when the input is clicked.
+        https://bugs.webkit.org/show_bug.cgi?id=115675
+
+        Reviewed by David Hyatt.
+
+        Ignore truncated text on inline textbox and everything beyond the ellipsis box on
+        the root inlinebox while hittesting. (provided that nodeAtPoint finds no hit for any of
+        the root inline's children.)
+
+        * fast/css/text-overflow-ellipsis-and-floating-input-hittest-expected.txt: Added.
+        * fast/css/text-overflow-ellipsis-and-floating-input-hittest.html: Added.
+
+2013-06-23  Brent Fulgham  <bfulgham@gmail.com>
+
+        AX: Rebaseline test after r151868
+        https://bugs.webkit.org/show_bug.cgi?id=117892
+
+        Rubber stamped by Chris Fleizach.
+
+        * platform/mac/accessibility/lists-expected.txt:
+
+2013-06-23  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Unskip two media tests because there is no crash after system update.
+
+        * platform/efl/TestExpectations:
+
+2013-06-22  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] limit shape image values to same origin
+        https://bugs.webkit.org/show_bug.cgi?id=117610
+
+        Reviewed by Alexey Proskuryakov.
+
+        Verify that a non same-origin image URL specified for shape-inside or
+        shape-outside will not load and the shape property will be reset to "none".
+
+        * http/tests/resources/square100.png: Added.
+        * http/tests/security/shape-inside-image-origin-expected.txt: Added.
+        * http/tests/security/shape-inside-image-origin.html: Added.
+
+2013-06-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed gardening.
+
+        * platform/win/accessibility/aria-menubar-menuitems-expected.txt: Added.
+
+2013-06-21  Mark Lam  <mark.lam@apple.com>
+
+        Reverting failure expectation for fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html.
+        https://bugs.webkit.org/show_bug.cgi?id=117862.
+
+        Reviewed by Geoffrey Garen.
+
+        * platform/mac/TestExpectations:
+
+2013-06-21  Brent Fulgham  <bfulgham@apple.com>
+
+        AX: Title for ListItemRole should consist of concatenated child text elements.
+        https://bugs.webkit.org/show_bug.cgi?id=117892
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/listitem-title.html: Added.
+        * platform/mac/accessibility/listitem-title-expected.txt: Added.
+        * platform/win/accessibility/listitem-title-expected.txt: Added.
+
+2013-06-21  Robert Hogan  <robert@webkit.org>
+
+        Ignoring padding-right of inline elements in containers with undefined width
+        https://bugs.webkit.org/show_bug.cgi?id=76451
+
+        Reviewed by David Hyatt.
+
+        * fast/text/whitespace/inline-whitespace-wrapping-9-expected.html: Added.
+        * fast/text/whitespace/inline-whitespace-wrapping-9.html: Added.
+
+2013-06-21  James Craig  <james@cookiecrook.com>
+
+        AX: audio/video playback control timers (elapsed and remaining) should be exposed as ApplicationTimerRole
+        https://bugs.webkit.org/show_bug.cgi?id=117883
+
+        Reviewed by Chris Fleizach.
+
+        Some of the media controls were returning the wrong role. Updated existing test coverage.
+
+        * accessibility/media-element.html:
+        * platform/mac/accessibility/media-element-expected.txt:
+
+2013-06-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] AX: Radio buttons with "tab" role should describe themselves as tabs.
+        https://bugs.webkit.org/show_bug.cgi?id=117837
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-tab-role-on-buttons.html: Added.
+        * accessibility/aria-tab-role-on-buttons-expected.txt: Added.
+        * platform/win/aria-tab-role-on-buttons-expected.txt: Added.
+
+2013-06-21  Radu Stavila  <stavila@adobe.com>
+
+        Improve the reattaching process while applying the :hover style
+        https://bugs.webkit.org/show_bug.cgi?id=117590
+
+        Reviewed by Andreas Kling.
+
+        Moved hover-display-block-inline.html and hover-display-block-none.html from fast/regions to fast/css.
+        Updated hover-display-block-none.html and hover-single-flow-into-other.html to ensure the outcome won't be affected by the machine's speed.
+        Updated input-file-re-render.html to stop it from failing on windows and linux machines (a more detailed description can be found inside the test itself).
+
+        * fast/css/hover-display-block-inline-expected.txt: Renamed from LayoutTests/fast/regions/hover-display-block-inline-expected.txt.
+        * fast/css/hover-display-block-inline.html: Renamed from LayoutTests/fast/regions/hover-display-block-inline.html.
+        * fast/css/hover-display-block-none-expected.txt: Renamed from LayoutTests/fast/regions/hover-display-block-none-expected.txt.
+        * fast/css/hover-display-block-none.html: Added.
+        * fast/css/hover-update-expected.txt:
+        * fast/css/hover-update.html:
+        * fast/forms/file/input-file-re-render.html:
+        * fast/regions/hover-display-block-none.html: Removed.
+        * fast/regions/hover-single-flow-into-other.html:
+
+2013-06-21  Zalan Bujtas  <zalan@apple.com>
+
+        Rollout r150602: Restoring text-overflow vs. floating rendering behaviour.
+        https://bugs.webkit.org/show_bug.cgi?id=117871
+
+        Unreviewed. Rolling out r150602.
+        Undesirable rendering behaviour.
+
+        * fast/css/text-overflow-ellipsis-behind-floats-expected.html:
+        * fast/css/text-overflow-ellipsis-behind-floats.html:
+        * fast/css/text-overflow-ellipsis-full-truncate-rtl-expected.html:
+        * fast/css/text-overflow-ellipsis-full-truncate-rtl.html:
+
+2013-06-21  Radu Stavila  <stavila@adobe.com>
+
+        Web Inspector: Integrate new regionOversetChange event into inspector
+        https://bugs.webkit.org/show_bug.cgi?id=117833
+
+        Tests for the new regionOversetChange event.
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/styles/protocol-css-regions-commands-expected.txt:
+        * inspector/styles/protocol-css-regions-commands.html:
+
+2013-06-21  Krzysztof Czech  <k.czech@samsung.com>
+
+        [ATK] Added support for aria-required attribute.
+        https://bugs.webkit.org/show_bug.cgi?id=117730
+
+        Reviewed by Chris Fleizach.
+
+        Moving specific platform accessibility tests.
+
+        * accessibility/aria-required-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/aria-required-expected.txt.
+        * accessibility/aria-required.html: Renamed from LayoutTests/platform/mac/accessibility/aria-required.html.
+        * accessibility/html5-required-attribute-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/html5-required-attribute-expected.txt.
+        * accessibility/html5-required-attribute.html: Renamed from LayoutTests/platform/mac/accessibility/html5-required-attribute.html.
+
+2013-06-21  Chris Fleizach  <cfleizach@apple.com>
+
+        IndieUI: Add basic IndieUI infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=117367
+
+        Unreviewed. Update Lion expected results.
+
+        * platform/mac-lion/fast/js/global-constructors-attributes-expected.txt:
+
+2013-06-20  Chris Fleizach  <cfleizach@apple.com>
+
+        IndieUI: Add basic IndieUI infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=117367
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/js/dom-static-property-for-in-iteration-expected.txt:
+        * fast/js/global-constructors-attributes-expected.txt:
+        * indieui: Added.
+        * indieui/create-uirequestevent-expected.txt: Added.
+        * indieui/create-uirequestevent.html: Added.
+        * indieui/uiactions-expected.txt: Added.
+        * indieui/uiactions.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/qt/TestExpectations:
+        * platform/qt/fast/js/dom-static-property-for-in-iteration-expected.txt: Added.
+        * platform/win/TestExpectations:
+        * platform/win/fast/js/dom-static-property-for-in-iteration-expected.txt: Added.
+
+2013-06-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r151808): fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=117862
+
+        Add a failing test expectation.
+
+        * platform/mac/TestExpectations:
+
+2013-06-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r145788): mouse drag on canvas shouldn't start selection
+        https://bugs.webkit.org/show_bug.cgi?id=117860
+
+        Reviewed by Benjamin Poulain.
+
+        Add a regression test for dragging mouse inside a canvas.
+        The canvas should not be selected and mouseup event should fire.
+
+        * fast/events/mosuedrag-on-canvas-should-not-start-selection-expected.txt: Added.
+        * fast/events/mosuedrag-on-canvas-should-not-start-selection.html: Added.
+
+2013-06-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r149652): accessing items in .children via id doesn't work when element is not rooted in DOM tree
+        https://bugs.webkit.org/show_bug.cgi?id=117836
+
+        Reviewed by Benjamin Poulain.
+
+        Add a regression test for named getter for a detached element.
+
+        * fast/dom/htmlallcollection-detached-node-children-expected.txt: Added.
+        * fast/dom/htmlallcollection-detached-node-children.html: Added.
+
+2013-06-20  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [CMAKE][EFL] Enable DOM4 Events Constructor
+        https://bugs.webkit.org/show_bug.cgi?id=117858
+
+        Reviewed by Laszlo Gombos.
+
+        * platform/efl/TestExpectations: Unskip the related tests.
+
+2013-06-20  Alexey Proskuryakov  <ap@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=116495
+        Fix null-pointer deref in DocumentLoader::responseReceived()
+
+        Patch by Nate Chapin, reviewed by Mike West and myself.
+
+        * http/tests/security/XFrameOptions/x-frame-options-deny-delete-frame-in-load-event-expected.txt: Added.
+        * http/tests/security/XFrameOptions/x-frame-options-deny-delete-frame-in-load-event.html: Added.
+
+2013-06-20  Enrica Casucci  <enrica@apple.com>
+
+        Initial advance on the first glyph of the run is not correctly set for rtl text.
+        https://bugs.webkit.org/show_bug.cgi?id=117839
+        <rdar://problem/13860717>
+
+        Reviewed by Sam Weinig.
+
+        * fast/text/complex-first-glyph-with-initial-advance-expected.html: Added.
+        * fast/text/complex-first-glyph-with-initial-advance.html: Added.
+
+2013-06-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r151463.
+        http://trac.webkit.org/changeset/151463
+        https://bugs.webkit.org/show_bug.cgi?id=117850
+
+        "r151451 was rolled out" (Requested by rhogan on #webkit).
+
+        * platform/efl/fast/forms/button-positioned-expected.txt:
+        * platform/efl/fast/forms/input-appearance-preventDefault-expected.txt:
+        * platform/efl/fast/replaced/width-and-height-of-positioned-replaced-elements-expected.txt: Removed.
+        * platform/gtk/fast/forms/button-positioned-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-preventDefault-expected.png:
+        * platform/gtk/fast/forms/input-appearance-preventDefault-expected.txt:
+        * platform/gtk/fast/replaced/width-and-height-of-positioned-replaced-elements-expected.txt: Removed.
+        * platform/win/fast/forms/onselect-textfield-expected.txt: Removed.
+
+2013-06-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r151451.
+        http://trac.webkit.org/changeset/151451
+        https://bugs.webkit.org/show_bug.cgi?id=117848
+
+        "Broke quite a lot of sites" (Requested by rhogan on #webkit).
+
+        * fast/forms/onselect-textfield-expected.txt:
+        * fast/replaced/width-and-height-of-positioned-replaced-elements-expected.png: Removed.
+        * fast/replaced/width-and-height-of-positioned-replaced-elements-expected.txt: Removed.
+        * fast/replaced/width-and-height-of-positioned-replaced-elements.html: Removed.
+        * platform/mac-wk2/fast/replaced/width-and-height-of-positioned-replaced-elements-expected.txt: Removed.
+        * platform/mac/fast/forms/button-positioned-expected.txt:
+        * platform/mac/fast/forms/input-appearance-preventDefault-expected.txt:
+        * platform/mac/fast/replaced/width-and-height-of-positioned-replaced-elements-expected.txt: Removed.
+        * platform/qt/fast/forms/button-positioned-expected.txt:
+        * platform/qt/fast/forms/input-appearance-preventDefault-expected.txt:
+
+2013-06-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r151788.
+        http://trac.webkit.org/changeset/151788
+        https://bugs.webkit.org/show_bug.cgi?id=117847
+
+        "This is the wrong fix" (Requested by rhogan on #webkit).
+
+        * fast/forms/onselect-textfield-expected.txt:
+        * fast/replaced/height-of-positioned-text-control-expected.html: Removed.
+        * fast/replaced/height-of-positioned-text-control.html: Removed.
+        * fast/replaced/width-and-height-of-positioned-replaced-elements-expected.txt:
+        * platform/mac/fast/forms/input-appearance-preventDefault-expected.png:
+        * platform/mac/fast/forms/input-appearance-preventDefault-expected.txt:
+        * platform/mac/fast/replaced/width-and-height-of-positioned-replaced-elements-expected.png:
+        * platform/mac/fast/replaced/width-and-height-of-positioned-replaced-elements-expected.txt:
+        * platform/qt/fast/forms/input-appearance-preventDefault-expected.txt:
+
+2013-05-24  Balazs Kelemen  <kbalazs@webkit.org>
+
+        [Gstreamer] cleanup buffering and state updates
+        https://bugs.webkit.org/show_bug.cgi?id=116642
+
+        Reviewed by Philippe Normand.
+
+        Remove failure expectations from tests that started to pass.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2013-06-20  Eric Carlson  <eric.carlson@apple.com>
+
+        ASSERT removing then adding a <track> element
+        https://bugs.webkit.org/show_bug.cgi?id=117814
+
+        Reviewed by Jer Noble.
+
+        * media/track/add-and-remove-track-expected.txt: Added.
+        * media/track/add-and-remove-track.html: Added.
+
+2013-06-20  Benjamin Poulain  <bpoulain@apple.com>
+
+        Mark compositing/repaint/positioned-movement.html as flaky on Mountain Lion Debug
+
+        * platform/mac-wk2/TestExpectations:
+        The test fails regularly in Debug on Mountain Lion.
+
+2013-06-20  Robert Hogan  <robert@webkit.org>
+
+        [Qt][WK2] REGRESSION(r151737): fast/replaced/width100percent-image.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=117824
+
+        Unreviewed, rebaselining.
+
+        * platform/qt-5.0-wk2/TestExpectations:
+        * platform/qt-5.0-wk2/fast/replaced/width100percent-image-expected.png:
+        * platform/qt-5.0-wk2/fast/replaced/width100percent-image-expected.txt:
+
+2013-06-18  Robert Hogan  <robert@webkit.org>
+
+        REGRESSION (r151451): Text not vertically centered correctly on icloud.com
+        https://bugs.webkit.org/show_bug.cgi?id=117744
+
+        Reviewed by David Hyatt.
+
+        * fast/forms/onselect-textfield-expected.txt:
+        * fast/replaced/height-of-positioned-text-control-expected.html: Added.
+        * fast/replaced/height-of-positioned-text-control.html: Added.
+        * fast/replaced/width-and-height-of-positioned-replaced-elements-expected.txt:
+        * platform/mac/fast/forms/input-appearance-preventDefault-expected.png:
+        * platform/mac/fast/forms/input-appearance-preventDefault-expected.txt:
+        * platform/mac/fast/replaced/width-and-height-of-positioned-replaced-elements-expected.png: Added.
+        * platform/mac/fast/replaced/width-and-height-of-positioned-replaced-elements-expected.txt:
+        * platform/qt/fast/forms/input-appearance-preventDefault-expected.txt:
+
+2013-06-20  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Add new regionOversetChange event
+        https://bugs.webkit.org/show_bug.cgi?id=117508
+
+        Changed regionLayoutUpdate tests to regionOversetChange and added new tests for regionOversetChange.
+
+        Reviewed by Antti Koivisto.
+
+        * fast/regions/webkit-named-flow-event-add-to-flow-expected.txt:
+        * fast/regions/webkit-named-flow-event-add-to-flow.html:
+        * fast/regions/webkit-named-flow-event-auto-height-expected.txt:
+        * fast/regions/webkit-named-flow-event-auto-height.html: Added.
+        * fast/regions/webkit-named-flow-event-crash-expected.txt:
+        * fast/regions/webkit-named-flow-event-crash.html:
+        * fast/regions/webkit-named-flow-event-expected.txt:
+        * fast/regions/webkit-named-flow-event-no-regions-expected.txt:
+        * fast/regions/webkit-named-flow-event-no-regions.html:
+        * fast/regions/webkit-named-flow-event-region-in-flexbox-no-overset-change-expected.txt:
+        * fast/regions/webkit-named-flow-event-region-in-flexbox-no-overset-change.html: Added.
+        * fast/regions/webkit-named-flow-event-region-in-flexbox-overset-change-expected.txt:
+        * fast/regions/webkit-named-flow-event-region-in-flexbox-overset-change.html: Added.
+        * fast/regions/webkit-named-flow-event-remove-from-dom-expected.txt:
+        * fast/regions/webkit-named-flow-event-remove-from-dom.html:
+        * fast/regions/webkit-named-flow-event-remove-from-flow-expected.txt:
+        * fast/regions/webkit-named-flow-event-remove-from-flow.html:
+        * fast/regions/webkit-named-flow-event-target-expected.txt:
+        * fast/regions/webkit-named-flow-event-target.html:
+        * fast/regions/webkit-named-flow-event-to-null-expected.txt:
+        * fast/regions/webkit-named-flow-event-to-null.html:
+        * fast/regions/webkit-named-flow-event.html:
+
+2013-06-20  James Craig  <james@cookiecrook.com>
+
+        AX: aria-required is not exposed on all expected roles
+        https://bugs.webkit.org/show_bug.cgi?id=115123
+
+        Reviewed by Chris Fleizach.
+
+        aria-required is now exposed on more roles. Updated existing test file.
+
+        * platform/mac/accessibility/aria-required-expected.txt:
+        * platform/mac/accessibility/aria-required.html:
+        * platform/mac/accessibility/radio-button-group-members-expected.txt:
+
+2013-06-20  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        Web Inspector: Use console.timeStamp instead of console.markTimeline
+        https://bugs.webkit.org/show_bug.cgi?id=117810
+
+        Reviewed by Joseph Pecoraro.
+
+        Use 'console.timeStamp' instead of 'console.markTimeline' in LayoutTests.
+        And remove inspector/timeline/timeline-mark-timeline.html.
+
+        * inspector/console/console-messages-stack-traces-expected.txt:
+        * inspector/console/console-messages-stack-traces.html:
+        * inspector/timeline/timeline-mark-timeline-expected.txt: Removed.
+        * inspector/timeline/timeline-mark-timeline.html: Removed.
+        * inspector/timeline/timeline-timer-fired-from-eval-call-site.html:
+
+2013-06-20  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening.
+
+        Rebselining after r151761, see bug 115372.
+
+        * platform/qt-5.0-wk2/TestExpectations:
+        * platform/qt-5.0-wk2/fast/repaint/horizontal-bt-overflow-child-expected.txt: Added.
+        * platform/qt-5.0-wk2/fast/repaint/horizontal-bt-overflow-parent-expected.txt: Added.
+        * platform/qt-5.0-wk2/fast/repaint/horizontal-bt-overflow-same-expected.txt: Added.
+        * platform/qt-5.0-wk2/fast/repaint/vertical-overflow-child-expected.txt: Added.
+        * platform/qt-5.0-wk2/fast/repaint/vertical-overflow-parent-expected.txt: Added.
+        * platform/qt-5.0-wk2/fast/repaint/vertical-overflow-same-expected.txt: Added.
+
+2013-06-20  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        background-color and text-decoration are not preserved when merging paragraphs
+        https://bugs.webkit.org/show_bug.cgi?id=116215
+
+        Reviewed by Ryosuke Niwa.
+
+        Added tests for verifying merge of paragraph/div from span with non-inline styles.
+
+        * editing/deleting/merge-div-from-span-with-style-expected.txt: Added.
+        * editing/deleting/merge-div-from-span-with-style.html: Added.
+        * editing/deleting/merge-paragraph-from-span-with-multiple-text-decoration-expected.txt: Added.
+        * editing/deleting/merge-paragraph-from-span-with-multiple-text-decoration.html: Added.
+        * editing/deleting/merge-paragraph-from-span-with-style-expected.txt: Added.
+        * editing/deleting/merge-paragraph-from-span-with-style.html: Added.
+
+2013-06-19  Beth Dakin  <bdakin@apple.com>
+
+        Adding a Mac pixel result.
+
+        * platform/mac/fast/replaced/width-and-height-of-positioned-replaced-elements-expected.png: Added.
+
+2013-06-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed AX test expecation gardening.
+
+        * platform/win/accessibility/aria-labelledby-on-input-expected.txt: Added.
+        * platform/win/accessibility/aria-list-and-listitem-expected.txt: Added.
+        * platform/win/accessibility/aria-roles-expected.txt: Added.
+
+2013-06-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        Unskip feSpecularLight-premultiplied.svg on Mountain Lion
+
+        * platform/mac/TestExpectations:
+        The test is failing on Lion exclusively.
+
+2013-06-19  Yuki Sekiguchi  <yuki.sekiguchi@access-company.com>
+
+        Incomplete repaint of input elements in writing-mode overflow
+        https://bugs.webkit.org/show_bug.cgi?id=110246
+
+        Reviewed by Simon Fraser.
+
+        * fast/repaint/horizontal-bt-overflow-child-expected.txt: Added.
+        * fast/repaint/horizontal-bt-overflow-child.html: Added.
+        * fast/repaint/horizontal-bt-overflow-parent-expected.txt: Added.
+        * fast/repaint/horizontal-bt-overflow-parent.html: Added.
+        * fast/repaint/horizontal-bt-overflow-same-expected.txt: Added.
+        * fast/repaint/horizontal-bt-overflow-same.html: Added.
+        * fast/repaint/vertical-overflow-child-expected.txt: Added.
+        * fast/repaint/vertical-overflow-child.html: Added.
+        * fast/repaint/vertical-overflow-parent-expected.txt: Added.
+        * fast/repaint/vertical-overflow-parent.html: Added.
+        * fast/repaint/vertical-overflow-same-expected.txt: Added.
+        * fast/repaint/vertical-overflow-same.html: Added.
+
+2013-06-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        Unskip two canvas tests that only fail on Lion
+
+        * platform/mac/TestExpectations:
+
+2013-06-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        Rebaseline 24bit-22khz-resample on Mac
+
+        The result did not match the expectation after a system update.
+
+        * platform/mac-wk2/webaudio/codec-tests/wav/24bit-22khz-resample-expected.wav:
+        Comparing the files, they have the exact same length, sample rate, bit per sample and binary size.
+        I cannot ear a difference in the files.
+
+2013-06-19  Robert Hogan  <robert@webkit.org>
+
+        Rebaseline results on GTK and EFL after r151737
+
+        Unreviewed, gardening. 
+
+        * platform/efl/fast/css/word-space-extra-expected.txt:
+        * platform/efl/fast/replaced/width100percent-image-expected.png:
+        * platform/efl/fast/replaced/width100percent-image-expected.txt:
+        * platform/efl/fast/replaced/width100percent-menulist-expected.png:
+        * platform/efl/fast/replaced/width100percent-menulist-expected.txt:
+        * platform/efl/fast/replaced/width100percent-searchfield-expected.png:
+        * platform/efl/fast/replaced/width100percent-searchfield-expected.txt:
+        * platform/efl/fast/replaced/width100percent-textarea-expected.png:
+        * platform/efl/fast/replaced/width100percent-textarea-expected.txt:
+        * platform/efl/fast/replaced/width100percent-textfield-expected.png:
+        * platform/efl/fast/replaced/width100percent-textfield-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug57828-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug57828-expected.txt:
+        * platform/gtk/fast/css/word-space-extra-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-image-expected.png:
+        * platform/gtk/fast/replaced/width100percent-image-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-menulist-expected.png:
+        * platform/gtk/fast/replaced/width100percent-menulist-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-searchfield-expected.png:
+        * platform/gtk/fast/replaced/width100percent-searchfield-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-textarea-expected.png:
+        * platform/gtk/fast/replaced/width100percent-textarea-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-textfield-expected.png:
+        * platform/gtk/fast/replaced/width100percent-textfield-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug57828-expected.txt:
+
+2013-06-19  Robert Hogan  <robert@webkit.org>
+
+        Incorrect computation of shrink-to-fit width for block with white-space:nowrap and floating children
+        https://bugs.webkit.org/show_bug.cgi?id=114879
+
+        Reviewed by David Hyatt.
+
+        * fast/block/shrink-to-fit-width-container-with-floating-children-expected.txt: Added.
+        * fast/block/shrink-to-fit-width-container-with-floating-children.html: Added.
+        * platform/qt/fast/css/word-space-extra-expected.txt:
+        * platform/qt/fast/replaced/width100percent-image-expected.txt:
+        * platform/qt/fast/replaced/width100percent-searchfield-expected.txt:
+        * platform/qt/fast/replaced/width100percent-textfield-expected.txt:
+        * platform/qt/tables/mozilla/bugs/bug57828-expected.txt:
+
+2013-06-19  Víctor Manuel Jáquez Leal  <vjaquez@igalia.com>
+
+        [GStreamer] [texmap] the bytesPerLine is wrong when updating the texture
+        https://bugs.webkit.org/show_bug.cgi?id=117551
+
+        Reviewed by Philippe Normand.
+
+        * platform/gtk-wk2/TestExpectations:
+        enabled media/video-display-aspect-ratio.html
+
+2013-06-19  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        [Qt] Unreviewed rebaselining after 151705.
+
+        * platform/qt/http/tests/cache/partitioned-cache-expected.txt: Added.
+        * platform/qt/http/tests/cache/partitioned-cache-iframe-expected.txt: Added.
+
+2013-06-19  Gabor Abraham  <abrhm@inf.u-szeged.hu>
+
+        [Qt] TestExpectation sorting on Qt WK2.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/qt-5.0-wk2/TestExpectations:
+
+2013-06-19  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        Vibration can be canceled even if page visibility status is hidden
+        https://bugs.webkit.org/show_bug.cgi?id=117333
+
+        Reviewed by Gyuyoung Kim.
+
+        Add a test case for cancel vibration after page visibility is changed to hidden status.
+        In addition, move navigator-vibration.html to vibration directory.
+
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/qt/TestExpectations:
+        * platform/win/TestExpectations:
+        * vibration/cancelVibration-after-pagevisibility-changed-to-hidden-expected.txt: Added.
+        * vibration/cancelVibration-after-pagevisibility-changed-to-hidden.html: Added.
+        * vibration/navigator-vibration-expected.txt: Renamed from LayoutTests/fast/dom/navigator-vibration-expected.txt.
+        * vibration/navigator-vibration.html: Renamed from LayoutTests/fast/dom/navigator-vibration.html.
+
 2013-06-18  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         Unreviewed, EFL gardening. Added new baselines for some of editing/delete

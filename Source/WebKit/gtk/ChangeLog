@@ -1,3 +1,152 @@
+2013-07-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] GtkAdjustmentWatcher idle source not correctly handled
+        https://bugs.webkit.org/show_bug.cgi?id=119003
+
+        Reviewed by Martin Robinson.
+
+        GtkAdjustmentWatcher::updateAdjustmentsFromScrollbarsLater()
+        creates a new idle source and initializes
+        m_updateAdjustmentCallbackId, which is used everywhere and
+        specially in the destructor to cancel the source when the
+        GtkAdjustmentWatcher is deleted. However,
+        m_updateAdjustmentCallbackId is reset to 0 in
+        GtkAdjustmentWatcher::updateAdjustmentsFromScrollbars() only when
+        not returning early. This method is public and not only called by
+        the updateAdjustmentCallback, which means that a call to
+        updateAdjustmentsFromScrollbars could reset the
+        m_updateAdjustmentCallbackId without actually destroying the source.
+
+        * WebCoreSupport/GtkAdjustmentWatcher.cpp:
+        (WebKit::GtkAdjustmentWatcher::updateAdjustmentsFromScrollbars):
+        Cancel the adjustment later idle if it has been scheduled.
+        (WebKit::GtkAdjustmentWatcher::updateAdjustmentCallback): Reset
+        m_updateAdjustmentCallbackId.
+        * WebCoreSupport/GtkAdjustmentWatcher.h:
+
+2013-07-17  Kangil Han  <kangil.han@samsung.com>
+
+        Use toHTMLMediaElement
+        https://bugs.webkit.org/show_bug.cgi?id=118727
+
+        Reviewed by Ryosuke Niwa.
+
+        To avoid direct use of static_cast, this patch uses toHTMLMediaElement for code cleanup.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::enterFullscreenForNode):
+        (WebKit::ChromeClient::exitFullscreenForNode):
+        (WebKit::ChromeClient::enterFullScreenForElement):
+        (WebKit::ChromeClient::exitFullScreenForElement):
+
+2013-07-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and Versions.m4 for 2.1.3 release.
+
+        * NEWS: Added release notes for 2.1.3.
+
+2013-07-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] webkit_set_cache_model is not turning the cache off
+        https://bugs.webkit.org/show_bug.cgi?id=118345
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Our documentation says that WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER
+        disables the cache completely, but we are only setting the cache
+        capacities to 0. Cache capacities are not checked when resources
+        are added to the cache, but when it's pruned. To disable the cache
+        we need to call MemoryCache::setDisabled explicitly.
+
+        * webkit/webkitglobals.cpp:
+        (webkit_set_cache_model): Disable the cache when min dead, max
+        dead and total capacities are all set to 0.
+
+2013-07-08  Brian Holt  <brian.holt@samsung.com>
+
+        [GTK] FrameLoaderClient: Refactor naked pointers to use smart pointers
+        https://bugs.webkit.org/show_bug.cgi?id=118417
+
+        Reviewed by Carlos Garcia Campos.
+
+        Use GOwnPtr and GRefPtr where possible.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::dispatchDidFailLoad):
+
+2013-07-04  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Do not expose '\n' for wrapped lines with ATK_TEXT_BOUNDARY_CHAR
+        https://bugs.webkit.org/show_bug.cgi?id=118359
+
+        Reviewed by Carlos Garcia Campos.
+
+        Added new unit test to make sure we exposed line breaks properly.
+
+        * tests/testatk.c:
+        (testWebkitAtkGetTextAtOffsetWithWrappedLines): New unit test.
+        (main): Added new test to the test suite.
+
+2013-07-01  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        [GTK] Remove unsupported AC backends
+        https://bugs.webkit.org/show_bug.cgi?id=117362
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am:
+        * WebCoreSupport/AcceleratedCompositingContext.h: removed clutter and cairo
+        additions.
+        * WebCoreSupport/AcceleratedCompositingContextCairo.cpp: Removed.
+        * WebCoreSupport/AcceleratedCompositingContextClutter.cpp: Removed.
+        * webkit/webkitglobals.cpp:
+        (webkitInit): removed clutter-gtk initialization.
+
+2013-07-01  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK] Use PassOwnPtr for the returned value of createBackingStore
+        https://bugs.webkit.org/show_bug.cgi?id=118230
+
+        Reviewed by Andreas Kling.
+
+        It would be better that createBackingStore returns PassOwnPtr instread of OwnPtr
+        to keep compatibility with c++0x.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::createBackingStore):
+
+2013-06-28  Iago Toral Quiroga  <itoral@igalia.com>
+
+        Use gtk_widget_get_preferred_size instead of deprecated gtk_widget_get_requisition
+        https://bugs.webkit.org/show_bug.cgi?id=118177
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::contentsSizeChanged):
+
+2013-06-27  Iago Toral Quiroga  <itoral@igalia.com>
+
+        Use consistent file names for WidgetBackingStoreGtkX11 class
+        https://bugs.webkit.org/show_bug.cgi?id=118124
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+
+2013-06-21  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        REGRESSION (r150663): Using webkitAudioContext in Inspector makes it undefined everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=117825
+
+        Reviewed by Kentaro Hara.
+
+        Use Settings to enable Web Audio instead of RuntimeEnabledFeatures.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_update_settings):
+        (webkit_web_view_settings_notify):
+
 2013-06-18  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Update NEWS and Versions.m4 for 2.1.2 release.

@@ -32,7 +32,6 @@
 #include "ApplyStyleCommand.h"
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSPropertyNames.h"
-#include "CSSValueKeywords.h"
 #include "CachedResourceLoader.h"
 #include "Clipboard.h"
 #include "ClipboardEvent.h"
@@ -83,7 +82,6 @@
 #include "SpellChecker.h"
 #include "SpellingCorrectionCommand.h"
 #include "StylePropertySet.h"
-#include "StyleResolver.h"
 #include "Text.h"
 #include "TextCheckerClient.h"
 #include "TextCheckingHelper.h"
@@ -290,10 +288,10 @@ static HTMLImageElement* imageElementFromImageDocument(Document* document)
     
     Node* node = body->firstChild();
     if (!node)
-        return 0;    
-    if (!node->hasTagName(imgTag))
         return 0;
-    return static_cast<HTMLImageElement*>(node);
+    if (!isHTMLImageElement(node))
+        return 0;
+    return toHTMLImageElement(node);
 }
 
 bool Editor::canCopy() const
@@ -1543,7 +1541,7 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
             // We should send a compositionstart event only when the given text is not empty because this
             // function doesn't create a composition node when the text is empty.
             if (!text.isEmpty()) {
-                target->dispatchEvent(CompositionEvent::create(eventNames().compositionstartEvent, m_frame->document()->domWindow(), text));
+                target->dispatchEvent(CompositionEvent::create(eventNames().compositionstartEvent, m_frame->document()->domWindow(), selectedText()));
                 event = CompositionEvent::create(eventNames().compositionupdateEvent, m_frame->document()->domWindow(), text);
             }
         } else {
@@ -2658,33 +2656,51 @@ String Editor::selectedText(TextIteratorBehavior behavior) const
     return plainText(m_frame->selection()->toNormalizedRange().get(), behavior).replaceWithLiteral('\0', "");
 }
 
+static inline void collapseCaretWidth(IntRect& rect)
+{
+    // FIXME: Width adjustment doesn't work for rotated text.
+    if (rect.width() == caretWidth)
+        rect.setWidth(0);
+    else if (rect.height() == caretWidth)
+        rect.setHeight(0);
+}
+
 IntRect Editor::firstRectForRange(Range* range) const
 {
-    LayoutUnit extraWidthToEndOfLine = 0;
     ASSERT(range->startContainer());
     ASSERT(range->endContainer());
 
-    IntRect startCaretRect = RenderedPosition(VisiblePosition(range->startPosition()).deepEquivalent(), DOWNSTREAM).absoluteRect(&extraWidthToEndOfLine);
-    if (startCaretRect == LayoutRect())
-        return IntRect();
+    VisiblePosition startVisiblePosition(range->startPosition(), DOWNSTREAM);
 
-    IntRect endCaretRect = RenderedPosition(VisiblePosition(range->endPosition()).deepEquivalent(), UPSTREAM).absoluteRect();
-    if (endCaretRect == LayoutRect())
-        return IntRect();
-
-    if (startCaretRect.y() == endCaretRect.y()) {
-        // start and end are on the same line
-        return IntRect(min(startCaretRect.x(), endCaretRect.x()),
-            startCaretRect.y(),
-            abs(endCaretRect.x() - startCaretRect.x()),
-            max(startCaretRect.height(), endCaretRect.height()));
+    if (range->collapsed(ASSERT_NO_EXCEPTION)) {
+        // FIXME: Getting caret rect and removing caret width is a very roundabout way to get collapsed range location.
+        // In particular, width adjustment doesn't work for rotated text.
+        IntRect startCaretRect = RenderedPosition(startVisiblePosition).absoluteRect();
+        collapseCaretWidth(startCaretRect);
+        return startCaretRect;
     }
 
-    // start and end aren't on the same line, so go from start to the end of its line
-    return IntRect(startCaretRect.x(),
-        startCaretRect.y(),
-        startCaretRect.width() + extraWidthToEndOfLine,
-        startCaretRect.height());
+    VisiblePosition endVisiblePosition(range->endPosition(), UPSTREAM);
+
+    if (inSameLine(startVisiblePosition, endVisiblePosition))
+        return enclosingIntRect(RenderObject::absoluteBoundingBoxRectForRange(range));
+
+    LayoutUnit extraWidthToEndOfLine = 0;
+    IntRect startCaretRect = RenderedPosition(startVisiblePosition).absoluteRect(&extraWidthToEndOfLine);
+    if (startCaretRect == IntRect())
+        return IntRect();
+
+    // When start and end aren't on the same line, we want to go from start to the end of its line.
+    bool textIsHorizontal = startCaretRect.width() == caretWidth;
+    return textIsHorizontal ?
+        IntRect(startCaretRect.x(),
+            startCaretRect.y(),
+            startCaretRect.width() + extraWidthToEndOfLine,
+            startCaretRect.height()) :
+        IntRect(startCaretRect.x(),
+            startCaretRect.y(),
+            startCaretRect.width(),
+            startCaretRect.height() + extraWidthToEndOfLine);
 }
 
 bool Editor::shouldChangeSelection(const VisibleSelection& oldSelection, const VisibleSelection& newSelection, EAffinity affinity, bool stillSelecting) const

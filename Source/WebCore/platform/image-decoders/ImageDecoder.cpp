@@ -178,6 +178,23 @@ void ImageFrame::zeroFillPixelData()
     m_hasAlpha = true;
 }
 
+void ImageFrame::zeroFillFrameRect(const IntRect& rect)
+{
+    ASSERT(IntRect(IntPoint(), m_size).contains(rect));
+
+    if (rect.isEmpty())
+        return;
+
+    size_t rectWidthInBytes = rect.width() * sizeof(PixelData);
+    PixelData* start = m_bytes + (rect.y() * width()) + rect.x();
+    for (int i = 0; i < rect.height(); ++i) {
+        memset(start, 0, rectWidthInBytes);
+        start += width();
+    }
+
+    setHasAlpha(true);
+}
+
 bool ImageFrame::copyBitmapData(const ImageFrame& other)
 {
     if (this == &other)
@@ -267,11 +284,12 @@ template <MatchType type> int getScaledValue(const Vector<int>& scaledValues, in
 
 bool ImageDecoder::frameHasAlphaAtIndex(size_t index) const
 {
-    if (m_frameBufferCache.size() <= index)
-        return true;
-    if (m_frameBufferCache[index].status() == ImageFrame::FrameComplete)
-        return m_frameBufferCache[index].hasAlpha();
-    return true;
+    return !frameIsCompleteAtIndex(index) || m_frameBufferCache[index].hasAlpha();
+}
+
+bool ImageDecoder::frameIsCompleteAtIndex(size_t index) const
+{
+    return (index < m_frameBufferCache.size()) && (m_frameBufferCache[index].status() == ImageFrame::FrameComplete);
 }
 
 unsigned ImageDecoder::frameBytesAtIndex(size_t index) const

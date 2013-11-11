@@ -998,6 +998,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'SVGAnimatedTransformList').hasOwnP
 PASS Object.getOwnPropertyDescriptor(global, 'SVGAnimatedTransformList').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGAnimatedTransformList').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGAnimatedTransformList').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'SVGAnimationElement').value is SVGAnimationElement
+PASS Object.getOwnPropertyDescriptor(global, 'SVGAnimationElement').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'SVGAnimationElement').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'SVGAnimationElement').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'SVGAnimationElement').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'SVGCircleElement').value is SVGCircleElement
 PASS Object.getOwnPropertyDescriptor(global, 'SVGCircleElement').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGCircleElement').hasOwnProperty('set') is false
@@ -1248,6 +1253,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'SVGGradientElement').hasOwnPropert
 PASS Object.getOwnPropertyDescriptor(global, 'SVGGradientElement').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGGradientElement').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGGradientElement').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'SVGGraphicsElement').value is SVGGraphicsElement
+PASS Object.getOwnPropertyDescriptor(global, 'SVGGraphicsElement').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'SVGGraphicsElement').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'SVGGraphicsElement').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'SVGGraphicsElement').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'SVGHKernElement').value is SVGHKernElement
 PASS Object.getOwnPropertyDescriptor(global, 'SVGHKernElement').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGHKernElement').hasOwnProperty('set') is false
@@ -1593,11 +1603,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'SVGViewSpec').hasOwnProperty('get'
 PASS Object.getOwnPropertyDescriptor(global, 'SVGViewSpec').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGViewSpec').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGViewSpec').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'SVGZoomAndPan').value is SVGZoomAndPan
-PASS Object.getOwnPropertyDescriptor(global, 'SVGZoomAndPan').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'SVGZoomAndPan').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'SVGZoomAndPan').enumerable is false
-PASS Object.getOwnPropertyDescriptor(global, 'SVGZoomAndPan').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'SVGZoomEvent').value is SVGZoomEvent
 PASS Object.getOwnPropertyDescriptor(global, 'SVGZoomEvent').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGZoomEvent').hasOwnProperty('set') is false

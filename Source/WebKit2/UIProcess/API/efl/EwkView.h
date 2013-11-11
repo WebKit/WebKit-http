@@ -146,6 +146,7 @@ public:
     void feedTouchEvent(Ewk_Touch_Event_Type type, const Eina_List* points, const Evas_Modifier* modifiers);
     bool touchEventsEnabled() const { return m_touchEventsEnabled; }
     void setTouchEventsEnabled(bool enabled);
+    void doneWithTouchEvent(WKTouchEventRef, bool);
 #endif
 
     void setCursor(const WebCore::Cursor& cursor);
@@ -200,6 +201,8 @@ public:
     void informURLChange();
 
     PassRefPtr<cairo_surface_t> takeSnapshot();
+
+    void didFindZoomableArea(const WKPoint&, const WKRect&);
 
 private:
     EwkView(WKViewRef, Evas_Object*);

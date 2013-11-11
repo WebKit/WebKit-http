@@ -25,6 +25,7 @@
 #include "SVGFontElement.h"
 #include "SVGFontFaceElement.h"
 #include "SVGNames.h"
+#include "SVGParserUtilities.h"
 
 namespace WebCore {
 
@@ -43,10 +44,8 @@ Node::InsertionNotificationRequest SVGVKernElement::insertedInto(ContainerNode* 
 {
     if (rootParent->inDocument()) {
         ContainerNode* fontNode = parentNode();
-        if (fontNode && fontNode->hasTagName(SVGNames::fontTag)) {
-            if (SVGFontElement* element = static_cast<SVGFontElement*>(fontNode))
-                element->invalidateGlyphCache();
-        }
+        if (fontNode && isSVGFontElement(fontNode))
+            toSVGFontElement(fontNode)->invalidateGlyphCache();
     }
 
     return SVGElement::insertedInto(rootParent);
@@ -55,10 +54,9 @@ Node::InsertionNotificationRequest SVGVKernElement::insertedInto(ContainerNode* 
 void SVGVKernElement::removedFrom(ContainerNode* rootParent)
 {
     ContainerNode* fontNode = parentNode();
-    if (fontNode && fontNode->hasTagName(SVGNames::fontTag)) {
-        if (SVGFontElement* element = static_cast<SVGFontElement*>(fontNode))
-            element->invalidateGlyphCache();
-    }
+    if (fontNode && isSVGFontElement(fontNode))
+        toSVGFontElement(fontNode)->invalidateGlyphCache();
+
     SVGElement::removedFrom(rootParent);
 }
 

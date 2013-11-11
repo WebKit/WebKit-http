@@ -29,7 +29,6 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
-#include "HTMLDivElement.h"
 #include "HTMLImageLoader.h"
 #include "Image.h"
 #include "JSDocumentFragment.h"
@@ -38,8 +37,6 @@
 #include "MouseEvent.h"
 #include "NodeList.h"
 #include "NodeRenderStyle.h"
-#include "NodeRenderingContext.h"
-#include "Page.h"
 #include "PlugInClient.h"
 #include "PluginViewBase.h"
 #include "RenderEmbeddedObject.h"
@@ -51,10 +48,8 @@
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "StyleResolver.h"
-#include "Text.h"
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSBase.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/StringHash.h>
 
@@ -135,6 +130,7 @@ void HTMLPlugInImageElement::setDisplayState(DisplayState state)
     if (state == RestartingWithPendingMouseClick || state == Restarting) {
         m_isRestartedPlugin = true;
         m_snapshotDecision = NeverSnapshot;
+        setNeedsStyleRecalc(SyntheticStyleChange);
         if (displayState() == DisplayingSnapshot)
             m_removeSnapshotTimer.startOneShot(removeSnapshotTimerDelay);
     }
@@ -272,7 +268,7 @@ void HTMLPlugInImageElement::updateWidgetIfNecessary()
     if (!needsWidgetUpdate() || useFallbackContent() || isImageType())
         return;
 
-    if (!renderEmbeddedObject() || renderEmbeddedObject()->showsUnavailablePluginIndicator())
+    if (!renderEmbeddedObject() || renderEmbeddedObject()->isPluginUnavailable())
         return;
 
     updateWidget(CreateOnlyNonNetscapePlugins);
@@ -389,6 +385,10 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     argList.append(toJS(exec, globalObject, root));
     argList.append(jsString(exec, titleText(page, mimeType)));
     argList.append(jsString(exec, subtitleText(page, mimeType)));
+    
+    // This parameter determines whether or not the snapshot overlay should always be visible over the plugin snapshot.
+    // If no snapshot was found then we want the overlay to be visible.
+    argList.append(JSC::jsBoolean(!m_snapshotImage));
 
     // It is expected the JS file provides a createOverlay(shadowRoot, title, subtitle) function.
     JSC::JSObject* overlay = globalObject->get(exec, JSC::Identifier(exec, "createOverlay")).toObject(exec);
@@ -424,6 +424,7 @@ void HTMLPlugInImageElement::removeSnapshotTimerFired(Timer<HTMLPlugInImageEleme
 {
     m_snapshotImage = nullptr;
     m_isRestartedPlugin = false;
+    setNeedsStyleRecalc(SyntheticStyleChange);
     if (renderer())
         renderer()->repaint();
 }
@@ -536,9 +537,9 @@ void HTMLPlugInImageElement::simulatedMouseClickTimerFired(DeferrableOneShotTime
     ASSERT(displayState() == RestartingWithPendingMouseClick);
     ASSERT(m_pendingClickEventFromSnapshot);
 
+    setDisplayState(Playing);
     dispatchSimulatedClick(m_pendingClickEventFromSnapshot.get(), SendMouseOverUpDownEvents, DoNotShowPressedLook);
 
-    setDisplayState(Playing);
     m_pendingClickEventFromSnapshot = nullptr;
 }
 
@@ -651,6 +652,12 @@ void HTMLPlugInImageElement::subframeLoaderWillCreatePlugIn(const KURL& url)
     if (m_loadedUrl.isEmpty() && !loadedMimeType().isEmpty()) {
         LOG(Plugins, "%p Plug-in has no src URL but does have a valid mime type %s, set to play", this, loadedMimeType().utf8().data());
         m_snapshotDecision = MaySnapshotWhenContentIsSet;
+        return;
+    }
+
+    if (!SchemeRegistry::shouldTreatURLSchemeAsLocal(m_loadedUrl.protocol()) && !m_loadedUrl.host().isEmpty() && m_loadedUrl.host() == document()->page()->mainFrame()->document()->baseURL().host()) {
+        LOG(Plugins, "%p Plug-in is served from page's domain, set to play", this);
+        m_snapshotDecision = NeverSnapshot;
         return;
     }
 

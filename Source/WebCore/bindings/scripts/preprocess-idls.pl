@@ -29,7 +29,9 @@ my $preprocessor;
 my $idlFilesList;
 my $supplementalDependencyFile;
 my $windowConstructorsFile;
-my $workerContextConstructorsFile;
+my $workerGlobalScopeConstructorsFile;
+my $sharedWorkerGlobalScopeConstructorsFile;
+my $dedicatedWorkerGlobalScopeConstructorsFile;
 my $supplementalMakefileDeps;
 
 GetOptions('defines=s' => \$defines,
@@ -37,13 +39,17 @@ GetOptions('defines=s' => \$defines,
            'idlFilesList=s' => \$idlFilesList,
            'supplementalDependencyFile=s' => \$supplementalDependencyFile,
            'windowConstructorsFile=s' => \$windowConstructorsFile,
-           'workerContextConstructorsFile=s' => \$workerContextConstructorsFile,
+           'workerGlobalScopeConstructorsFile=s' => \$workerGlobalScopeConstructorsFile,
+           'sharedWorkerGlobalScopeConstructorsFile=s' => \$sharedWorkerGlobalScopeConstructorsFile,
+           'dedicatedWorkerGlobalScopeConstructorsFile=s' => \$dedicatedWorkerGlobalScopeConstructorsFile,
            'supplementalMakefileDeps=s' => \$supplementalMakefileDeps);
 
 die('Must specify #define macros using --defines.') unless defined($defines);
 die('Must specify an output file using --supplementalDependencyFile.') unless defined($supplementalDependencyFile);
 die('Must specify an output file using --windowConstructorsFile.') unless defined($windowConstructorsFile);
-die('Must specify an output file using --workerContextConstructorsFile.') unless defined($workerContextConstructorsFile);
+die('Must specify an output file using --workerGlobalScopeConstructorsFile.') unless defined($workerGlobalScopeConstructorsFile);
+die('Must specify an output file using --sharedWorkerGlobalScopeConstructorsFile.') unless defined($sharedWorkerGlobalScopeConstructorsFile);
+die('Must specify an output file using --dedicatedWorkerGlobalScopeConstructorsFile.') unless defined($dedicatedWorkerGlobalScopeConstructorsFile);
 die('Must specify the file listing all IDLs using --idlFilesList.') unless defined($idlFilesList);
 
 open FH, "< $idlFilesList" or die "Cannot open $idlFilesList\n";
@@ -51,49 +57,76 @@ my @idlFiles = <FH>;
 chomp(@idlFiles);
 close FH;
 
-# Parse all IDL files.
 my %interfaceNameToIdlFile;
 my %idlFileToInterfaceName;
 my %supplementalDependencies;
 my %supplementals;
 my $windowConstructorsCode = "";
-my $workerContextConstructorsCode = "";
+my $workerGlobalScopeConstructorsCode = "";
+my $sharedWorkerGlobalScopeConstructorsCode = "";
+my $dedicatedWorkerGlobalScopeConstructorsCode = "";
+
 # Get rid of duplicates in idlFiles array.
 my %idlFileHash = map { $_, 1 } @idlFiles;
+
+# Populate $idlFileToInterfaceName and $interfaceNameToIdlFile.
+foreach my $idlFile (keys %idlFileHash) {
+    my $fullPath = Cwd::realpath($idlFile);
+    my $interfaceName = fileparse(basename($idlFile), ".idl");
+    $idlFileToInterfaceName{$fullPath} = $interfaceName;
+    $interfaceNameToIdlFile{$interfaceName} = $fullPath;
+}
+
+# Parse all IDL files.
 foreach my $idlFile (sort keys %idlFileHash) {
     my $fullPath = Cwd::realpath($idlFile);
     my $idlFileContents = getFileContents($fullPath);
+    # Handle partial interfaces.
     my $partialInterfaceName = getPartialInterfaceNameFromIDL($idlFileContents);
     if ($partialInterfaceName) {
-        $supplementalDependencies{$fullPath} = $partialInterfaceName;
+        $supplementalDependencies{$fullPath} = [$partialInterfaceName];
         next;
     }
     my $interfaceName = fileparse(basename($idlFile), ".idl");
+    # Handle implements statements.
+    my $implementedInterfaces = getImplementedInterfacesFromIDL($idlFileContents, $interfaceName);
+    foreach my $implementedInterface (@{$implementedInterfaces}) {
+        my $implementedIdlFile = $interfaceNameToIdlFile{$implementedInterface};
+        die "Could not find a the IDL file where the following implemented interface is defined: $implementedInterface" unless $implementedIdlFile;
+        if ($supplementalDependencies{$implementedIdlFile}) {
+            push(@{$supplementalDependencies{$implementedIdlFile}}, $interfaceName);
+        } else {
+            $supplementalDependencies{$implementedIdlFile} = [$interfaceName];
+        }
+    }
+    # Handle [NoInterfaceObject].
     unless (isCallbackInterfaceFromIDL($idlFileContents)) {
         my $extendedAttributes = getInterfaceExtendedAttributesFromIDL($idlFileContents);
         unless ($extendedAttributes->{"NoInterfaceObject"}) {
-            my $globalContext = $extendedAttributes->{"GlobalContext"} || "WindowOnly";
+            my @globalContexts = split("&", $extendedAttributes->{"GlobalContext"} || "DOMWindow");
             my $attributeCode = GenerateConstructorAttribute($interfaceName, $extendedAttributes);
-            $windowConstructorsCode .= $attributeCode unless $globalContext eq "WorkerOnly";
-            $workerContextConstructorsCode .= $attributeCode unless $globalContext eq "WindowOnly"
+            $windowConstructorsCode .= $attributeCode if grep(/^DOMWindow$/, @globalContexts);
+            $workerGlobalScopeConstructorsCode .= $attributeCode if grep(/^WorkerGlobalScope$/, @globalContexts);
+            $sharedWorkerGlobalScopeConstructorsCode .= $attributeCode if grep(/^SharedWorkerGlobalScope$/, @globalContexts);
+            $dedicatedWorkerGlobalScopeConstructorsCode .= $attributeCode if grep(/^DedicatedWorkerGlobalScope$/, @globalContexts);
         }
     }
-    $interfaceNameToIdlFile{$interfaceName} = $fullPath;
-    $idlFileToInterfaceName{$fullPath} = $interfaceName;
     $supplementals{$fullPath} = [];
 }
 
-# Generate DOMWindow Constructors partial interface.
+# Generate partial interfaces for Constructors.
 GeneratePartialInterface("DOMWindow", $windowConstructorsCode, $windowConstructorsFile);
+GeneratePartialInterface("WorkerGlobalScope", $workerGlobalScopeConstructorsCode, $workerGlobalScopeConstructorsFile);
+GeneratePartialInterface("SharedWorkerGlobalScope", $sharedWorkerGlobalScopeConstructorsCode, $sharedWorkerGlobalScopeConstructorsFile);
+GeneratePartialInterface("DedicatedWorkerGlobalScope", $dedicatedWorkerGlobalScopeConstructorsCode, $dedicatedWorkerGlobalScopeConstructorsFile);
 
-# Generate WorkerContext Constructors partial interface.
-GeneratePartialInterface("WorkerContext", $workerContextConstructorsCode, $workerContextConstructorsFile);
-
-# Resolves partial interfaces dependencies.
+# Resolves partial interfaces and implements dependencies.
 foreach my $idlFile (keys %supplementalDependencies) {
-    my $baseFile = $supplementalDependencies{$idlFile};
-    my $targetIdlFile = $interfaceNameToIdlFile{$baseFile};
-    push(@{$supplementals{$targetIdlFile}}, $idlFile);
+    my $baseFiles = $supplementalDependencies{$idlFile};
+    foreach my $baseFile (@{$baseFiles}) {
+        my $targetIdlFile = $interfaceNameToIdlFile{$baseFile};
+        push(@{$supplementals{$targetIdlFile}}, $idlFile);
+    }
     delete $supplementals{$idlFile};
 }
 
@@ -159,7 +192,7 @@ sub GeneratePartialInterface
     WriteFileIfChanged($destinationFile, $contents);
 
     my $fullPath = Cwd::realpath($destinationFile);
-    $supplementalDependencies{$fullPath} = $interfaceName if $interfaceNameToIdlFile{$interfaceName};
+    $supplementalDependencies{$fullPath} = [$interfaceName] if $interfaceNameToIdlFile{$interfaceName};
 }
 
 sub GenerateConstructorAttribute
@@ -170,7 +203,7 @@ sub GenerateConstructorAttribute
     my $code = "    ";
     my @extendedAttributesList;
     foreach my $attributeName (keys %{$extendedAttributes}) {
-      next unless ($attributeName eq "Conditional" || $attributeName eq "EnabledAtRuntime" || $attributeName eq "EnabledPerContext");
+      next unless ($attributeName eq "Conditional" || $attributeName eq "EnabledAtRuntime" || $attributeName eq "EnabledBySetting");
       my $extendedAttribute = $attributeName;
       $extendedAttribute .= "=" . $extendedAttributes->{$attributeName} unless $extendedAttributes->{$attributeName} eq "VALUE_IS_MISSING";
       push(@extendedAttributesList, $extendedAttribute);
@@ -214,6 +247,21 @@ sub getPartialInterfaceNameFromIDL
     if ($fileContents =~ /partial\s+interface\s+(\w+)/gs) {
         return $1;
     }
+}
+
+# identifier-A implements identifier-B;
+# http://www.w3.org/TR/WebIDL/#idl-implements-statements
+sub getImplementedInterfacesFromIDL
+{
+    my $fileContents = shift;
+    my $interfaceName = shift;
+
+    my @implementedInterfaces = ();
+    while ($fileContents =~ /^\s*(\w+)\s+implements\s+(\w+)\s*;/mg) {
+        die "Identifier on the left of the 'implements' statement should be $interfaceName in $interfaceName.idl, but found $1" if $1 ne $interfaceName;
+        push(@implementedInterfaces, $2);
+    }
+    return \@implementedInterfaces
 }
 
 sub isCallbackInterfaceFromIDL

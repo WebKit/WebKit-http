@@ -28,9 +28,7 @@
 #include "SVGAnimatedRect.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGFitToViewBox.h"
-#include "SVGLangSpace.h"
-#include "SVGStyledTransformableElement.h"
-#include "SVGTests.h"
+#include "SVGGraphicsElement.h"
 #include "SVGZoomAndPan.h"
 
 namespace WebCore {
@@ -42,17 +40,15 @@ class SVGViewSpec;
 class SVGViewElement;
 class SMILTimeContainer;
 
-class SVGSVGElement FINAL : public SVGStyledTransformableElement,
-                            public SVGTests,
-                            public SVGLangSpace,
+class SVGSVGElement FINAL : public SVGGraphicsElement,
                             public SVGExternalResourcesRequired,
                             public SVGFitToViewBox,
                             public SVGZoomAndPan {
 public:
     static PassRefPtr<SVGSVGElement> create(const QualifiedName&, Document*);
 
-    using SVGStyledTransformableElement::ref;
-    using SVGStyledTransformableElement::deref;
+    using SVGGraphicsElement::ref;
+    using SVGGraphicsElement::deref;
 
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool supportsFocus() const OVERRIDE { return true; }
@@ -88,7 +84,7 @@ public:
     float currentScale() const;
     void setCurrentScale(float scale);
 
-    FloatPoint& currentTranslate() { return m_translation; }
+    SVGPoint& currentTranslate() { return m_translation; }
     void setCurrentTranslate(const FloatPoint&);
 
     // Only used from the bindings.
@@ -117,7 +113,7 @@ public:
     static float createSVGNumber();
     static SVGLength createSVGLength();
     static SVGAngle createSVGAngle();
-    static FloatPoint createSVGPoint();
+    static SVGPoint createSVGPoint();
     static SVGMatrix createSVGMatrix();
     static FloatRect createSVGRect();
     static SVGTransform createSVGTransform();
@@ -177,11 +173,6 @@ private:
         DECLARE_ANIMATED_PRESERVEASPECTRATIO(PreserveAspectRatio, preserveAspectRatio)
     END_DECLARE_ANIMATED_PROPERTIES
 
-    // SVGTests
-    virtual void synchronizeRequiredFeatures() { SVGTests::synchronizeRequiredFeatures(this); }
-    virtual void synchronizeRequiredExtensions() { SVGTests::synchronizeRequiredExtensions(this); }
-    virtual void synchronizeSystemLanguage() { SVGTests::synchronizeSystemLanguage(this); }
-
     virtual void documentWillSuspendForPageCache();
     virtual void documentDidResumeFromPageCache();
 
@@ -190,7 +181,7 @@ private:
     bool m_useCurrentView;
     SVGZoomAndPanType m_zoomAndPan;
     RefPtr<SMILTimeContainer> m_timeContainer;
-    FloatPoint m_translation;
+    SVGPoint m_translation;
     RefPtr<SVGViewSpec> m_viewSpec;
 };
 

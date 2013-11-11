@@ -483,8 +483,12 @@ void TextTrackCue::setText(const String& text)
 
 int TextTrackCue::cueIndex()
 {
-    if (m_cueIndex == invalidCueIndex)
-        m_cueIndex = track()->cues()->getCueIndex(this);
+    if (m_cueIndex == invalidCueIndex) {
+        ASSERT(track());
+        ASSERT(track()->cues());
+        if (TextTrackCueList* cueList = track()->cues())
+            m_cueIndex = cueList->getCueIndex(this);
+    }
 
     return m_cueIndex;
 }
@@ -772,7 +776,7 @@ void TextTrackCue::markFutureAndPastNodes(ContainerNode* root, double previousTi
             toWebVTTElement(child)->setIsPastNode(isPastNode);
             // Make an elemenet id match a cue id for style matching purposes.
             if (!m_id.isEmpty())
-                toElement(child)->setIdAttribute(AtomicString(m_id.characters(), m_id.length()));
+                toElement(child)->setIdAttribute(m_id);
         }
     }
 }
@@ -1126,12 +1130,12 @@ NextSetting:
 #endif
 }
 
-int TextTrackCue::getCSSWritingDirection() const
+CSSValueID TextTrackCue::getCSSWritingDirection() const
 {
     return m_displayDirection;
 }
 
-int TextTrackCue::getCSSWritingMode() const
+CSSValueID TextTrackCue::getCSSWritingMode() const
 {
     return m_displayWritingMode;
 }

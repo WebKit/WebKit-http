@@ -231,8 +231,8 @@ void PageSerializer::serializeFrame(Frame* frame)
         if (element->isStyledElement())
             retrieveResourcesForProperties(static_cast<StyledElement*>(element)->inlineStyle(), document);
 
-        if (element->hasTagName(HTMLNames::imgTag)) {
-            HTMLImageElement* imageElement = static_cast<HTMLImageElement*>(element);
+        if (isHTMLImageElement(element)) {
+            HTMLImageElement* imageElement = toHTMLImageElement(element);
             KURL url = document->completeURL(imageElement->getAttribute(HTMLNames::srcAttr));
             CachedImage* cachedImage = imageElement->cachedImage();
             addImageToResources(cachedImage, imageElement->renderer(), url);
@@ -243,9 +243,8 @@ void PageSerializer::serializeFrame(Frame* frame)
                 serializeCSSStyleSheet(sheet, url);
                 ASSERT(m_resourceURLs.contains(url));
             }
-        } else if (element->hasTagName(HTMLNames::styleTag)) {
-            HTMLStyleElement* styleElement = static_cast<HTMLStyleElement*>(element);
-            if (CSSStyleSheet* sheet = styleElement->sheet())
+        } else if (isHTMLStyleElement(element)) {
+            if (CSSStyleSheet* sheet = toHTMLStyleElement(element)->sheet())
                 serializeCSSStyleSheet(sheet, KURL());
         }
     }

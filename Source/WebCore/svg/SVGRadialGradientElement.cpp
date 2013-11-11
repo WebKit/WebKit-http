@@ -88,7 +88,7 @@ bool SVGRadialGradientElement::isSupportedAttribute(const QualifiedName& attrNam
         supportedAttributes.add(SVGNames::rAttr);
         supportedAttributes.add(SVGNames::frAttr);
     }
-    return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
+    return supportedAttributes.contains<SVGAttributeHashTranslator>(attrName);
 }
 
 void SVGRadialGradientElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -191,7 +191,7 @@ bool SVGRadialGradientElement::collectGradientAttributes(RadialGradientAttribute
         // Respect xlink:href, take attributes from referenced element
         Node* refNode = SVGURIReference::targetElementFromIRIString(current->href(), document());
         if (refNode && (refNode->hasTagName(SVGNames::radialGradientTag) || refNode->hasTagName(SVGNames::linearGradientTag))) {
-            current = static_cast<SVGGradientElement*>(refNode);
+            current = toSVGGradientElement(refNode);
 
             // Cycle detection
             if (processedGradients.contains(current)) {

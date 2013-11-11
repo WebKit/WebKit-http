@@ -26,7 +26,7 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src *; media-src *; font-src *; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src *; connect-src *; media-src *; font-src *; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
 
     <link rel="stylesheet" href="External/CodeMirror/codemirror.css">
 
@@ -115,6 +115,8 @@
     <link rel="stylesheet" href="CompletionSuggestionsView.css">
     <link rel="stylesheet" href="CodeMirrorOverrides.css">
     <link rel="stylesheet" href="ConsolePrompt.css">
+    <link rel="stylesheet" href="CSSColorPicker.css">
+    <link rel="stylesheet" href="CodeMirrorDragToAlterNumberController.css">
 
     <script src="External/CodeMirror/codemirror.js"></script>
     <script src="External/CodeMirror/comment.js"></script>
@@ -138,9 +140,11 @@
     <script src="Utilities.js"></script>
     <script src="WebInspector.js"></script>
     <script src="Object.js"></script>
+    <script src="CodeMirrorDragToAlterNumberController.js"></script>
     <script src="CodeMirrorAdditions.js"></script>
     <script src="Setting.js"></script>
     <script src="InspectorBackend.js"></script>
+    <script src="InspectorFrontendHostStub.js"></script>
     <script src="LoadInspectorBackendCommands.js"></script>
     <script src="InspectorFrontendAPI.js"></script>
     <script src="ContextMenu.js"></script>
@@ -304,6 +308,7 @@
     <script src="ComputedStyleDetailsPanel.js"></script>
     <script src="RulesStyleDetailsPanel.js"></script>
     <script src="MetricsStyleDetailsPanel.js"></script>
+    <script src="CSSColorPicker.js"></script>
     <script src="CSSStyleDeclarationTextEditor.js"></script>
     <script src="CSSStyleDeclarationSection.js"></script>
     <script src="IndeterminateProgressSpinner.js"></script>

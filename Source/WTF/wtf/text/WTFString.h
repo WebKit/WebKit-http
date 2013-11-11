@@ -285,7 +285,7 @@ public:
     size_t reverseFind(const String& str, unsigned start, bool caseSensitive) const
         { return caseSensitive ? reverseFind(str, start) : reverseFindIgnoringCase(str, start); }
 
-    WTF_EXPORT_STRING_API const UChar* charactersWithNullTermination();
+    WTF_EXPORT_STRING_API Vector<UChar> charactersWithNullTermination() const;
     
     WTF_EXPORT_STRING_API UChar32 characterStartingAt(unsigned) const; // Ditto.
     
@@ -503,6 +503,9 @@ public:
 private:
     template <typename CharacterType>
     void removeInternal(const CharacterType*, unsigned, int);
+
+    template <typename CharacterType>
+    void appendInternal(CharacterType);
 
     RefPtr<StringImpl> m_impl;
 };

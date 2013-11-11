@@ -137,6 +137,8 @@ namespace WebCore {
     String contextMenuItemTagCopyVideoLinkToClipboard();
     String contextMenuItemTagCopyAudioLinkToClipboard();
     String contextMenuItemTagToggleMediaControls();
+    String contextMenuItemTagShowMediaControls();
+    String contextMenuItemTagHideMediaControls();
     String contextMenuItemTagToggleMediaLoop();
     String contextMenuItemTagEnterVideoFullscreen();
     String contextMenuItemTagExitVideoFullscreen();
@@ -170,6 +172,7 @@ namespace WebCore {
     String AXMenuListActionVerb();
     String AXMenuListPopupActionVerb();
     String AXLinkActionVerb();
+    String AXListItemActionVerb();
 
 #if ENABLE(INPUT_TYPE_WEEK)
     // weekFormatInLDML() returns week and year format in LDML, Unicode
@@ -242,7 +245,7 @@ namespace WebCore {
     String textTrackOffMenuItemText();
     String textTrackAutomaticMenuItemText();
     String textTrackNoLabelText();
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(WIN)
     String textTrackCountryAndLanguageMenuItemText(const String& title, const String& country, const String& language);
     String textTrackLanguageMenuItemText(const String& title, const String& language);
     String closedCaptionTrackMenuItemText(const String&);

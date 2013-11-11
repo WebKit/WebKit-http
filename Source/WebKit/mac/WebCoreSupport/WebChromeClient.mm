@@ -200,10 +200,10 @@ void WebChromeClient::focusedNodeChanged(Node* node)
 {
     if (!node)
         return;
-    if (!node->hasTagName(inputTag))
+    if (!isHTMLInputElement(node))
         return;
 
-    HTMLInputElement* inputElement = static_cast<HTMLInputElement*>(node);
+    HTMLInputElement* inputElement = toHTMLInputElement(node);
     if (!inputElement->isText())
         return;
 
@@ -841,6 +841,12 @@ PassRefPtr<WebCore::PopupMenu> WebChromeClient::createPopupMenu(WebCore::PopupMe
 PassRefPtr<WebCore::SearchPopupMenu> WebChromeClient::createSearchPopupMenu(WebCore::PopupMenuClient* client) const
 {
     return adoptRef(new SearchPopupMenuMac(client));
+}
+
+bool WebChromeClient::shouldPaintEntireContents() const
+{
+    NSView *documentView = [[[m_webView mainFrame] frameView] documentView];
+    return [documentView layer];
 }
 
 #if USE(ACCELERATED_COMPOSITING)

@@ -677,7 +677,7 @@ void Pasteboard::writeURLToDataObject(const KURL& kurl, const String& titleStr, 
     fgd->fgd[0].dwFlags = FD_FILESIZE;
     fgd->fgd[0].nFileSizeLow = content.length();
 
-    unsigned maxSize = std::min(fsPath.length(), WTF_ARRAY_LENGTH(fgd->fgd[0].cFileName));
+    unsigned maxSize = std::min<unsigned>(fsPath.length(), WTF_ARRAY_LENGTH(fgd->fgd[0].cFileName));
     CopyMemory(fgd->fgd[0].cFileName, fsPath.characters(), maxSize * sizeof(UChar));
     GlobalUnlock(urlFileDescriptor);
 
@@ -921,7 +921,7 @@ static HGLOBAL createGlobalImageFileDescriptor(const String& url, const String& 
         return 0;
     }
     extension.insert(".", 0);
-    fsPath = filesystemPathFromUrlOrTitle(url, preferredTitle, extension.charactersWithNullTermination(), false);
+    fsPath = filesystemPathFromUrlOrTitle(url, preferredTitle, extension.charactersWithNullTermination().data(), false);
 
     if (fsPath.length() <= 0) {
         GlobalUnlock(memObj);
@@ -929,7 +929,7 @@ static HGLOBAL createGlobalImageFileDescriptor(const String& url, const String& 
         return 0;
     }
 
-    int maxSize = std::min(fsPath.length(), WTF_ARRAY_LENGTH(fgd->fgd[0].cFileName));
+    int maxSize = std::min<int>(fsPath.length(), WTF_ARRAY_LENGTH(fgd->fgd[0].cFileName));
     CopyMemory(fgd->fgd[0].cFileName, (LPCWSTR)fsPath.characters(), maxSize * sizeof(UChar));
     GlobalUnlock(memObj);
 
@@ -963,7 +963,8 @@ static HGLOBAL createGlobalHDropContent(const KURL& url, String& fileName, Share
         // windows does not enjoy a leading slash on paths
         if (localPath[0] == '/')
             localPath = localPath.substring(1);
-        LPCWSTR localPathStr = localPath.charactersWithNullTermination();
+        const Vector<UChar>& localPathWide = localPath.charactersWithNullTermination();
+        LPCWSTR localPathStr = localPathWide.data();
         if (wcslen(localPathStr) + 1 < MAX_PATH)
             wcscpy_s(filePath, MAX_PATH, localPathStr);
         else
@@ -977,7 +978,7 @@ static HGLOBAL createGlobalHDropContent(const KURL& url, String& fileName, Share
         WCHAR extension[MAX_PATH];
         if (!::GetTempPath(WTF_ARRAY_LENGTH(tempPath), tempPath))
             return 0;
-        if (!::PathAppend(tempPath, fileName.charactersWithNullTermination()))
+        if (!::PathAppend(tempPath, fileName.charactersWithNullTermination().data()))
             return 0;
         LPCWSTR foundExtension = ::PathFindExtension(tempPath);
         if (foundExtension) {

@@ -26,9 +26,7 @@
 #include "SVGAnimatedEnumeration.h"
 #include "SVGAnimatedLength.h"
 #include "SVGExternalResourcesRequired.h"
-#include "SVGLangSpace.h"
-#include "SVGStyledElement.h"
-#include "SVGTests.h"
+#include "SVGGraphicsElement.h"
 
 namespace WebCore {
 
@@ -67,9 +65,7 @@ struct SVGPropertyTraits<SVGLengthAdjustType> {
     }
 };
 
-class SVGTextContentElement : public SVGStyledElement,
-                              public SVGTests,
-                              public SVGLangSpace,
+class SVGTextContentElement : public SVGGraphicsElement,
                               public SVGExternalResourcesRequired {
 public:
     // Forward declare enumerations in the W3C naming scheme, for IDL generation.
@@ -82,11 +78,11 @@ public:
     unsigned getNumberOfChars();
     float getComputedTextLength();
     float getSubStringLength(unsigned charnum, unsigned nchars, ExceptionCode&);
-    FloatPoint getStartPositionOfChar(unsigned charnum, ExceptionCode&);
-    FloatPoint getEndPositionOfChar(unsigned charnum, ExceptionCode&);
+    SVGPoint getStartPositionOfChar(unsigned charnum, ExceptionCode&);
+    SVGPoint getEndPositionOfChar(unsigned charnum, ExceptionCode&);
     FloatRect getExtentOfChar(unsigned charnum, ExceptionCode&);
     float getRotationOfChar(unsigned charnum, ExceptionCode&);
-    int getCharNumAtPosition(const FloatPoint&);
+    int getCharNumAtPosition(const SVGPoint&);
     void selectSubString(unsigned charnum, unsigned nchars, ExceptionCode&);
 
     static SVGTextContentElement* elementFromRenderer(RenderObject*);
@@ -123,11 +119,6 @@ private:
         DECLARE_ANIMATED_ENUMERATION(LengthAdjust, lengthAdjust, SVGLengthAdjustType)
         DECLARE_ANIMATED_BOOLEAN(ExternalResourcesRequired, externalResourcesRequired) 
     END_DECLARE_ANIMATED_PROPERTIES
-
-    // SVGTests
-    virtual void synchronizeRequiredFeatures() { SVGTests::synchronizeRequiredFeatures(this); }
-    virtual void synchronizeRequiredExtensions() { SVGTests::synchronizeRequiredExtensions(this); }
-    virtual void synchronizeSystemLanguage() { SVGTests::synchronizeSystemLanguage(this); }
 };
 
 inline SVGTextContentElement* toSVGTextContentElement(SVGElement* element)

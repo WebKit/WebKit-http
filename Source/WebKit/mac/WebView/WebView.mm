@@ -116,6 +116,7 @@
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/BackForwardListImpl.h>
 #import <WebCore/MemoryCache.h>
+#import <WebCore/Chrome.h>
 #import <WebCore/ColorMac.h>
 #import <WebCore/Cursor.h>
 #import <WebCore/DatabaseManager.h>
@@ -429,6 +430,23 @@ static PageVisibilityState core(WebPageVisibilityState visibilityState)
     return PageVisibilityStateVisible;
 }
 
+static WebPageVisibilityState kit(PageVisibilityState visibilityState)
+{
+    switch (visibilityState) {
+    case PageVisibilityStateVisible:
+        return WebPageVisibilityStateVisible;
+    case PageVisibilityStateHidden:
+        return WebPageVisibilityStateHidden;
+    case PageVisibilityStatePrerender:
+        return WebPageVisibilityStatePrerender;
+    case PageVisibilityStateUnloaded:
+        return WebPageVisibilityStateUnloaded;
+    }
+
+    ASSERT_NOT_REACHED();
+    return WebPageVisibilityStateVisible;
+}
+
 @interface WebView (WebFileInternal)
 - (float)_deviceScaleFactor;
 - (BOOL)_isLoading;
@@ -620,6 +638,11 @@ static void WebKitInitializeApplicationCachePathIfNecessary()
 static bool shouldEnableLoadDeferring()
 {
     return !applicationIsAdobeInstaller();
+}
+
+static bool shouldRestrictWindowFocus()
+{
+    return !applicationIsHRBlock();
 }
 
 - (void)_dispatchPendingLoadRequests
@@ -1116,7 +1139,7 @@ static bool fastDocumentTeardownEnabled()
 
 #if USE(ACCELERATED_COMPOSITING)
     if (_private->layerFlushController) {
-        _private->layerFlushController->invalidateObserver();
+        _private->layerFlushController->invalidate();
         _private->layerFlushController = nullptr;
     }
 #endif
@@ -1498,6 +1521,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings->setWebGLEnabled([preferences webGLEnabled]);
     settings->setAccelerated2dCanvasEnabled([preferences accelerated2dCanvasEnabled]);
     settings->setLoadDeferringEnabled(shouldEnableLoadDeferring());
+    settings->setWindowFocusRestricted(shouldRestrictWindowFocus());
     settings->setFrameFlatteningEnabled([preferences isFrameFlatteningEnabled]);
     settings->setSpatialNavigationEnabled([preferences isSpatialNavigationEnabled]);
     settings->setPaginateDuringLayoutEnabled([preferences paginateDuringLayoutEnabled]);
@@ -1507,7 +1531,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::setCSSRegionsEnabled([preferences cssRegionsEnabled]);
     RuntimeEnabledFeatures::setCSSCompositingEnabled([preferences cssCompositingEnabled]);
 #if ENABLE(WEB_AUDIO)
-    RuntimeEnabledFeatures::setWebAudioEnabled([preferences webAudioEnabled]);
+    settings->setWebAudioEnabled([preferences webAudioEnabled]);
 #endif
 #if ENABLE(IFRAME_SEAMLESS)
     RuntimeEnabledFeatures::setSeamlessIFramesEnabled([preferences seamlessIFramesEnabled]);
@@ -1547,6 +1571,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings->setRequestAnimationFrameEnabled([preferences requestAnimationFrameEnabled]);
     settings->setNeedsDidFinishLoadOrderQuirk(needsDidFinishLoadOrderQuirk());
     settings->setDiagnosticLoggingEnabled([preferences diagnosticLoggingEnabled]);
+    settings->setLowPowerVideoAudioBufferSizeEnabled([preferences lowPowerVideoAudioBufferSizeEnabled]);
 
     switch ([preferences storageBlockingPolicy]) {
     case WebAllowAllStorage:
@@ -2943,6 +2968,15 @@ static Vector<String> toStringVector(NSArray* patterns)
     return kitLayoutMilestones(page->requestedLayoutMilestones());
 }
 
+- (WebPageVisibilityState)_visibilityState
+{
+#if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
+    if (_private->page)
+        return kit(_private->page->visibilityState());
+#endif
+    return WebPageVisibilityStateVisible;
+}
+
 - (void)_setVisibilityState:(WebPageVisibilityState)visibilityState isInitialState:(BOOL)isInitialState
 {
 #if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
@@ -3700,7 +3734,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 - (void)doWindowDidChangeScreen
 {
     if (_private && _private->page)
-        _private->page->windowScreenDidChange((PlatformDisplayID)[[[[[self window] screen] deviceDescription] objectForKey:@"NSScreenNumber"] intValue]);
+        _private->page->chrome().windowScreenDidChange((PlatformDisplayID)[[[[[self window] screen] deviceDescription] objectForKey:@"NSScreenNumber"] intValue]);
 }
 
 - (void)_windowChangedKeyState
@@ -6470,7 +6504,7 @@ bool LayerFlushController::flushLayers()
 - (void)_enterFullscreenForNode:(WebCore::Node*)node
 {
     ASSERT(node->hasTagName(WebCore::HTMLNames::videoTag));
-    HTMLMediaElement* videoElement = toMediaElement(node);
+    HTMLMediaElement* videoElement = toHTMLMediaElement(node);
 
     if (_private->fullscreenController) {
         if ([_private->fullscreenController mediaElement] == videoElement) {

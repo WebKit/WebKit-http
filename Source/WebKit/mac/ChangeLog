@@ -1,3 +1,355 @@
+2013-07-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r152701, r152703, r152739, r152754,
+        and r152756.
+        http://trac.webkit.org/changeset/152701
+        http://trac.webkit.org/changeset/152703
+        http://trac.webkit.org/changeset/152739
+        http://trac.webkit.org/changeset/152754
+        http://trac.webkit.org/changeset/152756
+        https://bugs.webkit.org/show_bug.cgi?id=118821
+
+        this was a buggy fix and we're going to try something
+        different (Requested by thorton on #webkit).
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::shouldUnavailablePluginMessageBeButton):
+
+2013-07-17  Kangil Han  <kangil.han@samsung.com>
+
+        Use toHTMLMediaElement
+        https://bugs.webkit.org/show_bug.cgi?id=118727
+
+        Reviewed by Ryosuke Niwa.
+
+        To avoid direct use of static_cast, this patch uses toHTMLMediaElement for code cleanup.
+
+        * WebView/WebView.mm:
+        (-[WebView _enterFullscreenForNode:WebCore::]):
+
+2013-07-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Protect against the LayerFlushController being deleted inside its flushLayers() callback
+        https://bugs.webkit.org/show_bug.cgi?id=118741
+        <rdar://problem/14402651>
+
+        Reviewed by Tim Horton.
+        
+        It's possible (especially on iOS) for the LayerFlushController to be destroyed
+        inside its callback, via -[WebView _close]. Protect against this by making
+        it refcounted, and holding a ref across the callback.
+        
+        Due to the odd relationship in which LayerFlushController owns its LayerFlushScheduler
+        by value, we achieve this by allowing subclasses of LayerFlushScheduler
+        to override runLoopObserverCallback(). WebViewLayerFlushScheduler uses the
+        override to protect the owner of the LayerFlushScheduler, which is the
+        LayerFlushController, when the callback is firing.
+
+        * WebView/WebView.mm:
+        (-[WebView _close]):
+        * WebView/WebViewData.h:
+        (WebViewLayerFlushScheduler::~WebViewLayerFlushScheduler):
+        (LayerFlushController::create):
+        * WebView/WebViewData.mm:
+        (LayerFlushController::invalidate):
+        (WebViewLayerFlushScheduler::WebViewLayerFlushScheduler):
+
+2013-07-16  Jessie Berlin  <jberlin@apple.com>
+
+        Fix some NSDictionary misuse pointed out by the clang static analyzer
+        https://bugs.webkit.org/show_bug.cgi?id=118736
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::spawnPluginHost):
+        Explicitly cast the CFStringRef to an NSString *.
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::documentFragmentFromAttributedString):
+        Do not put a key with a nil value pair into the NSDictionary.
+
+2013-07-15  Tim Horton  <timothy_horton@apple.com>
+
+        Update blocked/missing plug-in UI
+        https://bugs.webkit.org/show_bug.cgi?id=118347
+        <rdar://problem/14209318>
+
+        Reviewed by Sam Weinig.
+        Patch by Antoine Quint, Anders Carlsson, Sam Weinig, and myself.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::shouldUnavailablePluginMessageIncludeButton):
+        Rename from shouldUnavailablePluginMessageBeButton to
+        shouldUnavailablePluginMessageIncludeButton for accuracy.
+
+2013-07-14  Jon Lee  <jonlee@apple.com>
+
+        [WK2] Calling Notification.requestPermission() without a callback crashes
+        https://bugs.webkit.org/show_bug.cgi?id=118654
+        <rdar://problem/14293352>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebNotificationClient.mm:
+        (-[WebNotificationPolicyListener initWithCallback:]): The callback can be NULL, so remove the ASSERT.
+        (-[WebNotificationPolicyListener allow]): Check for the callback before asking it to handle the event.
+        (-[WebNotificationPolicyListener deny]): Ditto.
+
+2013-07-12  Jessie Berlin  <jberlin@apple.com>
+
+        Remove some dead stores pointed out by the clang static analyzer.
+        https://bugs.webkit.org/show_bug.cgi?id=118608
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::instantiatePlugin):
+        kr is never read after this point, so there is no reason to assign to it.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage getPluginInfoFromPLists]):
+        The extensions array is only used in the while loop. Move the declaration to the first place
+        it is used in the while loop. Since it is always reassigned at that location, and since it
+        is never read after the subsequent for loop, the assignment to an array containing the empty
+        string is never used. Remove it.
+        Similarly, the value of the description is always overwritten before used to assign to
+        mimeClassInfo.desc or to pluginInfo.desc, so the code to assign it to the empty string is
+        never used. Remove it.
+
+        * WebView/WebTextCompletionController.mm:
+        (-[WebTextCompletionController _placePopupWindow:]):
+        maxWidth is never read (and never was since it was added in r7311) after it is used on the
+        line above to set windowFrame.size.width.
+
+2013-07-11  Dan Bernstein  <mitz@apple.com>
+
+        [mac] No API for getting the page visibility state of a WebView
+        https://bugs.webkit.org/show_bug.cgi?id=118578
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebView.mm:
+        (kit): Added. Converts from WebCore::PageVisibilityState to WebPageVisibilityState.
+        (-[WebView _visibilityState]): Added.
+        * WebView/WebViewPrivate.h: Declared -_visibilityState.
+
+2013-07-11  Timothy Hatcher  <timothy@apple.com>
+
+        Revert r152267 and soft link WebInspectorUI.framework again.
+
+        https://bugs.webkit.org/show_bug.cgi?id=118544
+
+        Reviewed by David Kilzer.
+
+        * Configurations/WebKit.xcconfig:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (useWebKitWebInspector):
+
+2013-07-10  Jessie Berlin  <jberlin@apple.com>
+
+        Remove some dead code from WebNSURLExtras _web_hostString
+        https://bugs.webkit.org/show_bug.cgi?id=118519
+
+        Reviewed by Anders Carlsson.
+
+        * Misc/WebNSURLExtras.mm:
+        (-[NSURL _web_hostString]):
+        NSString initWithData:encoding: does not throw an exception when passing nil for the data, so
+        just delete the code that wasn't being run.
+
+2013-07-09  Jeremy Noble  <jer.noble@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        Remember the scroll position and restore after exiting full-screen mode.
+        https://bugs.webkit.org/show_bug.cgi?id=61956
+        <rdar://problem/9544461>
+
+        Call into the main FrameView to save the scroll position before swapping the
+        WebView into the full-screen window, and restore the scroll position after 
+        swapping the WebView back into the browser window.
+
+        * WebView/WebFullScreenController.h:
+        * WebView/WebFullScreenController.mm:
+        (-[WebFullScreenController windowDidEnterFullscreen:]): Save the scroll position.
+        (-[WebFullScreenController exitFullscreen]): Restore the scroll position.
+
+2013-07-04  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        Add a method to get unreachable URL from WebFrame.
+        https://bugs.webkit.org/show_bug.cgi?id=118399
+
+        Normally we could use [[WebFrame dataSource] unreachableURL] to get the failed URL.  However, if the frame has not
+        loaded (FrameLoader::frameHasLoaded() is false), we will get a nil dataSource and we won't be able to get unreachableURL.
+        We can add a method to always return the unreachableURL regardless if the frame has loaded or not.
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _unreachableURL]):
+        * WebView/WebFramePrivate.h:
+
+2013-07-03  Zalan Bujtas  <zalan@apple.com>
+
+        H&R Block 2010 Help window can not be reopened.
+        https://bugs.webkit.org/show_bug.cgi?id=118342
+
+        Reviewed by Antti Koivisto.
+
+        http://trac.webkit.org/changeset/118916 changed the window.focus() behaviour so that
+        only the opener can (re)focus() a particular window.
+        H&R Block app relies on the relaxed window.focus() rules.
+
+        * WebView/WebView.mm:
+        (shouldRestrictWindowFocus):
+        (-[WebView _preferencesChanged:]):
+
+2013-07-01  Timothy Hatcher  <timothy@apple.com>
+
+        Link to WebInspectorUI.framework at build time instead of soft linking.
+
+        https://bugs.webkit.org/show_bug.cgi?id=118261
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/WebKit.xcconfig:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (useWebKitWebInspector):
+
+2013-07-01  Jochen Eisinger  <jochen@chromium.org>
+
+        Remove support for consumable user gestures
+        https://bugs.webkit.org/show_bug.cgi?id=118247
+
+        Reviewed by Geoffrey Garen.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::evaluate):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView sendEvent:isDrawRect:]):
+
+2013-06-27  Jer Noble  <jer.noble@apple.com>
+
+        Audio in apps which embed WebViews is corrupted.
+        https://bugs.webkit.org/show_bug.cgi?id=118163
+
+        Reviewed by Maciej Stachowiak.
+
+        Expose the WebCore lowPowerVideoAudioBufferSizeEnabled setting to WebKit clients.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences lowPowerVideoAudioBufferSizeEnabled]):
+        (-[WebPreferences setLowPowerVideoAudioBufferSizeEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2013-07-01  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt toHTMLTextAreaElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118226
+
+        Reviewed by Andreas Kling.
+
+        To enhance readability, this patch adopts toHTMLTextAreaElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::textDidChangeInTextArea):
+
+2013-06-27  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLInputElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118130
+
+        Reviewed by Antti Koivisto.
+
+        To enhance readability, this patch adopts is/toHTMLInputElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * DOM/WebDOMOperations.mm:
+        (-[DOMHTMLInputElement _setAutofilled:]):
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::focusedNodeChanged):
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::textFieldDidBeginEditing):
+        (WebEditorClient::textFieldDidEndEditing):
+        (WebEditorClient::textDidChangeInTextField):
+        (WebEditorClient::doTextFieldCommandFromEvent):
+        (WebEditorClient::textWillBeDeletedInTextField):
+        * WebView/WebHTMLRepresentation.mm:
+        (inputElementFromDOMElement):
+
+2013-06-26  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLAudioElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=117985
+
+        Reviewed by Jer Noble.
+
+        To enhance readibility, this patch adopts is/toHTMLAudioElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * Plugins/WebPluginController.mm:
+
+2013-06-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Move displayID stuff from Widget to Chrome
+        https://bugs.webkit.org/show_bug.cgi?id=117944
+
+        Reviewed by Anders Carlsson.
+
+        In r151877 I polluted Widget with displayID-related stuff. This would
+        be better on HostWindow, so move it there. This is a net code reduction,
+        and eliminates PlatformScreenMac.h, and the NSScreen category.
+
+        * WebView/WebView.mm:
+        (-[WebView doWindowDidChangeScreen]): Go via chrome().
+
+2013-06-21  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        REGRESSION (r150663): Using webkitAudioContext in Inspector makes it undefined everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=117825
+
+        Reviewed by Kentaro Hara.
+
+        Use Settings to enable Web Audio instead of RuntimeEnabledFeatures.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2013-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        FrameView needs to initialize paintsEntireContents on creation
+        https://bugs.webkit.org/show_bug.cgi?id=117844
+
+        Reviewed by Anders Carlsson.
+        
+        In WebKit1, if the WebView is layer-backed, WebHTMLView gets a layer.
+        In this mode, FrameView::paintsEntireContents() is true. However,
+        we would only call setPaintsEntireContents(true) on the FrameView
+        when the view's layer-backed status changes. FrameView also needs
+        to fetch this state when it is initialized, because we may be creating
+        a new FrameView for an already layer-backed WebHTMLView.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::shouldPaintEntireContents):
+
+2013-06-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        Use the PlatformEvent timestamp when creating a DOM Event
+        https://bugs.webkit.org/show_bug.cgi?id=117179
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
 2013-06-18  Roger Fong  <roger_fong@apple.com>
 
         Unreviewed. Build fix for Mac.

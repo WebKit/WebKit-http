@@ -27,6 +27,8 @@
 #define ParserTokens_h
 
 #include "ParserModes.h"
+#include <limits.h>
+#include <stdint.h>
 
 namespace JSC {
 
@@ -149,24 +151,29 @@ enum JSTokenType {
 };
 
 union JSTokenData {
-    int intValue;
+    struct {
+        uint32_t line;
+        uint32_t offset;
+        uint32_t lineStartOffset;
+    };
     double doubleValue;
     const Identifier* ident;
 };
 
 struct JSTokenLocation {
-    JSTokenLocation() : line(0), charPosition(0) { }
+    JSTokenLocation() : line(0), lineStartOffset(0), startOffset(0) { }
     JSTokenLocation(const JSTokenLocation& location)
     {
         line = location.line;
+        lineStartOffset = location.lineStartOffset;
         startOffset = location.startOffset;
         endOffset = location.endOffset;
-        charPosition = location.charPosition;
     }
+
     int line;
-    int startOffset;
-    int endOffset;
-    int charPosition;
+    unsigned lineStartOffset;
+    unsigned startOffset;
+    unsigned endOffset;
 };
 
 struct JSToken {
@@ -175,7 +182,6 @@ struct JSToken {
     JSTokenLocation m_location;
 };
 
-}
-
+} // namespace JSC
 
 #endif // ParserTokens_h

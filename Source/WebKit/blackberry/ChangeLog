@@ -1,3 +1,354 @@
+2013-07-17  Kangil Han  <kangil.han@samsung.com>
+
+        Use toHTMLMediaElement
+        https://bugs.webkit.org/show_bug.cgi?id=118727
+
+        Reviewed by Ryosuke Niwa.
+
+        To avoid direct use of static_cast, this patch uses toHTMLMediaElement for code cleanup.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::webContext):
+        (BlackBerry::WebKit::WebPage::notifyFullScreenVideoExited):
+        (BlackBerry::WebKit::WebPagePrivate::enterFullscreenForNode):
+        (BlackBerry::WebKit::WebPagePrivate::exitFullscreenForNode):
+
+2013-07-16  Kangil Han  <kangil.han@samsung.com>
+
+        Use toHTMLSelectElement and dismiss isHTMLSelectElement
+        https://bugs.webkit.org/show_bug.cgi?id=118714
+
+        Reviewed by Ryosuke Niwa.
+
+        To avoid direct use of static_cast, this patch introduces toHTMLIFrameElement for code cleanup.
+        Additionally, this patch removes isHTMLSelectElement because not all element subclasses can be checked by a combination of tag names.
+
+        * WebKitSupport/InputHandler.cpp:
+        (BlackBerry::WebKit::InputHandler::didNodeOpenPopup):
+        (BlackBerry::WebKit::InputHandler::setPopupListIndex):
+        (BlackBerry::WebKit::InputHandler::setPopupListIndexes):
+
+2013-07-08  Jacky Jiang  <zhajiang@blackberry.com>
+
+        [BlackBerry] Block Zoom does not zoom in on narrow paragraphs properly
+        https://bugs.webkit.org/show_bug.cgi?id=118472
+
+        Reviewed by Rob Buis.
+        Internally reviewed Arvid Nilsson and Genevieve Mak.
+
+        JIRA 114653
+        For the narrow paragraphs on www.nytimes.com, the first best node for
+        block zoom under the point is deprecated due to the limits of maximum
+        block zoom scale(3) and default maximum WebPage zoom scale(4) and instead
+        it picks up an ancestor node which is wider so that it looks like doesn't
+        zoom in properly.
+        To fix that, enlarge the default maximum WebPage zoom scale slightly
+        and use maximumScale() instead of maxBlockZoomScale() so that we can
+        accept more nodes. And also we'll still clamp the new scale by
+        maxBlockZoomScale() when we block zoom the WebPage, in which way those
+        nodes can be showed in the center of the viewport and surrounded by a
+        few other nodes within the viewport which shows better user experience.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::maximumScale):
+        (BlackBerry::WebKit::WebPagePrivate::adjustedBlockZoomNodeForZoomAndExpandingRatioLimits):
+
+2013-07-01  Jochen Eisinger  <jochen@chromium.org>
+
+        Remove support for consumable user gestures
+        https://bugs.webkit.org/show_bug.cgi?id=118247
+
+        Reviewed by Geoffrey Garen.
+
+        * WebKitSupport/NotificationManager.cpp:
+        (BlackBerry::WebKit::NotificationManager::notificationClicked):
+
+2013-07-01  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt toHTMLTextAreaElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118226
+
+        Reviewed by Andreas Kling.
+
+        To enhance readability, this patch adopts toHTMLTextAreaElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::blockZoomRectForNode):
+        * WebKitSupport/DOMSupport.cpp:
+        (BlackBerry::WebKit::DOMSupport::isTextInputElement):
+        (BlackBerry::WebKit::DOMSupport::inputElementText):
+        * WebKitSupport/InputHandler.cpp:
+        (BlackBerry::WebKit::InputHandler::elementType):
+        (BlackBerry::WebKit::InputHandler::boundingBoxForInputField):
+
+2013-06-29  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLOptGroupElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118213
+
+        Reviewed by Andreas Kling.
+
+        To enhance readability, this patch adopts is/toHTMLOptGroupElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * WebKitSupport/InputHandler.cpp:
+        (BlackBerry::WebKit::InputHandler::openSelectPopup):
+
+2013-06-29  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLOptionElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118212
+
+        Reviewed by Andreas Kling.
+
+        To enhance readability, this patch adopts is/toHTMLOptionElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * WebKitSupport/InputHandler.cpp:
+        (BlackBerry::WebKit::InputHandler::willOpenPopupForNode):
+        (BlackBerry::WebKit::InputHandler::didNodeOpenPopup):
+        (BlackBerry::WebKit::InputHandler::openSelectPopup):
+        (BlackBerry::WebKit::InputHandler::setPopupListIndexes):
+        * WebKitSupport/SelectPopupClient.cpp:
+        (BlackBerry::WebKit::SelectPopupClient::setValueAndClosePopup):
+
+2013-06-28  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLImageElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118182
+
+        Reviewed by Andreas Kling.
+
+        To enhance readability, this patch adopts is/toHTMLImageElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::webContext):
+        (BlackBerry::WebKit::WebPagePrivate::blockZoomRectForNode):
+        (BlackBerry::WebKit::WebPage::blockZoom):
+        * WebKitSupport/FatFingers.cpp:
+        (BlackBerry::WebKit::FatFingers::isElementClickable):
+
+2013-06-27  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLInputElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118130
+
+        Reviewed by Antti Koivisto.
+
+        To enhance readability, this patch adopts is/toHTMLInputElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::webContext):
+        (BlackBerry::WebKit::WebPagePrivate::blockZoomRectForNode):
+        * WebCoreSupport/CredentialTransformData.cpp:
+        (WebCore::CredentialTransformData::findPasswordFormFields):
+        * WebCoreSupport/EditorClientBlackBerry.cpp:
+        (WebCore::EditorClientBlackBerry::shouldSpellCheckFocusedField):
+        * WebKitSupport/DOMSupport.cpp:
+        (BlackBerry::WebKit::DOMSupport::isPasswordElement):
+        (BlackBerry::WebKit::DOMSupport::inputElementText):
+        (BlackBerry::WebKit::DOMSupport::isDateTimeInputField):
+        (BlackBerry::WebKit::DOMSupport::isColorInputField):
+        (BlackBerry::WebKit::DOMSupport::elementIdOrNameIndicatesNoAutocomplete):
+        * WebKitSupport/InputHandler.cpp:
+        (BlackBerry::WebKit::InputHandler::elementType):
+        (BlackBerry::WebKit::InputHandler::setInputValue):
+        (BlackBerry::WebKit::InputHandler::extractedTextRequest):
+        (BlackBerry::WebKit::InputHandler::showTextInputTypeSuggestionBox):
+
+2013-06-27  Nima Ghanavatian  <nghanavatian@blackberry.com>
+
+        [BlackBerry] We should clear all markers when input changes a word
+        https://bugs.webkit.org/show_bug.cgi?id=118136
+        JIRA115313.
+
+        For the case where a letter is added to the middle of a misspelled word, we were
+        sending incorrect offsets to clear spelling markers. However, since this
+        expanded the current word, it overlaps entirely the previous spelling marker so
+        no issue is found. However, if the keypress is backspace, the incorrect range
+        is smaller, causing an overlap which recreates the marker over the last character.
+        Setting shouldEraseMarkersAfterChangeSelection to follow continuous spell checking,
+        which will clear all markers regardless of overlap.
+        This patch also sustains spelling markers after the user taps to move the caret onto
+        the word, which is a nice gain as it was asked for previously.
+
+        Reviewed by Rob Buis.
+
+        Internally Reviewed by Mike Fenton
+
+        * WebCoreSupport/EditorClientBlackBerry.cpp:
+        (WebCore::EditorClientBlackBerry::shouldEraseMarkersAfterChangeSelection):
+
+2013-06-26  Carlos Garcia Campos  <cargarcia@blackberry.com>
+
+        [BlackBerry] Handle testRunner.setCustomPolicyDelegate()
+        https://bugs.webkit.org/show_bug.cgi?id=117982
+
+        Reviewed by Rob Buis.
+
+        Take custom policy into account when deciding the policy for
+        navigation actions.
+
+        Fixes test fast/loader/onload-policy-ignore-for-frame.html.
+
+        * Api/DumpRenderTreeClient.h:
+        * WebCoreSupport/FrameLoaderClientBlackBerry.cpp:
+        (WebCore::FrameLoaderClientBlackBerry::dispatchDecidePolicyForNavigationAction):
+        If custom policy is enabled ignore the navigation action when it's
+        not permissive.
+
+2013-06-26  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLAreaElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=117980
+
+        Reviewed by Antonio Gomes.
+
+        To enhance readibility, this patch adopts is/toHTMLAreaElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::webContext):
+        * WebKitSupport/TouchEventHandler.cpp:
+        (BlackBerry::WebKit::elementForTapHighlight):
+
+2013-06-26  Jacky Jiang  <zhajiang@blackberry.com>
+
+        [BlackBerry] ASSERT(!m_tileMatrixNeedsUpdate) in BackingStorePrivate::render()
+        https://bugs.webkit.org/show_bug.cgi?id=118062
+
+        Reviewed by Rob Buis.
+        Internally reviewed by Jakob Petsovits.
+
+        JIRA426949
+        requestLayoutIfNeeded() can cause zoomAboutPoint() when the layout
+        is finished and make the tile matrix stale. We need requestLayoutIfNeeded()
+        before we updateTileMatrixIfNeeded() so that we can fix the ASSERT and
+        also pass the valid TileIndexList to render().
+
+        * Api/BackingStore.cpp:
+        (BlackBerry::WebKit::BackingStorePrivate::resumeScreenUpdates):
+        (BlackBerry::WebKit::BackingStorePrivate::render):
+
+2013-06-25  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLAnchorElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=117973
+
+        Reviewed by Andreas Kling.
+
+        To enhance readibility, this patch adopts is/toHTMLAnchorElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * WebKitSupport/FatFingers.cpp:
+        (BlackBerry::WebKit::FatFingers::isElementClickable):
+
+2013-06-24  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLFormElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=117937
+
+        Reviewed by Andreas Kling.
+
+        This refers to http://src.chromium.org/viewvc/blink?view=revision&revision=152859
+
+        To enhance readibility, this patch adopts is/toHTMLFormElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * WebCoreSupport/CredentialManager.cpp:
+        (WebCore::CredentialManager::autofillPasswordForms):
+
+2013-06-24  Jakob Petsovits  <jpetsovits@blackberry.com>
+
+        [BlackBerry] Only resume root layer commits for visible WebPages
+        https://bugs.webkit.org/show_bug.cgi?id=117956
+        https://jira.bbqnx.net/browse/BRWSR-12047
+        JIRA428381
+
+        Reviewed by George Staikos.
+
+        In r150629, the code from that change introduced to
+        suspend and resume root layer commits would not take into
+        account whether the page is actually visible.
+
+        Because application activation state is usually conveyed
+        to all or any WebPages, this would mean on transitioning
+        into an active application state, we were resuming
+        root layer commits that might have previously been
+        disabled for visibility reasons.
+
+        Fix this by going through a single function that knows
+        by itself whether to suspend or resume root layer commits,
+        so the calling code doesn't have a chance to get it wrong.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPage::setVisible):
+        (BlackBerry::WebKit::WebPagePrivate::notifyAppActivationStateChange):
+        (BlackBerry::WebKit::WebPagePrivate::updateRootLayerCommitEnabled):
+        * Api/WebPage_p.h:
+        (WebPagePrivate):
+
+2013-06-20  Nima Ghanavatian  <nghanavatian@blackberry.com>
+
+        [BlackBerry] Send the correct offsets for misspelled words.
+        https://bugs.webkit.org/show_bug.cgi?id=117846
+
+        JIRA116916.
+        When the caret is placed after a word, the offsets were calculated around
+        the proceeding space. As such, words that end a sentence worked correctly, but
+        midsentence words did not. The 'startOfWord' was calculated for the space ahead
+        and not for the word before it. Now finding the start of the word correctly and
+        calculating the end from there.
+
+        Reviewed by Rob Buis.
+
+        Internally reviewed by Genevieve Mak.
+
+        * WebKitSupport/InputHandler.cpp:
+        (BlackBerry::WebKit::InputHandler::requestSpellingCheckingOptions):
+
+2013-06-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [BlackBerry] Handle testRunner.setWillSendRequestReturnsNull() in DRT
+        https://bugs.webkit.org/show_bug.cgi?id=117827
+
+        Reviewed by Rob Buis.
+
+        Add DumpRenderTreeClient::willSendRequestForFrame() to handle
+        dispatchWillSendRequest() in DRT.
+
+        Fixes tests
+        fast/loader/onload-willSendRequest-null-for-script.html and
+        fast/loader/willSendRequest-null-for-preload.html.
+
+        * Api/DumpRenderTreeClient.h:
+        * WebCoreSupport/FrameLoaderClientBlackBerry.cpp:
+        (WebCore::FrameLoaderClientBlackBerry::dispatchWillSendRequest):
+
+2013-06-19  Jakob Petsovits  <jpetsovits@blackberry.com>
+
+        [BlackBerry] Prevent loss of tile buffers in BackingStorePrivate::render()
+        https://bugs.webkit.org/show_bug.cgi?id=117799
+        https://jira.bbqnx.net/browse/BRWSR-11712
+        JIRA413289
+
+        Reviewed by Carlos Garcia Campos.
+
+        Discovered by Xuefei Ren.
+
+        If, in rare cases, renderContents() returns false,
+        the for() loop in render() will take a tile buffer from
+        the surface pool but due to aborting the iteration early,
+        won't put it into the new tile map. In order to prevent
+        losing the buffer, we need to put it back into the
+        surface pool before continuing.
+
+        * Api/BackingStore.cpp:
+        (BlackBerry::WebKit::BackingStorePrivate::render):
+
 2013-06-17  Tiancheng Jiang  <tijiang@rim.com>
 
         Cache FatFinger Text Result.

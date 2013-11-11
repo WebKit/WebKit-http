@@ -101,7 +101,7 @@ private:
     virtual PassRefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*);
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual PassRefPtr<WebColorChooserProxy> createColorChooserProxy(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&);
+    virtual PassRefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&);
 #endif
 
     void setFindIndicator(PassRefPtr<FindIndicator>, bool fadeOut, bool animate);
@@ -118,14 +118,6 @@ private:
     virtual void makeFirstResponder();
     
     virtual CGContextRef containingWindowGraphicsContext();
-
-    virtual void didCommitLoadForMainFrame(bool useCustomRepresentation);
-    virtual void didFinishLoadingDataForCustomRepresentation(const String& suggestedFilename, const CoreIPC::DataReference&);
-
-    virtual double customRepresentationZoomFactor();
-    virtual void setCustomRepresentationZoomFactor(double);
-    virtual void findStringInCustomRepresentation(const String&, FindOptions, unsigned maxMatchCount);
-    virtual void countStringMatchesInCustomRepresentation(const String&, FindOptions, unsigned maxMatchCount);
 
     virtual void flashBackingStoreUpdates(const Vector<WebCore::IntRect>& updateRects);
 

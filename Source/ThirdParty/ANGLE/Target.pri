@@ -25,8 +25,8 @@ HEADERS += \
     src/compiler/depgraph/DependencyGraph.h \
     src/compiler/depgraph/DependencyGraphBuilder.h \
     src/compiler/depgraph/DependencyGraphOutput.h \
+    src/compiler/DetectCallDepth.h \
     src/compiler/DetectDiscontinuity.h \
-    src/compiler/DetectRecursion.h \
     src/compiler/Diagnostics.h \
     src/compiler/DirectiveHandler.h \
     src/compiler/ExtensionBehavior.h \
@@ -75,6 +75,7 @@ HEADERS += \
     src/compiler/TranslatorGLSL.h \
     src/compiler/TranslatorHLSL.h \
     src/compiler/Types.h \
+    src/compiler/Uniform.h \
     src/compiler/UnfoldShortCircuit.h \
     src/compiler/util.h \
     src/compiler/ValidateLimitations.h \
@@ -92,8 +93,8 @@ SOURCES += \
     src/compiler/depgraph/DependencyGraphBuilder.cpp \
     src/compiler/depgraph/DependencyGraphOutput.cpp \
     src/compiler/depgraph/DependencyGraphTraverse.cpp \
+    src/compiler/DetectCallDepth.cpp \
     src/compiler/DetectDiscontinuity.cpp \
-    src/compiler/DetectRecursion.cpp \
     src/compiler/Diagnostics.cpp \
     src/compiler/DirectiveHandler.cpp \
     src/compiler/ForLoopUnroll.cpp \
@@ -122,6 +123,7 @@ SOURCES += \
     src/compiler/TranslatorESSL.cpp \
     src/compiler/TranslatorGLSL.cpp \
     src/compiler/TranslatorHLSL.cpp \
+    src/compiler/Uniform.cpp \
     src/compiler/UnfoldShortCircuit.cpp \
     src/compiler/util.cpp \
     src/compiler/ValidateLimitations.cpp \

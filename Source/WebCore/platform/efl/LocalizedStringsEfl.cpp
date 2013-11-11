@@ -153,6 +153,16 @@ String contextMenuItemTagToggleMediaControls()
     return String::fromUTF8("Toggle Media Controls");
 }
 
+String contextMenuItemTagShowMediaControls()
+{
+    return String::fromUTF8("Show Media Controls");
+}
+
+String contextMenuitemTagHideMediaControls()
+{
+    return String::fromUTF8("Hide Media Controls");
+}
+
 String contextMenuItemTagToggleMediaLoop()
 {
     return String::fromUTF8("Toggle Media Loop Playback");
@@ -429,6 +439,12 @@ String unknownFileSizeText()
 }
 
 String imageTitle(const String&, const IntSize&)
+{
+    notImplemented();
+    return String();
+}
+
+String AXListItemActionVerb()
 {
     notImplemented();
     return String();

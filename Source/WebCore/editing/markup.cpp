@@ -32,9 +32,6 @@
 #include "CDATASection.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPropertyNames.h"
-#include "CSSRule.h"
-#include "CSSRuleList.h"
-#include "CSSStyleRule.h"
 #include "CSSValue.h"
 #include "CSSValueKeywords.h"
 #include "ChildListMutationScope.h"
@@ -43,7 +40,6 @@
 #include "DeleteButtonController.h"
 #endif
 #include "DocumentFragment.h"
-#include "DocumentType.h"
 #include "Editor.h"
 #include "ExceptionCode.h"
 #include "ExceptionCodePlaceholder.h"
@@ -51,6 +47,8 @@
 #include "HTMLBodyElement.h"
 #include "HTMLElement.h"
 #include "HTMLNames.h"
+#include "HTMLTableElement.h"
+#include "HTMLTextAreaElement.h"
 #include "HTMLTextFormControlElement.h"
 #include "KURL.h"
 #include "MarkupAccumulator.h"
@@ -58,17 +56,13 @@
 #include "Range.h"
 #include "RenderBlock.h"
 #include "RenderObject.h"
-#include "Settings.h"
 #include "StylePropertySet.h"
-#include "StyleResolver.h"
 #include "TextIterator.h"
 #include "VisibleSelection.h"
 #include "VisibleUnits.h"
-#include "XMLNSNames.h"
 #include "htmlediting.h"
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
-#include <wtf/unicode/CharacterNames.h>
 
 using namespace std;
 
@@ -223,7 +217,7 @@ String StyledMarkupAccumulator::takeResults()
 
 void StyledMarkupAccumulator::appendText(StringBuilder& out, Text* text)
 {    
-    const bool parentIsTextarea = text->parentElement() && text->parentElement()->tagQName() == textareaTag;
+    const bool parentIsTextarea = text->parentElement() && isHTMLTextAreaElement(text->parentElement());
     const bool wrappingSpan = shouldApplyWrappingStyle(text) && !parentIsTextarea;
     if (wrappingSpan) {
         RefPtr<EditingStyle> wrappingStyle = m_wrappingStyle->copy();
@@ -440,7 +434,7 @@ static Node* ancestorToRetainStructureAndAppearanceForBlock(Node* commonAncestor
 
     if (commonAncestorBlock->hasTagName(tbodyTag) || commonAncestorBlock->hasTagName(trTag)) {
         ContainerNode* table = commonAncestorBlock->parentNode();
-        while (table && !table->hasTagName(tableTag))
+        while (table && !isHTMLTableElement(table))
             table = table->parentNode();
 
         return table;
@@ -472,7 +466,7 @@ static bool propertyMissingOrEqualToNone(StylePropertySet* style, CSSPropertyID 
         return true;
     if (!value->isPrimitiveValue())
         return false;
-    return static_cast<CSSPrimitiveValue*>(value.get())->getIdent() == CSSValueNone;
+    return static_cast<CSSPrimitiveValue*>(value.get())->getValueID() == CSSValueNone;
 }
 
 static bool needInterchangeNewlineAfter(const VisiblePosition& v)
@@ -527,7 +521,7 @@ static Node* highestAncestorToWrapMarkup(const Range* range, EAnnotateForInterch
     }
 
     Node* checkAncestor = specialCommonAncestor ? specialCommonAncestor : commonAncestor;
-    if (checkAncestor->renderer()) {
+    if (checkAncestor->renderer() && checkAncestor->renderer()->containingBlock()) {
         Node* newSpecialCommonAncestor = highestEnclosingNodeOfType(firstPositionInNode(checkAncestor), &isElementPresentational, CanCrossEditingBoundary, checkAncestor->renderer()->containingBlock()->node());
         if (newSpecialCommonAncestor)
             specialCommonAncestor = newSpecialCommonAncestor;
@@ -761,7 +755,7 @@ PassRefPtr<DocumentFragment> createFragmentFromMarkupWithContext(Document* docum
     return fragment;
 }
 
-String createMarkup(const Node* node, EChildrenOnly childrenOnly, Vector<Node*>* nodes, EAbsoluteURLs shouldResolveURLs, Vector<QualifiedName>* tagNamesToSkip)
+String createMarkup(const Node* node, EChildrenOnly childrenOnly, Vector<Node*>* nodes, EAbsoluteURLs shouldResolveURLs, Vector<QualifiedName>* tagNamesToSkip, EFragmentSerialization fragmentSerialization)
 {
     if (!node)
         return "";
@@ -774,7 +768,7 @@ String createMarkup(const Node* node, EChildrenOnly childrenOnly, Vector<Node*>*
             return "";
     }
 #endif
-    MarkupAccumulator accumulator(nodes, shouldResolveURLs);
+    MarkupAccumulator accumulator(nodes, shouldResolveURLs, 0, fragmentSerialization);
     return accumulator.serializeNodes(const_cast<Node*>(node), deleteButtonContainerElement, childrenOnly, tagNamesToSkip);
 }
 

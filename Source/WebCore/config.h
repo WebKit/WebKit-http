@@ -17,7 +17,7 @@
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  *
- */ 
+ */
 
 #if defined(HAVE_CONFIG_H) && HAVE_CONFIG_H
 #ifdef BUILDING_WITH_CMAKE
@@ -136,7 +136,15 @@ typedef float CGFloat;
 
 // FIXME: Move this to JavaScriptCore/wtf/Platform.h, which is where we define WTF_USE_AVFOUNDATION on the Mac.
 // https://bugs.webkit.org/show_bug.cgi?id=67334
-#if PLATFORM(WIN) && HAVE(AVCF)
+#if PLATFORM(WIN) && USE(CG) && HAVE(AVCF)
 #define WTF_USE_AVFOUNDATION 1
+
+#if HAVE(AVCF_LEGIBLE_OUTPUT)
+#define WTF_USE_AVFOUNDATION 1
+#define HAVE_AVFOUNDATION_MEDIA_SELECTION_GROUP 1
+#define HAVE_AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT 1
+#define HAVE_MEDIA_ACCESSIBILITY_FRAMEWORK 1
+#endif
+
 #endif
 

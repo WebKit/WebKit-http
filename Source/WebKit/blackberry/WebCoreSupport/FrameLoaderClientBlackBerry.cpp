@@ -222,8 +222,11 @@ void FrameLoaderClientBlackBerry::dispatchDecidePolicyForNavigationAction(FrameP
     if (decision == PolicyIgnore)
         dispatchDidCancelClientRedirect();
 
-    if (m_webPagePrivate->m_dumpRenderTree)
+    if (m_webPagePrivate->m_dumpRenderTree) {
         m_webPagePrivate->m_dumpRenderTree->didDecidePolicyForNavigationAction(action, request, m_frame);
+        if (m_webPagePrivate->m_dumpRenderTree->policyDelegateEnabled())
+            decision = m_webPagePrivate->m_dumpRenderTree->policyDelegateIsPermissive() ? PolicyUse : PolicyIgnore;
+    }
 
     (m_frame->loader()->policyChecker()->*function)(decision);
 }
@@ -960,7 +963,7 @@ void FrameLoaderClientBlackBerry::detachedFromParent2()
     m_webPagePrivate = 0;
 }
 
-void FrameLoaderClientBlackBerry::dispatchWillSendRequest(DocumentLoader* docLoader, long unsigned, ResourceRequest& request, const ResourceResponse&)
+void FrameLoaderClientBlackBerry::dispatchWillSendRequest(DocumentLoader* docLoader, long unsigned, ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
     // If the request is being loaded by the provisional document loader, then
     // it is a new top level request which has not been commited.
@@ -980,6 +983,12 @@ void FrameLoaderClientBlackBerry::dispatchWillSendRequest(DocumentLoader* docLoa
         BlackBerry::Platform::String headerValueString = it->second;
         request.setHTTPHeaderField(String::fromUTF8WithLatin1Fallback(headerString.data(), headerString.length()), String::fromUTF8WithLatin1Fallback(headerValueString.data(), headerValueString.length()));
     }
+
+    if (m_webPagePrivate->m_dumpRenderTree) {
+        if (!m_webPagePrivate->m_dumpRenderTree->willSendRequestForFrame(m_frame, request, redirectResponse))
+            return;
+    }
+
     if (!isMainResourceLoad) {
         // Do nothing for now.
         // Any processing which is done only for subresources should go here.

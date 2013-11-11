@@ -60,10 +60,12 @@
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "ExceptionCodePlaceholder.h"
+#include "FlowThreadController.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "HTMLElement.h"
 #include "HTMLFrameOwnerElement.h"
+#include "HTMLImageElement.h"
 #include "HTMLNames.h"
 #include "HTMLStyleElement.h"
 #include "InsertionPoint.h"
@@ -122,6 +124,10 @@
 
 #if ENABLE(GESTURE_EVENTS)
 #include "GestureEvent.h"
+#endif
+
+#if ENABLE(INDIE_UI)
+#include "UIRequestEvent.h"
 #endif
 
 #if ENABLE(INSPECTOR)
@@ -1118,6 +1124,11 @@ bool Node::canStartSelection() const
     return parentOrShadowHostNode() ? parentOrShadowHostNode()->canStartSelection() : true;
 }
 
+bool Node::isRegisteredWithNamedFlow() const
+{
+    return document()->renderView()->flowThreadController()->isContentNodeRegisteredWithAnyNamedFlow(this);
+}
+
 Element* Node::shadowHost() const
 {
     if (ShadowRoot* root = containingShadowRoot())
@@ -1945,7 +1956,7 @@ Node* Node::enclosingLinkEventParentOrSelf()
         // For imagemaps, the enclosing link node is the associated area element not the image itself.
         // So we don't let images be the enclosingLinkNode, even though isLink sometimes returns true
         // for them.
-        if (node->isLink() && !node->hasTagName(imgTag))
+        if (node->isLink() && !isHTMLImageElement(node))
             return node;
     }
 
@@ -2276,6 +2287,13 @@ bool Node::dispatchTouchEvent(PassRefPtr<TouchEvent> event)
 }
 #endif
 
+#if ENABLE(INDIE_UI)
+bool Node::dispatchUIRequestEvent(PassRefPtr<UIRequestEvent> event)
+{
+    return EventDispatcher::dispatchEvent(this, UIRequestEventDispatchMediator::create(event));
+}
+#endif
+    
 bool Node::dispatchBeforeLoadEvent(const String& sourceURL)
 {
     if (!document()->hasListenerType(Document::BEFORELOAD_LISTENER))
@@ -2518,10 +2536,9 @@ void Node::unregisterScopedHTMLStyleChild()
 size_t Node::numberOfScopedHTMLStyleChildren() const
 {
     size_t count = 0;
-    for (Node* child = firstChild(); child; child = child->nextSibling()) {
-        if (child->hasTagName(HTMLNames::styleTag) && static_cast<HTMLStyleElement*>(child)->isRegisteredAsScoped())
+    for (Element* element = ElementTraversal::firstWithin(this); element; element = ElementTraversal::next(element, this))
+        if (isHTMLStyleElement(element) && toHTMLStyleElement(element)->isRegisteredAsScoped())
             count++;
-    }
 
     return count;
 }

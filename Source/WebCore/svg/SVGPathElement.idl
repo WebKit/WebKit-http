@@ -26,11 +26,7 @@
 
 [
     Conditional=SVG
-] interface SVGPathElement : SVGStyledElement,
-                                             SVGTests,
-                                             SVGLangSpace,
-                                             SVGExternalResourcesRequired,
-                                             SVGTransformable {
+] interface SVGPathElement : SVGGraphicsElement {
     readonly attribute SVGAnimatedNumber pathLength;
 
     float getTotalLength();
@@ -112,3 +108,4 @@
     readonly attribute SVGPathSegList animatedNormalizedPathSegList;
 };
 
+SVGPathElement implements SVGExternalResourcesRequired;

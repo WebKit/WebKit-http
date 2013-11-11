@@ -29,6 +29,7 @@
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
 #include "NativeWebWheelEvent.h"
+#include "NotImplemented.h"
 #include "PageLoadClientEfl.h"
 #include "PagePolicyClientEfl.h"
 #include "PageUIClientEfl.h"
@@ -36,7 +37,9 @@
 #include "PageViewportControllerClientEfl.h"
 #include "SnapshotImageGL.h"
 #include "ViewClientEfl.h"
+#include "WKArray.h"
 #include "WKDictionary.h"
+#include "WKEventEfl.h"
 #include "WKGeometry.h"
 #include "WKNumber.h"
 #include "WKPageGroup.h"
@@ -71,6 +74,7 @@
 #endif
 #include <WebCore/CairoUtilitiesEfl.h>
 #include <WebCore/Cursor.h>
+#include <WebCore/NotImplemented.h>
 #include <WebCore/PlatformContextCairo.h>
 #include <WebKit2/WKImageCairo.h>
 #include <wtf/MathExtras.h>
@@ -712,9 +716,51 @@ void EwkView::setMouseEventsEnabled(bool enabled)
 }
 
 #if ENABLE(TOUCH_EVENTS)
+static WKTouchPointState toWKTouchPointState(Evas_Touch_Point_State state)
+{
+    switch (state) {
+    case EVAS_TOUCH_POINT_UP:
+        return kWKTouchPointStateTouchReleased;
+    case EVAS_TOUCH_POINT_MOVE:
+        return kWKTouchPointStateTouchMoved;
+    case EVAS_TOUCH_POINT_DOWN:
+        return kWKTouchPointStateTouchPressed;
+    case EVAS_TOUCH_POINT_STILL:
+        return kWKTouchPointStateTouchStationary;
+    case EVAS_TOUCH_POINT_CANCEL:
+    default:
+        return kWKTouchPointStateTouchCancelled;
+    }
+}
+
+static WKEventModifiers toWKEventModifiers(const Evas_Modifier* modifiers)
+{
+    WKEventModifiers wkModifiers = 0;
+    if (evas_key_modifier_is_set(modifiers, "Shift"))
+        wkModifiers |= kWKEventModifiersShiftKey;
+    if (evas_key_modifier_is_set(modifiers, "Control"))
+        wkModifiers |= kWKEventModifiersControlKey;
+    if (evas_key_modifier_is_set(modifiers, "Alt"))
+        wkModifiers |= kWKEventModifiersAltKey;
+    if (evas_key_modifier_is_set(modifiers, "Meta"))
+        wkModifiers |= kWKEventModifiersMetaKey;
+
+    return wkModifiers;
+}
+
 void EwkView::feedTouchEvent(Ewk_Touch_Event_Type type, const Eina_List* points, const Evas_Modifier* modifiers)
 {
-    page()->handleTouchEvent(NativeWebTouchEvent(type, points, modifiers, webView()->transformFromScene(), transformToScreen(), ecore_time_get()));
+    unsigned length = eina_list_count(points);
+    OwnArrayPtr<WKTypeRef> touchPoints = adoptArrayPtr(new WKTypeRef[length]);
+    for (unsigned i = 0; i < length; ++i) {
+        Ewk_Touch_Point* point = static_cast<Ewk_Touch_Point*>(eina_list_nth(points, i));
+        ASSERT(point);
+        IntPoint position(point->x, point->y);
+        touchPoints[i] = WKTouchPointCreate(point->id, toAPI(IntPoint(position)), toAPI(transformToScreen().mapPoint(position)), toWKTouchPointState(point->state), WKSizeMake(0, 0), 0, 1);
+    }
+    WKRetainPtr<WKArrayRef> wkTouchPoints(AdoptWK, WKArrayCreateAdoptingValues(touchPoints.get(), length));
+
+    WKViewSendTouchEvent(wkView(), adoptWK(WKTouchEventCreate(static_cast<WKEventType>(type), wkTouchPoints.get(), toWKEventModifiers(modifiers), ecore_time_get())).get());
 }
 
 void EwkView::setTouchEventsEnabled(bool enabled)
@@ -745,6 +791,11 @@ void EwkView::setTouchEventsEnabled(bool enabled)
         evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MULTI_UP, handleTouchUp);
         evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MULTI_MOVE, handleTouchMove);
     }
+}
+
+void EwkView::doneWithTouchEvent(WKTouchEventRef, bool /* wasEventHandled */)
+{
+    notImplemented();
 }
 #endif
 
@@ -1260,24 +1311,22 @@ void EwkView::feedTouchEvents(Ewk_Touch_Event_Type type)
 {
     Ewk_View_Smart_Data* sd = smartData();
 
-    unsigned count = evas_touch_point_list_count(sd->base.evas);
-    if (!count)
+    unsigned length = evas_touch_point_list_count(sd->base.evas);
+    if (!length)
         return;
 
-    Eina_List* points = 0;
-    for (unsigned i = 0; i < count; ++i) {
-        Ewk_Touch_Point* point = new Ewk_Touch_Point;
-        point->id = evas_touch_point_list_nth_id_get(sd->base.evas, i);
-        evas_touch_point_list_nth_xy_get(sd->base.evas, i, &point->x, &point->y);
-        point->state = evas_touch_point_list_nth_state_get(sd->base.evas, i);
-        points = eina_list_append(points, point);
+    OwnArrayPtr<WKTypeRef> touchPoints = adoptArrayPtr(new WKTypeRef[length]);
+    for (unsigned i = 0; i < length; ++i) {
+        int x, y;
+        evas_touch_point_list_nth_xy_get(sd->base.evas, i, &x, &y);
+        IntPoint position(x, y);
+        Evas_Touch_Point_State state = evas_touch_point_list_nth_state_get(sd->base.evas, i);
+        int id = evas_touch_point_list_nth_id_get(sd->base.evas, i);
+        touchPoints[i] = WKTouchPointCreate(id, toAPI(IntPoint(position)), toAPI(transformToScreen().mapPoint(position)), toWKTouchPointState(state), WKSizeMake(0, 0), 0, 1);
     }
+    WKRetainPtr<WKArrayRef> wkTouchPoints(AdoptWK, WKArrayCreateAdoptingValues(touchPoints.get(), length));
 
-    feedTouchEvent(type, points, evas_key_modifier_get(sd->base.evas));
-
-    void* data;
-    EINA_LIST_FREE(points, data)
-        delete static_cast<Ewk_Touch_Point*>(data);
+    WKViewSendTouchEvent(wkView(), adoptWK(WKTouchEventCreate(static_cast<WKEventType>(type), wkTouchPoints.get(), toWKEventModifiers(evas_key_modifier_get(sd->base.evas)), ecore_time_get())).get());
 }
 
 void EwkView::handleTouchDown(void* /* data */, Evas* /* canvas */, Evas_Object* ewkView, void* /* eventInfo */)
@@ -1330,6 +1379,11 @@ PassRefPtr<cairo_surface_t> EwkView::takeSnapshot()
     WKViewResumeActiveDOMObjectsAndAnimations(wkView());
 
     return snapshot.release();
+}
+
+void EwkView::didFindZoomableArea(const WKPoint& point, const WKRect& area)
+{
+    notImplemented();
 }
 
 Evas_Smart_Class EwkView::parentSmartClass = EVAS_SMART_CLASS_INIT_NULL;

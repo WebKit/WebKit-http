@@ -34,7 +34,6 @@
 #include "ScriptEventListener.h"
 #include "ScriptExecutionContext.h"
 #include "TextTrackCueList.h"
-#include "TextTrackRegionList.h"
 
 namespace WebCore {
 
@@ -75,6 +74,12 @@ void LoadableTextTrack::scheduleLoad(const KURL& url)
 Element* LoadableTextTrack::element()
 {
     return m_trackElement;
+}
+    
+void LoadableTextTrack::setTrackElement(HTMLTrackElement* element)
+{
+    ASSERT(!m_trackElement || m_trackElement == element);
+    m_trackElement = element;
 }
 
 void LoadableTextTrack::loadTimerFired(Timer<LoadableTextTrack>*)

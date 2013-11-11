@@ -151,10 +151,6 @@ void QWebSettingsPrivate::apply()
                                       global->attributes.value(QWebSettings::AcceleratedCompositingEnabled));
 
         settings->setAcceleratedCompositingEnabled(value);
-        settings->setAcceleratedCompositingFor3DTransformsEnabled(value);
-        settings->setAcceleratedCompositingForAnimationEnabled(value);
-        settings->setAcceleratedCompositingForVideoEnabled(false);
-        settings->setAcceleratedCompositingForPluginsEnabled(false);
 
         bool showDebugVisuals = qgetenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS") == "1";
         settings->setShowDebugBorders(showDebugVisuals);
@@ -169,13 +165,10 @@ void QWebSettingsPrivate::apply()
         // For now, enable CSS shaders when WebGL is enabled.
         settings->setCSSCustomFilterEnabled(value);
 #endif
-#if USE(ACCELERATED_COMPOSITING)
-        settings->setAcceleratedCompositingForCanvasEnabled(value);
-#endif
 #endif
 #if ENABLE(WEB_AUDIO)
         value = attributes.value(QWebSettings::WebAudioEnabled, global->attributes.value(QWebSettings::WebAudioEnabled));
-        WebCore::RuntimeEnabledFeatures::setWebAudioEnabled(value);
+        settings->setWebAudioEnabled(value);
 #endif
 
         value = attributes.value(QWebSettings::CSSRegionsEnabled,

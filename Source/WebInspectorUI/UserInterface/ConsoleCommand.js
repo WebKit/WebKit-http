@@ -73,6 +73,7 @@ WebInspector.ConsoleCommand.prototype = {
             this._element = document.createElement("div");
             this._element.command = this;
             this._element.className = "console-user-command";
+            this._element.setAttribute("data-labelprefix", WebInspector.UIString("Input: "));
 
             this._formatCommand();
             this._element.appendChild(this._formattedCommand);
@@ -89,9 +90,9 @@ WebInspector.ConsoleCommand.prototype = {
         this._formattedCommand.textContent = this.command;
     },
     
-    toClipboardString: function()
+    toClipboardString: function(isPrefixOptional)
     {
-        return "> " + this.command;
+        return (isPrefixOptional ? "" : "> ") + this.command;
     }
 };
 

@@ -35,11 +35,12 @@
 #include "RenderSVGResourcePattern.h"
 #include "SVGElementInstance.h"
 #include "SVGFitToViewBox.h"
+#include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 #include "SVGRenderSupport.h"
 #include "SVGSVGElement.h"
-#include "SVGStyledTransformableElement.h"
 #include "SVGTransformable.h"
+#include "XLinkNames.h"
 
 namespace WebCore {
 
@@ -107,7 +108,7 @@ bool SVGPatternElement::isSupportedAttribute(const QualifiedName& attrName)
         supportedAttributes.add(SVGNames::widthAttr);
         supportedAttributes.add(SVGNames::heightAttr);
     }
-    return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
+    return supportedAttributes.contains<SVGAttributeHashTranslator>(attrName);
 }
 
 void SVGPatternElement::parseAttribute(const QualifiedName& name, const AtomicString& value)

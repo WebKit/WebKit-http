@@ -139,6 +139,12 @@ public:
         /* [in] */ BSTR frameName,
         /* [in] */ BSTR groupName);
 
+    virtual HRESULT STDMETHODCALLTYPE setAccessibilityDelegate(
+        /* [in] */ IAccessibilityDelegate *d);
+
+    virtual HRESULT STDMETHODCALLTYPE accessibilityDelegate(
+        /* [out][retval] */ IAccessibilityDelegate **d);
+
     virtual HRESULT STDMETHODCALLTYPE setUIDelegate( 
         /* [in] */ IWebUIDelegate *d);
     
@@ -1061,6 +1067,8 @@ protected:
     virtual void fullScreenClientWillExitFullScreen();
     virtual void fullScreenClientDidExitFullScreen();
     virtual void fullScreenClientForceRepaint();
+    virtual void fullScreenClientSaveScrollPosition();
+    virtual void fullScreenClientRestoreScrollPosition();
 #endif
 
     ULONG m_refCount;
@@ -1079,6 +1087,7 @@ protected:
     SIZE m_backingStoreSize;
     RefPtr<RefCountedHRGN> m_backingStoreDirtyRegion;
 
+    COMPtr<IAccessibilityDelegate> m_accessibilityDelegate;
     COMPtr<IWebEditingDelegate> m_editingDelegate;
     COMPtr<IWebFrameLoadDelegate> m_frameLoadDelegate;
     COMPtr<IWebFrameLoadDelegatePrivate> m_frameLoadDelegatePrivate;
@@ -1160,6 +1169,7 @@ protected:
 #if ENABLE(FULLSCREEN_API)
     RefPtr<WebCore::Element> m_fullScreenElement;
     OwnPtr<WebCore::FullScreenController> m_fullscreenController;
+    WebCore::IntPoint m_scrollPosition;
 #endif
 };
 

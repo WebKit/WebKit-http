@@ -37,11 +37,12 @@
 #include "SVGDocumentExtensions.h"
 #include "SVGElementInstance.h"
 #include "SVGElementRareData.h"
+#include "SVGGraphicsElement.h"
+#include "SVGImageElement.h"
 #include "SVGNames.h"
 #include "SVGSVGElement.h"
-#include "SVGStyledLocatableElement.h"
-#include "SVGTextElement.h"
 #include "ScriptEventListener.h"
+#include "XLinkNames.h"
 #include "XMLNames.h"
 
 namespace WebCore {
@@ -207,7 +208,7 @@ SVGElement* SVGElement::viewportElement() const
     // to determine the "overflow" property. <use> on <symbol> wouldn't work otherwhise.
     ContainerNode* n = parentOrShadowHostNode();
     while (n) {
-        if (n->hasTagName(SVGNames::svgTag) || n->hasTagName(SVGNames::imageTag) || n->hasTagName(SVGNames::symbolTag))
+        if (n->hasTagName(SVGNames::svgTag) || isSVGImageElement(n) || n->hasTagName(SVGNames::symbolTag))
             return toSVGElement(n);
 
         n = n->parentOrShadowHostNode();
@@ -255,12 +256,8 @@ const HashSet<SVGElementInstance*>& SVGElement::instancesForElement() const
 
 bool SVGElement::getBoundingBox(FloatRect& rect, SVGLocatable::StyleUpdateStrategy styleUpdateStrategy)
 {
-    if (isStyledLocatable()) {
-        rect = toSVGStyledLocatableElement(this)->getBBox(styleUpdateStrategy);
-        return true;
-    }
-    if (hasTagName(SVGNames::textTag)) {
-        rect = static_cast<SVGTextElement*>(this)->getBBox(styleUpdateStrategy);
+    if (isSVGGraphicsElement()) {
+        rect = toSVGGraphicsElement(this)->getBBox(styleUpdateStrategy);
         return true;
     }
     return false;
@@ -338,7 +335,8 @@ void SVGElement::parseAttribute(const QualifiedName& name, const AtomicString& v
         setAttributeEventListener(eventNames().focusoutEvent, createAttributeEventListener(this, name, value));
     else if (name == SVGNames::onactivateAttr)
         setAttributeEventListener(eventNames().DOMActivateEvent, createAttributeEventListener(this, name, value));
-    else
+    else if (SVGLangSpace::parseAttribute(name, value)) {
+    } else
         StyledElement::parseAttribute(name, value);
 }
 
@@ -459,11 +457,13 @@ static bool hasLoadListener(Element* element)
     return false;
 }
 
-bool SVGElement::moveToFlowThreadIsNeeded(RefPtr<RenderStyle>& cachedStyle)
+#if ENABLE(CSS_REGIONS)
+bool SVGElement::shouldMoveToFlowThread(RenderStyle* styleToUse) const
 {
     // Allow only svg root elements to be directly collected by a render flow thread.
-    return parentNode() && !parentNode()->isSVGElement() && hasTagName(SVGNames::svgTag) && Element::moveToFlowThreadIsNeeded(cachedStyle);
+    return parentNode() && !parentNode()->isSVGElement() && hasTagName(SVGNames::svgTag) && Element::shouldMoveToFlowThread(styleToUse);
 }
+#endif
 
 void SVGElement::sendSVGLoadEventIfPossible(bool sendParentLoadEvents)
 {

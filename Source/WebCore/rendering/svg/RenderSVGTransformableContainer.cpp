@@ -24,14 +24,14 @@
 #if ENABLE(SVG)
 #include "RenderSVGTransformableContainer.h"
 
+#include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 #include "SVGRenderSupport.h"
-#include "SVGStyledTransformableElement.h"
 #include "SVGUseElement.h"
 
 namespace WebCore {
     
-RenderSVGTransformableContainer::RenderSVGTransformableContainer(SVGStyledTransformableElement* node)
+RenderSVGTransformableContainer::RenderSVGTransformableContainer(SVGGraphicsElement* node)
     : RenderSVGContainer(node)
     , m_needsTransformUpdate(true)
     , m_didTransformToRootUpdate(false)
@@ -40,18 +40,18 @@ RenderSVGTransformableContainer::RenderSVGTransformableContainer(SVGStyledTransf
 
 bool RenderSVGTransformableContainer::calculateLocalTransform()
 {
-    SVGStyledTransformableElement* element = toSVGStyledTransformableElement(node());
+    SVGGraphicsElement* element = toSVGGraphicsElement(node());
 
     // If we're either the renderer for a <use> element, or for any <g> element inside the shadow
     // tree, that was created during the use/symbol/svg expansion in SVGUseElement. These containers
     // need to respect the translations induced by their corresponding use elements x/y attributes.
     SVGUseElement* useElement = 0;
     if (element->hasTagName(SVGNames::useTag))
-        useElement = static_cast<SVGUseElement*>(element);
+        useElement = toSVGUseElement(element);
     else if (element->isInShadowTree() && element->hasTagName(SVGNames::gTag)) {
         SVGElement* correspondingElement = element->correspondingElement();
         if (correspondingElement && correspondingElement->hasTagName(SVGNames::useTag))
-            useElement = static_cast<SVGUseElement*>(correspondingElement);
+            useElement = toSVGUseElement(correspondingElement);
     }
 
     if (useElement) {

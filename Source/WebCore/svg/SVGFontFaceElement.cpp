@@ -265,7 +265,7 @@ String SVGFontFaceElement::fontFamily() const
 SVGFontElement* SVGFontFaceElement::associatedFontElement() const
 {
     ASSERT(parentNode() == m_fontElement);
-    ASSERT(!parentNode() || parentNode()->hasTagName(SVGNames::fontTag));
+    ASSERT(!parentNode() || isSVGFontElement(parentNode()));
     return m_fontElement;
 }
 
@@ -284,11 +284,11 @@ void SVGFontFaceElement::rebuildFontFace()
             srcElement = static_cast<SVGFontFaceSrcElement*>(child);
     }
 
-    bool describesParentFont = parentNode()->hasTagName(SVGNames::fontTag);
+    bool describesParentFont = isSVGFontElement(parentNode());
     RefPtr<CSSValueList> list;
 
     if (describesParentFont) {
-        m_fontElement = static_cast<SVGFontElement*>(parentNode());
+        m_fontElement = toSVGFontElement(parentNode());
 
         list = CSSValueList::createCommaSeparated();
         list->append(CSSFontFaceSrcValue::createLocal(fontFamily()));

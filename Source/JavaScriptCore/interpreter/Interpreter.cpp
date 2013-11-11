@@ -64,6 +64,7 @@
 #include "SamplingTool.h"
 #include "StrictEvalActivation.h"
 #include "StrongInlines.h"
+#include "VMStackBounds.h"
 #include <limits.h>
 #include <stdio.h>
 #include <wtf/StackStats.h>
@@ -97,45 +98,6 @@ Interpreter::ErrorHandlingMode::~ErrorHandlingMode()
     if (!m_interpreter.m_errorHandlingModeReentry)
         m_interpreter.stack().disableErrorStackReserve();
 }
-
-
-// The Interpreter::StackPolicy class is used to compute a stack capacity
-// requirement to ensure that we have enough room on the native stack for:
-// 1. the max cumulative stack used by the interpreter and all code
-//    paths sub of it up till leaf functions.
-// 2. the max cumulative stack used by the interpreter before it reaches
-//    the next checkpoint (execute...() function) in the interpreter.
-// 
-// The interpreter can be run on different threads and hence, different
-// native stacks (with different sizes) before exiting out of the first
-// frame. Hence, the required capacity needs to be re-computed on every
-// entry into the interpreter.
-//
-// Currently the requiredStack is computed based on a policy. See comments
-// in StackPolicy::StackPolicy() for details.
-
-Interpreter::StackPolicy::StackPolicy(Interpreter& interpreter, const StackBounds& stack)
-    : m_interpreter(interpreter)
-{
-    const size_t size = stack.size();
-
-    // We have two separate stack limits, one for regular JS execution, and one
-    // for when we're handling errors. We need the error stack to be smaller
-    // otherwise there would obviously not be any stack left to execute JS in when
-    // there's a stack overflow.
-    //
-    // These sizes were derived from the stack usage of a number of sites when
-    // layout occurs when we've already consumed most of the C stack.
-    const size_t requiredStack = 256 * KB;
-    const size_t errorModeRequiredStack = 64 * KB;
-
-    size_t requiredCapacity = m_interpreter.m_errorHandlingModeReentry ? errorModeRequiredStack : requiredStack;
-
-    RELEASE_ASSERT(size > requiredCapacity);
-    
-    m_requiredCapacity = requiredCapacity;    
-}
-
 
 static CallFrame* getCallerInfo(VM*, CallFrame*, unsigned& bytecodeOffset, CodeBlock*& callerOut);
 
@@ -227,7 +189,7 @@ CallFrame* loadVarargs(CallFrame* callFrame, JSStack* stack, JSValue thisValue, 
     }
 
     if (!arguments.isObject()) {
-        callFrame->vm().exception = createInvalidParamError(callFrame, "Function.prototype.apply", arguments);
+        callFrame->vm().exception = createInvalidParameterError(callFrame, "Function.prototype.apply", arguments);
         return 0;
     }
 
@@ -460,9 +422,11 @@ static void appendSourceToError(CallFrame* callFrame, ErrorInstance* exception, 
     int startOffset = 0;
     int endOffset = 0;
     int divotPoint = 0;
+    unsigned line = 0;
+    unsigned column = 0;
 
     CodeBlock* codeBlock = callFrame->codeBlock();
-    codeBlock->expressionRangeForBytecodeOffset(bytecodeOffset, divotPoint, startOffset, endOffset);
+    codeBlock->expressionRangeForBytecodeOffset(bytecodeOffset, divotPoint, startOffset, endOffset, line, column);
 
     int expressionStart = divotPoint - startOffset;
     int expressionStop = divotPoint + endOffset;
@@ -610,25 +574,28 @@ static StackFrameCodeType getStackFrameCodeType(CallFrame* callFrame)
     return StackFrameGlobalCode;
 }
 
-unsigned StackFrame::line()
+void StackFrame::computeLineAndColumn(unsigned& line, unsigned& column)
 {
-    return codeBlock ? codeBlock->lineNumberForBytecodeOffset(bytecodeOffset) + lineOffset : 0;
-}
+    if (!codeBlock) {
+        line = 0;
+        column = 0;
+        return;
+    }
 
-unsigned StackFrame::column()
-{
-    if (!code)
-        return 0;
     int divot = 0;
     int unusedStartOffset = 0;
     int unusedEndOffset = 0;
-    expressionInfo(divot, unusedStartOffset, unusedEndOffset);
-    return code->charPositionToColumnNumber(divot);
+    unsigned divotLine = 0;
+    unsigned divotColumn = 0;
+    expressionInfo(divot, unusedStartOffset, unusedEndOffset, divotLine, divotColumn);
+
+    line = divotLine + lineOffset;
+    column = divotColumn + (divotLine ? 1 : firstLineColumnOffset);
 }
 
-void StackFrame::expressionInfo(int& divot, int& startOffset, int& endOffset)
+void StackFrame::expressionInfo(int& divot, int& startOffset, int& endOffset, unsigned& line, unsigned& column)
 {
-    codeBlock->expressionRangeForBytecodeOffset(bytecodeOffset, divot, startOffset, endOffset);
+    codeBlock->expressionRangeForBytecodeOffset(bytecodeOffset, divot, startOffset, endOffset, line, column);
     divot += characterOffset;
 }
 
@@ -643,10 +610,14 @@ String StackFrame::toString(CallFrame* callFrame)
             traceBuild.append('@');
         traceBuild.append(sourceURL);
         if (codeType != StackFrameNativeCode) {
+            unsigned line;
+            unsigned column;
+            computeLineAndColumn(line, column);
+
             traceBuild.append(':');
-            traceBuild.appendNumber(line());
+            traceBuild.appendNumber(line);
             traceBuild.append(':');
-            traceBuild.appendNumber(column());
+            traceBuild.appendNumber(column);
         }
     }
     return traceBuild.toString().impl();
@@ -674,13 +645,15 @@ void Interpreter::getStackTrace(VM* vm, Vector<StackFrame>& results, size_t maxS
                 Strong<UnlinkedCodeBlock>(*vm, callerCodeBlock->unlinkedCodeBlock()),
                 callerCodeBlock->source(),
                 callerCodeBlock->ownerExecutable()->lineNo(),
+                callerCodeBlock->firstLineColumnOffset(),
                 callerCodeBlock->sourceOffset(),
                 bytecodeOffset,
                 sourceURL
             };
+
             results.append(s);
         } else {
-            StackFrame s = { Strong<JSObject>(*vm, callFrame->callee()), StackFrameNativeCode, Strong<ExecutableBase>(), Strong<UnlinkedCodeBlock>(), 0, 0, 0, 0, String()};
+            StackFrame s = { Strong<JSObject>(*vm, callFrame->callee()), StackFrameNativeCode, Strong<ExecutableBase>(), Strong<UnlinkedCodeBlock>(), 0, 0, 0, 0, 0, String()};
             results.append(s);
         }
         callFrame = getCallerInfo(vm, callFrame, bytecodeOffset, callerCodeBlock);
@@ -692,6 +665,11 @@ void Interpreter::addStackTraceIfNecessary(CallFrame* callFrame, JSValue error)
     VM* vm = &callFrame->vm();
     ASSERT(callFrame == vm->topCallFrame || callFrame == callFrame->lexicalGlobalObject()->globalExec() || callFrame == callFrame->dynamicGlobalObject()->globalExec());
 
+    if (error.isObject()) {
+        if (asObject(error)->hasProperty(callFrame, vm->propertyNames->stack))
+            return;
+    }
+    
     Vector<StackFrame> stackTrace;
     getStackTrace(&callFrame->vm(), stackTrace);
     vm->exceptionStack() = RefCountedArray<StackFrame>(stackTrace);
@@ -713,8 +691,6 @@ void Interpreter::addStackTraceIfNecessary(CallFrame* callFrame, JSValue error)
             builder.append('\n');
     }
 
-    if (errorObject->hasProperty(callFrame, vm->propertyNames->stack))
-        return;
     errorObject->putDirect(*vm, vm->propertyNames->stack, jsString(vm, builder.toString()), ReadOnly | DontDelete);
 }
 
@@ -829,9 +805,8 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
         return jsNull();
 
     StackStats::CheckPoint stackCheckPoint;
-    const StackBounds& nativeStack = wtfThreadData().stack();
-    StackPolicy policy(*this, nativeStack);
-    if (!nativeStack.isSafeToRecurse(policy.requiredCapacity()))
+    const VMStackBounds vmStackBounds(vm, wtfThreadData().stack());
+    if (!vmStackBounds.isSafeToRecurse())
         return checkedReturn(throwStackOverflowError(callFrame));
 
     // First check if the "program" is actually just a JSON object. If so,
@@ -995,9 +970,8 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
         return jsNull();
 
     StackStats::CheckPoint stackCheckPoint;
-    const StackBounds& nativeStack = wtfThreadData().stack();
-    StackPolicy policy(*this, nativeStack);
-    if (!nativeStack.isSafeToRecurse(policy.requiredCapacity()))
+    const VMStackBounds vmStackBounds(vm, wtfThreadData().stack());
+    if (!vmStackBounds.isSafeToRecurse())
         return checkedReturn(throwStackOverflowError(callFrame));
 
     bool isJSCall = (callType == CallTypeJS);
@@ -1073,9 +1047,8 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
         return checkedReturn(throwStackOverflowError(callFrame));
 
     StackStats::CheckPoint stackCheckPoint;
-    const StackBounds& nativeStack = wtfThreadData().stack();
-    StackPolicy policy(*this, nativeStack);
-    if (!nativeStack.isSafeToRecurse(policy.requiredCapacity()))
+    const VMStackBounds vmStackBounds(vm, wtfThreadData().stack());
+    if (!vmStackBounds.isSafeToRecurse())
         return checkedReturn(throwStackOverflowError(callFrame));
 
     bool isJSConstruct = (constructType == ConstructTypeJS);
@@ -1154,9 +1127,8 @@ CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionE
         return CallFrameClosure();
 
     StackStats::CheckPoint stackCheckPoint;
-    const StackBounds& nativeStack = wtfThreadData().stack();
-    StackPolicy policy(*this, nativeStack);
-    if (!nativeStack.isSafeToRecurse(policy.requiredCapacity())) {
+    const VMStackBounds vmStackBounds(vm, wtfThreadData().stack());
+    if (!vmStackBounds.isSafeToRecurse()) {
         throwStackOverflowError(callFrame);
         return CallFrameClosure();
     }
@@ -1257,9 +1229,8 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     DynamicGlobalObjectScope globalObjectScope(vm, scope->globalObject());
 
     StackStats::CheckPoint stackCheckPoint;
-    const StackBounds& nativeStack = wtfThreadData().stack();
-    StackPolicy policy(*this, nativeStack);
-    if (!nativeStack.isSafeToRecurse(policy.requiredCapacity()))
+    const VMStackBounds vmStackBounds(vm, wtfThreadData().stack());
+    if (!vmStackBounds.isSafeToRecurse())
         return checkedReturn(throwStackOverflowError(callFrame));
 
     // Compile the callee:

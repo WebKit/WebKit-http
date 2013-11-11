@@ -238,8 +238,8 @@ HTMLMapElement* TreeScope::getImageMap(const String& url) const
     size_t hashPos = url.find('#');
     String name = (hashPos == notFound ? url : url.substring(hashPos + 1)).impl();
     if (rootNode()->document()->isHTMLDocument())
-        return static_cast<HTMLMapElement*>(m_imageMapsByName->getElementByLowercasedMapName(AtomicString(name.lower()).impl(), this));
-    return static_cast<HTMLMapElement*>(m_imageMapsByName->getElementByMapName(AtomicString(name).impl(), this));
+        return toHTMLMapElement(m_imageMapsByName->getElementByLowercasedMapName(AtomicString(name.lower()).impl(), this));
+    return toHTMLMapElement(m_imageMapsByName->getElementByMapName(AtomicString(name).impl(), this));
 }
 
 Node* nodeFromPoint(Document* document, int x, int y, LayoutPoint* localPoint)
@@ -299,8 +299,8 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
         // Populate the map on first access.
         m_labelsByForAttribute = adoptPtr(new DocumentOrderedMap);
         for (Element* element = ElementTraversal::firstWithin(rootNode()); element; element = ElementTraversal::next(element)) {
-            if (element->hasTagName(labelTag)) {
-                HTMLLabelElement* label = static_cast<HTMLLabelElement*>(element);
+            if (isHTMLLabelElement(element)) {
+                HTMLLabelElement* label = toHTMLLabelElement(element);
                 const AtomicString& forValue = label->fastGetAttribute(forAttr);
                 if (!forValue.isEmpty())
                     addLabel(forValue, label);
@@ -308,7 +308,7 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
         }
     }
 
-    return static_cast<HTMLLabelElement*>(m_labelsByForAttribute->getElementByLabelForAttribute(forAttributeValue.impl(), this));
+    return toHTMLLabelElement(m_labelsByForAttribute->getElementByLabelForAttribute(forAttributeValue.impl(), this));
 }
 
 DOMSelection* TreeScope::getSelection() const
@@ -343,8 +343,8 @@ Element* TreeScope::findAnchor(const String& name)
     if (Element* element = getElementById(name))
         return element;
     for (Element* element = ElementTraversal::firstWithin(rootNode()); element; element = ElementTraversal::next(element)) {
-        if (element->hasTagName(aTag)) {
-            HTMLAnchorElement* anchor = static_cast<HTMLAnchorElement*>(element);
+        if (isHTMLAnchorElement(element)) {
+            HTMLAnchorElement* anchor = toHTMLAnchorElement(element);
             if (rootNode()->document()->inQuirksMode()) {
                 // Quirks mode, case insensitive comparison of names.
                 if (equalIgnoringCase(anchor->name(), name))

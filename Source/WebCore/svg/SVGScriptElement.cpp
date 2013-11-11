@@ -30,8 +30,8 @@
 #include "HTMLNames.h"
 #include "SVGAnimatedStaticPropertyTearOff.h"
 #include "SVGElementInstance.h"
-#include "SVGNames.h"
 #include "ScriptEventListener.h"
+#include "XLinkNames.h"
 
 namespace WebCore {
 
@@ -67,7 +67,7 @@ bool SVGScriptElement::isSupportedAttribute(const QualifiedName& attrName)
         supportedAttributes.add(SVGNames::typeAttr);
         supportedAttributes.add(HTMLNames::onerrorAttr);
     }
-    return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
+    return supportedAttributes.contains<SVGAttributeHashTranslator>(attrName);
 }
 
 void SVGScriptElement::parseAttribute(const QualifiedName& name, const AtomicString& value)

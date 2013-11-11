@@ -34,7 +34,6 @@
     JSCustomToNativeObject,
     CustomPutFunction,
     EventTarget,
-    ExtendsDOMGlobalObject,
     JSGenerateToNativeObject,
     ReplaceableConstructor,
     JSLegacyParent=JSDOMWindowBase,
@@ -186,12 +185,6 @@
     [Replaceable] readonly attribute Performance performance;
 #endif
 
-    // Timers
-    [Custom] long setTimeout(any handler, [Default=Undefined] optional long timeout);
-    void clearTimeout([Default=Undefined] optional long handle);
-    [Custom] long setInterval(any handler, [Default=Undefined] optional long timeout);
-    void clearInterval([Default=Undefined] optional long handle);
-
 #if defined(ENABLE_REQUEST_ANIMATION_FRAME) && ENABLE_REQUEST_ANIMATION_FRAME
     long requestAnimationFrame(RequestAnimationFrameCallback callback);
     void cancelAnimationFrame(long id);
@@ -199,10 +192,6 @@
     [ImplementedAs=cancelAnimationFrame] void webkitCancelAnimationFrame(long id);
     [ImplementedAs=cancelAnimationFrame] void webkitCancelRequestAnimationFrame(long id); // This is a deprecated alias for webkitCancelAnimationFrame(). Remove this when removing vendor prefix.
 #endif
-
-    // Base64
-    [RaisesException] DOMString atob([TreatNullAs=NullString,Default=Undefined] optional DOMString string);
-    [RaisesException] DOMString btoa([TreatNullAs=NullString,Default=Undefined] optional DOMString string);
 
     [Replaceable,Conditional=CSS3_CONDITIONAL_RULES] readonly attribute DOMWindowCSS CSS;
 
@@ -330,3 +319,6 @@
     [Conditional=INDEXED_DATABASE] attribute IDBTransactionConstructor webkitIDBTransaction;
 #endif // defined(LANGUAGE_JAVASCRIPT)
 };
+
+DOMWindow implements WindowTimers;
+DOMWindow implements WindowBase64;

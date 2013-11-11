@@ -46,6 +46,7 @@ public:
     virtual void runTests() = 0;
 
     // FrameLoaderClient delegates
+    virtual bool willSendRequestForFrame(WebCore::Frame*, WebCore::ResourceRequest&, const WebCore::ResourceResponse&) = 0;
     virtual void didStartProvisionalLoadForFrame(WebCore::Frame*) = 0;
     virtual void didReceiveResponseForFrame(WebCore::Frame*, const WebCore::ResourceResponse&) = 0;
     virtual void didCommitLoadForFrame(WebCore::Frame*) = 0;
@@ -59,6 +60,8 @@ public:
     virtual void didDecidePolicyForResponse(const WebCore::ResourceResponse&) = 0;
     virtual void didDispatchWillPerformClientRedirect() = 0;
     virtual void didHandleOnloadEventsForFrame(WebCore::Frame*) = 0;
+    virtual bool policyDelegateIsPermissive() const = 0;
+    virtual bool policyDelegateEnabled() const = 0;
 
     // ChromeClient delegates
     virtual void addMessageToConsole(const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID) = 0;

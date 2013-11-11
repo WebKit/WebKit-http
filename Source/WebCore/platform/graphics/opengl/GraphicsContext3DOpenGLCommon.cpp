@@ -32,7 +32,6 @@
 
 #include "GraphicsContext3D.h"
 
-#include "CanvasRenderingContext.h"
 #if USE(OPENGL_ES_2)
 #include "Extensions3DOpenGLES.h"
 #else
@@ -44,7 +43,6 @@
 #include "IntRect.h"
 #include "IntSize.h"
 #include "NotImplemented.h"
-#include "WebGLObject.h"
 #include <cstring>
 #include <wtf/ArrayBuffer.h>
 #include <wtf/ArrayBufferView.h>
@@ -59,7 +57,7 @@
 #include "OpenGLESShims.h"
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #endif
 

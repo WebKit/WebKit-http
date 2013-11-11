@@ -35,9 +35,14 @@
 #include "QWebPageClient.h"
 #include "SharedBuffer.h"
 #include "TextureMapperPlatformLayer.h"
-#include <QWindow>
 #include <qpa/qplatformpixmap.h>
 #include <wtf/text/CString.h>
+
+#if QT_VERSION >= 0x050100
+#include <QOffscreenSurface>
+#else
+#include <QWindow>
+#endif
 
 #if USE(TEXTURE_MAPPER_GL)
 #include <texmap/TextureMapperGL.h>
@@ -115,21 +120,34 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, H
         return;
     }
 
-#if USE(GRAPHICS_SURFACE)
-    // FIXME: Find a way to create a QOpenGLContext without creating a QWindow at all.
-    // We need to create a surface in order to create a QOpenGLContext and make it current.
+    QOpenGLContext* shareContext = 0;
+    if (hostWindow && hostWindow->platformPageClient() && hostWindow->platformPageClient()->makeOpenGLContextCurrentIfAvailable())
+        shareContext = QOpenGLContext::currentContext();
+
+#if QT_VERSION >= 0x050100
+    QOffscreenSurface* surface = new QOffscreenSurface;
+    surface->create();
+    m_surface = surface;
+    m_surfaceOwner = surface;
+#else
     QWindow* window = new QWindow;
     window->setSurfaceType(QSurface::OpenGLSurface);
     window->setGeometry(-10, -10, 1, 1);
     window->create();
     m_surface = window;
     m_surfaceOwner = window;
+#endif
 
-    m_platformContext = new QOpenGLContext(window);
+    m_platformContext = new QOpenGLContext(m_surfaceOwner);
+    if (shareContext)
+        m_platformContext->setShareContext(shareContext);
+
     if (!m_platformContext->create())
         return;
 
     makeCurrentIfNeeded();
+
+#if USE(GRAPHICS_SURFACE)
     IntSize surfaceSize(m_context->m_currentWidth, m_context->m_currentHeight);
     m_surfaceFlags = GraphicsSurface::SupportsTextureTarget
                     | GraphicsSurface::SupportsSharing;
@@ -219,7 +237,9 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
     blitMultisampleFramebufferAndRestoreContext();
 
     if (textureMapper->accelerationMode() == TextureMapper::OpenGLMode) {
+        TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
 #if USE(GRAPHICS_SURFACE)
+        ASSERT(m_graphicsSurface);
         // CGL only provides us the context, but not the view the context is currently bound to.
         // To make sure the context is bound the the right surface we have to do a makeCurrent through QOpenGL again.
         // FIXME: Remove this code as soon as GraphicsSurfaceMac makes use of NSOpenGL.
@@ -234,8 +254,11 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
         // FIXME: Remove this code as soon as GraphicsSurfaceMac makes use of NSOpenGL.
         currentContext->makeCurrent(currentSurface);
 
-        TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
         m_graphicsSurface->paintToTextureMapper(texmapGL, targetRect, matrix, opacity);
+#else
+        TextureMapperGL::Flags flags = TextureMapperGL::ShouldFlipTexture | (m_context->m_attrs.alpha ? TextureMapperGL::ShouldBlend : 0);
+        IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
+        texmapGL->drawTexture(m_context->m_texture, flags, textureSize, targetRect, matrix, opacity);
 #endif
         return;
     }

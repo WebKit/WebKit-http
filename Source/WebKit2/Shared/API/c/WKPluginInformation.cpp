@@ -44,6 +44,12 @@ WKStringRef WKPluginInformationBundleVersionKey()
     return toAPI(key);
 }
 
+WKStringRef WKPluginInformationBundleShortVersionKey()
+{
+    static WebString* key = WebString::create(pluginInformationBundleShortVersionKey()).leakRef();
+    return toAPI(key);
+}
+
 WKStringRef WKPluginInformationPathKey()
 {
     static WebString* key = WebString::create(pluginInformationPathKey()).leakRef();
@@ -101,5 +107,11 @@ WKStringRef WKPluginInformationPluginspageAttributeURLKey()
 WKStringRef WKPluginInformationPluginURLKey()
 {
     static WebString* key = WebString::create(pluginInformationPluginURLKey()).leakRef();
+    return toAPI(key);
+}
+
+WKStringRef WKPlugInInformationReplacementObscuredKey()
+{
+    static WebString* key = WebString::create(plugInInformationReplacementObscuredKey()).leakRef();
     return toAPI(key);
 }

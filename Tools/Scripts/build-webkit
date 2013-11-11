@@ -228,7 +228,8 @@ if (isAppleMacWebKit()) {
     # WebKit2 is only supported in SnowLeopard and later at present.
     push @projects, ("Source/WebKit2", "Tools/MiniBrowser") if osXVersion()->{"minor"} >= 6 and !$noWebKit2;
 
-    push @projects, ("Source/WebInspectorUI");
+    # WebInspectorUI must come before WebKit and WebKit2
+    unshift @projects, ("Source/WebInspectorUI");
 
     # Build Tools needed for Apple ports
     push @projects, ("Tools/DumpRenderTree", "Tools/WebKitTestRunner", "Source/ThirdParty/gtest", "Tools/TestWebKitAPI");
@@ -334,7 +335,7 @@ for my $dir (@projects) {
         $result = buildGtkProject($project, $clean, $prefixPath, $makeArgs, $noWebKit1, $noWebKit2, @features);
     } elsif (isAppleMacWebKit()) {
         my @local_options = @options;
-        push @local_options, XcodeCoverageSupportOptions() if $coverageSupport && $project ne "ANGLE";
+        push @local_options, XcodeCoverageSupportOptions() if $coverageSupport;
         my $projectPath = $project =~ /gtest/ ? "xcode/gtest" : $project;
         $result = buildXCodeProject($projectPath, $clean, @local_options, @ARGV);
     } elsif (isAppleWinWebKit()) {

@@ -445,6 +445,8 @@ public:
 
     void updateDisplay();
     void updateSizes(bool forceUpdate = false);
+    void enteredFullscreen();
+    void exitedFullscreen();
     static const AtomicString& textTrackContainerElementShadowPseudoId();
 
 private:
@@ -455,8 +457,9 @@ private:
 
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
 
-    virtual void paintTextTrackRepresentation(GraphicsContext*, const IntRect&) OVERRIDE;
+    virtual PassRefPtr<Image> createTextTrackRepresentationImage() OVERRIDE;
     virtual void textTrackRepresentationBoundsChanged(const IntRect&) OVERRIDE;
+    void clearTextTrackRepresentation();
     OwnPtr<TextTrackRepresentation> m_textTrackRepresentation;
 
     Timer<MediaControlTextTrackContainerElement> m_updateTimer;

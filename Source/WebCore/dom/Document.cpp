@@ -91,6 +91,7 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLPlugInElement.h"
+#include "HTMLScriptElement.h"
 #include "HTMLStyleElement.h"
 #include "HTMLTitleElement.h"
 #include "HTTPParsers.h"
@@ -715,7 +716,10 @@ void Document::setCompatibilityMode(CompatibilityMode mode)
         return;
     bool wasInQuirksMode = inQuirksMode();
     m_compatibilityMode = mode;
-    selectorQueryCache()->invalidate();
+
+    if (m_selectorQueryCache)
+        m_selectorQueryCache->invalidate();
+
     if (inQuirksMode() != wasInQuirksMode) {
         // All user stylesheets have to reparse using the different mode.
         m_styleSheetCollection->clearPageUserSheet();
@@ -1532,9 +1536,9 @@ void Document::setTitle(const String& title)
     updateTitle(StringWithDirection(title, LTR));
 
     if (m_titleElement) {
-        ASSERT(m_titleElement->hasTagName(titleTag));
-        if (m_titleElement->hasTagName(titleTag))
-            static_cast<HTMLTitleElement*>(m_titleElement.get())->setText(title);
+        ASSERT(isHTMLTitleElement(m_titleElement.get()));
+        if (isHTMLTitleElement(m_titleElement.get()))
+            toHTMLTitleElement(m_titleElement.get())->setText(title);
     }
 }
 
@@ -1561,8 +1565,8 @@ void Document::removeTitle(Element* titleElement)
     // Update title based on first title element in the head, if one exists.
     if (HTMLElement* headElement = head()) {
         for (Node* e = headElement->firstChild(); e; e = e->nextSibling())
-            if (e->hasTagName(titleTag)) {
-                HTMLTitleElement* titleElement = static_cast<HTMLTitleElement*>(e);
+            if (isHTMLTitleElement(e)) {
+                HTMLTitleElement* titleElement = toHTMLTitleElement(e);
                 setTitleElement(titleElement->textWithDirection(), titleElement);
                 break;
             }
@@ -1834,6 +1838,12 @@ void Document::recalcStyle(StyleChange change)
     }
 
     InspectorInstrumentation::didRecalculateStyle(cookie);
+
+    // As a result of the style recalculation, the currently hovered element might have been
+    // detached (for example, by setting display:none in the :hover style), schedule another mouseMove event
+    // to check if any other elements ended up under the mouse pointer due to re-layout.
+    if (m_hoveredElement && !m_hoveredElement->renderer() && frame())
+        frame()->eventHandler()->dispatchFakeMouseMoveEventSoon();
 }
 
 void Document::updateStyleIfNeeded()
@@ -2446,7 +2456,7 @@ void Document::implicitClose()
 
     m_processingLoadEvent = false;
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(WIN)
     if (f && renderer() && AXObjectCache::accessibilityEnabled()) {
         // The AX cache may have been cleared at this point, but we need to make sure it contains an
         // AX object to send the notification to. getOrCreate will make sure that an valid AX object
@@ -2625,7 +2635,9 @@ void Document::updateBaseURL()
         // and DOM 3 Core does not specify how it should be resolved.
         m_baseURL = KURL(ParsedURLString, documentURI());
     }
-    selectorQueryCache()->invalidate();
+
+    if (m_selectorQueryCache)
+        m_selectorQueryCache->invalidate();
 
     if (!m_baseURL.isValid())
         m_baseURL = KURL();
@@ -2643,8 +2655,8 @@ void Document::updateBaseURL()
         // Base URL change changes any relative visited links.
         // FIXME: There are other URLs in the tree that would need to be re-evaluated on dynamic base URL change. Style should be invalidated too.
         for (Element* element = ElementTraversal::firstWithin(this); element; element = ElementTraversal::next(element)) {
-            if (element->hasTagName(aTag))
-                static_cast<HTMLAnchorElement*>(element)->invalidateCachedVisitedLinkHash();
+            if (isHTMLAnchorElement(element))
+                toHTMLAnchorElement(element)->invalidateCachedVisitedLinkHash();
         }
     }
 }
@@ -3209,11 +3221,6 @@ void Document::setActiveElement(PassRefPtr<Element> newActiveElement)
     m_activeElement = newActiveElement;
 }
 
-void Document::focusedNodeRemoved()
-{
-    setFocusedElement(0);
-}
-
 void Document::removeFocusedNodeOfSubtree(Node* node, bool amongChildrenOnly)
 {
     if (!m_focusedElement || this->inPageCache()) // If the document is in the page cache, then we don't need to clear out the focused node.
@@ -3230,7 +3237,7 @@ void Document::removeFocusedNodeOfSubtree(Node* node, bool amongChildrenOnly)
         nodeInSubtree = (focusedElement == node) || focusedElement->isDescendantOf(node);
     
     if (nodeInSubtree)
-        document()->focusedNodeRemoved();
+        setFocusedElement(0);
 }
 
 void Document::hoveredElementDidDetach(Element* element)
@@ -4206,6 +4213,18 @@ KURL Document::openSearchDescriptionURL()
     }
 
     return KURL();
+}
+
+void Document::pushCurrentScript(PassRefPtr<HTMLScriptElement> newCurrentScript)
+{
+    ASSERT(newCurrentScript);
+    m_currentScriptStack.append(newCurrentScript);
+}
+
+void Document::popCurrentScript()
+{
+    ASSERT(!m_currentScriptStack.isEmpty());
+    m_currentScriptStack.removeLast();
 }
 
 #if ENABLE(XSLT)
@@ -5456,7 +5475,7 @@ int Document::requestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback> ca
 {
     if (!m_scriptedAnimationController) {
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-        m_scriptedAnimationController = ScriptedAnimationController::create(this, page() ? page()->displayID() : 0);
+        m_scriptedAnimationController = ScriptedAnimationController::create(this, page() ? page()->chrome().displayID() : 0);
 #else
         m_scriptedAnimationController = ScriptedAnimationController::create(this, 0);
 #endif
@@ -5618,9 +5637,7 @@ HTMLIFrameElement* Document::seamlessParentIFrame() const
     if (!shouldDisplaySeamlesslyWithParent())
         return 0;
 
-    HTMLFrameOwnerElement* ownerElement = this->ownerElement();
-    ASSERT(ownerElement->hasTagName(iframeTag));
-    return static_cast<HTMLIFrameElement*>(ownerElement);
+    return toHTMLIFrameElement(ownerElement());
 }
 
 bool Document::shouldDisplaySeamlesslyWithParent() const
@@ -5859,11 +5876,13 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
 
     if (oldHoverObj != newHoverObj) {
         // If the old hovered element is not nil but it's renderer is, it was probably detached as part of the :hover style
-        // (for instance by setting display:none in the :hover pseudo-class). In this case, the old hovered element
+        // (for instance by setting display:none in the :hover pseudo-class). In this case, the old hovered element (and its ancestors)
         // must be updated, to ensure it's normal style is re-applied.
         if (oldHoveredElement && !oldHoverObj) {
-            if (!mustBeInActiveChain || (oldHoveredElement->isElementNode() && oldHoveredElement->inActiveChain()))
-                nodesToRemoveFromChain.append(oldHoveredElement);
+            for (Node* node = oldHoveredElement.get(); node; node = node->parentNode()) {
+                if (!mustBeInActiveChain || (node->isElementNode() && toElement(node)->inActiveChain()))
+                    nodesToRemoveFromChain.append(node);
+            }
         }
 
         // The old hover path only needs to be cleared up to (and not including) the common ancestor;

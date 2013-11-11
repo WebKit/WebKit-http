@@ -61,8 +61,11 @@
 #include "TransformState.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/TemporaryChange.h>
+#include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+#include "HTMLAudioElement.h"
 #include "HTMLMediaElement.h"
 #endif
 
@@ -116,12 +119,7 @@ public:
 
     bool overlapsLayers(const IntRect& bounds) const
     {
-        const RectList& layerRects = m_overlapStack.last();
-        for (unsigned i = 0; i < layerRects.size(); i++) {
-            if (layerRects[i].intersects(bounds))
-                return true;
-        }
-        return false;
+        return m_overlapStack.last().intersects(bounds);
     }
 
     bool isEmpty()
@@ -136,14 +134,42 @@ public:
 
     void popCompositingContainer()
     {
-        m_overlapStack[m_overlapStack.size() - 2].appendVector(m_overlapStack.last());
+        m_overlapStack[m_overlapStack.size() - 2].append(m_overlapStack.last());
         m_overlapStack.removeLast();
     }
 
     RenderGeometryMap& geometryMap() { return m_geometryMap; }
 
 private:
-    typedef Vector<IntRect> RectList;
+    struct RectList {
+        Vector<IntRect> rects;
+        IntRect boundingRect;
+        
+        void append(const IntRect& rect)
+        {
+            rects.append(rect);
+            boundingRect.unite(rect);
+        }
+
+        void append(const RectList& rectList)
+        {
+            rects.appendVector(rectList.rects);
+            boundingRect.unite(rectList.boundingRect);
+        }
+        
+        bool intersects(const IntRect& rect) const
+        {
+            if (!rects.size() || !boundingRect.intersects(rect))
+                return false;
+
+            for (unsigned i = 0; i < rects.size(); i++) {
+                if (rects[i].intersects(rect))
+                    return true;
+            }
+            return false;
+        }
+    };
+
     Vector<RectList> m_overlapStack;
     HashSet<const RenderLayer*> m_layers;
     RenderGeometryMap m_geometryMap;
@@ -224,6 +250,9 @@ RenderLayerCompositor::RenderLayerCompositor(RenderView* renderView)
 
 RenderLayerCompositor::~RenderLayerCompositor()
 {
+    // Take care that the owned GraphicsLayers are deleted first as their destructors may call back here.
+    m_clipLayer = nullptr;
+    m_scrollLayer = nullptr;
     ASSERT(m_rootLayerAttachment == RootLayerUnattached);
 }
 
@@ -421,7 +450,7 @@ void RenderLayerCompositor::notifyFlushBeforeDisplayRefresh(const GraphicsLayer*
     if (!m_layerUpdater) {
         PlatformDisplayID displayID = 0;
         if (Page* page = this->page())
-            displayID = page->displayID();
+            displayID = page->chrome().displayID();
 
         m_layerUpdater = adoptPtr(new GraphicsLayerUpdater(this, displayID));
     }
@@ -1840,14 +1869,11 @@ CompositingReasons RenderLayerCompositor::reasonsForCompositing(const RenderLaye
 
     if (requiresCompositingForVideo(renderer))
         reasons |= CompositingReasonVideo;
-
-    if (requiresCompositingForCanvas(renderer))
+    else if (requiresCompositingForCanvas(renderer))
         reasons |= CompositingReasonCanvas;
-
-    if (requiresCompositingForPlugin(renderer))
+    else if (requiresCompositingForPlugin(renderer))
         reasons |= CompositingReasonPlugin;
-
-    if (requiresCompositingForFrame(renderer))
+    else if (requiresCompositingForFrame(renderer))
         reasons |= CompositingReasonIFrame;
     
     if ((canRender3DTransforms() && renderer->style()->backfaceVisibility() == BackfaceVisibilityHidden))
@@ -1913,14 +1939,11 @@ const char* RenderLayerCompositor::logReasonsForCompositing(const RenderLayer* l
 
     if (reasons & CompositingReasonVideo)
         return "video";
-
-    if (reasons & CompositingReasonCanvas)
+    else if (reasons & CompositingReasonCanvas)
         return "canvas";
-
-    if (reasons & CompositingReasonPlugin)
+    else if (reasons & CompositingReasonPlugin)
         return "plugin";
-
-    if (reasons & CompositingReasonIFrame)
+    else if (reasons & CompositingReasonIFrame)
         return "iframe";
     
     if (reasons & CompositingReasonBackfaceVisibilityHidden)
@@ -2067,10 +2090,10 @@ bool RenderLayerCompositor::requiresCompositingForVideo(RenderObject* renderer) 
             return false;
 
         Node* node = renderer->node();
-        if (!node || (!node->hasTagName(HTMLNames::videoTag) && !node->hasTagName(HTMLNames::audioTag)))
+        if (!node || (!node->hasTagName(HTMLNames::videoTag) && !isHTMLAudioElement(node)))
             return false;
 
-        HTMLMediaElement* mediaElement = toMediaElement(node);
+        HTMLMediaElement* mediaElement = toHTMLMediaElement(node);
         return mediaElement->player() ? mediaElement->player()->supportsAcceleratedRendering() : false;
     }
 #endif // ENABLE(PLUGIN_PROXY_FOR_VIDEO)
@@ -2135,7 +2158,7 @@ bool RenderLayerCompositor::requiresCompositingForFrame(RenderObject* renderer) 
         return false;
 
     // If we can't reliably know the size of the iframe yet, don't change compositing state.
-    if (renderer->needsLayout())
+    if (!renderer->parent() || renderer->needsLayout())
         return frameRenderer->hasLayer() && frameRenderer->layer()->isComposited();
     
     // Don't go into compositing mode if height or width are zero.

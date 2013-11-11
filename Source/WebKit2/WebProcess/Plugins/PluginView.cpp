@@ -276,6 +276,7 @@ PluginView::PluginView(PassRefPtr<HTMLPlugInElement> pluginElement, PassRefPtr<P
     , m_isWaitingForSynchronousInitialization(false)
     , m_isWaitingUntilMediaCanStart(false)
     , m_isBeingDestroyed(false)
+    , m_pluginProcessHasCrashed(false)
     , m_pendingURLRequestsTimer(RunLoop::main(), this, &PluginView::pendingURLRequestsTimerFired)
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , m_npRuntimeObjectMap(this)
@@ -579,6 +580,9 @@ void PluginView::didInitializePlugin()
 
     viewGeometryDidChange();
 
+    if (m_pluginElement->document()->focusedElement() == m_pluginElement)
+        m_plugin->setFocus(true);
+
     redeliverManualStream();
 
 #if PLATFORM(MAC)
@@ -617,7 +621,7 @@ void PluginView::didInitializePlugin()
 PlatformLayer* PluginView::platformLayer() const
 {
     // The plug-in can be null here if it failed to initialize.
-    if (!m_isInitialized || !m_plugin)
+    if (!m_isInitialized || !m_plugin || m_pluginProcessHasCrashed)
         return 0;
         
     return m_plugin->pluginLayer();
@@ -921,6 +925,11 @@ bool PluginView::shouldAllowNavigationFromDrags() const
     return m_plugin->shouldAllowNavigationFromDrags();
 }
 
+bool PluginView::shouldNotAddLayer() const
+{
+    return m_pluginElement->displayState() < HTMLPlugInElement::Restarting && !m_plugin->supportsSnapshotting();
+}
+
 PassRefPtr<SharedBuffer> PluginView::liveResourceData() const
 {
     if (!m_isInitialized || !m_plugin)
@@ -1094,7 +1103,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
         return;
     }
 
-    UserGestureIndicator gestureIndicator(request->allowPopups() ? DefinitelyProcessingNewUserGesture : PossiblyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(request->allowPopups() ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
 
     // First, try to find a target frame.
     Frame* targetFrame = frame->loader()->findFrameForNavigation(request->target());
@@ -1241,7 +1250,7 @@ void PluginView::invalidateRect(const IntRect& dirtyRect)
     RenderBoxModelObject* renderer = toRenderBoxModelObject(m_pluginElement->renderer());
     if (!renderer)
         return;
-    
+
     IntRect contentRect(dirtyRect);
     contentRect.move(renderer->borderLeft() + renderer->paddingLeft(), renderer->borderTop() + renderer->paddingTop());
     renderer->repaintRectangle(contentRect);
@@ -1367,7 +1376,7 @@ bool PluginView::evaluate(NPObject* npObject, const String& scriptString, NPVari
     // protect the plug-in view from destruction.
     NPRuntimeObjectMap::PluginProtector pluginProtector(&m_npRuntimeObjectMap);
 
-    UserGestureIndicator gestureIndicator(allowPopups ? DefinitelyProcessingNewUserGesture : PossiblyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(allowPopups ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
     return m_npRuntimeObjectMap.evaluate(npObject, scriptString, result);
 }
 #endif
@@ -1405,13 +1414,17 @@ bool PluginView::isAcceleratedCompositingEnabled()
 
 void PluginView::pluginProcessCrashed()
 {
+    m_pluginProcessHasCrashed = true;
+
     if (!m_pluginElement->renderer())
         return;
 
     // FIXME: The renderer could also be a RenderApplet, we should handle that.
     if (!m_pluginElement->renderer()->isEmbeddedObject())
         return;
-        
+
+    m_pluginElement->setNeedsStyleRecalc(SyntheticStyleChange);
+
     RenderEmbeddedObject* renderer = toRenderEmbeddedObject(m_pluginElement->renderer());
     renderer->setPluginUnavailabilityReason(RenderEmbeddedObject::PluginCrashed);
     
@@ -1649,27 +1662,25 @@ void PluginView::pluginSnapshotTimerFired(DeferrableOneShotTimer<PluginView>*)
 {
     ASSERT(m_plugin);
 
-    if (m_pluginElement->isPlugInImageElement() && !m_plugin->supportsSnapshotting()) {
-        toHTMLPlugInImageElement(m_pluginElement.get())->restartSnapshottedPlugIn();
-        return;
-    }
-
-    // Snapshot might be 0 if plugin size is 0x0.
-    RefPtr<ShareableBitmap> snapshot = m_plugin->snapshot();
-    RefPtr<Image> snapshotImage;
-    if (snapshot)
-        snapshotImage = snapshot->createImage();
-    m_pluginElement->updateSnapshot(snapshotImage.get());
+    if (m_plugin->supportsSnapshotting()) {
+        // Snapshot might be 0 if plugin size is 0x0.
+        RefPtr<ShareableBitmap> snapshot = m_plugin->snapshot();
+        RefPtr<Image> snapshotImage;
+        if (snapshot)
+            snapshotImage = snapshot->createImage();
+        m_pluginElement->updateSnapshot(snapshotImage.get());
 
 #if PLATFORM(MAC)
-    unsigned maximumSnapshotRetries = frame() ? frame()->settings()->maximumPlugInSnapshotAttempts() : 0;
-    if (snapshotImage && isAlmostSolidColor(static_cast<BitmapImage*>(snapshotImage.get())) && m_countSnapshotRetries < maximumSnapshotRetries) {
-        ++m_countSnapshotRetries;
-        m_pluginSnapshotTimer.restart();
-        return;
-    }
+        unsigned maximumSnapshotRetries = frame() ? frame()->settings()->maximumPlugInSnapshotAttempts() : 0;
+        if (snapshotImage && isAlmostSolidColor(static_cast<BitmapImage*>(snapshotImage.get())) && m_countSnapshotRetries < maximumSnapshotRetries) {
+            ++m_countSnapshotRetries;
+            m_pluginSnapshotTimer.restart();
+            return;
+        }
 #endif
-
+    }
+    // Even if there is no snapshot we still set the state to DisplayingSnapshot
+    // since we just want to display the default empty box.
     m_pluginElement->setDisplayState(HTMLPlugInElement::DisplayingSnapshot);
 }
 

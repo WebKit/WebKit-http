@@ -62,14 +62,14 @@ HTMLMediaElement* toParentMediaElement(Node* node)
     if (!mediaNode || !mediaNode->isElementNode() || !toElement(mediaNode)->isMediaElement())
         return 0;
 
-    return static_cast<HTMLMediaElement*>(mediaNode);
+    return toHTMLMediaElement(mediaNode);
 }
 
 MediaControlElementType mediaControlElementType(Node* node)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(node->isMediaControlElement());
     HTMLElement* element = toHTMLElement(node);
-    if (element->hasTagName(inputTag))
+    if (isHTMLInputElement(element))
         return static_cast<MediaControlInputElement*>(element)->displayType();
     return static_cast<MediaControlDivElement*>(element)->displayType();
 }

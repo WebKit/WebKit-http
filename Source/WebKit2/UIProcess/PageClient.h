@@ -27,7 +27,7 @@
 #define PageClient_h
 
 #include "ShareableBitmap.h"
-#include "WebColorChooserProxy.h"
+#include "WebColorPicker.h"
 #include "WebPageProxy.h"
 #include "WebPopupMenuProxy.h"
 #include <WebCore/AlternativeTextClient.h>
@@ -65,7 +65,7 @@ class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebPopupMenuProxy;
 #if ENABLE(INPUT_TYPE_COLOR)
-class WebColorChooserProxy;
+class WebColorPicker;
 #endif
 
 #if PLATFORM(MAC)
@@ -121,8 +121,10 @@ public:
     virtual void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect) = 0;
     virtual void pageTransitionViewportReady() = 0;
 #endif
-#if PLATFORM(QT)
+#if USE(COORDINATED_GRAPHICS)
     virtual void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&) = 0;
+#endif
+#if PLATFORM(QT)
     virtual void handleAuthenticationRequiredRequest(const String& hostname, const String& realm, const String& prefilledUsername, String& username, String& password) = 0;
     virtual void handleCertificateVerificationRequest(const String& hostname, bool& ignoreErrors) = 0;
     virtual void handleProxyAuthenticationRequiredRequest(const String& hostname, uint16_t port, const String& prefilledUsername, String& username, String& password) = 0;
@@ -185,7 +187,7 @@ public:
     virtual PassRefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) = 0;
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual PassRefPtr<WebColorChooserProxy> createColorChooserProxy(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) = 0;
+    virtual PassRefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) = 0;
 #endif
 
     virtual void setFindIndicator(PassRefPtr<FindIndicator>, bool fadeOut, bool animate) = 0;
@@ -223,15 +225,7 @@ public:
 #endif // USE(APPKIT)
 #endif // PLATFORM(MAC)
 
-    // Custom representations.
-    virtual void didCommitLoadForMainFrame(bool useCustomRepresentation) = 0;
-    virtual void didFinishLoadingDataForCustomRepresentation(const String& suggestedFilename, const CoreIPC::DataReference&) = 0;
-    virtual double customRepresentationZoomFactor() = 0;
-    virtual void setCustomRepresentationZoomFactor(double) = 0;
-
     virtual void flashBackingStoreUpdates(const Vector<WebCore::IntRect>& updateRects) = 0;
-    virtual void findStringInCustomRepresentation(const String&, FindOptions, unsigned maxMatchCount) = 0;
-    virtual void countStringMatchesInCustomRepresentation(const String&, FindOptions, unsigned maxMatchCount) = 0;
 };
 
 } // namespace WebKit

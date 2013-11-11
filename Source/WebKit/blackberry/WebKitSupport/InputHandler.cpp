@@ -410,10 +410,10 @@ WTF::String InputHandler::elementText()
 
 BlackBerryInputType InputHandler::elementType(Element* element) const
 {
-    if (const HTMLInputElement* inputElement = static_cast<const HTMLInputElement*>(element->toInputElement()))
+    if (const HTMLInputElement* inputElement = toHTMLInputElement(element))
         return convertInputType(inputElement);
 
-    if (element->hasTagName(HTMLNames::textareaTag))
+    if (isHTMLTextAreaElement(element))
         return InputTypeTextArea;
 
     // Default to InputTypeTextArea for content editable fields.
@@ -827,18 +827,21 @@ void InputHandler::requestSpellingCheckingOptions(imf_sp_text_t& spellCheckingOp
     // If we are only moving the dialog, we don't need to provide startTextPosition and endTextPosition so this logic can be skipped.
     if (!shouldMoveDialog) {
         // Calculate the offset for contentEditable since the marker offsets are relative to the node.
-        // Get caret position. Though the spelling markers might no longer exist, if this method is called we can assume the caret was placed on top of a marker earlier.
-        VisiblePosition caretPosition = m_currentFocusElement->document()->frame()->selection()->selection().visibleStart();
+        // Get caret selection. Though the spelling markers might no longer exist, if this method is called we can assume the caret was placed on top of a marker earlier.
+        VisibleSelection caretSelection = m_currentFocusElement->document()->frame()->selection()->selection();
+        caretSelection = DOMSupport::visibleSelectionForClosestActualWordStart(caretSelection);
+        VisiblePosition wordStart = caretSelection.visibleStart();
+        VisiblePosition wordEnd = endOfWord(caretSelection.visibleStart());
 
         if (HTMLTextFormControlElement* controlElement = DOMSupport::toTextControlElement(m_currentFocusElement.get())) {
-            spellCheckingOptionRequest.startTextPosition = controlElement->indexForVisiblePosition(startOfWord(caretPosition));
-            spellCheckingOptionRequest.endTextPosition = controlElement->indexForVisiblePosition(endOfWord(caretPosition));
+            spellCheckingOptionRequest.startTextPosition = controlElement->indexForVisiblePosition(wordStart);
+            spellCheckingOptionRequest.endTextPosition = controlElement->indexForVisiblePosition(wordEnd);
         } else {
             unsigned location = 0;
             unsigned length = 0;
 
             // Create a range from the start to end of word.
-            RefPtr<Range> rangeSelection = VisibleSelection(startOfWord(caretPosition), endOfWord(caretPosition)).toNormalizedRange();
+            RefPtr<Range> rangeSelection = VisibleSelection(wordStart, wordEnd).toNormalizedRange();
             if (!rangeSelection)
                 return;
 
@@ -1317,7 +1320,7 @@ void InputHandler::setInputValue(const WTF::String& value)
     if (!isActiveTextPopup())
         return;
 
-    HTMLInputElement* inputElement = static_cast<HTMLInputElement*>(m_currentFocusElement.get());
+    HTMLInputElement* inputElement = toHTMLInputElement(m_currentFocusElement.get());
     inputElement->setValue(value);
     clearCurrentFocusElement();
 }
@@ -1351,7 +1354,7 @@ WebCore::IntRect InputHandler::boundingBoxForInputField()
         return m_currentFocusElement->renderer()->absoluteBoundingBoxRect();
     }
 
-    if (m_currentFocusElement->hasTagName(HTMLNames::textareaTag))
+    if (isHTMLTextAreaElement(m_currentFocusElement))
         return m_currentFocusElement->renderer()->absoluteBoundingBoxRect();
 
     // Content Editable can't rely on the bounding box since it isn't fixed.
@@ -1982,7 +1985,7 @@ bool InputHandler::willOpenPopupForNode(Node* node)
 
     ASSERT(!node->isInShadowTree());
 
-    if (node->hasTagName(HTMLNames::selectTag) || node->hasTagName(HTMLNames::optionTag)) {
+    if (node->hasTagName(HTMLNames::selectTag) || isHTMLOptionElement(node)) {
         // We open list popups for options and selects.
         return true;
     }
@@ -2005,10 +2008,10 @@ bool InputHandler::didNodeOpenPopup(Node* node)
     ASSERT(!node->isInShadowTree());
 
     if (node->hasTagName(HTMLNames::selectTag))
-        return openSelectPopup(static_cast<HTMLSelectElement*>(node));
+        return openSelectPopup(toHTMLSelectElement(node));
 
-    if (node->hasTagName(HTMLNames::optionTag)) {
-        HTMLOptionElement* optionElement = static_cast<HTMLOptionElement*>(node);
+    if (isHTMLOptionElement(node)) {
+        HTMLOptionElement* optionElement = toHTMLOptionElement(node);
         return openSelectPopup(optionElement->ownerSelectElement());
     }
 
@@ -2053,14 +2056,14 @@ bool InputHandler::openSelectPopup(HTMLSelectElement* select)
         itemTypes = new int[size];
         selecteds = new bool[size];
         for (int i = 0; i < size; i++) {
-            if (listItems[i]->hasTagName(HTMLNames::optionTag)) {
-                HTMLOptionElement* option = static_cast<HTMLOptionElement*>(listItems[i]);
+            if (isHTMLOptionElement(listItems[i])) {
+                HTMLOptionElement* option = toHTMLOptionElement(listItems[i]);
                 labels[i] = option->textIndentedToRespectGroupLabel();
                 enableds[i] = option->isDisabledFormControl() ? 0 : 1;
                 selecteds[i] = option->selected();
-                itemTypes[i] = option->parentNode() && option->parentNode()->hasTagName(HTMLNames::optgroupTag) ? TypeOptionInGroup : TypeOption;
-            } else if (listItems[i]->hasTagName(HTMLNames::optgroupTag)) {
-                HTMLOptGroupElement* optGroup = static_cast<HTMLOptGroupElement*>(listItems[i]);
+                itemTypes[i] = option->parentNode() && isHTMLOptGroupElement(option->parentNode()) ? TypeOptionInGroup : TypeOption;
+            } else if (isHTMLOptGroupElement(listItems[i])) {
+                HTMLOptGroupElement* optGroup = toHTMLOptGroupElement(listItems[i]);
                 labels[i] = optGroup->groupLabelText();
                 enableds[i] = optGroup->isDisabledFormControl() ? 0 : 1;
                 selecteds[i] = false;
@@ -2098,7 +2101,7 @@ void InputHandler::setPopupListIndex(int index)
         renderMenu->hidePopup();
     }
 
-    HTMLSelectElement* selectElement = static_cast<HTMLSelectElement*>(m_currentFocusElement.get());
+    HTMLSelectElement* selectElement = toHTMLSelectElement(m_currentFocusElement.get());
     int optionIndex = selectElement->listToOptionIndex(index);
     selectElement->optionSelectedByUser(optionIndex, true /* deselect = true */, true /* fireOnChangeNow = false */);
     clearCurrentFocusElement();
@@ -2112,15 +2115,15 @@ void InputHandler::setPopupListIndexes(int size, const bool* selecteds)
     if (size < 0)
         return;
 
-    HTMLSelectElement* selectElement = static_cast<HTMLSelectElement*>(m_currentFocusElement.get());
+    HTMLSelectElement* selectElement = toHTMLSelectElement(m_currentFocusElement.get());
     const WTF::Vector<HTMLElement*>& items = selectElement->listItems();
     if (items.size() != static_cast<unsigned>(size))
         return;
 
     HTMLOptionElement* option;
     for (int i = 0; i < size; i++) {
-        if (items[i]->hasTagName(HTMLNames::optionTag)) {
-            option = static_cast<HTMLOptionElement*>(items[i]);
+        if (isHTMLOptionElement(items[i])) {
+            option = toHTMLOptionElement(items[i]);
             option->setSelectedState(selecteds[i]);
         }
     }
@@ -2336,7 +2339,7 @@ extracted_text_t* InputHandler::extractedTextRequest(extracted_text_request_t*, 
 
     // selectionActive is not limited to inside the extracted text.
     bool selectionActive = extractedText->selection_start != extractedText->selection_end;
-    bool singleLine = m_currentFocusElement->hasTagName(HTMLNames::inputTag);
+    bool singleLine = isHTMLInputElement(m_currentFocusElement);
 
     // FIXME flags has two values in doc, enum not in header yet.
     extractedText->flags = selectionActive & singleLine;
@@ -2698,7 +2701,7 @@ void InputHandler::showTextInputTypeSuggestionBox(bool allowEmptyPrefix)
     if (!isActiveTextEdit())
         return;
 
-    HTMLInputElement* focusedInputElement = static_cast<HTMLInputElement*>(m_currentFocusElement->toInputElement());
+    HTMLInputElement* focusedInputElement = toHTMLInputElement(m_currentFocusElement->toInputElement());
     if (!focusedInputElement)
         return;
 

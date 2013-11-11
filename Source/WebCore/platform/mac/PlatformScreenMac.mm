@@ -27,12 +27,25 @@
 #import "PlatformScreen.h"
 
 #import "FloatRect.h"
-#import "Frame.h"
-#import "Page.h"
-#import "Widget.h"
+#import "HostWindow.h"
+#import "ScrollView.h"
 #import "NotImplemented.h"
 
 namespace WebCore {
+
+static PlatformDisplayID displayIDFromScreen(NSScreen *screen)
+{
+    return (PlatformDisplayID)[[[screen deviceDescription] objectForKey:@"NSScreenNumber"] intValue];
+}
+
+static NSScreen *screenForDisplayID(PlatformDisplayID displayID)
+{
+    for (NSScreen *screen in [NSScreen screens]) {
+        if (displayIDFromScreen(screen) == displayID)
+            return screen;
+    }
+    return nil;
+}
 
 int screenDepth(Widget*)
 {
@@ -52,16 +65,44 @@ bool screenIsMonochrome(Widget*)
 // These functions scale between screen and page coordinates because JavaScript/DOM operations 
 // assume that the screen and the page share the same coordinate system.
 
+static PlatformDisplayID displayFromWidget(Widget* widget)
+{
+    if (!widget)
+        return 0;
+    
+    ScrollView* view = widget->root();
+    if (!view)
+        return 0;
+
+    return view->hostWindow()->displayID();
+}
+
+static NSScreen *screenForWidget(Widget* widget, NSWindow *window)
+{
+    // Widget is in an NSWindow, use its screen.
+    if (window)
+        return screenForWindow(window);
+    
+    // Didn't get an NSWindow; probably WebKit2. Try using the Widget's display ID.
+    if (NSScreen *screen = screenForDisplayID(displayFromWidget(widget)))
+        return screen;
+    
+    // Widget's window is offscreen, or no screens. Fall back to the first screen if available.
+    return screenForWindow(nil);
+}
+
 FloatRect screenRect(Widget* widget)
 {
     NSWindow *window = widget ? [widget->platformWidget() window] : nil;
-    return toUserSpace([screenForWindow(window) frame], window);
+    NSScreen *screen = screenForWidget(widget, window);
+    return toUserSpace([screen frame], window);
 }
 
 FloatRect screenAvailableRect(Widget* widget)
 {
     NSWindow *window = widget ? [widget->platformWidget() window] : nil;
-    return toUserSpace([screenForWindow(window) visibleFrame], window);
+    NSScreen *screen = screenForWidget(widget, window);
+    return toUserSpace([screen visibleFrame], window);
 }
 
 void screenColorProfile(ColorProfile&)

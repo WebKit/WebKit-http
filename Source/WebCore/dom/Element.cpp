@@ -1440,7 +1440,7 @@ void Element::attach(const AttachContext& context)
     // When a shadow root exists, it does the work of attaching the children.
     if (ElementShadow* shadow = this->shadow()) {
         parentPusher.push();
-        shadow->attach();
+        shadow->attach(context);
     } else if (firstChild())
         parentPusher.push();
 
@@ -1476,12 +1476,11 @@ void Element::detach(const AttachContext& context)
         data->setIsInCanvasSubtree(false);
         data->resetComputedStyle();
         data->resetDynamicRestyleObservations();
+        data->setIsInsideRegion(false);
     }
 
-    if (ElementShadow* shadow = this->shadow()) {
-        detachChildrenIfNeeded();
-        shadow->detach();
-    }
+    if (ElementShadow* shadow = this->shadow())
+        shadow->detach(context);
 
     // Do not remove the element's hovered and active status
     // if performing a reattach.
@@ -1934,6 +1933,7 @@ PassRefPtr<Attr> Element::setAttributeNode(Attr* attrNode, ExceptionCode& ec)
     setAttributeInternal(index, attrNode->qualifiedName(), attrNode->value(), NotInSynchronizationOfLazyAttribute);
 
     attrNode->attachToElement(this);
+    treeScope()->adoptIfNeeded(attrNode);
     ensureAttrNodeListForElement(this)->append(attrNode);
 
     return oldAttrNode.release();
@@ -2420,6 +2420,29 @@ bool Element::isInCanvasSubtree() const
     return hasRareData() && elementRareData()->isInCanvasSubtree();
 }
 
+void Element::setIsInsideRegion(bool value)
+{
+    if (value == isInsideRegion())
+        return;
+
+    ensureElementRareData()->setIsInsideRegion(value);
+}
+
+bool Element::isInsideRegion() const
+{
+    return hasRareData() ? elementRareData()->isInsideRegion() : false;
+}
+
+void Element::setRegionOversetState(RegionOversetState state)
+{
+    ensureElementRareData()->setRegionOversetState(state);
+}
+
+RegionOversetState Element::regionOversetState() const
+{
+    return hasRareData() ? elementRareData()->regionOversetState() : RegionUndefined;
+}
+
 AtomicString Element::computeInheritedLanguage() const
 {
     const Node* n = this;
@@ -2644,6 +2667,19 @@ void Element::setUnsignedIntegralAttribute(const QualifiedName& attributeName, u
     setAttribute(attributeName, String::number(value));
 }
 
+#if ENABLE(INDIE_UI)
+void Element::setUIActions(const AtomicString& actions)
+{
+    setAttribute(uiactionsAttr, actions);
+}
+
+const AtomicString& Element::UIActions() const
+{
+    return getAttribute(uiactionsAttr);
+}
+#endif
+
+    
 #if ENABLE(SVG)
 bool Element::childShouldCreateRenderer(const NodeRenderingContext& childContext) const
 {
@@ -2754,33 +2790,25 @@ RenderRegion* Element::renderRegion() const
     return 0;
 }
 
-bool Element::moveToFlowThreadIsNeeded(RefPtr<RenderStyle>& cachedStyle)
+#if ENABLE(CSS_REGIONS)
+
+bool Element::shouldMoveToFlowThread(RenderStyle* styleToUse) const
 {
-    Document* doc = document();
-    
-    if (!doc->cssRegionsEnabled())
-        return false;
+    ASSERT(styleToUse);
 
 #if ENABLE(FULLSCREEN_API)
-    if (doc->webkitIsFullScreen() && doc->webkitCurrentFullScreenElement() == this)
+    if (document()->webkitIsFullScreen() && document()->webkitCurrentFullScreenElement() == this)
         return false;
 #endif
 
     if (isInShadowTree())
         return false;
 
-    if (!cachedStyle)
-        cachedStyle = styleForRenderer();
-    if (!cachedStyle)
+    if (styleToUse->flowThread().isEmpty())
         return false;
 
-    if (cachedStyle->flowThread().isEmpty())
-        return false;
-
-    return !document()->renderView()->flowThreadController()->isContentNodeRegisteredWithAnyNamedFlow(this);
+    return !isRegisteredWithNamedFlow();
 }
-
-#if ENABLE(CSS_REGIONS)
 
 const AtomicString& Element::webkitRegionOverset() const
 {
@@ -2790,20 +2818,20 @@ const AtomicString& Element::webkitRegionOverset() const
     if (!document()->cssRegionsEnabled() || !renderRegion())
         return undefinedState;
 
-    switch (renderRegion()->regionState()) {
-    case RenderRegion::RegionFit: {
+    switch (renderRegion()->regionOversetState()) {
+    case RegionFit: {
         DEFINE_STATIC_LOCAL(AtomicString, fitState, ("fit", AtomicString::ConstructFromLiteral));
         return fitState;
     }
-    case RenderRegion::RegionEmpty: {
+    case RegionEmpty: {
         DEFINE_STATIC_LOCAL(AtomicString, emptyState, ("empty", AtomicString::ConstructFromLiteral));
         return emptyState;
     }
-    case RenderRegion::RegionOverset: {
+    case RegionOverset: {
         DEFINE_STATIC_LOCAL(AtomicString, overflowState, ("overset", AtomicString::ConstructFromLiteral));
         return overflowState;
     }
-    case RenderRegion::RegionUndefined:
+    case RegionUndefined:
         return undefinedState;
     }
 
@@ -2962,9 +2990,9 @@ void Element::updateLabel(TreeScope* scope, const AtomicString& oldForAttributeV
         return;
 
     if (!oldForAttributeValue.isEmpty())
-        scope->removeLabel(oldForAttributeValue, static_cast<HTMLLabelElement*>(this));
+        scope->removeLabel(oldForAttributeValue, toHTMLLabelElement(this));
     if (!newForAttributeValue.isEmpty())
-        scope->addLabel(newForAttributeValue, static_cast<HTMLLabelElement*>(this));
+        scope->addLabel(newForAttributeValue, toHTMLLabelElement(this));
 }
 
 void Element::willModifyAttribute(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue)

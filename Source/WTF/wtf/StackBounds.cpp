@@ -59,24 +59,6 @@
 
 namespace WTF {
 
-// Bug 26276 - Need a mechanism to determine stack extent
-//
-// These platforms should now be working correctly:
-//     DARWIN, OPENBSD, QNX, SOLARIS, UNIX
-// These platforms are not:
-//     WINDOWS, WINCE
-//
-// FIXME: remove this! - this code unsafely guesses at stack sizes!
-#if OS(WINDOWS)
-// Based on the current limit used by the JSC parser, guess the stack size.
-static const ptrdiff_t estimatedStackSize = 128 * sizeof(void*) * 1024;
-// This method assumes the stack is growing downwards.
-static void* estimateStackBound(void* origin)
-{
-    return static_cast<char*>(origin) - estimatedStackSize;
-}
-#endif
-
 #if OS(DARWIN)
 
 void StackBounds::initialize()
@@ -181,105 +163,65 @@ void StackBounds::initialize()
     m_origin = static_cast<char*>(stackBase) + stackSize;
 }
 
-#elif OS(WINCE)
-
-static bool detectGrowingDownward(void* previousFrame)
-{
-    // Find the address of this stack frame by taking the address of a local variable.
-    int thisFrame;
-    return previousFrame > &thisFrame;
-}
-
-static inline bool isPageWritable(void* page)
-{
-    MEMORY_BASIC_INFORMATION memoryInformation;
-    DWORD result = VirtualQuery(page, &memoryInformation, sizeof(memoryInformation));
-
-    // return false on error, including ptr outside memory
-    if (result != sizeof(memoryInformation))
-        return false;
-
-    DWORD protect = memoryInformation.Protect & ~(PAGE_GUARD | PAGE_NOCACHE);
-    return protect == PAGE_READWRITE
-        || protect == PAGE_WRITECOPY
-        || protect == PAGE_EXECUTE_READWRITE
-        || protect == PAGE_EXECUTE_WRITECOPY;
-}
-
-static inline void* getLowerStackBound(char* currentPage, DWORD pageSize)
-{
-    while (currentPage > 0) {
-        // check for underflow
-        if (currentPage >= reinterpret_cast<char*>(pageSize))
-            currentPage -= pageSize;
-        else
-            currentPage = 0;
-
-        if (!isPageWritable(currentPage))
-            return currentPage + pageSize;
-    }
-
-    return 0;
-}
-
-static inline void* getUpperStackBound(char* currentPage, DWORD pageSize)
-{
-    do {
-        // guaranteed to complete because isPageWritable returns false at end of memory
-        currentPage += pageSize;
-    } while (isPageWritable(currentPage));
-
-    return currentPage - pageSize;
-}
-
-void StackBounds::initialize()
-{
-    // find the address of this stack frame by taking the address of a local variable
-    void* thisFrame = &thisFrame;
-    bool isGrowingDownward = detectGrowingDownward(thisFrame);
-
-    SYSTEM_INFO systemInfo;
-    GetSystemInfo(&systemInfo);
-    DWORD pageSize = systemInfo.dwPageSize;
-
-    // scan all of memory starting from this frame, and return the last writeable page found
-    char* currentPage = reinterpret_cast<char*>(reinterpret_cast<DWORD>(thisFrame) & ~(pageSize - 1));
-    void* lowerStackBound = getLowerStackBound(currentPage, pageSize);
-    void* upperStackBound = getUpperStackBound(currentPage, pageSize);
-
-    m_origin = isGrowingDownward ? upperStackBound : lowerStackBound;
-    m_bound = isGrowingDownward ? lowerStackBound : upperStackBound;
-}
-
 #elif OS(WINDOWS)
 
 void StackBounds::initialize()
 {
-#if CPU(X86) && COMPILER(MSVC)
-    // offset 0x18 from the FS segment register gives a pointer to
-    // the thread information block for the current thread
-    NT_TIB* pTib;
-    __asm {
-        MOV EAX, FS:[18h]
-        MOV pTib, EAX
-    }
-    m_origin = static_cast<void*>(pTib->StackBase);
-#elif CPU(X86) && COMPILER(GCC)
-    // offset 0x18 from the FS segment register gives a pointer to
-    // the thread information block for the current thread
-    NT_TIB* pTib;
-    asm ( "movl %%fs:0x18, %0\n"
-          : "=r" (pTib)
-        );
-    m_origin = static_cast<void*>(pTib->StackBase);
-#elif CPU(X86_64)
-    PNT_TIB64 pTib = reinterpret_cast<PNT_TIB64>(NtCurrentTeb());
-    m_origin = reinterpret_cast<void*>(pTib->StackBase);
+    MEMORY_BASIC_INFORMATION stackOrigin;
+    VirtualQuery(&stackOrigin, &stackOrigin, sizeof(stackOrigin));
+    // stackOrigin.AllocationBase points to the reserved stack memory base address.
+
+    m_origin = static_cast<char*>(stackOrigin.BaseAddress) + stackOrigin.RegionSize;
+#if OS(WINCE)
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo(&systemInfo);
+    DWORD pageSize = systemInfo.dwPageSize;
+
+    MEMORY_BASIC_INFORMATION stackMemory;
+    VirtualQuery(m_origin, &stackMemory, sizeof(stackMemory));
+
+    m_bound = static_cast<char*>(m_origin) - stackMemory.RegionSize + pageSize;
 #else
-#error Need a way to get the stack bounds on this platform (Windows)
-#endif
-    // Looks like we should be able to get pTib->StackLimit
-    m_bound = estimateStackBound(m_origin);
+    // The stack on Windows consists out of three parts (uncommitted memory, a guard page and present
+    // committed memory). The 3 regions have different BaseAddresses but all have the same AllocationBase
+    // since they are all from the same VirtualAlloc. The 3 regions are laid out in memory (from high to
+    // low) as follows:
+    //
+    //    High |-------------------|  -----
+    //         | committedMemory   |    ^
+    //         |-------------------|    |
+    //         | guardPage         | reserved memory for the stack
+    //         |-------------------|    |
+    //         | uncommittedMemory |    v
+    //    Low  |-------------------|  ----- <--- stackOrigin.AllocationBase
+    //
+    // See http://msdn.microsoft.com/en-us/library/ms686774%28VS.85%29.aspx for more information.
+
+    MEMORY_BASIC_INFORMATION uncommittedMemory;
+    VirtualQuery(stackOrigin.AllocationBase, &uncommittedMemory, sizeof(uncommittedMemory));
+    ASSERT(uncommittedMemory.State == MEM_RESERVE);
+
+    MEMORY_BASIC_INFORMATION guardPage;
+    VirtualQuery(static_cast<char*>(uncommittedMemory.BaseAddress) + uncommittedMemory.RegionSize, &guardPage, sizeof(guardPage));
+    ASSERT(guardPage.Protect & PAGE_GUARD);
+
+    void* endOfStack = stackOrigin.AllocationBase;
+
+#ifndef NDEBUG
+    MEMORY_BASIC_INFORMATION committedMemory;
+    VirtualQuery(static_cast<char*>(guardPage.BaseAddress) + guardPage.RegionSize, &committedMemory, sizeof(committedMemory));
+    ASSERT(committedMemory.State == MEM_COMMIT);
+
+    void* computedEnd = static_cast<char*>(m_origin) - (uncommittedMemory.RegionSize + guardPage.RegionSize + committedMemory.RegionSize);
+
+    ASSERT(stackOrigin.AllocationBase == uncommittedMemory.AllocationBase);
+    ASSERT(stackOrigin.AllocationBase == guardPage.AllocationBase);
+    ASSERT(stackOrigin.AllocationBase == committedMemory.AllocationBase);
+    ASSERT(stackOrigin.AllocationBase == uncommittedMemory.BaseAddress);
+    ASSERT(endOfStack == computedEnd);
+#endif // NDEBUG
+    m_bound = static_cast<char*>(endOfStack) + guardPage.RegionSize;
+#endif // OS(WINCE)
 }
 
 #else

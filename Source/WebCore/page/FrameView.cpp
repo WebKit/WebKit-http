@@ -202,6 +202,7 @@ FrameView::FrameView(Frame* frame)
     , m_hasSoftwareFilters(false)
 #endif
     , m_visualUpdatesAllowedByClient(true)
+    , m_scrollPinningBehavior(DoNotPin)
 {
     init();
 
@@ -346,7 +347,7 @@ void FrameView::init()
     // Propagate the marginwidth/height and scrolling modes to the view.
     Element* ownerElement = m_frame ? m_frame->ownerElement() : 0;
     if (ownerElement && (ownerElement->hasTagName(frameTag) || ownerElement->hasTagName(iframeTag))) {
-        HTMLFrameElementBase* frameElt = static_cast<HTMLFrameElementBase*>(ownerElement);
+        HTMLFrameElementBase* frameElt = toHTMLFrameElementBase(ownerElement);
         if (frameElt->scrollingMode() == ScrollbarAlwaysOff)
             setCanHaveScrollbars(false);
         LayoutUnit marginWidth = frameElt->marginWidth();
@@ -356,6 +357,10 @@ void FrameView::init()
         if (marginHeight != -1)
             setMarginHeight(marginHeight);
     }
+
+    Page* page = frame() ? frame()->page() : 0;
+    if (page && page->chrome().client()->shouldPaintEntireContents())
+        setPaintsEntireContents(true);
 }
     
 void FrameView::prepareForDetach()
@@ -475,26 +480,14 @@ void FrameView::setFrameRect(const IntRect& newRect)
     }
 #endif
 
-    // Viewport-dependent media queries may cause us to need completely different style information.
-    if (m_frame) {
-        if (Document* document = m_frame->document()) {
-            if (StyleResolver* resolver = document->styleResolverIfExists()) {
-                if (resolver->affectedByViewportChange()) {
-                    document->styleResolverChanged(DeferRecalcStyle);
-                    InspectorInstrumentation::mediaQueryResultChanged(document);
-                }
-            }
-        }
-    }
-
     sendResizeEventIfNeeded();
 }
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
 bool FrameView::scheduleAnimation()
 {
-    if (hostWindow()) {
-        hostWindow()->scheduleAnimation();
+    if (HostWindow* window = hostWindow()) {
+        window->scheduleAnimation();
         return true;
     }
     return false;
@@ -1194,7 +1187,12 @@ void FrameView::layout(bool allowSubtree)
             m_inSynchronousPostLayout = false;
         }
 
-        document->evaluateMediaQueryList();
+        // Viewport-dependent media queries may cause us to need completely different style information.
+        if (document->ensureStyleResolver()->affectedByViewportChange()) {
+            document->styleResolverChanged(DeferRecalcStyle);
+            InspectorInstrumentation::mediaQueryResultChanged(document);
+        } else
+            document->evaluateMediaQueryList();
 
         // If there is any pagination to apply, it will affect the RenderView's style, so we should
         // take care of that now.
@@ -1355,7 +1353,7 @@ void FrameView::layout(bool allowSubtree)
     
     m_layoutCount++;
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(WIN)
     if (AXObjectCache* cache = root->document()->existingAXObjectCache())
         cache->postNotification(root, AXObjectCache::AXLayoutComplete, true);
 #endif
@@ -1558,8 +1556,8 @@ void FrameView::addSlowRepaintObject(RenderObject* o)
 
 void FrameView::removeSlowRepaintObject(RenderObject* o)
 {
-    ASSERT(m_slowRepaintObjects);
-    ASSERT(m_slowRepaintObjects->contains(o));
+    if (!m_slowRepaintObjects)
+        return;
 
     m_slowRepaintObjects->remove(o);
     if (m_slowRepaintObjects->isEmpty()) {
@@ -1632,6 +1630,34 @@ IntSize FrameView::scrollOffsetForFixedPosition() const
     IntPoint scrollOrigin = this->scrollOrigin();
     float frameScaleFactor = m_frame ? m_frame->frameScaleFactor() : 1;
     return scrollOffsetForFixedPosition(visibleContentRect, totalContentsSize, scrollPosition, scrollOrigin, frameScaleFactor, fixedElementsLayoutRelativeToFrame(), headerHeight(), footerHeight());
+}
+    
+IntPoint FrameView::minimumScrollPosition() const
+{
+    IntPoint minimumPosition(ScrollView::minimumScrollPosition());
+
+    if (!m_frame->page())
+        return minimumPosition;
+
+    if (m_frame == m_frame->page()->mainFrame() && m_scrollPinningBehavior == PinToBottom)
+        minimumPosition.setY(maximumScrollPosition().y());
+    
+    return minimumPosition;
+}
+
+IntPoint FrameView::maximumScrollPosition() const
+{
+    IntPoint maximumOffset(contentsWidth() - visibleWidth() - scrollOrigin().x(), totalContentsSize().height() - visibleHeight() - scrollOrigin().y());
+
+    if (!m_frame->page())
+        return maximumOffset;
+
+    maximumOffset.clampNegativeToZero();
+
+    if (m_frame == m_frame->page()->mainFrame() && m_scrollPinningBehavior == PinToTop)
+        maximumOffset.setY(minimumScrollPosition().y());
+    
+    return maximumOffset;
 }
 
 bool FrameView::fixedElementsLayoutRelativeToFrame() const
@@ -2007,7 +2033,7 @@ void FrameView::repaintFixedElementsAfterScrolling()
 {
     // For fixed position elements, update widget positions and compositing layers after scrolling,
     // but only if we're not inside of layout.
-    if (!m_nestedLayoutCount && hasViewportConstrainedObjects()) {
+    if (m_nestedLayoutCount <= 1 && hasViewportConstrainedObjects()) {
         if (RenderView* renderView = this->renderView()) {
             renderView->updateWidgetPositions();
             renderView->layer()->updateLayerPositionsAfterDocumentScroll();
@@ -2636,7 +2662,7 @@ void FrameView::updateWidget(RenderObject* object)
     if (object->isEmbeddedObject()) {
         RenderEmbeddedObject* embeddedObject = static_cast<RenderEmbeddedObject*>(object);
         // No need to update if it's already crashed or known to be missing.
-        if (embeddedObject->showsUnavailablePluginIndicator())
+        if (embeddedObject->isPluginUnavailable())
             return;
 
         if (object->isSnapshottedPlugIn()) {
@@ -2661,7 +2687,7 @@ void FrameView::updateWidget(RenderObject* object)
         // FIXME: It is not clear that Media elements need or want this updateWidget() call.
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
         else if (ownerElement->isMediaElement())
-            static_cast<HTMLMediaElement*>(ownerElement)->updateWidget(CreateAnyWidgetType);
+            toHTMLMediaElement(ownerElement)->updateWidget(CreateAnyWidgetType);
 #endif
         else
             ASSERT_NOT_REACHED();
@@ -2732,7 +2758,7 @@ void FrameView::performPostLayoutTasks()
     if (page)
         requestedMilestones = page->requestedLayoutMilestones();
 
-    if (m_nestedLayoutCount <= 1) {
+    if (m_nestedLayoutCount <= 1 && m_frame->document()->documentElement()) {
         if (m_firstLayoutCallbackPending) {
             m_firstLayoutCallbackPending = false;
             m_frame->loader()->didFirstLayout();
@@ -2743,10 +2769,7 @@ void FrameView::performPostLayoutTasks()
                     page->startCountingRelevantRepaintedObjects();
             }
         }
-
-        // Ensure that we always send this eventually.
-        if (!m_frame->document()->parsing() && m_frame->loader()->stateMachine()->committedFirstRealDocumentLoad())
-            m_isVisuallyNonEmpty = true;
+        updateIsVisuallyNonEmpty();
 
         // If the layout was done with pending sheets, we are not in fact visually non-empty yet.
         if (m_isVisuallyNonEmpty && !m_frame->document()->didLayoutWithPendingStylesheets() && m_firstVisuallyNonEmptyLayoutCallbackPending) {
@@ -3717,8 +3740,37 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     ASSERT(!needsLayout());
 }
 
-void FrameView::setIsVisuallyNonEmpty()
+bool FrameView::qualifiesAsVisuallyNonEmpty() const
 {
+    // No content yet.
+    Element* documentElement = m_frame->document()->documentElement();
+    if (!documentElement || !documentElement->renderer())
+        return false;
+
+    // Ensure that we always get marked visually non-empty eventually.
+    if (!m_frame->document()->parsing() && m_frame->loader()->stateMachine()->committedFirstRealDocumentLoad())
+        return true;
+
+    // Require the document to grow a bit.
+    static const int documentHeightThreshold = 200;
+    if (documentElement->renderBox()->layoutOverflowRect().pixelSnappedHeight() < documentHeightThreshold)
+        return false;
+
+    // The first few hundred characters rarely contain the interesting content of the page.
+    if (m_visuallyNonEmptyCharacterCount > visualCharacterThreshold)
+        return true;
+    // Use a threshold value to prevent very small amounts of visible content from triggering didFirstVisuallyNonEmptyLayout
+    if (m_visuallyNonEmptyPixelCount > visualPixelThreshold)
+        return true;
+    return false;
+}
+
+void FrameView::updateIsVisuallyNonEmpty()
+{
+    if (m_isVisuallyNonEmpty)
+        return;
+    if (!qualifiesAsVisuallyNonEmpty())
+        return;
     m_isVisuallyNonEmpty = true;
     adjustTiledBackingCoverage();
 }
@@ -4215,6 +4267,16 @@ void FrameView::setVisualUpdatesAllowedByClient(bool visualUpdatesAllowed)
     m_visualUpdatesAllowedByClient = visualUpdatesAllowed;
 
     m_frame->document()->setVisualUpdatesAllowedByClient(visualUpdatesAllowed);
+}
+    
+void FrameView::setScrollPinningBehavior(ScrollPinningBehavior pinning)
+{
+    m_scrollPinningBehavior = pinning;
+    
+    if (ScrollingCoordinator* scrollingCoordinator = m_frame->page()->scrollingCoordinator())
+        scrollingCoordinator->setScrollPinningBehavior(pinning);
+    
+    updateScrollbars(scrollOffset());
 }
 
 } // namespace WebCore

@@ -54,11 +54,11 @@
 #include "OscillatorNode.h"
 #include "Page.h"
 #include "PannerNode.h"
+#include "PeriodicWave.h"
 #include "ScriptCallStack.h"
 #include "ScriptController.h"
 #include "ScriptProcessorNode.h"
 #include "WaveShaperNode.h"
-#include "WaveTable.h"
 
 #if ENABLE(MEDIA_STREAM)
 #include "MediaStream.h"
@@ -91,6 +91,7 @@
 const int UndefinedThreadIdentifier = 0xffffffff;
 
 const unsigned MaxNodesToDeletePerQuantum = 10;
+const unsigned MaxPeriodicWaveLength = 4096;
 
 namespace WebCore {
     
@@ -328,7 +329,7 @@ PassRefPtr<AudioBuffer> AudioContext::createBuffer(unsigned numberOfChannels, si
 {
     RefPtr<AudioBuffer> audioBuffer = AudioBuffer::create(numberOfChannels, numberOfFrames, sampleRate);
     if (!audioBuffer.get()) {
-        ec = SYNTAX_ERR;
+        ec = NOT_SUPPORTED_ERR;
         return 0;
     }
 
@@ -464,7 +465,7 @@ PassRefPtr<ScriptProcessorNode> AudioContext::createScriptProcessor(size_t buffe
     RefPtr<ScriptProcessorNode> node = ScriptProcessorNode::create(this, m_destinationNode->sampleRate(), bufferSize, numberOfInputChannels, numberOfOutputChannels);
 
     if (!node.get()) {
-        ec = SYNTAX_ERR;
+        ec = INDEX_SIZE_ERR;
         return 0;
     }
 
@@ -593,17 +594,17 @@ PassRefPtr<OscillatorNode> AudioContext::createOscillator()
     return node;
 }
 
-PassRefPtr<WaveTable> AudioContext::createWaveTable(Float32Array* real, Float32Array* imag, ExceptionCode& ec)
+PassRefPtr<PeriodicWave> AudioContext::createPeriodicWave(Float32Array* real, Float32Array* imag, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
     
-    if (!real || !imag || (real->length() != imag->length())) {
+    if (!real || !imag || (real->length() != imag->length() || (real->length() > MaxPeriodicWaveLength) || (real->length() <= 0))) {
         ec = SYNTAX_ERR;
         return 0;
     }
     
     lazyInitialize();
-    return WaveTable::create(sampleRate(), real, imag);
+    return PeriodicWave::create(sampleRate(), real, imag);
 }
 
 void AudioContext::notifyNodeFinishedProcessing(AudioNode* node)

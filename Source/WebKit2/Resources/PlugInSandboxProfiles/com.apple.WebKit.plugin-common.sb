@@ -50,6 +50,11 @@
                        (home-library-preferences-regex (string-append #"/ByHost/" (regex-quote domain) #"\..*\.plist$")))))
             domains))
 
+;; WebKit2 sandbox launcher needs to define an _OS_VERSION parameter
+;; This parameter is the major OS Version number.
+(if (not (defined? 'os-version))
+    (define os-version (param "_OS_VERSION")))
+
 ;; OS X 10.7 (Lion) compatibility
 (if (not (defined? 'ipc-posix-shm*))
     (define ipc-posix-shm* ipc-posix-shm))
@@ -81,6 +86,7 @@
 (shared-preferences-read
     ".GlobalPreferences"
     "com.apple.Bluetooth"
+    "com.apple.CoreGraphics"
     "com.apple.QuickTime"
     "com.apple.HIToolbox"
     "com.apple.ATS"
@@ -107,6 +113,12 @@
 ;; Read-only data
 (allow file-read*
     (literal "/")
+    (literal "/private/etc/hosts")
+    (literal "/private/etc/protocols")
+    (literal "/private/etc/services")
+    (literal "/private/etc/resolv.conf")
+    (literal "/private/var/run/resolv.conf")
+
     (subpath "/Library/Frameworks")
     (subpath "/private/var/db/mds")
 
@@ -135,9 +147,11 @@
 
     (home-library-literal "/Caches/com.apple.coreaudio.components.plist")
 
+    (subpath "/Library/Audio/Sounds")
     (subpath "/Library/Audio/Plug-Ins/Components")
     (home-library-subpath "/Audio/Plug-Ins/Components")
     (subpath "/Library/Audio/Plug-Ins/HAL")
+    (subpath "/Library/CoreMediaIO/Plug-Ins/DAL")
     (subpath "/Library/QuickTime")
     (home-library-subpath "/QuickTime")
     (subpath "/Library/Video/Plug-Ins")
@@ -203,6 +217,9 @@
     (local-name "com.apple.tsm.portname")
     (global-name-regex #"_OpenStep$"))
 
+(if (equal? os-version "10.7")
+    (allow mach-lookup
+        (global-name "com.apple.system.DirectoryService.membership_v1")))
 
 ;; Configuration directories
 (allow file-read* (subpath (param "PLUGIN_PATH")))
@@ -229,9 +246,12 @@
              (socket-domain AF_ROUTE))))
 
 (allow network-outbound
-    ;; Local mDNSResponder for DNS, arbitrary outbound TCP
+    ;; Local mDNSResponder for DNS, arbitrary outbound TCP and UDP
     (literal "/private/var/run/mDNSResponder")
-    (remote tcp))
+    (remote tcp)
+    (remote udp))
+(allow network-inbound
+    (local udp))
 
 
 ;; Open and Save panels
@@ -278,18 +298,54 @@
 (define (webkit-imagecapture)
     (allow appleevent-send (appleevent-destination "com.apple.imagecaptureextension2")))
 
-(allow ipc-posix-shm*
-    (ipc-posix-name-regex #"^AudioIO")
-    (ipc-posix-name-regex #"^CFPBS:")
-    (ipc-posix-name "_CS_GSHMEMLOCK")
-    (ipc-posix-name "_CS_DSHMEMLOCK"))
+;; Camera
+(define (webkit-camera)
+    (allow mach-lookup (extension "com.apple.app-sandbox.mach"))
+    (allow mach-lookup
+        (global-name "com.apple.cmio.AppleCameraAssistant")
+        ;; Apple DAL assistants
+        (global-name "com.apple.cmio.VDCAssistant")
+        (global-name "com.apple.cmio.AVCAssistant")
+        (global-name "com.apple.cmio.IIDCVideoAssistant")
+        ;; QuickTimeIIDCDigitizer assistant
+        (global-name "com.apple.IIDCAssistant"))
+    (allow iokit-open
+        ;; QuickTimeUSBVDCDigitizer
+        (iokit-user-client-class "IOUSBDeviceUserClientV2")
+        (iokit-user-client-class "IOUSBInterfaceUserClientV2"))
+    (allow device-camera))
 
-(allow ipc-posix-shm-read*
-    (ipc-posix-name "FNetwork.defaultStorageSession")
-    (ipc-posix-name "apple.shm.notification_center"))
+;; Microphone
+(define (webkit-microphone)
+    (allow device-microphone))
+
+(if (equal? os-version "10.7")
+    (allow ipc-posix-shm)
+    (begin
+        (if (equal? os-version "10.8")
+            (allow ipc-posix-shm*
+                (ipc-posix-name "_CS_GSHMEMLOCK")
+                (ipc-posix-name "_CS_DSHMEMLOCK")))
+        (allow ipc-posix-shm*
+            (ipc-posix-name-regex #"^AudioIO")
+            (ipc-posix-name-regex #"^CFPBS:")
+            (ipc-posix-name "com.apple.ColorSync.Gen.lock")
+            (ipc-posix-name "com.apple.ColorSync.Disp.lock")
+            (ipc-posix-name "com.apple.ColorSync.Gray2.2")
+            (ipc-posix-name "com.apple.ColorSync.sRGB")
+            (ipc-posix-name "com.apple.ColorSync.GenGray")
+            (ipc-posix-name "com.apple.ColorSync.GenRGB")
+            (ipc-posix-name-regex #"^com\.apple\.cs\.")
+            (ipc-posix-name-regex #"^ls\."))
+        (allow ipc-posix-shm-read*
+            (ipc-posix-name-regex #"^/tmp/com\.apple\.csseed\.")
+            (ipc-posix-name "FNetwork.defaultStorageSession")
+            (ipc-posix-name "apple.shm.notification_center"))))
 
 ;; Silently block access to some resources
 (deny file-read* file-write* (with no-log)
+    (subpath "/Network/Library")
+    (subpath "/Network/Applications")
     (home-library-preferences-regex #"/com\.apple\.internetconfig(priv)?\.plist")
 
     ;; FIXME: Should be removed after <rdar://problem/9422957> is fixed.

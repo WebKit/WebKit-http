@@ -293,6 +293,14 @@
             "arkos"
          ]
       },
+      "Arno Renevier" : {
+         "emails" : [
+            "a.renevier@samsung.com"
+         ],
+         "nicks" : [
+            "arno"
+         ]
+      },
       "Arpita Bahuguna" : {
          "emails" : [
             "a.bah@samsung.com"
@@ -392,8 +400,9 @@
       },
       "Bruno de Oliveira Abinader" : {
          "emails" : [
-            "brunoabinader@gmail.com",
-            "bruno.abinader@basyskom.com"
+            "bruno.d@partner.samsung.com",
+            "bruno.abinader@basyskom.com",
+            "brunoabinader@gmail.com"
          ],
          "expertise" : "The QtWebKit Port, CSS, Layout and Rendering",
          "nicks" : [
@@ -549,6 +558,14 @@
          ],
          "nicks" : [
             "dtharp"
+         ]
+      },
+      "David Farler" : {
+         "emails" : [
+            "dfarler@apple.com"
+         ],
+         "nicks" : [
+            "dfarler"
          ]
       },
       "David Grogan" : {
@@ -1250,7 +1267,8 @@
       },
       "Kalyan Kondapally" : {
          "emails" : [
-            "kalyan.kondapally@intel.com"
+            "kalyan.kondapally@intel.com",
+            "kondapallykalyan@gmail.com"
          ],
          "nicks" : [
             "kalyank"
@@ -1376,10 +1394,11 @@
       },
       "Kwang Yul Seo" : {
          "emails" : [
+            "skyul@company100.com",
             "skyul@company100.net",
             "kseo@webkit.org"
          ],
-         "expertise" : "The BrewMP Port",
+         "expertise" : "HTML Parsing, Networking, WebKit2",
          "nicks" : [
             "kseo"
          ]
@@ -1599,6 +1618,14 @@
          ],
          "nicks" : [
             "michaeln"
+         ]
+      },
+      "Michael Pruett" : {
+         "emails" : [
+            "michael@68k.org"
+         ],
+         "nicks" : [
+            "mpruett"
          ]
       },
       "Michelangelo De Simone" : {
@@ -1855,7 +1882,7 @@
       },
       "Rafael Brandao" : {
          "emails" : [
-            "rafael.lobo@openbossa.org"
+            "rafael.lobo@webkit.org"
          ],
          "nicks" : [
             "rafaelbrandao"
@@ -2569,6 +2596,14 @@
             "Felician"
          ]
       },
+      "Frédéric Wang" : {
+         "emails" : [
+            "fred.wang@free.fr"
+         ],
+         "nicks" : [
+            "fredw"
+         ]
+      },
       "Finnur Thorarinsson" : {
          "emails" : [
             "finnur@chromium.org",
@@ -2607,6 +2642,15 @@
             "gregsimon"
          ]
       },
+      "Gwang Yoon Hwang" : {
+         "emails" : [
+            "ryumiel@company100.net",
+            "ryumiel@company100.com"
+         ],
+         "nicks" : [
+            "ryumiel"
+         ]
+      },
       "Hao Zheng" : {
          "emails" : [
             "zhenghao@chromium.org"
@@ -2638,7 +2682,8 @@
       },
       "James Craig" : {
          "emails" : [
-            "james@cookiecrook.com"
+            "james@cookiecrook.com",
+            "jcraig@apple.com"
          ],
          "nicks" : [
             "jcraig"
@@ -2716,14 +2761,6 @@
       "Lia Chen" : {
          "emails" : [
             "liachen@rim.com"
-         ]
-      },
-      "Michael Pruett" : {
-         "emails" : [
-            "michael@68k.org"
-         ],
-         "nicks" : [
-            "mpruett"
          ]
       },
       "Mihai Balan" : {

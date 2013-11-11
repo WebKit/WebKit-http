@@ -96,7 +96,7 @@
 #endif
 
 #ifdef GDK_WINDOWING_X11
-#include "GtkWidgetBackingStoreX11.h"
+#include "WidgetBackingStoreGtkX11.h"
 #endif
 #include "WidgetBackingStoreCairo.h"
 
@@ -104,7 +104,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static OwnPtr<WidgetBackingStore> createBackingStore(GtkWidget* widget, const IntSize& size)
+static PassOwnPtr<WidgetBackingStore> createBackingStore(GtkWidget* widget, const IntSize& size)
 {
 #ifdef GDK_WINDOWING_X11
     GdkDisplay* display = gdk_display_manager_get_default_display(gdk_display_manager_get());
@@ -746,7 +746,7 @@ void ChromeClient::contentsSizeChanged(Frame* frame, const IntSize& size) const
     // otherwise we get into an infinite loop!
     GtkWidget* widget = GTK_WIDGET(m_webView);
     GtkRequisition requisition;
-    gtk_widget_get_requisition(widget, &requisition);
+    gtk_widget_get_preferred_size(widget, &requisition, 0);
     if (gtk_widget_get_realized(widget)
         && (requisition.height != size.height()
         || requisition.width != size.width()))
@@ -938,7 +938,7 @@ void ChromeClient::enterFullscreenForNode(Node* node)
 
     HTMLElement* element = static_cast<HTMLElement*>(node);
     if (element && element->isMediaElement()) {
-        HTMLMediaElement* mediaElement = static_cast<HTMLMediaElement*>(element);
+        HTMLMediaElement* mediaElement = toHTMLMediaElement(element);
         if (mediaElement->player() && mediaElement->player()->canEnterFullscreen())
             mediaElement->player()->enterFullscreen();
     }
@@ -951,7 +951,7 @@ void ChromeClient::exitFullscreenForNode(Node* node)
 
     HTMLElement* element = static_cast<HTMLElement*>(node);
     if (element && element->isMediaElement()) {
-        HTMLMediaElement* mediaElement = static_cast<HTMLMediaElement*>(element);
+        HTMLMediaElement* mediaElement = toHTMLMediaElement(element);
         if (mediaElement->player())
             mediaElement->player()->exitFullscreen();
     }
@@ -995,7 +995,7 @@ void ChromeClient::enterFullScreenForElement(WebCore::Element* element)
 
 #if ENABLE(VIDEO) && USE(NATIVE_FULLSCREEN_VIDEO)
     if (element && element->isMediaElement()) {
-        HTMLMediaElement* mediaElement = static_cast<HTMLMediaElement*>(element);
+        HTMLMediaElement* mediaElement = toHTMLMediaElement(element);
         if (mediaElement->player() && mediaElement->player()->canEnterFullscreen()) {
             element->document()->webkitWillEnterFullScreenForElement(element);
             mediaElement->player()->enterFullscreen();
@@ -1036,7 +1036,7 @@ void ChromeClient::exitFullScreenForElement(WebCore::Element*)
 #if ENABLE(VIDEO) && USE(NATIVE_FULLSCREEN_VIDEO)
     if (m_fullScreenElement && m_fullScreenElement->isMediaElement()) {
         m_fullScreenElement->document()->webkitWillExitFullScreenForElement(m_fullScreenElement.get());
-        HTMLMediaElement* mediaElement = static_cast<HTMLMediaElement*>(m_fullScreenElement.get());
+        HTMLMediaElement* mediaElement = toHTMLMediaElement(m_fullScreenElement.get());
         if (mediaElement->player()) {
             mediaElement->player()->exitFullscreen();
             m_fullScreenElement->document()->webkitDidExitFullScreenForElement(m_fullScreenElement.get());

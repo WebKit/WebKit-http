@@ -136,6 +136,26 @@ _LIBCPP_END_NAMESPACE_STD
 
 #if OS(WINDOWS)
 #if USE(CG)
+
+#if defined(_MSC_VER) && _MSC_VER <= 1600
+
+#include <WebCore/WebCoreHeaderDetection.h>
+
+#if HAVE(AVCF_LEGIBLE_OUTPUT)
+// These must be defined before including CGFloat.h
+// This can be removed once we move to VS2012 or newer
+#include <wtf/ExportMacros.h>
+#include <wtf/MathExtras.h>
+
+#define isnan _isnan
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#include <CoreGraphics/CGFloat.h>
+#endif
+#include <CoreGraphics/CoreGraphics.h>
+#undef isnan
+#endif
+#endif
+
 // FIXME <rdar://problem/8208868> Remove support for obsolete ColorSync API, CoreServices header in CoreGraphics
 // We can remove this once the new ColorSync APIs are available in an internal Safari SDK.
 #include <ColorSync/ColorSync.h>
@@ -148,6 +168,8 @@ _LIBCPP_END_NAMESPACE_STD
 /* Windows doesn't include CFNetwork.h via CoreServices.h, so we do
    it explicitly here to make Windows more consistent with Mac. */
 #include <CFNetwork/CFNetwork.h>
+// On Windows, dispatch.h needs to be included before certain CFNetwork headers.
+#include <dispatch/dispatch.h>
 #endif
 #include <windows.h>
 #else

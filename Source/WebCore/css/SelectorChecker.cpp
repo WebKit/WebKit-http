@@ -34,10 +34,12 @@
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameSelection.h"
+#include "HTMLAnchorElement.h"
 #include "HTMLDocument.h"
 #include "HTMLFrameElementBase.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "HTMLOptGroupElement.h"
 #include "HTMLOptionElement.h"
 #include "HTMLProgressElement.h"
 #include "HTMLStyleElement.h"
@@ -379,7 +381,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
         return SelectorChecker::tagMatches(element, selector->tagQName());
 
     if (selector->m_match == CSSSelector::Class)
-        return element->hasClass() && static_cast<StyledElement*>(element)->classNames().contains(selector->value());
+        return element->hasClass() && element->classNames().contains(selector->value());
 
     if (selector->m_match == CSSSelector::Id)
         return element->hasID() && element->idForStyleResolution() == selector->value();
@@ -629,7 +631,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
         case CSSSelector::PseudoHover:
             // If we're in quirks mode, then hover should never match anchors with no
             // href and *:hover should not match anything. This is important for sites like wsj.com.
-            if (m_strictParsing || context.isSubSelector || (selector->m_match == CSSSelector::Tag && selector->tagQName() != anyQName() && !element->hasTagName(aTag)) || element->isLink()) {
+            if (m_strictParsing || context.isSubSelector || (selector->m_match == CSSSelector::Tag && selector->tagQName() != anyQName() && !isHTMLAnchorElement(element)) || element->isLink()) {
                 if (m_mode == ResolvingStyle) {
                     if (context.elementStyle)
                         context.elementStyle->setAffectedByHover();
@@ -643,7 +645,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
         case CSSSelector::PseudoActive:
             // If we're in quirks mode, then :active should never match anchors with no
             // href and *:active should not match anything.
-            if (m_strictParsing || context.isSubSelector || (selector->m_match == CSSSelector::Tag && selector->tagQName() != anyQName() && !element->hasTagName(aTag)) || element->isLink()) {
+            if (m_strictParsing || context.isSubSelector || (selector->m_match == CSSSelector::Tag && selector->tagQName() != anyQName() && !isHTMLAnchorElement(element)) || element->isLink()) {
                 if (m_mode == ResolvingStyle) {
                     if (context.elementStyle)
                         context.elementStyle->setAffectedByActive();
@@ -655,7 +657,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
             }
             break;
         case CSSSelector::PseudoEnabled:
-            if (element->isFormControlElement() || element->hasTagName(optionTag) || element->hasTagName(optgroupTag))
+            if (element->isFormControlElement() || isHTMLOptionElement(element) || isHTMLOptGroupElement(element))
                 return !element->isDisabledFormControl();
             break;
         case CSSSelector::PseudoFullPageMedia:
@@ -664,7 +666,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
         case CSSSelector::PseudoDefault:
             return element->isDefaultButtonForForm();
         case CSSSelector::PseudoDisabled:
-            if (element->isFormControlElement() || element->hasTagName(optionTag) || element->hasTagName(optgroupTag))
+            if (element->isFormControlElement() || isHTMLOptionElement(element) || isHTMLOptGroupElement(element))
                 return element->isDisabledFormControl();
             break;
         case CSSSelector::PseudoReadOnly:
@@ -689,7 +691,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
                 HTMLInputElement* inputElement = element->toInputElement();
                 if (inputElement && inputElement->shouldAppearChecked() && !inputElement->shouldAppearIndeterminate())
                     return true;
-                if (element->hasTagName(optionTag) && toHTMLOptionElement(element)->selected())
+                if (isHTMLOptionElement(element) && toHTMLOptionElement(element)->selected())
                     return true;
                 break;
             }
@@ -721,7 +723,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
             // element is an element in the document, the 'full-screen' pseudoclass applies to
             // that element. Also, an <iframe>, <object> or <embed> element whose child browsing
             // context's Document is in the fullscreen state has the 'full-screen' pseudoclass applied.
-            if (element->isFrameElementBase() && static_cast<HTMLFrameElementBase*>(element)->containsFullScreenElement())
+            if (element->isFrameElementBase() && element->containsFullScreenElement())
                 return true;
             if (!element->document()->webkitIsFullScreen())
                 return false;

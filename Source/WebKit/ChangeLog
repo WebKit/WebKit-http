@@ -1,3 +1,133 @@
+2013-07-23  Tim Horton  <timothy_horton@apple.com>
+
+        Unreviewed build fix after r153054.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-07-22  Alex Christensen  <achristensen@apple.com>
+
+        Fixed WinCairo build configurations.
+        https://bugs.webkit.org/show_bug.cgi?id=118932
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.sln: 
+        Made WinCairo not build AssembleBuildLogs (wasn't working, not necessary).
+        Made Debug_WinCairo build with Debug_WinCairo configuration.
+        Made 64-bit WinCairo not build QTMovieWin.
+
+2013-07-19  Alex Christensen  <achristensen@apple.com>
+
+        Unreviewed build fix on Windows after r152930.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Added missing close paren.
+
+2013-07-19  Alex Christensen  <achristensen@apple.com>
+
+        Added 64-bit symbols to WebKitExports.def.in for 64-bit Windows builds
+        and a macro to only use them for 64-bit builds.
+        https://bugs.webkit.org/show_bug.cgi?id=118887
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Added 64-bit symbols.
+        * WebKit.vcxproj/WebKitExportGenerator/make-export-file-generator:
+        Added support for new symbolWithPointer macro.
+
+2013-07-19  Alex Christensen  <achristensen@apple.com>
+
+        Added x64 configuration to Visual Studio build.
+        https://bugs.webkit.org/show_bug.cgi?id=118888
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj:
+        * WebKit.vcxproj/WebKit.sln:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj.filters:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj.filters:
+
+2013-07-16  Balazs Kelemen  <kbalazs@webkit.org>
+
+        [CMake] Undefined references should be detected at build time
+        https://bugs.webkit.org/show_bug.cgi?id=110236
+
+        Reviewed by Christophe Dumez.
+
+        Add library dependencies that were not defined explicitly before.
+
+        * CMakeLists.txt:
+        * PlatformEfl.cmake:
+
+2013-07-11  Timothy Hatcher  <timothy@apple.com>
+
+        Revert r152267 and soft link WebInspectorUI.framework again.
+
+        https://bugs.webkit.org/show_bug.cgi?id=118544
+
+        Reviewed by David Kilzer.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-07-01  Timothy Hatcher  <timothy@apple.com>
+
+        Link to WebInspectorUI.framework at build time instead of soft linking.
+
+        https://bugs.webkit.org/show_bug.cgi?id=118261
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-07-01  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build correction.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Need to export tag for textarea element.
+
+2013-06-26  Roger Fong  <roger_fong@apple.com>
+
+        Add an accessibility delegate interface to AppleWin port.
+        https://bugs.webkit.org/show_bug.cgi?id=118094.
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj:
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj.filters:
+
+2013-06-24  Alex Christensen  <achristensen@apple.com>
+
+        Windows build links to opengl32.lib to allow WebGL compiling.
+        https://bugs.webkit.org/show_bug.cgi?id=117949
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit/WebKitCommon.props: Added link to opengl32.lib.
+
+2013-06-17  Darin Adler  <darin@apple.com>
+
+        Sort all the Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=117696
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.xcodeproj/project.pbxproj: Ran the sort-Xcode-project-file script.
+
+2013-06-21  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Fix a missing parenthesis in include directory path.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorCommon.props:
+
+2013-06-20  Roger Fong  <roger_fong@apple.com>
+
+        Make Windows makefile copy build output to a different folder.
+        <rdar://problem/14219184>.
+
+        * WebKit.vcxproj/WebKit.make:
+
 2013-06-18  Roger Fong  <roger_fong@apple.com>
 
         Replace tools32 folder with tools and update WebKit Windows solution accordingly.

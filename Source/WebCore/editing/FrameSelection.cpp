@@ -64,7 +64,6 @@
 #include "TypingCommand.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
-#include <limits.h>
 #include <stdio.h>
 #include <wtf/text/CString.h>
 
@@ -1470,7 +1469,8 @@ void CaretBase::paintCaret(Node* node, GraphicsContext* context, const LayoutPoi
 
     Color caretColor = Color::black;
     ColorSpace colorSpace = ColorSpaceDeviceRGB;
-    Element* element = node->rootEditableElement();
+    Element* element = node->isElementNode() ? toElement(node) : node->parentElement();
+
     if (element && element->renderer()) {
         caretColor = element->renderer()->style()->visitedDependentColor(CSSPropertyColor);
         colorSpace = element->renderer()->style()->colorSpace();
@@ -1698,7 +1698,7 @@ bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, bool clo
 bool FrameSelection::isInPasswordField() const
 {
     HTMLTextFormControlElement* textControl = enclosingTextFormControl(start());
-    return textControl && textControl->hasTagName(inputTag) && static_cast<HTMLInputElement*>(textControl)->isPasswordField();
+    return textControl && isHTMLInputElement(textControl) && toHTMLInputElement(textControl)->isPasswordField();
 }
 
 void FrameSelection::focusedOrActiveStateChanged()
@@ -1970,15 +1970,13 @@ static HTMLFormElement* scanForForm(Node* start)
         return 0;
     Element* element = start->isElementNode() ? toElement(start) : ElementTraversal::next(start);
     for (; element; element = ElementTraversal::next(element)) {
-        if (element->hasTagName(formTag))
-            return static_cast<HTMLFormElement*>(element);
+        if (isHTMLFormElement(element))
+            return toHTMLFormElement(element);
         if (element->isHTMLElement() && toHTMLElement(element)->isFormControlElement())
             return static_cast<HTMLFormControlElement*>(element)->form();
-        if (element->hasTagName(frameTag) || element->hasTagName(iframeTag)) {
-            Node* childDocument = static_cast<HTMLFrameElementBase*>(element)->contentDocument();
-            if (HTMLFormElement* frameResult = scanForForm(childDocument))
+        if (element->hasTagName(frameTag) || element->hasTagName(iframeTag))
+            if (HTMLFormElement* frameResult = scanForForm(toHTMLFrameElementBase(element)->contentDocument()))
                 return frameResult;
-        }
     }
     return 0;
 }
@@ -1994,8 +1992,8 @@ HTMLFormElement* FrameSelection::currentForm() const
     // Try walking up the node tree to find a form element.
     Node* node;
     for (node = start; node; node = node->parentNode()) {
-        if (node->hasTagName(formTag))
-            return static_cast<HTMLFormElement*>(node);
+        if (isHTMLFormElement(node))
+            return toHTMLFormElement(node);
         if (node->isHTMLElement() && toHTMLElement(node)->isFormControlElement())
             return static_cast<HTMLFormControlElement*>(node)->form();
     }

@@ -191,6 +191,12 @@ WebInspector.CSSStyleDeclarationTextEditor.prototype = {
 
     // Protected
 
+    didDismissPopover: function(popover) 
+    {
+        if (popover === this._colorPickerPopover)
+            delete this._colorPickerPopover;
+    },
+
     completionControllerCompletionsHidden: function(completionController)
     {
         var styleText = this._style.text;
@@ -428,7 +434,7 @@ WebInspector.CSSStyleDeclarationTextEditor.prototype = {
                     }
 
                     var swatchElement = document.createElement("span");
-                    swatchElement.title = WebInspector.UIString("Click to toggle color format");
+                    swatchElement.title = WebInspector.UIString("Click to open a colorpicker. Shift-click to change color format.");
                     swatchElement.className = WebInspector.CSSStyleDeclarationTextEditor.ColorSwatchElementStyleClassName;
                     swatchElement.addEventListener("click", this._colorSwatchClicked.bind(this));
 
@@ -650,12 +656,17 @@ WebInspector.CSSStyleDeclarationTextEditor.prototype = {
 
     _colorSwatchClicked: function(event)
     {
-        var color = event.target.__color;
+        if (this._colorPickerPopover)
+            return;
+
+        var swatch = event.target;
+
+        var color = swatch.__color;
         console.assert(color);
         if (!color)
             return;
 
-        var colorTextMarker = event.target.__colorTextMarker;
+        var colorTextMarker = swatch.__colorTextMarker;
         console.assert(colorTextMarker);
         if (!colorTextMarker)
             return;
@@ -665,34 +676,87 @@ WebInspector.CSSStyleDeclarationTextEditor.prototype = {
         if (!range)
             return;
 
-        var nextFormat = color.nextFormat();
-        console.assert(nextFormat);
-        if (!nextFormat)
-            return;
-
-        color.format = nextFormat;
-
-        var newColorText = color.toString();
-
-        function update()
+        function updateCodeMirror(newColorText)
         {
-            colorTextMarker.clear();
+            function update()
+            {
+                // The original text marker might have been cleared by a style update,
+                // in this case we need to find the new color text marker so we know
+                // the right range for the new style color text.
+                if (!colorTextMarker || !colorTextMarker.find()) {
+                    colorTextMarker = null;
 
-            this._codeMirror.replaceRange(newColorText, range.from, range.to);
+                    var marks = this._codeMirror.findMarksAt(range.from);
+                    if (!marks.length)
+                        return;
 
-            var to = {line: range.from.line, ch: range.from.ch + newColorText.length};
+                    for (var i = 0; i < marks.length; ++i) {
+                        var mark = marks[i];
+                        if (!mark.__markedColor)
+                            continue;
+                        colorTextMarker = mark;
+                        break;
+                    }
+                }
 
-            colorTextMarker = this._codeMirror.markText(range.from, to);
-            colorTextMarker.__markedColor = true;
+                if (!colorTextMarker)
+                    return;
 
-            event.target.__colorTextMarker = colorTextMarker;
+                // Sometimes we still might find a stale text marker with findMarksAt.
+                var newRange = colorTextMarker.find();
+                if (!newRange)
+                    return;
+
+                range = newRange;
+
+                colorTextMarker.clear();
+
+                this._codeMirror.replaceRange(newColorText, range.from, range.to);
+
+                // The color's text format could have changed, so we need to update the "range" 
+                // variable to anticipate a different "range.to" property.
+                range.to.ch = range.from.ch + newColorText.length;
+
+                colorTextMarker = this._codeMirror.markText(range.from, range.to);
+                colorTextMarker.__markedColor = true;
+
+                swatch.__colorTextMarker = colorTextMarker;
+            }
+
+            this._codeMirror.operation(update.bind(this));
         }
 
-        // Ignore the change so we don't commit the format change. However, any future user
-        // edits will commit the color format.
-        this._ignoreCodeMirrorContentDidChangeEvent = true;
-        this._codeMirror.operation(update.bind(this));
-        delete this._ignoreCodeMirrorContentDidChangeEvent;
+        if (event.shiftKey) {
+            var nextFormat = color.nextFormat();
+            console.assert(nextFormat);
+            if (!nextFormat)
+                return;
+            color.format = nextFormat;
+
+            var newColorText = color.toString();
+
+            // Ignore the change so we don't commit the format change. However, any future user
+            // edits will commit the color format.
+            this._ignoreCodeMirrorContentDidChangeEvent = true;
+            updateCodeMirror.call(this, newColorText);
+            delete this._ignoreCodeMirrorContentDidChangeEvent;
+        } else {
+            this._colorPickerPopover = new WebInspector.Popover(this);
+
+            var colorPicker = new WebInspector.CSSColorPicker;
+            colorPicker.color = color;
+
+            colorPicker.addEventListener(WebInspector.CSSColorPicker.Event.ColorChanged, function(event) {
+                updateCodeMirror.call(this, event.data.color.toString());
+            }.bind(this));
+
+            var bounds = WebInspector.Rect.rectFromClientRect(swatch.getBoundingClientRect());
+            
+            this._colorPickerPopover.content = colorPicker.element;
+            this._colorPickerPopover.present(bounds, [WebInspector.RectEdge.MIN_X]);
+
+            colorPicker.shown();
+        }
     },
 
     _propertyOverriddenStatusChanged: function(event)

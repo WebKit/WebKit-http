@@ -66,7 +66,7 @@ bool AccessibilityListBoxOption::isEnabled() const
     if (!m_optionElement)
         return false;
     
-    if (m_optionElement->hasTagName(optgroupTag))
+    if (isHTMLOptGroupElement(m_optionElement))
         return false;
 
     if (equalIgnoringCase(getAttribute(aria_disabledAttr), "true"))
@@ -83,10 +83,10 @@ bool AccessibilityListBoxOption::isSelected() const
     if (!m_optionElement)
         return false;
 
-    if (!m_optionElement->hasTagName(optionTag))
+    if (!isHTMLOptionElement(m_optionElement))
         return false;
-    
-    return static_cast<HTMLOptionElement*>(m_optionElement)->selected();
+
+    return toHTMLOptionElement(m_optionElement)->selected();
 }
 
 bool AccessibilityListBoxOption::isSelectedOptionActive() const
@@ -136,7 +136,7 @@ bool AccessibilityListBoxOption::canSetSelectedAttribute() const
     if (!m_optionElement)
         return false;
     
-    if (!m_optionElement->hasTagName(optionTag))
+    if (!isHTMLOptionElement(m_optionElement))
         return false;
     
     if (m_optionElement->isDisabledFormControl())
@@ -158,11 +158,11 @@ String AccessibilityListBoxOption::stringValue() const
     if (!ariaLabel.isNull())
         return ariaLabel;
     
-    if (m_optionElement->hasTagName(optionTag))
-        return static_cast<HTMLOptionElement*>(m_optionElement)->text();
+    if (isHTMLOptionElement(m_optionElement))
+        return toHTMLOptionElement(m_optionElement)->text();
     
-    if (m_optionElement->hasTagName(optgroupTag))
-        return static_cast<HTMLOptGroupElement*>(m_optionElement)->groupLabelText();
+    if (isHTMLOptGroupElement(m_optionElement))
+        return toHTMLOptGroupElement(m_optionElement)->groupLabelText();
     
     return String();
 }
@@ -203,13 +203,13 @@ HTMLSelectElement* AccessibilityListBoxOption::listBoxOptionParentNode() const
 {
     if (!m_optionElement)
         return 0;
-    
-    if (m_optionElement->hasTagName(optionTag))
-        return static_cast<HTMLOptionElement*>(m_optionElement)->ownerSelectElement();
-    
-    if (m_optionElement->hasTagName(optgroupTag))
-        return static_cast<HTMLOptGroupElement*>(m_optionElement)->ownerSelectElement();
-    
+
+    if (isHTMLOptionElement(m_optionElement))
+        return toHTMLOptionElement(m_optionElement)->ownerSelectElement();
+
+    if (isHTMLOptGroupElement(m_optionElement))
+        return toHTMLOptGroupElement(m_optionElement)->ownerSelectElement();
+
     return 0;
 }
 

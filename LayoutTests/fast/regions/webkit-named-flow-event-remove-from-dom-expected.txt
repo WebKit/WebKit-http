@@ -1,4 +1,4 @@
-Tests regionLayoutEvent
+Tests regionOversetChange event
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 
@@ -6,6 +6,7 @@ On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE
 PASS event.target.name is "article"
 Removing region_2 from DOM
 PASS event.target.name is "article"
+PASS eventCount is 2
 PASS successfullyParsed is true
 
 TEST COMPLETE

@@ -247,7 +247,7 @@ bool SubframeLoader::requestObject(HTMLPlugInImageElement* ownerElement, const S
 PassRefPtr<Widget> SubframeLoader::loadMediaPlayerProxyPlugin(Node* node, const KURL& url,
     const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
-    ASSERT(node->hasTagName(videoTag) || node->hasTagName(audioTag));
+    ASSERT(node->hasTagName(videoTag) || isHTMLAudioElement(node));
 
     KURL completedURL;
     if (!url.isEmpty())
@@ -261,7 +261,7 @@ PassRefPtr<Widget> SubframeLoader::loadMediaPlayerProxyPlugin(Node* node, const 
     if (!m_frame->document()->contentSecurityPolicy()->allowMediaFromSource(completedURL))
         return 0;
 
-    HTMLMediaElement* mediaElement = static_cast<HTMLMediaElement*>(node);
+    HTMLMediaElement* mediaElement = toHTMLMediaElement(node);
     RenderPart* renderer = toRenderPart(node->renderer());
     IntSize size;
 
@@ -324,7 +324,7 @@ PassRefPtr<Widget> SubframeLoader::createJavaAppletWidget(const IntSize& size, H
     if (!widget) {
         RenderEmbeddedObject* renderer = element->renderEmbeddedObject();
 
-        if (!renderer->showsUnavailablePluginIndicator())
+        if (!renderer->isPluginUnavailable())
             renderer->setPluginUnavailabilityReason(RenderEmbeddedObject::PluginMissing);
         return 0;
     }
@@ -353,10 +353,10 @@ Frame* SubframeLoader::loadSubframe(HTMLFrameOwnerElement* ownerElement, const K
     int marginWidth = -1;
     int marginHeight = -1;
     if (ownerElement->hasTagName(frameTag) || ownerElement->hasTagName(iframeTag)) {
-        HTMLFrameElementBase* o = static_cast<HTMLFrameElementBase*>(ownerElement);
-        allowsScrolling = o->scrollingMode() != ScrollbarAlwaysOff;
-        marginWidth = o->marginWidth();
-        marginHeight = o->marginHeight();
+        HTMLFrameElementBase* frameElementBase = toHTMLFrameElementBase(ownerElement);
+        allowsScrolling = frameElementBase->scrollingMode() != ScrollbarAlwaysOff;
+        marginWidth = frameElementBase->marginWidth();
+        marginHeight = frameElementBase->marginHeight();
     }
 
     if (!ownerElement->document()->securityOrigin()->canDisplay(url)) {
@@ -456,7 +456,7 @@ bool SubframeLoader::loadPlugin(HTMLPlugInImageElement* pluginElement, const KUR
         pluginElement, url, paramNames, paramValues, mimeType, loadManually);
 
     if (!widget) {
-        if (!renderer->showsUnavailablePluginIndicator())
+        if (!renderer->isPluginUnavailable())
             renderer->setPluginUnavailabilityReason(RenderEmbeddedObject::PluginMissing);
         return false;
     }

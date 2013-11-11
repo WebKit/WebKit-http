@@ -158,8 +158,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSDataTransferItemList.h \
 	DerivedSources/WebCore/JSDataView.cpp \
 	DerivedSources/WebCore/JSDataView.h \
-	DerivedSources/WebCore/JSDedicatedWorkerContext.cpp \
-	DerivedSources/WebCore/JSDedicatedWorkerContext.h \
+	DerivedSources/WebCore/JSDedicatedWorkerGlobalScope.cpp \
+	DerivedSources/WebCore/JSDedicatedWorkerGlobalScope.h \
 	DerivedSources/WebCore/JSDelayNode.cpp \
 	DerivedSources/WebCore/JSDelayNode.h \
 	DerivedSources/WebCore/JSDeviceMotionEvent.cpp \
@@ -230,7 +230,6 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSDynamicsCompressorNode.cpp \
 	DerivedSources/WebCore/JSElement.cpp \
 	DerivedSources/WebCore/JSElement.h \
-	DerivedSources/WebCore/JSElementTimeControl.h \
 	DerivedSources/WebCore/JSEntity.cpp \
 	DerivedSources/WebCore/JSEntity.h \
 	DerivedSources/WebCore/JSEntityReference.cpp \
@@ -676,8 +675,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSSecurityPolicyViolationEvent.h \
 	DerivedSources/WebCore/JSShadowRoot.cpp \
 	DerivedSources/WebCore/JSShadowRoot.h \
-	DerivedSources/WebCore/JSSharedWorkerContext.cpp \
-	DerivedSources/WebCore/JSSharedWorkerContext.h \
+	DerivedSources/WebCore/JSSharedWorkerGlobalScope.cpp \
+	DerivedSources/WebCore/JSSharedWorkerGlobalScope.h \
 	DerivedSources/WebCore/JSSharedWorker.cpp \
 	DerivedSources/WebCore/JSSharedWorker.h \
 	DerivedSources/WebCore/JSSourceBuffer.cpp \
@@ -782,8 +781,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSVideoTrackList.h \
 	DerivedSources/WebCore/JSWaveShaperNode.cpp \
 	DerivedSources/WebCore/JSWaveShaperNode.h \
-	DerivedSources/WebCore/JSWaveTable.cpp \
-	DerivedSources/WebCore/JSWaveTable.h \
+	DerivedSources/WebCore/JSPeriodicWave.cpp \
+	DerivedSources/WebCore/JSPeriodicWave.h \
 	DerivedSources/WebCore/JSWebGLActiveInfo.cpp \
 	DerivedSources/WebCore/JSWebGLActiveInfo.h \
 	DerivedSources/WebCore/JSWebGLBuffer.cpp \
@@ -854,8 +853,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSWebSocket.h \
 	DerivedSources/WebCore/JSWheelEvent.cpp \
 	DerivedSources/WebCore/JSWheelEvent.h \
-	DerivedSources/WebCore/JSWorkerContext.cpp \
-	DerivedSources/WebCore/JSWorkerContext.h \
+	DerivedSources/WebCore/JSWorkerGlobalScope.cpp \
+	DerivedSources/WebCore/JSWorkerGlobalScope.h \
 	DerivedSources/WebCore/JSWorker.cpp \
 	DerivedSources/WebCore/JSWorker.h \
 	DerivedSources/WebCore/JSWorkerLocation.cpp \
@@ -1063,11 +1062,12 @@ webcore_svg_built_sources += \
 	DerivedSources/WebCore/JSSVGGlyphRefElement.h \
 	DerivedSources/WebCore/JSSVGGradientElement.cpp \
 	DerivedSources/WebCore/JSSVGGradientElement.h \
+	DerivedSources/WebCore/JSSVGGraphicsElement.cpp \
+	DerivedSources/WebCore/JSSVGGraphicsElement.h \
 	DerivedSources/WebCore/JSSVGHKernElement.cpp \
 	DerivedSources/WebCore/JSSVGHKernElement.h \
 	DerivedSources/WebCore/JSSVGImageElement.cpp \
 	DerivedSources/WebCore/JSSVGImageElement.h \
-	DerivedSources/WebCore/JSSVGLangSpace.h \
 	DerivedSources/WebCore/JSSVGLength.cpp \
 	DerivedSources/WebCore/JSSVGLength.h \
 	DerivedSources/WebCore/JSSVGLengthList.cpp \
@@ -1076,7 +1076,6 @@ webcore_svg_built_sources += \
 	DerivedSources/WebCore/JSSVGLinearGradientElement.h \
 	DerivedSources/WebCore/JSSVGLineElement.cpp \
 	DerivedSources/WebCore/JSSVGLineElement.h \
-	DerivedSources/WebCore/JSSVGLocatable.h \
 	DerivedSources/WebCore/JSSVGMPathElement.cpp \
 	DerivedSources/WebCore/JSSVGMPathElement.h \
 	DerivedSources/WebCore/JSSVGMarkerElement.cpp \
@@ -1188,7 +1187,6 @@ webcore_svg_built_sources += \
 	DerivedSources/WebCore/JSSVGTextPositioningElement.h \
 	DerivedSources/WebCore/JSSVGTitleElement.cpp \
 	DerivedSources/WebCore/JSSVGTitleElement.h \
-	DerivedSources/WebCore/JSSVGTransformable.h \
 	DerivedSources/WebCore/JSSVGTransform.cpp \
 	DerivedSources/WebCore/JSSVGTransform.h \
 	DerivedSources/WebCore/JSSVGTransformList.cpp \
@@ -1239,7 +1237,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/filesystem/FileWriterSync.idl \
 	$(WebCore)/Modules/filesystem/Metadata.idl \
 	$(WebCore)/Modules/filesystem/MetadataCallback.idl \
-	$(WebCore)/Modules/filesystem/WorkerContextFileSystem.idl \
+	$(WebCore)/Modules/filesystem/WorkerGlobalScopeFileSystem.idl \
 	$(WebCore)/Modules/gamepad/Gamepad.idl \
 	$(WebCore)/Modules/gamepad/GamepadList.idl \
 	$(WebCore)/Modules/gamepad/NavigatorGamepad.idl \
@@ -1263,7 +1261,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/indexeddb/IDBRequest.idl \
 	$(WebCore)/Modules/indexeddb/IDBTransaction.idl \
 	$(WebCore)/Modules/indexeddb/IDBVersionChangeEvent.idl \
-	$(WebCore)/Modules/indexeddb/WorkerContextIndexedDatabase.idl \
+	$(WebCore)/Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl \
 	$(WebCore)/Modules/mediasource/MediaSource.idl \
 	$(WebCore)/Modules/mediasource/SourceBuffer.idl \
 	$(WebCore)/Modules/mediasource/SourceBufferList.idl \
@@ -1294,7 +1292,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/notifications/Notification.idl \
 	$(WebCore)/Modules/notifications/NotificationCenter.idl \
 	$(WebCore)/Modules/notifications/NotificationPermissionCallback.idl \
-	$(WebCore)/Modules/notifications/WorkerContextNotifications.idl \
+	$(WebCore)/Modules/notifications/WorkerGlobalScopeNotifications.idl \
 	$(WebCore)/Modules/proximity/DeviceProximityEvent.idl \
 	$(WebCore)/Modules/quota/DOMWindowQuota.idl \
 	$(WebCore)/Modules/quota/NavigatorStorageQuota.idl \
@@ -1329,7 +1327,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/webaudio/OscillatorNode.idl \
 	$(WebCore)/Modules/webaudio/AnalyserNode.idl \
 	$(WebCore)/Modules/webaudio/WaveShaperNode.idl \
-	$(WebCore)/Modules/webaudio/WaveTable.idl \
+	$(WebCore)/Modules/webaudio/PeriodicWave.idl \
 	$(WebCore)/Modules/webdatabase/DOMWindowWebDatabase.idl \
 	$(WebCore)/Modules/webdatabase/Database.idl \
 	$(WebCore)/Modules/webdatabase/DatabaseCallback.idl \
@@ -1345,7 +1343,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/webdatabase/SQLTransactionErrorCallback.idl \
 	$(WebCore)/Modules/webdatabase/SQLTransactionSync.idl \
 	$(WebCore)/Modules/webdatabase/SQLTransactionSyncCallback.idl \
-	$(WebCore)/Modules/webdatabase/WorkerContextWebDatabase.idl \
+	$(WebCore)/Modules/webdatabase/WorkerGlobalScopeWebDatabase.idl \
 	$(WebCore)/Modules/websockets/CloseEvent.idl \
 	$(WebCore)/Modules/websockets/WebSocket.idl \
 	$(WebCore)/css/CSSCharsetRule.idl \
@@ -1387,6 +1385,7 @@ dom_binding_idls += \
 	$(WebCore)/dom/BeforeLoadEvent.idl \
 	$(WebCore)/dom/CDATASection.idl \
 	$(WebCore)/dom/CharacterData.idl \
+	$(WebCore)/dom/ChildNode.idl \
 	$(WebCore)/dom/ClientRect.idl \
 	$(WebCore)/dom/ClientRectList.idl \
 	$(WebCore)/dom/Clipboard.idl \
@@ -1634,6 +1633,8 @@ dom_binding_idls += \
 	$(WebCore)/page/SpeechInputResult.idl \
 	$(WebCore)/page/SpeechInputResultList.idl \
 	$(WebCore)/page/WebKitPoint.idl \
+	$(WebCore)/page/WindowBase64.idl \
+	$(WebCore)/page/WindowTimers.idl \
 	$(WebCore)/page/WorkerNavigator.idl \
 	$(WebCore)/plugins/DOMMimeType.idl \
 	$(WebCore)/plugins/DOMMimeTypeArray.idl \
@@ -1676,6 +1677,7 @@ dom_binding_idls += \
 	$(WebCore)/svg/SVGElementInstanceList.idl \
 	$(WebCore)/svg/SVGEllipseElement.idl \
 	$(WebCore)/svg/SVGException.idl \
+	$(WebCore)/svg/SVGExternalResourcesRequired.idl \
 	$(WebCore)/svg/SVGFEBlendElement.idl \
 	$(WebCore)/svg/SVGFEColorMatrixElement.idl \
 	$(WebCore)/svg/SVGFEComponentTransferElement.idl \
@@ -1702,6 +1704,8 @@ dom_binding_idls += \
 	$(WebCore)/svg/SVGFETileElement.idl \
 	$(WebCore)/svg/SVGFETurbulenceElement.idl \
 	$(WebCore)/svg/SVGFilterElement.idl \
+	$(WebCore)/svg/SVGFilterPrimitiveStandardAttributes.idl \
+	$(WebCore)/svg/SVGFitToViewBox.idl \
 	$(WebCore)/svg/SVGFontElement.idl \
 	$(WebCore)/svg/SVGFontFaceElement.idl \
 	$(WebCore)/svg/SVGFontFaceFormatElement.idl \
@@ -1713,6 +1717,7 @@ dom_binding_idls += \
 	$(WebCore)/svg/SVGGlyphElement.idl \
 	$(WebCore)/svg/SVGGlyphRefElement.idl \
 	$(WebCore)/svg/SVGGradientElement.idl \
+	$(WebCore)/svg/SVGGraphicsElement.idl \
 	$(WebCore)/svg/SVGHKernElement.idl \
 	$(WebCore)/svg/SVGImageElement.idl \
 	$(WebCore)/svg/SVGLength.idl \
@@ -1771,6 +1776,7 @@ dom_binding_idls += \
 	$(WebCore)/svg/SVGSymbolElement.idl \
 	$(WebCore)/svg/SVGTRefElement.idl \
 	$(WebCore)/svg/SVGTSpanElement.idl \
+	$(WebCore)/svg/SVGTests.idl \
 	$(WebCore)/svg/SVGTextContentElement.idl \
 	$(WebCore)/svg/SVGTextElement.idl \
 	$(WebCore)/svg/SVGTextPathElement.idl \
@@ -1778,6 +1784,7 @@ dom_binding_idls += \
 	$(WebCore)/svg/SVGTitleElement.idl \
 	$(WebCore)/svg/SVGTransform.idl \
 	$(WebCore)/svg/SVGTransformList.idl \
+	$(WebCore)/svg/SVGURIReference.idl \
 	$(WebCore)/svg/SVGUnitTypes.idl \
 	$(WebCore)/svg/SVGUseElement.idl \
 	$(WebCore)/svg/SVGVKernElement.idl \
@@ -1791,11 +1798,11 @@ dom_binding_idls += \
 	$(WebCore)/testing/MemoryInfo.idl \
 	$(WebCore)/testing/TypeConversions.idl \
 	$(WebCore)/workers/AbstractWorker.idl \
-	$(WebCore)/workers/DedicatedWorkerContext.idl \
+	$(WebCore)/workers/DedicatedWorkerGlobalScope.idl \
 	$(WebCore)/workers/SharedWorker.idl \
-	$(WebCore)/workers/SharedWorkerContext.idl \
+	$(WebCore)/workers/SharedWorkerGlobalScope.idl \
 	$(WebCore)/workers/Worker.idl \
-	$(WebCore)/workers/WorkerContext.idl \
+	$(WebCore)/workers/WorkerGlobalScope.idl \
 	$(WebCore)/workers/WorkerLocation.idl \
 	$(WebCore)/xml/DOMParser.idl \
 	$(WebCore)/xml/XMLHttpRequest.idl \
@@ -1875,8 +1882,8 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/filesystem/LocalFileSystem.h \
 	Source/WebCore/Modules/filesystem/MetadataCallback.h \
 	Source/WebCore/Modules/filesystem/Metadata.h \
-	Source/WebCore/Modules/filesystem/WorkerContextFileSystem.cpp \
-	Source/WebCore/Modules/filesystem/WorkerContextFileSystem.h \
+	Source/WebCore/Modules/filesystem/WorkerGlobalScopeFileSystem.cpp \
+	Source/WebCore/Modules/filesystem/WorkerGlobalScopeFileSystem.h \
 	Source/WebCore/Modules/gamepad/Gamepad.cpp \
 	Source/WebCore/Modules/gamepad/Gamepad.h \
 	Source/WebCore/Modules/gamepad/GamepadList.cpp \
@@ -1966,8 +1973,8 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/indexeddb/IndexedDB.h \
 	Source/WebCore/Modules/indexeddb/PageGroupIndexedDatabase.cpp \
 	Source/WebCore/Modules/indexeddb/PageGroupIndexedDatabase.h \
-	Source/WebCore/Modules/indexeddb/WorkerContextIndexedDatabase.cpp \
-	Source/WebCore/Modules/indexeddb/WorkerContextIndexedDatabase.h \
+	Source/WebCore/Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp \
+	Source/WebCore/Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.h \
 	Source/WebCore/Modules/mediasource/MediaSource.cpp \
 	Source/WebCore/Modules/mediasource/MediaSource.h \
 	Source/WebCore/Modules/mediasource/MediaSourceRegistry.cpp \
@@ -2042,8 +2049,8 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/notifications/Notification.cpp \
 	Source/WebCore/Modules/notifications/Notification.h \
 	Source/WebCore/Modules/notifications/NotificationPermissionCallback.h \
-	Source/WebCore/Modules/notifications/WorkerContextNotifications.cpp \
-	Source/WebCore/Modules/notifications/WorkerContextNotifications.h \
+	Source/WebCore/Modules/notifications/WorkerGlobalScopeNotifications.cpp \
+	Source/WebCore/Modules/notifications/WorkerGlobalScopeNotifications.h \
 	Source/WebCore/Modules/proximity/DeviceProximityClient.h \
 	Source/WebCore/Modules/proximity/DeviceProximityController.cpp \
 	Source/WebCore/Modules/proximity/DeviceProximityController.h \
@@ -2146,8 +2153,8 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/webaudio/WaveShaperDSPKernel.h \
 	Source/WebCore/Modules/webaudio/WaveShaperProcessor.cpp \
 	Source/WebCore/Modules/webaudio/WaveShaperNode.h \
-	Source/WebCore/Modules/webaudio/WaveTable.cpp \
-	Source/WebCore/Modules/webaudio/WaveTable.h \
+	Source/WebCore/Modules/webaudio/PeriodicWave.cpp \
+	Source/WebCore/Modules/webaudio/PeriodicWave.h \
 	Source/WebCore/Modules/webdatabase/AbstractDatabaseServer.h \
 	Source/WebCore/Modules/webdatabase/AbstractSQLStatement.h \
 	Source/WebCore/Modules/webdatabase/AbstractSQLStatementBackend.h \
@@ -2227,8 +2234,8 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/webdatabase/SQLTransactionStateMachine.h \
 	Source/WebCore/Modules/webdatabase/SQLTransactionSync.cpp \
 	Source/WebCore/Modules/webdatabase/SQLTransactionSync.h \
-	Source/WebCore/Modules/webdatabase/WorkerContextWebDatabase.cpp \
-	Source/WebCore/Modules/webdatabase/WorkerContextWebDatabase.h \
+	Source/WebCore/Modules/webdatabase/WorkerGlobalScopeWebDatabase.cpp \
+	Source/WebCore/Modules/webdatabase/WorkerGlobalScopeWebDatabase.h \
 	Source/WebCore/Modules/websockets/CloseEvent.h \
 	Source/WebCore/Modules/websockets/ThreadableWebSocketChannelClientWrapper.cpp \
 	Source/WebCore/Modules/websockets/ThreadableWebSocketChannelClientWrapper.h \
@@ -2378,7 +2385,6 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSDOMPluginCustom.cpp \
 	Source/WebCore/bindings/js/JSDOMStringListCustom.cpp \
 	Source/WebCore/bindings/js/JSDOMStringMapCustom.cpp \
-	Source/WebCore/bindings/js/JSDOMStringMapCustom.h \
 	Source/WebCore/bindings/js/JSDOMTokenListCustom.cpp \
 	Source/WebCore/bindings/js/JSDOMWindowBase.cpp \
 	Source/WebCore/bindings/js/JSDOMWindowBase.h \
@@ -2389,7 +2395,7 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSDOMWrapper.cpp \
 	Source/WebCore/bindings/js/JSDOMWrapper.h \
 	Source/WebCore/bindings/js/JSDataViewCustom.cpp \
-	Source/WebCore/bindings/js/JSDedicatedWorkerContextCustom.cpp \
+	Source/WebCore/bindings/js/JSDedicatedWorkerGlobalScopeCustom.cpp \
 	Source/WebCore/bindings/js/JSDeviceMotionEventCustom.cpp \
 	Source/WebCore/bindings/js/JSDeviceOrientationEventCustom.cpp \
 	Source/WebCore/bindings/js/JSDocumentCustom.cpp \
@@ -2408,13 +2414,11 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSGeolocationCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLAllCollectionCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLAppletElementCustom.cpp \
-	Source/WebCore/bindings/js/JSHTMLAppletElementCustom.h \
 	Source/WebCore/bindings/js/JSHTMLCanvasElementCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLCollectionCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLDocumentCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLElementCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLEmbedElementCustom.cpp \
-	Source/WebCore/bindings/js/JSHTMLEmbedElementCustom.h \
 	Source/WebCore/bindings/js/JSHTMLFormControlsCollectionCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLFormElementCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLFrameElementCustom.cpp \
@@ -2424,14 +2428,12 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSHTMLLinkElementCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLMediaElementCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLObjectElementCustom.cpp \
-	Source/WebCore/bindings/js/JSHTMLObjectElementCustom.h \
 	Source/WebCore/bindings/js/JSHTMLOptionsCollectionCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLSelectElementCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLSelectElementCustom.h \
 	Source/WebCore/bindings/js/JSHTMLStyleElementCustom.cpp \
 	Source/WebCore/bindings/js/JSHTMLTemplateElementCustom.cpp \
 	Source/WebCore/bindings/js/JSHistoryCustom.cpp \
-	Source/WebCore/bindings/js/JSHistoryCustom.h \
 	Source/WebCore/bindings/js/JSIDBAnyCustom.cpp \
 	Source/WebCore/bindings/js/JSIDBDatabaseCustom.cpp \
 	Source/WebCore/bindings/js/JSIDBObjectStoreCustom.cpp \
@@ -2445,7 +2447,6 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSLazyEventListener.cpp \
 	Source/WebCore/bindings/js/JSLazyEventListener.h \
 	Source/WebCore/bindings/js/JSLocationCustom.cpp \
-	Source/WebCore/bindings/js/JSLocationCustom.h \
 	Source/WebCore/bindings/js/JSMainThreadExecState.cpp \
 	Source/WebCore/bindings/js/JSMainThreadExecState.h \
 	Source/WebCore/bindings/js/JSMediaListCustom.h \
@@ -2480,7 +2481,6 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSRTCStatsResponseCustom.cpp \
 	Source/WebCore/bindings/js/JSSharedWorkerCustom.cpp \
 	Source/WebCore/bindings/js/JSStorageCustom.cpp \
-	Source/WebCore/bindings/js/JSStorageCustom.h \
 	Source/WebCore/bindings/js/JSStyleSheetCustom.cpp \
 	Source/WebCore/bindings/js/JSStyleSheetCustom.h \
 	Source/WebCore/bindings/js/JSStyleSheetListCustom.cpp \
@@ -2500,9 +2500,9 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSWebKitCSSKeyframesRuleCustom.cpp \
 	Source/WebCore/bindings/js/JSWebGLRenderingContextCustom.cpp \
 	Source/WebCore/bindings/js/JSWebKitPointCustom.cpp \
-	Source/WebCore/bindings/js/JSWorkerContextBase.cpp \
-	Source/WebCore/bindings/js/JSWorkerContextBase.h \
-	Source/WebCore/bindings/js/JSWorkerContextCustom.cpp \
+	Source/WebCore/bindings/js/JSWorkerGlobalScopeBase.cpp \
+	Source/WebCore/bindings/js/JSWorkerGlobalScopeBase.h \
+	Source/WebCore/bindings/js/JSWorkerGlobalScopeCustom.cpp \
 	Source/WebCore/bindings/js/JSWorkerCustom.cpp \
 	Source/WebCore/bindings/js/JSXMLHttpRequestCustom.cpp \
 	Source/WebCore/bindings/js/JSXMLHttpRequestUploadCustom.cpp \
@@ -2847,6 +2847,7 @@ webcore_sources += \
 	Source/WebCore/dom/ContextFeatures.cpp \
 	Source/WebCore/dom/ContextFeatures.h \
 	Source/WebCore/dom/CrossThreadTask.h \
+	Source/WebCore/dom/CurrentScriptIncrementer.h \
 	Source/WebCore/dom/CustomElementConstructor.h \
 	Source/WebCore/dom/CustomElementRegistry.h \
 	Source/WebCore/dom/CustomEvent.cpp \
@@ -3329,7 +3330,6 @@ webcore_sources += \
 	Source/WebCore/html/canvas/CanvasRenderingContext.h \
 	Source/WebCore/html/canvas/CanvasStyle.cpp \
 	Source/WebCore/html/canvas/CanvasStyle.h \
-	Source/WebCore/html/canvas/CheckedInt.h \
 	Source/WebCore/html/canvas/DataView.cpp \
 	Source/WebCore/html/canvas/DataView.h \
 	Source/WebCore/html/canvas/DOMPath.h \
@@ -4131,6 +4131,8 @@ webcore_sources += \
 	Source/WebCore/loader/SubresourceLoader.h \
 	Source/WebCore/loader/SubstituteData.h \
 	Source/WebCore/loader/SubstituteResource.h \
+	Source/WebCore/loader/soup/CachedRawResourceSoup.cpp \
+	Source/WebCore/loader/soup/SubresourceLoaderSoup.cpp \
 	Source/WebCore/loader/TextResourceDecoder.cpp \
 	Source/WebCore/loader/TextResourceDecoder.h \
 	Source/WebCore/loader/ThreadableLoaderClient.h \
@@ -4406,6 +4408,7 @@ webcore_sources += \
 	Source/WebCore/rendering/PaintPhase.h \
 	Source/WebCore/rendering/PointerEventsHitRules.cpp \
 	Source/WebCore/rendering/PointerEventsHitRules.h \
+	Source/WebCore/rendering/RegionOversetState.h \
 	Source/WebCore/rendering/RenderApplet.cpp \
 	Source/WebCore/rendering/RenderApplet.h \
 	Source/WebCore/rendering/RenderArena.cpp \
@@ -4602,6 +4605,8 @@ webcore_sources += \
 	Source/WebCore/rendering/mathml/RenderMathMLRoot.h \
 	Source/WebCore/rendering/mathml/RenderMathMLRow.cpp \
 	Source/WebCore/rendering/mathml/RenderMathMLRow.h \
+	Source/WebCore/rendering/mathml/RenderMathMLSpace.cpp \
+	Source/WebCore/rendering/mathml/RenderMathMLSpace.h \
 	Source/WebCore/rendering/mathml/RenderMathMLSquareRoot.cpp \
 	Source/WebCore/rendering/mathml/RenderMathMLSquareRoot.h \
 	Source/WebCore/rendering/mathml/RenderMathMLSubSup.cpp \
@@ -4733,14 +4738,14 @@ webcore_sources += \
 	Source/WebCore/WebCorePrefix.h \
 	Source/WebCore/workers/AbstractWorker.cpp \
 	Source/WebCore/workers/AbstractWorker.h \
-	Source/WebCore/workers/DedicatedWorkerContext.cpp \
-	Source/WebCore/workers/DedicatedWorkerContext.h \
+	Source/WebCore/workers/DedicatedWorkerGlobalScope.cpp \
+	Source/WebCore/workers/DedicatedWorkerGlobalScope.h \
 	Source/WebCore/workers/DedicatedWorkerThread.cpp \
 	Source/WebCore/workers/DedicatedWorkerThread.h \
 	Source/WebCore/workers/DefaultSharedWorkerRepository.cpp \
 	Source/WebCore/workers/DefaultSharedWorkerRepository.h \
-	Source/WebCore/workers/SharedWorkerContext.cpp \
-	Source/WebCore/workers/SharedWorkerContext.h \
+	Source/WebCore/workers/SharedWorkerGlobalScope.cpp \
+	Source/WebCore/workers/SharedWorkerGlobalScope.h \
 	Source/WebCore/workers/SharedWorker.cpp \
 	Source/WebCore/workers/SharedWorker.h \
 	Source/WebCore/workers/SharedWorkerRepository.cpp \
@@ -4748,9 +4753,9 @@ webcore_sources += \
 	Source/WebCore/workers/SharedWorkerStrategy.h \
 	Source/WebCore/workers/SharedWorkerThread.cpp \
 	Source/WebCore/workers/SharedWorkerThread.h \
-	Source/WebCore/workers/WorkerContext.cpp \
-	Source/WebCore/workers/WorkerContext.h \
-	Source/WebCore/workers/WorkerContextProxy.h \
+	Source/WebCore/workers/WorkerGlobalScope.cpp \
+	Source/WebCore/workers/WorkerGlobalScope.h \
+	Source/WebCore/workers/WorkerGlobalScopeProxy.h \
 	Source/WebCore/workers/WorkerEventQueue.cpp \
 	Source/WebCore/workers/WorkerEventQueue.h \
 	Source/WebCore/workers/Worker.cpp \
@@ -4972,7 +4977,6 @@ webcore_svg_sources += \
 	Source/WebCore/svg/animation/SVGSMILElement.h \
 	Source/WebCore/svg/ColorDistance.cpp \
 	Source/WebCore/svg/ColorDistance.h \
-	Source/WebCore/svg/ElementTimeControl.h \
 	Source/WebCore/svg/GradientAttributes.h \
 	Source/WebCore/svg/graphics/filters/SVGFEImage.cpp \
 	Source/WebCore/svg/graphics/filters/SVGFEImage.h \
@@ -4994,6 +4998,7 @@ webcore_svg_sources += \
 	Source/WebCore/svg/properties/SVGAnimatedEnumerationPropertyTearOff.h \
 	Source/WebCore/svg/properties/SVGAnimatedListPropertyTearOff.h \
 	Source/WebCore/svg/properties/SVGAnimatedPathSegListPropertyTearOff.h \
+	Source/WebCore/svg/properties/SVGAnimatedProperty.cpp \
 	Source/WebCore/svg/properties/SVGAnimatedProperty.h \
 	Source/WebCore/svg/properties/SVGAnimatedPropertyDescription.h \
 	Source/WebCore/svg/properties/SVGAnimatedPropertyMacros.h \
@@ -5061,6 +5066,7 @@ webcore_svg_sources += \
 	Source/WebCore/svg/SVGAnimatedTransformList.h \
 	Source/WebCore/svg/SVGAnimatedType.cpp \
 	Source/WebCore/svg/SVGAnimatedType.h \
+	Source/WebCore/svg/SVGAnimatedTypeAnimator.cpp \
 	Source/WebCore/svg/SVGAnimatedTypeAnimator.h \
 	Source/WebCore/svg/SVGAnimateElement.cpp \
 	Source/WebCore/svg/SVGAnimateElement.h \
@@ -5185,6 +5191,8 @@ webcore_svg_sources += \
 	Source/WebCore/svg/SVGGlyphMap.h \
 	Source/WebCore/svg/SVGGradientElement.cpp \
 	Source/WebCore/svg/SVGGradientElement.h \
+	Source/WebCore/svg/SVGGraphicsElement.cpp \
+	Source/WebCore/svg/SVGGraphicsElement.h \
 	Source/WebCore/svg/SVGHKernElement.cpp \
 	Source/WebCore/svg/SVGHKernElement.h \
 	Source/WebCore/svg/SVGImageElement.cpp \
@@ -5238,22 +5246,37 @@ webcore_svg_sources += \
 	Source/WebCore/svg/SVGPathParser.cpp \
 	Source/WebCore/svg/SVGPathParser.h \
 	Source/WebCore/svg/SVGPathSegArc.h \
+	Source/WebCore/svg/SVGPathSegArcAbs.h \
+	Source/WebCore/svg/SVGPathSegArcRel.h \
 	Source/WebCore/svg/SVGPathSegClosePath.h \
 	Source/WebCore/svg/SVGPathSegCurvetoCubic.h \
+	Source/WebCore/svg/SVGPathSegCurvetoCubicAbs.h \
+	Source/WebCore/svg/SVGPathSegCurvetoCubicRel.h \
 	Source/WebCore/svg/SVGPathSegCurvetoCubicSmooth.h \
+	Source/WebCore/svg/SVGPathSegCurvetoCubicSmoothAbs.h \
+	Source/WebCore/svg/SVGPathSegCurvetoCubicSmoothRel.h \
 	Source/WebCore/svg/SVGPathSegCurvetoQuadratic.h \
-	Source/WebCore/svg/SVGPathSegCurvetoQuadraticSmooth.h \
+	Source/WebCore/svg/SVGPathSegCurvetoQuadraticAbs.h \
+	Source/WebCore/svg/SVGPathSegCurvetoQuadraticRel.h \
+	Source/WebCore/svg/SVGPathSegCurvetoQuadraticSmoothAbs.h \
+	Source/WebCore/svg/SVGPathSegCurvetoQuadraticSmoothRel.h \
 	Source/WebCore/svg/SVGPathSeg.h \
-	Source/WebCore/svg/SVGPathSegLineto.h \
+	Source/WebCore/svg/SVGPathSegLinetoAbs.h \
+	Source/WebCore/svg/SVGPathSegLinetoRel.h \
 	Source/WebCore/svg/SVGPathSegLinetoHorizontal.h \
+	Source/WebCore/svg/SVGPathSegLinetoHorizontalAbs.h \
+	Source/WebCore/svg/SVGPathSegLinetoHorizontalRel.h \
 	Source/WebCore/svg/SVGPathSegLinetoVertical.h \
+	Source/WebCore/svg/SVGPathSegLinetoVerticalAbs.h \
+	Source/WebCore/svg/SVGPathSegLinetoVerticalRel.h \
 	Source/WebCore/svg/SVGPathSegListBuilder.cpp \
 	Source/WebCore/svg/SVGPathSegListBuilder.h \
 	Source/WebCore/svg/SVGPathSegList.cpp \
 	Source/WebCore/svg/SVGPathSegList.h \
 	Source/WebCore/svg/SVGPathSegListSource.cpp \
 	Source/WebCore/svg/SVGPathSegListSource.h \
-	Source/WebCore/svg/SVGPathSegMoveto.h \
+	Source/WebCore/svg/SVGPathSegMovetoAbs.h \
+	Source/WebCore/svg/SVGPathSegMovetoRel.h \
 	Source/WebCore/svg/SVGPathSegWithContext.h \
 	Source/WebCore/svg/SVGPathSource.h \
 	Source/WebCore/svg/SVGPathStringBuilder.cpp \
@@ -5294,10 +5317,6 @@ webcore_svg_sources += \
 	Source/WebCore/svg/SVGStyleElement.h \
 	Source/WebCore/svg/SVGStyledElement.cpp \
 	Source/WebCore/svg/SVGStyledElement.h \
-	Source/WebCore/svg/SVGStyledLocatableElement.cpp \
-	Source/WebCore/svg/SVGStyledLocatableElement.h \
-	Source/WebCore/svg/SVGStyledTransformableElement.cpp \
-	Source/WebCore/svg/SVGStyledTransformableElement.h \
 	Source/WebCore/svg/SVGSVGElement.cpp \
 	Source/WebCore/svg/SVGSVGElement.h \
 	Source/WebCore/svg/SVGSwitchElement.cpp \
@@ -5614,6 +5633,8 @@ platform_sources += \
 	Source/WebCore/platform/audio/DirectConvolver.h \
 	Source/WebCore/platform/audio/Distance.cpp \
 	Source/WebCore/platform/audio/Distance.h \
+	Source/WebCore/platform/audio/DownSampler.cpp \
+	Source/WebCore/platform/audio/DownSampler.h \
 	Source/WebCore/platform/audio/DynamicsCompressor.h \
 	Source/WebCore/platform/audio/DynamicsCompressorKernel.cpp \
 	Source/WebCore/platform/audio/DynamicsCompressorKernel.h \
@@ -5639,6 +5660,8 @@ platform_sources += \
 	Source/WebCore/platform/audio/ReverbInputBuffer.h \
 	Source/WebCore/platform/audio/SincResampler.cpp \
 	Source/WebCore/platform/audio/SincResampler.h \
+	Source/WebCore/platform/audio/UpSampler.cpp \
+	Source/WebCore/platform/audio/UpSampler.h \
 	Source/WebCore/platform/audio/VectorMath.cpp \
 	Source/WebCore/platform/audio/VectorMath.h \
 	Source/WebCore/platform/audio/ZeroPole.cpp \
@@ -5650,11 +5673,15 @@ platform_sources += \
 	Source/WebCore/platform/graphics/cairo/CairoUtilities.cpp \
 	Source/WebCore/platform/graphics/cairo/CairoUtilities.h \
 	Source/WebCore/platform/graphics/cairo/DrawErrorUnderline.h \
+	Source/WebCore/platform/graphics/cairo/DrawingBufferCairo.cpp \
 	Source/WebCore/platform/graphics/cairo/FloatRectCairo.cpp \
 	Source/WebCore/platform/graphics/cairo/FontCairo.cpp \
 	Source/WebCore/platform/graphics/cairo/FontCairoHarfbuzzNG.cpp \
 	Source/WebCore/platform/graphics/cairo/FontCustomPlatformData.h \
 	Source/WebCore/platform/graphics/cairo/GradientCairo.cpp \
+	Source/WebCore/platform/graphics/cairo/GraphicsContext3DCairo.cpp \
+	Source/WebCore/platform/graphics/cairo/GraphicsContext3DPrivate.cpp \
+	Source/WebCore/platform/graphics/cairo/GraphicsContext3DPrivate.h \
 	Source/WebCore/platform/graphics/cairo/ImageBufferCairo.cpp \
 	Source/WebCore/platform/graphics/cairo/ImageBufferDataCairo.h \
 	Source/WebCore/platform/graphics/cairo/ImageCairo.cpp \
@@ -6271,8 +6298,8 @@ webcoregtk_sources += \
 	Source/WebCore/plugins/gtk/PluginViewGtk.cpp \
 	Source/WebCore/plugins/gtk/xembed.h
 platformgtk_sources += \
-	Source/WebCore/platform/gtk/GtkWidgetBackingStoreX11.h \
-	Source/WebCore/platform/gtk/GtkWidgetBackingStoreX11.cpp \
+	Source/WebCore/platform/gtk/WidgetBackingStoreGtkX11.h \
+	Source/WebCore/platform/gtk/WidgetBackingStoreGtkX11.cpp \
 	Source/WebCore/platform/cairo/WidgetBackingStoreCairo.h \
 	Source/WebCore/platform/cairo/WidgetBackingStoreCairo.cpp
 if USE_OPENGL
@@ -6348,66 +6375,10 @@ platform_sources += \
 	Source/WebCore/platform/graphics/gstreamer/GStreamerVersioning.h
 endif
 
-if USE_CLUTTER
-webcore_sources += \
-	Source/WebCore/platform/graphics/clutter/DrawingBufferClutter.cpp \
-	Source/WebCore/platform/graphics/clutter/GraphicsContext3DClutter.cpp \
-	Source/WebCore/platform/graphics/clutter/GraphicsContext3DPrivate.cpp \
-	Source/WebCore/platform/graphics/clutter/GraphicsContext3DPrivate.h
-else
-webcore_sources += \
-	Source/WebCore/platform/graphics/cairo/DrawingBufferCairo.cpp \
-	Source/WebCore/platform/graphics/cairo/GraphicsContext3DCairo.cpp \
-	Source/WebCore/platform/graphics/cairo/GraphicsContext3DPrivate.cpp \
-	Source/WebCore/platform/graphics/cairo/GraphicsContext3DPrivate.h
-endif  # END USE_CLUTTER
-
 # ---
 # Accelerated compositing support
 # ---
 if USE_ACCELERATED_COMPOSITING
-if USE_CLUTTER
-webcore_sources += \
-	Source/WebCore/platform/graphics/clutter/GraphicsLayerActor.cpp \
-	Source/WebCore/platform/graphics/clutter/GraphicsLayerActor.h \
-	Source/WebCore/platform/graphics/clutter/GraphicsLayerClutter.cpp \
-	Source/WebCore/platform/graphics/clutter/GraphicsLayerClutter.h \
-	Source/WebCore/platform/graphics/clutter/PlatformClutterAnimation.cpp \
-	Source/WebCore/platform/graphics/clutter/PlatformClutterAnimation.h \
-	Source/WebCore/platform/graphics/clutter/TransformationMatrixClutter.cpp
-endif  # END USE_CLUTTER
-
-if USE_TEXTURE_MAPPER_CAIRO
-webcore_sources += \
-	Source/WebCore//platform/graphics/filters/texmap/CustomFilterValidatedProgramTextureMapper.cpp \
-	Source/WebCore//platform/graphics/filters/texmap/TextureMapperPlatformCompiledProgram.h \
-	Source/WebCore/platform/graphics/texmap/TextureMapperShaderProgram.cpp \
-	Source/WebCore/platform/graphics/texmap/TextureMapperShaderProgram.h \
-	Source/WebCore/platform/graphics/texmap/GraphicsLayerTextureMapper.cpp \
-	Source/WebCore/platform/graphics/texmap/GraphicsLayerTextureMapper.h \
-	Source/WebCore/platform/graphics/GraphicsLayerTransform.cpp \
-	Source/WebCore/platform/graphics/GraphicsLayerTransform.h \
-	Source/WebCore/platform/graphics/GraphicsLayerAnimation.cpp \
-	Source/WebCore/platform/graphics/GraphicsLayerAnimation.h \
-	Source/WebCore/platform/graphics/texmap/TextureMapperBackingStore.cpp \
-	Source/WebCore/platform/graphics/texmap/TextureMapperBackingStore.h \
-	Source/WebCore/platform/graphics/texmap/TextureMapper.cpp \
-	Source/WebCore/platform/graphics/texmap/TextureMapper.h \
-	Source/WebCore/platform/graphics/texmap/TextureMapperFPSCounter.cpp \
-	Source/WebCore/platform/graphics/texmap/TextureMapperFPSCounter.h \
-	Source/WebCore/platform/graphics/texmap/TextureMapperImageBuffer.cpp \
-	Source/WebCore/platform/graphics/texmap/TextureMapperImageBuffer.h \
-	Source/WebCore/platform/graphics/texmap/TextureMapperLayer.cpp \
-	Source/WebCore/platform/graphics/texmap/TextureMapperLayer.h \
-	Source/WebCore/platform/graphics/texmap/TextureMapperPlatformLayer.h \
-	Source/WebCore/platform/graphics/texmap/TextureMapperSurfaceBackingStore.cpp \
-	Source/WebCore/platform/graphics/texmap/TextureMapperSurfaceBackingStore.h \
-	Source/WebCore/platform/graphics/texmap/TextureMapperTile.cpp \
-	Source/WebCore/platform/graphics/texmap/TextureMapperTile.h \
-	Source/WebCore/platform/graphics/texmap/TextureMapperTiledBackingStore.cpp \
-	Source/WebCore/platform/graphics/texmap/TextureMapperTiledBackingStore.h
-endif  # END USE_TEXTURE_MAPPER_CAIRO
-
 if USE_TEXTURE_MAPPER_GL
 webcore_sources += \
 	Source/WebCore/platform/graphics/filters/texmap/CustomFilterValidatedProgramTextureMapper.cpp \

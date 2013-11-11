@@ -42,6 +42,9 @@ list(APPEND WebCore_SOURCES
 
     editing/atk/FrameSelectionAtk.cpp
 
+    loader/soup/CachedRawResourceSoup.cpp
+    loader/soup/SubresourceLoaderSoup.cpp
+
     page/gtk/DragControllerGtk.cpp
     page/gtk/EventHandlerGtk.cpp
 
@@ -78,7 +81,6 @@ list(APPEND WebCore_SOURCES
     platform/gtk/GtkPopupMenu.cpp
     platform/gtk/GtkUtilities.cpp
     platform/gtk/GtkVersioning.c
-    platform/gtk/GtkWidgetBackingStoreX11.cpp
     platform/gtk/KeyBindingTranslator.cpp
     platform/gtk/LanguageGtk.cpp
     platform/gtk/LocalizedStringsGtk.cpp
@@ -108,6 +110,7 @@ list(APPEND WebCore_SOURCES
     platform/gtk/TemporaryLinkStubs.cpp
     platform/gtk/UserAgentGtk.cpp
     platform/gtk/WebKitAuthenticationWidget.cpp
+    platform/gtk/WidgetBackingStoreGtkX11.cpp
     platform/gtk/WidgetGtk.cpp
     platform/gtk/WidgetRenderingContext.cpp
 

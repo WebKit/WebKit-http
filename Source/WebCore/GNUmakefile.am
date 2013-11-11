@@ -14,6 +14,7 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/Modules/gamepad \
 	-I$(srcdir)/Source/WebCore/Modules/geolocation \
 	-I$(srcdir)/Source/WebCore/Modules/indexeddb \
+	-I$(srcdir)/Source/WebCore/Modules/indieui \
 	-I$(srcdir)/Source/WebCore/Modules/mediasource \
 	-I$(srcdir)/Source/WebCore/Modules/mediastream \
 	-I$(srcdir)/Source/WebCore/Modules/navigatorcontentutils \
@@ -201,21 +202,10 @@ DerivedSources/WebCore/XLinkNames.h: DerivedSources/WebCore/XLinkNames.cpp
 DerivedSources/WebCore/XLinkNames.cpp : $(WebCore)/dom/make_names.pl $(WebCore)/bindings/scripts/Hasher.pm $(WebCore)/bindings/scripts/StaticString.pm $(WebCore)/svg/xlinkattrs.in
 	$(AM_V_GEN)$(PERL) -I$(WebCore)/bindings/scripts $< --attrs $(WebCore)/svg/xlinkattrs.in --outputDir "$(GENSOURCES_WEBCORE)"
 
-if USE_TEXTURE_MAPPER_CAIRO
-webcore_cppflags += \
-	-I$(srcdir)/Source/WebCore/platform/graphics/texmap
-endif  # END USE_TEXTURE_MAPPER_CAIRO
-
 if USE_TEXTURE_MAPPER_GL
 webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/platform/graphics/texmap
 endif  # END USETEXTURE_MAPPER_GL
-
-if USE_CLUTTER
-webcore_cppflags += \
-	-I$(srcdir)/Source/WebCore/platform/clutter \
-	-I$(srcdir)/Source/WebCore/platform/graphics/clutter
-endif  # END USE_CLUTTER
 
 if ENABLE_INDEXED_DATABASE
 webcore_cppflags += \
@@ -403,7 +393,9 @@ vpath %.idl $(IDL_PATH)
 
 supplemental_dependency_file = $(top_builddir)/DerivedSources/WebCore/idl_supplemental_dependencies
 window_constructors_file = $(top_builddir)/DerivedSources/WebCore/DOMWindowConstructors.idl
-workercontext_constructors_file = $(top_builddir)/DerivedSources/WebCore/WorkerContextConstructors.idl
+workerglobalscope_constructors_file = $(top_builddir)/DerivedSources/WebCore/WorkerGlobalScopeConstructors.idl
+sharedworkerglobalscope_constructors_file = $(top_builddir)/DerivedSources/WebCore/SharedWorkerGlobalScopeConstructors.idl
+dedicatedworkerglobalscope_constructors_file = $(top_builddir)/DerivedSources/WebCore/DedicatedWorkerGlobalScopeConstructors.idl
 idl_files_list = $(top_builddir)/DerivedSources/WebCore/idl_files_list
 idl_attributes_file = $(WebCore)/bindings/scripts/IDLAttributes.txt
 
@@ -412,9 +404,9 @@ $(supplemental_dependency_file): $(SCRIPTS_FOR_PREPROCESS_IDLS) $(dom_binding_id
 	$(AM_V_GEN)
 	$(AM_V_at)echo -n > $(idl_files_list)
 	$(AM_V_at)($(foreach idl, $(dom_binding_idls), echo $(idl) &&) echo -n) >> $(idl_files_list)
-	$(AM_V_at)$(PERL) -I$(WebCore)/bindings/scripts $(WebCore)/bindings/scripts/preprocess-idls.pl --defines "LANGUAGE_JAVASCRIPT=1 $(feature_defines)" --idlFilesList $(idl_files_list) --windowConstructorsFile $(window_constructors_file) --workerContextConstructorsFile $(workercontext_constructors_file) --supplementalDependencyFile $@
+	$(AM_V_at)$(PERL) -I$(WebCore)/bindings/scripts $(WebCore)/bindings/scripts/preprocess-idls.pl --defines "LANGUAGE_JAVASCRIPT=1 $(feature_defines)" --idlFilesList $(idl_files_list) --windowConstructorsFile $(window_constructors_file) --workerGlobalScopeConstructorsFile $(workerglobalscope_constructors_file) --sharedWorkerGlobalScopeConstructorsFile $(sharedworkerglobalscope_constructors_file) --dedicatedWorkerGlobalScopeConstructorsFile $(dedicatedworkerglobalscope_constructors_file) --supplementalDependencyFile $@
 
-.PHONY: $(window_constructors_file) $(workercontext_constructors_file)
+.PHONY: $(window_constructors_file) $(workerglobalscope_constructors_file) $(sharedworkerglobalscope_constructors_file) $(dedicatedworkerglobalscope_constructors_file)
 
 # This does not appear to work correctly with gnumake unless
 # it includes an empty command list (the semicolon).
@@ -434,7 +426,7 @@ DerivedSources/WebCore/JSInternalSettingsGenerated.h: DerivedSources/WebCore/Int
 # IDL generation takes a long time. The pipe represents an order-only dependency,
 # which means that GNUmake will only try to build the dependencies first, but
 # not rebuild all the targets if the dependencies change.
-$(webkitgtk_sources) $(webkit2_sources) $(webkit2_plugin_process_sources) $(webcore_sources) $(webcoregtk_sources) $(platform_sources) $(platformgtk_sources) : | $(supplemental_dependency_file) $(window_constructors_file) $(workercontext_constructors_file) $(webcore_built_sources) $(platform_built_sources)
+$(webkitgtk_sources) $(webkit2_sources) $(webkit2_plugin_process_sources) $(webcore_sources) $(webcoregtk_sources) $(platform_sources) $(platformgtk_sources) : | $(supplemental_dependency_file) $(window_constructors_file) $(workerglobalscope_constructors_file) $(sharedworkerglobalscope_constructors_file) $(dedictedworkerglobalscope_constructors_file) $(webcore_built_sources) $(platform_built_sources)
 
 noinst_LTLIBRARIES += \
 	libWebCorePlatform.la \
@@ -487,7 +479,6 @@ libWebCore_la_CPPFLAGS = \
 	$(javascriptcore_cppflags) \
 	-fno-strict-aliasing \
 	$(CAIRO_CFLAGS) \
-	$(CLUTTER_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
 	$(ENCHANT_CFLAGS) \
 	$(FREETYPE_CFLAGS) \
@@ -534,7 +525,6 @@ libWebCorePlatform_la_CPPFLAGS = \
 	$(javascriptcore_cppflags) \
 	-fno-strict-aliasing \
 	$(CAIRO_CFLAGS) \
-	$(CLUTTER_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
 	$(ENCHANT_CFLAGS) \
 	$(FREETYPE_CFLAGS) \
@@ -582,7 +572,6 @@ libWebCoreGtk_la_CPPFLAGS = \
 	$(javascriptcore_cppflags) \
 	-fno-strict-aliasing \
 	$(CAIRO_CFLAGS) \
-	$(CLUTTER_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
 	$(ENCHANT_CFLAGS) \
 	$(FREETYPE_CFLAGS) \

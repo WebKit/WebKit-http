@@ -494,6 +494,16 @@ String contextMenuItemTagToggleMediaControls()
     return WEB_UI_STRING("Controls", "Media Controls context menu item");
 }
 
+String contextMenuItemTagShowMediaControls()
+{
+    return WEB_UI_STRING("Show Controls", "Show Media Controls context menu item");
+}
+
+String contextMenuItemTagHideMediaControls()
+{
+    return WEB_UI_STRING("Hide Controls", "Hide Media Controls context menu item");
+}
+
 String contextMenuItemTagToggleMediaLoop()
 {
     return WEB_UI_STRING("Loop", "Media Loop context menu item");
@@ -501,12 +511,12 @@ String contextMenuItemTagToggleMediaLoop()
 
 String contextMenuItemTagEnterVideoFullscreen()
 {
-    return WEB_UI_STRING("Enter Fullscreen", "Video Enter Fullscreen context menu item");
+    return WEB_UI_STRING("Enter Full Screen", "Video Enter Fullscreen context menu item");
 }
 
 String contextMenuItemTagExitVideoFullscreen()
 {
-    return WEB_UI_STRING("Exit Fullscreen", "Video Exit Fullscreen context menu item");
+    return WEB_UI_STRING("Exit Full Screen", "Video Exit Fullscreen context menu item");
 }
 
 String contextMenuItemTagMediaPlay()
@@ -639,6 +649,12 @@ String AXMenuListPopupActionVerb()
 }
 
 String AXMenuListActionVerb()
+{
+    notImplemented();
+    return "select";
+}
+
+String AXListItemActionVerb()
 {
     notImplemented();
     return "select";
@@ -1046,7 +1062,7 @@ String textTrackNoLabelText()
     return WEB_UI_STRING_KEY("Unknown", "Unknown (text track)", "Menu item label for a text track that has no other name");
 }
     
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(WIN)
 String textTrackCountryAndLanguageMenuItemText(const String& title, const String& country, const String& language)
 {
     return formatLocalizedString(WEB_UI_STRING("%@ (%@-%@)", "Text track display name format that includes the country and language of the subtitle, in the form of 'Title (Language-Country)'"), title.createCFString().get(), language.createCFString().get(), country.createCFString().get());

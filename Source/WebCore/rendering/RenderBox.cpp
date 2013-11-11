@@ -28,15 +28,16 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Document.h"
-#include "FrameView.h"
-#include "GraphicsContext.h"
-#include "HitTestResult.h"
-#include "htmlediting.h"
-#include "HTMLElement.h"
-#include "HTMLFrameOwnerElement.h"
-#include "HTMLNames.h"
 #include "FloatQuad.h"
 #include "Frame.h"
+#include "FrameView.h"
+#include "GraphicsContext.h"
+#include "HTMLElement.h"
+#include "HTMLFrameOwnerElement.h"
+#include "HTMLInputElement.h"
+#include "HTMLNames.h"
+#include "HTMLTextAreaElement.h"
+#include "HitTestResult.h"
 #include "Page.h"
 #include "PaintInfo.h"
 #include "RenderArena.h"
@@ -51,6 +52,7 @@
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "TransformState.h"
+#include "htmlediting.h"
 #include <algorithm>
 #include <math.h>
 #include <wtf/StackStats.h>
@@ -290,6 +292,7 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
         // Propagate the new writing mode and direction up to the RenderView.
         RenderView* viewRenderer = view();
         RenderStyle* viewStyle = viewRenderer->style();
+        bool viewChangedWritingMode = false;
         if (viewStyle->direction() != newStyle->direction() && (isRootRenderer || !document()->directionSetOnDocumentElement())) {
             viewStyle->setDirection(newStyle->direction());
             if (isBodyRenderer)
@@ -299,6 +302,7 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
 
         if (viewStyle->writingMode() != newStyle->writingMode() && (isRootRenderer || !document()->writingModeSetOnDocumentElement())) {
             viewStyle->setWritingMode(newStyle->writingMode());
+            viewChangedWritingMode = true;
             viewRenderer->setHorizontalWritingMode(newStyle->isHorizontalWritingMode());
             viewRenderer->markAllDescendantsWithFloatsForLayout();
             if (isBodyRenderer) {
@@ -309,6 +313,13 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
         }
 
         frame()->view()->recalculateScrollbarOverlayStyle();
+        
+        const Pagination& pagination = frame()->view()->pagination();
+        if (viewChangedWritingMode && pagination.mode != Pagination::Unpaginated) {
+            viewStyle->setColumnStylesFromPaginationMode(pagination.mode);
+            if (viewRenderer->hasColumns())
+                viewRenderer->updateColumnInfoFromStyle(viewStyle);
+        }
     }
 
 #if ENABLE(CSS_SHAPES)
@@ -536,14 +547,16 @@ LayoutRect RenderBox::outlineBoundsForRepaint(const RenderLayerModelObject* repa
     LayoutRect box = borderBoundingBox();
     adjustRectForOutlineAndShadow(box);
 
-    FloatQuad containerRelativeQuad;
-    if (geometryMap)
-        containerRelativeQuad = geometryMap->mapToContainer(box, repaintContainer);
-    else
-        containerRelativeQuad = localToContainerQuad(FloatRect(box), repaintContainer);
+    if (repaintContainer != this) {
+        FloatQuad containerRelativeQuad;
+        if (geometryMap)
+            containerRelativeQuad = geometryMap->mapToContainer(box, repaintContainer);
+        else
+            containerRelativeQuad = localToContainerQuad(FloatRect(box), repaintContainer);
 
-    box = containerRelativeQuad.enclosingBoundingBox();
-
+        box = containerRelativeQuad.enclosingBoundingBox();
+    }
+    
     // FIXME: layoutDelta needs to be applied in parts before/after transforms and
     // repaint containers. https://bugs.webkit.org/show_bug.cgi?id=23308
     box.move(view()->layoutDelta());
@@ -816,17 +829,21 @@ LayoutSize RenderBox::cachedSizeForOverflowClip() const
 
 void RenderBox::applyCachedClipAndScrollOffsetForRepaint(LayoutRect& paintRect) const
 {
+    flipForWritingMode(paintRect);
     paintRect.move(-scrolledContentOffset()); // For overflow:auto/scroll/hidden.
 
     // Do not clip scroll layer contents to reduce the number of repaints while scrolling.
-    if (usesCompositedScrolling())
+    if (usesCompositedScrolling()) {
+        flipForWritingMode(paintRect);
         return;
+    }
 
     // height() is inaccurate if we're in the middle of a layout of this RenderBox, so use the
     // layer's size instead. Even if the layer's size is wrong, the layer itself will repaint
     // anyway if its size does change.
     LayoutRect clipRect(LayoutPoint(), cachedSizeForOverflowClip());
     paintRect = intersection(paintRect, clipRect);
+    flipForWritingMode(paintRect);
 }
 
 void RenderBox::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
@@ -1541,7 +1558,7 @@ bool RenderBox::pushContentsClip(PaintInfo& paintInfo, const LayoutPoint& accumu
         paintObject(paintInfo, accumulatedOffset);
         paintInfo.phase = PaintPhaseChildBlockBackgrounds;
     }
-    IntRect clipRect = pixelSnappedIntRect(isControlClip ? controlClipRect(accumulatedOffset) : overflowClipRect(accumulatedOffset, paintInfo.renderRegion));
+    IntRect clipRect = pixelSnappedIntRect(isControlClip ? controlClipRect(accumulatedOffset) : overflowClipRect(accumulatedOffset, paintInfo.renderRegion, IgnoreOverlayScrollbarSize, paintInfo.phase));
     paintInfo.context->save();
     if (style()->hasBorderRadius())
         paintInfo.context->clipRoundedRect(style()->getRoundedInnerBorderFor(LayoutRect(accumulatedOffset, size())));
@@ -1562,7 +1579,7 @@ void RenderBox::popContentsClip(PaintInfo& paintInfo, PaintPhase originalPhase, 
         paintInfo.phase = originalPhase;
 }
 
-LayoutRect RenderBox::overflowClipRect(const LayoutPoint& location, RenderRegion* region, OverlayScrollbarSizeRelevancy relevancy)
+LayoutRect RenderBox::overflowClipRect(const LayoutPoint& location, RenderRegion* region, OverlayScrollbarSizeRelevancy relevancy, PaintPhase)
 {
     // FIXME: When overflow-clip (CSS3) is implemented, we'll obtain the property
     // here.
@@ -1729,8 +1746,8 @@ void RenderBox::mapLocalToContainer(const RenderLayerModelObject* repaintContain
         if (v->layoutStateEnabled() && !repaintContainer) {
             LayoutState* layoutState = v->layoutState();
             LayoutSize offset = layoutState->m_paintOffset + locationOffset();
-            if (style()->hasPaintOffset() && layer())
-                offset += layer()->paintOffset();
+            if (style()->hasInFlowPosition() && layer())
+                offset += layer()->offsetForInFlowPosition();
             transformState.move(offset);
             return;
         }
@@ -1833,8 +1850,8 @@ LayoutSize RenderBox::offsetFromContainer(RenderObject* o, const LayoutPoint& po
     ASSERT(o == container() || o->isRenderRegion());
 
     LayoutSize offset;    
-    if (hasPaintOffset())
-        offset += paintOffset();
+    if (isInFlowPositioned())
+        offset += offsetForInFlowPosition();
 
     if (!isInline() || isReplaced()) {
         if (!style()->hasOutOfFlowPosition() && o->hasColumns()) {
@@ -1974,8 +1991,8 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
                 rect = layer()->transform()->mapRect(pixelSnappedIntRect(rect));
 
             // We can't trust the bits on RenderObject, because this might be called while re-resolving style.
-            if (styleToUse->hasPaintOffset() && layer())
-                rect.move(layer()->paintOffset());
+            if (styleToUse->hasInFlowPosition() && layer())
+                rect.move(layer()->offsetForInFlowPosition());
 
             rect.moveBy(location());
             rect.move(layoutState->m_paintOffset);
@@ -2019,12 +2036,12 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
 
     if (position == AbsolutePosition && o->isInFlowPositioned() && o->isRenderInline())
         topLeft += toRenderInline(o)->offsetForInFlowPositionedInline(this);
-    else if (styleToUse->hasPaintOffset() && layer()) {
+    else if (styleToUse->hasInFlowPosition() && layer()) {
         // Apply the relative position offset when invalidating a rectangle.  The layer
         // is translated, but the render box isn't, so we need to do this to get the
         // right dirty rect.  Since this is called from RenderObject::setStyle, the relative position
         // flag on the RenderObject has been cleared, so use the one on the style().
-        topLeft += layer()->paintOffset();
+        topLeft += layer()->offsetForInFlowPosition();
     }
     
     if (position != AbsolutePosition && position != FixedPosition && o->hasColumns() && o->isBlockFlow()) {
@@ -2298,7 +2315,7 @@ bool RenderBox::sizesLogicalWidthToFitContent(SizeType widthType) const
     // stretching column flexbox.
     // FIXME: Think about block-flow here.
     // https://bugs.webkit.org/show_bug.cgi?id=46473
-    if (logicalWidth.type() == Auto && !isStretchingColumnFlexItem(this) && node() && (node()->hasTagName(inputTag) || node()->hasTagName(selectTag) || node()->hasTagName(buttonTag) || node()->hasTagName(textareaTag) || node()->hasTagName(legendTag)))
+    if (logicalWidth.type() == Auto && !isStretchingColumnFlexItem(this) && node() && (isHTMLInputElement(node()) || node()->hasTagName(selectTag) || node()->hasTagName(buttonTag) || isHTMLTextAreaElement(node()) || node()->hasTagName(legendTag)))
         return true;
 
     if (isHorizontalWritingMode() != containingBlock()->isHorizontalWritingMode())
@@ -2552,7 +2569,7 @@ void RenderBox::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logica
         && (isRoot() || (isBody() && document()->documentElement()->renderer()->style()->logicalHeight().isPercent())) && !isInline();
     if (stretchesToViewport() || paginatedContentNeedsBaseHeight) {
         LayoutUnit margins = collapsedMarginBefore() + collapsedMarginAfter();
-        LayoutUnit visibleHeight = viewLogicalHeightForPercentages();
+        LayoutUnit visibleHeight = view()->pageOrViewLogicalHeight();
         if (isRoot())
             computedValues.m_extent = max(computedValues.m_extent, visibleHeight - margins);
         else {
@@ -2560,13 +2577,6 @@ void RenderBox::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logica
             computedValues.m_extent = max(computedValues.m_extent, visibleHeight - marginsBordersPadding);
         }
     }
-}
-
-LayoutUnit RenderBox::viewLogicalHeightForPercentages() const
-{
-    if (document()->printing())
-        return static_cast<LayoutUnit>(view()->pageLogicalHeight());
-    return view()->viewLogicalHeight();
 }
 
 LayoutUnit RenderBox::computeLogicalHeightUsing(const Length& height) const
@@ -2677,7 +2687,7 @@ LayoutUnit RenderBox::computePercentageLogicalHeight(const Length& height) const
         cb->computeLogicalHeight(cb->logicalHeight(), 0, computedValues);
         availableHeight = computedValues.m_extent - cb->borderAndPaddingLogicalHeight() - cb->scrollbarLogicalHeight();
     } else if (cb->isRenderView())
-        availableHeight = viewLogicalHeightForPercentages();
+        availableHeight = view()->pageOrViewLogicalHeight();
 
     if (availableHeight == -1)
         return availableHeight;
@@ -2846,7 +2856,7 @@ LayoutUnit RenderBox::availableLogicalHeightUsing(const Length& h, AvailableLogi
         return logicalHeight() - borderAndPaddingLogicalHeight();
     }
 
-    if (h.isPercent() && isOutOfFlowPositioned()) {
+    if (h.isPercent() && isOutOfFlowPositioned() && !isRenderFlowThread()) {
         // FIXME: This is wrong if the containingBlock has a perpendicular writing mode.
         LayoutUnit availableHeight = containingBlockLogicalHeightForPositioned(containingBlock());
         return adjustContentBoxLogicalHeightForBoxSizing(valueForLength(h, availableHeight));
@@ -3050,15 +3060,9 @@ static void computeInlineStaticDistance(Length& logicalLeft, Length& logicalRigh
     }
 }
 
-static bool isReplacedElement(const RenderBox* child)
-{
-    // FIXME: Bug 117267, we should make form control elements isReplaced too so that we can just check for that.
-    return child->isReplaced() || (child->node() && child->node()->isElementNode() && toElement(child->node())->isFormControlElement() && !child->isFieldset());
-}
-
 void RenderBox::computePositionedLogicalWidth(LogicalExtentComputedValues& computedValues, RenderRegion* region) const
 {
-    if (isReplacedElement(this)) {
+    if (isReplaced()) {
         // FIXME: Positioned replaced elements inside a flow thread are not working properly
         // with variable width regions (see https://bugs.webkit.org/show_bug.cgi?id=69896 ).
         computePositionedLogicalWidthReplaced(computedValues);
@@ -3400,7 +3404,7 @@ static void computeBlockStaticDistance(Length& logicalTop, Length& logicalBottom
 
 void RenderBox::computePositionedLogicalHeight(LogicalExtentComputedValues& computedValues) const
 {
-    if (isReplacedElement(this)) {
+    if (isReplaced()) {
         computePositionedLogicalHeightReplaced(computedValues);
         return;
     }
@@ -4381,7 +4385,7 @@ LayoutRect RenderBox::layoutOverflowRectForPropagation(RenderStyle* parentStyle)
         rect.unite(layoutOverflowRect());
 
     bool hasTransform = hasLayer() && layer()->transform();
-    if (hasPaintOffset() || hasTransform) {
+    if (isInFlowPositioned() || hasTransform) {
         // If we are relatively positioned or if we have a transform, then we have to convert
         // this rectangle into physical coordinates, apply relative positioning and transforms
         // to it, and then convert it back.
@@ -4390,8 +4394,8 @@ LayoutRect RenderBox::layoutOverflowRectForPropagation(RenderStyle* parentStyle)
         if (hasTransform)
             rect = layer()->currentTransform().mapRect(rect);
 
-        if (hasPaintOffset())
-            rect.move(paintOffset());
+        if (isInFlowPositioned())
+            rect.move(offsetForInFlowPosition());
         
         // Now we need to flip back.
         flipForWritingMode(rect);

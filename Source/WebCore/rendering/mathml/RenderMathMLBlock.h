@@ -52,6 +52,7 @@ public:
     virtual bool isRenderMathMLFenced() const { return false; }
     virtual bool isRenderMathMLFraction() const { return false; }
     virtual bool isRenderMathMLRoot() const { return false; }
+    virtual bool isRenderMathMLSpace() const { return false; }
     virtual bool isRenderMathMLSquareRoot() const { return false; }
     virtual bool isRenderMathMLSubSup() const { return false; }
     virtual bool isRenderMathMLUnderOver() const { return false; }
@@ -127,6 +128,9 @@ private:
     virtual const char* renderName() const OVERRIDE { return "RenderMathMLTable"; }
 };
 
+// Parsing functions for MathML Length values
+bool parseMathMLLength(const String&, LayoutUnit&, const RenderStyle*, bool allowNegative = true);
+bool parseMathMLNamedSpace(const String&, LayoutUnit&, const RenderStyle*, bool allowNegative = true);
 }
 
 #endif // ENABLE(MATHML)

@@ -29,6 +29,7 @@
 #include "RenderSVGTextPath.h"
 #include "SVGElementInstance.h"
 #include "SVGNames.h"
+#include "XLinkNames.h"
 
 namespace WebCore {
 
@@ -81,7 +82,7 @@ bool SVGTextPathElement::isSupportedAttribute(const QualifiedName& attrName)
         supportedAttributes.add(SVGNames::methodAttr);
         supportedAttributes.add(SVGNames::spacingAttr);
     }
-    return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
+    return supportedAttributes.contains<SVGAttributeHashTranslator>(attrName);
 }
 
 void SVGTextPathElement::parseAttribute(const QualifiedName& name, const AtomicString& value)

@@ -342,12 +342,14 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
     RenderFlowThread* flowThread = flowThreadContainingBlock();
     if (logicalWidthChangedInRegions(flowThread))
         relayoutChildren = true;
-    if (updateRegionsAndExclusionsBeforeChildLayout(flowThread))
+    if (updateRegionsAndShapesBeforeChildLayout(flowThread))
         relayoutChildren = true;
 
     m_numberOfInFlowChildrenOnFirstLine = -1;
 
     RenderBlock::startDelayUpdateScrollInfo();
+
+    dirtyForLayoutFromPercentageHeightDescendants();
 
     Vector<LineContext> lineContexts;
     OrderHashSet orderValues;
@@ -368,7 +370,7 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
 
     layoutPositionedObjects(relayoutChildren || isRoot());
 
-    updateRegionsAndExclusionsAfterChildLayout(flowThread);
+    updateRegionsAndShapesAfterChildLayout(flowThread);
 
     repaintChildrenDuringLayoutIfMoved(oldChildRects);
     // FIXME: css3/flexbox/repaint-rtl-column.html seems to repaint more overflow than it needs to.

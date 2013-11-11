@@ -36,6 +36,7 @@
 #include "HTMLFormElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLLegendElement.h"
+#include "HTMLTextAreaElement.h"
 #include "RenderBox.h"
 #include "RenderTheme.h"
 #include "ScriptEventListener.h"
@@ -188,15 +189,15 @@ static bool shouldAutofocus(HTMLFormControlElement* element)
 
     // FIXME: Should this set of hasTagName checks be replaced by a
     // virtual member function?
-    if (element->hasTagName(inputTag))
-        return !static_cast<HTMLInputElement*>(element)->isInputTypeHidden();
+    if (isHTMLInputElement(element))
+        return !toHTMLInputElement(element)->isInputTypeHidden();
     if (element->hasTagName(selectTag))
         return true;
     if (element->hasTagName(keygenTag))
         return true;
     if (element->hasTagName(buttonTag))
         return true;
-    if (element->hasTagName(textareaTag))
+    if (isHTMLTextAreaElement(element))
         return true;
 
     return false;

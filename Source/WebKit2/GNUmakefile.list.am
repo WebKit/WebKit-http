@@ -814,6 +814,7 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/GeolocationPermissionRequestProxy.cpp \
 	Source/WebKit2/UIProcess/GeolocationPermissionRequestProxy.h \
 	Source/WebKit2/UIProcess/cairo/BackingStoreCairo.cpp \
+	Source/WebKit2/UIProcess/gtk/ExperimentalFeatures.cpp \
 	Source/WebKit2/UIProcess/gtk/TextCheckerGtk.cpp \
 	Source/WebKit2/UIProcess/gtk/WebContextGtk.cpp \
 	Source/WebKit2/UIProcess/gtk/WebContextMenuProxyGtk.cpp \
@@ -884,8 +885,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebBatteryManagerProxy.h \
 	Source/WebKit2/UIProcess/WebBatteryProvider.cpp \
 	Source/WebKit2/UIProcess/WebBatteryProvider.h \
-	Source/WebKit2/UIProcess/WebColorChooserProxy.cpp \
-	Source/WebKit2/UIProcess/WebColorChooserProxy.h \
+	Source/WebKit2/UIProcess/WebColorPicker.cpp \
+	Source/WebKit2/UIProcess/WebColorPicker.h \
 	Source/WebKit2/UIProcess/WebColorPickerResultListenerProxy.cpp \
 	Source/WebKit2/UIProcess/WebColorPickerResultListenerProxy.h \
 	Source/WebKit2/UIProcess/WebConnectionToWebProcess.cpp \

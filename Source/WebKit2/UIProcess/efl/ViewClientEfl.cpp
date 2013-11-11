@@ -154,6 +154,18 @@ void ViewClientEfl::didChangeTooltip(WKViewRef, WKStringRef tooltip, const void*
         toEwkView(clientInfo)->smartCallback<TooltipTextSet>().call(WKEinaSharedString(tooltip));
 }
 
+void ViewClientEfl::didFindZoomableArea(WKViewRef, WKPoint point, WKRect area, const void* clientInfo)
+{
+    toEwkView(clientInfo)->didFindZoomableArea(point, area);
+}
+
+#if ENABLE(TOUCH_EVENTS)
+void ViewClientEfl::doneWithTouchEvent(WKViewRef, WKTouchEventRef event, bool wasEventHandled, const void* clientInfo)
+{
+    toEwkView(clientInfo)->doneWithTouchEvent(event, wasEventHandled);
+}
+#endif
+
 ViewClientEfl::ViewClientEfl(EwkView* view)
     : m_view(view)
 {
@@ -164,6 +176,7 @@ ViewClientEfl::ViewClientEfl(EwkView* view)
     viewClient.version = kWKViewClientCurrentVersion;
     viewClient.clientInfo = this;
     viewClient.didChangeContentsSize = didChangeContentsSize;
+    viewClient.didFindZoomableArea = didFindZoomableArea;
     viewClient.viewNeedsDisplay = viewNeedsDisplay;
     viewClient.webProcessCrashed = webProcessCrashed;
     viewClient.webProcessDidRelaunch = webProcessDidRelaunch;
@@ -171,6 +184,10 @@ ViewClientEfl::ViewClientEfl(EwkView* view)
     viewClient.didRenderFrame = didRenderFrame;
     viewClient.didCompletePageTransition = didCompletePageTransition;
     viewClient.didChangeViewportAttributes = didChangeViewportAttributes;
+    viewClient.didChangeTooltip = didChangeTooltip;
+#if ENABLE(TOUCH_EVENTS)
+    viewClient.doneWithTouchEvent = doneWithTouchEvent;
+#endif
 
     WKViewSetViewClient(m_view->wkView(), &viewClient);
 }

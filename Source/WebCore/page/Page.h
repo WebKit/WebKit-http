@@ -302,8 +302,6 @@ public:
     void setIsInWindow(bool);
     bool isInWindow() const { return m_isInWindow; }
 
-    void windowScreenDidChange(PlatformDisplayID);
-
     void suspendScriptedAnimations();
     void resumeScriptedAnimations();
     bool scriptedAnimationsSuspended() const { return m_scriptedAnimationsSuspended; }
@@ -354,8 +352,6 @@ public:
 #if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     void setVisibilityState(PageVisibilityState, bool);
 #endif
-
-    PlatformDisplayID displayID() const { return m_displayID; }
 
     void addLayoutMilestones(LayoutMilestones);
     void removeLayoutMilestones(LayoutMilestones);
@@ -409,6 +405,10 @@ public:
 #if ENABLE(VIDEO_TRACK)
     void captionPreferencesChanged();
 #endif
+
+    void incrementFrameHandlingBeforeUnloadEventCount();
+    void decrementFrameHandlingBeforeUnloadEventCount();
+    bool isAnyFrameHandlingBeforeUnloadEvent();
 
 private:
     void initGroup();
@@ -523,7 +523,6 @@ private:
 #if ENABLE(PAGE_VISIBILITY_API)
     PageVisibilityState m_visibilityState;
 #endif
-    PlatformDisplayID m_displayID;
 
     LayoutMilestones m_requestedLayoutMilestones;
 
@@ -541,12 +540,14 @@ private:
     AlternativeTextClient* m_alternativeTextClient;
 
     bool m_scriptedAnimationsSuspended;
-    RefPtr<PageThrottler> m_pageThrottler;
+    OwnPtr<PageThrottler> m_pageThrottler;
 
     OwnPtr<PageConsole> m_console;
 
     HashSet<String> m_seenPlugins;
     HashSet<String> m_seenMediaEngines;
+    
+    unsigned m_framesHandlingBeforeUnloadEvent;
 };
 
 inline PageGroup& Page::group()

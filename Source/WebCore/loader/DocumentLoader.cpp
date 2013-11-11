@@ -581,7 +581,10 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
             frame()->document()->enforceSandboxFlags(SandboxOrigin);
             if (HTMLFrameOwnerElement* ownerElement = frame()->ownerElement())
                 ownerElement->dispatchEvent(Event::create(eventNames().loadEvent, false, false));
-            cancelMainResourceLoad(frameLoader()->cancelledError(m_request));
+
+            // The load event might have detached this frame. In that case, the load will already have been cancelled during detach.
+            if (frameLoader())
+                cancelMainResourceLoad(frameLoader()->cancelledError(m_request));
             return;
         }
     }
@@ -652,6 +655,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
     case PolicyUse: {
         // Prevent remote web archives from loading because they can claim to be from any domain and thus avoid cross-domain security checks (4120255).
         bool isRemoteWebArchive = (equalIgnoringCase("application/x-webarchive", mimeType)
+            || equalIgnoringCase("application/x-mimearchive", mimeType)
 #if PLATFORM(GTK)
             || equalIgnoringCase("message/rfc822", mimeType)
 #endif
@@ -1368,7 +1372,7 @@ void DocumentLoader::startLoadingMainResource()
 
     ResourceRequest request(m_request);
     DEFINE_STATIC_LOCAL(ResourceLoaderOptions, mainResourceLoadOptions,
-        (SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck));
+        (SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType));
     CachedResourceRequest cachedResourceRequest(request, mainResourceLoadOptions);
     m_mainResource = m_cachedResourceLoader->requestMainResource(cachedResourceRequest);
     if (!m_mainResource) {

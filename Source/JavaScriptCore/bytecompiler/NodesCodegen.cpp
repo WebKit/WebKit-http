@@ -87,7 +87,7 @@ void ExpressionNode::emitBytecodeInConditionContext(BytecodeGenerator& generator
 
 RegisterID* ThrowableExpressionData::emitThrowReferenceError(BytecodeGenerator& generator, const String& message)
 {
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     generator.emitThrowReferenceError(message);
     return generator.newTemporary();
 }
@@ -153,7 +153,8 @@ RegisterID* ResolveNode::emitBytecode(BytecodeGenerator& generator, RegisterID* 
         return generator.moveToDestinationIfNeeded(dst, local);
     }
     
-    generator.emitExpressionInfo(m_startOffset + m_ident.length(), m_ident.length(), 0);
+    unsigned divot = m_startOffset + m_ident.length();
+    generator.emitExpressionInfo(divot, m_ident.length(), 0, m_divotLine, m_divotLineStart);
     return generator.emitResolve(generator.finalDestination(dst), resolveResult, m_ident);
 }
 
@@ -201,7 +202,7 @@ bool ArrayNode::isSimpleArray() const
     return true;
 }
 
-ArgumentListNode* ArrayNode::toArgumentList(VM* vm, int lineNumber, int charPosition) const
+ArgumentListNode* ArrayNode::toArgumentList(VM* vm, int lineNumber, int startPosition) const
 {
     ASSERT(!m_elision && !m_optional);
     ElementNode* ptr = m_element;
@@ -209,7 +210,7 @@ ArgumentListNode* ArrayNode::toArgumentList(VM* vm, int lineNumber, int charPosi
         return 0;
     JSTokenLocation location;
     location.line = lineNumber;
-    location.charPosition = charPosition;
+    location.startOffset = startPosition;
     ArgumentListNode* head = new (vm) ArgumentListNode(location, ptr->value());
     ArgumentListNode* tail = head;
     ptr = ptr->next();
@@ -324,13 +325,13 @@ RegisterID* BracketAccessorNode::emitBytecode(BytecodeGenerator& generator, Regi
         && generator.willResolveToArguments(static_cast<ResolveNode*>(m_base)->identifier())
         && !generator.symbolTable().slowArguments()) {
         RegisterID* property = generator.emitNode(m_subscript);
-        generator.emitExpressionInfo(divot(), startOffset(), endOffset());    
+        generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
         return generator.emitGetArgumentByVal(generator.finalDestination(dst), generator.uncheckedRegisterForArguments(), property);
     }
 
     RefPtr<RegisterID> base = generator.emitNodeForLeftHandSide(m_base, m_subscriptHasAssignments, m_subscript->isPure(generator));
     RegisterID* property = generator.emitNode(m_subscript);
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     return generator.emitGetByVal(generator.finalDestination(dst), base.get(), property);
 }
 
@@ -344,13 +345,13 @@ RegisterID* DotAccessorNode::emitBytecode(BytecodeGenerator& generator, Register
         ResolveNode* resolveNode = static_cast<ResolveNode*>(m_base);
         if (!generator.willResolveToArguments(resolveNode->identifier()))
             goto nonArgumentsPath;
-        generator.emitExpressionInfo(divot(), startOffset(), endOffset());    
+        generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
         return generator.emitGetArgumentsLength(generator.finalDestination(dst), generator.uncheckedRegisterForArguments());
     }
 
 nonArgumentsPath:
     RegisterID* base = generator.emitNode(m_base);
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     return generator.emitGetById(generator.finalDestination(dst), base, m_ident);
 }
 
@@ -373,7 +374,7 @@ RegisterID* NewExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID* 
         expectedFunction = NoExpectedFunction;
     RefPtr<RegisterID> func = generator.emitNode(m_expr);
     CallArguments callArguments(generator, m_args);
-    return generator.emitConstruct(generator.finalDestinationOrIgnored(dst), func.get(), expectedFunction, callArguments, divot(), startOffset(), endOffset());
+    return generator.emitConstruct(generator.finalDestinationOrIgnored(dst), func.get(), expectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
 }
 
 inline CallArguments::CallArguments(BytecodeGenerator& generator, ArgumentsNode* argumentsNode)
@@ -408,9 +409,9 @@ RegisterID* EvalFunctionCallNode::emitBytecode(BytecodeGenerator& generator, Reg
 {
     RefPtr<RegisterID> func = generator.tempDestination(dst);
     CallArguments callArguments(generator, m_args);
-    generator.emitExpressionInfo(divot() - startOffset() + 4, 4, 0);
+    generator.emitExpressionInfo(divot() - divotStartOffset() + 4, 4, 0, divotLine(), divotLineStart());
     generator.emitResolveWithThis(callArguments.thisRegister(), func.get(), generator.resolve(generator.propertyNames().eval), generator.propertyNames().eval);
-    return generator.emitCallEval(generator.finalDestination(dst, func.get()), func.get(), callArguments, divot(), startOffset(), endOffset());
+    return generator.emitCallEval(generator.finalDestination(dst, func.get()), func.get(), callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
 }
 
 // ------------------------------ FunctionCallValueNode ----------------------------------
@@ -420,7 +421,7 @@ RegisterID* FunctionCallValueNode::emitBytecode(BytecodeGenerator& generator, Re
     RefPtr<RegisterID> func = generator.emitNode(m_expr);
     CallArguments callArguments(generator, m_args);
     generator.emitLoad(callArguments.thisRegister(), jsUndefined());
-    return generator.emitCall(generator.finalDestinationOrIgnored(dst, func.get()), func.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+    return generator.emitCall(generator.finalDestinationOrIgnored(dst, func.get()), func.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
 }
 
 // ------------------------------ FunctionCallResolveNode ----------------------------------
@@ -436,7 +437,7 @@ RegisterID* FunctionCallResolveNode::emitBytecode(BytecodeGenerator& generator, 
         generator.emitLoad(callArguments.thisRegister(), jsUndefined());
         // This passes NoExpectedFunction because we expect that if the function is in a
         // local variable, then it's not one of our built-in constructors.
-        return generator.emitCall(generator.finalDestinationOrIgnored(dst, callArguments.thisRegister()), func.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+        return generator.emitCall(generator.finalDestinationOrIgnored(dst, callArguments.thisRegister()), func.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     }
 
     if (resolveResult.isStatic()) {
@@ -444,16 +445,16 @@ RegisterID* FunctionCallResolveNode::emitBytecode(BytecodeGenerator& generator, 
         CallArguments callArguments(generator, m_args);
         generator.emitGetStaticVar(func.get(), resolveResult, m_ident);
         generator.emitLoad(callArguments.thisRegister(), jsUndefined());
-        return generator.emitCall(generator.finalDestinationOrIgnored(dst, func.get()), func.get(), expectedFunction, callArguments, divot(), startOffset(), endOffset());
+        return generator.emitCall(generator.finalDestinationOrIgnored(dst, func.get()), func.get(), expectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     }
 
     RefPtr<RegisterID> func = generator.newTemporary();
     CallArguments callArguments(generator, m_args);
-    int identifierStart = divot() - startOffset();
+    int identifierStart = divot() - divotStartOffset();
 
-    generator.emitExpressionInfo(identifierStart + m_ident.length(), m_ident.length(), 0);
+    generator.emitExpressionInfo(identifierStart + m_ident.length(), m_ident.length(), 0, divotLine(), divotLineStart());
     generator.emitResolveWithThis(callArguments.thisRegister(), func.get(), resolveResult, m_ident);
-    return generator.emitCall(generator.finalDestinationOrIgnored(dst, func.get()), func.get(), expectedFunction, callArguments, divot(), startOffset(), endOffset());
+    return generator.emitCall(generator.finalDestinationOrIgnored(dst, func.get()), func.get(), expectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
 }
 
 // ------------------------------ FunctionCallBracketNode ----------------------------------
@@ -462,11 +463,11 @@ RegisterID* FunctionCallBracketNode::emitBytecode(BytecodeGenerator& generator, 
 {
     RefPtr<RegisterID> base = generator.emitNode(m_base);
     RegisterID* property = generator.emitNode(m_subscript);
-    generator.emitExpressionInfo(divot() - m_subexpressionDivotOffset, startOffset() - m_subexpressionDivotOffset, m_subexpressionEndOffset);
+    generator.emitExpressionInfo(subexpressionDivot(), subexpressionStartOffset(), subexpressionEndOffset(), subexpressionLine(), subexpressionLineStart());
     RefPtr<RegisterID> function = generator.emitGetByVal(generator.tempDestination(dst), base.get(), property);
     CallArguments callArguments(generator, m_args);
     generator.emitMove(callArguments.thisRegister(), base.get());
-    return generator.emitCall(generator.finalDestinationOrIgnored(dst, function.get()), function.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+    return generator.emitCall(generator.finalDestinationOrIgnored(dst, function.get()), function.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
 }
 
 // ------------------------------ FunctionCallDotNode ----------------------------------
@@ -476,9 +477,9 @@ RegisterID* FunctionCallDotNode::emitBytecode(BytecodeGenerator& generator, Regi
     RefPtr<RegisterID> function = generator.tempDestination(dst);
     CallArguments callArguments(generator, m_args);
     generator.emitNode(callArguments.thisRegister(), m_base);
-    generator.emitExpressionInfo(divot() - m_subexpressionDivotOffset, startOffset() - m_subexpressionDivotOffset, m_subexpressionEndOffset);
+    generator.emitExpressionInfo(subexpressionDivot(), subexpressionStartOffset(), subexpressionEndOffset(), subexpressionLine(), subexpressionLineStart());
     generator.emitGetById(function.get(), callArguments.thisRegister(), m_ident);
-    return generator.emitCall(generator.finalDestinationOrIgnored(dst, function.get()), function.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+    return generator.emitCall(generator.finalDestinationOrIgnored(dst, function.get()), function.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
 }
 
 RegisterID* CallFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
@@ -486,7 +487,7 @@ RegisterID* CallFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator, 
     RefPtr<Label> realCall = generator.newLabel();
     RefPtr<Label> end = generator.newLabel();
     RefPtr<RegisterID> base = generator.emitNode(m_base);
-    generator.emitExpressionInfo(divot() - m_subexpressionDivotOffset, startOffset() - m_subexpressionDivotOffset, m_subexpressionEndOffset);
+    generator.emitExpressionInfo(subexpressionDivot(), subexpressionStartOffset(), subexpressionEndOffset(), subexpressionLine(), subexpressionLineStart());
     RefPtr<RegisterID> function = generator.emitGetById(generator.tempDestination(dst), base.get(), m_ident);
     RefPtr<RegisterID> finalDestinationOrIgnored = generator.finalDestinationOrIgnored(dst, function.get());
     generator.emitJumpIfNotFunctionCall(function.get(), realCall.get());
@@ -498,7 +499,7 @@ RegisterID* CallFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator, 
             RefPtr<RegisterID> realFunction = generator.emitMove(generator.tempDestination(dst), base.get());
             CallArguments callArguments(generator, m_args);
             generator.emitNode(callArguments.thisRegister(), oldList->m_expr);
-            generator.emitCall(finalDestinationOrIgnored.get(), realFunction.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+            generator.emitCall(finalDestinationOrIgnored.get(), realFunction.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
             generator.emitJump(end.get());
 
             m_args->m_listNode = oldList;
@@ -506,7 +507,7 @@ RegisterID* CallFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator, 
             RefPtr<RegisterID> realFunction = generator.emitMove(generator.tempDestination(dst), base.get());
             CallArguments callArguments(generator, m_args);
             generator.emitLoad(callArguments.thisRegister(), jsUndefined());
-            generator.emitCall(finalDestinationOrIgnored.get(), realFunction.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+            generator.emitCall(finalDestinationOrIgnored.get(), realFunction.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
             generator.emitJump(end.get());
         }
     }
@@ -514,7 +515,7 @@ RegisterID* CallFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator, 
     {
         CallArguments callArguments(generator, m_args);
         generator.emitMove(callArguments.thisRegister(), base.get());
-        generator.emitCall(finalDestinationOrIgnored.get(), function.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+        generator.emitCall(finalDestinationOrIgnored.get(), function.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     }
     generator.emitLabel(end.get());
     return finalDestinationOrIgnored.get();
@@ -536,7 +537,7 @@ RegisterID* ApplyFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator,
     RefPtr<Label> realCall = generator.newLabel();
     RefPtr<Label> end = generator.newLabel();
     RefPtr<RegisterID> base = generator.emitNode(m_base);
-    generator.emitExpressionInfo(divot() - m_subexpressionDivotOffset, startOffset() - m_subexpressionDivotOffset, m_subexpressionEndOffset);
+    generator.emitExpressionInfo(subexpressionDivot(), subexpressionStartOffset(), subexpressionEndOffset(), subexpressionLine(), subexpressionLineStart());
     RefPtr<RegisterID> function = generator.emitGetById(generator.tempDestination(dst), base.get(), m_ident);
     RefPtr<RegisterID> finalDestinationOrIgnored = generator.finalDestinationOrIgnored(dst, function.get());
     generator.emitJumpIfNotFunctionApply(function.get(), realCall.get());
@@ -551,20 +552,20 @@ RegisterID* ApplyFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator,
                     RefPtr<RegisterID> realFunction = generator.emitMove(generator.tempDestination(dst), base.get());
                     CallArguments callArguments(generator, m_args);
                     generator.emitNode(callArguments.thisRegister(), oldList->m_expr);
-                    generator.emitCall(finalDestinationOrIgnored.get(), realFunction.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+                    generator.emitCall(finalDestinationOrIgnored.get(), realFunction.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
                 } else {
                     m_args->m_listNode = m_args->m_listNode->m_next;
                     RefPtr<RegisterID> realFunction = generator.emitMove(generator.tempDestination(dst), base.get());
                     CallArguments callArguments(generator, m_args);
                     generator.emitNode(callArguments.thisRegister(), oldList->m_expr);
-                    generator.emitCall(finalDestinationOrIgnored.get(), realFunction.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+                    generator.emitCall(finalDestinationOrIgnored.get(), realFunction.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
                 }
                 m_args->m_listNode = oldList;
             } else {
                 RefPtr<RegisterID> realFunction = generator.emitMove(generator.tempDestination(dst), base.get());
                 CallArguments callArguments(generator, m_args);
                 generator.emitLoad(callArguments.thisRegister(), jsUndefined());
-                generator.emitCall(finalDestinationOrIgnored.get(), realFunction.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+                generator.emitCall(finalDestinationOrIgnored.get(), realFunction.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
             }
         } else {
             ASSERT(m_args->m_listNode && m_args->m_listNode->m_next);
@@ -585,7 +586,7 @@ RegisterID* ApplyFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator,
             while ((args = args->m_next))
                 generator.emitNode(args->m_expr);
 
-            generator.emitCallVarargs(finalDestinationOrIgnored.get(), realFunction.get(), thisRegister.get(), argsRegister.get(), generator.newTemporary(), profileHookRegister.get(), divot(), startOffset(), endOffset());
+            generator.emitCallVarargs(finalDestinationOrIgnored.get(), realFunction.get(), thisRegister.get(), argsRegister.get(), generator.newTemporary(), profileHookRegister.get(), divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
         }
         generator.emitJump(end.get());
     }
@@ -593,7 +594,7 @@ RegisterID* ApplyFunctionCallDotNode::emitBytecode(BytecodeGenerator& generator,
     {
         CallArguments callArguments(generator, m_args);
         generator.emitMove(callArguments.thisRegister(), base.get());
-        generator.emitCall(finalDestinationOrIgnored.get(), function.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
+        generator.emitCall(finalDestinationOrIgnored.get(), function.get(), NoExpectedFunction, callArguments, divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     }
     generator.emitLabel(end.get());
     return finalDestinationOrIgnored.get();
@@ -641,7 +642,7 @@ RegisterID* PostfixNode::emitResolve(BytecodeGenerator& generator, RegisterID* d
         return oldValue.get();
     }
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     RefPtr<RegisterID> value = generator.newTemporary();
     NonlocalResolveInfo resolveInfo;
     RefPtr<RegisterID> base = generator.emitResolveWithBaseForPut(generator.newTemporary(), value.get(), resolveResult, ident, resolveInfo);
@@ -663,10 +664,10 @@ RegisterID* PostfixNode::emitBracket(BytecodeGenerator& generator, RegisterID* d
     RefPtr<RegisterID> base = generator.emitNodeForLeftHandSide(baseNode, bracketAccessor->subscriptHasAssignments(), subscript->isPure(generator));
     RefPtr<RegisterID> property = generator.emitNode(subscript);
 
-    generator.emitExpressionInfo(bracketAccessor->divot(), bracketAccessor->startOffset(), bracketAccessor->endOffset());
+    generator.emitExpressionInfo(bracketAccessor->divot(), bracketAccessor->divotStartOffset(), bracketAccessor->divotEndOffset(), bracketAccessor->divotLine(), bracketAccessor->divotLineStart());
     RefPtr<RegisterID> value = generator.emitGetByVal(generator.newTemporary(), base.get(), property.get());
     RegisterID* oldValue = emitPostIncOrDec(generator, generator.tempDestination(dst), value.get(), m_operator);
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     generator.emitPutByVal(base.get(), property.get(), value.get());
     return generator.moveToDestinationIfNeeded(dst, oldValue);
 }
@@ -683,10 +684,10 @@ RegisterID* PostfixNode::emitDot(BytecodeGenerator& generator, RegisterID* dst)
 
     RefPtr<RegisterID> base = generator.emitNode(baseNode);
 
-    generator.emitExpressionInfo(dotAccessor->divot(), dotAccessor->startOffset(), dotAccessor->endOffset());
+    generator.emitExpressionInfo(dotAccessor->divot(), dotAccessor->divotStartOffset(), dotAccessor->divotEndOffset(), dotAccessor->divotLine(), dotAccessor->divotLineStart());
     RefPtr<RegisterID> value = generator.emitGetById(generator.newTemporary(), base.get(), ident);
     RegisterID* oldValue = emitPostIncOrDec(generator, generator.tempDestination(dst), value.get(), m_operator);
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     generator.emitPutById(base.get(), ident, value.get());
     return generator.moveToDestinationIfNeeded(dst, oldValue);
 }
@@ -715,7 +716,7 @@ RegisterID* DeleteResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
     if (resolveResult.isRegister())
         return generator.emitLoad(generator.finalDestination(dst), false);
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     RegisterID* base = generator.emitResolveBase(generator.tempDestination(dst), resolveResult, m_ident);
     return generator.emitDeleteById(generator.finalDestination(dst, base), base, m_ident);
 }
@@ -727,7 +728,7 @@ RegisterID* DeleteBracketNode::emitBytecode(BytecodeGenerator& generator, Regist
     RefPtr<RegisterID> r0 = generator.emitNode(m_base);
     RegisterID* r1 = generator.emitNode(m_subscript);
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     return generator.emitDeleteByVal(generator.finalDestination(dst), r0.get(), r1);
 }
 
@@ -737,7 +738,7 @@ RegisterID* DeleteDotNode::emitBytecode(BytecodeGenerator& generator, RegisterID
 {
     RegisterID* r0 = generator.emitNode(m_base);
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     return generator.emitDeleteById(generator.finalDestination(dst), r0, m_ident);
 }
 
@@ -823,7 +824,7 @@ RegisterID* PrefixNode::emitResolve(BytecodeGenerator& generator, RegisterID* ds
         return generator.moveToDestinationIfNeeded(dst, propDst.get());
     }
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     RefPtr<RegisterID> propDst = generator.tempDestination(dst);
     NonlocalResolveInfo resolveVerifier;
     RefPtr<RegisterID> base = generator.emitResolveWithBaseForPut(generator.newTemporary(), propDst.get(), resolveResult, ident, resolveVerifier);
@@ -843,10 +844,10 @@ RegisterID* PrefixNode::emitBracket(BytecodeGenerator& generator, RegisterID* ds
     RefPtr<RegisterID> property = generator.emitNode(subscript);
     RefPtr<RegisterID> propDst = generator.tempDestination(dst);
 
-    generator.emitExpressionInfo(bracketAccessor->divot(), bracketAccessor->startOffset(), bracketAccessor->endOffset());
+    generator.emitExpressionInfo(bracketAccessor->divot(), bracketAccessor->divotStartOffset(), bracketAccessor->divotEndOffset(), bracketAccessor->divotLine(), bracketAccessor->divotLineStart());
     RegisterID* value = generator.emitGetByVal(propDst.get(), base.get(), property.get());
     emitIncOrDec(generator, value, m_operator);
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     generator.emitPutByVal(base.get(), property.get(), value);
     return generator.moveToDestinationIfNeeded(dst, propDst.get());
 }
@@ -861,10 +862,10 @@ RegisterID* PrefixNode::emitDot(BytecodeGenerator& generator, RegisterID* dst)
     RefPtr<RegisterID> base = generator.emitNode(baseNode);
     RefPtr<RegisterID> propDst = generator.tempDestination(dst);
 
-    generator.emitExpressionInfo(dotAccessor->divot(), dotAccessor->startOffset(), dotAccessor->endOffset());
+    generator.emitExpressionInfo(dotAccessor->divot(), dotAccessor->divotStartOffset(), dotAccessor->divotEndOffset(), dotAccessor->divotLine(), dotAccessor->divotLineStart());
     RegisterID* value = generator.emitGetById(propDst.get(), base.get(), ident);
     emitIncOrDec(generator, value, m_operator);
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     generator.emitPutById(base.get(), ident, value);
     return generator.moveToDestinationIfNeeded(dst, propDst.get());
 }
@@ -890,6 +891,7 @@ RegisterID* PrefixNode::emitBytecode(BytecodeGenerator& generator, RegisterID* d
 RegisterID* UnaryOpNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     RegisterID* src = generator.emitNode(m_expr);
+    generator.emitExpressionInfo(startOffset(), 0, 0, lineNo(), lineStartOffset());
     return generator.emitUnaryOp(opcodeID(), generator.finalDestination(dst), src);
 }
 
@@ -1021,7 +1023,7 @@ RegisterID* BinaryOpNode::emitStrcat(BytecodeGenerator& generator, RegisterID* d
     // Certain read-modify nodes require expression info to be emitted *after* m_right has been generated.
     // If this is required the node is passed as 'emitExpressionInfoForMe'; do so now.
     if (emitExpressionInfoForMe)
-        generator.emitExpressionInfo(emitExpressionInfoForMe->divot(), emitExpressionInfoForMe->startOffset(), emitExpressionInfoForMe->endOffset());
+        generator.emitExpressionInfo(emitExpressionInfoForMe->divot(), emitExpressionInfoForMe->divotStartOffset(), emitExpressionInfoForMe->divotEndOffset(), emitExpressionInfoForMe->divotLine(), emitExpressionInfoForMe->divotLineStart());
 
     // If there is an assignment convert the lhs now.  This will also copy lhs to
     // the temporary register we allocated for it.
@@ -1093,8 +1095,10 @@ RegisterID* BinaryOpNode::emitBytecode(BytecodeGenerator& generator, RegisterID*
 {
     OpcodeID opcodeID = this->opcodeID();
 
-    if (opcodeID == op_add && m_expr1->isAdd() && m_expr1->resultDescriptor().definitelyIsString())
+    if (opcodeID == op_add && m_expr1->isAdd() && m_expr1->resultDescriptor().definitelyIsString()) {
+        generator.emitExpressionInfo(startOffset(), 0, 0, lineNo(), lineStartOffset());
         return emitStrcat(generator, dst);
+    }
 
     if (opcodeID == op_neq) {
         if (m_expr1->isNull() || m_expr2->isNull()) {
@@ -1114,6 +1118,7 @@ RegisterID* BinaryOpNode::emitBytecode(BytecodeGenerator& generator, RegisterID*
     RefPtr<RegisterID> src1 = generator.emitNodeForLeftHandSide(left, m_rightHasAssignments, right->isPure(generator));
     bool wasTypeof = generator.m_lastOpcodeID == op_typeof;
     RegisterID* src2 = generator.emitNode(right);
+    generator.emitExpressionInfo(startOffset(), 0, 0, lineNo(), lineStartOffset());
     if (wasTypeof && (opcodeID == op_neq || opcodeID == op_nstricteq)) {
         RefPtr<RegisterID> tmp = generator.tempDestination(dst);
         if (opcodeID == op_neq)
@@ -1161,7 +1166,7 @@ RegisterID* ThrowableBinaryOpNode::emitBytecode(BytecodeGenerator& generator, Re
 {
     RefPtr<RegisterID> src1 = generator.emitNodeForLeftHandSide(m_expr1, m_rightHasAssignments, m_expr2->isPure(generator));
     RegisterID* src2 = generator.emitNode(m_expr2);
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     return generator.emitBinaryOp(opcodeID(), generator.finalDestination(dst, src1.get()), src1.get(), src2, OperandTypes(m_expr1->resultDescriptor(), m_expr2->resultDescriptor()));
 }
 
@@ -1173,13 +1178,13 @@ RegisterID* InstanceOfNode::emitBytecode(BytecodeGenerator& generator, RegisterI
     RefPtr<RegisterID> dstReg = generator.finalDestination(dst, src1.get());
     RefPtr<Label> target = generator.newLabel();
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     generator.emitCheckHasInstance(dstReg.get(), src1.get(), src2.get(), target.get());
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     generator.emitGetById(prototype.get(), src2.get(), generator.vm()->propertyNames->prototype);
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     RegisterID* result = generator.emitInstanceOf(dstReg.get(), src1.get(), prototype.get());
     generator.emitLabel(target.get());
     return result;
@@ -1290,7 +1295,7 @@ static ALWAYS_INLINE RegisterID* emitReadModifyAssignment(BytecodeGenerator& gen
     // Certain read-modify nodes require expression info to be emitted *after* m_right has been generated.
     // If this is required the node is passed as 'emitExpressionInfoForMe'; do so now.
     if (emitExpressionInfoForMe)
-        generator.emitExpressionInfo(emitExpressionInfoForMe->divot(), emitExpressionInfoForMe->startOffset(), emitExpressionInfoForMe->endOffset());
+        generator.emitExpressionInfo(emitExpressionInfoForMe->divot(), emitExpressionInfoForMe->divotStartOffset(), emitExpressionInfoForMe->divotEndOffset(), emitExpressionInfoForMe->divotLine(), emitExpressionInfoForMe->divotLineStart());
 
     return generator.emitBinaryOp(opcodeID, dst, src1, src2, types);
 }
@@ -1325,7 +1330,7 @@ RegisterID* ReadModifyResolveNode::emitBytecode(BytecodeGenerator& generator, Re
     }
 
     RefPtr<RegisterID> src1 = generator.tempDestination(dst);
-    generator.emitExpressionInfo(divot() - startOffset() + m_ident.length(), m_ident.length(), 0);
+    generator.emitExpressionInfo(divot() - divotStartOffset() + m_ident.length(), m_ident.length(), 0, divotLine(), divotLineStart());
     NonlocalResolveInfo resolveVerifier;
     RefPtr<RegisterID> base = generator.emitResolveWithBaseForPut(generator.newTemporary(), src1.get(), resolveResult, m_ident, resolveVerifier);
     RegisterID* result = emitReadModifyAssignment(generator, generator.finalDestination(dst, src1.get()), src1.get(), m_right, m_operator, OperandTypes(ResultType::unknownType(), m_right->resultDescriptor()), this);
@@ -1356,11 +1361,13 @@ RegisterID* AssignResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
     }
 
     NonlocalResolveInfo resolveVerifier;
+    if (generator.isStrictMode())
+        generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     RefPtr<RegisterID> base = generator.emitResolveBaseForPut(generator.newTemporary(), resolveResult, m_ident, resolveVerifier);
     if (dst == generator.ignoredResult())
         dst = 0;
     RegisterID* value = generator.emitNode(dst, m_right);
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     return generator.emitPutToBase(base.get(), m_ident, value, resolveVerifier);
 }
 
@@ -1371,7 +1378,7 @@ RegisterID* AssignDotNode::emitBytecode(BytecodeGenerator& generator, RegisterID
     RefPtr<RegisterID> base = generator.emitNodeForLeftHandSide(m_base, m_rightHasAssignments, m_right->isPure(generator));
     RefPtr<RegisterID> value = generator.destinationForAssignResult(dst);
     RegisterID* result = generator.emitNode(value.get(), m_right);
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     RegisterID* forwardResult = (dst == generator.ignoredResult()) ? result : generator.moveToDestinationIfNeeded(generator.tempDestination(result), result);
     generator.emitPutById(base.get(), m_ident, forwardResult);
     return generator.moveToDestinationIfNeeded(dst, forwardResult);
@@ -1383,11 +1390,11 @@ RegisterID* ReadModifyDotNode::emitBytecode(BytecodeGenerator& generator, Regist
 {
     RefPtr<RegisterID> base = generator.emitNodeForLeftHandSide(m_base, m_rightHasAssignments, m_right->isPure(generator));
 
-    generator.emitExpressionInfo(divot() - m_subexpressionDivotOffset, startOffset() - m_subexpressionDivotOffset, m_subexpressionEndOffset);
+    generator.emitExpressionInfo(subexpressionDivot(), subexpressionStartOffset(), subexpressionEndOffset(), subexpressionLine(), subexpressionLineStart());
     RefPtr<RegisterID> value = generator.emitGetById(generator.tempDestination(dst), base.get(), m_ident);
     RegisterID* updatedValue = emitReadModifyAssignment(generator, generator.finalDestination(dst, value.get()), value.get(), m_right, m_operator, OperandTypes(ResultType::unknownType(), m_right->resultDescriptor()));
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     return generator.emitPutById(base.get(), m_ident, updatedValue);
 }
 
@@ -1407,7 +1414,7 @@ RegisterID* AssignBracketNode::emitBytecode(BytecodeGenerator& generator, Regist
     RefPtr<RegisterID> value = generator.destinationForAssignResult(dst);
     RegisterID* result = generator.emitNode(value.get(), m_right);
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     RegisterID* forwardResult = (dst == generator.ignoredResult()) ? result : generator.moveToDestinationIfNeeded(generator.tempDestination(result), result);
     generator.emitPutByVal(base.get(), property.get(), forwardResult);
     return generator.moveToDestinationIfNeeded(dst, forwardResult);
@@ -1420,11 +1427,11 @@ RegisterID* ReadModifyBracketNode::emitBytecode(BytecodeGenerator& generator, Re
     RefPtr<RegisterID> base = generator.emitNodeForLeftHandSide(m_base, m_subscriptHasAssignments || m_rightHasAssignments, m_subscript->isPure(generator) && m_right->isPure(generator));
     RefPtr<RegisterID> property = generator.emitNodeForLeftHandSide(m_subscript, m_rightHasAssignments, m_right->isPure(generator));
 
-    generator.emitExpressionInfo(divot() - m_subexpressionDivotOffset, startOffset() - m_subexpressionDivotOffset, m_subexpressionEndOffset);
+    generator.emitExpressionInfo(subexpressionDivot(), subexpressionStartOffset(), subexpressionEndOffset(), subexpressionLine(), subexpressionLineStart());
     RefPtr<RegisterID> value = generator.emitGetByVal(generator.tempDestination(dst), base.get(), property.get());
     RegisterID* updatedValue = emitReadModifyAssignment(generator, generator.finalDestination(dst, value.get()), value.get(), m_right, m_operator, OperandTypes(ResultType::unknownType(), m_right->resultDescriptor()));
 
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     generator.emitPutByVal(base.get(), property.get(), updatedValue);
 
     return updatedValue;
@@ -1480,7 +1487,7 @@ RegisterID* ConstDeclNode::emitBytecode(BytecodeGenerator& generator, RegisterID
 
 void ConstStatementNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
     generator.emitNode(m_next);
 }
 
@@ -1523,14 +1530,14 @@ void BlockNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
 void EmptyStatementNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
 }
 
 // ------------------------------ DebuggerStatementNode ---------------------------
 
 void DebuggerStatementNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
-    generator.emitDebugHook(DidReachBreakpoint, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(DidReachBreakpoint, firstLine(), lastLine(), startOffset(), lineStartOffset());
 }
 
 // ------------------------------ ExprStatementNode ----------------------------
@@ -1538,7 +1545,7 @@ void DebuggerStatementNode::emitBytecode(BytecodeGenerator& generator, RegisterI
 void ExprStatementNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     ASSERT(m_expr);
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
     generator.emitNode(dst, m_expr);
 }
 
@@ -1547,7 +1554,7 @@ void ExprStatementNode::emitBytecode(BytecodeGenerator& generator, RegisterID* d
 void VarStatementNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
     ASSERT(m_expr);
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
     generator.emitNode(m_expr);
 }
 
@@ -1592,7 +1599,7 @@ bool IfElseNode::tryFoldBreakAndContinue(BytecodeGenerator& generator, Statement
 
 void IfElseNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
     
     RefPtr<Label> beforeThen = generator.newLabel();
     RefPtr<Label> beforeElse = generator.newLabel();
@@ -1629,12 +1636,12 @@ void DoWhileNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
     RefPtr<Label> topOfLoop = generator.newLabel();
     generator.emitLabel(topOfLoop.get());
     generator.emitLoopHint();
-    generator.emitDebugHook(WillExecuteStatement, lastLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, lastLine(), lastLine(), startOffset(), lineStartOffset());
 
     generator.emitNode(dst, m_statement);
 
     generator.emitLabel(scope->continueTarget());
-    generator.emitDebugHook(WillExecuteStatement, lastLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, lastLine(), lastLine(), startOffset(), lineStartOffset());
     generator.emitNodeInConditionContext(m_expr, topOfLoop.get(), scope->breakTarget(), FallThroughMeansFalse);
 
     generator.emitLabel(scope->breakTarget());
@@ -1647,7 +1654,7 @@ void WhileNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
     LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
     RefPtr<Label> topOfLoop = generator.newLabel();
 
-    generator.emitDebugHook(WillExecuteStatement, m_expr->lineNo(), m_expr->lineNo(), m_expr->charPosition());
+    generator.emitDebugHook(WillExecuteStatement, m_expr->lineNo(), m_expr->lineNo(), m_expr->startOffset(), m_expr->lineStartOffset());
     generator.emitNodeInConditionContext(m_expr, topOfLoop.get(), scope->breakTarget(), FallThroughMeansTrue);
 
     generator.emitLabel(topOfLoop.get());
@@ -1656,7 +1663,7 @@ void WhileNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
     generator.emitNode(dst, m_statement);
 
     generator.emitLabel(scope->continueTarget());
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
 
     generator.emitNodeInConditionContext(m_expr, topOfLoop.get(), scope->breakTarget(), FallThroughMeansFalse);
 
@@ -1669,7 +1676,7 @@ void ForNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
 
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
 
     if (m_expr1)
         generator.emitNode(generator.ignoredResult(), m_expr1);
@@ -1684,7 +1691,7 @@ void ForNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
     generator.emitNode(dst, m_statement);
 
     generator.emitLabel(scope->continueTarget());
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
     if (m_expr3)
         generator.emitNode(generator.ignoredResult(), m_expr3);
 
@@ -1707,7 +1714,7 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
         return;
     }
 
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
 
     if (m_init)
         generator.emitNode(generator.ignoredResult(), m_init);
@@ -1734,9 +1741,11 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
             propertyName = generator.newTemporary();
             RefPtr<RegisterID> protect = propertyName;
             NonlocalResolveInfo resolveVerifier;
+            if (generator.isStrictMode())
+                generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
             RegisterID* base = generator.emitResolveBaseForPut(generator.newTemporary(), resolveResult, ident, resolveVerifier);
 
-            generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+            generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
             generator.emitPutToBase(base, ident, propertyName, resolveVerifier);
         } else {
             expectedSubscript = generator.emitMove(generator.newTemporary(), propertyName);
@@ -1750,7 +1759,7 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
         RefPtr<RegisterID> protect = propertyName;
         RegisterID* base = generator.emitNode(assignNode->base());
 
-        generator.emitExpressionInfo(assignNode->divot(), assignNode->startOffset(), assignNode->endOffset());
+        generator.emitExpressionInfo(assignNode->divot(), assignNode->divotStartOffset(), assignNode->divotEndOffset(), assignNode->divotLine(), assignNode->divotLineStart());
         generator.emitPutById(base, ident, propertyName);
     } else {
         ASSERT(m_lexpr->isBracketAccessorNode());
@@ -1760,7 +1769,7 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
         RefPtr<RegisterID> base = generator.emitNode(assignNode->base());
         RegisterID* subscript = generator.emitNode(assignNode->subscript());
         
-        generator.emitExpressionInfo(assignNode->divot(), assignNode->startOffset(), assignNode->endOffset());
+        generator.emitExpressionInfo(assignNode->divot(), assignNode->divotStartOffset(), assignNode->divotEndOffset(), assignNode->divotLine(), assignNode->divotLineStart());
         generator.emitPutByVal(base.get(), subscript, propertyName);
     }   
 
@@ -1771,7 +1780,7 @@ void ForInNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
     generator.emitLabel(scope->continueTarget());
     generator.emitNextPropertyName(propertyName, base.get(), i.get(), size.get(), iter.get(), loopStart.get());
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
     generator.emitLabel(scope->breakTarget());
 }
 
@@ -1793,7 +1802,7 @@ Label* ContinueNode::trivialTarget(BytecodeGenerator& generator)
 
 void ContinueNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
     
     LabelScope* scope = generator.continueTarget(m_ident);
     ASSERT(scope);
@@ -1820,7 +1829,7 @@ Label* BreakNode::trivialTarget(BytecodeGenerator& generator)
 
 void BreakNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
     
     LabelScope* scope = generator.breakTarget(m_ident);
     ASSERT(scope);
@@ -1833,7 +1842,7 @@ void BreakNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 
 void ReturnNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
     ASSERT(generator.codeType() == FunctionCode);
 
     if (dst == generator.ignoredResult())
@@ -1845,7 +1854,7 @@ void ReturnNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
         generator.emitPopScopes(0);
     }
 
-    generator.emitDebugHook(WillLeaveCallFrame, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillLeaveCallFrame, firstLine(), lastLine(), startOffset(), lineStartOffset());
     generator.emitReturn(returnRegister.get());
 }
 
@@ -1853,10 +1862,10 @@ void ReturnNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
 void WithNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
 
     RefPtr<RegisterID> scope = generator.emitNode(m_expr);
-    generator.emitExpressionInfo(m_divot, m_expressionLength, 0);
+    generator.emitExpressionInfo(m_divot, m_expressionLength, 0, m_divotLine, m_divotLineStart);
     generator.emitPushWithScope(scope.get());
     generator.emitNode(dst, m_statement);
     generator.emitPopScope();
@@ -2027,7 +2036,7 @@ void CaseBlockNode::emitBytecodeForBlock(BytecodeGenerator& generator, RegisterI
 
 void SwitchNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
     
     LabelScopePtr scope = generator.newLabelScope(LabelScope::Switch);
 
@@ -2041,7 +2050,7 @@ void SwitchNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
 void LabelNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
 
     ASSERT(!generator.breakTarget(m_name));
 
@@ -2055,12 +2064,12 @@ void LabelNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
 void ThrowNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
 
     if (dst == generator.ignoredResult())
         dst = 0;
     RefPtr<RegisterID> expr = generator.emitNode(m_expr);
-    generator.emitExpressionInfo(divot(), startOffset(), endOffset());
+    generator.emitExpressionInfo(divot(), divotStartOffset(), divotEndOffset(), divotLine(), divotLineStart());
     generator.emitThrow(expr.get());
 }
 
@@ -2071,7 +2080,7 @@ void TryNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
     // NOTE: The catch and finally blocks must be labeled explicitly, so the
     // optimizer knows they may be jumped to from anywhere.
 
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), charPosition());
+    generator.emitDebugHook(WillExecuteStatement, firstLine(), lastLine(), startOffset(), lineStartOffset());
 
     ASSERT(m_catchBlock || m_finallyBlock);
 
@@ -2139,13 +2148,13 @@ inline void ScopeNode::emitStatementsBytecode(BytecodeGenerator& generator, Regi
 
 void ProgramNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
-    generator.emitDebugHook(WillExecuteProgram, startLine(), startLine(), startCharPosition());
+    generator.emitDebugHook(WillExecuteProgram, startLine(), startLine(), startStartOffset(), startLineStartOffset());
 
     RefPtr<RegisterID> dstRegister = generator.newTemporary();
     generator.emitLoad(dstRegister.get(), jsUndefined());
     emitStatementsBytecode(generator, dstRegister.get());
 
-    generator.emitDebugHook(DidExecuteProgram, lastLine(), lastLine(), charPosition() - 1);
+    generator.emitDebugHook(DidExecuteProgram, lastLine(), lastLine(), startOffset(), lineStartOffset());
     generator.emitEnd(dstRegister.get());
 }
 
@@ -2153,13 +2162,13 @@ void ProgramNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 
 void EvalNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
-    generator.emitDebugHook(WillExecuteProgram, startLine(), startLine(), startCharPosition());
+    generator.emitDebugHook(WillExecuteProgram, startLine(), startLine(), startStartOffset(), startLineStartOffset());
 
     RefPtr<RegisterID> dstRegister = generator.newTemporary();
     generator.emitLoad(dstRegister.get(), jsUndefined());
     emitStatementsBytecode(generator, dstRegister.get());
 
-    generator.emitDebugHook(DidExecuteProgram, lastLine(), lastLine(), charPosition() - 1);
+    generator.emitDebugHook(DidExecuteProgram, lastLine(), lastLine(), startOffset(), lineStartOffset());
     generator.emitEnd(dstRegister.get());
 }
 
@@ -2167,7 +2176,7 @@ void EvalNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 
 void FunctionBodyNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
-    generator.emitDebugHook(DidEnterCallFrame, startLine(), startLine(), startCharPosition());
+    generator.emitDebugHook(DidEnterCallFrame, startLine(), startLine(), startStartOffset(), startLineStartOffset());
     emitStatementsBytecode(generator, generator.ignoredResult());
 
     StatementNode* singleStatement = this->singleStatement();
@@ -2183,8 +2192,8 @@ void FunctionBodyNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
     // If there is no return we must automatically insert one.
     if (!returnNode) {
         RegisterID* r0 = generator.isConstructor() ? generator.thisRegister() : generator.emitLoad(0, jsUndefined());
-        ASSERT((charPosition() -  1) >= 0);
-        generator.emitDebugHook(WillLeaveCallFrame, lastLine(), lastLine(), charPosition() - 1);
+        ASSERT((startOffset() -  1) >= lineStartOffset());
+        generator.emitDebugHook(WillLeaveCallFrame, lastLine(), lastLine(), startOffset() - 1, lineStartOffset());
         generator.emitReturn(r0);
         return;
     }

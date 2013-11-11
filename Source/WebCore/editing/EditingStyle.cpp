@@ -51,17 +51,12 @@
 #include "StyledElement.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
-#include <wtf/HashSet.h>
 
 namespace WebCore {
 
 // Editing style properties must be preserved during editing operation.
 // e.g. when a user inserts a new paragraph, all properties listed here must be copied to the new paragraph.
 static const CSSPropertyID editingProperties[] = {
-    CSSPropertyBackgroundColor,
-    CSSPropertyTextDecoration,
-
-    // CSS inheritable properties
     CSSPropertyColor,
     CSSPropertyFontFamily,
     CSSPropertyFontSize,
@@ -81,16 +76,22 @@ static const CSSPropertyID editingProperties[] = {
     CSSPropertyWebkitTextFillColor,
     CSSPropertyWebkitTextStrokeColor,
     CSSPropertyWebkitTextStrokeWidth,
+
+    // Non-inheritable properties
+    CSSPropertyBackgroundColor,
+    CSSPropertyTextDecoration,
 };
 
-enum EditingPropertiesType { OnlyInheritableEditingProperties, AllEditingProperties };
+const unsigned numAllEditingProperties = WTF_ARRAY_LENGTH(editingProperties);
+const unsigned numInheritableEditingProperties = numAllEditingProperties - 2;
 
+enum EditingPropertiesToInclude { OnlyInheritableEditingProperties, AllEditingProperties };
 template <class StyleDeclarationType>
-static PassRefPtr<MutableStylePropertySet> copyEditingProperties(StyleDeclarationType* style, EditingPropertiesType type = OnlyInheritableEditingProperties)
+static PassRefPtr<MutableStylePropertySet> copyEditingProperties(StyleDeclarationType* style, EditingPropertiesToInclude type)
 {
     if (type == AllEditingProperties)
-        return style->copyPropertiesInSet(editingProperties, WTF_ARRAY_LENGTH(editingProperties));
-    return style->copyPropertiesInSet(editingProperties + 2, WTF_ARRAY_LENGTH(editingProperties) - 2);
+        return style->copyPropertiesInSet(editingProperties, numAllEditingProperties);
+    return style->copyPropertiesInSet(editingProperties, numInheritableEditingProperties);
 }
 
 static inline bool isEditingProperty(int id)
@@ -102,10 +103,24 @@ static inline bool isEditingProperty(int id)
     return false;
 }
 
-static PassRefPtr<MutableStylePropertySet> editingStyleFromComputedStyle(PassRefPtr<Node> node, EditingPropertiesType type = OnlyInheritableEditingProperties)
+static PassRefPtr<MutableStylePropertySet> copyPropertiesFromComputedStyle(ComputedStyleExtractor& computedStyle, EditingStyle::PropertiesToInclude propertiesToInclude)
+{
+    switch (propertiesToInclude) {
+    case EditingStyle::AllProperties:
+        return computedStyle.copyProperties();
+    case EditingStyle::OnlyEditingInheritableProperties:
+        return copyEditingProperties(&computedStyle, OnlyInheritableEditingProperties);
+    case EditingStyle::EditingPropertiesInEffect:
+        return copyEditingProperties(&computedStyle, AllEditingProperties);
+    }
+    ASSERT_NOT_REACHED();
+    return 0;
+}
+
+static PassRefPtr<MutableStylePropertySet> copyPropertiesFromComputedStyle(Node* node, EditingStyle::PropertiesToInclude propertiesToInclude)
 {
     ComputedStyleExtractor computedStyle(node);
-    return copyEditingProperties(&computedStyle, type);
+    return copyPropertiesFromComputedStyle(computedStyle, propertiesToInclude);
 }
 
 static PassRefPtr<CSSValue> extractPropertyValue(const StylePropertySet* style, CSSPropertyID propertyID)
@@ -124,7 +139,7 @@ int identifierForStyleProperty(T* style, CSSPropertyID propertyID)
     RefPtr<CSSValue> value = extractPropertyValue(style, propertyID);
     if (!value || !value->isPrimitiveValue())
         return 0;
-    return static_cast<CSSPrimitiveValue*>(value.get())->getIdent();
+    return static_cast<CSSPrimitiveValue*>(value.get())->getValueID();
 }
 
 template<typename T> PassRefPtr<MutableStylePropertySet> getPropertiesNotIn(StylePropertySet* styleWithRedundantProperties, T* baseStyle);
@@ -137,7 +152,7 @@ static PassRefPtr<CSSValue> backgroundColorInEffect(Node*);
 class HTMLElementEquivalent {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassOwnPtr<HTMLElementEquivalent> create(CSSPropertyID propertyID, int primitiveValue, const QualifiedName& tagName)
+    static PassOwnPtr<HTMLElementEquivalent> create(CSSPropertyID propertyID, CSSValueID primitiveValue, const QualifiedName& tagName)
     {
         return adoptPtr(new HTMLElementEquivalent(propertyID, primitiveValue, tagName));
     }
@@ -152,7 +167,7 @@ public:
 protected:
     HTMLElementEquivalent(CSSPropertyID);
     HTMLElementEquivalent(CSSPropertyID, const QualifiedName& tagName);
-    HTMLElementEquivalent(CSSPropertyID, int primitiveValue, const QualifiedName& tagName);
+    HTMLElementEquivalent(CSSPropertyID, CSSValueID primitiveValue, const QualifiedName& tagName);
     const CSSPropertyID m_propertyID;
     const RefPtr<CSSPrimitiveValue> m_primitiveValue;
     const QualifiedName* m_tagName; // We can store a pointer because HTML tag names are const global.
@@ -170,7 +185,7 @@ HTMLElementEquivalent::HTMLElementEquivalent(CSSPropertyID id, const QualifiedNa
 {
 }
 
-HTMLElementEquivalent::HTMLElementEquivalent(CSSPropertyID id, int primitiveValue, const QualifiedName& tagName)
+HTMLElementEquivalent::HTMLElementEquivalent(CSSPropertyID id, CSSValueID primitiveValue, const QualifiedName& tagName)
     : m_propertyID(id)
     , m_primitiveValue(CSSPrimitiveValue::createIdentifier(primitiveValue))
     , m_tagName(&tagName)
@@ -181,7 +196,7 @@ HTMLElementEquivalent::HTMLElementEquivalent(CSSPropertyID id, int primitiveValu
 bool HTMLElementEquivalent::valueIsPresentInStyle(Element* element, StylePropertySet* style) const
 {
     RefPtr<CSSValue> value = style->getPropertyCSSValue(m_propertyID);
-    return matches(element) && value && value->isPrimitiveValue() && static_cast<CSSPrimitiveValue*>(value.get())->getIdent() == m_primitiveValue->getIdent();
+    return matches(element) && value && value->isPrimitiveValue() && static_cast<CSSPrimitiveValue*>(value.get())->getValueID() == m_primitiveValue->getValueID();
 }
 
 void HTMLElementEquivalent::addToStyle(Element*, EditingStyle* style) const
@@ -191,7 +206,7 @@ void HTMLElementEquivalent::addToStyle(Element*, EditingStyle* style) const
 
 class HTMLTextDecorationEquivalent : public HTMLElementEquivalent {
 public:
-    static PassOwnPtr<HTMLElementEquivalent> create(int primitiveValue, const QualifiedName& tagName)
+    static PassOwnPtr<HTMLElementEquivalent> create(CSSValueID primitiveValue, const QualifiedName& tagName)
     {
         return adoptPtr(new HTMLTextDecorationEquivalent(primitiveValue, tagName));
     }
@@ -199,10 +214,10 @@ public:
     virtual bool valueIsPresentInStyle(Element*, StylePropertySet*) const;
 
 private:
-    HTMLTextDecorationEquivalent(int primitiveValue, const QualifiedName& tagName);
+    HTMLTextDecorationEquivalent(CSSValueID primitiveValue, const QualifiedName& tagName);
 };
 
-HTMLTextDecorationEquivalent::HTMLTextDecorationEquivalent(int primitiveValue, const QualifiedName& tagName)
+HTMLTextDecorationEquivalent::HTMLTextDecorationEquivalent(CSSValueID primitiveValue, const QualifiedName& tagName)
     : HTMLElementEquivalent(CSSPropertyTextDecoration, primitiveValue, tagName)
     // m_propertyID is used in HTMLElementEquivalent::addToStyle
 {
@@ -305,7 +320,7 @@ PassRefPtr<CSSValue> HTMLFontSizeEquivalent::attributeValueAsCSSValue(Element* e
     ASSERT(element);
     if (!element->hasAttribute(m_attrName))
         return 0;
-    int size;
+    CSSValueID size;
     if (!HTMLFontElement::cssValueFromFontSizeNumber(element->getAttribute(m_attrName), size))
         return 0;
     return CSSPrimitiveValue::createIdentifier(size);
@@ -420,7 +435,10 @@ void EditingStyle::init(Node* node, PropertiesToInclude propertiesToInclude)
         node = node->parentNode();
 
     ComputedStyleExtractor computedStyleAtPosition(node);
-    m_mutableStyle = propertiesToInclude == AllProperties ? computedStyleAtPosition.copyProperties() : editingStyleFromComputedStyle(node);
+    // FIXME: It's strange to not set background-color and text-decoration when propertiesToInclude is EditingPropertiesInEffect.
+    // However editing/selection/contains-boundaries.html fails without this ternary.
+    m_mutableStyle = copyPropertiesFromComputedStyle(computedStyleAtPosition,
+        propertiesToInclude == EditingPropertiesInEffect ? OnlyEditingInheritableProperties : propertiesToInclude);
 
     if (propertiesToInclude == EditingPropertiesInEffect) {
         if (RefPtr<CSSValue> value = backgroundColorInEffect(node))
@@ -500,13 +518,13 @@ bool EditingStyle::textDirection(WritingDirection& writingDirection) const
     if (!unicodeBidi || !unicodeBidi->isPrimitiveValue())
         return false;
 
-    int unicodeBidiValue = static_cast<CSSPrimitiveValue*>(unicodeBidi.get())->getIdent();
+    CSSValueID unicodeBidiValue = static_cast<CSSPrimitiveValue*>(unicodeBidi.get())->getValueID();
     if (unicodeBidiValue == CSSValueEmbed) {
         RefPtr<CSSValue> direction = m_mutableStyle->getPropertyCSSValue(CSSPropertyDirection);
         if (!direction || !direction->isPrimitiveValue())
             return false;
 
-        writingDirection = static_cast<CSSPrimitiveValue*>(direction.get())->getIdent() == CSSValueLtr ? LeftToRightWritingDirection : RightToLeftWritingDirection;
+        writingDirection = static_cast<CSSPrimitiveValue*>(direction.get())->getValueID() == CSSValueLtr ? LeftToRightWritingDirection : RightToLeftWritingDirection;
 
         return true;
     }
@@ -588,8 +606,8 @@ void EditingStyle::removeStyleAddedByNode(Node* node)
 {
     if (!node || !node->parentNode())
         return;
-    RefPtr<MutableStylePropertySet> parentStyle = editingStyleFromComputedStyle(node->parentNode(), AllEditingProperties);
-    RefPtr<MutableStylePropertySet> nodeStyle = editingStyleFromComputedStyle(node, AllEditingProperties);
+    RefPtr<MutableStylePropertySet> parentStyle = copyPropertiesFromComputedStyle(node->parentNode(), EditingPropertiesInEffect);
+    RefPtr<MutableStylePropertySet> nodeStyle = copyPropertiesFromComputedStyle(node, EditingPropertiesInEffect);
     nodeStyle->removeEquivalentProperties(parentStyle.get());
     m_mutableStyle->removeEquivalentProperties(nodeStyle.get());
 }
@@ -599,19 +617,13 @@ void EditingStyle::removeStyleConflictingWithStyleOfNode(Node* node)
     if (!node || !node->parentNode() || !m_mutableStyle)
         return;
 
-    RefPtr<MutableStylePropertySet> parentStyle = editingStyleFromComputedStyle(node->parentNode(), AllEditingProperties);
-    RefPtr<MutableStylePropertySet> nodeStyle = editingStyleFromComputedStyle(node, AllEditingProperties);
+    RefPtr<MutableStylePropertySet> parentStyle = copyPropertiesFromComputedStyle(node->parentNode(), EditingPropertiesInEffect);
+    RefPtr<MutableStylePropertySet> nodeStyle = copyPropertiesFromComputedStyle(node, EditingPropertiesInEffect);
     nodeStyle->removeEquivalentProperties(parentStyle.get());
 
     unsigned propertyCount = nodeStyle->propertyCount();
     for (unsigned i = 0; i < propertyCount; ++i)
         m_mutableStyle->removeProperty(nodeStyle->propertyAt(i).id());
-}
-
-void EditingStyle::removeNonEditingProperties()
-{
-    if (m_mutableStyle)
-        m_mutableStyle = copyEditingProperties(m_mutableStyle.get());
 }
 
 void EditingStyle::collapseTextDecorationProperties()
@@ -927,9 +939,9 @@ void EditingStyle::prepareToApplyAt(const Position& position, ShouldPreserveWrit
         m_mutableStyle->removeProperty(CSSPropertyBackgroundColor);
 
     if (unicodeBidi && unicodeBidi->isPrimitiveValue()) {
-        m_mutableStyle->setProperty(CSSPropertyUnicodeBidi, static_cast<CSSPrimitiveValue*>(unicodeBidi.get())->getIdent());
+        m_mutableStyle->setProperty(CSSPropertyUnicodeBidi, static_cast<CSSValueID>(static_cast<CSSPrimitiveValue*>(unicodeBidi.get())->getValueID()));
         if (direction && direction->isPrimitiveValue())
-            m_mutableStyle->setProperty(CSSPropertyDirection, static_cast<CSSPrimitiveValue*>(direction.get())->getIdent());
+            m_mutableStyle->setProperty(CSSPropertyDirection, static_cast<CSSValueID>(static_cast<CSSPrimitiveValue*>(direction.get())->getValueID()));
     }
 }
 
@@ -970,11 +982,28 @@ static inline bool elementMatchesAndPropertyIsNotInInlineStyleDecl(const HTMLEle
         && (mode == EditingStyle::OverrideValues || !equivalent->propertyExistsInStyle(style));
 }
 
+static PassRefPtr<MutableStylePropertySet> extractEditingProperties(const StylePropertySet* style, EditingStyle::PropertiesToInclude propertiesToInclude)
+{
+    if (!style)
+        return 0;
+
+    switch (propertiesToInclude) {
+    case EditingStyle::AllProperties:
+    case EditingStyle::EditingPropertiesInEffect:
+        return copyEditingProperties(style, AllEditingProperties);
+    case EditingStyle::OnlyEditingInheritableProperties:
+        return copyEditingProperties(style, OnlyInheritableEditingProperties);
+    }
+
+    ASSERT_NOT_REACHED();
+    return 0;
+}
+
 void EditingStyle::mergeInlineAndImplicitStyleOfElement(StyledElement* element, CSSPropertyOverrideMode mode, PropertiesToInclude propertiesToInclude)
 {
     RefPtr<EditingStyle> styleFromRules = EditingStyle::create();
     styleFromRules->mergeStyleFromRulesForSerialization(element);
-    styleFromRules->removeNonEditingProperties();
+    styleFromRules->m_mutableStyle = extractEditingProperties(styleFromRules->m_mutableStyle.get(), propertiesToInclude);
     mergeStyle(styleFromRules->m_mutableStyle.get(), mode);
 
     mergeInlineStyleOfElement(element, mode, propertiesToInclude);
@@ -1249,7 +1278,7 @@ WritingDirection EditingStyle::textDirectionForSelection(const VisibleSelection&
             if (!unicodeBidi || !unicodeBidi->isPrimitiveValue())
                 continue;
 
-            int unicodeBidiValue = static_cast<CSSPrimitiveValue*>(unicodeBidi.get())->getIdent();
+            CSSValueID unicodeBidiValue = static_cast<CSSPrimitiveValue*>(unicodeBidi.get())->getValueID();
             if (unicodeBidiValue == CSSValueEmbed || unicodeBidiValue == CSSValueBidiOverride)
                 return NaturalWritingDirection;
         }
@@ -1278,7 +1307,7 @@ WritingDirection EditingStyle::textDirectionForSelection(const VisibleSelection&
         if (!unicodeBidi || !unicodeBidi->isPrimitiveValue())
             continue;
 
-        int unicodeBidiValue = static_cast<CSSPrimitiveValue*>(unicodeBidi.get())->getIdent();
+        CSSValueID unicodeBidiValue = static_cast<CSSPrimitiveValue*>(unicodeBidi.get())->getValueID();
         if (unicodeBidiValue == CSSValueNormal)
             continue;
 
@@ -1290,7 +1319,7 @@ WritingDirection EditingStyle::textDirectionForSelection(const VisibleSelection&
         if (!direction || !direction->isPrimitiveValue())
             continue;
 
-        int directionValue = static_cast<CSSPrimitiveValue*>(direction.get())->getIdent();
+        CSSValueID directionValue = static_cast<CSSPrimitiveValue*>(direction.get())->getValueID();
         if (directionValue != CSSValueLtr && directionValue != CSSValueRtl)
             continue;
 
@@ -1462,7 +1491,7 @@ static bool fontWeightIsBold(CSSValue* fontWeight)
 
     // Because b tag can only bold text, there are only two states in plain html: bold and not bold.
     // Collapse all other values to either one of these two states for editing purposes.
-    switch (static_cast<CSSPrimitiveValue*>(fontWeight)->getIdent()) {
+    switch (static_cast<CSSPrimitiveValue*>(fontWeight)->getValueID()) {
         case CSSValue100:
         case CSSValue200:
         case CSSValue300:
@@ -1476,6 +1505,8 @@ static bool fontWeightIsBold(CSSValue* fontWeight)
         case CSSValue800:
         case CSSValue900:
             return true;
+        default:
+            break;
     }
 
     ASSERT_NOT_REACHED(); // For CSSValueBolder and CSSValueLighter
@@ -1540,8 +1571,8 @@ int legacyFontSizeFromCSSValue(Document* document, CSSPrimitiveValue* value, boo
         return 0;
     }
 
-    if (CSSValueXSmall <= value->getIdent() && value->getIdent() <= CSSValueWebkitXxxLarge)
-        return value->getIdent() - CSSValueXSmall + 1;
+    if (CSSValueXSmall <= value->getValueID() && value->getValueID() <= CSSValueWebkitXxxLarge)
+        return value->getValueID() - CSSValueXSmall + 1;
 
     return 0;
 }
@@ -1555,7 +1586,7 @@ bool isTransparentColorValue(CSSValue* cssValue)
     CSSPrimitiveValue* value = static_cast<CSSPrimitiveValue*>(cssValue);    
     if (value->isRGBColor())
         return !alphaChannel(value->getRGBA32Value());    
-    return value->getIdent() == CSSValueTransparent;
+    return value->getValueID() == CSSValueTransparent;
 }
 
 bool hasTransparentBackgroundColor(StylePropertySet* style)

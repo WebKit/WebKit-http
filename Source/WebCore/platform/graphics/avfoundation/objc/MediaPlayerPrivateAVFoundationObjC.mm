@@ -165,6 +165,7 @@ enum MediaPlayerAVFoundationObservationContext {
 -(void)observeValueForKeyPath:keyPath ofObject:(id)object change:(NSDictionary *)change context:(MediaPlayerAVFoundationObservationContext)context;
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
 - (void)legibleOutput:(id)output didOutputAttributedStrings:(NSArray *)strings nativeSampleBuffers:(NSArray *)nativeSamples forItemTime:(CMTime)itemTime;
+- (void)outputSequenceWasFlushed:(id)output;
 #endif
 @end
 
@@ -1325,17 +1326,6 @@ RetainPtr<AVAssetResourceLoadingRequest> MediaPlayerPrivateAVFoundationObjC::tak
 }
 #endif
 
-
-void MediaPlayerPrivateAVFoundationObjC::clearTextTracks()
-{
-    for (unsigned i = 0; i < m_textTracks.size(); ++i) {
-        RefPtr<InbandTextTrackPrivateAVF> track = m_textTracks[i];
-        player()->removeTextTrack(track);
-        track->disconnect();
-    }
-    m_textTracks.clear();
-}
-
 #if !HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
 void MediaPlayerPrivateAVFoundationObjC::processLegacyClosedCaptionsTracks()
 {
@@ -1373,32 +1363,6 @@ void MediaPlayerPrivateAVFoundationObjC::processLegacyClosedCaptionsTracks()
     processNewAndRemovedTextTracks(removedTextTracks);
 }
 #endif
-
-void MediaPlayerPrivateAVFoundationObjC::processNewAndRemovedTextTracks(const Vector<RefPtr<InbandTextTrackPrivateAVF> >& removedTextTracks)
-{
-    if (removedTextTracks.size()) {
-        for (unsigned i = 0; i < m_textTracks.size(); ++i) {
-            if (!removedTextTracks.contains(m_textTracks[i]))
-                continue;
-            
-            player()->removeTextTrack(removedTextTracks[i].get());
-            m_textTracks.remove(i);
-        }
-    }
-    
-    for (unsigned i = 0; i < m_textTracks.size(); ++i) {
-        RefPtr<InbandTextTrackPrivateAVF> track = m_textTracks[i];
-        
-        track->setTextTrackIndex(i);
-        if (track->hasBeenReported())
-            continue;
-        
-        track->setHasBeenReported(true);
-        player()->addTextTrack(track.get());
-    }
-    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::processNewAndRemovedTextTracks(%p) - found %i text tracks", this, m_textTracks.size());
-    
-}
 
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
 AVMediaSelectionGroupType* MediaPlayerPrivateAVFoundationObjC::safeMediaSelectionGroupForLegibleMedia()
@@ -1455,6 +1419,16 @@ void MediaPlayerPrivateAVFoundationObjC::processCue(NSArray *attributedStrings, 
         return;
 
     m_currentTrack->processCue(reinterpret_cast<CFArrayRef>(attributedStrings), time);
+}
+
+void MediaPlayerPrivateAVFoundationObjC::flushCues()
+{
+    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::flushCues(%p)", this);
+
+    if (!m_currentTrack)
+        return;
+    
+    m_currentTrack->resetCueValues();
 }
 #endif // HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
 
@@ -1671,6 +1645,20 @@ NSArray* itemKVOProperties()
         m_callback->processCue(strings, CMTimeGetSeconds(itemTime));
     });
 }
+
+- (void)outputSequenceWasFlushed:(id)output
+{
+    UNUSED_PARAM(output);
+
+    if (!m_callback)
+        return;
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!m_callback)
+            return;
+        m_callback->flushCues();
+    });
+}
 #endif
 
 @end
@@ -1709,7 +1697,10 @@ NSArray* itemKVOProperties()
     if (!m_callback)
         return;
 
-    return m_callback->didCancelLoadingRequest(loadingRequest);
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (m_callback)
+            m_callback->didCancelLoadingRequest(loadingRequest);
+    });
 }
 
 - (void)setCallback:(MediaPlayerPrivateAVFoundationObjC*)callback

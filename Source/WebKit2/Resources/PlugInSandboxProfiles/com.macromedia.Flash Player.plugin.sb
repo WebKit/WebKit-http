@@ -1,4 +1,11 @@
-(allow ipc-posix-sem (ipc-posix-name "MacromediaSemaphoreDig"))
+(webkit-powerbox)
+(webkit-printing)
+(webkit-camera)
+(webkit-microphone)
+
+(allow ipc-posix-sem
+    (ipc-posix-name "MacromediaSemaphoreDig")
+    (ipc-posix-name "59918130"))
 
 (allow file-read*
     (home-literal "/mm.cfg")
@@ -26,5 +33,9 @@
 (allow file-read* file-write*
     (mount-relative-regex #"^/\.TemporaryItems/"))
 
-(webkit-powerbox)
-(webkit-printing)
+(deny file-read* (with no-log)
+    (literal "/Library/Application Support/Macromedia/FlashAuthor.cfg")
+    (subpath "/Library/Application Support/Macromedia/FlashPlayerTrust"))
+
+(allow network-bind (local ip))
+

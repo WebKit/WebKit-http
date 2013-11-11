@@ -730,6 +730,7 @@ HRESULT STDMETHODCALLTYPE WebView::close()
 
     setHostWindow(0);
 
+    setAccessibilityDelegate(0);
     setDownloadDelegate(0);
     setEditingDelegate(0);
     setFrameLoadDelegate(0);
@@ -2811,7 +2812,7 @@ void WebView::setToolTip(const String& toolTip)
         info.cbSize = sizeof(info);
         info.uFlags = TTF_IDISHWND;
         info.uId = reinterpret_cast<UINT_PTR>(m_viewWindow);
-        info.lpszText = const_cast<UChar*>(m_toolTip.charactersWithNullTermination());
+        info.lpszText = const_cast<UChar*>(m_toolTip.charactersWithNullTermination().data());
         ::SendMessage(m_toolTipHwnd, TTM_UPDATETIPTEXT, 0, reinterpret_cast<LPARAM>(&info));
     }
 
@@ -2865,9 +2866,43 @@ void WebView::dispatchDidReceiveIconFromWebFrame(WebFrame* frame)
 {
     registerForIconNotification(false);
 
-    if (m_frameLoadDelegate)
-        // FIXME: <rdar://problem/5491010> - Pass in the right HBITMAP. 
-        m_frameLoadDelegate->didReceiveIcon(this, 0, frame);
+    if (m_frameLoadDelegate) {
+        String str = frame->url().string();
+
+        IntSize sz(16, 16);
+
+        BitmapInfo bmInfo = BitmapInfo::create(sz);
+
+        HBITMAP hBitmap = 0;
+
+        Image* icon = iconDatabase().synchronousIconForPageURL(str, sz);
+
+        if (icon && icon->width()) {
+            HWndDC dc(0);
+            hBitmap = CreateDIBSection(dc, &bmInfo, DIB_RGB_COLORS, 0, 0, 0);
+            icon->getHBITMAPOfSize(hBitmap, &static_cast<SIZE>(sz));
+        }
+
+        HRESULT hr = m_frameLoadDelegate->didReceiveIcon(this, (OLE_HANDLE)hBitmap, frame);
+        if (hr == E_NOTIMPL)
+            DeleteObject(hBitmap);
+    }
+}
+
+HRESULT WebView::setAccessibilityDelegate(
+    /* [in] */ IAccessibilityDelegate* d)
+{
+    m_accessibilityDelegate = d;
+    return S_OK;
+}
+
+HRESULT WebView::accessibilityDelegate(
+    /* [out][retval] */ IAccessibilityDelegate** d)
+{
+    if (!m_accessibilityDelegate)
+        return E_POINTER;
+
+    return m_accessibilityDelegate.copyRefTo(d);
 }
 
 HRESULT STDMETHODCALLTYPE WebView::setUIDelegate( 
@@ -4923,7 +4958,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings->setShowRepaintCounter(enabled);
 
 #if ENABLE(WEB_AUDIO)
-    RuntimeEnabledFeatures::setWebAudioEnabled(true);
+    settings->:setWebAudioEnabled(true);
 #endif // ENABLE(WEB_AUDIO)
 
 #if ENABLE(WEBGL)
@@ -6226,7 +6261,7 @@ void WebView::enterFullscreenForNode(Node* node)
 #if ENABLE(VIDEO)
     if (!toElement(node)->isMediaElement())
         return;
-    HTMLMediaElement* videoElement = static_cast<HTMLMediaElement*>(node);
+    HTMLMediaElement* videoElement = toHTMLMediaElement(node);
 
     if (m_fullScreenVideoController) {
         if (m_fullScreenVideoController->mediaElement() == videoElement) {
@@ -6894,6 +6929,20 @@ void WebView::fullScreenClientForceRepaint()
     frameRect(&windowRect);
     repaint(windowRect, true /*contentChanged*/, true /*immediate*/, false /*contentOnly*/);
     m_fullscreenController->repaintCompleted();
+}
+
+void WebView::fullScreenClientSaveScrollPosition()
+{
+    if (Frame* coreFrame = core(m_mainFrame))
+        if (FrameView* view = coreFrame->view())
+            m_scrollPosition = view->scrollPosition();
+}
+
+void WebView::fullScreenClientRestoreScrollPosition()
+{
+    if (Frame* coreFrame = core(m_mainFrame))
+        if (FrameView* view = coreFrame->view())
+            view->setScrollPosition(m_scrollPosition);
 }
 
 #endif

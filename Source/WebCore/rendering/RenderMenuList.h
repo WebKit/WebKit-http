@@ -51,7 +51,7 @@ public:
     void showPopup();
     void hidePopup();
 
-    void setOptionsChanged(bool changed) { m_optionsChanged = changed; }
+    void setOptionsChanged(bool changed) { m_needsOptionsWidthUpdate = changed; }
 
     void didSetSelectedIndex(int listIndex);
 
@@ -75,7 +75,6 @@ private:
 
     virtual const char* renderName() const { return "RenderMenuList"; }
 
-    virtual LayoutSize intrinsicSize() const OVERRIDE FINAL { return LayoutSize(maxPreferredLogicalWidth(), logicalHeight()); }
     virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const OVERRIDE;
     virtual void computePreferredLogicalWidths() OVERRIDE;
 
@@ -138,7 +137,7 @@ private:
     RenderText* m_buttonText;
     RenderBlock* m_innerBlock;
 
-    bool m_optionsChanged;
+    bool m_needsOptionsWidthUpdate;
     int m_optionsWidth;
 
     int m_lastActiveIndex;

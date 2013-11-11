@@ -586,6 +586,9 @@ svg/custom/gradient-stop-style-change.svg
 # Application cache
 http/tests/appcache
 
+# ENABLE(INDIE_UI) required
+indieui
+
 # <rdar://problem/5961006> LayoutTests that send an OPTIONS request don't work on Windows due to Apache 1.3
 http/tests/xmlhttprequest/access-control-basic-non-simple-allow-async.html
 http/tests/xmlhttprequest/access-control-basic-non-simple-allow.html
@@ -1571,6 +1574,7 @@ fast/regions
 
 # CSS Exclusions support not yet enabled. http://webkit.org/b/57311
 fast/exclusions
+csswg/submitted/shapes
 
 # Causes a SyntaxError (http://webkit.org/b/62595).
 fast/workers/worker-crash-with-invalid-location.html
@@ -1782,7 +1786,7 @@ fast/inline/continuation-outlines-with-layers-2.html
 fast/repaint/transform-absolute-in-positioned-container.html
 
 #Vibration API is not implemented.
-fast/dom/navigator-vibration.html
+vibration
 
 # https://bugs.webkit.org/show_bug.cgi?id=82628
 svg/hittest/svg-ellipse-non-scale-stroke.xhtml
@@ -2525,6 +2529,7 @@ media/video-controls-captions-trackmenu.html
 media/video-controls-captions-trackmenu-hide-on-click.html
 media/video-controls-captions-trackmenu-hide-on-click-outside.html
 media/video-controls-visible-exiting-fullscreen.html
+media/video-controls-captions-trackmenu-includes-enabled-track.html
 
 # Fails on JSC platforms due to gc timing issues
 # https://bugs.webkit.org/show_bug.cgi?id=106957
@@ -2733,8 +2738,15 @@ webkit.org/b/116564 transitions/svg-text-shadow-transition.html
 # Enable storage tests, but exclude the websql tests (see https://webkit.org/b/116559).
 webkit.org/b/116559 storage/websql
 
-# Exclude mathml, which does not work properly under windows
-webkit.org/b/117200 mathml
+# Exclude some MathML tests that do not work properly under windows
+webkit.org/b/117200 mathml/presentation/mo.xhtml
+webkit.org/b/117200 mathml/presentation/mo-stretch.html
+webkit.org/b/117200 mathml/presentation/roots.xhtml
+webkit.org/b/117200 mathml/presentation/row.xhtml
+webkit.org/b/119002 mathml/presentation/bug97990.html
+webkit.org/b/118856 mathml/presentation/fenced-mi.html
+webkit.org/b/118900 mathml/presentation/mspace-units.html
+webkit.org/b/119002 mathml/presentation/scripts-subsup.html
 
 # After switching to NRWT, we find that some of the new image tests do not pass.
 webkit.org/b/117322 css2.1/20110323/word-spacing-remove-space-003.htm [ ImageOnlyFailure ]
@@ -2791,3 +2803,27 @@ webkit.org/b/117325 svg/css/font-face-crash.html
 # Synthesized italics not supported
 fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]
 
+# -webkit-user-select:all not supported
+# https://bugs.webkit.org/show_bug.cgi?id=118740
+editing/selection/user-select-all-image-with-single-click.html
+editing/selection/user-select-all-with-single-click.html
+
+# Our external builds do not yet support AVCF, which this test relies on
+media/video-load-preload-metadata.html
+media/track/track-legacyapi-with-automatic-mode.html
+
+# CSS_SHAPES not supported on AppleWin port.
+# https://bugs.webkit.org/show_bug.cgi?id=118810
+fast/shapes
+
+# Skip failing tests to make EWS bots happy
+fast/dom/NodeList/nodelist-item-call-as-function.html [ Failure ]
+fast/dom/call-a-constructor-as-a-function.html [ Failure ]
+fast/forms/search-event-delay.html [ Failure ]
+fast/js/exception-thrown-from-new.html [ Failure ]
+fast/lists/inlineBoxWrapperNullCheck.html [ Failure ]
+fast/regex/cross-frame-callable.html [ Failure ]
+svg/dom/svgpath-out-of-bounds-getPathSeg.html [ Failure ]
+fast/js/global-constructors-attributes-dedicated-worker.html [ Failure ]
+fast/text/split-text-crash.xhtml [ Failure ]
+fast/frames/seamless/seamless-nested-crash.html [ Failure ]

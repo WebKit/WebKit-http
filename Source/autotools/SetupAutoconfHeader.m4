@@ -21,6 +21,8 @@ fi
 
 if test "$GTK_API_VERSION" = "2.0"; then
     AC_DEFINE([GTK_API_VERSION_2], [1], [ ])
+else
+    AC_DEFINE([GDK_VERSION_MIN_REQUIRED], [GDK_VERSION_3_6], [Minimum GTK/GDK version required])
 fi
 
 if test "$enable_webkit2" = "yes"; then
@@ -64,23 +66,11 @@ fi
 
 if test "$enable_accelerated_compositing" = "yes"; then
     AC_DEFINE([WTF_USE_ACCELERATED_COMPOSITING], [1], [ ])
-
-    if test "$with_acceleration_backend" = "none"; then
-        AC_DEFINE([WTF_USE_TEXTURE_MAPPER], [1], [ ])
-        AC_DEFINE([WTF_USE_TEXTURE_MAPPER_CAIRO], [1], [ ])
-    fi
-
-    if test "$with_acceleration_backend" = "opengl"; then
-        AC_DEFINE([WTF_USE_TEXTURE_MAPPER], [1], [ ])
-        AC_DEFINE([WTF_USE_TEXTURE_MAPPER_GL], [1], [ ])
-    fi
-
-    if test "$with_acceleration_backend" = "clutter"; then
-        AC_DEFINE([WTF_USE_CLUTTER], [1], [ ])
-    fi
+    AC_DEFINE([WTF_USE_TEXTURE_MAPPER], [1], [ ])
+    AC_DEFINE([WTF_USE_TEXTURE_MAPPER_GL], [1], [ ])
 fi
 
-if test "$with_acceleration_backend" = "opengl"; then
+if test "$found_opengl" = "yes"; then
     AC_DEFINE([WTF_USE_OPENGL], [1], [ ])
 fi
 

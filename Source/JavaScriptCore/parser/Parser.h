@@ -35,6 +35,7 @@
 #include "SourceProvider.h"
 #include "SourceProviderCache.h"
 #include "SourceProviderCacheItem.h"
+#include "VMStackBounds.h"
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/OwnPtr.h>
@@ -481,11 +482,11 @@ private:
     bool isFunctionBodyNode(ScopeNode*) { return false; }
     bool isFunctionBodyNode(FunctionBodyNode*) { return true; }
 
-
     ALWAYS_INLINE void next(unsigned lexerFlags = 0)
     {
         m_lastLine = m_token.m_location.line;
         m_lastTokenEnd = m_token.m_location.endOffset;
+        m_lastTokenLineStart = m_token.m_location.lineStartOffset;
         m_lexer->setLastLineNumber(m_lastLine);
         m_token.m_type = m_lexer->lex(&m_token.m_data, &m_token.m_location, lexerFlags, strictMode());
     }
@@ -494,6 +495,7 @@ private:
     {
         m_lastLine = m_token.m_location.line;
         m_lastTokenEnd = m_token.m_location.endOffset;
+        m_lastTokenLineStart = m_token.m_location.lineStartOffset;
         m_lexer->setLastLineNumber(m_lastLine);
         m_token.m_type = m_lexer->lexExpectIdentifier(&m_token.m_data, &m_token.m_location, lexerFlags, strictMode());
     }
@@ -521,7 +523,7 @@ private:
         return m_token.m_type == expected;
     }
     
-    ALWAYS_INLINE int tokenStart()
+    ALWAYS_INLINE unsigned tokenStart()
     {
         return m_token.m_location.startOffset;
     }
@@ -531,9 +533,19 @@ private:
         return m_token.m_location.line;
     }
     
-    ALWAYS_INLINE int tokenEnd()
+    ALWAYS_INLINE int tokenColumn()
+    {
+        return tokenStart() - tokenLineStart();
+    }
+
+    ALWAYS_INLINE unsigned tokenEnd()
     {
         return m_token.m_location.endOffset;
+    }
+    
+    ALWAYS_INLINE unsigned tokenLineStart()
+    {
+        return m_token.m_location.lineStartOffset;
     }
     
     ALWAYS_INLINE const JSTokenLocation& tokenLocation()
@@ -905,7 +917,7 @@ private:
     template <class TreeBuilder> ALWAYS_INLINE TreeFormalParameterList parseFormalParameters(TreeBuilder&);
     template <class TreeBuilder> ALWAYS_INLINE TreeExpression parseVarDeclarationList(TreeBuilder&, int& declarations, const Identifier*& lastIdent, TreeExpression& lastInitializer, int& identStart, int& initStart, int& initEnd);
     template <class TreeBuilder> ALWAYS_INLINE TreeConstDeclList parseConstDeclarationList(TreeBuilder& context);
-    template <FunctionRequirements, bool nameIsInContainingScope, class TreeBuilder> bool parseFunctionInfo(TreeBuilder&, const Identifier*&, TreeFormalParameterList&, TreeFunctionBody&, int& openBrace, int& closeBrace, int& bodyStartLine);
+    template <FunctionRequirements, bool nameIsInContainingScope, class TreeBuilder> bool parseFunctionInfo(TreeBuilder&, const Identifier*&, TreeFormalParameterList&, TreeFunctionBody&, unsigned& openBraceOffset, unsigned& closeBraceOffset, int& bodyStartLine, unsigned& bodyStartColumn);
     ALWAYS_INLINE int isBinaryOperator(JSTokenType);
     bool allowAutomaticSemicolon();
     
@@ -928,6 +940,16 @@ private:
         return m_lastTokenEnd;
     }
 
+    unsigned lastTokenLine() const
+    {
+        return m_lastLine;
+    }
+
+    unsigned lastTokenLineStart() const
+    {
+        return m_lastTokenLineStart;
+    }
+
     bool hasError() const
     {
         return !m_errorMessage.isNull();
@@ -938,13 +960,15 @@ private:
     ParserArena* m_arena;
     OwnPtr<LexerType> m_lexer;
     
-    StackBounds m_stack;
+    VMStackBounds m_stack;
     bool m_hasStackOverflow;
     String m_errorMessage;
     JSToken m_token;
     bool m_allowsIn;
-    int m_lastLine;
+    unsigned m_lastLine;
     int m_lastTokenEnd;
+    unsigned m_lastTokenLine;
+    unsigned m_lastTokenLineStart;
     int m_assignmentCount;
     int m_nonLHSCount;
     bool m_syntaxAlreadyValidated;
@@ -994,6 +1018,7 @@ PassRefPtr<ParsedNode> Parser<LexerType>::parse(ParserError& error)
     errMsg = String();
 
     JSTokenLocation startLocation(tokenLocation());
+    unsigned startColumn = m_source->startColumn();
 
     String parseError = parseInner();
 
@@ -1013,10 +1038,12 @@ PassRefPtr<ParsedNode> Parser<LexerType>::parse(ParserError& error)
     if (m_sourceElements) {
         JSTokenLocation endLocation;
         endLocation.line = m_lexer->lastLineNumber();
-        endLocation.charPosition = m_lexer->currentCharPosition();
+        endLocation.lineStartOffset = m_lexer->currentLineStartOffset();
+        endLocation.startOffset = m_lexer->currentOffset();
         result = ParsedNode::create(m_vm,
                                     startLocation,
                                     endLocation,
+                                    startColumn,
                                     m_sourceElements,
                                     m_varDeclarations ? &m_varDeclarations->data : 0,
                                     m_funcDeclarations ? &m_funcDeclarations->data : 0,
@@ -1024,7 +1051,7 @@ PassRefPtr<ParsedNode> Parser<LexerType>::parse(ParserError& error)
                                     *m_source,
                                     m_features,
                                     m_numConstants);
-        result->setLoc(m_source->firstLine(), m_lastLine, m_lexer->currentCharPosition());
+        result->setLoc(m_source->firstLine(), m_lastLine, m_lexer->currentOffset(), m_lexer->currentLineStartOffset());
     } else {
         // We can never see a syntax error when reparsing a function, since we should have
         // reported the error when parsing the containing program or eval code. So if we're

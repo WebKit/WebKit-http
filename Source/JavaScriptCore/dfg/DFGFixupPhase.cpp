@@ -960,6 +960,11 @@ private:
             JSString* string = jsCast<JSString*>(m_graph.valueOfJSConstant(edge.node()).asCell());
             if (string->length())
                 continue;
+            
+            // Don't allow the MakeRope to have zero children.
+            if (!i && !node->child2())
+                break;
+            
             node->children.removeEdge(i--);
         }
         
@@ -1027,6 +1032,9 @@ private:
     template<UseKind leftUseKind>
     bool attemptToMakeFastStringAdd(Node* node, Edge& left, Edge& right)
     {
+        Node* originalLeft = left.node();
+        Node* originalRight = right.node();
+        
         ASSERT(leftUseKind == StringUse || leftUseKind == StringObjectUse || leftUseKind == StringOrStringObjectUse);
         
         if (isStringObjectUse<leftUseKind>() && !canOptimizeStringObjectAccess(node->codeOrigin))
@@ -1060,6 +1068,12 @@ private:
             
             right.setNode(toString);
         }
+        
+        // We're doing checks up there, so we need to make sure that the
+        // *original* inputs to the addition are live up to here.
+        m_insertionSet.insertNode(
+            m_indexInBlock, SpecNone, Phantom, node->codeOrigin,
+            Edge(originalLeft), Edge(originalRight));
         
         convertToMakeRope(node);
         return true;

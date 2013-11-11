@@ -119,7 +119,8 @@ void String::append(const String& str)
     }
 }
 
-void String::append(LChar c)
+template <typename CharacterType>
+inline void String::appendInternal(CharacterType c)
 {
     // FIXME: This is extremely inefficient. So much so that we might want to take this
     // out of String's API. We can make it better by optimizing the case where exactly
@@ -137,22 +138,14 @@ void String::append(LChar c)
         m_impl = StringImpl::create(&c, 1);
 }
 
+void String::append(LChar c)
+{
+    appendInternal(c);
+}
+
 void String::append(UChar c)
 {
-    // FIXME: This is extremely inefficient. So much so that we might want to take this
-    // out of String's API. We can make it better by optimizing the case where exactly
-    // one String is pointing at this StringImpl, but even then it's going to require a
-    // call to fastMalloc every single time.
-    if (m_impl) {
-        UChar* data;
-        if (m_impl->length() >= numeric_limits<unsigned>::max())
-            CRASH();
-        RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(m_impl->length() + 1, data);
-        memcpy(data, m_impl->characters(), m_impl->length() * sizeof(UChar));
-        data[m_impl->length()] = c;
-        m_impl = newImpl.release();
-    } else
-        m_impl = StringImpl::create(&c, 1);
+    appendInternal(c);
 }
 
 int codePointCompare(const String& a, const String& b)
@@ -394,14 +387,26 @@ bool String::percentage(int& result) const
     return true;
 }
 
-const UChar* String::charactersWithNullTermination()
+Vector<UChar> String::charactersWithNullTermination() const
 {
-    if (!m_impl)
-        return 0;
-    if (m_impl->hasTerminatingNullCharacter())
-        return m_impl->characters();
-    m_impl = StringImpl::createWithTerminatingNullCharacter(*m_impl);
-    return m_impl->characters();
+    Vector<UChar> result;
+
+    if (m_impl) {
+        result.reserveInitialCapacity(length() + 1);
+
+        if (is8Bit()) {
+            const LChar* characters8 = m_impl->characters8();
+            for (size_t i = 0; i < length(); ++i)
+                result.uncheckedAppend(characters8[i]);
+        } else {
+            const UChar* characters16 = m_impl->characters16();
+            result.append(characters16, m_impl->length());
+        }
+
+        result.append(0);
+    }
+
+    return result;
 }
 
 String String::format(const char *format, ...)

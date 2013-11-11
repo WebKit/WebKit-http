@@ -29,7 +29,7 @@
 #include "SVGAnimatedInteger.h"
 #include "SVGAnimatedLength.h"
 #include "SVGExternalResourcesRequired.h"
-#include "SVGLangSpace.h"
+#include "SVGNames.h"
 #include "SVGStyledElement.h"
 #include "SVGURIReference.h"
 #include "SVGUnitTypes.h"
@@ -38,7 +38,6 @@ namespace WebCore {
 
 class SVGFilterElement FINAL : public SVGStyledElement,
                                public SVGURIReference,
-                               public SVGLangSpace,
                                public SVGExternalResourcesRequired {
 public:
     static PassRefPtr<SVGFilterElement> create(const QualifiedName&, Document*);
@@ -76,6 +75,12 @@ private:
         DECLARE_ANIMATED_BOOLEAN(ExternalResourcesRequired, externalResourcesRequired)
     END_DECLARE_ANIMATED_PROPERTIES
 };
+
+inline SVGFilterElement* toSVGFilterElement(Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(SVGNames::filterTag));
+    return static_cast<SVGFilterElement*>(node);
+}
 
 }
 

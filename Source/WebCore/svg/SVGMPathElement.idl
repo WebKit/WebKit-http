@@ -25,8 +25,8 @@
 
 [
     Conditional=SVG
-] interface SVGMPathElement : SVGElement,
-                                                            SVGURIReference,
-                                                            SVGExternalResourcesRequired {
+] interface SVGMPathElement : SVGElement {
 };
 
+SVGMPathElement implements SVGExternalResourcesRequired;
+SVGMPathElement implements SVGURIReference;

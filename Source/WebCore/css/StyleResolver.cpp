@@ -48,9 +48,6 @@
 #include "CSSSupportsRule.h"
 #include "CSSTimingFunctionValue.h"
 #include "CSSValueList.h"
-#if ENABLE(CSS_VARIABLES)
-#include "CSSVariableValue.h"
-#endif
 #include "CachedImage.h"
 #include "CalculationValue.h"
 #include "ContentData.h"
@@ -71,9 +68,11 @@
 #include "HTMLIFrameElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "HTMLOptGroupElement.h"
 #include "HTMLOptionElement.h"
 #include "HTMLProgressElement.h"
 #include "HTMLStyleElement.h"
+#include "HTMLTableElement.h"
 #include "HTMLTextAreaElement.h"
 #include "InsertionPoint.h"
 #include "InspectorInstrumentation.h"
@@ -134,18 +133,9 @@
 #include "WebKitCSSFilterValue.h"
 #endif
 
-#if ENABLE(DASHBOARD_SUPPORT)
-#include "DashboardRegion.h"
-#endif
-
-#if ENABLE(SVG)
-#include "CachedSVGDocument.h"
-#include "CachedSVGDocumentReference.h"
-#include "SVGDocument.h"
-#include "SVGElement.h"
-#include "SVGNames.h"
-#include "SVGURIReference.h"
-#include "WebKitCSSSVGDocumentValue.h"
+#if ENABLE(CSS_IMAGE_SET)
+#include "CSSImageSetValue.h"
+#include "StyleCachedImageSet.h"
 #endif
 
 #if ENABLE(CSS_SHADERS)
@@ -166,9 +156,30 @@
 #include "WebKitCSSShaderValue.h"
 #endif
 
-#if ENABLE(CSS_IMAGE_SET)
-#include "CSSImageSetValue.h"
-#include "StyleCachedImageSet.h"
+#if ENABLE(CSS_SHAPES)
+#include "CachedResourceLoader.h"
+#endif
+
+#if ENABLE(CSS_VARIABLES)
+#include "CSSVariableValue.h"
+#endif
+
+#if ENABLE(DASHBOARD_SUPPORT)
+#include "DashboardRegion.h"
+#endif
+
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+#include "HTMLAudioElement.h"
+#endif
+
+#if ENABLE(SVG)
+#include "CachedSVGDocument.h"
+#include "CachedSVGDocumentReference.h"
+#include "SVGDocument.h"
+#include "SVGElement.h"
+#include "SVGNames.h"
+#include "SVGURIReference.h"
+#include "WebKitCSSSVGDocumentValue.h"
 #endif
 
 #if ENABLE(VIDEO_TRACK)
@@ -650,7 +661,7 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
     // FIXME: We should share style for option and optgroup whenever possible.
     // Before doing so, we need to resolve issues in HTMLSelectElement::recalcListItems
     // and RenderMenuList::setText. See also https://bugs.webkit.org/show_bug.cgi?id=88405
-    if (element->hasTagName(optionTag) || element->hasTagName(optgroupTag))
+    if (isHTMLOptionElement(element) || isHTMLOptGroupElement(element))
         return false;
 
     bool isControl = element->isFormControlElement();
@@ -670,7 +681,7 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
     if (element->hasTagName(iframeTag) || element->hasTagName(frameTag) || element->hasTagName(embedTag) || element->hasTagName(objectTag) || element->hasTagName(appletTag) || element->hasTagName(canvasTag)
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
         // With proxying, the media elements are backed by a RenderEmbeddedObject.
-        || element->hasTagName(videoTag) || element->hasTagName(audioTag)
+        || element->hasTagName(videoTag) || isHTMLAudioElement(element)
 #endif
         )
         return false;
@@ -771,46 +782,6 @@ RenderStyle* StyleResolver::locateSharedStyle()
     return shareElement->renderStyle();
 }
 
-static void setStylesForPaginationMode(Pagination::Mode paginationMode, RenderStyle* style)
-{
-    if (paginationMode == Pagination::Unpaginated)
-        return;
-        
-    switch (paginationMode) {
-    case Pagination::LeftToRightPaginated:
-        style->setColumnAxis(HorizontalColumnAxis);
-        if (style->isHorizontalWritingMode())
-            style->setColumnProgression(style->isLeftToRightDirection() ? NormalColumnProgression : ReverseColumnProgression);
-        else
-            style->setColumnProgression(style->isFlippedBlocksWritingMode() ? ReverseColumnProgression : NormalColumnProgression);
-        break;
-    case Pagination::RightToLeftPaginated:
-        style->setColumnAxis(HorizontalColumnAxis);
-        if (style->isHorizontalWritingMode())
-            style->setColumnProgression(style->isLeftToRightDirection() ? ReverseColumnProgression : NormalColumnProgression);
-        else
-            style->setColumnProgression(style->isFlippedBlocksWritingMode() ? NormalColumnProgression : ReverseColumnProgression);
-        break;
-    case Pagination::TopToBottomPaginated:
-        style->setColumnAxis(VerticalColumnAxis);
-        if (style->isHorizontalWritingMode())
-            style->setColumnProgression(style->isFlippedBlocksWritingMode() ? ReverseColumnProgression : NormalColumnProgression);
-        else
-            style->setColumnProgression(style->isLeftToRightDirection() ? NormalColumnProgression : ReverseColumnProgression);
-        break;
-    case Pagination::BottomToTopPaginated:
-        style->setColumnAxis(VerticalColumnAxis);
-        if (style->isHorizontalWritingMode())
-            style->setColumnProgression(style->isFlippedBlocksWritingMode() ? NormalColumnProgression : ReverseColumnProgression);
-        else
-            style->setColumnProgression(style->isLeftToRightDirection() ? ReverseColumnProgression : NormalColumnProgression);
-        break;
-    case Pagination::Unpaginated:
-        ASSERT_NOT_REACHED();
-        break;
-    }
-}
-
 static void getFontAndGlyphOrientation(const RenderStyle* style, FontOrientation& fontOrientation, NonCJKGlyphOrientation& glyphOrientation)
 {
     if (style->isHorizontalWritingMode()) {
@@ -898,7 +869,7 @@ PassRefPtr<RenderStyle> StyleResolver::styleForDocument(Document* document, CSSF
         if (FrameView* frameView = frame->view()) {
             const Pagination& pagination = frameView->pagination();
             if (pagination.mode != Pagination::Unpaginated) {
-                setStylesForPaginationMode(pagination.mode, documentStyle.get());
+                documentStyle->setColumnStylesFromPaginationMode(pagination.mode);
                 documentStyle->setColumnGap(pagination.gap);
                 if (RenderView* view = document->renderView()) {
                     if (view->hasColumns())
@@ -1342,6 +1313,13 @@ static bool isDisplayFlexibleBox(EDisplay display)
     return display == FLEX || display == INLINE_FLEX;
 }
 
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
+static bool isScrollableOverflow(EOverflow overflow)
+{
+    return overflow == OSCROLL || overflow == OAUTO || overflow == OOVERLAY;
+}
+#endif
+
 void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentStyle, Element *e)
 {
     ASSERT(parentStyle);
@@ -1358,7 +1336,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
             if (e->hasTagName(tdTag)) {
                 style->setDisplay(TABLE_CELL);
                 style->setFloating(NoFloat);
-            } else if (e->hasTagName(tableTag))
+            } else if (isHTMLTableElement(e))
                 style->setDisplay(style->isDisplayInlineType() ? INLINE_TABLE : TABLE);
         }
 
@@ -1375,7 +1353,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         }
 
         // Tables never support the -webkit-* values for text-align and will reset back to the default.
-        if (e && e->hasTagName(tableTag) && (style->textAlign() == WEBKIT_LEFT || style->textAlign() == WEBKIT_CENTER || style->textAlign() == WEBKIT_RIGHT))
+        if (e && isHTMLTableElement(e) && (style->textAlign() == WEBKIT_LEFT || style->textAlign() == WEBKIT_CENTER || style->textAlign() == WEBKIT_RIGHT))
             style->setTextAlign(TASTART);
 
         // Frames and framesets never honor position:relative or position:absolute. This is necessary to
@@ -1460,10 +1438,6 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         || style->hasBlendMode()
         || style->position() == StickyPosition
         || (style->position() == FixedPosition && e && e->document()->page() && e->document()->page()->settings()->fixedPositionCreatesStackingContext())
-#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
-        // Touch overflow scrolling creates a stacking context.
-        || ((style->overflowX() != OHIDDEN || style->overflowY() != OHIDDEN) && style->useTouchOverflowScrolling())
-#endif
 #if ENABLE(DIALOG_ELEMENT)
         || (e && e->isInTopLayer())
 #endif
@@ -1471,7 +1445,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         style->setZIndex(0);
 
     // Textarea considers overflow visible as auto.
-    if (e && e->hasTagName(textareaTag)) {
+    if (e && isHTMLTextAreaElement(e)) {
         style->setOverflowX(style->overflowX() == OVISIBLE ? OAUTO : style->overflowX());
         style->setOverflowY(style->overflowY() == OVISIBLE ? OAUTO : style->overflowY());
     }
@@ -1498,7 +1472,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
     // styles are specified on a root element, then they will be incorporated in
     // StyleResolver::styleForDocument().
     if ((style->overflowY() == OPAGEDX || style->overflowY() == OPAGEDY) && !(e && (e->hasTagName(htmlTag) || e->hasTagName(bodyTag))))
-        setStylesForPaginationMode(WebCore::paginationModeForRenderStyle(style), style);
+        style->setColumnStylesFromPaginationMode(WebCore::paginationModeForRenderStyle(style));
 
     // Table rows, sections and the table itself will support overflow:hidden and will ignore scroll/auto.
     // FIXME: Eventually table sections will support auto and scroll.
@@ -1516,6 +1490,12 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         style->setOverflowY(OVISIBLE);
     }
 
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
+    // Touch overflow scrolling creates a stacking context.
+    if (style->hasAutoZIndex() && style->useTouchOverflowScrolling() && (isScrollableOverflow(style->overflowX()) || isScrollableOverflow(style->overflowY())))
+        style->setZIndex(0);
+#endif
+
     // Cull out any useless layers and also repeat patterns into additional layers.
     style->adjustBackgroundLayers();
     style->adjustMaskLayers();
@@ -1529,7 +1509,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
     if (e && e->isFormControlElement() && style->fontSize() >= 11) {
         // Don't apply intrinsic margins to image buttons. The designer knows how big the images are,
         // so we have to treat all image buttons as though they were explicitly sized.
-        if (!e->hasTagName(inputTag) || !static_cast<HTMLInputElement*>(e)->isImageButton())
+        if (!isHTMLInputElement(e) || !toHTMLInputElement(e)->isImageButton())
             addIntrinsicMargins(style);
     }
 
@@ -1548,7 +1528,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         style->setTransformStyle3D(TransformStyle3DFlat);
 
     // Seamless iframes behave like blocks. Map their display to inline-block when marked inline.
-    if (e && e->hasTagName(iframeTag) && style->display() == INLINE && static_cast<HTMLIFrameElement*>(e)->shouldDisplaySeamlessly())
+    if (e && e->hasTagName(iframeTag) && style->display() == INLINE && toHTMLIFrameElement(e)->shouldDisplaySeamlessly())
         style->setDisplay(INLINE_BLOCK);
 
 #if ENABLE(SVG)
@@ -2058,12 +2038,12 @@ bool StyleResolver::useSVGZoomRules()
 
 static bool createGridTrackBreadth(CSSPrimitiveValue* primitiveValue, const StyleResolver::State& state, Length& workingLength)
 {
-    if (primitiveValue->getIdent() == CSSValueWebkitMinContent) {
+    if (primitiveValue->getValueID() == CSSValueWebkitMinContent) {
         workingLength = Length(MinContent);
         return true;
     }
 
-    if (primitiveValue->getIdent() == CSSValueWebkitMaxContent) {
+    if (primitiveValue->getValueID() == CSSValueWebkitMaxContent) {
         workingLength = Length(MaxContent);
         return true;
     }
@@ -2108,7 +2088,7 @@ static bool createGridTrackList(CSSValue* value, Vector<GridTrackSize>& trackSiz
     // Handle 'none'.
     if (value->isPrimitiveValue()) {
         CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-        return primitiveValue->getIdent() == CSSValueNone;
+        return primitiveValue->getValueID() == CSSValueNone;
     }
 
     if (!value->isValueList())
@@ -2133,7 +2113,7 @@ static bool createGridPosition(CSSValue* value, GridPosition& position)
         return false;
 
     CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    if (primitiveValue->getIdent() == CSSValueAuto)
+    if (primitiveValue->getValueID() == CSSValueAuto)
         return true;
 
     ASSERT_WITH_SECURITY_IMPLICATION(primitiveValue->isNumber());
@@ -2310,14 +2290,14 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
                 } else if (contentValue->isCounter()) {
                     Counter* counterValue = contentValue->getCounterValue();
                     EListStyleType listStyleType = NoneListStyle;
-                    int listStyleIdent = counterValue->listStyleIdent();
+                    CSSValueID listStyleIdent = counterValue->listStyleIdent();
                     if (listStyleIdent != CSSValueNone)
                         listStyleType = static_cast<EListStyleType>(listStyleIdent - CSSValueDisc);
                     OwnPtr<CounterContent> counter = adoptPtr(new CounterContent(counterValue->identifier(), listStyleType, counterValue->separator()));
                     state.style()->setContent(counter.release(), didSet);
                     didSet = true;
                 } else {
-                    switch (contentValue->getIdent()) {
+                    switch (contentValue->getValueID()) {
                     case CSSValueOpenQuote:
                         state.style()->setContent(OPEN_QUOTE, didSet);
                         didSet = true;
@@ -2372,7 +2352,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             return;
         }
         if (primitiveValue) {
-            if (primitiveValue->getIdent() == CSSValueNone)
+            if (primitiveValue->getValueID() == CSSValueNone)
                 state.style()->setQuotes(QuotesData::create(Vector<std::pair<String, String> >()));
         }
         return;
@@ -2394,7 +2374,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             state.setLineHeightValue(0);
 
             FontDescription fontDescription;
-            RenderTheme::defaultTheme()->systemFont(primitiveValue->getIdent(), fontDescription);
+            RenderTheme::defaultTheme()->systemFont(primitiveValue->getValueID(), fontDescription);
 
             // Double-check and see if the theme did anything. If not, don't bother updating the font.
             if (fontDescription.isAbsoluteSize()) {
@@ -2500,7 +2480,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             int y = item->y->computeLength<int>(state.style(), state.rootElementStyle(), zoomFactor);
             int blur = item->blur ? item->blur->computeLength<int>(state.style(), state.rootElementStyle(), zoomFactor) : 0;
             int spread = item->spread ? item->spread->computeLength<int>(state.style(), state.rootElementStyle(), zoomFactor) : 0;
-            ShadowStyle shadowStyle = item->style && item->style->getIdent() == CSSValueInset ? Inset : Normal;
+            ShadowStyle shadowStyle = item->style && item->style->getValueID() == CSSValueInset ? Inset : Normal;
             Color color;
             if (item->color)
                 color = colorFromPrimitiveValue(item->color.get());
@@ -2546,7 +2526,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         HANDLE_INHERIT_AND_INITIAL(locale, Locale);
         if (!primitiveValue)
             return;
-        if (primitiveValue->getIdent() == CSSValueAuto)
+        if (primitiveValue->getValueID() == CSSValueAuto)
             state.style()->setLocale(nullAtom);
         else
             state.style()->setLocale(primitiveValue->getStringValue());
@@ -2562,7 +2542,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         if (!primitiveValue)
             return;
 
-        if (primitiveValue->getIdent() == CSSValueNone) {
+        if (primitiveValue->getValueID() == CSSValueNone) {
             state.style()->setDashboardRegions(RenderStyle::noneDashboardRegions());
             return;
         }
@@ -2601,9 +2581,9 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 #endif
 #if ENABLE(DRAGGABLE_REGION)
     case CSSPropertyWebkitAppRegion: {
-        if (!primitiveValue || !primitiveValue->getIdent())
+        if (!primitiveValue || !primitiveValue->getValueID())
             return;
-        state.style()->setDraggableRegionMode(primitiveValue->getIdent() == CSSValueDrag ? DraggableRegionDrag : DraggableRegionNoDrag);
+        state.style()->setDraggableRegionMode(primitiveValue->getValueID() == CSSValueDrag ? DraggableRegionDrag : DraggableRegionNoDrag);
         state.document()->setHasAnnotatedRegions(true);
         return;
     }
@@ -2611,14 +2591,14 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWebkitTextStrokeWidth: {
         HANDLE_INHERIT_AND_INITIAL(textStrokeWidth, TextStrokeWidth)
         float width = 0;
-        switch (primitiveValue->getIdent()) {
+        switch (primitiveValue->getValueID()) {
         case CSSValueThin:
         case CSSValueMedium:
         case CSSValueThick: {
             double result = 1.0 / 48;
-            if (primitiveValue->getIdent() == CSSValueMedium)
+            if (primitiveValue->getValueID() == CSSValueMedium)
                 result *= 3;
-            else if (primitiveValue->getIdent() == CSSValueThick)
+            else if (primitiveValue->getValueID() == CSSValueThick)
                 result *= 5;
             width = CSSPrimitiveValue::create(result, CSSPrimitiveValue::CSS_EMS)->computeLength<float>(state.style(), state.rootElementStyle(), zoomFactor);
             break;
@@ -2643,7 +2623,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         if (!primitiveValue)
             return;
 
-        if (primitiveValue->getIdent() == CSSValueNone) {
+        if (primitiveValue->getValueID() == CSSValueNone) {
             state.style()->setPerspective(0);
             return;
         }
@@ -2677,7 +2657,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         HANDLE_INHERIT_AND_INITIAL(useTouchOverflowScrolling, UseTouchOverflowScrolling);
         if (!primitiveValue)
             break;
-        state.style()->setUseTouchOverflowScrolling(primitiveValue->getIdent() == CSSValueTouch);
+        state.style()->setUseTouchOverflowScrolling(primitiveValue->getValueID() == CSSValueTouch);
         return;
     }
 #endif
@@ -2764,7 +2744,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 
     case CSSPropertyWebkitLineBoxContain: {
         HANDLE_INHERIT_AND_INITIAL(lineBoxContain, LineBoxContain)
-        if (primitiveValue && primitiveValue->getIdent() == CSSValueNone) {
+        if (primitiveValue && primitiveValue->getValueID() == CSSValueNone) {
             state.style()->setLineBoxContain(LineBoxContainNone);
             return;
         }
@@ -2779,7 +2759,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 
     // CSS Fonts Module Level 3
     case CSSPropertyWebkitFontFeatureSettings: {
-        if (primitiveValue && primitiveValue->getIdent() == CSSValueNormal) {
+        if (primitiveValue && primitiveValue->getValueID() == CSSValueNormal) {
             setFontDescription(state.style()->fontDescription().makeNormalFeatureSettings());
             return;
         }
@@ -2826,14 +2806,14 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         state.style()->setGridAutoRows(trackSize);
         return;
     }
-    case CSSPropertyWebkitGridColumns: {
+    case CSSPropertyWebkitGridDefinitionColumns: {
         Vector<GridTrackSize> trackSizes;
         if (!createGridTrackList(value, trackSizes, state))
             return;
         state.style()->setGridColumns(trackSizes);
         return;
     }
-    case CSSPropertyWebkitGridRows: {
+    case CSSPropertyWebkitGridDefinitionRows: {
         Vector<GridTrackSize> trackSizes;
         if (!createGridTrackList(value, trackSizes, state))
             return;
@@ -3431,10 +3411,10 @@ int StyleResolver::legacyFontSize(Document* document, int pixelFontSize, bool sh
     return findNearestLegacyFontSize<float>(pixelFontSize, fontSizeFactors, mediumSize);
 }
 
-static Color colorForCSSValue(int cssValueId)
+static Color colorForCSSValue(CSSValueID cssValueId)
 {
     struct ColorValue {
-        int cssValueId;
+        CSSValueID cssValueId;
         RGBA32 color;
     };
 
@@ -3458,7 +3438,7 @@ static Color colorForCSSValue(int cssValueId)
         { CSSValueTransparent, 0x00000000 },
         { CSSValueWhite, 0xFFFFFFFF },
         { CSSValueYellow, 0xFFFFFF00 },
-        { 0, 0 }
+        { CSSValueInvalid, CSSValueInvalid }
     };
 
     for (const ColorValue* col = colorValues; col->cssValueId; ++col) {
@@ -3470,7 +3450,7 @@ static Color colorForCSSValue(int cssValueId)
 
 bool StyleResolver::colorFromPrimitiveValueIsDerivedFromElement(CSSPrimitiveValue* value)
 {
-    int ident = value->getIdent();
+    int ident = value->getValueID();
     switch (ident) {
     case CSSValueWebkitText:
     case CSSValueWebkitLink:
@@ -3488,7 +3468,7 @@ Color StyleResolver::colorFromPrimitiveValue(CSSPrimitiveValue* value, bool forV
         return Color(value->getRGBA32Value());
 
     const State& state = m_state;
-    int ident = value->getIdent();
+    CSSValueID ident = value->getValueID();
     switch (ident) {
     case 0:
         return Color();
@@ -3562,7 +3542,12 @@ static FilterOperation::OperationType filterOperationForType(WebKitCSSFilterValu
 void StyleResolver::loadPendingSVGDocuments()
 {
     State& state = m_state;
-    if (!state.style()->hasFilter() || state.pendingSVGDocuments().isEmpty())
+
+    // Crash reports indicate that we've seen calls to this function when our
+    // style is NULL. We don't know exactly why this happens. Our guess is
+    // reentering styleForElement().
+    ASSERT(state.style());
+    if (!state.style() || !state.style()->hasFilter() || state.pendingSVGDocuments().isEmpty())
         return;
 
     CachedResourceLoader* cachedResourceLoader = state.document()->cachedResourceLoader();
@@ -3828,9 +3813,9 @@ PassRefPtr<CustomFilterOperation> StyleResolver::createCustomFilterOperationWith
             ASSERT(mixFunction->length() <= 3);
             while (iterator.hasMore()) {
                 CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(iterator.value());
-                if (CSSParser::isBlendMode(primitiveValue->getIdent()))
+                if (CSSParser::isBlendMode(primitiveValue->getValueID()))
                     mixSettings.blendMode = *primitiveValue;
-                else if (CSSParser::isCompositeOperator(primitiveValue->getIdent()))
+                else if (CSSParser::isCompositeOperator(primitiveValue->getValueID()))
                     mixSettings.compositeOperator = *primitiveValue;
                 else
                     ASSERT_NOT_REACHED();
@@ -3879,7 +3864,7 @@ PassRefPtr<CustomFilterOperation> StyleResolver::createCustomFilterOperationWith
         
         if (iterator.hasMore() && iterator.isPrimitiveValue()) {
             CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(iterator.value());
-            if (primitiveValue->getIdent() == CSSValueDetached) {
+            if (primitiveValue->getValueID() == CSSValueDetached) {
                 meshType = MeshTypeDetached;
                 iterator.advance();
             }
@@ -3922,7 +3907,7 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, RenderStyle* style
     
     if (inValue->isPrimitiveValue()) {
         CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(inValue);
-        if (primitiveValue->getIdent() == CSSValueNone)
+        if (primitiveValue->getValueID() == CSSValueNone)
             return true;
     }
     
@@ -4101,6 +4086,28 @@ PassRefPtr<StyleImage> StyleResolver::loadPendingImage(StylePendingImage* pendin
     return 0;
 }
 
+
+#if ENABLE(CSS_SHAPES)
+void StyleResolver::loadPendingShapeImage(ShapeValue* shapeValue)
+{
+    if (!shapeValue)
+        return;
+
+    StyleImage* image = shapeValue->image();
+    if (!image || !image->isPendingImage())
+        return;
+
+    StylePendingImage* pendingImage = static_cast<StylePendingImage*>(image);
+    CSSImageValue* cssImageValue =  pendingImage->cssImageValue();
+    CachedResourceLoader* cachedResourceLoader = m_state.document()->cachedResourceLoader();
+
+    ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
+    options.requestOriginPolicy = RestrictToSameOrigin;
+
+    shapeValue->setImage(cssImageValue->cachedImage(cachedResourceLoader, options));
+}
+#endif
+
 void StyleResolver::loadPendingImages()
 {
     if (m_state.pendingImageProperties().isEmpty())
@@ -4177,12 +4184,10 @@ void StyleResolver::loadPendingImages()
         }
 #if ENABLE(CSS_SHAPES)
         case CSSPropertyWebkitShapeInside:
-            if (m_state.style()->shapeInside() && m_state.style()->shapeInside()->image() && m_state.style()->shapeInside()->image()->isPendingImage())
-                m_state.style()->shapeInside()->setImage(loadPendingImage(static_cast<StylePendingImage*>(m_state.style()->shapeInside()->image())));
+            loadPendingShapeImage(m_state.style()->shapeInside());
             break;
         case CSSPropertyWebkitShapeOutside:
-            if (m_state.style()->shapeOutside() && m_state.style()->shapeOutside()->image() && m_state.style()->shapeOutside()->image()->isPendingImage())
-                m_state.style()->shapeOutside()->setImage(loadPendingImage(static_cast<StylePendingImage*>(m_state.style()->shapeOutside()->image())));
+            loadPendingShapeImage(m_state.style()->shapeOutside());
             break;
 #endif
         default:
@@ -4193,8 +4198,25 @@ void StyleResolver::loadPendingImages()
     m_state.pendingImageProperties().clear();
 }
 
+#ifndef NDEBUG
+static bool inLoadPendingResources = false;
+#endif
+
 void StyleResolver::loadPendingResources()
 {
+    // We've seen crashes in all three of the functions below. Some of them
+    // indicate that style() is NULL. This NULL check will cut down on total
+    // crashes, while the ASSERT will help us find the cause in debug builds.
+    ASSERT(style());
+    if (!style())
+        return;
+
+#ifndef NDEBUG
+    // Re-entering this function will probably mean trouble. Catch it in debug builds.
+    ASSERT(!inLoadPendingResources);
+    inLoadPendingResources = true;
+#endif
+
     // Start loading images referenced by this style.
     loadPendingImages();
 
@@ -4206,6 +4228,10 @@ void StyleResolver::loadPendingResources()
 #if ENABLE(CSS_FILTERS) && ENABLE(SVG)
     // Start loading the SVG Documents referenced by this style.
     loadPendingSVGDocuments();
+#endif
+
+#ifndef NDEBUG
+    inLoadPendingResources = false;
 #endif
 }
 

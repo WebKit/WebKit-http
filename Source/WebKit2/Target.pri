@@ -242,7 +242,7 @@ HEADERS += \
     UIProcess/WebBackForwardList.h \
     UIProcess/WebBatteryManagerProxy.h \
     UIProcess/WebBatteryProvider.h \
-    UIProcess/WebColorChooserProxy.h \
+    UIProcess/WebColorPicker.h \
     UIProcess/WebColorPickerResultListenerProxy.h \
     UIProcess/WebConnectionToWebProcess.h \
     UIProcess/WebContext.h \
@@ -565,6 +565,7 @@ SOURCES += \
     UIProcess/BackingStore.cpp \
     UIProcess/qt/BackingStoreQt.cpp \
     UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp \
+    UIProcess/CoordinatedGraphics/WebPageProxyCoordinatedGraphics.cpp \
     UIProcess/DefaultUndoController.cpp \
     UIProcess/Downloads/DownloadProxy.cpp \
     UIProcess/Downloads/DownloadProxyMap.cpp \
@@ -599,7 +600,7 @@ SOURCES += \
     UIProcess/WebBackForwardList.cpp \
     UIProcess/WebBatteryManagerProxy.cpp \
     UIProcess/WebBatteryProvider.cpp \
-    UIProcess/WebColorChooserProxy.cpp \
+    UIProcess/WebColorPicker.cpp \
     UIProcess/WebColorPickerResultListenerProxy.cpp \
     UIProcess/WebConnectionToWebProcess.cpp \
     UIProcess/WebContext.cpp \
@@ -748,6 +749,7 @@ SOURCES += \
     WebProcess/WebPage/EventDispatcher.cpp \
     WebProcess/WebPage/FindController.cpp \
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp \
+    WebProcess/WebPage/CoordinatedGraphics/WebPageCoordinatedGraphics.cpp \
     WebProcess/WebPage/TapHighlightController.cpp \
     WebProcess/WebPage/LayerTreeHost.cpp \
     WebProcess/WebPage/PageBanner.cpp \
@@ -845,9 +847,9 @@ have?(QTQUICK) {
 
     enable?(INPUT_TYPE_COLOR) {
         HEADERS += \
-            UIProcess/qt/WebColorChooserProxyQt.h
+            UIProcess/qt/WebColorPickerQt.h
         SOURCES += \
-            UIProcess/qt/WebColorChooserProxyQt.cpp
+            UIProcess/qt/WebColorPickerQt.cpp
     }
 }
 

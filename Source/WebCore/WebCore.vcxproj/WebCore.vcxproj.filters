@@ -283,6 +283,15 @@
     <Filter Include="html\canvas">
       <UniqueIdentifier>{70b0bcb3-8703-4b6e-81d2-e8aa9ef31af0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="platform\graphics\opengl">
+      <UniqueIdentifier>{0977a226-d119-42ef-9cd6-c6413fd9e5cd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="platform\graphics\gpu">
+      <UniqueIdentifier>{c2332ff9-436e-4c07-b692-fb4b9db40ffd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="platform\graphics\egl">
+      <UniqueIdentifier>{e27b348d-0b87-4e5f-b5b9-b99e283ea22b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\DerivedSources.cpp">
@@ -354,7 +363,7 @@
     <ClCompile Include="..\Modules\filesystem\LocalFileSystem.cpp">
       <Filter>Modules\filesystem</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\WorkerContextFileSystem.cpp">
+    <ClCompile Include="..\Modules\filesystem\WorkerGlobalScopeFileSystem.cpp">
       <Filter>Modules\filesystem</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\geolocation\Coordinates.cpp">
@@ -420,7 +429,7 @@
     <ClCompile Include="..\Modules\indexeddb\PageGroupIndexedDatabase.cpp">
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\indexeddb\WorkerContextIndexedDatabase.cpp">
+    <ClCompile Include="..\Modules\indexeddb\WorkerGlobalScopeIndexedDatabase.cpp">
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\navigatorcontentutils\NavigatorContentUtils.cpp">
@@ -459,7 +468,7 @@
     <ClCompile Include="..\Modules\notifications\NotificationCenter.cpp">
       <Filter>Modules\notifications</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\notifications\WorkerContextNotifications.cpp">
+    <ClCompile Include="..\Modules\notifications\WorkerGlobalScopeNotifications.cpp">
       <Filter>Modules\notifications</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\ChangeVersionWrapper.cpp">
@@ -552,7 +561,7 @@
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionSync.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\WorkerContextWebDatabase.cpp">
+    <ClCompile Include="..\Modules\webdatabase\WorkerGlobalScopeWebDatabase.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\websockets\ThreadableWebSocketChannel.cpp">
@@ -2859,6 +2868,9 @@
     <ClCompile Include="..\rendering\mathml\RenderMathMLRow.cpp">
       <Filter>rendering\mathml</Filter>
     </ClCompile>
+    <ClCompile Include="..\rendering\mathml\RenderMathMLSpace.cpp">
+      <Filter>rendering\mathml</Filter>
+    </ClCompile>
     <ClCompile Include="..\rendering\mathml\RenderMathMLSquareRoot.cpp">
       <Filter>rendering\mathml</Filter>
     </ClCompile>
@@ -3531,7 +3543,7 @@
     <ClCompile Include="..\workers\AbstractWorker.cpp">
       <Filter>workers</Filter>
     </ClCompile>
-    <ClCompile Include="..\workers\DedicatedWorkerContext.cpp">
+    <ClCompile Include="..\workers\DedicatedWorkerGlobalScope.cpp">
       <Filter>workers</Filter>
     </ClCompile>
     <ClCompile Include="..\workers\DedicatedWorkerThread.cpp">
@@ -3543,7 +3555,7 @@
     <ClCompile Include="..\workers\SharedWorker.cpp">
       <Filter>workers</Filter>
     </ClCompile>
-    <ClCompile Include="..\workers\SharedWorkerContext.cpp">
+    <ClCompile Include="..\workers\SharedWorkerGlobalScope.cpp">
       <Filter>workers</Filter>
     </ClCompile>
     <ClCompile Include="..\workers\SharedWorkerThread.cpp">
@@ -3552,7 +3564,7 @@
     <ClCompile Include="..\workers\Worker.cpp">
       <Filter>workers</Filter>
     </ClCompile>
-    <ClCompile Include="..\workers\WorkerContext.cpp">
+    <ClCompile Include="..\workers\WorkerGlobalScope.cpp">
       <Filter>workers</Filter>
     </ClCompile>
     <ClCompile Include="..\workers\WorkerEventQueue.cpp">
@@ -4464,7 +4476,7 @@
     <ClCompile Include="..\bindings\js\JSCustomXPathNSResolver.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSDedicatedWorkerContextCustom.cpp">
+    <ClCompile Include="..\bindings\js\JSDedicatedWorkerGlobalScopeCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSDeviceMotionEventCustom.cpp">
@@ -4674,10 +4686,10 @@
     <ClCompile Include="..\bindings\js\JSWebKitPointCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSWorkerContextBase.cpp">
+    <ClCompile Include="..\bindings\js\JSWorkerGlobalScopeBase.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSWorkerContextCustom.cpp">
+    <ClCompile Include="..\bindings\js\JSWorkerGlobalScopeCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSWorkerCustom.cpp">
@@ -4844,6 +4856,9 @@
     </ClCompile>
     <ClCompile Include="..\svg\graphics\filters\SVGFilterBuilder.cpp">
       <Filter>rendering\svg\graphics\filters</Filter>
+    </ClCompile>
+    <ClCompile Include="..\svg\properties\SVGAnimatedProperty.cpp">
+      <Filter>rendering\svg\properties</Filter>
     </ClCompile>
     <ClCompile Include="..\svg\properties\SVGAttributeToPropertyMap.cpp">
       <Filter>rendering\svg\properties</Filter>
@@ -5572,7 +5587,7 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSDataTransferItemList.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSDedicatedWorkerContext.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSDedicatedWorkerGlobalScope.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSDeviceMotionEvent.cpp">
@@ -6172,7 +6187,7 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSSharedWorker.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSSharedWorkerContext.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSSharedWorkerGlobalScope.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSSQLError.cpp">
@@ -6715,7 +6730,7 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWorker.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWorkerContext.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWorkerGlobalScope.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWorkerLocation.cpp">
@@ -6786,6 +6801,280 @@
     </ClCompile>
     <ClCompile Include="..\accessibility\AccessibilityNodeObject.cpp">
       <Filter>accessibility</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLActiveInfo.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLBuffer.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLCompressedTextureATC.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLCompressedTexturePVRTC.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLCompressedTextureS3TC.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLContextAttributes.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLContextEvent.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLDebugRendererInfo.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLDebugShaders.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLDepthTexture.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLFramebuffer.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLLoseContext.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLProgram.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLRenderbuffer.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLRenderingContext.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLShader.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLShaderPrecisionFormat.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLTexture.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLUniformLocation.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLVertexArrayObjectOES.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSEXTDrawBuffers.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSEXTTextureFilterAnisotropic.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSOESElementIndexUint.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSOESStandardDerivatives.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSOESTextureFloat.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSOESVertexArrayObject.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLBuffer.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLCompressedTextureATC.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLCompressedTexturePVRTC.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLCompressedTextureS3TC.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLContextAttributes.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLContextEvent.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLContextGroup.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLContextObject.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLDebugRendererInfo.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLDebugShaders.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLDepthTexture.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLExtension.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLFramebuffer.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLGetInfo.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLLoseContext.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLObject.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLProgram.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLRenderbuffer.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLRenderingContext.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLShader.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLShaderPrecisionFormat.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLSharedObject.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLTexture.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLUniformLocation.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLVertexArrayObjectOES.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\OESElementIndexUint.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\OESStandardDerivatives.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\OESTextureFloat.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\OESTextureHalfFloat.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\OESVertexArrayObject.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\EXTDrawBuffers.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\EXTTextureFilterAnisotropic.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\ANGLEWebKitBridge.cpp">
+      <Filter>platform\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\GraphicsContext3D.cpp">
+      <Filter>platform\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\OpenGLShims.cpp">
+      <Filter>platform\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\DrawingBuffer.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\LoopBlinnClassifier.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\LoopBlinnLocalTriangulator.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\LoopBlinnMathUtils.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\LoopBlinnPathCache.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\LoopBlinnShader.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\LoopBlinnSolidFillShader.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\LoopBlinnTextureCoords.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\Shader.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\SharedGraphicsContext3D.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\Texture.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\gpu\TilingData.cpp">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\opengl\Extensions3DOpenGL.cpp">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\opengl\Extensions3DOpenGLCommon.cpp">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\opengl\Extensions3DOpenGLES.cpp">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\opengl\GLPlatformContext.cpp">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\opengl\GLPlatformSurface.cpp">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\opengl\GraphicsContext3DOpenGLCommon.cpp">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\page\CaptionUserPreferencesMediaAF.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\cg\GraphicsContext3DCG.cpp">
+      <Filter>platform\graphics\cg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bindings\js\JSWebGLRenderingContextCustom.cpp">
+      <Filter>bindings\js</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\cairo\GraphicsContext3DCairo.cpp">
+      <Filter>platform\graphics\cairo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\cairo\GraphicsContext3DPrivate.cpp">
+      <Filter>platform\graphics\cairo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\CanvasContextAttributes.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\cairo\GLContext.cpp">
+      <Filter>platform\graphics\cairo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\opengl\GraphicsContext3DOpenGLES.cpp">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\egl\GLContextEGL.cpp">
+      <Filter>platform\graphics\egl</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSSVGGraphicsElement.cpp" />
+    <ClCompile Include="..\platform\graphics\avfoundation\cf\InbandTextTrackPrivateAVCF.cpp">
+      <Filter>platform\graphics\avfoundation\cf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\avfoundation\InbandTextTrackPrivateAVF.cpp">
+      <Filter>platform\graphics\avfoundation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\avfoundation\cf\InbandTextTrackPrivateLegacyAVCF.cpp">
+      <Filter>platform\graphics\avfoundation\cf</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -6897,7 +7186,7 @@
     <ClInclude Include="..\Modules\filesystem\SyncCallbackHelper.h">
       <Filter>Modules\filesystem</Filter>
     </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\WorkerContextFileSystem.h">
+    <ClInclude Include="..\Modules\filesystem\WorkerGlobalScopeFileSystem.h">
       <Filter>Modules\filesystem</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\geolocation\Coordinates.h">
@@ -7002,7 +7291,7 @@
     <ClInclude Include="..\Modules\indexeddb\PageGroupIndexedDatabase.h">
       <Filter>Modules\indexeddb</Filter>
     </ClInclude>
-    <ClInclude Include="..\Modules\indexeddb\WorkerContextIndexedDatabase.h">
+    <ClInclude Include="..\Modules\indexeddb\WorkerGlobalScopeIndexedDatabase.h">
       <Filter>Modules\indexeddb</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\navigatorcontentutils\NavigatorContentUtils.h">
@@ -7062,7 +7351,7 @@
     <ClInclude Include="..\Modules\notifications\NotificationClient.h">
       <Filter>Modules\notifications</Filter>
     </ClInclude>
-    <ClInclude Include="..\Modules\notifications\WorkerContextNotifications.h">
+    <ClInclude Include="..\Modules\notifications\WorkerGlobalScopeNotifications.h">
       <Filter>Modules\notifications</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\AbstractDatabaseServer.h">
@@ -7200,7 +7489,7 @@
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionSyncCallback.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\WorkerContextWebDatabase.h">
+    <ClInclude Include="..\Modules\webdatabase\WorkerGlobalScopeWebDatabase.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\websockets\CloseEvent.h">
@@ -9555,6 +9844,9 @@
     <ClInclude Include="..\rendering\mathml\RenderMathMLRow.h">
       <Filter>rendering\mathml</Filter>
     </ClInclude>
+    <ClInclude Include="..\rendering\mathml\RenderMathMLSpace.h">
+      <Filter>rendering\mathml</Filter>
+    </ClInclude>
     <ClInclude Include="..\rendering\mathml\RenderMathMLSquareRoot.h">
       <Filter>rendering\mathml</Filter>
     </ClInclude>
@@ -10341,7 +10633,7 @@
     <ClInclude Include="..\workers\AbstractWorker.h">
       <Filter>workers</Filter>
     </ClInclude>
-    <ClInclude Include="..\workers\DedicatedWorkerContext.h">
+    <ClInclude Include="..\workers\DedicatedWorkerGlobalScope.h">
       <Filter>workers</Filter>
     </ClInclude>
     <ClInclude Include="..\workers\DedicatedWorkerThread.h">
@@ -10353,7 +10645,7 @@
     <ClInclude Include="..\workers\SharedWorker.h">
       <Filter>workers</Filter>
     </ClInclude>
-    <ClInclude Include="..\workers\SharedWorkerContext.h">
+    <ClInclude Include="..\workers\SharedWorkerGlobalScope.h">
       <Filter>workers</Filter>
     </ClInclude>
     <ClInclude Include="..\workers\SharedWorkerRepository.h">
@@ -10368,10 +10660,10 @@
     <ClInclude Include="..\workers\Worker.h">
       <Filter>workers</Filter>
     </ClInclude>
-    <ClInclude Include="..\workers\WorkerContext.h">
+    <ClInclude Include="..\workers\WorkerGlobalScope.h">
       <Filter>workers</Filter>
     </ClInclude>
-    <ClInclude Include="..\workers\WorkerContextProxy.h">
+    <ClInclude Include="..\workers\WorkerGlobalScopeProxy.h">
       <Filter>workers</Filter>
     </ClInclude>
     <ClInclude Include="..\workers\WorkerEventQueue.h">
@@ -11313,19 +11605,10 @@
     <ClInclude Include="..\bindings\js\JSDOMGlobalObject.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
-    <ClInclude Include="..\bindings\js\JSDOMStringMapCustom.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
     <ClInclude Include="..\bindings\js\JSErrorHandler.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
-    <ClInclude Include="..\bindings\js\JSHTMLEmbedElementCustom.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
     <ClInclude Include="..\bindings\js\JSHTMLInputElementCustom.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bindings\js\JSHTMLObjectElementCustom.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
     <ClInclude Include="..\bindings\js\JSHTMLSelectElementCustom.h">
@@ -11335,9 +11618,6 @@
       <Filter>bindings\js</Filter>
     </ClInclude>
     <ClInclude Include="..\bindings\js\JSLazyEventListener.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bindings\js\JSLocationCustom.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
     <ClInclude Include="..\bindings\js\JSMainThreadExecState.h">
@@ -11358,10 +11638,7 @@
     <ClInclude Include="..\bindings\js\JSPluginElementFunctions.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
-    <ClInclude Include="..\bindings\js\JSStorageCustom.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bindings\js\JSWorkerContextBase.h">
+    <ClInclude Include="..\bindings\js\JSWorkerGlobalScopeBase.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
     <ClInclude Include="..\bindings\js\PageScriptDebugServer.h">
@@ -11479,9 +11756,6 @@
       <Filter>plugins\win</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\ColorDistance.h">
-      <Filter>rendering\svg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\svg\ElementTimeControl.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\SVGAElement.h">
@@ -11769,28 +12043,70 @@
     <ClInclude Include="..\svg\SVGPathSegArc.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegArcAbs.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegArcRel.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
     <ClInclude Include="..\svg\SVGPathSegClosePath.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\SVGPathSegCurvetoCubic.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegCurvetoCubicAbs.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegCurvetoCubicRel.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
     <ClInclude Include="..\svg\SVGPathSegCurvetoCubicSmooth.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegCurvetoCubicSmoothAbs.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegCurvetoCubicSmoothRel.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\SVGPathSegCurvetoQuadratic.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
-    <ClInclude Include="..\svg\SVGPathSegCurvetoQuadraticSmooth.h">
+    <ClInclude Include="..\svg\SVGPathSegCurvetoQuadraticAbs.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
-    <ClInclude Include="..\svg\SVGPathSegLineto.h">
+    <ClInclude Include="..\svg\SVGPathSegCurvetoQuadraticRel.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegCurvetoQuadraticSmoothAbs.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegCurvetoQuadraticSmoothRel.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegLinetoAbs.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegLinetoRel.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\SVGPathSegLinetoHorizontal.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegLinetoHorizontalAbs.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegLinetoHorizontalRel.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
     <ClInclude Include="..\svg\SVGPathSegLinetoVertical.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegLinetoVerticalAbs.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegLinetoVerticalRel.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\SVGPathSegList.h">
@@ -11802,7 +12118,10 @@
     <ClInclude Include="..\svg\SVGPathSegListSource.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
-    <ClInclude Include="..\svg\SVGPathSegMoveto.h">
+    <ClInclude Include="..\svg\SVGPathSegMovetoAbs.h">
+      <Filter>rendering\svg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\SVGPathSegMovetoRel.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\SVGPathSource.h">
@@ -11862,10 +12181,7 @@
     <ClInclude Include="..\svg\SVGStyledElement.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
-    <ClInclude Include="..\svg\SVGStyledLocatableElement.h">
-      <Filter>rendering\svg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\svg\SVGStyledTransformableElement.h">
+    <ClInclude Include="..\svg\SVGGraphicsElement.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\SVGStyleElement.h">
@@ -12766,12 +13082,6 @@
     <ClInclude Include="..\bindings\js\JSExceptionBase.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
-    <ClInclude Include="..\bindings\js\JSHistoryCustom.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bindings\js\JSHTMLAppletElementCustom.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
     <ClInclude Include="..\bindings\js\JSDOMWindowBase.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
@@ -13034,7 +13344,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSDataTransferItemList.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSDedicatedWorkerContext.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSDedicatedWorkerGlobalScope.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSDeviceMotionEvent.h">
@@ -13628,7 +13938,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSSharedWorker.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSSharedWorkerContext.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSSharedWorkerGlobalScope.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSSQLError.h">
@@ -13893,6 +14203,9 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSSVGGradientElement.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSSVGGraphicsElement.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSSVGHKernElement.h">
@@ -14171,7 +14484,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWorker.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWorkerContext.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWorkerGlobalScope.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWorkerLocation.h">
@@ -14248,6 +14561,279 @@
     </ClInclude>
     <ClInclude Include="..\accessibility\AccessibilityNodeObject.h">
       <Filter>accessibility</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLActiveInfo.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLBuffer.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLCompressedTextureATC.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLCompressedTexturePVRTC.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLCompressedTextureS3TC.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLContextAttributes.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLContextEvent.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLDebugRendererInfo.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLDebugShaders.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLDepthTexture.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLFramebuffer.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLLoseContext.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLProgram.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLRenderbuffer.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLRenderingContext.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLShader.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLShaderPrecisionFormat.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLTexture.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLUniformLocation.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSWebGLVertexArrayObjectOES.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSEXTDrawBuffers.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSEXTTextureFilterAnisotropic.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSOESElementIndexUint.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSOESStandardDerivatives.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSOESTextureFloat.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSOESVertexArrayObject.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLActiveInfo.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLBuffer.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLCompressedTextureATC.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLCompressedTexturePVRTC.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLCompressedTextureS3TC.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLContextAttributes.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLContextEvent.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLContextGroup.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLContextObject.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLDebugRendererInfo.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLDebugShaders.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLDepthTexture.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLExtension.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLFramebuffer.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLGetInfo.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLLoseContext.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLObject.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLProgram.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLRenderbuffer.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLRenderingContext.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLShader.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLShaderPrecisionFormat.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLSharedObject.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLTexture.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLUniformLocation.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLVertexArrayObjectOES.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\OESElementIndexUint.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\OESStandardDerivatives.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\OESTextureFloat.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\OESTextureHalfFloat.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\OESVertexArrayObject.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\EXTDrawBuffers.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\EXTTextureFilterAnisotropic.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\ANGLEWebKitBridge.h">
+      <Filter>platform\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\GraphicsContext3D.h">
+      <Filter>platform\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\OpenGLShims.h">
+      <Filter>platform\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\DrawingBuffer.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\LoopBlinnClassifier.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\LoopBlinnConstants.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\LoopBlinnLocalTriangulator.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\LoopBlinnMathUtils.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\LoopBlinnPathCache.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\LoopBlinnPathProcessor.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\LoopBlinnShader.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\LoopBlinnSolidFillShader.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\LoopBlinnTextureCoords.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\Shader.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\SharedGraphicsContext3D.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\Texture.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\gpu\TilingData.h">
+      <Filter>platform\graphics\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\opengl\Extensions3DOpenGL.h">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\opengl\Extensions3DOpenGLCommon.h">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\opengl\Extensions3DOpenGLES.h">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\opengl\GLDefs.h">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\opengl\GLPlatformContext.h">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\opengl\GLPlatformSurface.h">
+      <Filter>platform\graphics\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\page\CaptionUserPreferences.h">
+      <Filter>page</Filter>
+    </ClInclude>
+    <ClInclude Include="..\page\CaptionUserPreferencesMediaAF.h">
+      <Filter>page</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\cairo\GraphicsContext3DPrivate.h">
+      <Filter>platform\graphics\cairo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\CanvasContextAttributes.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\cairo\GLContext.h">
+      <Filter>platform\graphics\cairo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\egl\GLContextEGL.h">
+      <Filter>platform\graphics\egl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\avfoundation\cf\InbandTextTrackPrivateAVCF.h">
+      <Filter>platform\graphics\avfoundation\cf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\avfoundation\InbandTextTrackPrivateAVF.h">
+      <Filter>platform\graphics\avfoundation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\avfoundation\cf\InbandTextTrackPrivateLegacyAVCF.h">
+      <Filter>platform\graphics\avfoundation\cf</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -15192,5 +15778,10 @@
     <CustomBuildStep Include="..\rendering\RenderThemeWin.h">
       <Filter>rendering</Filter>
     </CustomBuildStep>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\plugins\win\PaintHooks.asm">
+      <Filter>plugins\win</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

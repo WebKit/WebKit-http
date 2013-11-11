@@ -29,10 +29,15 @@
 
 #include "WebViewClient.h"
 
+#include "NotImplemented.h"
 #include "WKAPICast.h"
 #include "WKBase.h"
 #include "WKRetainPtr.h"
 #include "WebViewportAttributes.h"
+
+#if ENABLE(TOUCH_EVENTS)
+#include "NativeWebTouchEvent.h"
+#endif
 
 using namespace WebCore;
 
@@ -110,6 +115,31 @@ void WebViewClient::didChangeTooltip(WebView* view, const String& tooltip)
 
     m_client.didChangeTooltip(toAPI(view), adoptWK(toCopiedAPI(tooltip)).get(), m_client.clientInfo);
 }
+
+void WebViewClient::didFindZoomableArea(WebView* view, const IntPoint& target, const IntRect& area)
+{
+    if (!m_client.didFindZoomableArea)
+        return;
+
+    m_client.didFindZoomableArea(toAPI(view), toAPI(target), toAPI(area), m_client.clientInfo);
+}
+
+#if ENABLE(TOUCH_EVENTS)
+void WebViewClient::doneWithTouchEvent(WebView* view, const NativeWebTouchEvent& event, bool wasEventHandled)
+{
+#if PLATFORM(EFL)
+    if (!m_client.doneWithTouchEvent)
+        return;
+
+    m_client.doneWithTouchEvent(toAPI(view), toAPI(const_cast<EwkTouchEvent*>(event.nativeEvent())), wasEventHandled, m_client.clientInfo);
+#else
+    notImplemented();
+    UNUSED_PARAM(view);
+    UNUSED_PARAM(event);
+    UNUSED_PARAM(wasEventHandled);
+#endif
+}
+#endif
 
 } // namespace WebKit
 

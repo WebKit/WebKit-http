@@ -29,6 +29,7 @@
 #include "ResourceHandle.h"
 
 #include "CachedResourceLoader.h"
+#include "CredentialStorage.h"
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "ResourceHandleInternal.h"
@@ -168,6 +169,11 @@ bool ResourceHandle::loadsBlocked()
     return false;
 }
 
+bool ResourceHandle::shouldUseCredentialStorage()
+{
+    return (!client() || client()->shouldUseCredentialStorage(this)) && firstRequest().url().protocolIsInHTTPFamily();
+}
+
 void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials storedCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     WebCoreSynchronousLoader syncLoader;
@@ -182,51 +188,78 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     response = syncLoader.resourceResponse();
 }
 
-//stubs needed for windows version
 void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
 {
-    ResourceHandleInternal* internal = getInternal();
-    ASSERT(internal->m_currentWebChallenge.isNull());
-    ASSERT(challenge.authenticationClient() == this); // Should be already set.
-    internal->m_currentWebChallenge = challenge;
+    if (shouldUseCredentialStorage()) {
+        if (!d->m_initialCredential.isEmpty() || challenge.previousFailureCount()) {
+            // The stored credential wasn't accepted, stop using it.
+            // There is a race condition here, since a different credential might have already been stored by another ResourceHandle,
+            // but the observable effect should be very minor, if any.
+            CredentialStorage::remove(challenge.protectionSpace());
+        }
 
+        if (!challenge.previousFailureCount()) {
+            Credential credential = CredentialStorage::get(challenge.protectionSpace());
+            if (!credential.isEmpty() && credential != d->m_initialCredential) {
+                ASSERT(credential.persistence() == CredentialPersistenceNone);
+                if (challenge.failureResponse().httpStatusCode() == 401) {
+                    // Store the credential back, possibly adding it as a default for this directory.
+                    CredentialStorage::set(credential, challenge.protectionSpace(), challenge.failureResponse().url());
+                }
+                String userpass = credential.user() + ":" + credential.password();
+                curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, userpass.utf8().data());
+                return;
+            }
+        }
+    }
+
+    d->m_currentWebChallenge = challenge;
+    
     if (client())
-        client()->didReceiveAuthenticationChallenge(this, challenge);
+        client()->didReceiveAuthenticationChallenge(this, d->m_currentWebChallenge);
 }
 
 void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge, const Credential& credential)
 {
-    ASSERT(!challenge.isNull());
-    ResourceHandleInternal* internal = getInternal();
-    if (challenge != internal->m_currentWebChallenge)
+    if (challenge != d->m_currentWebChallenge)
         return;
 
-    internal->m_user = credential.user();
-    internal->m_pass = credential.password();
+    if (credential.isEmpty()) {
+        receivedRequestToContinueWithoutCredential(challenge);
+        return;
+    }
+
+    if (shouldUseCredentialStorage()) {
+        if (challenge.failureResponse().httpStatusCode() == 401) {
+            KURL urlToStore = challenge.failureResponse().url();
+            CredentialStorage::set(credential, challenge.protectionSpace(), urlToStore);
+        }
+    }
+
+    String userpass = credential.user() + ":" + credential.password();
+    curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, userpass.utf8().data());
 
     clearAuthentication();
 }
 
 void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& challenge)
 {
-    ASSERT(!challenge.isNull());
-    ResourceHandleInternal* internal = getInternal();
-    if (challenge != internal->m_currentWebChallenge)
+    if (challenge != d->m_currentWebChallenge)
         return;
 
-    internal->m_user = "";
-    internal->m_pass = "";
+    String userpass = "";
+    curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, userpass.utf8().data());
 
     clearAuthentication();
 }
 
-void ResourceHandle::receivedCancellation(const AuthenticationChallenge&)
+void ResourceHandle::receivedCancellation(const AuthenticationChallenge& challenge)
 {
-    getInternal()->m_authenticationCancelled = true;
+    if (challenge != d->m_currentWebChallenge)
+        return;
 
-    // TODO:
-    //if (client())
-    //   client()->receivedCancellation(this, challenge);
+    if (client())
+        client()->receivedCancellation(this, challenge);
 }
 
 } // namespace WebCore

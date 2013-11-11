@@ -305,7 +305,7 @@ void RenderDeprecatedFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
     RenderFlowThread* flowThread = flowThreadContainingBlock();
     if (logicalWidthChangedInRegions(flowThread))
         relayoutChildren = true;
-    if (updateRegionsAndExclusionsBeforeChildLayout(flowThread))
+    if (updateRegionsAndShapesBeforeChildLayout(flowThread))
         relayoutChildren = true;
 
     LayoutSize previousSize = size();
@@ -331,6 +331,8 @@ void RenderDeprecatedFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
     ChildFrameRects oldChildRects;
     appendChildFrameRects(this, oldChildRects);
     
+    dirtyForLayoutFromPercentageHeightDescendants();
+
     if (isHorizontal())
         layoutHorizontalBox(relayoutChildren);
     else
@@ -347,7 +349,7 @@ void RenderDeprecatedFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
 
     layoutPositionedObjects(relayoutChildren || isRoot());
 
-    updateRegionsAndExclusionsAfterChildLayout(flowThread);
+    updateRegionsAndShapesAfterChildLayout(flowThread);
 
     if (!isFloatingOrOutOfFlowPositioned() && height() == 0) {
         // We are a block with no border and padding and a computed height
@@ -456,7 +458,7 @@ void RenderDeprecatedFlexibleBox::layoutHorizontalBox(bool relayoutChildren)
         // our box's intrinsic height.
         LayoutUnit maxAscent = 0, maxDescent = 0;
         for (RenderBox* child = iterator.first(); child; child = iterator.next()) {
-            if (relayoutChildren || (child->isReplaced() && (child->style()->width().isPercent() || child->style()->height().isPercent())))
+            if (relayoutChildren)
                 child->setChildNeedsLayout(true, MarkOnlyThis);
 
             if (child->isOutOfFlowPositioned())
@@ -758,7 +760,7 @@ void RenderDeprecatedFlexibleBox::layoutVerticalBox(bool relayoutChildren)
         size_t childIndex = 0;
         for (RenderBox* child = iterator.first(); child; child = iterator.next()) {
             // Make sure we relayout children if we need it.
-            if (!haveLineClamp && (relayoutChildren || (child->isReplaced() && (child->style()->width().isPercent() || child->style()->height().isPercent()))))
+            if (!haveLineClamp && relayoutChildren)
                 child->setChildNeedsLayout(true, MarkOnlyThis);
 
             if (child->isOutOfFlowPositioned()) {

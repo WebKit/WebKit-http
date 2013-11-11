@@ -93,6 +93,8 @@ public:
     bool exitFullScreen();
 #endif
 
+    void findZoomableAreaForPoint(const WebCore::IntPoint&, const WebCore::IntSize&);
+
     // View client.
     void initializeClient(const WKViewClient*);
 
@@ -101,6 +103,7 @@ public:
     void didChangeContentsSize(const WebCore::IntSize&);
     const WebCore::IntSize& contentsSize() const { return m_contentsSize; }
     WebCore::FloatSize visibleContentsSize() const;
+    void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&);
 
     // FIXME: Should become private when Web Events creation is moved to WebView.
     WebCore::AffineTransform transformFromScene() const;
@@ -171,7 +174,7 @@ protected:
     virtual PassRefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) OVERRIDE;
     virtual PassRefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) OVERRIDE;
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual PassRefPtr<WebColorChooserProxy> createColorChooserProxy(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) OVERRIDE;
+    virtual PassRefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) OVERRIDE;
 #endif
 
     virtual void setFindIndicator(PassRefPtr<FindIndicator>, bool, bool) OVERRIDE;
@@ -180,15 +183,7 @@ protected:
     virtual void exitAcceleratedCompositingMode() OVERRIDE;
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) OVERRIDE;
 
-    virtual void didCommitLoadForMainFrame(bool) OVERRIDE;
-    virtual void didFinishLoadingDataForCustomRepresentation(const String&, const CoreIPC::DataReference&) OVERRIDE;
-
-    virtual double customRepresentationZoomFactor() OVERRIDE;
-    virtual void setCustomRepresentationZoomFactor(double) OVERRIDE;
-
     virtual void flashBackingStoreUpdates(const Vector<WebCore::IntRect>&) OVERRIDE;
-    virtual void findStringInCustomRepresentation(const String&, FindOptions, unsigned) OVERRIDE;
-    virtual void countStringMatchesInCustomRepresentation(const String&, FindOptions, unsigned) OVERRIDE;
 
 protected:
     WebViewClient m_client;

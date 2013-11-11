@@ -38,8 +38,11 @@
 #include "FrameSelection.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
+#include "HTMLAnchorElement.h"
 #include "HTMLElement.h"
+#include "HTMLImageElement.h"
 #include "HTMLNames.h"
+#include "HTMLTableElement.h"
 #include "HitTestResult.h"
 #include "LogicalSelectionOffsetCaches.h"
 #include "Page.h"
@@ -2327,7 +2330,7 @@ RespectImageOrientationEnum RenderObject::shouldRespectImageOrientation() const
         // This can only be enabled for ports which honor the orientation flag in their drawing code.
         document()->isImageDocument() ||
 #endif
-        (document()->settings() && document()->settings()->shouldRespectImageOrientation() && node() && node()->hasTagName(HTMLNames::imgTag)) ? RespectImageOrientation : DoNotRespectImageOrientation;
+        (document()->settings() && document()->settings()->shouldRespectImageOrientation() && node() && isHTMLImageElement(node())) ? RespectImageOrientation : DoNotRespectImageOrientation;
 }
 
 bool RenderObject::hasOutlineAnnotation() const
@@ -2890,8 +2893,7 @@ void RenderObject::getTextDecorationColors(int decorations, Color& underline, Co
         curr = curr->parent();
         if (curr && curr->isAnonymousBlock() && toRenderBlock(curr)->continuation())
             curr = toRenderBlock(curr)->continuation();
-    } while (curr && decorations && (!quirksMode || !curr->node() ||
-                                     (!curr->node()->hasTagName(aTag) && !curr->node()->hasTagName(fontTag))));
+    } while (curr && decorations && (!quirksMode || !curr->node() || (!isHTMLAnchorElement(curr->node()) && !curr->node()->hasTagName(fontTag))));
 
     // If we bailed out, use the element we bailed out at (typically a <font> or <a> element).
     if (decorations && curr) {
@@ -3048,10 +3050,9 @@ RenderObject* RenderObject::hoverAncestor() const
     // See https://bugs.webkit.org/show_bug.cgi?id=111749
     RenderObject* hoverAncestor = parent();
     
-    // Skip anonymous blocks. There's no point in treating them as hover ancestors
-    // and it would also prevent us from continuing the search on the DOM tree
-    // when reaching the named flow thread.
-    if (hoverAncestor && hoverAncestor->isAnonymousBlock())
+    // Skip anonymous blocks directly flowed into flow threads as it would
+    // prevent us from continuing the search on the DOM tree when reaching the named flow thread.
+    if (hoverAncestor && hoverAncestor->isAnonymousBlock() && hoverAncestor->parent() && hoverAncestor->parent()->isRenderNamedFlowThread())
         hoverAncestor = hoverAncestor->parent();
 
     if (hoverAncestor && hoverAncestor->isRenderNamedFlowThread()) {
@@ -3094,7 +3095,7 @@ RenderBoxModelObject* RenderObject::offsetParent() const
     RenderObject* curr = parent();
     while (curr && (!curr->node() || (!curr->isPositioned() && !curr->isBody())) && !curr->isRenderNamedFlowThread()) {
         Node* element = curr->node();
-        if (!skipTables && element && (element->hasTagName(tableTag) || element->hasTagName(tdTag) || element->hasTagName(thTag)))
+        if (!skipTables && element && (isHTMLTableElement(element) || element->hasTagName(tdTag) || element->hasTagName(thTag)))
             break;
  
         float newZoom = curr->style()->effectiveZoom();

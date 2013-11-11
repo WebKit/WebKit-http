@@ -81,6 +81,8 @@ if (WTF_USE_CURL)
 endif ()
 
 set(WebKit_LIBRARIES
+    JavaScriptCore
+    WTF
     WebCore
 )
 

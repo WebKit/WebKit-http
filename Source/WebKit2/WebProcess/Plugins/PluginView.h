@@ -80,7 +80,6 @@ public:
 #endif
 
     WebCore::HTMLPlugInElement* pluginElement() const { return m_pluginElement.get(); }
-    Plugin* plugIn() const { return m_plugin.get(); }
     const Plugin::Parameters& initialParameters() const { return m_parameters; }
 
     // FIXME: Remove this; nobody should have to know about the plug-in view's renderer except the plug-in view itself.
@@ -154,6 +153,7 @@ private:
     virtual bool shouldAlwaysAutoStart() const OVERRIDE;
     virtual void beginSnapshottingRunningPlugin() OVERRIDE;
     virtual bool shouldAllowNavigationFromDrags() const OVERRIDE;
+    virtual bool shouldNotAddLayer() const OVERRIDE;
 
     // WebCore::Widget
     virtual void setFrameRect(const WebCore::IntRect&);
@@ -230,6 +230,7 @@ private:
     bool m_isWaitingForSynchronousInitialization;
     bool m_isWaitingUntilMediaCanStart;
     bool m_isBeingDestroyed;
+    bool m_pluginProcessHasCrashed;
 
     // Pending URLRequests that the plug-in has made.
     Deque<RefPtr<URLRequest>> m_pendingURLRequests;

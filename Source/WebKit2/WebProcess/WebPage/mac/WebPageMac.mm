@@ -113,14 +113,6 @@ void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
 {
     if (WebInspector* inspector = this->inspector())
         inspector->setInspectorUsesWebKitUserInterface(store.getBoolValueForKey(WebPreferencesKey::inspectorUsesWebKitUserInterfaceKey()));
-
-    BOOL omitPDFSupport = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitOmitPDFSupport"];
-    if (!shouldUsePDFPlugin() && !omitPDFSupport) {
-        // If we don't have PDFPlugin, we will use a PDF view in the UI process for PDF and PostScript MIME types.
-        HashSet<String> mimeTypes = MIMETypeRegistry::getPDFAndPostScriptMIMETypes();
-        for (HashSet<String>::iterator it = mimeTypes.begin(); it != mimeTypes.end(); ++it)
-            m_mimeTypesWithCustomRepresentations.add(*it);
-    }
 }
 
 bool WebPage::shouldUsePDFPlugin() const
@@ -978,19 +970,6 @@ void WebPage::drawPagesToPDFFromPDFDocument(CGContextRef context, PDFDocument *p
         drawPDFPage(pdfDocument, page, context, printInfo.pageSetupScaleFactor, CGSizeMake(printInfo.availablePaperWidth, printInfo.availablePaperHeight));
         CGPDFContextEndPage(context);
     }
-}
-
-void WebPage::containsPluginViewsWithPluginProcessToken(uint64_t plugInProcessToken, uint64_t callbackID)
-{
-    bool containsPlugIn = false;
-    for (HashSet<PluginView*>::const_iterator it = m_pluginViews.begin(), end = m_pluginViews.end(); it != end; ++it) {
-        if ((*it)->plugIn()->plugInProcessToken() == plugInProcessToken) {
-            containsPlugIn = true;
-            break;
-        }
-    }
-
-    send(Messages::WebPageProxy::ContainsPlugInCallback(containsPlugIn, plugInProcessToken, callbackID));
 }
 
 } // namespace WebKit

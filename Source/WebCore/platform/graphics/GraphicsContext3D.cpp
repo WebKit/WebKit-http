@@ -30,14 +30,15 @@
 #if USE(3D_GRAPHICS)
 
 #include "GraphicsContext3D.h"
-#include "GraphicsContext3DNEON.h"
 
-#include "CheckedInt.h"
-#include "DrawingBuffer.h"
 #include "Extensions3D.h"
 #include "Image.h"
 #include "ImageData.h"
 #include "ImageObserver.h"
+
+#if HAVE(ARM_NEON_INTRINSICS)
+#include "GraphicsContext3DNEON.h"
+#endif
 
 #include <wtf/ArrayBufferView.h>
 #include <wtf/OwnArrayPtr.h>
@@ -201,11 +202,11 @@ GC3Denum GraphicsContext3D::computeImageSizeInBytes(GC3Denum format, GC3Denum ty
             *paddingInBytes = 0;
         return GraphicsContext3D::NO_ERROR;
     }
-    CheckedInt<uint32_t> checkedValue(bytesPerComponent * componentsPerPixel);
+    Checked<uint32_t, RecordOverflow> checkedValue = bytesPerComponent * componentsPerPixel;
     checkedValue *=  width;
-    if (!checkedValue.isValid())
+    if (checkedValue.hasOverflowed())
         return GraphicsContext3D::INVALID_VALUE;
-    unsigned int validRowSize = checkedValue.value();
+    unsigned int validRowSize = checkedValue.unsafeGet();
     unsigned int padding = 0;
     unsigned int residual = validRowSize % alignment;
     if (residual) {
@@ -215,9 +216,9 @@ GC3Denum GraphicsContext3D::computeImageSizeInBytes(GC3Denum format, GC3Denum ty
     // Last row needs no padding.
     checkedValue *= (height - 1);
     checkedValue += validRowSize;
-    if (!checkedValue.isValid())
+    if (checkedValue.hasOverflowed())
         return GraphicsContext3D::INVALID_VALUE;
-    *imageSizeInBytes = checkedValue.value();
+    *imageSizeInBytes = checkedValue.unsafeGet();
     if (paddingInBytes)
         *paddingInBytes = padding;
     return GraphicsContext3D::NO_ERROR;
@@ -1471,7 +1472,7 @@ unsigned GraphicsContext3D::getChannelBitsByFormat(GC3Denum format)
     }
 }
 
-#if !PLATFORM(BLACKBERRY) && !PLATFORM(QT) && !PLATFORM(GTK) && !PLATFORM(EFL) && !PLATFORM(MAC)
+#if !PLATFORM(BLACKBERRY) && !PLATFORM(QT) && !PLATFORM(GTK) && !PLATFORM(EFL) && !PLATFORM(MAC) && !PLATFORM(WIN)
 PlatformGraphicsContext3D GraphicsContext3D::platformGraphicsContext3D() const
 {
     return NullPlatformGraphicsContext3D;

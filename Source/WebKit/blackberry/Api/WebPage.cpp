@@ -68,6 +68,7 @@
 #include "HTMLMediaElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
+#include "HTMLTextAreaElement.h"
 #include "HTTPParsers.h"
 #include "HistoryItem.h"
 #include "IconDatabaseClientBlackBerry.h"
@@ -1762,7 +1763,7 @@ double WebPagePrivate::maximumScale() const
     if (m_maximumScale >= m_minimumScale && respectViewport())
         return std::max(zoomToFitScale, m_maximumScale);
 
-    return hasVirtualViewport() ? std::max<double>(zoomToFitScale, 4.0) : 4.0;
+    return hasVirtualViewport() ? std::max<double>(zoomToFitScale, 5.0) : 5.0;
 }
 
 double WebPage::maximumScale() const
@@ -2133,7 +2134,7 @@ Platform::WebContext WebPagePrivate::webContext(TargetDetectionStrategy strategy
     layoutIfNeeded();
 
     bool nodeAllowSelectionOverride = false;
-    bool nodeIsImage = node->isHTMLElement() && node->hasTagName(HTMLNames::imgTag);
+    bool nodeIsImage = node->isHTMLElement() && isHTMLImageElement(node);
     Node* linkNode = node->enclosingLinkEventParentOrSelf();
     // Set link url only when the node is linked image, or text inside anchor. Prevent CCM popup when long press non-link element(eg. button) inside an anchor.
     if (linkNode && (node == linkNode || node->isTextNode() || nodeIsImage)) {
@@ -2161,13 +2162,13 @@ Platform::WebContext WebPagePrivate::webContext(TargetDetectionStrategy strategy
         HTMLImageElement* imageElement = 0;
         HTMLMediaElement* mediaElement = 0;
 
-        if (node->hasTagName(HTMLNames::imgTag))
-            imageElement = static_cast<HTMLImageElement*>(node.get());
-        else if (node->hasTagName(HTMLNames::areaTag))
-            imageElement = static_cast<HTMLAreaElement*>(node.get())->imageElement();
+        if (isHTMLImageElement(node))
+            imageElement = toHTMLImageElement(node.get());
+        else if (isHTMLAreaElement(node))
+            imageElement = toHTMLAreaElement(node.get())->imageElement();
 
         if (static_cast<HTMLElement*>(node.get())->isMediaElement())
-            mediaElement = static_cast<HTMLMediaElement*>(node.get());
+            mediaElement = toHTMLMediaElement(node.get());
 
         if (imageElement && imageElement->renderer()) {
             context.setFlag(Platform::WebContext::IsImage);
@@ -2229,7 +2230,7 @@ Platform::WebContext WebPagePrivate::webContext(TargetDetectionStrategy strategy
                     canStartSelection = nodeUnderFinger->canStartSelection();
             }
             context.setFlag(Platform::WebContext::IsInput);
-            if (element->hasTagName(HTMLNames::inputTag))
+            if (isHTMLInputElement(element))
                 context.setFlag(Platform::WebContext::IsSingleLine);
             if (DOMSupport::isPasswordElement(element))
                 context.setFlag(Platform::WebContext::IsPassword);
@@ -2676,7 +2677,7 @@ Node* WebPagePrivate::adjustedBlockZoomNodeForZoomAndExpandingRatioLimits(Node* 
 {
     Node* initialNode = node;
     RenderObject* renderer = node->renderer();
-    bool acceptableNodeSize = newScaleForBlockZoomRect(rectForNode(node), 1.0, 0) < maxBlockZoomScale();
+    bool acceptableNodeSize = newScaleForBlockZoomRect(rectForNode(node), 1.0, 0) < maximumScale();
     IntSize actualVisibleSize = this->actualVisibleSize();
 
     while (!renderer || !acceptableNodeSize) {
@@ -2689,7 +2690,7 @@ Node* WebPagePrivate::adjustedBlockZoomNodeForZoomAndExpandingRatioLimits(Node* 
             return initialNode;
 
         renderer = node->renderer();
-        acceptableNodeSize = newScaleForBlockZoomRect(rectForNode(node), 1.0, 0) < maxBlockZoomScale();
+        acceptableNodeSize = newScaleForBlockZoomRect(rectForNode(node), 1.0, 0) < maximumScale();
     }
 
     return node;
@@ -2831,7 +2832,7 @@ IntRect WebPagePrivate::blockZoomRectForNode(Node* node)
     double blockToPageRatio = static_cast<double>(pageArea - originalArea) / pageArea;
     double blockExpansionRatio = 5.0 * blockToPageRatio * blockToPageRatio;
 
-    if (!tnode->hasTagName(HTMLNames::imgTag) && !tnode->hasTagName(HTMLNames::inputTag) && !tnode->hasTagName(HTMLNames::textareaTag)) {
+    if (!isHTMLImageElement(tnode) && !isHTMLInputElement(tnode) && !isHTMLTextAreaElement(tnode)) {
         while ((tnode = tnode->parentNode())) {
             ASSERT(tnode);
             IntRect tRect = rectForNode(tnode);
@@ -3162,14 +3163,14 @@ void WebPage::setVisible(bool visible)
 #if USE(ACCELERATED_COMPOSITING)
         // Root layer commit is not necessary for invisible tabs.
         // And release layer resources can reduce memory consumption.
-        d->suspendRootLayerCommit();
+        d->updateRootLayerCommitEnabled();
 #endif
 
         return;
     }
 
 #if USE(ACCELERATED_COMPOSITING)
-    d->resumeRootLayerCommit();
+    d->updateRootLayerCommitEnabled();
 #endif
 
     // We want to become visible but not get backing store ownership.
@@ -4499,7 +4500,7 @@ bool WebPage::blockZoom(const Platform::IntPoint& documentTargetPoint)
 
         // Don't use a block if it is too close to the size of the actual contents.
         // We allow this for images only so that they can be zoomed tight to the screen.
-        if (!node->hasTagName(HTMLNames::imgTag)) {
+        if (!isHTMLImageElement(node)) {
             const IntRect tRect = viewportAccessor->roundToDocumentFromPixelContents(WebCore::FloatRect(blockRect));
             int blockArea = tRect.width() * tRect.height();
             int pageArea = d->contentsSize().width() * d->contentsSize().height();
@@ -4932,10 +4933,7 @@ void WebPagePrivate::notifyAppActivationStateChange(ActivationStateType activati
     m_activationState = activationState;
 
 #if USE(ACCELERATED_COMPOSITING)
-    if (activationState == ActivationActive)
-        resumeRootLayerCommit();
-    else
-        suspendRootLayerCommit();
+    updateRootLayerCommitEnabled();
 #endif
 
 #if ENABLE(PAGE_VISIBILITY_API)
@@ -4988,7 +4986,7 @@ void WebPage::notifyFullScreenVideoExited(bool done)
     if (!element)
         return;
     if (d->m_webSettings->fullScreenVideoCapable() && element->hasTagName(HTMLNames::videoTag))
-        static_cast<HTMLMediaElement*>(element)->exitFullscreen();
+        toHTMLMediaElement(element)->exitFullscreen();
 #if ENABLE(FULLSCREEN_API)
     else
         element->document()->webkitCancelFullScreen();
@@ -5565,25 +5563,22 @@ void WebPagePrivate::releaseLayerResourcesCompositingThread()
     m_compositor->releaseLayerResources();
 }
 
-void WebPagePrivate::suspendRootLayerCommit()
+void WebPagePrivate::updateRootLayerCommitEnabled()
 {
-    if (m_suspendRootLayerCommit)
+    bool shouldSuspend = !m_visible || m_activationState != ActivationActive;
+
+    if (m_suspendRootLayerCommit == shouldSuspend)
         return;
 
-    m_suspendRootLayerCommit = true;
+    m_suspendRootLayerCommit = shouldSuspend;
 
-    if (!m_compositor)
+    if (m_suspendRootLayerCommit) {
+        if (m_compositor)
+            releaseLayerResources();
+
         return;
+    }
 
-    releaseLayerResources();
-}
-
-void WebPagePrivate::resumeRootLayerCommit()
-{
-    if (!m_suspendRootLayerCommit)
-        return;
-
-    m_suspendRootLayerCommit = false;
     m_needsCommit = true;
     // PR 330917, explicitly start root layer commit timer, so that there's a commit
     // even if BackingStore got disabled/removed.
@@ -5620,7 +5615,7 @@ void WebPagePrivate::enterFullscreenForNode(Node* node)
     if (!node || !node->hasTagName(HTMLNames::videoTag))
         return;
 
-    MediaPlayer* player = static_cast<HTMLMediaElement*>(node)->player();
+    MediaPlayer* player = toHTMLMediaElement(node)->player();
     if (!player)
         return;
 
@@ -5653,7 +5648,7 @@ void WebPagePrivate::exitFullscreenForNode(Node* node)
     if (!node || !node->hasTagName(HTMLNames::videoTag))
         return;
 
-    MediaPlayer* player = static_cast<HTMLMediaElement*>(node)->player();
+    MediaPlayer* player = toHTMLMediaElement(node)->player();
     if (!player)
         return;
 

@@ -27,6 +27,7 @@
 #define CurlDownload_h
 
 #include <WebCore/FileSystem.h>
+#include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceResponse.h>
 
 #if PLATFORM(WIN)
@@ -35,6 +36,8 @@
 #endif
 
 #include <curl/curl.h>
+
+namespace WebCore {
 
 class CurlDownloadManager {
 public:
@@ -58,6 +61,9 @@ private:
 
     bool runThread() const { return m_runThread; }
     void setRunThread(bool runThread) { m_runThread = runThread; }
+
+    bool addToCurl(CURL* curlHandle);
+    bool removeFromCurl(CURL* curlHandle);
 
     static void downloadThread(void* data);
 
@@ -84,6 +90,8 @@ public:
     ~CurlDownload();
 
     void init(CurlDownloadListener*, const WebCore::KURL&);
+    void init(CurlDownloadListener*, ResourceHandle*, const ResourceRequest&, const ResourceResponse&);
+
     bool start();
     bool cancel();
 
@@ -99,6 +107,9 @@ public:
 private:
     void closeFile();
     void moveFileToDestination();
+    void writeDataToFile(const char* data, int size);
+
+    void addHeaders(const ResourceRequest&);
 
     // Called on download thread.
     void didReceiveHeader(const String& header);
@@ -119,6 +130,7 @@ private:
     static void receivedResponseCallback(CurlDownload*);
 
     CURL* m_curlHandle;
+    struct curl_slist* m_customHeaders;
     char* m_url;
     String m_tempPath;
     String m_destination;
@@ -132,5 +144,7 @@ private:
 
     friend class CurlDownloadManager;
 };
+
+}
 
 #endif

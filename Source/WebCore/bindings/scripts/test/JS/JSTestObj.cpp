@@ -26,6 +26,7 @@
 #include "Dictionary.h"
 #include "Document.h"
 #include "ExceptionCode.h"
+#include "Frame.h"
 #include "HTMLNames.h"
 #include "JSDOMBinding.h"
 #include "JSDOMStringList.h"
@@ -43,11 +44,13 @@
 #include "JSbool.h"
 #include "KURL.h"
 #include "SVGDocument.h"
+#include "SVGPoint.h"
 #include "SVGStaticPropertyTearOff.h"
 #include "ScriptArguments.h"
 #include "ScriptCallStackFactory.h"
 #include "ScriptProfile.h"
 #include "SerializedScriptValue.h"
+#include "Settings.h"
 #include "TestObj.h"
 #include "bool.h"
 #include <runtime/Error.h>
@@ -79,6 +82,7 @@ static const HashTableValue JSTestObjTableValues[] =
     { "readOnlyLongAttr", DontDelete | ReadOnly, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadOnlyLongAttr), (intptr_t)0, NoIntrinsic },
     { "readOnlyStringAttr", DontDelete | ReadOnly, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadOnlyStringAttr), (intptr_t)0, NoIntrinsic },
     { "readOnlyTestObjAttr", DontDelete | ReadOnly, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadOnlyTestObjAttr), (intptr_t)0, NoIntrinsic },
+    { "TestSubObjEnabledBySetting", DontEnum, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTestSubObjEnabledBySettingConstructor), (intptr_t)setJSTestObjTestSubObjEnabledBySettingConstructor, NoIntrinsic },
     { "enumAttr", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnumAttr), (intptr_t)setJSTestObjEnumAttr, NoIntrinsic },
     { "byteAttr", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjByteAttr), (intptr_t)setJSTestObjByteAttr, NoIntrinsic },
     { "octetAttr", DontDelete, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjOctetAttr), (intptr_t)setJSTestObjOctetAttr, NoIntrinsic },
@@ -451,6 +455,16 @@ JSValue jsTestObjConstructorStaticStringAttr(ExecState* exec, JSValue slotBase, 
 JSValue jsTestObjConstructorTestSubObj(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(slotBase));
+    return JSTestSubObj::getConstructor(exec, castedThis->globalObject());
+}
+
+
+JSValue jsTestObjTestSubObjEnabledBySettingConstructor(ExecState* exec, JSValue slotBase, PropertyName)
+{
+    JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(slotBase));
+    Settings* settings = castedThis->impl()->frame() ? castedThis->impl()->frame()->settings() : 0;
+    if (!settings || !settings->testSettingEnabled())
+        return jsUndefined();
     return JSTestSubObj::getConstructor(exec, castedThis->globalObject());
 }
 
@@ -929,7 +943,7 @@ JSValue jsTestObjMutablePoint(ExecState* exec, JSValue slotBase, PropertyName)
     JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(slotBase));
     UNUSED_PARAM(exec);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
-    JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(SVGStaticPropertyTearOff<TestObj, FloatPoint>::create(impl, impl->mutablePoint(), &TestObj::updateMutablePoint)));
+    JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(SVGStaticPropertyTearOff<TestObj, SVGPoint>::create(impl, impl->mutablePoint(), &TestObj::updateMutablePoint)));
     return result;
 }
 
@@ -939,7 +953,7 @@ JSValue jsTestObjImmutablePoint(ExecState* exec, JSValue slotBase, PropertyName)
     JSTestObj* castedThis = jsCast<JSTestObj*>(asObject(slotBase));
     UNUSED_PARAM(exec);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
-    JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(SVGPropertyTearOff<FloatPoint>::create(impl->immutablePoint())));
+    JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(SVGPropertyTearOff<SVGPoint>::create(impl->immutablePoint())));
     return result;
 }
 
@@ -1103,6 +1117,14 @@ void setJSTestObjConstructorStaticStringAttr(ExecState* exec, JSObject*, JSValue
     if (exec->hadException())
         return;
     TestObj::setStaticStringAttr(nativeValue);
+}
+
+
+void setJSTestObjTestSubObjEnabledBySettingConstructor(ExecState* exec, JSObject* thisObject, JSValue value)
+{
+    UNUSED_PARAM(exec);
+    // Shadowing a built-in constructor
+    jsCast<JSTestObj*>(thisObject)->putDirect(exec->vm(), Identifier(exec, "TestSubObjEnabledBySetting"), value);
 }
 
 
@@ -1631,7 +1653,7 @@ void setJSTestObjMutablePoint(ExecState* exec, JSObject* thisObject, JSValue val
     UNUSED_PARAM(exec);
     JSTestObj* castedThis = jsCast<JSTestObj*>(thisObject);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
-    SVGPropertyTearOff<FloatPoint>* nativeValue(toSVGPoint(value));
+    SVGPropertyTearOff<SVGPoint>* nativeValue(toSVGPoint(value));
     if (exec->hadException())
         return;
     impl->setMutablePoint(nativeValue);
@@ -1643,7 +1665,7 @@ void setJSTestObjImmutablePoint(ExecState* exec, JSObject* thisObject, JSValue v
     UNUSED_PARAM(exec);
     JSTestObj* castedThis = jsCast<JSTestObj*>(thisObject);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
-    SVGPropertyTearOff<FloatPoint>* nativeValue(toSVGPoint(value));
+    SVGPropertyTearOff<SVGPoint>* nativeValue(toSVGPoint(value));
     if (exec->hadException())
         return;
     impl->setImmutablePoint(nativeValue);
@@ -2968,7 +2990,7 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMutablePointFunction(Exec
     ASSERT_GC_OBJECT_INHERITS(castedThis, &JSTestObj::s_info);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
 
-    JSC::JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(SVGPropertyTearOff<FloatPoint>::create(impl->mutablePointFunction())));
+    JSC::JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(SVGPropertyTearOff<SVGPoint>::create(impl->mutablePointFunction())));
     return JSValue::encode(result);
 }
 
@@ -2981,7 +3003,7 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionImmutablePointFunction(Ex
     ASSERT_GC_OBJECT_INHERITS(castedThis, &JSTestObj::s_info);
     TestObj* impl = static_cast<TestObj*>(castedThis->impl());
 
-    JSC::JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(SVGPropertyTearOff<FloatPoint>::create(impl->immutablePointFunction())));
+    JSC::JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(SVGPropertyTearOff<SVGPoint>::create(impl->immutablePointFunction())));
     return JSValue::encode(result);
 }
 

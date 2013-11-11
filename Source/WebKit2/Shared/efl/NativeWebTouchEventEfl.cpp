@@ -32,8 +32,9 @@
 
 namespace WebKit {
 
-NativeWebTouchEvent::NativeWebTouchEvent(Ewk_Touch_Event_Type type, const Eina_List* points, const Evas_Modifier* modifiers, const WebCore::AffineTransform& toWebContent, const WebCore::AffineTransform& toDeviceScreen, double timestamp)
-    : WebTouchEvent(WebEventFactory::createWebTouchEvent(type, points, modifiers, toWebContent, toDeviceScreen, timestamp))
+NativeWebTouchEvent::NativeWebTouchEvent(EwkTouchEvent* touchEvent, const WebCore::AffineTransform& toWebContent)
+    : WebTouchEvent(WebEventFactory::createWebTouchEvent(touchEvent, toWebContent))
+    , m_nativeEvent(touchEvent)
 {
 }
 

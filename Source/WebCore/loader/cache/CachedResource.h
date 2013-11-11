@@ -255,6 +255,10 @@ public:
     void tryReplaceEncodedData(PassRefPtr<SharedBuffer>);
 #endif
 
+#if USE(SOUP)
+    virtual char* getOrCreateReadBuffer(size_t /* requestedSize */, size_t& /* actualSize */) { return 0; }
+#endif
+
 protected:
     virtual void checkNotify();
 
@@ -291,11 +295,12 @@ protected:
 
     RefPtr<ResourceBuffer> m_data;
     OwnPtr<PurgeableBuffer> m_purgeableData;
-    Timer<CachedResource> m_decodedDataDeletionTimer;
+    DeferrableOneShotTimer<CachedResource> m_decodedDataDeletionTimer;
 
 private:
     bool addClientToSet(CachedResourceClient*);
-    void decodedDataDeletionTimerFired(Timer<CachedResource>*);
+
+    void decodedDataDeletionTimerFired(DeferrableOneShotTimer<CachedResource>*);
 
     virtual PurgePriority purgePriority() const { return PurgeDefault; }
     virtual bool mayTryReplaceEncodedData() const { return false; }

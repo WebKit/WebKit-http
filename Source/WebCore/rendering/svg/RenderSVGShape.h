@@ -42,7 +42,7 @@ class GraphicsContextStateSaver;
 class RenderSVGContainer;
 class RenderSVGPath;
 class RenderSVGResource;
-class SVGStyledTransformableElement;
+class SVGGraphicsElement;
 
 class BoundingRectStrokeStyleApplier : public StrokeStyleApplier {
 public:
@@ -66,8 +66,8 @@ private:
 
 class RenderSVGShape : public RenderSVGModelObject {
 public:
-    explicit RenderSVGShape(SVGStyledTransformableElement*);
-    RenderSVGShape(SVGStyledTransformableElement*, Path*, bool);
+    explicit RenderSVGShape(SVGGraphicsElement*);
+    RenderSVGShape(SVGGraphicsElement*, Path*, bool);
     virtual ~RenderSVGShape();
 
     void setNeedsShapeUpdate() { m_needsShapeUpdate = true; }
@@ -77,6 +77,7 @@ public:
     virtual void fillShape(GraphicsContext*) const;
     virtual void strokeShape(GraphicsContext*) const;
 
+    bool hasPath() const { return m_path.get(); }
     Path& path() const
     {
         ASSERT(m_path);
@@ -89,7 +90,6 @@ protected:
     virtual bool shapeDependentStrokeContains(const FloatPoint&);
     virtual bool shapeDependentFillContains(const FloatPoint&, const WindRule) const;
     float strokeWidth() const;
-    bool hasPath() const { return m_path.get(); }
     bool hasSmoothStroke() const;
 
     bool hasNonScalingStroke() const { return style()->svgStyle()->vectorEffect() == VE_NON_SCALING_STROKE; }

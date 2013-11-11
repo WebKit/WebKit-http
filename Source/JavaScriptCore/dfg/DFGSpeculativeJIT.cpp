@@ -2600,7 +2600,7 @@ void SpeculativeJIT::compilePutByValForIntTypedArray(const TypedArrayDescriptor&
     Edge valueUse = m_jit.graph().varArgChild(node, 2);
     
     GPRTemporary value;
-    GPRReg valueGPR;
+    GPRReg valueGPR = InvalidGPRReg;
     
     if (valueUse->isConstant()) {
         JSValue jsValue = valueOfJSConstant(valueUse.node());
@@ -4057,7 +4057,7 @@ void SpeculativeJIT::compileNewFunctionNoCheck(Node* node)
     GPRReg resultGPR = result.gpr();
     flushRegisters();
     callOperation(
-        operationNewFunction, resultGPR, m_jit.codeBlock()->functionDecl(node->functionDeclIndex()));
+        operationNewFunctionNoCheck, resultGPR, m_jit.codeBlock()->functionDecl(node->functionDeclIndex()));
     cellResult(resultGPR, node);
 }
 

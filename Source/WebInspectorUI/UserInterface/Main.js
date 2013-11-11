@@ -32,6 +32,9 @@ WebInspector.loaded = function()
     // Tell the InspectorFrontendHost we loaded first to establish communication with InspectorBackend.
     InspectorFrontendHost.loaded();
 
+    // Initialize WebSocket to communication
+    this._initializeWebSocketIfNeeded();
+
     // Register observers for events from the InspectorBackend.
     InspectorBackend.registerInspectorDispatcher(new WebInspector.InspectorObserver);
     InspectorBackend.registerPageDispatcher(new WebInspector.PageObserver);
@@ -106,7 +109,7 @@ WebInspector.loaded = function()
 
     // Create settings.
     this._lastSelectedNavigationSidebarPanelSetting = new WebInspector.Setting("last-selected-navigation-sidebar-panel", "resource");
-    this._navigationSidebarCollapsedSetting = new WebInspector.Setting("navigation-sidebar-collasped", false);
+    this._navigationSidebarCollapsedSetting = new WebInspector.Setting("navigation-sidebar-collapsed", false);
     this._navigationSidebarWidthSetting = new WebInspector.Setting("navigation-sidebar-width", null);
 
     this._lastSelectedDetailsSidebarPanelSetting = new WebInspector.Setting("last-selected-details-sidebar-panel", null);
@@ -144,6 +147,10 @@ WebInspector.contentLoaded = function()
     this.toolbar = new WebInspector.Toolbar(document.getElementById("toolbar"));
     this.toolbar.addEventListener(WebInspector.Toolbar.Event.DisplayModeDidChange, this._toolbarDisplayModeDidChange, this);
     this.toolbar.addEventListener(WebInspector.Toolbar.Event.SizeModeDidChange, this._toolbarSizeModeDidChange, this);
+    
+    var contentElement = document.getElementById("content");
+    contentElement.setAttribute("role", "main");
+    contentElement.setAttribute("aria-label", WebInspector.UIString("Content"));
 
     this.contentBrowser = new WebInspector.ContentBrowser(document.getElementById("content-browser"), this);
     this.contentBrowser.addEventListener(WebInspector.ContentBrowser.Event.CurrentRepresentedObjectsDidChange, this._contentBrowserRepresentedObjectsDidChange, this);
@@ -165,7 +172,7 @@ WebInspector.contentLoaded = function()
     this.navigationSidebar.addEventListener(WebInspector.Sidebar.Event.WidthDidChange, this._sidebarWidthDidChange, this);
     this.navigationSidebar.addEventListener(WebInspector.Sidebar.Event.SidebarPanelSelected, this._navigationSidebarPanelSelected, this);
 
-    this.rightSidebar = this.detailsSidebar = new WebInspector.Sidebar(document.getElementById("details-sidebar"), WebInspector.Sidebar.Sides.Right);
+    this.rightSidebar = this.detailsSidebar = new WebInspector.Sidebar(document.getElementById("details-sidebar"), WebInspector.Sidebar.Sides.Right, null, null, WebInspector.UIString("Details"));
     this.detailsSidebar.addEventListener(WebInspector.Sidebar.Event.CollapsedStateDidChange, this._sidebarCollapsedStateDidChange, this);
     this.detailsSidebar.addEventListener(WebInspector.Sidebar.Event.WidthDidChange, this._sidebarWidthDidChange, this);
     this.detailsSidebar.addEventListener(WebInspector.Sidebar.Event.SidebarPanelSelected, this._detailsSidebarPanelSelected, this);
@@ -353,7 +360,15 @@ WebInspector.displayNameForURL = function(url, urlComponents)
 {
     if (!urlComponents)
         urlComponents = parseURL(url);
-    return decodeURIComponent(urlComponents.lastPathComponent || "") || WebInspector.displayNameForHost(urlComponents.host) || url;
+
+    var displayName;
+    try {
+        displayName = decodeURIComponent(urlComponents.lastPathComponent || "");
+    } catch (e) {
+        displayName = urlComponents.lastPathComponent;
+    }
+
+    return displayName || WebInspector.displayNameForHost(urlComponents.host) || url;
 }
 
 WebInspector.displayNameForHost = function(host)
@@ -367,14 +382,22 @@ WebInspector.updateWindowTitle = function()
     var mainFrame = this.frameResourceManager.mainFrame;
     console.assert(mainFrame);
 
-    // Build a title based on the URL components.
     var urlComponents = mainFrame.mainResource.urlComponents;
-    if (urlComponents.host && urlComponents.lastPathComponent)
-        var title = this.displayNameForHost(urlComponents.host) + " \u2014 " + decodeURIComponent(urlComponents.lastPathComponent);
+
+    var lastPathComponent;
+    try {
+        lastPathComponent = decodeURIComponent(urlComponents.lastPathComponent || "");
+    } catch (e) {
+        lastPathComponent = urlComponents.lastPathComponent;
+    }
+
+    // Build a title based on the URL components.
+    if (urlComponents.host && lastPathComponent)
+        var title = this.displayNameForHost(urlComponents.host) + " \u2014 " + lastPathComponent;
     else if (urlComponents.host)
         var title = this.displayNameForHost(urlComponents.host);
-    else if (urlComponents.lastPathComponent)
-        var title = decodeURIComponent(urlComponents.lastPathComponent);
+    else if (lastPathComponent)
+        var title = lastPathComponent;
     else
         var title = mainFrame.url;
 
@@ -1065,6 +1088,33 @@ WebInspector._contentBrowserRepresentedObjectsDidChange = function(event)
     this._updateCurrentContentViewCookie(event);
 }
 
+WebInspector._initializeWebSocketIfNeeded = function()
+{
+    var ws;
+    var queryParams = parseLocationQueryParameters();
+
+    if ("ws" in queryParams)
+        ws = "ws://" + queryParams.ws;
+    else if ("page" in queryParams) {
+        var page = queryParams.page;
+        var host = "host" in queryParams ? queryParams.host : window.location.host;
+        ws = "ws://" + host + "/devtools/page/" + page;
+    }
+
+    if (!ws)
+        return;
+
+    var socket = new WebSocket(ws);
+    socket.addEventListener("open", createSocket);
+
+    function createSocket()
+    {
+        WebInspector.socket = socket;
+        WebInspector.socket.addEventListener("message", function(message) { InspectorBackend.dispatch(message.data); });
+        WebInspector.socket.addEventListener("error", function(error) { console.error(error); });
+    }
+}
+
 WebInspector._updateSplitConsoleHeight = function(height)
 {
     const minimumHeight = 64;
@@ -1319,7 +1369,7 @@ WebInspector._generateDisclosureTriangleImages = function()
     generateColoredImagesForCSS("Images/DisclosureTriangleTinyClosed.pdf", specifications, 8, 8, "disclosure-triangle-tiny-closed-");
 }
 
-WebInspector.elementDragStart = function(element, dividerDrag, elementDragEnd, event, cursor)
+WebInspector.elementDragStart = function(element, dividerDrag, elementDragEnd, event, cursor, eventTarget)
 {
     if (WebInspector._elementDraggingEventListener || WebInspector._elementEndDraggingEventListener)
         WebInspector.elementDragEnd(event);
@@ -1340,8 +1390,10 @@ WebInspector.elementDragStart = function(element, dividerDrag, elementDragEnd, e
     WebInspector._elementEndDraggingEventListener = elementDragEnd;
     
     var targetDocument = event.target.ownerDocument;
-    targetDocument.addEventListener("mousemove", dividerDrag, true);
-    targetDocument.addEventListener("mouseup", elementDragEnd, true);
+
+    WebInspector._elementDraggingEventTarget = eventTarget || targetDocument;
+    WebInspector._elementDraggingEventTarget.addEventListener("mousemove", dividerDrag, true);
+    WebInspector._elementDraggingEventTarget.addEventListener("mouseup", elementDragEnd, true);
     
     targetDocument.body.style.cursor = cursor;
     
@@ -1350,16 +1402,16 @@ WebInspector.elementDragStart = function(element, dividerDrag, elementDragEnd, e
 
 WebInspector.elementDragEnd = function(event)
 {
-    var targetDocument = event.target.ownerDocument;
-    targetDocument.removeEventListener("mousemove", WebInspector._elementDraggingEventListener, true);
-    targetDocument.removeEventListener("mouseup", WebInspector._elementEndDraggingEventListener, true);
+    WebInspector._elementDraggingEventTarget.removeEventListener("mousemove", WebInspector._elementDraggingEventListener, true);
+    WebInspector._elementDraggingEventTarget.removeEventListener("mouseup", WebInspector._elementEndDraggingEventListener, true);
     
-    targetDocument.body.style.removeProperty("cursor");
+    event.target.ownerDocument.body.style.removeProperty("cursor");
     
     if (WebInspector._elementDraggingGlassPane)
         WebInspector._elementDraggingGlassPane.parentElement.removeChild(WebInspector._elementDraggingGlassPane);
     
     delete WebInspector._elementDraggingGlassPane;
+    delete WebInspector._elementDraggingEventTarget;
     delete WebInspector._elementDraggingEventListener;
     delete WebInspector._elementEndDraggingEventListener;
     

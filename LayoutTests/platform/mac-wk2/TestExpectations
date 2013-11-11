@@ -316,6 +316,38 @@ webkit.org/b/117767 media/W3C/video/error/error_onerror_called_on_bogus_source.h
 webkit.org/b/117767 media/broken-video.html [ Failure ]
 webkit.org/b/117767 media/event-attributes.html [ Failure ]
 
+webkit.org/b/117962 [ MountainLion ] media/video-played-collapse.html [ Skip ]
+
+# Minor pixel differences with reftest.
+# Sometimes, the expected result fails to paint completely, <rdar://problem/14382142>.
+webkit.org/b/118490 compositing/patterns/direct-pattern-compositing-add-text.html [ ImageOnlyFailure ]
+webkit.org/b/118490 compositing/patterns/direct-pattern-compositing-contain.html [ ImageOnlyFailure ]
+webkit.org/b/118490 compositing/patterns/direct-pattern-compositing-cover.html [ ImageOnlyFailure ]
+webkit.org/b/118490 compositing/patterns/direct-pattern-compositing-padding.html [ ImageOnlyFailure ]
+webkit.org/b/118490 compositing/patterns/direct-pattern-compositing-position.html [ ImageOnlyFailure ]
+webkit.org/b/118490 compositing/patterns/direct-pattern-compositing-size.html [ ImageOnlyFailure ]
+webkit.org/b/118490 compositing/patterns/direct-pattern-compositing.html [ ImageOnlyFailure ]
+
+webkit.org/b/118925 [ Debug ] compositing/background-color/background-color-alpha.html  [ ImageOnlyFailure ]  
+webkit.org/b/118925 [ Debug ] compositing/background-color/background-color-change-to-text.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/background-color/background-color-composite.html [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/background-color/background-color-container.html [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/background-color/background-color-content-clip.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/background-color/background-color-padding-clip.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/background-color/background-color-simple.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/background-color/background-color-text-change.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/backgrounds/fixed-background-on-descendant.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/backgrounds/fixed-backgrounds.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/geometry/fixed-position-composited-page-scale-smaller-than-viewport.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/overlap-blending/children-opacity-huge.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] compositing/overlap-blending/children-opacity-no-overlap.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] css3/filters/custom/effect-custom-transform-parameters.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] fast/layers/no-clipping-overflow-hidden-added-after-transition.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] fast/multicol/mixed-opacity-fixed-test.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] fast/regions/fixed-pos-elem-in-region.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] fast/repaint/region-painting-in-composited-view.html  [ ImageOnlyFailure ]
+webkit.org/b/118925 [ Debug ] svg/repaint/buffered-rendering-static-image.html  [ ImageOnlyFailure ]
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -365,6 +397,10 @@ editing/secure-input/password-input-focusing-to-different-frame.html [ Failure ]
 # textInputController.hasMarkedText is implemented, but gives a wrong result for some reason.
 platform/mac/editing/input/unconfirmed-text-navigation-with-page-cache.html
 
+# Intermittent failure due to a missing repaint
+# https://bugs.webkit.org/show_bug.cgi?id=118153
+compositing/repaint/positioned-movement.html [ Pass Failure ]
+
 ### END OF (3) Unclassified failures
 ########################################
 
@@ -391,6 +427,12 @@ webaudio/ [ Pass ]
 webaudio/mediastreamaudiodestinationnode.html
 webaudio/mediastreamaudiosourcenode.html
 webaudio/codec-tests/vorbis/
+
+# Asserts in WebKit1-debug only, so reenabling.
+compositing/geometry/fixed-position-flipped-writing-mode.html [ Pass ]
+
+# Plug-in blocking callback doesn't exist in WebKit1, so reenabling.
+plugins/unavailable-plugin-indicator-obscurity.html [ Pass ]
 
 ### END OF (5) Features that are not supported in WebKit1, so skipped in mac/TestExpectations then re-enabled here
 ########################################

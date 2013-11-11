@@ -1,3 +1,367 @@
+2013-07-23  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] WebView didReceiveIcon delegate call doesn't have the icon in it
+        https://bugs.webkit.org/show_bug.cgi?id=100379
+
+        Reviewed by Brent Fulgham.
+
+        Added missing icon to WebView didReceiveIcon delegate call, fixes <rdar://problem/5491010>.
+
+        * WebView.cpp:
+        (WebView::dispatchDidReceiveIconFromWebFrame):
+
+2013-07-22  peavo@outlook.com  <peavo@outlook.com>
+
+        [Curl] Download fails for certain urls.
+        https://bugs.webkit.org/show_bug.cgi?id=118468
+
+        Reviewed by Brent Fulgham.
+
+        Initialize download from provided resource handle, request, and response object.
+
+        * WebDownload.h: Use WebCore namespace for Curl download class.
+        * WebDownloadCurl.cpp:
+        (WebDownload::init): Initialize download from provided resource handle, request, and response object.
+
+2013-07-19  peavo@outlook.com  <peavo@outlook.com>
+
+        [Curl] Http response code 401 (Authentication required) is not handled.
+        https://bugs.webkit.org/show_bug.cgi?id=118849
+
+        Reviewed by Brent Fulgham.
+
+        The current Curl implementation does not handle a 401 response.
+        When receiving http code 401, we need to give a notification that authorization is required, by calling the appropriate notification method.
+        This gives a WebKit client the possibility to present a password dialog to the user.
+        In response to this, we should provide Curl with the given username and password, so another request can be sent with the given credentials.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidReceiveAuthenticationChallenge):
+            Implement empty method; use the same implementation as the CFNetwork version does,
+            notify delegate when authorization is required. 
+        * WebURLAuthenticationChallengeSenderCurl.cpp:
+        (WebURLAuthenticationChallengeSender::cancelAuthenticationChallenge):
+            Implement empty method; use the same implementation as the CFNetwork version does.
+        (WebURLAuthenticationChallengeSender::continueWithoutCredentialForAuthenticationChallenge):
+            Implement empty method; use the same implementation as the CFNetwork version does.
+        (WebURLAuthenticationChallengeSender::useCredential):
+            Implement empty method; use the same implementation as the CFNetwork version does.
+
+2013-07-17  Kangil Han  <kangil.han@samsung.com>
+
+        Use toHTMLMediaElement
+        https://bugs.webkit.org/show_bug.cgi?id=118727
+
+        Reviewed by Ryosuke Niwa.
+
+        To avoid direct use of static_cast, this patch uses toHTMLMediaElement for code cleanup.
+
+        * WebView.cpp:
+        (WebView::enterFullscreenForNode):
+
+2013-07-16  Kangil Han  <kangil.han@samsung.com>
+
+        Use toHTMLSelectElement and dismiss isHTMLSelectElement
+        https://bugs.webkit.org/show_bug.cgi?id=118714
+
+        Reviewed by Ryosuke Niwa.
+
+        To avoid direct use of static_cast, this patch introduces toHTMLIFrameElement for code cleanup.
+        Additionally, this patch removes isHTMLSelectElement because not all element subclasses can be checked by a combination of tag names.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLSelectElement::options):
+        (DOMHTMLSelectElement::activateItemAtIndex):
+
+2013-07-15  Kangil Han  <kangil.han@samsung.com>
+
+        Introduce toHTMLIFrameElement
+        https://bugs.webkit.org/show_bug.cgi?id=118672
+
+        Reviewed by Ryosuke Niwa.
+
+        To avoid direct use of static_cast, this patch introduces toHTMLIFrameElement for code cleanup.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLIFrameElement::contentFrame):
+
+2013-07-09  Jer Noble  <jer.noble@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        Remember the scroll position and restore after exiting full-screen mode.
+        https://bugs.webkit.org/show_bug.cgi?id=61956
+
+        Add support for two new FullScreenClient callbacks for saving and restoring the 
+        scroll position of the full-screen frame.
+
+        * WebView.cpp:
+        (WebView::fullScreenClientSaveScrollPosition):
+        (WebView::fullScreenClientRestoreScrollPosition):
+        * WebView.h:
+
+2013-07-01  Jochen Eisinger  <jochen@chromium.org>
+
+        Remove support for consumable user gestures
+        https://bugs.webkit.org/show_bug.cgi?id=118247
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::searchWithGoogle):
+
+2013-07-01  peavo@outlook.com  <peavo@outlook.com>
+
+        [Curl] WebDownload init method is not implemented.
+        https://bugs.webkit.org/show_bug.cgi?id=118241
+
+        Reviewed by Brent Fulgham.
+
+        The WebDownload::init() method called when a normal load is changed to a download
+        because of a decision by the policy delegate, is not implemented for Curl.
+
+        * WebDownloadCurl.cpp:
+        (WebDownload::init): Implement init() method.
+
+2013-07-01  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt toHTMLTextAreaElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118226
+
+        Reviewed by Andreas Kling.
+
+        To enhance readability, this patch adopts toHTMLTextAreaElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::createInstance):
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLTextAreaElement::form):
+        (DOMHTMLTextAreaElement::value):
+        (DOMHTMLTextAreaElement::setValue):
+        (DOMHTMLTextAreaElement::select):
+        (DOMHTMLTextAreaElement::isUserEdited):
+
+2013-06-29  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLOptionElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118212
+
+        Reviewed by Andreas Kling.
+
+        To enhance readability, this patch adopts is/toHTMLOptionElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::createInstance):
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLOptionElement::text):
+        (DOMHTMLOptionElement::label):
+
+2013-06-28  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Compilation error.
+        https://bugs.webkit.org/show_bug.cgi?id=118131
+
+        Reviewed by Brent Fulgham.
+
+        * Interfaces/IWebView.idl: Include needed accessibility interface.
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::AXFinishFrameLoad): Accessibility methods should not be inside FULLSCREEN_API ifdef.
+
+2013-06-27  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLInputElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=118130
+
+        Reviewed by Antti Koivisto.
+
+        To enhance readability, this patch adopts is/toHTMLInputElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::createInstance):
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLInputElement::form):
+        (DOMHTMLInputElement::disabled):
+        (DOMHTMLInputElement::readOnly):
+        (DOMHTMLInputElement::setType):
+        (DOMHTMLInputElement::value):
+        (DOMHTMLInputElement::setValue):
+        (DOMHTMLInputElement::setValueForUser):
+        (DOMHTMLInputElement::select):
+        (DOMHTMLInputElement::setSelectionStart):
+        (DOMHTMLInputElement::selectionStart):
+        (DOMHTMLInputElement::setSelectionEnd):
+        (DOMHTMLInputElement::selectionEnd):
+        (DOMHTMLInputElement::isTextField):
+        (DOMHTMLInputElement::rectOnScreen):
+        (DOMHTMLInputElement::replaceCharactersInRange):
+        (DOMHTMLInputElement::selectedRange):
+        (DOMHTMLInputElement::setAutofilled):
+        (DOMHTMLInputElement::isAutofilled):
+        (DOMHTMLInputElement::isUserEdited):
+        * WebFrame.cpp:
+        (inputElementFromDOMElement):
+
+2013-06-27  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of the last uses of deprecatedCharactersWithNullTermination()
+        https://bugs.webkit.org/show_bug.cgi?id=118159
+
+        Reviewed by Andreas Kling.
+
+        Replace calls to deprecatedCharactersWithNullTermination() with charactersWithNullTermination().data().
+
+        * COMPropertyBag.h:
+        (::GetPropertyInfo):
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::runOpenPanel):
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::updateWindowTitle):
+        * WebDownloadCFNet.cpp:
+        (WebDownload::didFinish):
+        * WebKitSystemBits.cpp:
+        (WebVolumeFreeSize):
+        * WebLocalizableStrings.cpp:
+        (LocalizedString::operator LPCTSTR):
+        * WebView.cpp:
+        (WebView::setToolTip):
+
+2013-06-26  Anders Carlsson  <andersca@apple.com>
+
+        Deprecate StringImpl::charactersWithNullTermination
+        https://bugs.webkit.org/show_bug.cgi?id=118108
+
+        Reviewed by Beth Dakin.
+
+        Rename calls to charactersWithNullTermination to deprecatedCharactersWithNullTermination.
+
+        * COMPropertyBag.h:
+        (::GetPropertyInfo):
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::runOpenPanel):
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::updateWindowTitle):
+        * WebDownloadCFNet.cpp:
+        (WebDownload::didFinish):
+        * WebKitSystemBits.cpp:
+        (WebVolumeFreeSize):
+        * WebLocalizableStrings.cpp:
+        (LocalizedString::operator LPCTSTR):
+        * WebView.cpp:
+        (WebView::setToolTip):
+
+2013-06-26  Roger Fong  <roger_fong@apple.com>
+
+        Add an accessibility delegate interface to AppleWin port.
+        https://bugs.webkit.org/show_bug.cgi?id=118094.
+
+        Reviewed by Brent Fulgham.
+
+        * Interfaces/AccessibilityDelegate.idl: Added.
+        * Interfaces/IWebView.idl:
+        * Interfaces/WebKit.idl:
+        * WebCoreSupport/WebChromeClient.cpp: Add methods that call into the AccessibilityDelegate.
+        (WebChromeClient::AXStartFrameLoad):
+        (WebChromeClient::AXFinishFrameLoad):
+        * WebCoreSupport/WebChromeClient.h:
+        * WebView.cpp: Add support for setting and getting the AccessibilityDelegate from the WebView.
+        (WebView::close):
+        (WebView::setAccessibilityDelegate):
+        (WebView::accessibilityDelegate):
+        * WebView.h:
+
+2013-06-24  Kangil Han  <kangil.han@samsung.com>
+
+        Adopt is/toHTMLFormElement for code cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=117937
+
+        Reviewed by Andreas Kling.
+
+        This refers to http://src.chromium.org/viewvc/blink?view=revision&revision=152859
+
+        To enhance readibility, this patch adopts is/toHTMLFormElement.
+        This also helps out to reduce duplicated use of static_cast.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::createInstance):
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLFormElement::action):
+        (DOMHTMLFormElement::method):
+        * WebFrame.cpp:
+        (formElementFromDOMElement):
+
+2013-06-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] AX: Radio buttons with "tab" role should describe themselves as tabs.
+        https://bugs.webkit.org/show_bug.cgi?id=117837
+
+        Reviewed by Chris Fleizach.
+
+        * AccessibleBase.cpp:
+        (MSAARole): Don't expose TabRole as a radio button to satisfy buggy screen readers.
+
+2013-06-21  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        REGRESSION (r150663): Using webkitAudioContext in Inspector makes it undefined everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=117825
+
+        Reviewed by Kentaro Hara.
+
+        Use Settings to enable Web Audio instead of RuntimeEnabledFeatures.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2013-06-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Correct style on last patch.
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+
+2013-06-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build correction.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession): Make sure returned generic
+        type is a CFStringRef before casting.
+
+2013-06-19  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed build fix for Apple Windows port.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+
+2013-06-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] AX: Extend notification support.
+        https://bugs.webkit.org/show_bug.cgi?id=117761
+
+        Reviewed by Anders Carlsson.
+
+        * AccessibleDocument.cpp:
+        (AccessibleDocument::state): Improve handling of focus state.
+        * AccessibleDocument.h: Provide signature for new state override.
+
+2013-06-19  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Does not compile.
+        https://bugs.webkit.org/show_bug.cgi?id=117798
+
+        Reviewed by Brent Fulgham.
+
+        Add USE(CFNETWORK) guards.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp: Add USE(CFNETWORK) guard.
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession): Change USE(CF_NETWORK) to USE(CFNETWORK).
+        * WebCoreSupport/WebFrameNetworkingContext.h: Add USE(CFNETWORK) guard.
+
 2013-06-18  Roger Fong  <roger_fong@apple.com>
 
         Unreviewed. Build fix for Apple Windows.

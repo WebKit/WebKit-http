@@ -110,7 +110,7 @@ bool EditorClientBlackBerry::shouldSpellCheckFocusedField()
     // If the field does not support autocomplete, do not do spellchecking.
     if (node->isElementNode()) {
         const Element* element = toElement(node);
-        if (element->hasTagName(HTMLNames::inputTag) && !DOMSupport::elementSupportsAutocomplete(element))
+        if (isHTMLInputElement(element) && !DOMSupport::elementSupportsAutocomplete(element))
             return false;
     }
 
@@ -550,7 +550,8 @@ void EditorClientBlackBerry::textDidChangeInTextArea(Element*)
 
 bool EditorClientBlackBerry::shouldEraseMarkersAfterChangeSelection(TextCheckingType) const
 {
-    return true;
+    const Frame* frame = m_webPagePrivate->focusedOrMainFrame();
+    return !frame || !frame->settings() || (!frame->settings()->asynchronousSpellCheckingEnabled() && !frame->settings()->unifiedTextCheckerEnabled());
 }
 
 void EditorClientBlackBerry::ignoreWordInSpellDocument(const WTF::String&)

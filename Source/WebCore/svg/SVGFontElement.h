@@ -25,8 +25,8 @@
 #if ENABLE(SVG_FONTS)
 #include "SVGAnimatedBoolean.h"
 #include "SVGExternalResourcesRequired.h"
-#include "SVGGlyphElement.h"
 #include "SVGGlyphMap.h"
+#include "SVGNames.h"
 #include "SVGParserUtilities.h"
 #include "SVGStyledElement.h"
 
@@ -88,6 +88,17 @@ private:
     Glyph m_missingGlyph;
     bool m_isGlyphCacheValid;
 };
+
+inline bool isSVGFontElement(const Node* node)
+{
+    return node->hasTagName(SVGNames::fontTag);
+}
+
+inline SVGFontElement* toSVGFontElement(Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || isSVGFontElement(node));
+    return static_cast<SVGFontElement*>(node);
+}
 
 } // namespace WebCore
 

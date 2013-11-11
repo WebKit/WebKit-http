@@ -25,6 +25,13 @@ fast/canvas/canvas-strokeRect-gradient-shadow.html
 
 # Currently failing WebGL tests <rdar://problem/9355460>
 fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html
+webgl/conformance/glsl/functions/glsl-function-atan-xy.html
+webgl/conformance/glsl/misc/glsl-long-variable-names.html
+webgl/conformance/misc/object-deletion-behaviour.html
+webgl/conformance/textures/mipmap-fbo.html
+webgl/conformance/textures/texture-attachment-formats.html
+webgl/conformance/uniforms/uniform-default-values.html
+webgl/conformance/limits/gl-min-textures.html
 
 # --- Editing ---
 
@@ -135,3 +142,17 @@ http/tests/notifications
 
 # Lion does not support the tiled drawing area
 platform/mac-wk2/tiled-drawing [ Skip ]
+
+# Lion does not support cache partitioning
+http/tests/cache/partitioned-cache.html
+http/tests/cache/partitioned-cache-iframe.html
+
+webkit.org/b/118480 fast/text/international/synthesized-italic-vertical-latin.html [ Failure ]
+
+webkit.org/b/118870 [ Debug ] compositing/patterns/direct-pattern-compositing-add-text.html [ ImageOnlyFailure ]
+webkit.org/b/118870 [ Debug ] compositing/patterns/direct-pattern-compositing-contain.html [ ImageOnlyFailure ]
+webkit.org/b/118870 [ Debug ] compositing/patterns/direct-pattern-compositing-cover.html [ ImageOnlyFailure ]
+webkit.org/b/118870 [ Debug ] compositing/patterns/direct-pattern-compositing-padding.html [ ImageOnlyFailure ] 
+webkit.org/b/118870 [ Debug ] compositing/patterns/direct-pattern-compositing-position.html [ ImageOnlyFailure ]
+webkit.org/b/118870 [ Debug ] compositing/patterns/direct-pattern-compositing-size.html [ ImageOnlyFailure ]   
+webkit.org/b/118870 [ Debug ] compositing/patterns/direct-pattern-compositing.html [ ImageOnlyFailure ]

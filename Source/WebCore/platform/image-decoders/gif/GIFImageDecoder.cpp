@@ -127,6 +127,19 @@ ImageFrame* GIFImageDecoder::frameBufferAtIndex(size_t index)
     return &frame;
 }
 
+
+bool GIFImageDecoder::frameIsCompleteAtIndex(size_t index) const
+{
+    return m_reader && (index < m_reader->imagesCount()) && m_reader->frameContext(index)->isComplete();
+}
+
+float GIFImageDecoder::frameDurationAtIndex(size_t index) const
+{
+    return (m_reader && (index < m_reader->imagesCount()) && m_reader->frameContext(index)->isHeaderDefined())
+        ? m_reader->frameContext(index)->delayTime : 0;
+}
+
+
 bool GIFImageDecoder::setFailed()
 {
     m_reader.clear();
@@ -185,7 +198,7 @@ void GIFImageDecoder::clearFrameBufferCache(size_t clearBeforeFrame)
 
 bool GIFImageDecoder::haveDecodedRow(unsigned frameIndex, const Vector<unsigned char>& rowBuffer, size_t width, size_t rowNumber, unsigned repeatCount, bool writeTransparentPixels)
 {
-    const GIFFrameContext* frameContext = m_reader->frameContext();
+    const GIFFrameContext* frameContext = m_reader->frameContext(frameIndex);
     // The pixel data and coordinates supplied to us are relative to the frame's
     // origin within the entire image size, i.e.
     // (frameContext->xOffset, frameContext->yOffset). There is no guarantee
@@ -214,7 +227,7 @@ bool GIFImageDecoder::haveDecodedRow(unsigned frameIndex, const Vector<unsigned 
 
     // Initialize the frame if necessary.
     ImageFrame& buffer = m_frameBufferCache[frameIndex];
-    if ((buffer.status() == ImageFrame::FrameEmpty) && !initFrameBuffer(frameIndex))
+    if (((buffer.status() == ImageFrame::FrameEmpty) && !initFrameBuffer(frameIndex)) || !buffer.hasPixelData())
         return false;
 
     ImageFrame::PixelData* currentAddress = buffer.getAddr(xBegin, yBegin);
@@ -297,8 +310,6 @@ void GIFImageDecoder::gifComplete()
     // Cache the repetition count, which is now as authoritative as it's ever
     // going to be.
     repetitionCount();
-
-    m_reader.clear();
 }
 
 void GIFImageDecoder::decode(unsigned haltAtFrame, GIFQuery query)
@@ -335,16 +346,16 @@ void GIFImageDecoder::decode(unsigned haltAtFrame, GIFQuery query)
         return;
     }
 
-    // It is also a fatal error if all data is received but we failed to decode
-    // all frames completely.
-    if (isAllDataReceived() && haltAtFrame >= m_frameBufferCache.size() && m_reader)
+    // It is also a fatal error if all data is received and we have decoded all
+    // frames available but the file is truncated.
+    if (haltAtFrame >= m_frameBufferCache.size() && isAllDataReceived() && m_reader && !m_reader->parseCompleted())
         setFailed();
 }
 
 bool GIFImageDecoder::initFrameBuffer(unsigned frameIndex)
 {
     // Initialize the frame rect in our buffer.
-    const GIFFrameContext* frameContext = m_reader->frameContext();
+    const GIFFrameContext* frameContext = m_reader->frameContext(frameIndex);
     IntRect frameRect(frameContext->xOffset, frameContext->yOffset, frameContext->width, frameContext->height);
 
     // Make sure the frameRect doesn't extend outside the buffer.
@@ -359,7 +370,7 @@ bool GIFImageDecoder::initFrameBuffer(unsigned frameIndex)
     int top = upperBoundScaledY(frameRect.y());
     int bottom = lowerBoundScaledY(frameRect.maxY(), top);
     buffer->setOriginalFrameRect(IntRect(left, top, right - left, bottom - top));
-    
+
     if (!frameIndex) {
         // This is the first frame, so we're not relying on any previous data.
         if (!buffer->setSize(scaledSize().width(), scaledSize().height()))
@@ -396,15 +407,10 @@ bool GIFImageDecoder::initFrameBuffer(unsigned frameIndex)
                 if (!buffer->setSize(bufferSize.width(), bufferSize.height()))
                     return setFailed();
             } else {
-              // Copy the whole previous buffer, then clear just its frame.
-              if (!buffer->copyBitmapData(*prevBuffer))
-                  return setFailed();
-              for (int y = prevRect.y(); y < prevRect.maxY(); ++y) {
-                  for (int x = prevRect.x(); x < prevRect.maxX(); ++x)
-                      buffer->setRGBA(x, y, 0, 0, 0, 0);
-              }
-              if ((prevRect.width() > 0) && (prevRect.height() > 0))
-                  buffer->setHasAlpha(true);
+                // Copy the whole previous buffer, then clear just its frame.
+                if (!buffer->copyBitmapData(*prevBuffer))
+                    return setFailed();
+                buffer->zeroFillFrameRect(prevRect);
             }
         }
     }

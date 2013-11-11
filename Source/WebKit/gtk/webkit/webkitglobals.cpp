@@ -55,10 +55,6 @@
 #include <wtf/gobject/GOwnPtr.h>
 #include <wtf/gobject/GRefPtr.h>
 
-#if USE(CLUTTER)
-#include <clutter-gtk/clutter-gtk.h>
-#endif
-
 static WebKitCacheModel cacheModel = WEBKIT_CACHE_MODEL_DEFAULT;
 
 using namespace WebCore;
@@ -160,6 +156,8 @@ void webkit_set_cache_model(WebKitCacheModel model)
         g_return_if_reached();
     }
 
+    bool disableCache = !cacheMinDeadCapacity && !cacheMaxDeadCapacity && !cacheTotalCapacity;
+    memoryCache()->setDisabled(disableCache);
     memoryCache()->setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
     memoryCache()->setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
     pageCache()->setCapacity(pageCacheCapacity);
@@ -563,10 +561,6 @@ void webkitInit()
     webkit_icon_database_set_path(webkit_get_icon_database(), iconDatabasePath.get());
 
     WebCore::ResourceHandle::setIgnoreSSLErrors(true);
-
-#if USE(CLUTTER)
-    gtk_clutter_init(0, 0);
-#endif
 
     atexit(webkitExit);
 }

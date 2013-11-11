@@ -28,7 +28,7 @@
 
 #import <WebCore/SoftLinking.h>
 
-SOFT_LINK_STAGED_FRAMEWORK_OPTIONAL(WebInspectorUI, PrivateFrameworks, A)
+SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
 
 namespace WebKit {
 

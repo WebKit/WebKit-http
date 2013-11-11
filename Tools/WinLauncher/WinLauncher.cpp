@@ -28,10 +28,17 @@
 #include "stdafx.h"
 #include "WinLauncher.h"
 
+#include "AccessibilityDelegate.h"
 #include "DOMDefaultImpl.h"
 #include "PrintWebUIDelegate.h"
 #include <WebKit/WebKitCOMAPI.h>
+#include <wtf/Platform.h>
 
+#if USE(CF)
+#include <CoreFoundation/CFRunLoop.h>
+#endif
+
+#include <assert.h>
 #include <commctrl.h>
 #include <commdlg.h>
 #include <objbase.h>
@@ -54,6 +61,7 @@ IWebViewPrivate* gWebViewPrivate = 0;
 HWND gViewWindow = 0;
 WinLauncherWebHost* gWebHost = 0;
 PrintWebUIDelegate* gPrintDelegate = 0;
+AccessibilityDelegate* gAccessibilityDelegate = 0;
 TCHAR szTitle[MAX_LOADSTRING];                    // The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
@@ -257,6 +265,10 @@ BOOL WINAPI DllMain(HINSTANCE dllInstance, DWORD reason, LPVOID)
     return TRUE;
 }
 
+#if USE(CF)
+extern "C" void _CFRunLoopSetWindowsMessageQueueMask(CFRunLoopRef, uint32_t, CFStringRef);
+#endif
+
 extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HINSTANCE, LPTSTR, int nCmdShow)
 {
 #ifdef _CRTDBG_MAP_ALLOC
@@ -343,6 +355,7 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
         goto exit;
 
     standardPreferences->setAcceleratedCompositingEnabled(TRUE);
+    standardPreferences->setAVFoundationEnabled(TRUE);
 
     HRESULT hr = WebKitCreateInstance(CLSID_WebView, 0, IID_IWebView, reinterpret_cast<void**>(&gWebView));
     if (FAILED(hr))
@@ -361,6 +374,12 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
     gPrintDelegate = new PrintWebUIDelegate;
     gPrintDelegate->AddRef();
     hr = gWebView->setUIDelegate(gPrintDelegate);
+    if (FAILED (hr))
+        goto exit;
+
+    gAccessibilityDelegate = new AccessibilityDelegate;
+    gAccessibilityDelegate->AddRef();
+    hr = gWebView->setAccessibilityDelegate(gAccessibilityDelegate);
     if (FAILED (hr))
         goto exit;
 
@@ -412,12 +431,17 @@ extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(HINSTANCE, HIN
     }
 
     // Main message loop:
+#if USE(CF)
+    _CFRunLoopSetWindowsMessageQueueMask(CFRunLoopGetMain(), QS_ALLINPUT | QS_ALLPOSTMESSAGE, kCFRunLoopDefaultMode);
+    CFRunLoopRun();
+#else
     while (GetMessage(&msg, NULL, 0, 0)) {
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
     }
+#endif
 
 exit:
     gPrintDelegate->Release();

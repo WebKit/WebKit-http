@@ -265,7 +265,7 @@ set(WebKit2_SOURCES
     UIProcess/WebBackForwardList.cpp
     UIProcess/WebBatteryManagerProxy.cpp
     UIProcess/WebBatteryProvider.cpp
-    UIProcess/WebColorChooserProxy.cpp
+    UIProcess/WebColorPicker.cpp
     UIProcess/WebColorPickerResultListenerProxy.cpp
     UIProcess/WebConnectionToWebProcess.cpp
     UIProcess/WebContext.cpp
@@ -366,6 +366,7 @@ set(WebKit2_SOURCES
     UIProcess/Authentication/WebProtectionSpace.cpp
 
     UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp
+    UIProcess/CoordinatedGraphics/WebPageProxyCoordinatedGraphics.cpp
 
     UIProcess/Downloads/DownloadProxy.cpp
     UIProcess/Downloads/DownloadProxyMap.cpp
@@ -519,6 +520,7 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/WebUndoStep.cpp
 
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
+    WebProcess/WebPage/CoordinatedGraphics/WebPageCoordinatedGraphics.cpp
 )
 
 set(WebKit2_MESSAGES_IN_FILES
@@ -603,9 +605,16 @@ set(WebProcess_LIBRARIES
 )
 
 set(WebKit2_LIBRARIES
+    JavaScriptCore
     WTF
     WebCore
 )
+
+# librt is needed for shm_open on Linux.
+find_library(LIBRT_LIBRARIES NAMES rt)
+if (LIBRT_LIBRARIES)
+    list(APPEND WebKit2_LIBRARIES ${LIBRT_LIBRARIES})
+endif ()
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 

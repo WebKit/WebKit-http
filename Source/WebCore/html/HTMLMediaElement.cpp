@@ -75,7 +75,6 @@
 #include "RenderView.h"
 #include "ScriptController.h"
 #include "ScriptEventListener.h"
-#include "SecurityOrigin.h"
 #include "SecurityPolicy.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
@@ -299,6 +298,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document* docum
     , m_sendProgressEvents(true)
     , m_isFullscreen(false)
     , m_closedCaptionsVisible(false)
+    , m_webkitLegacyClosedCaptionOverride(false)
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     , m_needWidgetUpdate(false)
 #endif
@@ -1487,11 +1487,14 @@ void HTMLMediaElement::endIgnoringTrackDisplayUpdateRequests()
         updateActiveTextTrackCues(currentTime());
 }
 
-void HTMLMediaElement::textTrackAddCues(TextTrack*, const TextTrackCueList* cues) 
+void HTMLMediaElement::textTrackAddCues(TextTrack* track, const TextTrackCueList* cues) 
 {
+    if (track->mode() == TextTrack::disabledKeyword())
+        return;
+
     TrackDisplayUpdateScope scope(this);
     for (size_t i = 0; i < cues->length(); ++i)
-        textTrackAddCue(cues->item(i)->track(), cues->item(i));
+        textTrackAddCue(track, cues->item(i));
 }
 
 void HTMLMediaElement::textTrackRemoveCues(TextTrack*, const TextTrackCueList* cues) 
@@ -1501,8 +1504,11 @@ void HTMLMediaElement::textTrackRemoveCues(TextTrack*, const TextTrackCueList* c
         textTrackRemoveCue(cues->item(i)->track(), cues->item(i));
 }
 
-void HTMLMediaElement::textTrackAddCue(TextTrack*, PassRefPtr<TextTrackCue> cue)
+void HTMLMediaElement::textTrackAddCue(TextTrack* track, PassRefPtr<TextTrackCue> cue)
 {
+    if (track->mode() == TextTrack::disabledKeyword())
+        return;
+
     // Negative duration cues need be treated in the interval tree as
     // zero-length cues.
     double endTime = max(cue->startTime(), cue->endTime());
@@ -2948,21 +2954,27 @@ void HTMLMediaElement::setSelectedTextTrack(PassRefPtr<PlatformTextTrack> platfo
     TrackDisplayUpdateScope scope(this);
 
     if (!platformTrack) {
-        setSelectedTextTrack(0);
+        setSelectedTextTrack(TextTrack::captionMenuOffItem());
         return;
     }
 
     TextTrack* textTrack;
-    size_t i;
-    for (i = 0; i < m_textTracks->length(); ++i) {
-        textTrack = m_textTracks->item(i);
-        
-        if (textTrack->platformTextTrack() == platformTrack)
-            break;
+    if (platformTrack == PlatformTextTrack::captionMenuOffItem())
+        textTrack = TextTrack::captionMenuOffItem();
+    else if (platformTrack == PlatformTextTrack::captionMenuAutomaticItem())
+        textTrack = TextTrack::captionMenuAutomaticItem();
+    else {
+        size_t i;
+        for (i = 0; i < m_textTracks->length(); ++i) {
+            textTrack = m_textTracks->item(i);
+            
+            if (textTrack->platformTextTrack() == platformTrack)
+                break;
+        }
+        if (i == m_textTracks->length())
+            return;
     }
 
-    if (i == m_textTracks->length())
-        return;
     setSelectedTextTrack(textTrack);
 }
 
@@ -4302,7 +4314,7 @@ void HTMLMediaElement::getPluginProxyParams(KURL& url, Vector<String>& names, Ve
     Frame* frame = document()->frame();
 
     if (isVideo()) {
-        HTMLVideoElement* video = static_cast<HTMLVideoElement*>(this);
+        HTMLVideoElement* video = toHTMLVideoElement(this);
         KURL posterURL = video->posterImageURL();
         if (!posterURL.isEmpty() && frame && frame->loader()->willLoadMediaElementURL(posterURL)) {
             names.append(ASCIILiteral("_media_element_poster_"));
@@ -4521,12 +4533,13 @@ void HTMLMediaElement::setClosedCaptionsVisible(bool closedCaptionVisible)
 
 void HTMLMediaElement::setWebkitClosedCaptionsVisible(bool visible)
 {
+    m_webkitLegacyClosedCaptionOverride = visible;
     setClosedCaptionsVisible(visible);
 }
 
 bool HTMLMediaElement::webkitClosedCaptionsVisible() const
 {
-    return m_closedCaptionsVisible;
+    return m_webkitLegacyClosedCaptionOverride && m_closedCaptionsVisible;
 }
 
 

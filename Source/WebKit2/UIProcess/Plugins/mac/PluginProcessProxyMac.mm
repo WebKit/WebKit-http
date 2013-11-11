@@ -28,12 +28,16 @@
 
 #if ENABLE(PLUGIN_PROCESS)
 
+#import "DynamicLinkerEnvironmentExtractor.h"
 #import "EnvironmentVariables.h"
 #import "PluginProcessCreationParameters.h"
 #import "PluginProcessMessages.h"
 #import "WebKitSystemInterface.h"
 #import <WebCore/FileSystem.h>
+#import <WebCore/KURL.h>
 #import <WebCore/RuntimeApplicationChecks.h>
+#import <crt_externs.h>
+#import <mach-o/dyld.h>
 #import <spawn.h>
 #import <wtf/text/CString.h>
 
@@ -88,6 +92,9 @@ bool PluginProcessProxy::createPropertyListFile(const PluginModuleInfo& plugin)
     posix_spawnattr_setbinpref_np(&attr, 1, cpuTypes, &outCount);
 
     EnvironmentVariables environmentVariables;
+
+    DynamicLinkerEnvironmentExtractor environmentExtractor([[NSBundle mainBundle] executablePath], _NSGetMachExecuteHeader()->cputype);
+    environmentExtractor.getExtractedEnvironmentVariables(environmentVariables);
     
     // To make engineering builds work, if the path is outside of /System set up
     // DYLD_FRAMEWORK_PATH to pick up other frameworks, but don't do it for the
@@ -394,6 +401,75 @@ void PluginProcessProxy::launchProcess(const String& launchPath, const Vector<St
         [argumentsArray addObject:(NSString *)arguments[i]];
 
     [NSTask launchedTaskWithLaunchPath:launchPath arguments:argumentsArray.get()];
+}
+
+static bool isJavaUpdaterURL(const PluginProcessAttributes& pluginProcessAttributes, const String& urlString)
+{
+    NSURL *url = [NSURL URLWithString:urlString];
+    if (![url isFileURL])
+        return false;
+
+    NSString *javaUpdaterPath = [NSString pathWithComponents:[NSArray arrayWithObjects:(NSString *)pluginProcessAttributes.moduleInfo.path, @"Contents/Resources/Java Updater.app", nil]];
+    return [url.path isEqualToString:javaUpdaterPath];
+}
+
+static bool shouldLaunchApplicationAtURL(const PluginProcessAttributes& pluginProcessAttributes, const String& urlString)
+{
+    if (pluginProcessAttributes.moduleInfo.bundleIdentifier == "com.oracle.java.JavaAppletPlugin")
+        return isJavaUpdaterURL(pluginProcessAttributes, urlString);
+
+    return false;
+}
+
+void PluginProcessProxy::launchApplicationAtURL(const String& urlString, const Vector<String>& arguments, bool& result)
+{
+    if (!shouldLaunchApplicationAtURL(m_pluginProcessAttributes, urlString)) {
+        result = false;
+        return;
+    }
+
+    result = true;
+
+    RetainPtr<NSMutableArray> argumentsArray = adoptNS([[NSMutableArray alloc] initWithCapacity:arguments.size()]);
+    for (size_t i = 0; i < arguments.size(); ++i)
+        [argumentsArray addObject:(NSString *)arguments[i]];
+
+    NSDictionary *configuration = [NSDictionary dictionaryWithObject:argumentsArray.get() forKey:NSWorkspaceLaunchConfigurationArguments];
+    [[NSWorkspace sharedWorkspace] launchApplicationAtURL:[NSURL URLWithString:urlString] options:NSWorkspaceLaunchAsync configuration:configuration error:nullptr];
+}
+
+static bool isSilverlightPreferencesURL(const PluginProcessAttributes& pluginProcessAttributes, const String& urlString)
+{
+    NSURL *silverlightPreferencesURL = [NSURL fileURLWithPathComponents:[NSArray arrayWithObjects:(NSString *)pluginProcessAttributes.moduleInfo.path, @"Contents/Resources/Silverlight Preferences.app", nil]];
+
+    return [[NSURL URLWithString:urlString] isEqual:silverlightPreferencesURL];
+}
+
+static bool shouldOpenURL(const PluginProcessAttributes& pluginProcessAttributes, const String& urlString)
+{
+    if (pluginProcessAttributes.moduleInfo.bundleIdentifier == "com.microsoft.SilverlightPlugin")
+        return isSilverlightPreferencesURL(pluginProcessAttributes, urlString);
+
+    return false;
+}
+
+void PluginProcessProxy::openURL(const String& urlString, bool& result, int32_t& status, String& launchedURLString)
+{
+    if (!shouldOpenURL(m_pluginProcessAttributes, urlString)) {
+        result = false;
+        return;
+    }
+
+    result = true;
+    CFURLRef launchedURL;
+    status = LSOpenCFURLRef(KURL(ParsedURLString, urlString).createCFURL().get(), &launchedURL);
+
+    if (launchedURL) {
+        launchedURLString = KURL(launchedURL).string();
+        CFRelease(launchedURL);
+    }
+
+    result = false;
 }
 
 } // namespace WebKit

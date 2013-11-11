@@ -90,7 +90,7 @@ String SVGStyledElement::title() const
         // that do enable SVG in a shadow tree.
         ASSERT(!shadowHostElement || shadowHostElement->hasTagName(SVGNames::useTag));
         if (shadowHostElement && shadowHostElement->hasTagName(SVGNames::useTag)) {
-            SVGUseElement* useElement = static_cast<SVGUseElement*>(shadowHostElement);
+            SVGUseElement* useElement = toSVGUseElement(shadowHostElement);
  
             // If the <use> title is not empty we found the title to use.
             String useTitle(useElement->title());
@@ -426,7 +426,7 @@ void SVGStyledElement::setInstanceUpdatesBlocked(bool value)
 
 AffineTransform SVGStyledElement::localCoordinateSpaceTransform(SVGLocatable::CTMScope) const
 {
-    // To be overriden by SVGStyledLocatableElement/SVGStyledTransformableElement (or as special case SVGTextElement and SVGPatternElement)
+    // To be overriden by SVGGraphicsElement (or as special case SVGTextElement and SVGPatternElement)
     return AffineTransform();
 }
 

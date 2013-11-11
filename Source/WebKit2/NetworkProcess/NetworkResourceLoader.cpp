@@ -40,6 +40,7 @@
 #include "ShareableResource.h"
 #include "SharedMemory.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebErrors.h"
 #include "WebResourceLoaderMessages.h"
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceBuffer.h>
@@ -84,6 +85,8 @@ void NetworkResourceLoader::start()
 void NetworkResourceLoader::cleanup()
 {
     ASSERT(isMainThread());
+
+    invalidateSandboxExtensions();
 
     if (FormData* formData = request().httpBody())
         formData->removeGeneratedFilesIfNeeded();
@@ -180,7 +183,6 @@ void NetworkResourceLoader::didFinishLoading(ResourceHandle* handle, double fini
 
     // FIXME (NetworkProcess): For the memory cache we'll need to update the finished status of the cached resource here.
     // Such bookkeeping will need to be thread safe, as this callback is happening on a background thread.
-    invalidateSandboxExtensions();
     send(Messages::WebResourceLoader::DidFinishResourceLoad(finishTime));
     
     cleanup();
@@ -192,7 +194,6 @@ void NetworkResourceLoader::didFail(ResourceHandle* handle, const ResourceError&
 
     // FIXME (NetworkProcess): For the memory cache we'll need to update the finished status of the cached resource here.
     // Such bookkeeping will need to be thread safe, as this callback is happening on a background thread.
-    invalidateSandboxExtensions();
     send(Messages::WebResourceLoader::DidFailResourceLoad(error));
     cleanup();
 }
@@ -239,17 +240,18 @@ void NetworkResourceLoader::didSendData(ResourceHandle* handle, unsigned long lo
     send(Messages::WebResourceLoader::DidSendData(bytesSent, totalBytesToBeSent));
 }
 
-// FIXME (NetworkProcess): Many of the following ResourceHandleClient methods definitely need implementations. A few will not.
-// Once we know what they are they can be removed.
-
-void NetworkResourceLoader::wasBlocked(ResourceHandle*)
+void NetworkResourceLoader::wasBlocked(ResourceHandle* handle)
 {
-    notImplemented();
+    ASSERT_UNUSED(handle, handle == m_handle);
+
+    didFail(handle, WebKit::blockedError(request()));
 }
 
-void NetworkResourceLoader::cannotShowURL(ResourceHandle*)
+void NetworkResourceLoader::cannotShowURL(ResourceHandle* handle)
 {
-    notImplemented();
+    ASSERT_UNUSED(handle, handle == m_handle);
+
+    didFail(handle, WebKit::cannotShowURLError(request()));
 }
 
 bool NetworkResourceLoader::shouldUseCredentialStorage(ResourceHandle* handle)

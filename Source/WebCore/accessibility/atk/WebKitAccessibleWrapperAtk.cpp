@@ -185,7 +185,7 @@ static const gchar* webkitAccessibleGetDescription(AtkObject* object)
 
     // atk_table_get_summary returns an AtkObject. We have no summary object, so expose summary here.
     if (coreObject->roleValue() == TableRole) {
-        String summary = static_cast<HTMLTableElement*>(node)->summary();
+        String summary = toHTMLTableElement(node)->summary();
         if (!summary.isEmpty())
             return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, summary);
     }
@@ -495,6 +495,9 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     if (!placeholder.isEmpty())
         attributeSet = addToAtkAttributeSet(attributeSet, "placeholder-text", placeholder.utf8().data());
 
+    if (coreObject->ariaHasPopup())
+        attributeSet = addToAtkAttributeSet(attributeSet, "aria-haspopup", "true");
+
     return attributeSet;
 }
 
@@ -712,6 +715,9 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
     if (coreObject->isPressed())
         atk_state_set_add_state(stateSet, ATK_STATE_PRESSED);
 
+    if (coreObject->isRequired())
+        atk_state_set_add_state(stateSet, ATK_STATE_REQUIRED);
+
     // TODO: ATK_STATE_SELECTABLE_TEXT
 
     if (coreObject->canSetSelectedAttribute()) {
@@ -808,14 +814,13 @@ static const gchar* webkitAccessibleGetObjectLocale(AtkObject* object)
         const gchar* locale = 0;
 
         AtkAttributeSet* textAttributes = atk_text_get_default_attributes(ATK_TEXT(object));
-        for (GSList* attributes = textAttributes; attributes; attributes = attributes->next) {
+        for (AtkAttributeSet* attributes = textAttributes; attributes; attributes = attributes->next) {
             AtkAttribute* atkAttribute = static_cast<AtkAttribute*>(attributes->data);
             if (!strcmp(atkAttribute->name, atk_text_attribute_get_name(ATK_TEXT_ATTR_LANGUAGE))) {
                 locale = cacheAndReturnAtkProperty(object, AtkCachedDocumentLocale, String::fromUTF8(atkAttribute->value));
                 break;
             }
         }
-
         atk_attribute_set_free(textAttributes);
 
         return locale;

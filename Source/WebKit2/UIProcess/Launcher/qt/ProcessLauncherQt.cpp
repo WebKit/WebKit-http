@@ -50,6 +50,7 @@
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <wtf/UniStdExtras.h>
 #endif
 
 #if defined(Q_OS_LINUX)
@@ -135,7 +136,7 @@ void ProcessLauncher::launchProcess()
     mach_port_insert_right(mach_task_self(), connector, connector, MACH_MSG_TYPE_MAKE_SEND);
 
     // Register port with a service name to the system.
-    QString serviceName = QStringLiteral("com.nokia.Qt.WebKit.QtWebProcess-%1-%2");
+    QString serviceName = QStringLiteral("org.qt-project.Qt.WebKit.QtWebProcess-%1-%2");
     serviceName = serviceName.arg(QString().setNum(getpid()), QString().setNum((size_t)this));
     kern_return_t kr = bootstrap_register2(bootstrap_port, const_cast<char*>(serviceName.toUtf8().data()), connector, 0);
     ASSERT_UNUSED(kr, kr == KERN_SUCCESS);
@@ -162,8 +163,8 @@ void ProcessLauncher::launchProcess()
     while (fcntl(sockets[1], F_SETFD, FD_CLOEXEC)  == -1) {
         if (errno != EINTR) {
             ASSERT_NOT_REACHED();
-            while (close(sockets[0]) == -1 && errno == EINTR) { }
-            while (close(sockets[1]) == -1 && errno == EINTR) { }
+            closeWithRetry(sockets[0]);
+            closeWithRetry(sockets[1]);
             return;
         }
     }

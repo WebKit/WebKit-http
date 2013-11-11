@@ -95,13 +95,8 @@ public:
     static bool cssRegionsEnabled() { return false; }
 #endif
 
-#if ENABLE(CSS_COMPOSITING)
     static void setCSSCompositingEnabled(bool isEnabled) { isCSSCompositingEnabled = isEnabled; }
     static bool cssCompositingEnabled() { return isCSSCompositingEnabled; }
-#else
-    static void setCSSCompositingEnabled(bool) { }
-    static bool cssCompositingEnabled() { return false; }
-#endif
 
 #if ENABLE(FONT_LOAD_EVENTS)
     static void setFontLoadEventsEnabled(bool isEnabled) { isFontLoadEventsEnabled = isEnabled; }
@@ -150,12 +145,6 @@ public:
 #if ENABLE(SQL_DATABASE)
     static bool openDatabaseEnabled();
     static bool openDatabaseSyncEnabled();
-#endif
-
-#if ENABLE(WEB_AUDIO)
-    static void setWebAudioEnabled(bool isEnabled) { isWebAudioEnabled = isEnabled; }
-    static bool webkitAudioContextEnabled() { return isWebAudioEnabled; }
-    static bool webkitOfflineAudioContextEnabled() { return isWebAudioEnabled; }
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -317,7 +306,6 @@ private:
     static bool isDataTransferItemsEnabled;
     static bool isGeolocationEnabled;
     static bool isIndexedDBEnabled;
-    static bool isWebAudioEnabled;
     static bool isTouchEnabled;
     static bool isDeviceMotionEnabled;
     static bool isDeviceOrientationEnabled;

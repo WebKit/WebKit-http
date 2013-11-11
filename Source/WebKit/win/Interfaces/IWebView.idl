@@ -47,6 +47,7 @@ import "DOMCSS.idl";
 import "IWebUndoManager.idl";
 import "IWebEditingDelegate.idl";
 import "DOMRange.idl";
+import "AccessibilityDelegate.idl";
 #endif
 
 interface IDOMCSSStyleDeclaration;
@@ -73,6 +74,8 @@ interface IWebPolicyDelegate;
 interface IWebDocumentView;
 interface IWebDocumentRepresentation;
 interface IWebUndoManager;
+
+interface IAccessibilityDelegate;
 
 /* These are the keys for the WebElementPropertyBag */
 const LPCOLESTR WebElementDOMNodeKey = L"WebElementDOMNodeKey";
@@ -225,6 +228,22 @@ interface IWebView : IUnknown
         - (id)initWithFrame:(NSRect)frame frameName:(NSString *)frameName groupName:(NSString *)groupName;
     */
     HRESULT initWithFrame([in] RECT frame, [in] BSTR frameName, [in] BSTR groupName);
+
+    /*!
+        @method accessibilityDelegate:
+        @abstract Return the WebView's accessibilityDelegate.
+        @param delegate The WebUIDelegate to set as the delegate.
+        - (void)setUIDelegate:(id)delegate;
+    */
+    HRESULT setAccessibilityDelegate([in] IAccessibilityDelegate *d);
+
+    /*!
+        @method setAccessibilityDelegate:
+        @abstract Set the WebView's accessibilityDelegate.
+        @result The WebView's WebUIDelegate.
+        - (id)UIDelegate;
+    */
+    HRESULT accessibilityDelegate([out][retval] IAccessibilityDelegate **d);
 
     /*!
         @method setUIDelegate:

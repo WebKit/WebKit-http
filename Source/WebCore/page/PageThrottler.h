@@ -29,29 +29,27 @@
 #include "Timer.h"
 
 #include <wtf/HashSet.h>
-#include <wtf/RefCounted.h>
+#include <wtf/OwnPtr.h>
+#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
 class Page;
 class PageActivityAssertionToken;
 
-class PageThrottler : public RefCounted<PageThrottler> {
+class PageThrottler {
 public:
-    static PassRefPtr<PageThrottler> create(Page* page)
+    static PassOwnPtr<PageThrottler> create(Page* page)
     {
-        return adoptRef(new PageThrottler(page));
+        return adoptPtr(new PageThrottler(page));
     }
 
     bool shouldThrottleAnimations() const { return m_throttleState != PageNotThrottledState; }
-    bool shouldThrottleTimers() const { return m_throttleState == PageNotThrottledState; }
+    bool shouldThrottleTimers() const { return m_throttleState != PageNotThrottledState; }
 
     void setThrottled(bool);
 
-    void preventThrottling();
     void reportInterestingEvent();
-    void allowThrottling();
-    void clearPage();
 
     ~PageThrottler();
 
@@ -76,7 +74,6 @@ private:
     void throttlePage();
     void unthrottlePage();
 
-    unsigned m_activeThrottleBlockers;
     PageThrottleState m_throttleState;
     Timer<PageThrottler> m_throttleHysteresisTimer;
     HashSet<PageActivityAssertionToken*> m_activityTokens;

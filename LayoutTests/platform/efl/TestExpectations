@@ -336,9 +336,6 @@ webkit.org/b/65709 canvas/philip/tests/2d.drawImage.outsidesource.html [ Failure
 # Bug in the test itself, as the input box can be big enough for the given coordinates to be inside it.
 Bug(EFL) fast/forms/input-text-click-outside.html
 
-# Exclusions implementation not complete yet.
-webkit.org/b/83898 fast/exclusions
-
 # CSS Filters support not yet enabled (needs ENABLE_CSS_FILTERS).
 webkit.org/b/85465 css3/filters [ Skip ]
 webkit.org/b/85465 compositing/filters [ Skip ]
@@ -580,7 +577,6 @@ webkit.org/b/105879 editing/pasteboard/4806874.html [ Pass Crash ]
 webkit.org/b/105879 editing/spelling/spelling-insert-html.html [ Pass Crash ]
 
 # Media regressions after updating to gstreamer 1.0.
-webkit.org/b/104809 media/adopt-node-crash.html [ Crash ]
 webkit.org/b/104809 media/video-src.html [ Crash Pass ]
 webkit.org/b/104809 media/video-src-blob.html [ Crash Failure ]
 webkit.org/b/104809 media/video-src-change.html [ Crash Pass ]
@@ -1025,7 +1021,6 @@ Bug(EFL) editing/pasteboard/pasting-empty-html-falls-back-to-text.html [ Failure
 # MathML: Absolute and Integral operators are not stacked properly
 webkit.org/b/47744 mathml/presentation/mo.xhtml
 webkit.org/b/47744 mathml/presentation/row.xhtml
-webkit.org/b/47744 mathml/presentation/over.xhtml
 
 # EFL has not fully implemented about some SVG attributes
 Bug(EFL) svg/custom
@@ -1093,6 +1088,7 @@ webkit.org/b/79766 compositing/iframes/iframe-size-from-zero.html [ Failure ]
 webkit.org/b/79766 compositing/iframes/iframe-size-to-zero.html [ Failure ]
 webkit.org/b/79766 compositing/iframes/iframe-src-change.html [ Failure ]
 webkit.org/b/79766 compositing/iframes/resizer.html [ Missing ]
+webkit.org/b/79766 compositing/iframes/iframe-position-absolute-with-padding-percentage-crash.html [ Failure ]
 webkit.org/b/79766 compositing/layer-creation/spanOverlapsCanvas.html [ Failure ]
 webkit.org/b/79766 compositing/overflow/clipping-ancestor-with-accelerated-scrolling-ancestor.html [ Skip ]
 webkit.org/b/79766 compositing/overflow/nested-scrolling.html [ Skip ]
@@ -1164,13 +1160,8 @@ webkit.org/b/87662 fast/events/constructors/media-stream-event-constructor.html 
 webkit.org/b/95302 fast/speech [ Skip ]
 webkit.org/b/95302 fast/events/constructors/speech-recognition-event-constructor.html [ Skip ]
 
-# DOM4_EVENTS_CONSTRUCTOR is not yet enabled.
-webkit.org/b/107428 fast/events/constructors/ui-event-constructor.html [ Skip ]
-webkit.org/b/107428 fast/events/constructors/mouse-event-constructor.html [ Skip ]
-webkit.org/b/107428 fast/events/constructors/wheel-event-constructor.html [ Skip ]
-webkit.org/b/107428 fast/events/constructors/keyboard-event-constructor.html [ Skip ]
-webkit.org/b/107428 fast/events/constructors/composition-event-constructor.html [ Skip ]
-webkit.org/b/107428 fast/events/constructors/focus-event-constructor.html [ Skip ]
+# Requires INDIE_UI support
+webkit.org/b/111446 indieui [ Skip ]
 
 # Requires support for Web notifications
 webkit.org/b/73544 fast/notifications [ Skip ]
@@ -1541,6 +1532,7 @@ webkit.org/b/101670 media/video-controls-captions-trackmenu-localized.html [ Ski
 webkit.org/b/101670 media/video-controls-captions-trackmenu-hide-on-click.html [ Skip ]
 webkit.org/b/101670 media/video-controls-captions-trackmenu-hide-on-click-outside.html [ Skip ]
 webkit.org/b/101670 media/track/track-user-preferences.html [ Skip ]
+webkit.org/b/101670 media/video-controls-captions-trackmenu-includes-enabled-track.html [ Skip ]
 
 # Fails until we enable the Resource Timing API.
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Google/resource-timing [ Skip ]
@@ -1751,20 +1743,10 @@ webkit.org/b/114877 accessibility/link-inside-button-accessible-text.html [ Fail
 webkit.org/b/114612 editing/style/block-style-005.html [ Failure ]
 
 # Unidentified failing media tests
-webkit.org/b/115419 http/tests/media/reload-after-dialog.html [ Failure ]
-webkit.org/b/115419 http/tests/media/remove-while-loading.html [ Failure ]
-webkit.org/b/115419 http/tests/media/video-cancel-load.html [ Failure ]
-webkit.org/b/115419 http/tests/media/video-error-abort.html [ Failure ]
-webkit.org/b/115419 http/tests/media/video-load-suspend.html [ Failure ]
-webkit.org/b/115419 http/tests/media/video-load-twice.html [ Failure ]
-webkit.org/b/115419 http/tests/media/video-play-progress.html [ Failure ]
 webkit.org/b/115419 http/tests/media/video-redirect.html [ Failure ]
-webkit.org/b/115419 http/tests/media/video-served-as-text.html [ Failure ]
-webkit.org/b/115419 http/tests/media/video-throttled-load-metadata.html [ Failure ]
 webkit.org/b/115419 media/media-can-play-ogg.html [ Failure ]
 webkit.org/b/115419 media/track/track-automatic-subtitles.html [ Failure ]
 webkit.org/b/115419 media/video-poster-background.html [ ImageOnlyFailure ]
-webkit.org/b/115419 media/track/track-text-track-cue-list.html [ Crash Failure ]
 
 webkit.org/b/115439 fast/text/complex-initial-advance.html [ ImageOnlyFailure ]
 webkit.org/b/115440 svg/stroke/animated-non-scaling-stroke.html [ ImageOnlyFailure ]
@@ -1777,7 +1759,8 @@ webkit.org/b/116587 http/tests/websocket/tests/hybi/close-on-navigate-new-locati
 webkit.org/b/116587 http/tests/websocket/tests/hybi/multiple-subprotocols.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/reload-crash.html [ Skip ]
 
-webkit.org/b/117706 accessibility/box-styled-lists.html [ Failure ]
-
 # Synthesized italics not supported
 fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]
+
+# vibration api doesn't support visibilitychange event.
+webkit.org/b/118378 vibration/cancelVibration-after-pagevisibility-changed-to-hidden.html [ Skip ]

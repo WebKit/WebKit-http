@@ -118,7 +118,7 @@ bool NetscapePluginHostManager::spawnPluginHost(const String& pluginPath, cpu_ty
     NSDictionary *launchProperties = [[NSDictionary alloc] initWithObjectsAndKeys:
                                       pluginHostAppExecutablePath, @"pluginHostPath",
                                       [NSNumber numberWithInt:pluginArchitecture], @"cpuType",
-                                      localization.get(), @"localization",
+                                      (NSString *)localization.get(), @"localization",
                                       nil];
 
     NSData *data = [NSPropertyListSerialization dataFromPropertyList:launchProperties format:NSPropertyListBinaryFormat_v1_0 errorDescription:0];
@@ -264,7 +264,7 @@ PassRefPtr<NetscapePluginInstanceProxy> NetscapePluginHostManager::instantiatePl
         // Create a new instance.
         instance = NetscapePluginInstanceProxy::create(hostProxy, pluginView, fullFrame);
         requestID = instance->nextRequestID();
-        kr = _WKPHInstantiatePlugin(hostProxy->port(), requestID, (uint8_t*)[data bytes], [data length], instance->pluginID());
+        _WKPHInstantiatePlugin(hostProxy->port(), requestID, (uint8_t*)[data bytes], [data length], instance->pluginID());
     }
 
     std::auto_ptr<NetscapePluginInstanceProxy::InstantiatePluginReply> reply = instance->waitForReply<NetscapePluginInstanceProxy::InstantiatePluginReply>(requestID);

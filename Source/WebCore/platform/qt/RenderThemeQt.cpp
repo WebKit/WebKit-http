@@ -256,12 +256,12 @@ Color RenderThemeQt::platformFocusRingColor() const
     return colorPalette().brush(QPalette::Active, QPalette::Highlight).color();
 }
 
-void RenderThemeQt::systemFont(int, FontDescription&) const
+void RenderThemeQt::systemFont(CSSValueID, FontDescription&) const
 {
     // no-op
 }
 
-Color RenderThemeQt::systemColor(int cssValueId) const
+Color RenderThemeQt::systemColor(CSSValueID cssValueId) const
 {
     QPalette pal = colorPalette();
     switch (cssValueId) {
@@ -741,10 +741,10 @@ bool RenderThemeQt::paintMediaVolumeSliderTrack(RenderObject *o, const PaintInfo
     p->painter->setBrush(scaleColor);
     p->painter->drawRect(left, top, width, height);
 
-    if (!o->node() || !o->node()->hasTagName(inputTag))
+    if (!o->node() || !isHTMLInputElement(o->node()))
         return false;
 
-    HTMLInputElement* slider = static_cast<HTMLInputElement*>(o->node());
+    HTMLInputElement* slider = toHTMLInputElement(o->node());
 
     // Position the inner rectangle
     height = height * slider->valueAsNumber();

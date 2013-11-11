@@ -40,25 +40,18 @@
 #include "CachedImage.h"
 #include "CanvasGradient.h"
 #include "CanvasPattern.h"
-#include "Console.h"
 #include "DOMPath.h"
 #include "ExceptionCode.h"
 #include "ExceptionCodePlaceholder.h"
-#include "FloatConversion.h"
 #include "FloatQuad.h"
 #include "FontCache.h"
 #include "GraphicsContext.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLMediaElement.h"
-#include "HTMLNames.h"
 #include "HTMLVideoElement.h"
 #include "ImageData.h"
-#include "KURL.h"
-#include "Page.h"
-#include "RenderHTMLCanvas.h"
 #include "SecurityOrigin.h"
-#include "Settings.h"
 #include "StrokeStyleApplier.h"
 #include "StylePropertySet.h"
 #include "StyleResolver.h"
@@ -2120,7 +2113,7 @@ PassRefPtr<TextMetrics> CanvasRenderingContext2D::measureText(const String& text
     Font::setCodePath(Font::Complex);
 #endif
 
-    metrics->setWidth(accessFont().width(TextRun(text.characters(), text.length())));
+    metrics->setWidth(accessFont().width(TextRun(text)));
 
 #if PLATFORM(QT)
     Font::setCodePath(oldCodePath);

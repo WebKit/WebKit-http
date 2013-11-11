@@ -257,7 +257,7 @@ bool RenderThemeWinCE::paintMenuListButton(RenderObject* o, const PaintInfo& i, 
     return true;
 }
 
-void RenderThemeWinCE::systemFont(int propId, FontDescription& fontDescription) const
+void RenderThemeWinCE::systemFont(CSSValueID, FontDescription& fontDescription) const
 {
     notImplemented();
 }
@@ -284,7 +284,7 @@ bool RenderThemeWinCE::supportsHover(const RenderStyle*) const
 }
 
 // Map a CSSValue* system color to an index understood by GetSysColor
-static int cssValueIdToSysColorIndex(int cssValueId)
+static int cssValueIdToSysColorIndex(CSSValueID cssValueId)
 {
     switch (cssValueId) {
     case CSSValueActiveborder: return COLOR_ACTIVEBORDER;
@@ -319,7 +319,7 @@ static int cssValueIdToSysColorIndex(int cssValueId)
     }
 }
 
-Color RenderThemeWinCE::systemColor(int cssValueId) const
+Color RenderThemeWinCE::systemColor(CSSValueID cssValueId) const
 {
     int sysColorIndex = cssValueIdToSysColorIndex(cssValueId);
     if (sysColorIndex == -1)
@@ -485,7 +485,7 @@ static HTMLMediaElement* mediaElementParent(Node* node)
     if (!mediaNode || !mediaNode->isElementNode() || !toElement(mediaNode)->isMediaElement())
         return 0;
 
-    return static_cast<HTMLMediaElement*>(mediaNode);
+    return toHTMLMediaElement(mediaNode);
 }
 #endif
 

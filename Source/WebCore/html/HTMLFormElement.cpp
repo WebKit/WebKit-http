@@ -26,26 +26,20 @@
 #include "HTMLFormElement.h"
 
 #include "Attribute.h"
-#include "DOMFormData.h"
-#include "DOMWindow.h"
 #include "Document.h"
 #include "Event.h"
 #include "EventNames.h"
-#include "FileList.h"
-#include "FileSystem.h"
 #include "FormController.h"
 #include "FormData.h"
-#include "FormDataList.h"
 #include "FormState.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "HTMLCollection.h"
-#include "HTMLDocument.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
-#include "MIMETypeRegistry.h"
+#include "HTMLTableElement.h"
 #include "NodeRenderingContext.h"
 #include "NodeTraversal.h"
 #include "Page.h"
@@ -53,7 +47,6 @@
 #include "ScriptController.h"
 #include "ScriptEventListener.h"
 #include "Settings.h"
-#include "ValidityState.h"
 #include <limits>
 
 using namespace std;
@@ -110,7 +103,7 @@ bool HTMLFormElement::rendererIsNeeded(const NodeRenderingContext& context)
     ContainerNode* node = parentNode();
     RenderObject* parentRenderer = node->renderer();
     // FIXME: Shouldn't we also check for table caption (see |formIsTablePart| below).
-    bool parentIsTableElementPart = (parentRenderer->isTable() && node->hasTagName(tableTag))
+    bool parentIsTableElementPart = (parentRenderer->isTable() && isHTMLTableElement(node))
         || (parentRenderer->isTableRow() && node->hasTagName(trTag))
         || (parentRenderer->isTableSection() && node->hasTagName(tbodyTag))
         || (parentRenderer->isRenderTableCol() && node->hasTagName(colTag))
@@ -308,10 +301,10 @@ void HTMLFormElement::getTextFieldValues(StringPairVector& fieldNamesAndValues) 
     for (unsigned i = 0; i < m_associatedElements.size(); ++i) {
         FormAssociatedElement* control = m_associatedElements[i];
         HTMLElement* element = toHTMLElement(control);
-        if (!element->hasLocalName(inputTag))
+        if (!isHTMLInputElement(element))
             continue;
 
-        HTMLInputElement* input = static_cast<HTMLInputElement*>(control);
+        HTMLInputElement* input = toHTMLInputElement(element);
         if (!input->isTextField())
             continue;
 

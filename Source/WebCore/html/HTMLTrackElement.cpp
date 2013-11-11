@@ -33,7 +33,6 @@
 #include "HTMLNames.h"
 #include "Logging.h"
 #include "RuntimeEnabledFeatures.h"
-#include "ScriptCallStack.h"
 #include "ScriptEventListener.h"
 
 using namespace std;
@@ -79,15 +78,17 @@ Node::InsertionNotificationRequest HTMLTrackElement::insertedInto(ContainerNode*
 
     HTMLElement::insertedInto(insertionPoint);
     HTMLMediaElement* parent = mediaElement();
-    if (insertionPoint == parent)
+    if (insertionPoint == parent) {
+        ensureTrack();
         parent->didAddTextTrack(this);
+    }
     return InsertionDone;
 }
 
 void HTMLTrackElement::removedFrom(ContainerNode* insertionPoint)
 {
     if (!parentNode() && WebCore::isMediaElement(insertionPoint))
-        toMediaElement(insertionPoint)->didRemoveTextTrack(this);
+        toHTMLMediaElement(insertionPoint)->didRemoveTextTrack(this);
     HTMLElement::removedFrom(insertionPoint);
 }
 
@@ -173,7 +174,9 @@ LoadableTextTrack* HTMLTrackElement::ensureTrack()
         if (!TextTrack::isValidKindKeyword(kind))
             kind = TextTrack::subtitlesKeyword();
         m_track = LoadableTextTrack::create(this, kind, label(), srclang());
-    }
+    } else
+        m_track->setTrackElement(this);
+
     return m_track.get();
 }
 
@@ -353,7 +356,7 @@ HTMLMediaElement* HTMLTrackElement::mediaElement() const
 {
     Element* parent = parentElement();
     if (parent && parent->isMediaElement())
-        return static_cast<HTMLMediaElement*>(parentNode());
+        return toHTMLMediaElement(parentNode());
 
     return 0;
 }

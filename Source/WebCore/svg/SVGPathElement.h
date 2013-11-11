@@ -25,12 +25,10 @@
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedNumber.h"
 #include "SVGExternalResourcesRequired.h"
-#include "SVGLangSpace.h"
+#include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 #include "SVGPathByteStream.h"
 #include "SVGPathSegList.h"
-#include "SVGStyledTransformableElement.h"
-#include "SVGTests.h"
 
 namespace WebCore {
 
@@ -55,15 +53,13 @@ class SVGPathSegCurvetoQuadraticSmoothAbs;
 class SVGPathSegCurvetoQuadraticSmoothRel;
 class SVGPathSegListPropertyTearOff;
 
-class SVGPathElement FINAL : public SVGStyledTransformableElement,
-                             public SVGTests,
-                             public SVGLangSpace,
+class SVGPathElement FINAL : public SVGGraphicsElement,
                              public SVGExternalResourcesRequired {
 public:
     static PassRefPtr<SVGPathElement> create(const QualifiedName&, Document*);
     
     float getTotalLength();
-    FloatPoint getPointAtLength(float distance);
+    SVGPoint getPointAtLength(float distance);
     unsigned getPathSegAtLength(float distance);
 
     PassRefPtr<SVGPathSegClosePath> createSVGPathSegClosePath(SVGPathSegRole role = PathSegUndefinedRole);
@@ -122,12 +118,7 @@ private:
         DECLARE_ANIMATED_BOOLEAN(ExternalResourcesRequired, externalResourcesRequired)
     END_DECLARE_ANIMATED_PROPERTIES
 
-    // SVGTests
-    virtual void synchronizeRequiredFeatures() { SVGTests::synchronizeRequiredFeatures(this); }
-    virtual void synchronizeRequiredExtensions() { SVGTests::synchronizeRequiredExtensions(this); }
-    virtual void synchronizeSystemLanguage() { SVGTests::synchronizeSystemLanguage(this); }
-
-    RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
 
     virtual Node::InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
@@ -140,7 +131,7 @@ private:
     bool m_isAnimValObserved;
 };
 
-inline SVGPathElement* toSVGPathElement(SVGElement* element)
+inline SVGPathElement* toSVGPathElement(Element* element)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!element || element->hasTagName(SVGNames::pathTag));
     return static_cast<SVGPathElement*>(element);

@@ -52,6 +52,8 @@ public:
     bool isInAcceleratedCompositingMode() const { return !m_layerTreeContext.isEmpty(); }
 #endif
 
+    bool hasReceivedFirstUpdate() const { return m_hasReceivedFirstUpdate; }
+
 private:
     explicit DrawingAreaProxyImpl(WebPageProxy*);
 
@@ -88,8 +90,6 @@ private:
 #else
     bool isInAcceleratedCompositingMode() const { return false; }
 #endif
-
-    virtual void pageCustomRepresentationChanged();
 
     void discardBackingStoreSoon();
     void discardBackingStore();

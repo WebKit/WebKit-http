@@ -35,9 +35,6 @@
 #import "PluginComplexTextInputState.h"
 #import "PageClient.h"
 #import "PageClientImpl.h"
-#import "PluginInformation.h"
-#import "PluginProcessManager.h"
-#import "PluginProcessProxy.h"
 #import "StringUtilities.h"
 #import "TextChecker.h"
 #import "WebPageMessages.h"
@@ -153,12 +150,13 @@ void WebPageProxy::windowAndViewFramesChanged(const FloatRect& viewFrameInWindow
     process()->send(Messages::WebPage::WindowAndViewFramesChanged(windowFrameInScreenCoordinates, windowFrameInUnflippedScreenCoordinates, viewFrameInWindowCoordinates, accessibilityViewCoordinates), m_pageID);
 }
 
-void WebPageProxy::viewExposedRectChanged(const FloatRect& exposedRect)
+void WebPageProxy::viewExposedRectChanged(const FloatRect& exposedRect, bool clipsToExposedRect)
 {
     if (!isValid())
         return;
 
     m_exposedRect = exposedRect;
+    m_clipsToExposedRect = clipsToExposedRect;
 
     if (!m_exposedRectChangedTimer.isActive())
         m_exposedRectChangedTimer.startOneShot(0);
@@ -169,11 +167,12 @@ void WebPageProxy::exposedRectChangedTimerFired(Timer<WebPageProxy>*)
     if (!isValid())
         return;
 
-    if (m_exposedRect == m_lastSentExposedRect)
+    if (m_exposedRect == m_lastSentExposedRect && m_clipsToExposedRect == m_lastSentClipsToExposedRect)
         return;
 
-    process()->send(Messages::WebPage::ViewExposedRectChanged(m_exposedRect), m_pageID);
+    process()->send(Messages::WebPage::ViewExposedRectChanged(m_exposedRect, m_clipsToExposedRect), m_pageID);
     m_lastSentExposedRect = m_exposedRect;
+    m_lastSentClipsToExposedRect = m_clipsToExposedRect;
 }
 
 void WebPageProxy::setMainFrameIsScrollable(bool isScrollable)
@@ -218,6 +217,8 @@ bool WebPageProxy::insertText(const String& text, uint64_t replacementRangeStart
 
     bool handled = true;
     process()->sendSync(Messages::WebPage::InsertText(text, replacementRangeStart, replacementRangeEnd), Messages::WebPage::InsertText::Reply(handled, m_editorState), m_pageID);
+    m_temporarilyClosedComposition = false;
+
     return handled;
 }
 
@@ -457,48 +458,6 @@ void WebPageProxy::setPluginComplexTextInputState(uint64_t pluginComplexTextInpu
     MESSAGE_CHECK(isValidPluginComplexTextInputState(pluginComplexTextInputState));
 
     m_pageClient->setPluginComplexTextInputState(pluginComplexTextInputIdentifier, static_cast<PluginComplexTextInputState>(pluginComplexTextInputState));
-}
-
-void WebPageProxy::getPlugInInformation(pid_t plugInProcessID, PassRefPtr<DictionaryCallback> prpCallback)
-{
-    RefPtr<DictionaryCallback> callback = prpCallback;
-    if (!isValid()) {
-        callback->invalidate();
-        return;
-    }
-
-    PluginProcessProxy* plugInProcessProxy = PluginProcessManager::shared().findPlugInProcessByID(plugInProcessID);
-    if (!plugInProcessProxy) {
-        callback->performCallbackWithReturnValue(0);
-        return;
-    }
-
-    uint64_t callbackID = callback->callbackID();
-    m_plugInInformationCallbacks.set(callbackID, callback.release());
-    m_process->send(Messages::WebPage::ContainsPluginViewsWithPluginProcessToken(plugInProcessProxy->pluginProcessToken(), callbackID), m_pageID);
-}
-
-void WebPageProxy::containsPlugInCallback(bool containsPlugIn, uint64_t plugInToken, uint64_t callbackID)
-{
-    RefPtr<DictionaryCallback> callback = m_plugInInformationCallbacks.take(callbackID);
-    if (!callback) {
-        // FIXME: Log error or assert.
-        return;
-    }
-
-    if (!containsPlugIn) {
-        callback->performCallbackWithReturnValue(0);
-        return;
-    }
-
-    PluginProcessProxy* plugInProcessProxy = PluginProcessManager::shared().findPlugInProcessByToken(plugInToken);
-    ASSERT(plugInProcessProxy);
-
-    ImmutableDictionary::MapType map;
-    getPluginModuleInformation(plugInProcessProxy->pluginProcessAttributes().moduleInfo, map);
-    RefPtr<ImmutableDictionary> plugInInformation = ImmutableDictionary::adopt(map);
-
-    callback->performCallbackWithReturnValue(plugInInformation.get());
 }
 
 void WebPageProxy::executeSavedCommandBySelector(const String& selector, bool& handled)

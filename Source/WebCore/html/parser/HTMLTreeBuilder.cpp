@@ -33,8 +33,11 @@
 #include "HTMLDocumentParser.h"
 #include "HTMLFormElement.h"
 #include "HTMLNames.h"
+#include "HTMLOptGroupElement.h"
+#include "HTMLOptionElement.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLStackItem.h"
+#include "HTMLTableElement.h"
 #include "HTMLTemplateElement.h"
 #include "HTMLToken.h"
 #include "HTMLTokenizer.h"
@@ -137,8 +140,8 @@ static HTMLFormElement* closestFormAncestor(Element* element)
 {
     ASSERT(isMainThread());
     while (element) {
-        if (element->hasTagName(formTag))
-            return static_cast<HTMLFormElement*>(element);
+        if (isHTMLFormElement(element))
+            return toHTMLFormElement(element);
         ContainerNode* parent = element->parentNode();
         if (!parent || !parent->isElementNode())
             return 0;
@@ -895,7 +898,7 @@ void HTMLTreeBuilder::processStartTagForInBody(AtomicHTMLToken* token)
         return;
     }
     if (token->name() == optgroupTag || token->name() == optionTag) {
-        if (m_tree.currentStackItem()->hasTagName(optionTag)) {
+        if (isHTMLOptionElement(m_tree.currentStackItem()->node())) {
             AtomicHTMLToken endOption(HTMLToken::EndTag, optionTag.localName());
             processEndTag(&endOption);
         }
@@ -1374,7 +1377,7 @@ void HTMLTreeBuilder::processStartTag(AtomicHTMLToken* token)
             return;
         }
         if (token->name() == optionTag) {
-            if (m_tree.currentStackItem()->hasTagName(optionTag)) {
+            if (isHTMLOptionElement(m_tree.currentStackItem()->node())) {
                 AtomicHTMLToken endOption(HTMLToken::EndTag, optionTag.localName());
                 processEndTag(&endOption);
             }
@@ -1382,11 +1385,11 @@ void HTMLTreeBuilder::processStartTag(AtomicHTMLToken* token)
             return;
         }
         if (token->name() == optgroupTag) {
-            if (m_tree.currentStackItem()->hasTagName(optionTag)) {
+            if (isHTMLOptionElement(m_tree.currentStackItem()->node())) {
                 AtomicHTMLToken endOption(HTMLToken::EndTag, optionTag.localName());
                 processEndTag(&endOption);
             }
-            if (m_tree.currentStackItem()->hasTagName(optgroupTag)) {
+            if (isHTMLOptGroupElement(m_tree.currentStackItem()->node())) {
                 AtomicHTMLToken endOptgroup(HTMLToken::EndTag, optgroupTag.localName());
                 processEndTag(&endOptgroup);
             }
@@ -1676,7 +1679,7 @@ void HTMLTreeBuilder::resetInsertionModeAppropriately()
         if (item->hasTagName(colgroupTag)) {
             return setInsertionMode(InColumnGroupMode);
         }
-        if (item->hasTagName(tableTag))
+        if (isHTMLTableElement(item->node()))
             return setInsertionMode(InTableMode);
         if (item->hasTagName(headTag)) {
 #if ENABLE(TEMPLATE_ELEMENT)
@@ -2250,9 +2253,9 @@ void HTMLTreeBuilder::processEndTag(AtomicHTMLToken* token)
     case InSelectMode:
         ASSERT(insertionMode() == InSelectMode || insertionMode() == InSelectInTableMode);
         if (token->name() == optgroupTag) {
-            if (m_tree.currentStackItem()->hasTagName(optionTag) && m_tree.oneBelowTop() && m_tree.oneBelowTop()->hasTagName(optgroupTag))
+            if (isHTMLOptionElement(m_tree.currentStackItem()->node()) && m_tree.oneBelowTop() && isHTMLOptGroupElement(m_tree.oneBelowTop()->node()))
                 processFakeEndTag(optionTag);
-            if (m_tree.currentStackItem()->hasTagName(optgroupTag)) {
+            if (isHTMLOptGroupElement(m_tree.currentStackItem()->node())) {
                 m_tree.openElements()->pop();
                 return;
             }
@@ -2260,7 +2263,7 @@ void HTMLTreeBuilder::processEndTag(AtomicHTMLToken* token)
             return;
         }
         if (token->name() == optionTag) {
-            if (m_tree.currentStackItem()->hasTagName(optionTag)) {
+            if (isHTMLOptionElement(m_tree.currentStackItem()->node())) {
                 m_tree.openElements()->pop();
                 return;
             }
@@ -2417,7 +2420,7 @@ ReprocessBuffer:
         ASSERT(insertionMode() == InTableMode || insertionMode() == InTableBodyMode || insertionMode() == InRowMode);
         ASSERT(m_pendingTableCharacters.isEmpty());
         if (m_tree.currentStackItem()->isElementNode()
-            && (m_tree.currentStackItem()->hasTagName(HTMLNames::tableTag)
+            && (isHTMLTableElement(m_tree.currentStackItem()->node())
                 || m_tree.currentStackItem()->hasTagName(HTMLNames::tbodyTag)
                 || m_tree.currentStackItem()->hasTagName(HTMLNames::tfootTag)
                 || m_tree.currentStackItem()->hasTagName(HTMLNames::theadTag)

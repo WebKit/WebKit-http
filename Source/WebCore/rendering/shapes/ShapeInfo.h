@@ -100,7 +100,6 @@ public:
     LayoutUnit shapeContainingBlockHeight() const { return (m_renderer->style()->boxSizing() == CONTENT_BOX) ? (m_shapeLogicalHeight + m_renderer->borderAndPaddingLogicalHeight()) : m_shapeLogicalHeight; }
 
     bool lineOverlapsShapeBounds() const { return logicalLineTop() < shapeLogicalBottom() && shapeLogicalTop() <= logicalLineBottom(); }
-    bool lineWithinShapeBounds() const { return lineOverlapsShapeBounds() && (logicalLineBottom() <= shapeLogicalBottom()); }
 
     void dirtyShapeSize() { m_shape.clear(); }
     bool shapeSizeDirty() { return !m_shape.get(); }
@@ -119,12 +118,13 @@ protected:
     LayoutUnit m_lineHeight;
     SegmentList m_segments;
 
+    const RenderType* m_renderer;
+
 private:
     mutable OwnPtr<Shape> m_shape;
 
     LayoutUnit m_shapeLogicalWidth;
     LayoutUnit m_shapeLogicalHeight;
-    const RenderType* m_renderer;
 };
 }
 #endif

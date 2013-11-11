@@ -23,6 +23,7 @@
 #include "RadioInputType.h"
 
 #include "Frame.h"
+#include "HTMLFormElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "InputTypeNames.h"
@@ -87,12 +88,12 @@ void RadioInputType::handleKeydownEvent(KeyboardEvent* event)
     Node* node = element();
     while ((node = (forward ? NodeTraversal::next(node) : NodeTraversal::previous(node)))) {
         // Once we encounter a form element, we know we're through.
-        if (node->hasTagName(formTag))
+        if (isHTMLFormElement(node))
             break;
         // Look for more radio buttons.
-        if (!node->hasTagName(inputTag))
+        if (!isHTMLInputElement(node))
             continue;
-        HTMLInputElement* inputElement = static_cast<HTMLInputElement*>(node);
+        RefPtr<HTMLInputElement> inputElement = toHTMLInputElement(node);
         if (inputElement->form() != element()->form())
             break;
         if (inputElement->isRadioButton() && inputElement->name() == element()->name() && inputElement->isFocusable()) {
@@ -128,8 +129,8 @@ bool RadioInputType::isKeyboardFocusable(KeyboardEvent* event) const
     // Never allow keyboard tabbing to leave you in the same radio group.  Always
     // skip any other elements in the group.
     Element* currentFocusedNode = element()->document()->focusedElement();
-    if (currentFocusedNode && currentFocusedNode->hasTagName(inputTag)) {
-        HTMLInputElement* focusedInput = static_cast<HTMLInputElement*>(currentFocusedNode);
+    if (currentFocusedNode && isHTMLInputElement(currentFocusedNode)) {
+        HTMLInputElement* focusedInput = toHTMLInputElement(currentFocusedNode);
         if (focusedInput->isRadioButton() && focusedInput->form() == element()->form() && focusedInput->name() == element()->name())
             return false;
     }

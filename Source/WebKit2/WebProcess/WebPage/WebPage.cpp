@@ -288,6 +288,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_inspectorClient(0)
     , m_backgroundColor(Color::white)
     , m_maximumRenderingSuppressionToken(0)
+    , m_scrollPinningBehavior(DoNotPin)
 {
     ASSERT(m_pageID);
     // FIXME: This is a non-ideal location for this Setting and
@@ -379,6 +380,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     setIsInWindow(parameters.isInWindow);
 
     setMinimumLayoutSize(parameters.minimumLayoutSize);
+    
+    setScrollPinningBehavior(parameters.scrollPinningBehavior);
 
     m_userAgent = parameters.userAgent;
 
@@ -539,7 +542,8 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
 
     uint64_t pluginProcessToken;
     uint32_t pluginLoadPolicy;
-    if (!sendSync(Messages::WebPageProxy::FindPlugin(parameters.mimeType, static_cast<uint32_t>(processType), parameters.url.string(), frameURLString, pageURLString, allowOnlyApplicationPlugins), Messages::WebPageProxy::FindPlugin::Reply(pluginProcessToken, newMIMEType, pluginLoadPolicy))) {
+    String unavailabilityDescription;
+    if (!sendSync(Messages::WebPageProxy::FindPlugin(parameters.mimeType, static_cast<uint32_t>(processType), parameters.url.string(), frameURLString, pageURLString, allowOnlyApplicationPlugins), Messages::WebPageProxy::FindPlugin::Reply(pluginProcessToken, newMIMEType, pluginLoadPolicy, unavailabilityDescription))) {
         return 0;
     }
 
@@ -549,10 +553,15 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
         break;
 
     case PluginModuleBlocked:
-        if (pluginElement->renderer()->isEmbeddedObject())
-            toRenderEmbeddedObject(pluginElement->renderer())->setPluginUnavailabilityReason(RenderEmbeddedObject::InsecurePluginVersion);
+        bool replacementObscured = false;
+        if (pluginElement->renderer()->isEmbeddedObject()) {
+            RenderEmbeddedObject* renderObject = toRenderEmbeddedObject(pluginElement->renderer());
+            renderObject->setPluginUnavailabilityReasonWithDescription(RenderEmbeddedObject::InsecurePluginVersion, unavailabilityDescription);
+            replacementObscured = renderObject->isReplacementObscured();
+            renderObject->setUnavailablePluginIndicatorIsHidden(replacementObscured);
+        }
 
-        send(Messages::WebPageProxy::DidBlockInsecurePluginVersion(parameters.mimeType, parameters.url.string(), frameURLString, pageURLString));
+        send(Messages::WebPageProxy::DidBlockInsecurePluginVersion(parameters.mimeType, parameters.url.string(), frameURLString, pageURLString, replacementObscured));
         return 0;
     }
 
@@ -612,8 +621,8 @@ EditorState WebPage::editorState() const
     if (!scope)
         return result;
 
-    if (scope->hasTagName(HTMLNames::inputTag)) {
-        HTMLInputElement* input = static_cast<HTMLInputElement*>(scope);
+    if (isHTMLInputElement(scope)) {
+        HTMLInputElement* input = toHTMLInputElement(scope);
         if (input->isTelephoneField())
             result.inputMethodHints |= Qt::ImhDialableCharactersOnly;
         else if (input->isNumberField())
@@ -937,9 +946,9 @@ void WebPage::loadDataImpl(PassRefPtr<SharedBuffer> sharedBuffer, const String& 
 
 void WebPage::loadData(const CoreIPC::DataReference& data, const String& MIMEType, const String& encodingName, const String& baseURLString, CoreIPC::MessageDecoder& decoder)
 {
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(data.data()), data.size() * sizeof(uint8_t));
+    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(data.data()), data.size());
     KURL baseURL = baseURLString.isEmpty() ? blankURL() : KURL(KURL(), baseURLString);
-    loadDataImpl(sharedBuffer, MIMEType, encodingName, blankURL(), KURL(), decoder);
+    loadDataImpl(sharedBuffer, MIMEType, encodingName, baseURL, KURL(), decoder);
 }
 
 void WebPage::loadHTMLString(const String& htmlString, const String& baseURLString, CoreIPC::MessageDecoder& decoder)
@@ -1250,7 +1259,7 @@ void WebPage::setPageAndTextZoomFactors(double pageZoomFactor, double textZoomFa
 
 void WebPage::windowScreenDidChange(uint64_t displayID)
 {
-    m_page->windowScreenDidChange(static_cast<PlatformDisplayID>(displayID));
+    m_page->chrome().windowScreenDidChange(static_cast<PlatformDisplayID>(displayID));
 }
 
 void WebPage::scalePage(double scale, const IntPoint& origin)
@@ -2435,12 +2444,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings->setLocalStorageEnabled(store.getBoolValueForKey(WebPreferencesKey::localStorageEnabledKey()));
     settings->setXSSAuditorEnabled(store.getBoolValueForKey(WebPreferencesKey::xssAuditorEnabledKey()));
     settings->setFrameFlatteningEnabled(store.getBoolValueForKey(WebPreferencesKey::frameFlatteningEnabledKey()));
-    
-    bool privateBrowsingEnabled = store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey());
-    if (privateBrowsingEnabled)
-        WebProcess::shared().ensurePrivateBrowsingSession();
-    settings->setPrivateBrowsingEnabled(privateBrowsingEnabled);
-
+    settings->setPrivateBrowsingEnabled(store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()));
     settings->setDeveloperExtrasEnabled(store.getBoolValueForKey(WebPreferencesKey::developerExtrasEnabledKey()));
     settings->setJavaScriptExperimentsEnabled(store.getBoolValueForKey(WebPreferencesKey::javaScriptExperimentsEnabledKey()));
     settings->setTextAreasAreResizable(store.getBoolValueForKey(WebPreferencesKey::textAreasAreResizableKey()));
@@ -2520,7 +2524,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #endif
 
 #if ENABLE(WEB_AUDIO)
-    RuntimeEnabledFeatures::setWebAudioEnabled(store.getBoolValueForKey(WebPreferencesKey::webAudioEnabledKey()));
+    settings->setWebAudioEnabled(store.getBoolValueForKey(WebPreferencesKey::webAudioEnabledKey()));
 #endif
 
     settings->setApplicationChromeMode(store.getBoolValueForKey(WebPreferencesKey::applicationChromeModeKey()));
@@ -2571,6 +2575,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if ENABLE(PAGE_VISIBILITY_API)
     settings->setHiddenPageCSSAnimationSuspensionEnabled(store.getBoolValueForKey(WebPreferencesKey::hiddenPageCSSAnimationSuspensionEnabledKey()));
 #endif
+
+    settings->setLowPowerVideoAudioBufferSizeEnabled(store.getBoolValueForKey(WebPreferencesKey::lowPowerVideoAudioBufferSizeEnabledKey()));
 
     platformPreferencesDidChange(store);
 
@@ -3000,17 +3006,6 @@ void WebPage::clearSelection()
     m_page->focusController()->focusedOrMainFrame()->selection()->clear();
 }
 
-bool WebPage::mainFrameHasCustomRepresentation() const
-{
-    if (Frame* frame = mainFrame()) {
-        WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader()->client());
-        ASSERT(webFrameLoaderClient);
-        return webFrameLoaderClient->frameHasCustomRepresentation();
-    }
-
-    return false;
-}
-
 void WebPage::didChangeScrollOffsetForMainFrame()
 {
     Frame* frame = m_page->mainFrame();
@@ -3106,9 +3101,10 @@ void WebPage::windowAndViewFramesChanged(const FloatRect& windowFrameInScreenCoo
 }
 #endif
 
-void WebPage::viewExposedRectChanged(const FloatRect& exposedRect)
+void WebPage::viewExposedRectChanged(const FloatRect& exposedRect, bool clipsToExposedRect)
 {
     m_drawingArea->setExposedRect(exposedRect);
+    m_drawingArea->setClipsToExposedRect(clipsToExposedRect);
 }
 
 void WebPage::setMainFrameIsScrollable(bool isScrollable)
@@ -3181,66 +3177,6 @@ InjectedBundleBackForwardList* WebPage::backForwardList()
         m_backForwardList = InjectedBundleBackForwardList::create(this);
     return m_backForwardList.get();
 }
-
-#if PLATFORM(QT)
-#if ENABLE(TOUCH_ADJUSTMENT)
-void WebPage::findZoomableAreaForPoint(const WebCore::IntPoint& point, const WebCore::IntSize& area)
-{
-    Node* node = 0;
-    IntRect zoomableArea;
-    bool foundAreaForTouchPoint = m_mainFrame->coreFrame()->eventHandler()->bestZoomableAreaForTouchPoint(point, IntSize(area.width() / 2, area.height() / 2), zoomableArea, node);
-
-    if (!foundAreaForTouchPoint)
-        return;
-
-    ASSERT(node);
-
-    if (node->document() && node->document()->view())
-        zoomableArea = node->document()->view()->contentsToWindow(zoomableArea);
-
-    send(Messages::WebPageProxy::DidFindZoomableArea(point, zoomableArea));
-}
-
-#else
-void WebPage::findZoomableAreaForPoint(const WebCore::IntPoint& point, const WebCore::IntSize& area)
-{
-    UNUSED_PARAM(area);
-    Frame* mainframe = m_mainFrame->coreFrame();
-    HitTestResult result = mainframe->eventHandler()->hitTestResultAtPoint(mainframe->view()->windowToContents(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent);
-
-    Node* node = result.innerNode();
-
-    if (!node)
-        return;
-
-    IntRect zoomableArea = node->getRect();
-
-    while (true) {
-        bool found = !node->isTextNode() && !node->isShadowRoot();
-
-        // No candidate found, bail out.
-        if (!found && !node->parentNode())
-            return;
-
-        // Candidate found, and it is a better candidate than its parent.
-        // NB: A parent is considered a better candidate iff the node is
-        // contained by it and it is the only child.
-        if (found && (!node->parentNode() || node->parentNode()->childNodeCount() != 1))
-            break;
-
-        node = node->parentNode();
-        zoomableArea.unite(node->getRect());
-    }
-
-    if (node->document() && node->document()->frame() && node->document()->frame()->view()) {
-        const ScrollView* view = node->document()->frame()->view();
-        zoomableArea = view->contentsToWindow(zoomableArea);
-    }
-
-    send(Messages::WebPageProxy::DidFindZoomableArea(point, zoomableArea));
-}
-#endif
-#endif
 
 WebPage::SandboxExtensionTracker::~SandboxExtensionTracker()
 {
@@ -3842,22 +3778,14 @@ bool WebPage::canPluginHandleResponse(const ResourceResponse& response)
 
     uint64_t pluginProcessToken;
     String newMIMEType;
-    if (!sendSync(Messages::WebPageProxy::FindPlugin(response.mimeType(), PluginProcessTypeNormal, response.url().string(), response.url().string(), response.url().string(), allowOnlyApplicationPlugins), Messages::WebPageProxy::FindPlugin::Reply(pluginProcessToken, newMIMEType, pluginLoadPolicy)))
+    String unavailabilityDescription;
+    if (!sendSync(Messages::WebPageProxy::FindPlugin(response.mimeType(), PluginProcessTypeNormal, response.url().string(), response.url().string(), response.url().string(), allowOnlyApplicationPlugins), Messages::WebPageProxy::FindPlugin::Reply(pluginProcessToken, newMIMEType, pluginLoadPolicy, unavailabilityDescription)))
         return false;
 
     return pluginLoadPolicy != PluginModuleBlocked && pluginProcessToken;
 #else
     return false;
 #endif
-}
-
-bool WebPage::shouldUseCustomRepresentationForResponse(const ResourceResponse& response)
-{
-    if (!m_mimeTypesWithCustomRepresentations.contains(response.mimeType()))
-        return false;
-
-    // If a plug-in exists that claims to support this response, it should take precedence over the custom representation.
-    return !canPluginHandleResponse(response);
 }
 
 #if PLATFORM(QT) || PLATFORM(GTK)
@@ -4081,7 +4009,7 @@ void WebPage::didFinishLoad(WebFrame* frame)
 static int primarySnapshottedPlugInSearchLimit = 3000;
 static int primarySnapshottedPlugInSearchGap = 200;
 static float primarySnapshottedPlugInSearchBucketSize = 1.1;
-static int primarySnapshottedPlugInMinimumWidth = 450;
+static int primarySnapshottedPlugInMinimumWidth = 400;
 static int primarySnapshottedPlugInMinimumHeight = 300;
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
@@ -4230,6 +4158,12 @@ void WebPage::stopExtendingIncrementalRenderingSuppression(unsigned token)
 
     m_activeRenderingSuppressionTokens.remove(token);
     m_page->mainFrame()->view()->setVisualUpdatesAllowedByClient(!shouldExtendIncrementalRenderingSuppression());
+}
+    
+void WebPage::setScrollPinningBehavior(uint32_t pinning)
+{
+    m_scrollPinningBehavior = static_cast<ScrollPinningBehavior>(pinning);
+    m_page->mainFrame()->view()->setScrollPinningBehavior(m_scrollPinningBehavior);
 }
 
 } // namespace WebKit

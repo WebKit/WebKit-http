@@ -47,7 +47,6 @@
 #include "ScriptController.h"
 #include "Settings.h"
 #include <math.h>
-#include <stdio.h>
 
 #include <runtime/JSLock.h>
 #include <runtime/Operations.h>
@@ -125,6 +124,21 @@ void HTMLCanvasElement::attach(const AttachContext& context)
 {
     setIsInCanvasSubtree(true);
     HTMLElement::attach(context);
+}
+
+bool HTMLCanvasElement::areAuthorShadowsAllowed() const
+{
+    return false;
+}
+
+bool HTMLCanvasElement::canContainRangeEndPoint() const
+{
+    return false;
+}
+
+bool HTMLCanvasElement::canStartSelection() const
+{
+    return false;
 }
 
 void HTMLCanvasElement::addObserver(CanvasObserver* observer)

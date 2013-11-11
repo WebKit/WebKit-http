@@ -30,7 +30,6 @@
 #include "SVGAnimatedRect.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGFitToViewBox.h"
-#include "SVGLangSpace.h"
 #include "SVGStyledElement.h"
 
 namespace WebCore {
@@ -96,7 +95,6 @@ struct SVGPropertyTraits<SVGMarkerOrientType> {
 };
 
 class SVGMarkerElement FINAL : public SVGStyledElement,
-                               public SVGLangSpace,
                                public SVGExternalResourcesRequired,
                                public SVGFitToViewBox {
 public:
@@ -167,10 +165,10 @@ private:
     mutable SVGSynchronizableAnimatedProperty<SVGMarkerOrientType> m_orientType;
 };
 
-inline SVGMarkerElement* toSVGMarkerElement(SVGElement* element)
+inline SVGMarkerElement* toSVGMarkerElement(Node* node)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!element || element->hasTagName(SVGNames::markerTag));
-    return static_cast<SVGMarkerElement*>(element);
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(SVGNames::markerTag));
+    return static_cast<SVGMarkerElement*>(node);
 }
 
 }
