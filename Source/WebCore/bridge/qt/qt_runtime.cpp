@@ -817,10 +817,11 @@ JSValueRef convertQVariantToValue(JSContextRef context, PassRefPtr<RootObject> r
     } else if (type == static_cast<QMetaType::Type>(qMetaTypeId<QObjectList>())) {
         QObjectList ol = variant.value<QObjectList>();
         JSObjectRef array = JSObjectMakeArray(context, 0, 0, exception);
+        RefPtr<RootObject> rootRef(root); // We need a real reference, since PassRefPtr may only be passed on to one call.
         ExecState* exec = toJS(context);
         JSLockHolder locker(exec);
         for (int i = 0; i < ol.count(); ++i) {
-            JSValueRef jsObject = toRef(exec, QtInstance::getQtInstance(ol.at(i), root, QtInstance::QtOwnership)->createRuntimeObject(exec));
+            JSValueRef jsObject = toRef(exec, QtInstance::getQtInstance(ol.at(i), rootRef, QtInstance::QtOwnership)->createRuntimeObject(exec));
             JSObjectSetPropertyAtIndex(context, array, i, jsObject, /*ignored exception*/0);
         }
         return array;
