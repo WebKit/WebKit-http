@@ -46,19 +46,11 @@
 #include "InspectorDebuggerAgent.h"
 #include "InspectorValues.h"
 #include "JSEventListener.h"
-#include "JSFloat32Array.h"
-#include "JSFloat64Array.h"
 #include "JSHTMLAllCollection.h"
 #include "JSHTMLCollection.h"
-#include "JSInt16Array.h"
-#include "JSInt32Array.h"
-#include "JSInt8Array.h"
 #include "JSNode.h"
 #include "JSNodeList.h"
 #include "JSStorage.h"
-#include "JSUint16Array.h"
-#include "JSUint32Array.h"
-#include "JSUint8Array.h"
 #include "ScriptValue.h"
 #include "Storage.h"
 #include <parser/SourceCode.h>
@@ -67,8 +59,11 @@
 #include <runtime/JSArray.h>
 #include <runtime/JSFunction.h>
 #include <runtime/JSLock.h>
+#include <runtime/JSTypedArrays.h>
 #include <runtime/ObjectConstructor.h>
+#include <runtime/Operations.h>
 #include <runtime/RegExpObject.h>
+#include <runtime/TypedArrayInlines.h>
 
 using namespace JSC;
 
@@ -112,7 +107,7 @@ JSValue JSInjectedScriptHost::internalConstructorName(ExecState* exec)
     if (exec->argumentCount() < 1)
         return jsUndefined();
 
-    JSObject* thisObject = exec->argument(0).toThisObject(exec);
+    JSObject* thisObject = jsCast<JSObject*>(exec->argument(0).toThis(exec, NotStrictMode));
     String result = thisObject->methodTable()->className(thisObject);
     return jsStringWithCache(exec, result);
 }
@@ -123,7 +118,7 @@ JSValue JSInjectedScriptHost::isHTMLAllCollection(ExecState* exec)
         return jsUndefined();
 
     JSValue value = exec->argument(0);
-    return jsBoolean(value.inherits(&JSHTMLAllCollection::s_info));
+    return jsBoolean(value.inherits(JSHTMLAllCollection::info()));
 }
 
 JSValue JSInjectedScriptHost::type(ExecState* exec)
@@ -134,27 +129,27 @@ JSValue JSInjectedScriptHost::type(ExecState* exec)
     JSValue value = exec->argument(0);
     if (value.isString())
         return jsString(exec, String("string"));
-    if (value.inherits(&JSArray::s_info))
+    if (value.inherits(JSArray::info()))
         return jsString(exec, String("array"));
     if (value.isBoolean())
         return jsString(exec, String("boolean"));
     if (value.isNumber())
         return jsString(exec, String("number"));
-    if (value.inherits(&DateInstance::s_info))
+    if (value.inherits(DateInstance::info()))
         return jsString(exec, String("date"));
-    if (value.inherits(&RegExpObject::s_info))
+    if (value.inherits(RegExpObject::info()))
         return jsString(exec, String("regexp"));
-    if (value.inherits(&JSNode::s_info))
+    if (value.inherits(JSNode::info()))
         return jsString(exec, String("node"));
-    if (value.inherits(&JSNodeList::s_info))
+    if (value.inherits(JSNodeList::info()))
         return jsString(exec, String("array"));
-    if (value.inherits(&JSHTMLCollection::s_info))
+    if (value.inherits(JSHTMLCollection::info()))
         return jsString(exec, String("array"));
-    if (value.inherits(&JSInt8Array::s_info) || value.inherits(&JSInt16Array::s_info) || value.inherits(&JSInt32Array::s_info))
+    if (value.inherits(JSInt8Array::info()) || value.inherits(JSInt16Array::info()) || value.inherits(JSInt32Array::info()))
         return jsString(exec, String("array"));
-    if (value.inherits(&JSUint8Array::s_info) || value.inherits(&JSUint16Array::s_info) || value.inherits(&JSUint32Array::s_info))
+    if (value.inherits(JSUint8Array::info()) || value.inherits(JSUint16Array::info()) || value.inherits(JSUint32Array::info()))
         return jsString(exec, String("array"));
-    if (value.inherits(&JSFloat32Array::s_info) || value.inherits(&JSFloat64Array::s_info))
+    if (value.inherits(JSFloat32Array::info()) || value.inherits(JSFloat64Array::info()))
         return jsString(exec, String("array"));
     return jsUndefined();
 }
@@ -164,7 +159,7 @@ JSValue JSInjectedScriptHost::functionDetails(ExecState* exec)
     if (exec->argumentCount() < 1)
         return jsUndefined();
     JSValue value = exec->argument(0);
-    if (!value.asCell()->inherits(&JSFunction::s_info))
+    if (!value.asCell()->inherits(JSFunction::info()))
         return jsUndefined();
     JSFunction* function = jsCast<JSFunction*>(value);
 
@@ -233,17 +228,13 @@ JSValue JSInjectedScriptHost::getEventListeners(ExecState* exec)
     Node* node = toNode(value);
     if (!node)
         return jsUndefined();
-    // This can only happen for orphan DocumentType nodes.
-    Document* document = node->document();
-    if (!node->document())
-        return jsUndefined();
 
     Vector<EventListenerInfo> listenersArray;
     impl()->getEventListenersImpl(node, listenersArray);
 
     JSObject* result = constructEmptyObject(exec);
     for (size_t i = 0; i < listenersArray.size(); ++i) {
-        JSArray* listeners = getJSListenerFunctions(exec, document, listenersArray[i]);
+        JSArray* listeners = getJSListenerFunctions(exec, &node->document(), listenersArray[i]);
         if (!listeners->length())
             continue;
         AtomicString eventType = listenersArray[i].eventType;
@@ -294,7 +285,7 @@ JSValue JSInjectedScriptHost::evaluate(ExecState* exec) const
 JSValue JSInjectedScriptHost::setFunctionVariableValue(JSC::ExecState* exec)
 {
     // FIXME: implement this. https://bugs.webkit.org/show_bug.cgi?id=107830
-    throwError(exec, createTypeError(exec, "Variable value mutation is not supported"));
+    exec->vm().throwException(exec, createTypeError(exec, "Variable value mutation is not supported"));
     return jsUndefined();
 }
 

@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "CodeBlock.h"
+#include "DFGJITCode.h"
 #include "DFGValueSource.h"
 #include "Operations.h"
 #include <wtf/DataLog.h>
@@ -109,7 +110,7 @@ void VariableEventStream::reconstruct(
     CodeBlock* codeBlock, CodeOrigin codeOrigin, MinifiedGraph& graph,
     unsigned index, Operands<ValueRecovery>& valueRecoveries) const
 {
-    ASSERT(codeBlock->getJITType() == JITCode::DFGJIT);
+    ASSERT(codeBlock->jitType() == JITCode::DFGJIT);
     CodeBlock* baselineCodeBlock = codeBlock->baselineVersion();
     
     unsigned numVariables;
@@ -213,7 +214,7 @@ void VariableEventStream::reconstruct(
             
             bool found = false;
             
-            if (node && node->op() == UInt32ToNumber) {
+            if (node && needsOSRBackwardRewiring(node->op())) {
                 MinifiedID id = node->child1();
                 if (tryToSetConstantRecovery(valueRecoveries[i], codeBlock, graph.at(id)))
                     continue;
@@ -243,7 +244,6 @@ void VariableEventStream::reconstruct(
                         continue;
                     switch (node->op()) {
                     case Int32ToDouble:
-                    case ForwardInt32ToDouble:
                         int32ToDoubleID = id;
                         break;
                     case ValueToInt32:
@@ -256,6 +256,7 @@ void VariableEventStream::reconstruct(
                         doubleAsInt32ID = id;
                         break;
                     default:
+                        ASSERT(!needsOSRForwardRewiring(node->op()));
                         break;
                     }
                 }

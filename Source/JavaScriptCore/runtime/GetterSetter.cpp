@@ -23,25 +23,59 @@
 #include "config.h"
 #include "GetterSetter.h"
 
+#include "Error.h"
 #include "JSObject.h"
 #include "Operations.h"
 #include <wtf/Assertions.h>
 
 namespace JSC {
 
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(GetterSetter);
+STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(GetterSetter);
 
 const ClassInfo GetterSetter::s_info = { "GetterSetter", 0, 0, 0, CREATE_METHOD_TABLE(GetterSetter) };
 
 void GetterSetter::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     GetterSetter* thisObject = jsCast<GetterSetter*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     JSCell::visitChildren(thisObject, visitor);
 
     visitor.append(&thisObject->m_getter);
     visitor.append(&thisObject->m_setter);
+}
+
+JSValue callGetter(ExecState* exec, JSValue base, JSValue getterSetter)
+{
+    // FIXME: Some callers may invoke get() without checking for an exception first.
+    // We work around that by checking here.
+    if (exec->hadException())
+        return exec->exception();
+
+    JSObject* getter = jsCast<GetterSetter*>(getterSetter)->getter();
+    if (!getter)
+        return jsUndefined();
+
+    CallData callData;
+    CallType callType = getter->methodTable()->getCallData(getter, callData);
+    return call(exec, getter, callType, callData, base, ArgList());
+}
+
+void callSetter(ExecState* exec, JSValue base, JSValue getterSetter, JSValue value, ECMAMode ecmaMode)
+{
+    JSObject* setter = jsCast<GetterSetter*>(getterSetter)->setter();
+    if (!setter) {
+        if (ecmaMode == StrictMode)
+            throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
+        return;
+    }
+
+    MarkedArgumentBuffer args;
+    args.append(value);
+
+    CallData callData;
+    CallType callType = setter->methodTable()->getCallData(setter, callData);
+    call(exec, setter, callType, callData, base, args);
 }
 
 } // namespace JSC

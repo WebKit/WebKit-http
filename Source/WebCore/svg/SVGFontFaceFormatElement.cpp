@@ -40,9 +40,9 @@ PassRefPtr<SVGFontFaceFormatElement> SVGFontFaceFormatElement::create(const Qual
     return adoptRef(new SVGFontFaceFormatElement(tagName, document));
 }
 
-void SVGFontFaceFormatElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void SVGFontFaceFormatElement::childrenChanged(const ChildChange& change)
 {
-    SVGElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
+    SVGElement::childrenChanged(change);
 
     if (!parentNode() || !parentNode()->hasTagName(font_face_uriTag))
         return;
@@ -53,7 +53,7 @@ void SVGFontFaceFormatElement::childrenChanged(bool changedByParser, Node* befor
     
     ancestor = ancestor->parentNode();
     if (ancestor && ancestor->hasTagName(font_faceTag))
-        static_cast<SVGFontFaceElement*>(ancestor)->rebuildFontFace();
+        toSVGFontFaceElement(ancestor)->rebuildFontFace();
 }
 
 }

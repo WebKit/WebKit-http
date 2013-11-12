@@ -28,15 +28,15 @@
 #define ShadowRoot_h
 
 #include "ContainerNode.h"
+#include "ContentDistributor.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "Element.h"
 #include "ExceptionCode.h"
+#include "StyleResolveTree.h"
 #include "TreeScope.h"
 
 namespace WebCore {
-
-class ElementShadow;
 
 class ShadowRoot FINAL : public DocumentFragment, public TreeScope {
 public:
@@ -56,22 +56,18 @@ public:
 
     virtual ~ShadowRoot();
 
-    void recalcStyle(StyleChange);
-
     virtual bool applyAuthorStyles() const OVERRIDE { return m_applyAuthorStyles; }
     void setApplyAuthorStyles(bool);
-    virtual bool resetStyleInheritance() const OVERRIDE { return m_resetStyleInheritance; }
+    bool resetStyleInheritance() const { return m_resetStyleInheritance; }
     void setResetStyleInheritance(bool);
 
-    Element* host() const { return toElement(parentOrShadowHostNode()); }
-    ElementShadow* owner() const { return host() ? host()->shadow() : 0; }
+    Element* hostElement() const { return m_hostElement; }
+    void setHostElement(Element* hostElement) { m_hostElement = hostElement; }
 
     String innerHTML() const;
     void setInnerHTML(const String&, ExceptionCode&);
 
     Element* activeElement() const;
-
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
 
     virtual void registerScopedHTMLStyleChild() OVERRIDE;
     virtual void unregisterScopedHTMLStyleChild() OVERRIDE;
@@ -80,23 +76,32 @@ public:
 
     PassRefPtr<Node> cloneNode(bool, ExceptionCode&);
 
+    ContentDistributor& distributor() { return m_distributor; }
+    void invalidateDistribution() { m_distributor.invalidateDistribution(hostElement()); }
+
+    void removeAllEventListeners();
+
 private:
     ShadowRoot(Document*, ShadowRootType);
 
     virtual void dispose() OVERRIDE;
     virtual bool childTypeAllowed(NodeType) const OVERRIDE;
-    virtual void childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta) OVERRIDE;
+    virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
     // ShadowRoots should never be cloned.
     virtual PassRefPtr<Node> cloneNode(bool) OVERRIDE { return 0; }
 
     // FIXME: This shouldn't happen. https://bugs.webkit.org/show_bug.cgi?id=88834
-    bool isOrphan() const { return !host(); }
+    bool isOrphan() const { return !hostElement(); }
 
     unsigned m_numberOfStyles : 28;
     unsigned m_applyAuthorStyles : 1;
     unsigned m_resetStyleInheritance : 1;
     unsigned m_type : 1;
+
+    Element* m_hostElement;
+
+    ContentDistributor m_distributor;
 };
 
 inline Element* ShadowRoot::activeElement() const
@@ -113,6 +118,26 @@ inline const ShadowRoot* toShadowRoot(const Node* node)
 inline ShadowRoot* toShadowRoot(Node* node)
 {
     return const_cast<ShadowRoot*>(toShadowRoot(static_cast<const Node*>(node)));
+}
+
+inline ShadowRoot* Node::shadowRoot() const
+{
+    if (!isElementNode())
+        return 0;
+    return toElement(this)->shadowRoot();
+}
+
+inline ContainerNode* Node::parentOrShadowHostNode() const
+{
+    ASSERT(isMainThreadOrGCThread());
+    if (isShadowRoot())
+        return toShadowRoot(this)->hostElement();
+    return parentNode();
+}
+
+inline bool hasShadowRootParent(const Node* node)
+{
+    return node->parentNode() && node->parentNode()->isShadowRoot();
 }
 
 } // namespace

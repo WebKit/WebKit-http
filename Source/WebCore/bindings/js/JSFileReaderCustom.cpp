@@ -35,8 +35,8 @@
 #include "JSFileReader.h"
 
 #include "FileReader.h"
-#include "JSArrayBuffer.h"
-#include <wtf/ArrayBuffer.h>
+#include <runtime/ArrayBuffer.h>
+#include <runtime/JSArrayBuffer.h>
 
 using namespace JSC;
 

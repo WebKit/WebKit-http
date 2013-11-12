@@ -135,8 +135,8 @@ void getPluginOcclusions(Element* element, Widget* parentWidget, const IntRect& 
 
     FrameView* parentFrameView = toFrameView(parentWidget);
 
-    const HashSet<RefPtr<Widget> >* children = parentFrameView->children();
-    for (HashSet<RefPtr<Widget> >::const_iterator it = children->begin(); it != children->end(); ++it) {
+    const auto& children = parentFrameView->children();
+    for (auto it = children.begin(); it != children.end(); ++it) {
         // We only care about FrameView's because iframes show up as FrameViews.
         if (!(*it)->isFrameView())
             continue;
@@ -144,11 +144,10 @@ void getPluginOcclusions(Element* element, Widget* parentWidget, const IntRect& 
         const FrameView* frameView = toFrameView((*it).get());
         // Check to make sure we can get both the element and the RenderObject
         // for this FrameView, if we can't just move on to the next object.
-        if (!frameView->frame() || !frameView->frame()->ownerElement()
-            || !frameView->frame()->ownerElement()->renderer())
+        if (!frameView->frame().ownerElement() || !frameView->frame().ownerElement()->renderer())
             continue;
 
-        HTMLElement* element = frameView->frame()->ownerElement();
+        HTMLElement* element = frameView->frame().ownerElement();
         RenderObject* iframeRenderer = element->renderer();
 
         if (element->hasTagName(HTMLNames::iframeTag)

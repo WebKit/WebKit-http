@@ -96,12 +96,6 @@
     <ClCompile Include="..\wtf\unicode\UTF8.cpp">
       <Filter>wtf\unicode</Filter>
     </ClCompile>
-    <ClCompile Include="..\wtf\ArrayBuffer.cpp">
-      <Filter>wtf</Filter>
-    </ClCompile>
-    <ClCompile Include="..\wtf\ArrayBufferView.cpp">
-      <Filter>wtf</Filter>
-    </ClCompile>
     <ClCompile Include="..\wtf\Assertions.cpp">
       <Filter>wtf</Filter>
     </ClCompile>
@@ -213,8 +207,21 @@
     <ClCompile Include="..\wtf\SchedulePairCF.cpp">
       <Filter>wtf</Filter>
     </ClCompile>
-    <ClCompile Include="..\wtf\FunctionDispatcher.cpp" />
-    <ClCompile Include="..\wtf\text\AtomicStringTable.cpp" />
+    <ClCompile Include="..\wtf\FunctionDispatcher.cpp">
+      <Filter>wtf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\wtf\text\AtomicStringTable.cpp">
+      <Filter>text</Filter>
+    </ClCompile>
+    <ClCompile Include="..\wtf\CompilationThread.cpp">
+      <Filter>wtf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\wtf\SixCharacterHash.cpp">
+      <Filter>wtf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\wtf\Compression.cpp">
+      <Filter>wtf</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\wtf\dtoa\utils.h">
@@ -328,12 +335,6 @@
     <ClInclude Include="..\wtf\WTFThreadData.h">
       <Filter>wtf</Filter>
     </ClInclude>
-    <ClInclude Include="..\wtf\ArrayBuffer.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\ArrayBufferView.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
     <ClInclude Include="..\wtf\ASCIICType.h">
       <Filter>wtf</Filter>
     </ClInclude>
@@ -412,9 +413,6 @@
     <ClInclude Include="..\wtf\EnumClass.h">
       <Filter>wtf</Filter>
     </ClInclude>
-    <ClInclude Include="..\wtf\FastAllocBase.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
     <ClInclude Include="..\wtf\FastBitVector.h">
       <Filter>wtf</Filter>
     </ClInclude>
@@ -425,12 +423,6 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\FixedArray.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\Float32Array.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\Float64Array.h">
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\Forward.h">
@@ -469,15 +461,6 @@
     <ClInclude Include="..\wtf\HexNumber.h">
       <Filter>wtf</Filter>
     </ClInclude>
-    <ClInclude Include="..\wtf\Int16Array.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\Int32Array.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\Int8Array.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
     <ClInclude Include="..\wtf\ListHashSet.h">
       <Filter>wtf</Filter>
     </ClInclude>
@@ -485,6 +468,9 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\MainThread.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\MallocPtr.h">
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\MathExtras.h">
@@ -506,6 +492,9 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\NeverDestroyed.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\Ref.h">
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\Noncopyable.h">
@@ -560,9 +549,6 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\ParallelJobsOpenMP.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\PassOwnArrayPtr.h">
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\PassOwnPtr.h">
@@ -670,15 +656,6 @@
     <ClInclude Include="..\wtf\TypeTraits.h">
       <Filter>wtf</Filter>
     </ClInclude>
-    <ClInclude Include="..\wtf\Uint16Array.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\Uint32Array.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\Uint8Array.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
     <ClInclude Include="..\wtf\ValueCheck.h">
       <Filter>wtf</Filter>
     </ClInclude>
@@ -695,8 +672,25 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\WTF\config.h" />
-    <ClInclude Include="..\wtf\FunctionDispatcher.h" />
     <ClInclude Include="..\wtf\FeatureDefines.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\FunctionDispatcher.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\CompilationThread.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\SixCharacterHash.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\Compression.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\FlipBytes.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\DeferrableRefCounted.h">
       <Filter>wtf</Filter>
     </ClInclude>
   </ItemGroup>

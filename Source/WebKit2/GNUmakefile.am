@@ -162,7 +162,6 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPP
 	$(webcore_cppflags) \
 	$(webcoregtk_cppflags) \
 	$(javascriptcore_cppflags) \
-	$(CLUTTER_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
 	$(ENCHANT_CFLAGS) \
 	$(FREETYPE_CFLAGS) \
@@ -223,11 +222,10 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIB
 	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
 	libPlatform.la \
 	libPlatformGtk.la \
-	libWebCoreDOM.la \
+	libGObjectDOMBindings.la \
 	libWebCoreGtk.la \
 	libWebKit2Platform.la \
 	$(CAIRO_LIBS) \
-	$(CLUTTER_LIBS) \
 	$(COVERAGE_LDFLAGS) \
 	$(ENCHANT_LIBS) \
 	$(FREETYPE_LIBS) \

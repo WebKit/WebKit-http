@@ -90,7 +90,7 @@ PassRefPtr<EventSource> EventSource::create(ScriptExecutionContext* context, con
     bool shouldBypassMainWorldContentSecurityPolicy = false;
     if (context->isDocument()) {
         Document* document = toDocument(context);
-        shouldBypassMainWorldContentSecurityPolicy = document->frame()->script()->shouldBypassMainWorldContentSecurityPolicy();
+        shouldBypassMainWorldContentSecurityPolicy = document->frame()->script().shouldBypassMainWorldContentSecurityPolicy();
     }
     if (!shouldBypassMainWorldContentSecurityPolicy && !context->contentSecurityPolicy()->allowConnectToSource(fullURL)) {
         // FIXME: Should this be throwing an exception?
@@ -436,9 +436,9 @@ EventTargetData* EventSource::eventTargetData()
     return &m_eventTargetData;
 }
 
-EventTargetData* EventSource::ensureEventTargetData()
+EventTargetData& EventSource::ensureEventTargetData()
 {
-    return &m_eventTargetData;
+    return m_eventTargetData;
 }
 
 } // namespace WebCore

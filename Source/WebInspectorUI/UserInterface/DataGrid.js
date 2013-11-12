@@ -192,7 +192,7 @@ WebInspector.DataGrid.Event = {
     DidLayout: "datagrid-did-layout",
     SortChanged: "datagrid-sort-changed",
     SelectedNodeChanged: "datagrid-selected-node-changed"
-}
+};
 
 /**
  * @param {Array.<string>} columnNames
@@ -1081,8 +1081,8 @@ WebInspector.DataGrid.prototype = {
             shadowBlur: 0
         };
 
-        generateColoredImagesForCSS("Images/SortIndicatorDownArrow.pdf", specifications, 9, 8, "data-grid-sort-indicator-down-");
-        generateColoredImagesForCSS("Images/SortIndicatorUpArrow.pdf", specifications, 9, 8, "data-grid-sort-indicator-up-");
+        generateColoredImagesForCSS("Images/SortIndicatorDownArrow.svg", specifications, 9, 8, "data-grid-sort-indicator-down-");
+        generateColoredImagesForCSS("Images/SortIndicatorUpArrow.svg", specifications, 9, 8, "data-grid-sort-indicator-up-");
     },
 
     _mouseDownInDataTable: function(event)
@@ -1286,7 +1286,7 @@ WebInspector.DataGrid.ResizeMethod = {
     Nearest: "nearest",
     First: "first",
     Last: "last"
-}
+};
 
 WebInspector.DataGrid.prototype.__proto__ = WebInspector.Object.prototype;
 

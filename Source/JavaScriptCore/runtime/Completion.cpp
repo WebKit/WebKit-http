@@ -71,15 +71,15 @@ JSValue evaluate(ExecState* exec, const SourceCode& source, JSValue thisValue, J
     ProgramExecutable* program = ProgramExecutable::create(exec, source);
     if (!program) {
         if (returnedException)
-            *returnedException = exec->vm().exception;
+            *returnedException = exec->vm().exception();
 
-        exec->vm().exception = JSValue();
+        exec->vm().clearException();
         return jsUndefined();
     }
 
     if (!thisValue || thisValue.isUndefinedOrNull())
         thisValue = exec->dynamicGlobalObject();
-    JSObject* thisObj = thisValue.toThisObject(exec);
+    JSObject* thisObj = jsCast<JSObject*>(thisValue.toThis(exec, NotStrictMode));
     JSValue result = exec->interpreter()->execute(program, exec, thisObj);
 
     if (exec->hadException()) {

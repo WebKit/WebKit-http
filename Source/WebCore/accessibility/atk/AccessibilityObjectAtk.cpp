@@ -156,15 +156,13 @@ unsigned AccessibilityObject::getLengthForTextRange() const
     // Gtk ATs need this for all text objects; not just text controls.
     Node* node = this->node();
     RenderObject* renderer = node ? node->renderer() : 0;
-    if (renderer && renderer->isText()) {
-        RenderText* renderText = toRenderText(renderer);
-        textLength = renderText ? renderText->textLength() : 0;
-    }
+    if (renderer && renderer->isText())
+        textLength = toRenderText(*renderer).textLength();
 
     // Get the text length from the elements under the
     // accessibility object if the value is still zero.
     if (!textLength && allowsTextRanges())
-        textLength = textUnderElement(TextUnderElementModeIncludeAllChildren).length();
+        textLength = textUnderElement(AccessibilityTextUnderElementMode(AccessibilityTextUnderElementMode::TextUnderElementModeIncludeAllChildren)).length();
 
     return textLength;
 }

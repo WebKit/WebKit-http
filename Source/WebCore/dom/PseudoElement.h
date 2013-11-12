@@ -36,20 +36,23 @@ namespace WebCore {
 
 class PseudoElement FINAL : public Element {
 public:
-    static PassRefPtr<PseudoElement> create(Element* parent, PseudoId pseudoId)
+    static PassRefPtr<PseudoElement> create(Element* host, PseudoId pseudoId)
     {
-        return adoptRef(new PseudoElement(parent, pseudoId));
+        return adoptRef(new PseudoElement(host, pseudoId));
     }
     ~PseudoElement();
 
+    Element* hostElement() const { return m_hostElement; }
+    void clearHostElement() { m_hostElement = 0; }
+
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
-    virtual bool rendererIsNeeded(const NodeRenderingContext&) OVERRIDE;
+    virtual void didAttachRenderers() OVERRIDE;
+    virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
 
     // As per http://dev.w3.org/csswg/css3-regions/#flow-into, pseudo-elements such as ::first-line, ::first-letter, ::before or ::after
     // cannot be directly collected into a named flow.
 #if ENABLE(CSS_REGIONS)
-    virtual bool shouldMoveToFlowThread(RenderStyle*) const OVERRIDE { return false; }
+    virtual bool shouldMoveToFlowThread(const RenderStyle&) const OVERRIDE { return false; }
 #endif
 
     virtual bool canStartSelection() const OVERRIDE { return false; }
@@ -60,9 +63,10 @@ public:
 private:
     PseudoElement(Element*, PseudoId);
 
-    virtual void didRecalcStyle(StyleChange) OVERRIDE;
+    virtual void didRecalcStyle(Style::Change) OVERRIDE;
     virtual PseudoId customPseudoId() const OVERRIDE { return m_pseudoId; }
 
+    Element* m_hostElement;
     PseudoId m_pseudoId;
 };
 
@@ -71,6 +75,18 @@ const QualifiedName& pseudoElementTagName();
 inline bool pseudoElementRendererIsNeeded(const RenderStyle* style)
 {
     return style && style->display() != NONE && (style->contentData() || !style->regionThread().isEmpty());
+}
+
+inline PseudoElement* toPseudoElement(Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isPseudoElement());
+    return static_cast<PseudoElement*>(node);
+}
+
+inline const PseudoElement* toPseudoElement(const Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isPseudoElement());
+    return static_cast<const PseudoElement*>(node);
 }
 
 } // namespace

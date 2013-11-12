@@ -60,6 +60,9 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
 
 - (void)webView:(WebView *)sender addMessageToConsole:(NSDictionary *)dictionary withSource:(NSString *)source
 {
+    if (done)
+        return;
+
     NSString *message = [dictionary objectForKey:@"message"];
     NSNumber *lineNumber = [dictionary objectForKey:@"lineNumber"];
 
@@ -194,7 +197,7 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
 
 - (void)webView:(WebView *)sender setStatusText:(NSString *)text
 {
-    if (gTestRunner->dumpStatusCallbacks())
+    if (!done && gTestRunner->dumpStatusCallbacks())
         printf("UI DELEGATE STATUS CALLBACK: setStatusText:%s\n", [text UTF8String]);
 }
 
@@ -287,7 +290,8 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
 
 - (BOOL)webView:(WebView *)webView didPressMissingPluginButton:(DOMElement *)element
 {
-    printf("MISSING PLUGIN BUTTON PRESSED\n");
+    if (!done)
+        printf("MISSING PLUGIN BUTTON PRESSED\n");
     return TRUE;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,25 +35,21 @@
 #include "EditingStyle.h"
 #include "EditorInsertAction.h"
 #include "FindOptions.h"
-#include "FrameDestructionObserver.h"
 #include "FrameSelection.h"
 #include "TextChecking.h"
 #include "TextIterator.h"
 #include "VisibleSelection.h"
 #include "WritingDirection.h"
 
-#if PLATFORM(MAC) && !defined(__OBJC__)
-class NSDictionary;
-typedef int NSWritingDirection;
+#if PLATFORM(MAC)
+OBJC_CLASS NSDictionary;
 #endif
 
 namespace WebCore {
 
 class Clipboard;
 class CompositeEditCommand;
-#if ENABLE(DELETION_UI)
 class DeleteButtonController;
-#endif
 class EditCommand;
 class EditCommandComposition;
 class EditorClient;
@@ -88,15 +84,13 @@ struct CompositionUnderline {
 enum EditorCommandSource { CommandFromMenuOrKeyBinding, CommandFromDOM, CommandFromDOMWithUserInterface };
 enum EditorParagraphSeparator { EditorParagraphSeparatorIsDiv, EditorParagraphSeparatorIsP };
 
-class Editor : public FrameDestructionObserver {
+class Editor {
 public:
-    explicit Editor(Frame*);
+    static PassOwnPtr<Editor> create(Frame& frame) { return adoptPtr(new Editor(frame)); }
     ~Editor();
 
     EditorClient* client() const;
     TextCheckerClient* textChecker() const;
-
-    Frame* frame() const { return m_frame; }
 
 #if ENABLE(DELETION_UI)
     DeleteButtonController* deleteButtonController() const { return m_deleteButtonController.get(); }
@@ -132,10 +126,12 @@ public:
     void cut();
     void copy();
     void paste();
+    void paste(Pasteboard&);
     void pasteAsPlainText();
     void performDelete();
 
-    void copyURL(const KURL&, const String&);
+    void copyURL(const KURL&, const String& title);
+    void copyURL(const KURL&, const String& title, Pasteboard&);
     void copyImage(const HitTestResult&);
 
     void indent();
@@ -172,9 +168,6 @@ public:
     void deleteSelectionWithSmartDelete(bool smartDelete);
     bool dispatchCPPEvent(const AtomicString&, ClipboardAccessPolicy);
     
-    Node* removedAnchor() const { return m_removedAnchor.get(); }
-    void setRemovedAnchor(PassRefPtr<Node> n) { m_removedAnchor = n; }
-
     void applyStyle(StylePropertySet*, EditAction = EditActionUnspecified);
     void applyParagraphStyle(StylePropertySet*, EditAction = EditActionUnspecified);
     void applyStyleToSelection(StylePropertySet*, EditAction);
@@ -235,7 +228,6 @@ public:
     String misspelledSelectionString() const;
     String misspelledWordAtCaretOrRange(Node* clickedNode) const;
     Vector<String> guessesForMisspelledWord(const String&) const;
-    Vector<String> guessesForUngrammaticalSelection();
     Vector<String> guessesForMisspelledOrUngrammatical(bool& misspelled, bool& ungrammatical);
     bool isSpellCheckingEnabledInFocusedNode() const;
     bool isSpellCheckingEnabledFor(Node*) const;
@@ -253,6 +245,7 @@ public:
     void lowercaseWord();
     void capitalizeWord();
 #endif
+
 #if USE(AUTOMATIC_TEXT_REPLACEMENT)
     void showSubstitutionsPanel();
     bool substitutionsPanelIsShowing();
@@ -289,7 +282,7 @@ public:
     void didEndEditing();
     void willWriteSelectionToPasteboard(PassRefPtr<Range>);
     void didWriteSelectionToPasteboard();
-    
+
     void showFontPanel();
     void showStylesPanel();
     void showColorPanel();
@@ -332,8 +325,8 @@ public:
 
     VisibleSelection selectionForCommand(Event*);
 
-    KillRing* killRing() const { return m_killRing.get(); }
-    SpellChecker* spellChecker() const { return m_spellChecker.get(); }
+    KillRing& killRing() const { return *m_killRing; }
+    SpellChecker& spellChecker() const { return *m_spellChecker; }
 
     EditingBehavior behavior() const;
 
@@ -394,11 +387,13 @@ public:
     NSDictionary* fontAttributesForSelectionStart() const;
     bool canCopyExcludingStandaloneImages();
     void takeFindStringFromSelection();
-    void writeSelectionToPasteboard(const String& pasteboardName, const Vector<String>& pasteboardTypes);
+    void writeSelectionToPasteboard(Pasteboard&);
     void readSelectionFromPasteboard(const String& pasteboardName);
     String stringSelectionForPasteboard();
     String stringSelectionForPasteboardWithImageAltText();
     PassRefPtr<SharedBuffer> dataSelectionForPasteboard(const String& pasteboardName);
+    void writeURLToPasteboard(Pasteboard&, const KURL&, const String& title);
+    void writeImageToPasteboard(Pasteboard&, Element& imageElement, const KURL&, const String& title);
 #endif
 
     void replaceSelectionWithFragment(PassRefPtr<DocumentFragment>, bool selectReplacement, bool smartReplace, bool matchStyle);
@@ -415,14 +410,22 @@ public:
     void setDefaultParagraphSeparator(EditorParagraphSeparator separator) { m_defaultParagraphSeparator = separator; }
     Vector<String> dictationAlternativesForMarker(const DocumentMarker*);
     void applyDictationAlternativelternative(const String& alternativeString);
-private:
-    virtual void willDetachPage() OVERRIDE;
 
+private:
+    explicit Editor(Frame&);
+
+    Document& document() const;
+
+#if PLATFORM(MAC)
+    PassRefPtr<SharedBuffer> selectionInWebArchiveFormat();
+    PassRefPtr<Range> adjustedSelectionRange();
+#endif
+
+    Frame& m_frame;
 #if ENABLE(DELETION_UI)
     OwnPtr<DeleteButtonController> m_deleteButtonController;
 #endif
     RefPtr<CompositeEditCommand> m_lastEditCommand;
-    RefPtr<Node> m_removedAnchor;
     RefPtr<Text> m_compositionNode;
     unsigned m_compositionStart;
     unsigned m_compositionEnd;
@@ -430,9 +433,9 @@ private:
     bool m_ignoreCompositionSelectionChange;
     bool m_shouldStartNewKillRingSequence;
     bool m_shouldStyleWithCSS;
-    OwnPtr<KillRing> m_killRing;
-    OwnPtr<SpellChecker> m_spellChecker;
-    OwnPtr<AlternativeTextController> m_alternativeTextController;
+    const OwnPtr<KillRing> m_killRing;
+    const OwnPtr<SpellChecker> m_spellChecker;
+    const OwnPtr<AlternativeTextController> m_alternativeTextController;
     VisibleSelection m_mark;
     bool m_areMarkedTextMatchesHighlighted;
     EditorParagraphSeparator m_defaultParagraphSeparator;
@@ -440,7 +443,6 @@ private:
 
     bool canDeleteRange(Range*) const;
     bool canSmartReplaceWithPasteboard(Pasteboard*);
-    PassRefPtr<Clipboard> newGeneralClipboard(ClipboardAccessPolicy, Frame*);
     void pasteAsPlainTextWithPasteboard(Pasteboard*);
     void pasteWithPasteboard(Pasteboard*, bool allowPlainText);
 

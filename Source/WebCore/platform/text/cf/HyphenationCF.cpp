@@ -26,9 +26,8 @@
 #include "config.h"
 #include "Hyphenation.h"
 
-#if !PLATFORM(MAC) || PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
-
 #include "AtomicStringKeyedMRUCache.h"
+#include "Language.h"
 #include "TextBreakIteratorInternalICU.h"
 #include <wtf/ListHashSet.h>
 #include <wtf/RetainPtr.h>
@@ -38,7 +37,9 @@ namespace WebCore {
 template<>
 RetainPtr<CFLocaleRef> AtomicStringKeyedMRUCache<RetainPtr<CFLocaleRef> >::createValueForNullKey()
 {
-    RetainPtr<CFLocaleRef> locale = adoptCF(CFLocaleCopyCurrent());
+    // CF hyphenation functions use locale (regional formats) language, which doesn't necessarily match primary UI language,
+    // so we can't use default locale here. See <rdar://problem/14897664>.
+    RetainPtr<CFLocaleRef> locale = adoptCF(CFLocaleCreate(0, defaultLanguage().createCFString().get()));
 
     return CFStringIsHyphenationAvailableForLocale(locale.get()) ? locale : 0;
 }
@@ -75,5 +76,3 @@ size_t lastHyphenLocation(const UChar* characters, size_t length, size_t beforeI
 }
 
 } // namespace WebCore
-
-#endif // !PLATFORM(MAC) || PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070

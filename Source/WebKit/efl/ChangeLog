@@ -1,3 +1,234 @@
+2013-09-05  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [CMAKE] Add c++0x into CXX_FLAGS as a default
+        https://bugs.webkit.org/show_bug.cgi?id=120812
+
+        Unreviewed build fix for EFL ports.
+
+        * tests/UnitTestUtils/EWKTestConfig.h: Add space between strings.
+
+2013-08-28  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Let Page create the main Frame
+        https://bugs.webkit.org/show_bug.cgi?id=120360
+
+        Reviewed by Darin Adler.
+
+        Page always creates the main Frame by itself after r154616.
+        This patch follows the changes for WebKit/Efl like other ports.
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::createFrame):
+        Moved the logic of ewk_view_frame_create.
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_init):
+        (ewk_frame_child_add):
+        Moved construction logic of Frame and FrameLoderClientEfl from ewk_view.
+        (EWKPrivate::setCoreFrame):
+        * ewk/ewk_frame_private.h:
+        * ewk/ewk_view.cpp: Removed _ewk_view_core_frame_new.
+        (_ewk_view_priv_new):
+        (_ewk_view_smart_add):
+        (ewk_view_frame_rect_changed):
+        * ewk/ewk_view_private.h:
+
+2013-08-24  Darin Adler  <darin@apple.com>
+
+        Frame::tree should return a reference instead of a pointer
+        https://bugs.webkit.org/show_bug.cgi?id=120259
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::clearFrameName):
+        (DumpRenderTreeSupportEfl::frameChildren):
+        (DumpRenderTreeSupportEfl::frameParent):
+        * ewk/ewk_frame.cpp:
+        (_ewk_frame_children_iterator_next):
+        (ewk_frame_child_find):
+        (ewk_frame_name_get):
+        (ewk_frame_child_add):
+        * ewk/ewk_view.cpp:
+        (ewk_view_frame_create):
+        Use tree(). instead of tree()->.
+
+2013-08-22  Andreas Kling  <akling@apple.com>
+
+        EFL build juice.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (kit):
+
+2013-08-20  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/120029> Document::markers() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        Document::m_markers is never NULL so return a reference from Document::markers(). Also mark
+        m_markers as const and initialize it in member initialization.
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_text_matches_unmark_all):
+        (ewk_frame_text_matches_nth_pos_get):
+
+2013-08-19  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/119918> Frame::selection() should return a reference
+
+        Reviewed by Darin Adler.
+
+        m_selection is never NULL so return a reference from Frame::selection(). Also removed some
+        unnecessary null checks and assert diff ts exposed as a result.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::selectionRectangle):
+        (DumpRenderTreeSupportEfl::firstRectForCharacterRange):
+        (DumpRenderTreeSupportEfl::selectedRange):
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::handleEditingKeyboardEvent):
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_text_selection_type_get):
+
+2013-08-16  Jaehun Lim  <ljaehun.lim@samsung.com>
+
+        [EFL] Unreviewed build fix after r154192
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld):
+
+2013-08-16  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/119852> Frame::scriptController() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        m_script is never NULL so we can just return a reference. Also remove some pointless null
+        checks as a result of doing this.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld):
+        (DumpRenderTreeSupportEfl::globalContextRefForFrame):
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::dispatchDidClearWindowObjectInWorld):
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_script_execute):
+        * ewk/ewk_view.cpp:
+        (ewk_view_js_object_add):
+
+2013-08-15  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Unreviewed build fix after r154142 and r154144.
+
+        * ewk/ewk_frame.cpp: Follow the changes of r154142.
+        (ewk_frame_uri_set):
+        (ewk_frame_certificate_status_get):
+
+2013-08-15  Anders Carlsson  <andersca@apple.com>
+
+        <https://webkit.org/b/119859> Frame::loader() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (kit):
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::callShouldCloseOnWebView):
+        (DumpRenderTreeSupportEfl::clearOpener):
+        (DumpRenderTreeSupportEfl::frameChildren):
+        (DumpRenderTreeSupportEfl::responseMimeType):
+        (DumpRenderTreeSupportEfl::provisionalURL):
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::callPolicyFunction):
+        (WebCore::FrameLoaderClientEfl::dispatchDecidePolicyForNewWindowAction):
+        (WebCore::FrameLoaderClientEfl::dispatchDecidePolicyForNavigationAction):
+        (WebCore::FrameLoaderClientEfl::updateGlobalHistoryRedirectLinks):
+        (WebCore::FrameLoaderClientEfl::updateGlobalHistory):
+        * ewk/ewk_frame.cpp:
+        (_ewk_frame_loader_efl_get):
+        (_ewk_frame_smart_del):
+        (_ewk_frame_contents_set_internal):
+        (ewk_frame_stop):
+        (ewk_frame_reload):
+        (ewk_frame_reload_full):
+        (ewk_frame_child_add):
+        * ewk/ewk_view.cpp:
+        (ewk_view_frame_focused_get):
+        (ewk_view_setting_user_agent_set):
+        (ewk_view_setting_encoding_custom_get):
+        (ewk_view_setting_encoding_custom_set):
+
+2013-08-12  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] URL printing code in DumpRenderTree doesn't match WTR or Mac DRT
+        https://bugs.webkit.org/show_bug.cgi?id=119585
+
+        Reviewed by Gyuyoung Kim.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::provisionalURL):
+        Implemented to pass provisionalURL of main frame to DumpRenderTreeChrome.
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+
+2013-08-09  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r142755): window.open creates an invisible window when width and height are 0
+        https://bugs.webkit.org/show_bug.cgi?id=119633
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/ChromeClientEfl.cpp: (WebCore::ChromeClientEfl::setWindowRect):
+        Once again, the passed rect cannot be empty.
+
+2013-07-27  Mark Rowe  <mrowe@apple.com>
+
+        Logging should be configurable using human-readable channel names rather than crazy bitmasks
+        <http://webkit.org/b/119031>
+
+        Implement shared logic for initializing logging channels based on human-readable channel names in WTF,
+        and rework the WebCore, WebKit and WebKit2 logging initialization on top of it.
+
+        Logging channels may now be enabled by providing a comma-separated list of channel names, with the special
+        "all" name enabling all channels. Channel names prefixed with a leading "-" will result in the named channel
+        being disabled. For instance, specifying "all,-history,-loading" will result in all logging channels except
+        for history and loading being enabled.
+
+        For OS X developers, this also changes the name of the user defaults used to enable logging. This is done to allow
+        the old user defaults to remain set for those people that need to switch between version of WebKit before and
+        after this change. Where the old user default keys were WebCoreLogLevel, WebKitLogLevel and WebKit2LogLevel,
+        the new user default keys are WebCoreLogging, WebKitLogging and WebKit2Logging.
+
+        For GTK developers, this changes the separator used in the WEBKIT_DEBUG environment variable to a comma for
+        consistency with the other platforms and to enable more code sharing.
+
+        While doing this work I've also taken the opportunity to eliminate the need to touch multiple files when
+        adding a new logging channel. Now only the header in the relevant project needs to be updated.
+
+        Reviewed by Sam Weinig.
+
+        * ewk/ewk_main.cpp: Switch from WebCore's InitializeLogging.h to Logging.h.
+
+2013-07-27  Jacky Jiang  <zhajiang@blackberry.com>
+
+        Replace all uses of GraphicsLayer::create function with the one that takes a GraphicsLayerFactory
+        https://bugs.webkit.org/show_bug.cgi?id=119186
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/AcceleratedCompositingContextEfl.cpp:
+        (WebCore::AcceleratedCompositingContext::attachRootGraphicsLayer):
+
+2013-07-25  Andreas Kling  <akling@apple.com>
+
+        ChromeClient::focusedNodeChanged() should be focusedElementChanged().
+        <http://webkit.org/b/119110>
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::focusedElementChanged):
+        * WebCoreSupport/ChromeClientEfl.h:
+
 2013-07-15  Kwang Yul Seo  <skyul@company100.net>
 
         NetworkStorageSession::createDefaultSession is only implemented by Soup

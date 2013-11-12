@@ -26,7 +26,6 @@
 #include "SVGAltGlyphElement.h"
 
 #include "ExceptionCode.h"
-#include "NodeRenderingContext.h"
 #include "RenderInline.h"
 #include "RenderSVGTSpan.h"
 #include "SVGAltGlyphDefElement.h"
@@ -76,9 +75,9 @@ const AtomicString& SVGAltGlyphElement::format() const
     return fastGetAttribute(SVGNames::formatAttr);
 }
 
-bool SVGAltGlyphElement::childShouldCreateRenderer(const NodeRenderingContext& childContext) const
+bool SVGAltGlyphElement::childShouldCreateRenderer(const Node* child) const
 {
-    if (childContext.node()->isTextNode())
+    if (child->isTextNode())
         return true;
     return false;
 }
@@ -91,7 +90,7 @@ RenderObject* SVGAltGlyphElement::createRenderer(RenderArena* arena, RenderStyle
 bool SVGAltGlyphElement::hasValidGlyphElements(Vector<String>& glyphNames) const
 {
     String target;
-    Element* element = targetElementFromIRIString(getAttribute(XLinkNames::hrefAttr), document(), &target);
+    Element* element = targetElementFromIRIString(getAttribute(XLinkNames::hrefAttr), &document(), &target);
     if (!element)
         return false;
 

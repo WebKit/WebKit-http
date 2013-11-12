@@ -29,12 +29,10 @@ list(APPEND WebCore_SOURCES
     bindings/js/DOMWrapperWorld.cpp
     bindings/js/Dictionary.cpp
     bindings/js/GCController.cpp
-    bindings/js/JSArrayBufferCustom.cpp
     bindings/js/JSAudioBufferCustom.cpp
     bindings/js/JSAttrCustom.cpp
     bindings/js/JSBlobCustom.cpp
     bindings/js/JSCDATASectionCustom.cpp
-    bindings/js/JSDataViewCustom.cpp
     bindings/js/JSCSSFontFaceRuleCustom.cpp
     bindings/js/JSCSSImportRuleCustom.cpp
     bindings/js/JSCSSMediaRuleCustom.cpp
@@ -55,6 +53,7 @@ list(APPEND WebCore_SOURCES
     bindings/js/JSDOMBinding.cpp
     bindings/js/JSDOMFormDataCustom.cpp
     bindings/js/JSDOMGlobalObject.cpp
+    bindings/js/JSDOMGlobalObjectTask.cpp
     bindings/js/JSDOMImplementationCustom.cpp
     bindings/js/JSDOMMimeTypeArrayCustom.cpp
     bindings/js/JSDOMPluginArrayCustom.cpp
@@ -109,7 +108,6 @@ list(APPEND WebCore_SOURCES
     bindings/js/JSMessageChannelCustom.cpp
     bindings/js/JSMessageEventCustom.cpp
     bindings/js/JSMessagePortCustom.cpp
-    bindings/js/JSMicroDataItemValueCustom.cpp
     bindings/js/JSMutationCallback.cpp
     bindings/js/JSMutationObserverCustom.cpp
     bindings/js/JSNamedNodeMapCustom.cpp
@@ -151,6 +149,7 @@ list(APPEND WebCore_SOURCES
     bindings/js/ScriptState.cpp
     bindings/js/ScriptValue.cpp
     bindings/js/SerializedScriptValue.cpp
+    bindings/js/WebCoreTypedArrayController.cpp
 
     bridge/IdentifierRep.cpp
     bridge/NP_jsobject.cpp

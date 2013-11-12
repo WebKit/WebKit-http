@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #ifndef SymbolTable_h
 #define SymbolTable_h
 
+#include "ConcurrentJITLock.h"
 #include "JSObject.h"
 #include "Watchpoint.h"
 #include <wtf/HashTraits.h>
@@ -339,7 +340,101 @@ struct SymbolTableIndexHashTraits : HashTraits<SymbolTableEntry> {
     static const bool needsDestruction = true;
 };
 
-typedef HashMap<RefPtr<StringImpl>, SymbolTableEntry, IdentifierRepHash, HashTraits<RefPtr<StringImpl> >, SymbolTableIndexHashTraits> SymbolTable;
+class SymbolTable {
+public:
+    typedef HashMap<RefPtr<StringImpl>, SymbolTableEntry, IdentifierRepHash, HashTraits<RefPtr<StringImpl> >, SymbolTableIndexHashTraits> Map;
+
+    JS_EXPORT_PRIVATE SymbolTable();
+    JS_EXPORT_PRIVATE ~SymbolTable();
+    
+    // You must hold the lock until after you're done with the iterator.
+    Map::iterator find(const ConcurrentJITLocker&, StringImpl* key)
+    {
+        return m_map.find(key);
+    }
+    
+    SymbolTableEntry get(const ConcurrentJITLocker&, StringImpl* key)
+    {
+        return m_map.get(key);
+    }
+    
+    SymbolTableEntry get(StringImpl* key)
+    {
+        ConcurrentJITLocker locker(m_lock);
+        return get(locker, key);
+    }
+    
+    SymbolTableEntry inlineGet(const ConcurrentJITLocker&, StringImpl* key)
+    {
+        return m_map.inlineGet(key);
+    }
+    
+    SymbolTableEntry inlineGet(StringImpl* key)
+    {
+        ConcurrentJITLocker locker(m_lock);
+        return inlineGet(locker, key);
+    }
+    
+    Map::iterator begin(const ConcurrentJITLocker&)
+    {
+        return m_map.begin();
+    }
+    
+    Map::iterator end(const ConcurrentJITLocker&)
+    {
+        return m_map.end();
+    }
+    
+    size_t size(const ConcurrentJITLocker&) const
+    {
+        return m_map.size();
+    }
+    
+    size_t size() const
+    {
+        ConcurrentJITLocker locker(m_lock);
+        return size(locker);
+    }
+    
+    Map::AddResult add(const ConcurrentJITLocker&, StringImpl* key, const SymbolTableEntry& entry)
+    {
+        return m_map.add(key, entry);
+    }
+    
+    void add(StringImpl* key, const SymbolTableEntry& entry)
+    {
+        ConcurrentJITLocker locker(m_lock);
+        add(locker, key, entry);
+    }
+    
+    Map::AddResult set(const ConcurrentJITLocker&, StringImpl* key, const SymbolTableEntry& entry)
+    {
+        return m_map.set(key, entry);
+    }
+    
+    void set(StringImpl* key, const SymbolTableEntry& entry)
+    {
+        ConcurrentJITLocker locker(m_lock);
+        set(locker, key, entry);
+    }
+    
+    bool contains(const ConcurrentJITLocker&, StringImpl* key)
+    {
+        return m_map.contains(key);
+    }
+    
+    bool contains(StringImpl* key)
+    {
+        ConcurrentJITLocker locker(m_lock);
+        return contains(locker, key);
+    }
+    
+private:
+    Map m_map;
+public:
+    mutable ConcurrentJITLock m_lock;
+};
+
 
 class SharedSymbolTable : public JSCell, public SymbolTable {
 public:
@@ -357,7 +452,7 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(LeafType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, prototype, TypeInfo(LeafType, StructureFlags), info());
     }
 
     bool usesNonStrictEval() { return m_usesNonStrictEval; }
@@ -377,9 +472,9 @@ public:
 
     // 0 if we don't capture any arguments; parameterCount() in length if we do.
     const SlowArgument* slowArguments() { return m_slowArguments.get(); }
-    void setSlowArguments(PassOwnArrayPtr<SlowArgument> slowArguments) { m_slowArguments = slowArguments; }
+    void setSlowArguments(OwnArrayPtr<SlowArgument> slowArguments) { m_slowArguments = std::move(slowArguments); }
 
-    static JS_EXPORTDATA const ClassInfo s_info;
+    DECLARE_EXPORT_INFO;
 
 private:
     SharedSymbolTable(VM& vm)

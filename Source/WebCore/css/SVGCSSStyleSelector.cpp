@@ -37,11 +37,11 @@
 #include "Document.h"
 #include "ShadowValue.h"
 #include "SVGColor.h"
+#include "SVGElement.h"
 #include "SVGNames.h"
 #include "SVGPaint.h"
 #include "SVGRenderStyle.h"
 #include "SVGRenderStyleDefs.h"
-#include "SVGStyledElement.h"
 #include "SVGURIReference.h"
 #include <stdlib.h>
 #include <wtf/MathExtras.h>
@@ -364,7 +364,7 @@ void StyleResolver::applySVGProperty(CSSPropertyID id, CSSValue* value)
             if (type == CSSPrimitiveValue::CSS_URI)
                 s = primitiveValue->getStringValue();
 
-            svgstyle->setMarkerStartResource(SVGURIReference::fragmentIdentifierFromIRIString(s, state.document()));
+            svgstyle->setMarkerStartResource(SVGURIReference::fragmentIdentifierFromIRIString(s, &state.document()));
             break;
         }
         case CSSPropertyMarkerMid:
@@ -378,7 +378,7 @@ void StyleResolver::applySVGProperty(CSSPropertyID id, CSSValue* value)
             if (type == CSSPrimitiveValue::CSS_URI)
                 s = primitiveValue->getStringValue();
 
-            svgstyle->setMarkerMidResource(SVGURIReference::fragmentIdentifierFromIRIString(s, state.document()));
+            svgstyle->setMarkerMidResource(SVGURIReference::fragmentIdentifierFromIRIString(s, &state.document()));
             break;
         }
         case CSSPropertyMarkerEnd:
@@ -392,7 +392,7 @@ void StyleResolver::applySVGProperty(CSSPropertyID id, CSSValue* value)
             if (type == CSSPrimitiveValue::CSS_URI)
                 s = primitiveValue->getStringValue();
 
-            svgstyle->setMarkerEndResource(SVGURIReference::fragmentIdentifierFromIRIString(s, state.document()));
+            svgstyle->setMarkerEndResource(SVGURIReference::fragmentIdentifierFromIRIString(s, &state.document()));
             break;
         }
         case CSSPropertyStrokeLinecap:
@@ -429,7 +429,7 @@ void StyleResolver::applySVGProperty(CSSPropertyID id, CSSValue* value)
             if (type == CSSPrimitiveValue::CSS_URI)
                 s = primitiveValue->getStringValue();
 
-            svgstyle->setFilterResource(SVGURIReference::fragmentIdentifierFromIRIString(s, state.document()));
+            svgstyle->setFilterResource(SVGURIReference::fragmentIdentifierFromIRIString(s, &state.document()));
             break;
         }
         case CSSPropertyMask:
@@ -443,7 +443,7 @@ void StyleResolver::applySVGProperty(CSSPropertyID id, CSSValue* value)
             if (type == CSSPrimitiveValue::CSS_URI)
                 s = primitiveValue->getStringValue();
 
-            svgstyle->setMaskerResource(SVGURIReference::fragmentIdentifierFromIRIString(s, state.document()));
+            svgstyle->setMaskerResource(SVGURIReference::fragmentIdentifierFromIRIString(s, &state.document()));
             break;
         }
         case CSSPropertyClipPath:
@@ -457,7 +457,7 @@ void StyleResolver::applySVGProperty(CSSPropertyID id, CSSValue* value)
             if (type == CSSPrimitiveValue::CSS_URI)
                 s = primitiveValue->getStringValue();
 
-            svgstyle->setClipperResource(SVGURIReference::fragmentIdentifierFromIRIString(s, state.document()));
+            svgstyle->setClipperResource(SVGURIReference::fragmentIdentifierFromIRIString(s, &state.document()));
             break;
         }
         case CSSPropertyTextAnchor:

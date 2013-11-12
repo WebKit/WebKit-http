@@ -28,15 +28,15 @@
 #include "SVGAnimatedEnumeration.h"
 #include "SVGAnimatedInteger.h"
 #include "SVGAnimatedLength.h"
+#include "SVGElement.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGNames.h"
-#include "SVGStyledElement.h"
 #include "SVGURIReference.h"
 #include "SVGUnitTypes.h"
 
 namespace WebCore {
 
-class SVGFilterElement FINAL : public SVGStyledElement,
+class SVGFilterElement FINAL : public SVGElement,
                                public SVGURIReference,
                                public SVGExternalResourcesRequired {
 public:
@@ -52,10 +52,10 @@ private:
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&);
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
-    virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const OVERRIDE;
+    virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
 
     virtual bool selfHasRelativeLengths() const;
 

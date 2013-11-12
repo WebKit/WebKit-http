@@ -164,6 +164,7 @@ public:
     bool parseAnimationShorthand(bool important);
 
     bool cssGridLayoutEnabled() const;
+    PassRefPtr<CSSValue> parseGridPosition();
     bool parseGridItemPositionShorthand(CSSPropertyID, bool important);
     bool parseGridTrackList(CSSPropertyID, bool important);
     PassRefPtr<CSSPrimitiveValue> parseGridTrackSize();
@@ -245,7 +246,9 @@ public:
 #endif
 
 #if ENABLE(CSS_FILTERS)
-    PassRefPtr<CSSValueList> parseFilter();
+    bool parseFilterImage(CSSParserValueList*, RefPtr<CSSValue>&);
+
+    bool parseFilter(CSSParserValueList*, RefPtr<CSSValue>&);
     PassRefPtr<WebKitCSSFilterValue> parseBuiltinFilterArguments(CSSParserValueList*, WebKitCSSFilterValue::FilterOperationType);
 #if ENABLE(CSS_SHADERS)
     PassRefPtr<WebKitCSSMatFunctionValue> parseMatValue(CSSParserValue*);
@@ -319,6 +322,7 @@ public:
 
     typedef Vector<RefPtr<StyleRuleBase> > RuleList;
     StyleRuleBase* createMediaRule(MediaQuerySet*, RuleList*);
+    StyleRuleBase* createEmptyMediaRule(RuleList*);
     RuleList* createRuleList();
     StyleRuleBase* createStyleRule(Vector<OwnPtr<CSSParserSelector> >* selectors);
     StyleRuleBase* createFontFaceRule();
@@ -566,6 +570,8 @@ private:
     bool parseFontFaceSrcLocal(CSSValueList*);
 
     bool parseColor(const String&);
+
+    bool parseIntegerOrStringFromGridPosition(RefPtr<CSSPrimitiveValue>& numericValue, RefPtr<CSSPrimitiveValue>& gridLineName);
 
     enum ParsingMode {
         NormalMode,

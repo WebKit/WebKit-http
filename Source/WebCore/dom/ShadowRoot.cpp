@@ -28,7 +28,7 @@
 #include "ShadowRoot.h"
 
 #include "ContentDistributor.h"
-#include "ElementShadow.h"
+#include "ElementTraversal.h"
 #include "HistogramSupport.h"
 #include "InsertionPoint.h"
 #include "RuntimeEnabledFeatures.h"
@@ -40,6 +40,8 @@ namespace WebCore {
 
 struct SameSizeAsShadowRoot : public DocumentFragment, public TreeScope {
     unsigned countersAndFlags[1];
+    ContentDistributor distributor;
+    void* host;
 };
 
 COMPILE_ASSERT(sizeof(ShadowRoot) == sizeof(SameSizeAsShadowRoot), shadowroot_should_stay_small);
@@ -57,6 +59,7 @@ ShadowRoot::ShadowRoot(Document* document, ShadowRootType type)
     , m_applyAuthorStyles(false)
     , m_resetStyleInheritance(false)
     , m_type(type)
+    , m_hostElement(0)
 {
     ASSERT(document);
 }
@@ -103,7 +106,7 @@ void ShadowRoot::setInnerHTML(const String& markup, ExceptionCode& ec)
         return;
     }
 
-    if (RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(markup, host(), AllowScriptingContent, ec))
+    if (RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(markup, hostElement(), AllowScriptingContent, ec))
         replaceChildrenWithFragment(this, fragment.release(), ec);
 }
 
@@ -122,26 +125,6 @@ bool ShadowRoot::childTypeAllowed(NodeType type) const
     }
 }
 
-void ShadowRoot::recalcStyle(StyleChange change)
-{
-    // ShadowRoot doesn't support custom callbacks.
-    ASSERT(!hasCustomStyleCallbacks());
-
-    StyleResolver* styleResolver = document()->ensureStyleResolver();
-    styleResolver->pushParentShadowRoot(this);
-
-    for (Node* child = firstChild(); child; child = child->nextSibling()) {
-        if (child->isElementNode())
-            toElement(child)->recalcStyle(change);
-        else if (child->isTextNode())
-            toText(child)->recalcTextStyle(change);
-    }
-
-    styleResolver->popParentShadowRoot(this);
-    clearNeedsStyleRecalc();
-    clearChildNeedsStyleRecalc();
-}
-
 void ShadowRoot::setApplyAuthorStyles(bool value)
 {
     if (isOrphan())
@@ -149,7 +132,7 @@ void ShadowRoot::setApplyAuthorStyles(bool value)
 
     if (m_applyAuthorStyles != value) {
         m_applyAuthorStyles = value;
-        host()->setNeedsStyleRecalc();
+        hostElement()->setNeedsStyleRecalc();
     }
 }
 
@@ -160,26 +143,18 @@ void ShadowRoot::setResetStyleInheritance(bool value)
 
     if (value != m_resetStyleInheritance) {
         m_resetStyleInheritance = value;
-        if (attached() && owner())
-            owner()->recalcStyle(Force);
+        if (attached() && hostElement())
+            Style::resolveTree(*hostElement(), Style::Force);
     }
 }
 
-void ShadowRoot::attach(const AttachContext& context)
-{
-    StyleResolver* styleResolver = document()->ensureStyleResolver();
-    styleResolver->pushParentShadowRoot(this);
-    DocumentFragment::attach(context);
-    styleResolver->popParentShadowRoot(this);
-}
-
-void ShadowRoot::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void ShadowRoot::childrenChanged(const ChildChange& change)
 {
     if (isOrphan())
         return;
 
-    ContainerNode::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
-    owner()->invalidateDistribution();
+    ContainerNode::childrenChanged(change);
+    invalidateDistribution();
 }
 
 void ShadowRoot::registerScopedHTMLStyleChild()
@@ -193,6 +168,13 @@ void ShadowRoot::unregisterScopedHTMLStyleChild()
     ASSERT(hasScopedHTMLStyleChild() && m_numberOfStyles > 0);
     --m_numberOfStyles;
     setHasScopedHTMLStyleChild(m_numberOfStyles > 0);
+}
+
+void ShadowRoot::removeAllEventListeners()
+{
+    DocumentFragment::removeAllEventListeners();
+    for (Node* node = firstChild(); node; node = NodeTraversal::next(node))
+        node->removeAllEventListeners();
 }
 
 }

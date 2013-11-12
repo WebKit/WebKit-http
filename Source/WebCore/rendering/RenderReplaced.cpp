@@ -90,7 +90,7 @@ void RenderReplaced::layout()
     updateLogicalWidth();
     updateLogicalHeight();
 
-    m_overflow.clear();
+    clearOverflow();
     addVisualEffectOverflow();
     updateLayerTransform();
     invalidateBackgroundObscurationStatus();
@@ -132,7 +132,7 @@ void RenderReplaced::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     if (!paintInfo.shouldPaintWithinRoot(this))
         return;
     
-    bool drawSelectionTint = selectionState() != SelectionNone && !document()->printing();
+    bool drawSelectionTint = selectionState() != SelectionNone && !document().printing();
     if (paintInfo.phase == PaintPhaseSelection) {
         if (selectionState() == SelectionNone)
             return;
@@ -296,6 +296,41 @@ void RenderReplaced::computeAspectRatioInformationForRenderBox(RenderBox* conten
         constrainedSize.setWidth(RenderBox::computeReplacedLogicalHeight() * intrinsicSize.width() / intrinsicSize.height());
         constrainedSize.setHeight(RenderBox::computeReplacedLogicalWidth() * intrinsicSize.height() / intrinsicSize.width());
     }
+}
+
+LayoutRect RenderReplaced::replacedContentRect(const LayoutSize& intrinsicSize) const
+{
+    LayoutRect contentRect = contentBoxRect();
+    ObjectFit objectFit = style()->objectFit();
+    if (objectFit == ObjectFitFill)
+        return contentRect;
+
+    if (!intrinsicSize.width() || !intrinsicSize.height())
+        return contentRect;
+
+    LayoutRect finalRect = contentRect;
+    switch (objectFit) {
+    case ObjectFitContain:
+    case ObjectFitScaleDown:
+    case ObjectFitCover:
+        finalRect.setSize(finalRect.size().fitToAspectRatio(intrinsicSize, objectFit == ObjectFitCover ? AspectRatioFitGrow : AspectRatioFitShrink));
+        if (objectFit != ObjectFitScaleDown || finalRect.width() <= intrinsicSize.width())
+            break;
+        // fall through
+    case ObjectFitNone:
+        finalRect.setSize(intrinsicSize);
+        break;
+    case ObjectFitFill:
+        ASSERT_NOT_REACHED();
+    }
+
+    // FIXME: This is where object-position should be taken into account, but since it's not
+    // implemented yet, assume the initial value of "50% 50%".
+    LayoutUnit xOffset = (contentRect.width() - finalRect.width()) / 2;
+    LayoutUnit yOffset = (contentRect.height() - finalRect.height()) / 2;
+    finalRect.move(xOffset, yOffset);
+
+    return finalRect;
 }
 
 void RenderReplaced::computeIntrinsicRatioInformation(FloatSize& intrinsicSize, double& intrinsicRatio, bool& isPercentageIntrinsicSize) const
@@ -504,8 +539,8 @@ LayoutRect RenderReplaced::localSelectionRect(bool checkWhetherSelected) const
         return LayoutRect(LayoutPoint(), size());
     
     RootInlineBox* root = m_inlineBoxWrapper->root();
-    LayoutUnit newLogicalTop = root->block()->style()->isFlippedBlocksWritingMode() ? m_inlineBoxWrapper->logicalBottom() - root->selectionBottom() : root->selectionTop() - m_inlineBoxWrapper->logicalTop();
-    if (root->block()->style()->isHorizontalWritingMode())
+    LayoutUnit newLogicalTop = root->block().style()->isFlippedBlocksWritingMode() ? m_inlineBoxWrapper->logicalBottom() - root->selectionBottom() : root->selectionTop() - m_inlineBoxWrapper->logicalTop();
+    if (root->block().style()->isHorizontalWritingMode())
         return LayoutRect(0, newLogicalTop, width(), root->selectionHeight());
     return LayoutRect(newLogicalTop, 0, root->selectionHeight(), height());
 }
@@ -552,17 +587,13 @@ LayoutRect RenderReplaced::clippedOverflowRectForRepaint(const RenderLayerModelO
     // for repainting to avoid selection painting glitches.
     LayoutRect r = unionRect(localSelectionRect(false), visualOverflowRect());
 
-    RenderView* v = view();
-    if (v) {
-        // FIXME: layoutDelta needs to be applied in parts before/after transforms and
-        // repaint containers. https://bugs.webkit.org/show_bug.cgi?id=23308
-        r.move(v->layoutDelta());
-    }
+    // FIXME: layoutDelta needs to be applied in parts before/after transforms and
+    // repaint containers. https://bugs.webkit.org/show_bug.cgi?id=23308
+    r.move(view().layoutDelta());
 
-    if (style()) {
-        if (v)
-            r.inflate(style()->outlineSize());
-    }
+    if (style())
+        r.inflate(style()->outlineSize());
+
     computeRectForRepaint(repaintContainer, r);
     return r;
 }

@@ -7,6 +7,4 @@ function foo(a) {
     return a;
 }
 
-for (var i = 0; i < 100; ++i)
-    shouldBe("foo(\"foo\" + i)", "NaN");
-
+dfgShouldBe(foo, "foo(\"foo\")", "NaN");

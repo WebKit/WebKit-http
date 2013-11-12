@@ -50,6 +50,7 @@
 #include "StyleResolver.h"
 #include "StyleRule.h"
 #include "WebKitFontFamilyNames.h"
+#include <wtf/Ref.h>
 #include <wtf/text/AtomicString.h>
 
 #if ENABLE(SVG)
@@ -92,10 +93,10 @@ bool CSSFontSelector::isEmpty() const
 void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace* fontFaceRule)
 {
     // Obtain the font-family property and the src property.  Both must be defined.
-    const StylePropertySet* style = fontFaceRule->properties();
-    RefPtr<CSSValue> fontFamily = style->getPropertyCSSValue(CSSPropertyFontFamily);
-    RefPtr<CSSValue> src = style->getPropertyCSSValue(CSSPropertySrc);
-    RefPtr<CSSValue> unicodeRange = style->getPropertyCSSValue(CSSPropertyUnicodeRange);
+    const StylePropertySet& style = fontFaceRule->properties();
+    RefPtr<CSSValue> fontFamily = style.getPropertyCSSValue(CSSPropertyFontFamily);
+    RefPtr<CSSValue> src = style.getPropertyCSSValue(CSSPropertySrc);
+    RefPtr<CSSValue> unicodeRange = style.getPropertyCSSValue(CSSPropertyUnicodeRange);
     if (!fontFamily || !src || !fontFamily->isValueList() || !src->isValueList() || (unicodeRange && !unicodeRange->isValueList()))
         return;
 
@@ -111,7 +112,7 @@ void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace* fontFaceRule)
 
     unsigned traitsMask = 0;
 
-    if (RefPtr<CSSValue> fontStyle = style->getPropertyCSSValue(CSSPropertyFontStyle)) {
+    if (RefPtr<CSSValue> fontStyle = style.getPropertyCSSValue(CSSPropertyFontStyle)) {
         if (!fontStyle->isPrimitiveValue())
             return;
 
@@ -129,7 +130,7 @@ void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace* fontFaceRule)
     } else
         traitsMask |= FontStyleNormalMask;
 
-    if (RefPtr<CSSValue> fontWeight = style->getPropertyCSSValue(CSSPropertyFontWeight)) {
+    if (RefPtr<CSSValue> fontWeight = style.getPropertyCSSValue(CSSPropertyFontWeight)) {
         if (!fontWeight->isPrimitiveValue())
             return;
 
@@ -169,7 +170,7 @@ void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace* fontFaceRule)
     } else
         traitsMask |= FontWeight400Mask;
 
-    if (RefPtr<CSSValue> fontVariant = style->getPropertyCSSValue(CSSPropertyFontVariant)) {
+    if (RefPtr<CSSValue> fontVariant = style.getPropertyCSSValue(CSSPropertyFontVariant)) {
         // font-variant descriptor can be a value list.
         if (fontVariant->isPrimitiveValue()) {
             RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
@@ -214,7 +215,7 @@ void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace* fontFaceRule)
         foundSVGFont = item->isSVGFontFaceSrc() || item->svgFontFaceElement();
 #endif
         if (!item->isLocal()) {
-            Settings* settings = m_document ? m_document->frame() ? m_document->frame()->settings() : 0 : 0;
+            Settings* settings = m_document ? m_document->frame() ? &m_document->frame()->settings() : 0 : 0;
             bool allowDownloading = foundSVGFont || (settings && settings->downloadableBinaryFontsEnabled());
             if (allowDownloading && item->isSupportedFormat() && m_document) {
                 CachedFont* cachedFont = item->cachedFont(m_document);
@@ -370,27 +371,25 @@ static PassRefPtr<FontData> fontDataForGenericFamily(Document* document, const F
     if (!document || !document->frame())
         return 0;
 
-    const Settings* settings = document->frame()->settings();
-    if (!settings)
-        return 0;
+    const Settings& settings = document->frame()->settings();
 
     AtomicString genericFamily;
     UScriptCode script = fontDescription.script();
 
     if (familyName == serifFamily)
-         genericFamily = settings->serifFontFamily(script);
+        genericFamily = settings.serifFontFamily(script);
     else if (familyName == sansSerifFamily)
-         genericFamily = settings->sansSerifFontFamily(script);
+        genericFamily = settings.sansSerifFontFamily(script);
     else if (familyName == cursiveFamily)
-         genericFamily = settings->cursiveFontFamily(script);
+        genericFamily = settings.cursiveFontFamily(script);
     else if (familyName == fantasyFamily)
-         genericFamily = settings->fantasyFontFamily(script);
+        genericFamily = settings.fantasyFontFamily(script);
     else if (familyName == monospaceFamily)
-         genericFamily = settings->fixedFontFamily(script);
+        genericFamily = settings.fixedFontFamily(script);
     else if (familyName == pictographFamily)
-         genericFamily = settings->pictographFontFamily(script);
+        genericFamily = settings.pictographFontFamily(script);
     else if (familyName == standardFamily)
-         genericFamily = settings->standardFontFamily(script);
+        genericFamily = settings.standardFontFamily(script);
 
     if (!genericFamily.isEmpty())
         return fontCache()->getCachedFontData(fontDescription, genericFamily);
@@ -600,7 +599,7 @@ void CSSFontSelector::beginLoadTimerFired(Timer<WebCore::CSSFontSelector>*)
     fontsToBeginLoading.swap(m_fontsToBeginLoading);
 
     // CSSFontSelector could get deleted via beginLoadIfNeeded() or loadDone() unless protected.
-    RefPtr<CSSFontSelector> protect(this);
+    Ref<CSSFontSelector> protect(*this);
 
     CachedResourceLoader* cachedResourceLoader = m_document->cachedResourceLoader();
     for (size_t i = 0; i < fontsToBeginLoading.size(); ++i) {
@@ -613,7 +612,7 @@ void CSSFontSelector::beginLoadTimerFired(Timer<WebCore::CSSFontSelector>*)
     // New font loads may be triggered by layout after the document load is complete but before we have dispatched
     // didFinishLoading for the frame. Make sure the delegate is always dispatched by checking explicitly.
     if (m_document && m_document->frame())
-        m_document->frame()->loader()->checkLoadComplete();
+        m_document->frame()->loader().checkLoadComplete();
 }
 
 bool CSSFontSelector::resolvesFamilyFor(const FontDescription& description) const

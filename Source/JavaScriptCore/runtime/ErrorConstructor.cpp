@@ -22,13 +22,14 @@
 #include "ErrorConstructor.h"
 
 #include "ErrorPrototype.h"
+#include "Interpreter.h"
 #include "JSGlobalObject.h"
 #include "JSString.h"
 #include "Operations.h"
 
 namespace JSC {
 
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(ErrorConstructor);
+STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ErrorConstructor);
 
 const ClassInfo ErrorConstructor::s_info = { "Function", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(ErrorConstructor) };
 
@@ -47,29 +48,35 @@ void ErrorConstructor::finishCreation(ExecState* exec, ErrorPrototype* errorProt
 
 // ECMA 15.9.3
 
-static EncodedJSValue JSC_HOST_CALL constructWithErrorConstructor(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL Interpreter::constructWithErrorConstructor(ExecState* exec)
 {
     JSValue message = exec->argumentCount() ? exec->argument(0) : jsUndefined();
     Structure* errorStructure = asInternalFunction(exec->callee())->globalObject()->errorStructure();
-    return JSValue::encode(ErrorInstance::create(exec, errorStructure, message));
+    Vector<StackFrame> stackTrace;
+    exec->vm().interpreter->getStackTrace(stackTrace, std::numeric_limits<size_t>::max());
+    stackTrace.remove(0);
+    return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, stackTrace));
 }
 
 ConstructType ErrorConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
-    constructData.native.function = constructWithErrorConstructor;
+    constructData.native.function = Interpreter::constructWithErrorConstructor;
     return ConstructTypeHost;
 }
 
-static EncodedJSValue JSC_HOST_CALL callErrorConstructor(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL Interpreter::callErrorConstructor(ExecState* exec)
 {
     JSValue message = exec->argumentCount() ? exec->argument(0) : jsUndefined();
     Structure* errorStructure = asInternalFunction(exec->callee())->globalObject()->errorStructure();
-    return JSValue::encode(ErrorInstance::create(exec, errorStructure, message));
+    Vector<StackFrame> stackTrace;
+    exec->vm().interpreter->getStackTrace(stackTrace, std::numeric_limits<size_t>::max());
+    stackTrace.remove(0);
+    return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, stackTrace));
 }
 
 CallType ErrorConstructor::getCallData(JSCell*, CallData& callData)
 {
-    callData.native.function = callErrorConstructor;
+    callData.native.function = Interpreter::callErrorConstructor;
     return CallTypeHost;
 }
 

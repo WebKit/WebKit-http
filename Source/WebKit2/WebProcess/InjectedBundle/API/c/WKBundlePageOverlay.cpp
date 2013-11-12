@@ -42,9 +42,16 @@ public:
         return adoptPtr(new PageOverlayClientImpl(client));
     }
 
+    virtual void setAccessibilityClient(WKBundlePageOverlayAccessibilityClient* client)
+    {
+        if (client)
+            m_accessibilityClient = *client;
+    }
+
 private:
     explicit PageOverlayClientImpl(WKBundlePageOverlayClient* client)
         : m_client()
+        , m_accessibilityClient()
     {
         if (client)
             m_client = *client;
@@ -115,7 +122,22 @@ private:
         }
     }
     
+    virtual WKTypeRef copyAccessibilityAttributeValue(PageOverlay* pageOverlay, WKStringRef attribute, WKTypeRef parameter)
+    {
+        if (!m_accessibilityClient.copyAccessibilityAttributeValue)
+            return 0;
+        return m_accessibilityClient.copyAccessibilityAttributeValue(toAPI(pageOverlay), attribute, parameter, m_client.clientInfo);
+    }
+
+    virtual WKArrayRef copyAccessibilityAttributeNames(PageOverlay* pageOverlay, bool paramerizedNames)
+    {
+        if (!m_accessibilityClient.copyAccessibilityAttributeNames)
+            return 0;
+        return m_accessibilityClient.copyAccessibilityAttributeNames(toAPI(pageOverlay), paramerizedNames, m_client.clientInfo);
+    }
+    
     WKBundlePageOverlayClient m_client;
+    WKBundlePageOverlayAccessibilityClient m_accessibilityClient;
 };
 
 WKTypeID WKBundlePageOverlayGetTypeID()
@@ -133,12 +155,23 @@ WKBundlePageOverlayRef WKBundlePageOverlayCreate(WKBundlePageOverlayClient* wkCl
     return toAPI(PageOverlay::create(clientImpl.leakPtr()).leakRef());
 }
 
+void WKBundlePageOverlaySetAccessibilityClient(WKBundlePageOverlayRef bundlePageOverlayRef, WKBundlePageOverlayAccessibilityClient* client)
+{
+    if (client && client->version)
+        return;
+    static_cast<PageOverlayClientImpl*>(toImpl(bundlePageOverlayRef)->client())->setAccessibilityClient(client);
+}
+
 void WKBundlePageOverlaySetNeedsDisplay(WKBundlePageOverlayRef bundlePageOverlayRef, WKRect rect)
 {
     toImpl(bundlePageOverlayRef)->setNeedsDisplay(enclosingIntRect(toFloatRect(rect)));
 }
 
-float WKBundlePageOverlayFractionFadedIn(WKBundlePageOverlayRef bundlePageOverlayRef)
+float WKBundlePageOverlayFractionFadedIn(WKBundlePageOverlayRef)
 {
-    return toImpl(bundlePageOverlayRef)->fractionFadedIn();
+    // Clients who include the fade opacity during painting interfere
+    // with composited fade, so we'll pretend we're opaque and do the
+    // fade on our own.
+
+    return 1;
 }

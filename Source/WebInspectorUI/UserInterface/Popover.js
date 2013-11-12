@@ -39,7 +39,7 @@ WebInspector.Popover = function(delegate) {
     this._element.className = WebInspector.Popover.StyleClassName;
     this._canvasId = "popover-" + (WebInspector.Popover.canvasId++);
     this._element.style.backgroundImage = "-webkit-canvas(" + this._canvasId + ")";
-    this._element.addEventListener("webkitTransitionEnd", this, true);
+    this._element.addEventListener("transitionend", this, true);
     
     this._container = this._element.appendChild(document.createElement("div"));
     this._container.className = "container";
@@ -99,6 +99,20 @@ WebInspector.Popover.prototype = {
             this._update();
     },
 
+    update: function()
+    {
+        if (!this.visible)
+            return;
+
+        var previouslyFocusedElement = document.activeElement;
+
+        this._contentNeedsUpdate = true;
+        this._update();
+
+        if (previouslyFocusedElement)
+            previouslyFocusedElement.focus();
+    },
+
     /**
      * @param {WebInspector.Rect} targetFrame
      * @param {WebInspector.RectEdge}[] preferredEdges
@@ -139,7 +153,7 @@ WebInspector.Popover.prototype = {
             if (!this._element.contains(event.target))
                 this.dismiss();
             break;
-        case "webkitTransitionEnd":
+        case "transitionend":
             document.body.removeChild(this._element);
             this._element.classList.remove(WebInspector.Popover.FadeOutClassName);
             this._container.textContent = "";
@@ -151,7 +165,7 @@ WebInspector.Popover.prototype = {
 
     // Private
 
-    _update: function(replaceContent)
+    _update: function()
     {
         var targetFrame = this._targetFrame;
         var preferredEdges = this._preferredEdges;

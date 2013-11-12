@@ -14,6 +14,4 @@ function bar(x) {
     return foo(x);
 }
 
-for (var i = 0; i < 200; ++i)
-    shouldBe("bar(42)", "42");
-
+dfgShouldBe(bar, "bar(42)", "42");

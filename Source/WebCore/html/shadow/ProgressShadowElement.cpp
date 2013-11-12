@@ -50,22 +50,15 @@ HTMLProgressElement* ProgressShadowElement::progressElement() const
     return toHTMLProgressElement(shadowHost());
 }
 
-bool ProgressShadowElement::rendererIsNeeded(const NodeRenderingContext& context)
+bool ProgressShadowElement::rendererIsNeeded(const RenderStyle& style)
 {
     RenderObject* progressRenderer = progressElement()->renderer();
-    return progressRenderer && !progressRenderer->style()->hasAppearance() && HTMLDivElement::rendererIsNeeded(context);
+    return progressRenderer && !progressRenderer->style()->hasAppearance() && HTMLDivElement::rendererIsNeeded(style);
 }
 
 ProgressInnerElement::ProgressInnerElement(Document* document)
     : ProgressShadowElement(document)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-progress-inner-element", AtomicString::ConstructFromLiteral));
-    setPseudo(pseudoId);
-}
-
-PassRefPtr<ProgressInnerElement> ProgressInnerElement::create(Document* document)
-{
-    return adoptRef(new ProgressInnerElement(document));
 }
 
 RenderObject* ProgressInnerElement::createRenderer(RenderArena* arena, RenderStyle*)
@@ -73,13 +66,23 @@ RenderObject* ProgressInnerElement::createRenderer(RenderArena* arena, RenderSty
     return new (arena) RenderProgress(this);
 }
 
-bool ProgressInnerElement::rendererIsNeeded(const NodeRenderingContext& context)
+bool ProgressInnerElement::rendererIsNeeded(const RenderStyle& style)
 {
     if (progressElement()->hasAuthorShadowRoot())
-        return HTMLDivElement::rendererIsNeeded(context);
+        return HTMLDivElement::rendererIsNeeded(style);
 
     RenderObject* progressRenderer = progressElement()->renderer();
-    return progressRenderer && !progressRenderer->style()->hasAppearance() && HTMLDivElement::rendererIsNeeded(context);    
+    return progressRenderer && !progressRenderer->style()->hasAppearance() && HTMLDivElement::rendererIsNeeded(style);    
+}
+
+ProgressBarElement::ProgressBarElement(Document* document)
+    : ProgressShadowElement(document)
+{
+}
+
+ProgressValueElement::ProgressValueElement(Document* document)
+    : ProgressShadowElement(document)
+{
 }
 
 void ProgressValueElement::setWidthPercentage(double width)

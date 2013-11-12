@@ -24,6 +24,7 @@
 
 #include "BindingSecurity.h"
 #include "CachedScript.h"
+#include "DOMConstructorWithDocument.h"
 #include "DOMObjectHashTableMap.h"
 #include "DOMStringList.h"
 #include "ExceptionCode.h"
@@ -45,10 +46,10 @@ using namespace JSC;
 
 namespace WebCore {
 
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(DOMConstructorObject);
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(DOMConstructorWithDocument);
+STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DOMConstructorObject);
+STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DOMConstructorWithDocument);
 
-const JSC::HashTable* getHashTableForGlobalData(VM& vm, const JSC::HashTable* staticTable)
+const JSC::HashTable& getHashTableForGlobalData(VM& vm, const JSC::HashTable& staticTable)
 {
     return DOMObjectHashTableMap::mapFor(vm).get(staticTable);
 }
@@ -127,7 +128,7 @@ double valueToDate(ExecState* exec, JSValue value)
 {
     if (value.isNumber())
         return value.asNumber();
-    if (!value.inherits(&DateInstance::s_info))
+    if (!value.inherits(DateInstance::info()))
         return std::numeric_limits<double>::quiet_NaN();
     return static_cast<DateInstance*>(value.toObject(exec))->internalNumber();
 }
@@ -172,6 +173,8 @@ void reportException(ExecState* exec, JSValue exception, CachedScript* cachedScr
         JSObject* exceptionObject = exception.toObject(exec);
         JSValue lineValue = exceptionObject->getDirect(exec->vm(), Identifier(exec, "line"));
         lineNumber = lineValue && lineValue.isNumber() ? int(lineValue.toNumber(exec)) : 0;
+        JSValue columnValue = exceptionObject->getDirect(exec->vm(), Identifier(exec, "column"));
+        columnNumber = columnValue && columnValue.isNumber() ? int(columnValue.toNumber(exec)) : 0;
         JSValue sourceURLValue = exceptionObject->getDirect(exec->vm(), Identifier(exec, "sourceURL"));
         exceptionSourceURL = sourceURLValue && sourceURLValue.isString() ? sourceURLValue.toString(exec)->value(exec) : ASCIILiteral("undefined");
     }
@@ -227,7 +230,7 @@ void setDOMException(ExecState* exec, ExceptionCode ec)
     }
 
     ASSERT(errorObject);
-    throwError(exec, errorObject);
+    exec->vm().throwException(exec, errorObject);
 }
 
 #undef TRY_TO_CREATE_EXCEPTION

@@ -71,6 +71,11 @@ void JSString::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     if (thisObject->isRope())
         static_cast<JSRopeString*>(thisObject)->visitFibers(visitor);
+    else {
+        StringImpl* impl = thisObject->m_value.impl();
+        ASSERT(impl);
+        visitor.reportExtraMemoryUsage(impl->costDuringGC());
+    }
 }
 
 void JSRopeString::visitFibers(SlotVisitor& visitor)
@@ -271,27 +276,11 @@ JSObject* JSString::toObject(ExecState* exec, JSGlobalObject* globalObject) cons
     return StringObject::create(exec, globalObject, const_cast<JSString*>(this));
 }
 
-JSObject* JSString::toThisObject(JSCell* cell, ExecState* exec)
+JSValue JSString::toThis(JSCell* cell, ExecState* exec, ECMAMode ecmaMode)
 {
+    if (ecmaMode == StrictMode)
+        return cell;
     return StringObject::create(exec, exec->lexicalGlobalObject(), jsCast<JSString*>(cell));
-}
-
-bool JSString::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    JSString* thisObject = jsCast<JSString*>(cell);
-    // The semantics here are really getPropertySlot, not getOwnPropertySlot.
-    // This function should only be called by JSValue::get.
-    if (thisObject->getStringPropertySlot(exec, propertyName, slot))
-        return true;
-    slot.setBase(thisObject);
-    JSObject* object;
-    for (JSValue prototype = exec->lexicalGlobalObject()->stringPrototype(); !prototype.isNull(); prototype = object->prototype()) {
-        object = asObject(prototype);
-        if (object->methodTable()->getOwnPropertySlot(object, exec, propertyName, slot))
-            return true;
-    }
-    slot.setUndefined();
-    return true;
 }
 
 bool JSString::getStringPropertyDescriptor(ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
@@ -309,16 +298,6 @@ bool JSString::getStringPropertyDescriptor(ExecState* exec, PropertyName propert
     }
     
     return false;
-}
-
-bool JSString::getOwnPropertySlotByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, PropertySlot& slot)
-{
-    JSString* thisObject = jsCast<JSString*>(cell);
-    // The semantics here are really getPropertySlot, not getOwnPropertySlot.
-    // This function should only be called by JSValue::get.
-    if (thisObject->getStringPropertySlot(exec, propertyName, slot))
-        return true;
-    return JSString::getOwnPropertySlot(thisObject, exec, Identifier::from(exec, propertyName), slot);
 }
 
 } // namespace JSC

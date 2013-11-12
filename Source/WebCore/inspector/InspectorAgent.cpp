@@ -95,7 +95,7 @@ void InspectorAgent::didClearWindowObjectInWorld(Frame* frame, DOMWrapperWorld* 
     scriptSource.append("(");
     scriptSource.appendNumber(injectedScriptId);
     scriptSource.append(")");
-    frame->script()->executeScript(scriptSource.toString());
+    frame->script().executeScript(scriptSource.toString());
 }
 
 void InspectorAgent::setFrontend(InspectorFrontend* inspectorFrontend)
@@ -141,7 +141,7 @@ void InspectorAgent::domContentLoadedEventFired()
 
 bool InspectorAgent::isMainResourceLoader(DocumentLoader* loader, const KURL& requestUrl)
 {
-    return loader->frame() == m_inspectedPage->mainFrame() && requestUrl == loader->requestURL();
+    return m_inspectedPage->frameIsMainFrame(loader->frame()) && requestUrl == loader->requestURL();
 }
 
 void InspectorAgent::evaluateForTestInFrontend(long callId, const String& script)
@@ -171,7 +171,7 @@ void InspectorAgent::inspect(PassRefPtr<TypeBuilder::Runtime::RemoteObject> obje
 
 KURL InspectorAgent::inspectedURL() const
 {
-    return m_inspectedPage->mainFrame()->document()->url();
+    return m_inspectedPage->mainFrame().document()->url();
 }
 
 KURL InspectorAgent::inspectedURLWithoutFragment() const
@@ -185,7 +185,7 @@ bool InspectorAgent::developerExtrasEnabled() const
 {
     if (!m_inspectedPage)
         return false;
-    return m_inspectedPage->settings()->developerExtrasEnabled();
+    return m_inspectedPage->settings().developerExtrasEnabled();
 }
 
 } // namespace WebCore

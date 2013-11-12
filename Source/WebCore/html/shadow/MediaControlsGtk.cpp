@@ -31,12 +31,42 @@
 #if ENABLE(VIDEO)
 #include "MediaControlsGtk.h"
 
+#include "Chrome.h"
+#include "MouseEvent.h"
+
 namespace WebCore {
+
+class MediaControlsGtkEventListener : public EventListener {
+public:
+    static PassRefPtr<MediaControlsGtkEventListener> create(MediaControlsGtk* mediaControls) { return adoptRef(new MediaControlsGtkEventListener(mediaControls)); }
+    static const MediaControlsGtkEventListener* cast(const EventListener* listener)
+    {
+        return listener->type() == GObjectEventListenerType
+            ? static_cast<const MediaControlsGtkEventListener*>(listener)
+            : 0;
+    }
+
+    virtual bool operator==(const EventListener& other);
+
+private:
+    MediaControlsGtkEventListener(MediaControlsGtk* mediaControls)
+        : EventListener(GObjectEventListenerType)
+        , m_mediaControls(mediaControls)
+    {
+    }
+
+    virtual void handleEvent(ScriptExecutionContext*, Event*);
+
+    MediaControlsGtk* m_mediaControls;
+};
 
 MediaControlsGtk::MediaControlsGtk(Document* document)
     : MediaControls(document)
     , m_durationDisplay(0)
     , m_enclosure(0)
+    , m_closedCaptionsTrackList(0)
+    , m_closedCaptionsContainer(0)
+    , m_eventListener(0)
 {
 }
 
@@ -91,9 +121,22 @@ bool MediaControlsGtk::initializeControls(Document* document)
         return false;
 
     if (document->page()->theme()->supportsClosedCaptioning()) {
+        RefPtr<MediaControlClosedCaptionsContainerElement> closedCaptionsContainer = MediaControlClosedCaptionsContainerElement::create(document);
+
+        RefPtr<MediaControlClosedCaptionsTrackListElement> closedCaptionsTrackList = MediaControlClosedCaptionsTrackListElement::create(document, this);
+        m_closedCaptionsTrackList = closedCaptionsTrackList.get();
+        closedCaptionsContainer->appendChild(closedCaptionsTrackList.release(), exceptionCode, AttachLazily);
+        if (exceptionCode)
+            return false;
+
         RefPtr<MediaControlToggleClosedCaptionsButtonElement> toggleClosedCaptionsButton = MediaControlToggleClosedCaptionsButtonElement::create(document, this);
         m_toggleClosedCaptionsButton = toggleClosedCaptionsButton.get();
         panel->appendChild(toggleClosedCaptionsButton.release(), exceptionCode, AttachLazily);
+        if (exceptionCode)
+            return false;
+
+        m_closedCaptionsContainer = closedCaptionsContainer.get();
+        appendChild(closedCaptionsContainer.release(), exceptionCode, AttachLazily);
         if (exceptionCode)
             return false;
     }
@@ -147,17 +190,28 @@ void MediaControlsGtk::setMediaController(MediaControllerInterface* controller)
         m_durationDisplay->setMediaController(controller);
     if (m_enclosure)
         m_enclosure->setMediaController(controller);
+    if (m_closedCaptionsContainer)
+        m_closedCaptionsContainer->setMediaController(controller);
+    if (m_closedCaptionsTrackList)
+        m_closedCaptionsTrackList->setMediaController(controller);
 }
 
 void MediaControlsGtk::reset()
 {
-    Page* page = document()->page();
+    Page* page = document().page();
     if (!page)
         return;
 
     double duration = m_mediaController->duration();
     m_durationDisplay->setInnerText(page->theme()->formatMediaControlsTime(duration), ASSERT_NO_EXCEPTION);
     m_durationDisplay->setCurrentValue(duration);
+
+    if (m_toggleClosedCaptionsButton) {
+        if (m_mediaController->hasClosedCaptions())
+            m_toggleClosedCaptionsButton->show();
+        else
+            m_toggleClosedCaptionsButton->hide();
+    }
 
     MediaControls::reset();
 }
@@ -175,7 +229,7 @@ void MediaControlsGtk::updateCurrentTimeDisplay()
     double now = m_mediaController->currentTime();
     double duration = m_mediaController->duration();
 
-    Page* page = document()->page();
+    Page* page = document().page();
     if (!page)
         return;
 
@@ -201,6 +255,17 @@ void MediaControlsGtk::changedMute()
         m_volumeSlider->setVolume(m_mediaController->volume());
 }
 
+
+void MediaControlsGtk::makeTransparent()
+{
+    MediaControls::makeTransparent();
+
+    if (m_volumeSliderContainer)
+        m_volumeSliderContainer->hide();
+
+    hideClosedCaptionTrackList();
+}
+
 void MediaControlsGtk::showVolumeSlider()
 {
     if (!m_mediaController->hasAudio())
@@ -216,7 +281,7 @@ void MediaControlsGtk::createTextTrackDisplay()
     if (m_textDisplayContainer)
         return;
 
-    RefPtr<MediaControlTextTrackContainerElement> textDisplayContainer = MediaControlTextTrackContainerElement::create(document());
+    RefPtr<MediaControlTextTrackContainerElement> textDisplayContainer = MediaControlTextTrackContainerElement::create(&document());
     m_textDisplayContainer = textDisplayContainer.get();
 
     if (m_mediaController)
@@ -227,6 +292,90 @@ void MediaControlsGtk::createTextTrackDisplay()
 }
 #endif
 
+void MediaControlsGtk::toggleClosedCaptionTrackList()
+{
+    if (!m_mediaController->hasClosedCaptions())
+        return;
+
+    if (!m_closedCaptionsContainer || !m_closedCaptionsTrackList)
+        return;
+
+    if (m_closedCaptionsContainer->isShowing()) {
+        hideClosedCaptionTrackList();
+        return;
+    }
+
+    m_closedCaptionsTrackList->updateDisplay();
+    showClosedCaptionTrackList();
 }
 
+void MediaControlsGtk::showClosedCaptionTrackList()
+{
+    m_volumeSliderContainer->hide();
+
+    if (!m_closedCaptionsContainer || m_closedCaptionsContainer->isShowing())
+        return;
+
+    m_closedCaptionsContainer->show();
+    m_panel->setInlineStyleProperty(CSSPropertyPointerEvents, CSSValueNone);
+
+    RefPtr<EventListener> listener = eventListener();
+
+    // Check for clicks outside the media-control
+    document().addEventListener(eventNames().clickEvent, listener, true);
+    // Check for clicks inside the media-control box
+    addEventListener(eventNames().clickEvent, listener, true);
+}
+
+void MediaControlsGtk::hideClosedCaptionTrackList()
+{
+    if (!m_closedCaptionsContainer || !m_closedCaptionsContainer->isShowing())
+        return;
+
+    m_closedCaptionsContainer->hide();
+    m_panel->removeInlineStyleProperty(CSSPropertyPointerEvents);
+
+    EventListener* listener = eventListener().get();
+
+    document().removeEventListener(eventNames().clickEvent, listener, true);
+    removeEventListener(eventNames().clickEvent, listener, true);
+}
+
+void MediaControlsGtk::handleClickEvent(Event *event)
+{
+    Node* currentTarget = event->currentTarget()->toNode();
+    Node* target = event->target()->toNode();
+
+    if ((currentTarget == &document() && !shadowHost()->contains(target))
+        || (currentTarget == this && !m_closedCaptionsContainer->contains(target))) {
+        hideClosedCaptionTrackList();
+        event->stopImmediatePropagation();
+        event->setDefaultHandled();
+    }
+}
+
+PassRefPtr<MediaControlsGtkEventListener> MediaControlsGtk::eventListener()
+{
+    if (!m_eventListener)
+        m_eventListener = MediaControlsGtkEventListener::create(this);
+
+    return m_eventListener;
+}
+
+void MediaControlsGtkEventListener::handleEvent(ScriptExecutionContext*, Event* event)
+{
+    if (event->type() == eventNames().clickEvent)
+        m_mediaControls->handleClickEvent(event);
+
+    return;
+}
+
+bool MediaControlsGtkEventListener::operator==(const EventListener& listener)
+{
+    if (const MediaControlsGtkEventListener* mediaControlsGtkEventListener = MediaControlsGtkEventListener::cast(&listener))
+        return m_mediaControls == mediaControlsGtkEventListener->m_mediaControls;
+    return false;
+}
+
+}
 #endif

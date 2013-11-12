@@ -27,7 +27,6 @@
 
 #include "Attribute.h"
 #include "Document.h"
-#include "ElementShadow.h"
 #include "FormDataList.h"
 #include "HTMLNames.h"
 #include "HTMLSelectElement.h"
@@ -61,7 +60,7 @@ protected:
 private:
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren()
     {
-        return create(document());
+        return create(&document());
     }
 };
 
@@ -81,7 +80,7 @@ inline HTMLKeygenElement::HTMLKeygenElement(const QualifiedName& tagName, Docume
         option->appendChild(Text::create(document, keys[i]), IGNORE_EXCEPTION);
     }
 
-    ensureUserAgentShadowRoot()->appendChild(select, IGNORE_EXCEPTION);
+    ensureUserAgentShadowRoot().appendChild(select, IGNORE_EXCEPTION);
 }
 
 PassRefPtr<HTMLKeygenElement> HTMLKeygenElement::create(const QualifiedName& tagName, Document* document, HTMLFormElement* form)
@@ -104,7 +103,7 @@ bool HTMLKeygenElement::appendFormData(FormDataList& encoded_values, bool)
     const AtomicString& keyType = fastGetAttribute(keytypeAttr);
     if (!keyType.isNull() && !equalIgnoringCase(keyType, "rsa"))
         return false;
-    String value = signedPublicKeyAndChallengeString(shadowSelect()->selectedIndex(), fastGetAttribute(challengeAttr), document()->baseURL());
+    String value = signedPublicKeyAndChallengeString(shadowSelect()->selectedIndex(), fastGetAttribute(challengeAttr), document().baseURL());
     if (value.isNull())
         return false;
     encoded_values.appendData(name(), value.utf8());

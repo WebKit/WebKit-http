@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2007, 2008, 2009 Apple Inc. All rights reserved.
- * Copyright (C) 2012 Adobe Systems Incorporated. All rights reserved.
+ * Copyright (C) 2007, 2008, 2009, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Adobe Systems Incorporated. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,9 @@
 #include "CSSPropertyAnimation.h"
 
 #include "AnimationBase.h"
+#include "CSSComputedStyleDeclaration.h"
 #include "CSSCrossfadeValue.h"
+#include "CSSFilterImageValue.h"
 #include "CSSImageGeneratorValue.h"
 #include "CSSImageValue.h"
 #include "CSSPrimitiveValue.h"
@@ -49,6 +51,7 @@
 #include "StylePropertyShorthand.h"
 #include "StyleResolver.h"
 #include <algorithm>
+#include <wtf/MathExtras.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefCounted.h>
 
@@ -130,6 +133,9 @@ static inline TransformOperations blendFunc(const AnimationBase* anim, const Tra
 
 static inline PassRefPtr<ClipPathOperation> blendFunc(const AnimationBase*, ClipPathOperation* from, ClipPathOperation* to, double progress)
 {
+    if (!from || !to)
+        return to;
+
     // Other clip-path operations than BasicShapes can not be animated.
     if (from->getOperationType() != ClipPathOperation::SHAPE || to->getOperationType() != ClipPathOperation::SHAPE)
         return to;
@@ -171,36 +177,57 @@ static inline PassRefPtr<FilterOperation> blendFunc(const AnimationBase* anim, F
     return toOp->blend(fromOp, progress, blendToPassthrough);
 }
 
+static inline FilterOperations blendFilterOperations(const AnimationBase* anim,  const FilterOperations& from, const FilterOperations& to, double progress)
+{
+    FilterOperations result;
+    size_t fromSize = from.operations().size();
+    size_t toSize = to.operations().size();
+    size_t size = max(fromSize, toSize);
+    for (size_t i = 0; i < size; i++) {
+        RefPtr<FilterOperation> fromOp = (i < fromSize) ? from.operations()[i].get() : 0;
+        RefPtr<FilterOperation> toOp = (i < toSize) ? to.operations()[i].get() : 0;
+        RefPtr<FilterOperation> blendedOp = toOp ? blendFunc(anim, fromOp.get(), toOp.get(), progress) : (fromOp ? blendFunc(anim, 0, fromOp.get(), progress, true) : 0);
+        if (blendedOp)
+            result.operations().append(blendedOp);
+        else {
+            RefPtr<FilterOperation> identityOp = PassthroughFilterOperation::create();
+            if (progress > 0.5)
+                result.operations().append(toOp ? toOp : identityOp);
+            else
+                result.operations().append(fromOp ? fromOp : identityOp);
+        }
+    }
+    return result;
+}
+
 static inline FilterOperations blendFunc(const AnimationBase* anim, const FilterOperations& from, const FilterOperations& to, double progress)
 {
     FilterOperations result;
 
     // If we have a filter function list, use that to do a per-function animation.
-    if (anim->filterFunctionListsMatch()) {
-        size_t fromSize = from.operations().size();
-        size_t toSize = to.operations().size();
-        size_t size = max(fromSize, toSize);
-        for (size_t i = 0; i < size; i++) {
-            RefPtr<FilterOperation> fromOp = (i < fromSize) ? from.operations()[i].get() : 0;
-            RefPtr<FilterOperation> toOp = (i < toSize) ? to.operations()[i].get() : 0;
-            RefPtr<FilterOperation> blendedOp = toOp ? blendFunc(anim, fromOp.get(), toOp.get(), progress) : (fromOp ? blendFunc(anim, 0, fromOp.get(), progress, true) : 0);
-            if (blendedOp)
-                result.operations().append(blendedOp);
-            else {
-                RefPtr<FilterOperation> identityOp = PassthroughFilterOperation::create();
-                if (progress > 0.5)
-                    result.operations().append(toOp ? toOp : identityOp);
-                else
-                    result.operations().append(fromOp ? fromOp : identityOp);
-            }
-        }
-    } else {
+    if (anim->filterFunctionListsMatch())
+        result = blendFilterOperations(anim, from, to, progress);
+    else {
         // If the filter function lists don't match, we could try to cross-fade, but don't yet have a way to represent that in CSS.
         // For now we'll just fail to animate.
         result = to;
     }
 
     return result;
+}
+
+static inline PassRefPtr<StyleImage> blendFilter(const AnimationBase* anim, CachedImage* image, const FilterOperations& from, const FilterOperations& to, double progress)
+{
+    ASSERT(image);
+    FilterOperations filterResult = blendFilterOperations(anim, from, to, progress);
+
+    RefPtr<StyleCachedImage> styledImage = StyleCachedImage::create(image);
+    RefPtr<CSSImageValue> imageValue = CSSImageValue::create(image->url(), styledImage.get());
+    RefPtr<CSSValue> filterValue = ComputedStyleExtractor::valueForFilter(anim->renderer(), anim->renderer()->style(), filterResult, DoNotAdjustPixelValues);
+    RefPtr<CSSFilterImageValue> result = CSSFilterImageValue::create(imageValue, filterValue);
+    result->setFilterOperations(filterResult);
+
+    return StyleGeneratedImage::create(result.get());
 }
 #endif // ENABLE(CSS_FILTERS)
 
@@ -230,6 +257,26 @@ static inline SVGLength blendFunc(const AnimationBase*, const SVGLength& from, c
 {
     return to.blend(from, narrowPrecisionToFloat(progress));
 }
+static inline Vector<SVGLength> blendFunc(const AnimationBase*, const Vector<SVGLength>& from, const Vector<SVGLength>& to, double progress)
+{
+    size_t fromLength = from.size();
+    size_t toLength = to.size();
+    if (!fromLength)
+        return !progress ? from : to;
+    if (!toLength)
+        return progress == 1 ? from : to;
+    size_t resultLength = fromLength;
+    if (fromLength != toLength) {
+        if (!remainder(std::max(fromLength, toLength), std::min(fromLength, toLength)))
+            resultLength = std::max(fromLength, toLength);
+        else
+            resultLength = fromLength * toLength;
+    }
+    Vector<SVGLength> result(resultLength);
+    for (size_t i = 0; i < resultLength; ++i)
+        result[i] = to[i % toLength].blend(from[i % fromLength], narrowPrecisionToFloat(progress));
+    return result;
+}
 #endif
 
 static inline PassRefPtr<StyleImage> crossfadeBlend(const AnimationBase*, StyleCachedImage* fromStyleImage, StyleCachedImage* toStyleImage, double progress)
@@ -258,10 +305,55 @@ static inline PassRefPtr<StyleImage> blendFunc(const AnimationBase* anim, StyleI
     if (!from || !to)
         return to;
 
+    // Animation between two generated images. Cross fade for all other cases.
+    if (from->isGeneratedImage() && to->isGeneratedImage()) {
+        CSSImageGeneratorValue* fromGenerated = toStyleGeneratedImage(from)->imageValue();
+        CSSImageGeneratorValue* toGenerated = toStyleGeneratedImage(to)->imageValue();
+
+#if ENABLE(CSS_FILTERS)
+        if (fromGenerated->isFilterImageValue() && toGenerated->isFilterImageValue()) {
+            // Animation of generated images just possible if input images are equal.
+            // Otherwise fall back to cross fade animation.
+            CSSFilterImageValue& fromFilter = *toCSSFilterImageValue(fromGenerated);
+            CSSFilterImageValue& toFilter = *toCSSFilterImageValue(toGenerated);
+            if (fromFilter.equalInputImages(toFilter) && fromFilter.cachedImage())
+                return blendFilter(anim, fromFilter.cachedImage(), fromFilter.filterOperations(), toFilter.filterOperations(), progress);
+        }
+#endif
+
+        if (fromGenerated->isCrossfadeValue() && toGenerated->isCrossfadeValue()) {
+            CSSCrossfadeValue& fromCrossfade = *toCSSCrossfadeValue(fromGenerated);
+            CSSCrossfadeValue& toCrossfade = *toCSSCrossfadeValue(toGenerated);
+            if (fromCrossfade.equalInputImages(toCrossfade))
+                return StyleGeneratedImage::create(toCrossfade.blend(fromCrossfade, progress).get());
+        }
+
+        // FIXME: Add support for animation between two *gradient() functions.
+        // https://bugs.webkit.org/show_bug.cgi?id=119956
+#if ENABLE(CSS_FILTERS)
+    } else if (from->isGeneratedImage() && to->isCachedImage()) {
+        CSSImageGeneratorValue* fromGenerated = toStyleGeneratedImage(from)->imageValue();
+        if (fromGenerated->isFilterImageValue()) {
+            CSSFilterImageValue& fromFilter = *toCSSFilterImageValue(fromGenerated);
+            if (fromFilter.cachedImage() && static_cast<StyleCachedImage*>(to)->cachedImage() == fromFilter.cachedImage())
+                return blendFilter(anim, fromFilter.cachedImage(), fromFilter.filterOperations(), FilterOperations(), progress);
+        }
+        // FIXME: Add interpolation between cross-fade and image source.
+    } else if (from->isCachedImage() && to->isGeneratedImage()) {
+        CSSImageGeneratorValue* toGenerated = toStyleGeneratedImage(to)->imageValue();
+        if (toGenerated->isFilterImageValue()) {
+            CSSFilterImageValue& toFilter = *toCSSFilterImageValue(toGenerated);
+            if (toFilter.cachedImage() && static_cast<StyleCachedImage*>(from)->cachedImage() == toFilter.cachedImage())     
+                return blendFilter(anim, toFilter.cachedImage(), FilterOperations(), toFilter.filterOperations(), progress);
+        }
+#endif
+        // FIXME: Add interpolation between image source and cross-fade.
+    }
+
+    // FIXME: Add support cross fade between cached and generated images.
+    // https://bugs.webkit.org/show_bug.cgi?id=78293
     if (from->isCachedImage() && to->isCachedImage())
         return crossfadeBlend(anim, static_cast<StyleCachedImage*>(from), static_cast<StyleCachedImage*>(to), progress);
-
-    // FIXME: Support transitioning generated images as well. (gradients, etc.)
 
     return to;
 }
@@ -1188,6 +1280,7 @@ void CSSPropertyAnimation::ensurePropertyMap()
     gPropertyWrappers->append(new PropertyWrapperSVGPaint(CSSPropertyStroke, &RenderStyle::strokePaintType, &RenderStyle::strokePaintColor, &RenderStyle::setStrokePaintColor));
     gPropertyWrappers->append(new PropertyWrapper<float>(CSSPropertyStrokeOpacity, &RenderStyle::strokeOpacity, &RenderStyle::setStrokeOpacity));
     gPropertyWrappers->append(new PropertyWrapper<SVGLength>(CSSPropertyStrokeWidth, &RenderStyle::strokeWidth, &RenderStyle::setStrokeWidth));
+    gPropertyWrappers->append(new PropertyWrapper< Vector<SVGLength> >(CSSPropertyStrokeDasharray, &RenderStyle::strokeDashArray, &RenderStyle::setStrokeDashArray));
     gPropertyWrappers->append(new PropertyWrapper<SVGLength>(CSSPropertyStrokeDashoffset, &RenderStyle::strokeDashOffset, &RenderStyle::setStrokeDashOffset));
     gPropertyWrappers->append(new PropertyWrapper<float>(CSSPropertyStrokeMiterlimit, &RenderStyle::strokeMiterLimit, &RenderStyle::setStrokeMiterLimit));
 

@@ -31,7 +31,7 @@ namespace WebCore {
 
 class SVGInlineTextBox;
 
-class RenderSVGInlineText : public RenderText {
+class RenderSVGInlineText FINAL : public RenderText {
 public:
     RenderSVGInlineText(Node*, PassRefPtr<StringImpl>);
 
@@ -66,6 +66,18 @@ private:
     Font m_scaledFont;
     SVGTextLayoutAttributes m_layoutAttributes;
 };
+
+inline RenderSVGInlineText& toRenderSVGInlineText(RenderObject& object)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(object.isSVGInlineText());
+    return static_cast<RenderSVGInlineText&>(object);
+}
+
+inline const RenderSVGInlineText& toRenderSVGInlineText(const RenderObject& object)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(object.isSVGInlineText());
+    return static_cast<const RenderSVGInlineText&>(object);
+}
 
 inline RenderSVGInlineText* toRenderSVGInlineText(RenderObject* object)
 {

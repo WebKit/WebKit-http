@@ -139,7 +139,7 @@ private:
         // We don't bother checking the askedToTerminate() flag here, because exceptions should *always* be reported even if the thread is terminated.
         // This is intentionally different than the behavior in MessageWorkerTask, because terminated workers no longer deliver messages (section 4.6 of the WebWorker spec), but they do report exceptions.
 
-        bool errorHandled = !workerObject->dispatchEvent(ErrorEvent::create(m_errorMessage, m_sourceURL, m_lineNumber));
+        bool errorHandled = !workerObject->dispatchEvent(ErrorEvent::create(m_errorMessage, m_sourceURL, m_lineNumber, m_columnNumber));
         if (!errorHandled)
             context->reportException(m_errorMessage, m_lineNumber, m_columnNumber, m_sourceURL, 0);
     }
@@ -303,7 +303,7 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const KURL& scriptURL, const S
     Document* document = static_cast<Document*>(m_scriptExecutionContext.get());
     GroupSettings* settings = 0;
     if (document->page())
-        settings = document->page()->group().groupSettings();
+        settings = &document->page()->group().groupSettings();
     RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, userAgent, settings, sourceCode, *this, *this, startMode, document->contentSecurityPolicy()->deprecatedHeader(), document->contentSecurityPolicy()->deprecatedHeaderType(), document->topOrigin());
     workerThreadCreated(thread);
     thread->start();

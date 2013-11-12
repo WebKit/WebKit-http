@@ -147,7 +147,7 @@ void ResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, Resourc
 
 void ResourceLoadScheduler::notifyDidScheduleResourceRequest(ResourceLoader* loader)
 {
-    InspectorInstrumentation::didScheduleResourceRequest(loader->frameLoader() ? loader->frameLoader()->frame()->document() : 0, loader->url());
+    InspectorInstrumentation::didScheduleResourceRequest(loader->frameLoader() ? loader->frameLoader()->frame().document() : 0, loader->url());
 }
 
 void ResourceLoadScheduler::remove(ResourceLoader* resourceLoader)
@@ -212,7 +212,7 @@ void ResourceLoadScheduler::servePendingRequests(HostInformation* host, Resource
             // For named hosts - which are only http(s) hosts - we should always enforce the connection limit.
             // For non-named hosts - everything but http(s) - we should only enforce the limit if the document isn't done parsing 
             // and we don't know all stylesheets yet.
-            Document* document = resourceLoader->frameLoader() ? resourceLoader->frameLoader()->frame()->document() : 0;
+            Document* document = resourceLoader->frameLoader() ? resourceLoader->frameLoader()->frame().document() : 0;
             bool shouldLimitRequests = !host->name().isNull() || (document && (document->parsing() || !document->haveStylesheetsLoaded()));
             if (shouldLimitRequests && host->limitRequests(ResourceLoadPriority(priority)))
                 return;
@@ -278,10 +278,8 @@ void ResourceLoadScheduler::HostInformation::addLoadInProgress(ResourceLoader* r
     
 void ResourceLoadScheduler::HostInformation::remove(ResourceLoader* resourceLoader)
 {
-    if (m_requestsLoading.contains(resourceLoader)) {
-        m_requestsLoading.remove(resourceLoader);
+    if (m_requestsLoading.remove(resourceLoader))
         return;
-    }
     
     for (int priority = ResourceLoadPriorityHighest; priority >= ResourceLoadPriorityLowest; --priority) {  
         RequestQueue::iterator end = m_requestsPending[priority].end();

@@ -1,12 +1,6 @@
 <!doctype html>
 
  <style>
-
-    @font-face {
-        font-family: webkit-ahem;
-        font-style: normal;
-        src: url(../../resources/Ahem.ttf);
-    }
    
     #float1 {
         float: left;
@@ -18,7 +12,9 @@
     }
     
     #float2 {
-        float:right;
+        margin-top: 30px;
+        margin-left: -30px;
+        float:left;
         width:200px;
         height:30px;
         background-color:orange
@@ -62,14 +58,14 @@
 </style>
 
 <p>In the example below, the green float should be at the top of the first region and on the left. It should spill into region two.
-The orange float should be on the right at the top of region two.</p>
+The orange float should be right aligned under the green float because their containing block is flown only in the first region</p>
 
 <div id="region1">
      <p><img id="float1"></p>
 </div>
 <div id="region2">
     <img id="float2">
-    <p class="flow1">This line of text should not get out of the region. This line of text should not get out of the region.</p>
+    <p class="flow1">This line of text should not get out of the region.</p>
 </div>
 <div id="region3">
 <p class="flow2">This line of text should not get out of the region. This line of text should not get out of the region.</p>

@@ -34,6 +34,7 @@
 #include "AccessibilityTableColumn.h"
 #include "AccessibilityTableHeaderContainer.h"
 #include "AccessibilityTableRow.h"
+#include "ElementIterator.h"
 #include "HTMLNames.h"
 #include "HTMLTableCaptionElement.h"
 #include "HTMLTableCellElement.h"
@@ -124,7 +125,7 @@ bool AccessibilityTable::isDataTable() const
         return true;    
 
     // if there's a colgroup or col element, it's probably a data table.
-    for (Node* child = tableElement->firstChild(); child; child = child->nextSibling()) {
+    for (auto child = elementChildren(tableElement).begin(), end = elementChildren(tableElement).end(); child != end; ++child) {
         if (child->hasTagName(colTag) || child->hasTagName(colgroupTag))
             return true;
     }
@@ -342,7 +343,7 @@ void AccessibilityTable::addChildren()
         return;
     
     RenderTable* table = toRenderTable(m_renderer);
-    AXObjectCache* axCache = m_renderer->document()->axObjectCache();
+    AXObjectCache* axCache = m_renderer->document().axObjectCache();
 
     // Go through all the available sections to pull out the rows and add them as children.
     table->recalcSectionsIfNeeded();

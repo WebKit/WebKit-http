@@ -28,7 +28,6 @@
 #include "HTMLDivElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
-#include "NodeRenderingContext.h"
 #include "ProgressShadowElement.h"
 #include "RenderProgress.h"
 #include "ShadowRoot.h"
@@ -45,6 +44,7 @@ HTMLProgressElement::HTMLProgressElement(const QualifiedName& tagName, Document*
     , m_value(0)
 {
     ASSERT(hasTagName(progressTag));
+    setHasCustomStyleResolveCallbacks();
 }
 
 HTMLProgressElement::~HTMLProgressElement()
@@ -66,9 +66,9 @@ RenderObject* HTMLProgressElement::createRenderer(RenderArena* arena, RenderStyl
     return new (arena) RenderProgress(this);
 }
 
-bool HTMLProgressElement::childShouldCreateRenderer(const NodeRenderingContext& childContext) const
+bool HTMLProgressElement::childShouldCreateRenderer(const Node* child) const
 {
-    return childContext.isOnUpperEncapsulationBoundary() && HTMLElement::childShouldCreateRenderer(childContext);
+    return hasShadowRootParent(child) && HTMLElement::childShouldCreateRenderer(child);
 }
 
 RenderProgress* HTMLProgressElement::renderProgress() const
@@ -91,9 +91,8 @@ void HTMLProgressElement::parseAttribute(const QualifiedName& name, const Atomic
         LabelableElement::parseAttribute(name, value);
 }
 
-void HTMLProgressElement::attach(const AttachContext& context)
+void HTMLProgressElement::didAttachRenderers()
 {
-    LabelableElement::attach(context);
     if (RenderProgress* render = renderProgress())
         render->updateFromElement();
 }
@@ -155,11 +154,11 @@ void HTMLProgressElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 {
     ASSERT(!m_value);
 
-    RefPtr<ProgressInnerElement> inner = ProgressInnerElement::create(document());
+    RefPtr<ProgressInnerElement> inner = ProgressInnerElement::create(&document());
     root->appendChild(inner);
 
-    RefPtr<ProgressBarElement> bar = ProgressBarElement::create(document());
-    RefPtr<ProgressValueElement> value = ProgressValueElement::create(document());
+    RefPtr<ProgressBarElement> bar = ProgressBarElement::create(&document());
+    RefPtr<ProgressValueElement> value = ProgressValueElement::create(&document());
     m_value = value.get();
     m_value->setWidthPercentage(HTMLProgressElement::IndeterminatePosition * 100);
     bar->appendChild(m_value, ASSERT_NO_EXCEPTION);

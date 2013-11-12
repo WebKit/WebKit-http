@@ -45,6 +45,8 @@ public:
     const Length* rowLengths() const { return m_rowLengths.get(); }
     const Length* colLengths() const { return m_colLengths.get(); }
 
+    static HTMLFrameSetElement* findContaining(Element* descendant);
+
     // Declared virtual in Element
     DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(blur);
     DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(error);
@@ -71,13 +73,13 @@ private:
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
 
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
-    virtual bool rendererIsNeeded(const NodeRenderingContext&);
+    virtual void willAttachRenderers() OVERRIDE;
+    virtual bool rendererIsNeeded(const RenderStyle&);
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     
     virtual void defaultEventHandler(Event*);
 
-    virtual bool willRecalcStyle(StyleChange);
+    virtual bool willRecalcStyle(Style::Change) OVERRIDE;
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;

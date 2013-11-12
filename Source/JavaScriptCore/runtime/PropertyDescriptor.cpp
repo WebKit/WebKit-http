@@ -33,7 +33,7 @@
 #include "Operations.h"
 
 namespace JSC {
-unsigned PropertyDescriptor::defaultAttributes = (DontDelete << 1) - 1;
+unsigned PropertyDescriptor::defaultAttributes = DontDelete | DontEnum | ReadOnly;
 
 bool PropertyDescriptor::writable() const
 {
@@ -183,9 +183,9 @@ bool sameValue(ExecState* exec, JSValue a, JSValue b)
 
 bool PropertyDescriptor::equalTo(ExecState* exec, const PropertyDescriptor& other) const
 {
-    if (!other.m_value == m_value ||
-        !other.m_getter == m_getter ||
-        !other.m_setter == m_setter)
+    if (other.m_value.isEmpty() != m_value.isEmpty()
+        || other.m_getter.isEmpty() != m_getter.isEmpty()
+        || other.m_setter.isEmpty() != m_setter.isEmpty())
         return false;
     return (!m_value || sameValue(exec, other.m_value, m_value))
         && (!m_getter || JSValue::strictEqual(exec, other.m_getter, m_getter))

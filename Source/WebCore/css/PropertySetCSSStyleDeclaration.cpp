@@ -89,8 +89,8 @@ public:
         PropertySetCSSStyleDeclaration* localCopyStyleDecl = s_currentDecl;
         s_currentDecl = 0;
         s_shouldNotifyInspector = false;
-        if (localCopyStyleDecl->parentElement() && localCopyStyleDecl->parentElement()->document())
-            InspectorInstrumentation::didInvalidateStyleAttr(localCopyStyleDecl->parentElement()->document(), localCopyStyleDecl->parentElement());
+        if (localCopyStyleDecl->parentElement())
+            InspectorInstrumentation::didInvalidateStyleAttr(&localCopyStyleDecl->parentElement()->document(), localCopyStyleDecl->parentElement());
     }
 
     void enqueueMutationRecord()
@@ -331,9 +331,9 @@ void StyleRuleCSSStyleDeclaration::didMutate(MutationType type)
     if (type == PropertyChanged)
         m_cssomCSSValueClones.clear();
 
-    // Style sheet mutation needs to be signaled even if the change failed. willMutateRules/didMutateRules must pair.
+    // Style sheet mutation needs to be signaled even if the change failed. willMutate*/didMutate* must pair.
     if (m_parentRule && m_parentRule->parentStyleSheet())
-        m_parentRule->parentStyleSheet()->didMutateRules();
+        m_parentRule->parentStyleSheet()->didMutateRuleFromCSSStyleDeclaration();
 }
 
 CSSStyleSheet* StyleRuleCSSStyleDeclaration::parentStyleSheet() const
@@ -366,7 +366,7 @@ void InlineCSSStyleDeclaration::didMutate(MutationType type)
 
 CSSStyleSheet* InlineCSSStyleDeclaration::parentStyleSheet() const
 {
-    return m_parentElement ? m_parentElement->document()->elementSheet() : 0;
+    return m_parentElement ? &m_parentElement->document().elementSheet() : 0;
 }
 
 } // namespace WebCore

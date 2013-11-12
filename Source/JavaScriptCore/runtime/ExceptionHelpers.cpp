@@ -41,7 +41,7 @@
 
 namespace JSC {
 
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(TerminatedExecutionError);
+STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(TerminatedExecutionError);
 
 const ClassInfo TerminatedExecutionError::s_info = { "TerminatedExecutionError", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(TerminatedExecutionError) };
 
@@ -59,12 +59,12 @@ JSObject* createTerminatedExecutionException(VM* vm)
 
 bool isTerminatedExecutionException(JSObject* object)
 {
-    return object->inherits(&TerminatedExecutionError::s_info);
+    return object->inherits(TerminatedExecutionError::info());
 }
 
 bool isTerminatedExecutionException(JSValue value)
 {
-    return value.inherits(&TerminatedExecutionError::s_info);
+    return value.inherits(TerminatedExecutionError::info());
 }
 
 
@@ -106,8 +106,12 @@ JSString* errorDescriptionForValue(ExecState* exec, JSValue v)
         JSObject* object = asObject(v);
         if (object->methodTable()->getCallData(object, callData) != CallTypeNone)
             return vm.smallStrings.functionString();
+        return jsString(exec, object->methodTable()->className(object));
     }
-    return jsString(exec, asObject(v)->methodTable()->className(asObject(v)));
+    
+    // The JSValue should never be empty, so this point in the code should never be reached.
+    ASSERT_NOT_REACHED();
+    return vm.smallStrings.emptyString();
 }
     
 JSObject* createError(ExecState* exec, ErrorFactory errorFactory, JSValue value, const String& message)
@@ -151,19 +155,19 @@ JSObject* createOutOfMemoryError(JSGlobalObject* globalObject)
 
 JSObject* throwOutOfMemoryError(ExecState* exec)
 {
-    return throwError(exec, createOutOfMemoryError(exec->lexicalGlobalObject()));
+    return exec->vm().throwException(exec, createOutOfMemoryError(exec->lexicalGlobalObject()));
 }
 
 JSObject* throwStackOverflowError(ExecState* exec)
 {
     Interpreter::ErrorHandlingMode mode(exec);
-    return throwError(exec, createStackOverflowError(exec));
+    return exec->vm().throwException(exec, createStackOverflowError(exec));
 }
 
 JSObject* throwTerminatedExecutionException(ExecState* exec)
 {
     Interpreter::ErrorHandlingMode mode(exec);
-    return throwError(exec, createTerminatedExecutionException(&exec->vm()));
+    return exec->vm().throwException(exec, createTerminatedExecutionException(&exec->vm()));
 }
 
 } // namespace JSC

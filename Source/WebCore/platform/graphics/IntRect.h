@@ -213,6 +213,8 @@ public:
     operator BlackBerry::Platform::IntRect() const;
 #endif
 
+    void dump(PrintStream& out) const;
+
 private:
     IntPoint m_location;
     IntSize m_size;

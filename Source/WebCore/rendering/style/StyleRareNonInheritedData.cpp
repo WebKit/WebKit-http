@@ -46,10 +46,12 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
 #endif
     , m_mask(FillLayer(MaskFillLayer))
     , m_pageSize()
+#if ENABLE(CSS_SHAPES)
     , m_shapeInside(RenderStyle::initialShapeInside())
     , m_shapeOutside(RenderStyle::initialShapeOutside())
     , m_shapeMargin(RenderStyle::initialShapeMargin())
     , m_shapePadding(RenderStyle::initialShapePadding())
+#endif
     , m_clipPath(RenderStyle::initialClipPath())
     , m_visitedLinkBackgroundColor(RenderStyle::initialBackgroundColor())
     , m_order(RenderStyle::initialOrder())
@@ -85,6 +87,7 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
 #if ENABLE(CSS_COMPOSITING)
     , m_effectiveBlendMode(RenderStyle::initialBlendMode())
 #endif
+    , m_objectFit(RenderStyle::initialObjectFit())
 {
     m_maskBoxImage.setMaskDefaults();
 }
@@ -120,10 +123,12 @@ StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonInherited
     , m_mask(o.m_mask)
     , m_maskBoxImage(o.m_maskBoxImage)
     , m_pageSize(o.m_pageSize)
+#if ENABLE(CSS_SHAPES)
     , m_shapeInside(o.m_shapeInside)
     , m_shapeOutside(o.m_shapeOutside)
     , m_shapeMargin(o.m_shapeMargin)
     , m_shapePadding(o.m_shapePadding)
+#endif
     , m_clipPath(o.m_clipPath)
 #if ENABLE(CSS3_TEXT)
     , m_textDecorationColor(o.m_textDecorationColor)
@@ -168,6 +173,7 @@ StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonInherited
 #if ENABLE(CSS_COMPOSITING)
     , m_effectiveBlendMode(o.m_effectiveBlendMode)
 #endif
+    , m_objectFit(o.m_objectFit)
 {
 }
 
@@ -209,10 +215,12 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_mask == o.m_mask
         && m_maskBoxImage == o.m_maskBoxImage
         && m_pageSize == o.m_pageSize
+#if ENABLE(CSS_SHAPES)
         && m_shapeInside == o.m_shapeInside
         && m_shapeOutside == o.m_shapeOutside
         && m_shapeMargin == o.m_shapeMargin
         && m_shapePadding == o.m_shapePadding
+#endif
         && m_clipPath == o.m_clipPath
 #if ENABLE(CSS3_TEXT)
         && m_textDecorationColor == o.m_textDecorationColor
@@ -256,7 +264,8 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
 #if ENABLE(CSS_COMPOSITING)
         && m_effectiveBlendMode == o.m_effectiveBlendMode
 #endif
-        && m_hasAspectRatio == o.m_hasAspectRatio;
+        && m_hasAspectRatio == o.m_hasAspectRatio
+        && m_objectFit == o.m_objectFit;
 }
 
 bool StyleRareNonInheritedData::contentDataEquivalent(const StyleRareNonInheritedData& o) const
@@ -318,6 +327,15 @@ bool StyleRareNonInheritedData::transitionDataEquivalent(const StyleRareNonInher
     if (m_transitions && o.m_transitions && (*m_transitions != *o.m_transitions))
         return false;
     return true;
+}
+
+bool StyleRareNonInheritedData::hasFilters() const
+{
+#if ENABLE(CSS_FILTERS)
+    return m_filter.get() && !m_filter->m_operations.isEmpty();
+#else
+    return false;
+#endif
 }
 
 } // namespace WebCore

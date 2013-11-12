@@ -33,7 +33,7 @@ String listMarkerText(EListStyleType, int value);
 
 // Used to render the list item's marker.
 // The RenderListMarker always has to be a child of a RenderListItem.
-class RenderListMarker : public RenderBox {
+class RenderListMarker FINAL : public RenderBox {
 public:
     static RenderListMarker* createAnonymous(RenderListItem*);
 
@@ -86,20 +86,19 @@ private:
     RenderListItem* m_listItem;
 };
 
-inline RenderListMarker* toRenderListMarker(RenderObject* object)
+inline RenderListMarker& toRenderListMarker(RenderObject& object)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isListMarker());
-    return static_cast<RenderListMarker*>(object);
+    ASSERT_WITH_SECURITY_IMPLICATION(object.isListMarker());
+    return static_cast<RenderListMarker&>(object);
 }
 
-inline const RenderListMarker* toRenderListMarker(const RenderObject* object)
+inline const RenderListMarker& toRenderListMarker(const RenderObject& object)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isListMarker());
-    return static_cast<const RenderListMarker*>(object);
+    ASSERT_WITH_SECURITY_IMPLICATION(object.isListMarker());
+    return static_cast<const RenderListMarker&>(object);
 }
 
-// This will catch anyone doing an unnecessary cast.
-void toRenderListMarker(const RenderListMarker*);
+void toRenderListMarker(const RenderListMarker&);
 
 } // namespace WebCore
 

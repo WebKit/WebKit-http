@@ -116,6 +116,7 @@ PlatformCALayer::PlatformCALayer(LayerType layerType, PlatformLayer* layer, Plat
         m_layer = layer;
     } else {
         m_layerType = layerType;
+        ASSERT((layerType != LayerTypeTiledBackingLayer) && (layerType != LayerTypePageTiledBackingLayer));
         m_layer = adoptCF(CACFLayerCreate(toCACFLayerType(layerType)));
 
         // Create the PlatformCALayerWinInternal object and point to it in the userdata.
@@ -136,6 +137,12 @@ PlatformCALayer::~PlatformCALayer()
     // Get rid of the user data
     PlatformCALayerWinInternal* layerIntern = intern(this);
     CACFLayerSetUserData(m_layer.get(), 0);
+
+    // Clear the owner, which also clears it in the delegate to prevent attempts 
+    // to use the GraphicsLayerCA after it has been destroyed.
+    setOwner(0);
+
+    CACFLayerRemoveFromSuperlayer(m_layer.get());
 
     delete layerIntern;
 }
@@ -431,17 +438,6 @@ void PlatformCALayer::setSublayerTransform(const TransformationMatrix& value)
 {
     CACFLayerSetSublayerTransform(m_layer.get(), value);
     setNeedsCommit();
-}
-
-TransformationMatrix PlatformCALayer::contentsTransform() const
-{
-    // ContentsTransform is not used
-    return TransformationMatrix();
-}
-
-void PlatformCALayer::setContentsTransform(const TransformationMatrix&)
-{
-    // ContentsTransform is not used
 }
 
 bool PlatformCALayer::isHidden() const
@@ -775,7 +771,7 @@ void PlatformCALayer::printTree() const
     // Print heading info
     CGRect rootBounds = bounds();
     fprintf(stderr, "\n\n** Render tree at time %g (bounds %g, %g %gx%g) **\n\n", 
-        currentTime(), rootBounds.origin.x, rootBounds.origin.y, rootBounds.size.width, rootBounds.size.height);
+        monotonicallyIncreasingTime(), rootBounds.origin.x, rootBounds.origin.y, rootBounds.size.width, rootBounds.size.height);
 
     // Print layer tree from the root
     printLayer(this, 0);

@@ -23,7 +23,7 @@
 
 #if ENABLE(SVG)
 #include "SVGAnimatedTransformList.h"
-#include "SVGStyledElement.h"
+#include "SVGElement.h"
 #include "SVGTests.h"
 #include "SVGTransformable.h"
 
@@ -32,7 +32,7 @@ namespace WebCore {
 class AffineTransform;
 class Path;
 
-class SVGGraphicsElement : public SVGStyledElement, public SVGTransformable, public SVGTests {
+class SVGGraphicsElement : public SVGElement, public SVGTransformable, public SVGTests {
 public:
     virtual ~SVGGraphicsElement();
 
@@ -52,7 +52,7 @@ public:
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
 
 protected:
-    SVGGraphicsElement(const QualifiedName&, Document*, ConstructionType = CreateSVGElement);
+    SVGGraphicsElement(const QualifiedName&, Document*);
 
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;

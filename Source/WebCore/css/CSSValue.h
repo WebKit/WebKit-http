@@ -71,6 +71,7 @@ public:
 
     bool isAspectRatioValue() const { return m_classType == AspectRatioClass; }
     bool isBorderImageSliceValue() const { return m_classType == BorderImageSliceClass; }
+    bool isCrossfadeValue() const { return m_classType == CrossfadeClass; }
     bool isCursorImageValue() const { return m_classType == CursorImageClass; }
     bool isFontFeatureValue() const { return m_classType == FontFeatureClass; }
     bool isFontValue() const { return m_classType == FontClass; }
@@ -92,6 +93,7 @@ public:
     bool isCSSLineBoxContainValue() const { return m_classType == LineBoxContainClass; }
     bool isCalculationValue() const {return m_classType == CalculationClass; }
 #if ENABLE(CSS_FILTERS)
+    bool isFilterImageValue() const { return m_classType == FilterImageClass; }
     bool isWebKitCSSFilterValue() const { return m_classType == WebKitCSSFilterClass; }
 #if ENABLE(CSS_SHADERS)
     bool isWebKitCSSArrayFunctionValue() const { return m_classType == WebKitCSSArrayFunctionValueClass; }
@@ -140,6 +142,9 @@ protected:
         // Image generator classes.
         CanvasClass,
         CrossfadeClass,
+#if ENABLE(CSS_FILTERS)
+        FilterImageClass,
+#endif
         LinearGradientClass,
         RadialGradientClass,
 

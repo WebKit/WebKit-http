@@ -7,7 +7,4 @@ function foo(x) {
     return 42;
 }
 
-for (var i = 0; i < 1000; ++i) {
-    shouldBe("foo({f:[]})", "42");
-}
-
+dfgShouldBe(foo, "foo({f:[]})", "42");

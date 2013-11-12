@@ -48,36 +48,42 @@ public:
         ASSERT(m_graph.m_unificationState == GloballyUnified);
         
         ASSERT(codeBlock()->numParameters() >= 1);
-        for (size_t arg = 0; arg < static_cast<size_t>(codeBlock()->numParameters()); ++arg) {
-            ValueProfile* profile = profiledBlock()->valueProfileForArgument(arg);
-            if (!profile)
-                continue;
+        {
+            ConcurrentJITLocker locker(profiledBlock()->m_lock);
             
-            m_graph.m_arguments[arg]->variableAccessData()->predict(profile->computeUpdatedPrediction());
+            for (size_t arg = 0; arg < static_cast<size_t>(codeBlock()->numParameters()); ++arg) {
+                ValueProfile* profile = profiledBlock()->valueProfileForArgument(arg);
+                if (!profile)
+                    continue;
+            
+                m_graph.m_arguments[arg]->variableAccessData()->predict(
+                    profile->computeUpdatedPrediction(locker));
             
 #if DFG_ENABLE(DEBUG_VERBOSE)
-            dataLog(
-                "Argument [", arg, "] prediction: ",
-                SpeculationDump(m_graph.m_arguments[arg]->variableAccessData()->prediction()), "\n");
+                dataLog(
+                    "Argument [", arg, "] prediction: ",
+                    SpeculationDump(m_graph.m_arguments[arg]->variableAccessData()->prediction()),
+                    "\n");
 #endif
+            }
         }
         
-        for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             if (!block->isOSRTarget)
                 continue;
-            if (block->bytecodeBegin != m_graph.m_osrEntryBytecodeIndex)
+            if (block->bytecodeBegin != m_graph.m_plan.osrEntryBytecodeIndex)
                 continue;
-            for (size_t i = 0; i < m_graph.m_mustHandleValues.size(); ++i) {
-                Node* node = block->variablesAtHead.operand(
-                    m_graph.m_mustHandleValues.operandForIndex(i));
+            for (size_t i = 0; i < m_graph.m_plan.mustHandleValues.size(); ++i) {
+                int operand = m_graph.m_plan.mustHandleValues.operandForIndex(i);
+                Node* node = block->variablesAtHead.operand(operand);
                 if (!node)
                     continue;
-                ASSERT(node->hasLocal());
+                ASSERT(node->hasLocal(m_graph));
                 node->variableAccessData()->predict(
-                    speculationFromValue(m_graph.m_mustHandleValues[i]));
+                    speculationFromValue(m_graph.m_plan.mustHandleValues[i]));
             }
         }
         

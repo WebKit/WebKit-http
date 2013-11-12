@@ -1159,7 +1159,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     // Check for this and don't start a load in this case.
     if (_sourceURL && ![_sourceURL.get() _web_isEmpty]) {
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:_sourceURL.get()];
-        [request _web_setHTTPReferrer:core([self webFrame])->loader()->outgoingReferrer()];
+        [request _web_setHTTPReferrer:core([self webFrame])->loader().outgoingReferrer()];
         [self loadRequest:request inTarget:nil withNotifyData:nil sendNotification:NO];
     } 
 }
@@ -1499,7 +1499,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     ASSERT(_loadManually);
     ASSERT(!_manualStream);
 
-    _manualStream = WebNetscapePluginStream::create(core([self webFrame])->loader());
+    _manualStream = WebNetscapePluginStream::create(&core([self webFrame])->loader());
 }
 
 - (void)pluginView:(NSView *)pluginView receivedData:(NSData *)data
@@ -1657,7 +1657,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     if (frameName) {
         // FIXME - need to get rid of this window creation which
         // bypasses normal targeted link handling
-        frame = kit(core([self webFrame])->loader()->findFrameForNavigation(frameName));
+        frame = kit(core([self webFrame])->loader().findFrameForNavigation(frameName));
         if (frame == nil) {
             WebView *currentWebView = [self webView];
             NSDictionary *features = [[NSDictionary alloc] init];
@@ -1679,7 +1679,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
             }
             
             frame = [newWebView mainFrame];
-            core(frame)->tree()->setName(frameName);
+            core(frame)->tree().setName(frameName);
             [[newWebView _UIDelegateForwarder] webViewShow:newWebView];
         }
     }
@@ -1723,7 +1723,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
 
     // don't let a plugin start any loads if it is no longer part of a document that is being 
     // displayed unless the loads are in the same frame as the plugin.
-    if ([[self dataSource] _documentLoader] != core([self webFrame])->loader()->activeDocumentLoader() &&
+    if ([[self dataSource] _documentLoader] != core([self webFrame])->loader().activeDocumentLoader() &&
         (!cTarget || [frame findFrameNamed:target] != frame)) {
         return NPERR_GENERIC_ERROR; 
     }
@@ -2001,7 +2001,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
         case NPNVWindowNPObject:
         {
             Frame* frame = core([self webFrame]);
-            NPObject* windowScriptObject = frame ? frame->script()->windowScriptNPObject() : 0;
+            NPObject* windowScriptObject = frame ? frame->script().windowScriptNPObject() : 0;
 
             // Return value is expected to be retained, as described here: <http://www.mozilla.org/projects/plugins/npruntime.html#browseraccess>
             if (windowScriptObject)
@@ -2396,7 +2396,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     LOG(Plugins, "NPP_Destroy: %d", npErr);
     
     if (Frame* frame = core([self webFrame]))
-        frame->script()->cleanupScriptObjectsForPlugin(self);
+        frame->script().cleanupScriptObjectsForPlugin(self);
         
     free(plugin);
     plugin = NULL;

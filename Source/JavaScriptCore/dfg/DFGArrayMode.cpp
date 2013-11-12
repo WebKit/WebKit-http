@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,14 +34,14 @@
 
 namespace JSC { namespace DFG {
 
-ArrayMode ArrayMode::fromObserved(ArrayProfile* profile, Array::Action action, bool makeSafe)
+ArrayMode ArrayMode::fromObserved(const ConcurrentJITLocker& locker, ArrayProfile* profile, Array::Action action, bool makeSafe)
 {
-    ArrayModes observed = profile->observedArrayModes();
+    ArrayModes observed = profile->observedArrayModes(locker);
     switch (observed) {
     case 0:
         return ArrayMode(Array::Unprofiled);
     case asArrayModes(NonArray):
-        if (action == Array::Write && !profile->mayInterceptIndexedAccesses())
+        if (action == Array::Write && !profile->mayInterceptIndexedAccesses(locker))
             return ArrayMode(Array::Undecided, Array::NonArray, Array::OutOfBounds, Array::Convert);
         return ArrayMode(Array::SelectUsingPredictions);
 
@@ -51,49 +51,49 @@ ArrayMode ArrayMode::fromObserved(ArrayProfile* profile, Array::Action action, b
         return ArrayMode(Array::Generic);
         
     case asArrayModes(NonArray) | asArrayModes(ArrayWithUndecided):
-        if (action == Array::Write && !profile->mayInterceptIndexedAccesses())
+        if (action == Array::Write && !profile->mayInterceptIndexedAccesses(locker))
             return ArrayMode(Array::Undecided, Array::PossiblyArray, Array::OutOfBounds, Array::Convert);
         return ArrayMode(Array::SelectUsingPredictions);
 
     case asArrayModes(NonArrayWithInt32):
-        return ArrayMode(Array::Int32, Array::NonArray, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::Int32, Array::NonArray, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(ArrayWithInt32):
-        return ArrayMode(Array::Int32, Array::Array, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::Int32, Array::Array, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(NonArrayWithInt32) | asArrayModes(ArrayWithInt32):
-        return ArrayMode(Array::Int32, Array::PossiblyArray, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::Int32, Array::PossiblyArray, Array::AsIs).withProfile(locker, profile, makeSafe);
 
     case asArrayModes(NonArrayWithDouble):
-        return ArrayMode(Array::Double, Array::NonArray, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::Double, Array::NonArray, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(ArrayWithDouble):
-        return ArrayMode(Array::Double, Array::Array, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::Double, Array::Array, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(NonArrayWithDouble) | asArrayModes(ArrayWithDouble):
-        return ArrayMode(Array::Double, Array::PossiblyArray, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::Double, Array::PossiblyArray, Array::AsIs).withProfile(locker, profile, makeSafe);
 
     case asArrayModes(NonArrayWithContiguous):
-        return ArrayMode(Array::Contiguous, Array::NonArray, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::Contiguous, Array::NonArray, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(ArrayWithContiguous):
-        return ArrayMode(Array::Contiguous, Array::Array, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::Contiguous, Array::Array, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(NonArrayWithContiguous) | asArrayModes(ArrayWithContiguous):
-        return ArrayMode(Array::Contiguous, Array::PossiblyArray, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::Contiguous, Array::PossiblyArray, Array::AsIs).withProfile(locker, profile, makeSafe);
 
     case asArrayModes(NonArrayWithArrayStorage):
-        return ArrayMode(Array::ArrayStorage, Array::NonArray, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::ArrayStorage, Array::NonArray, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(NonArrayWithSlowPutArrayStorage):
     case asArrayModes(NonArrayWithArrayStorage) | asArrayModes(NonArrayWithSlowPutArrayStorage):
-        return ArrayMode(Array::SlowPutArrayStorage, Array::NonArray, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::SlowPutArrayStorage, Array::NonArray, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(ArrayWithArrayStorage):
-        return ArrayMode(Array::ArrayStorage, Array::Array, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::ArrayStorage, Array::Array, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(ArrayWithSlowPutArrayStorage):
     case asArrayModes(ArrayWithArrayStorage) | asArrayModes(ArrayWithSlowPutArrayStorage):
-        return ArrayMode(Array::SlowPutArrayStorage, Array::Array, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::SlowPutArrayStorage, Array::Array, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(NonArrayWithArrayStorage) | asArrayModes(ArrayWithArrayStorage):
-        return ArrayMode(Array::ArrayStorage, Array::PossiblyArray, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::ArrayStorage, Array::PossiblyArray, Array::AsIs).withProfile(locker, profile, makeSafe);
     case asArrayModes(NonArrayWithSlowPutArrayStorage) | asArrayModes(ArrayWithSlowPutArrayStorage):
     case asArrayModes(NonArrayWithArrayStorage) | asArrayModes(ArrayWithArrayStorage) | asArrayModes(NonArrayWithSlowPutArrayStorage) | asArrayModes(ArrayWithSlowPutArrayStorage):
-        return ArrayMode(Array::SlowPutArrayStorage, Array::PossiblyArray, Array::AsIs).withProfile(profile, makeSafe);
+        return ArrayMode(Array::SlowPutArrayStorage, Array::PossiblyArray, Array::AsIs).withProfile(locker, profile, makeSafe);
 
     default:
-        if ((observed & asArrayModes(NonArray)) && profile->mayInterceptIndexedAccesses())
+        if ((observed & asArrayModes(NonArray)) && profile->mayInterceptIndexedAccesses(locker))
             return ArrayMode(Array::SelectUsingPredictions);
         
         Array::Type type;
@@ -121,7 +121,7 @@ ArrayMode ArrayMode::fromObserved(ArrayProfile* profile, Array::Action action, b
         else
             arrayClass = Array::PossiblyArray;
         
-        return ArrayMode(type, arrayClass, Array::Convert).withProfile(profile, makeSafe);
+        return ArrayMode(type, arrayClass, Array::Convert).withProfile(locker, profile, makeSafe);
     }
 }
 
@@ -455,6 +455,76 @@ const char* arrayConversionToString(Array::Conversion conversion)
         return "RageConvert";
     default:
         return "Unknown!";
+    }
+}
+
+IndexingType toIndexingShape(Array::Type type)
+{
+    switch (type) {
+    case Array::Int32:
+        return Int32Shape;
+    case Array::Double:
+        return DoubleShape;
+    case Array::Contiguous:
+        return ContiguousShape;
+    case Array::ArrayStorage:
+        return ArrayStorageShape;
+    case Array::SlowPutArrayStorage:
+        return SlowPutArrayStorageShape;
+    default:
+        return NoIndexingShape;
+    }
+}
+
+TypedArrayType toTypedArrayType(Array::Type type)
+{
+    switch (type) {
+    case Array::Int8Array:
+        return TypeInt8;
+    case Array::Int16Array:
+        return TypeInt16;
+    case Array::Int32Array:
+        return TypeInt32;
+    case Array::Uint8Array:
+        return TypeUint8;
+    case Array::Uint8ClampedArray:
+        return TypeUint8Clamped;
+    case Array::Uint16Array:
+        return TypeUint16;
+    case Array::Uint32Array:
+        return TypeUint32;
+    case Array::Float32Array:
+        return TypeFloat32;
+    case Array::Float64Array:
+        return TypeFloat64;
+    default:
+        return NotTypedArray;
+    }
+}
+
+Array::Type toArrayType(TypedArrayType type)
+{
+    switch (type) {
+    case TypeInt8:
+        return Array::Int8Array;
+    case TypeInt16:
+        return Array::Int16Array;
+    case TypeInt32:
+        return Array::Int32Array;
+    case TypeUint8:
+        return Array::Uint8Array;
+    case TypeUint8Clamped:
+        return Array::Uint8ClampedArray;
+    case TypeUint16:
+        return Array::Uint16Array;
+    case TypeUint32:
+        return Array::Uint32Array;
+    case TypeFloat32:
+        return Array::Float32Array;
+    case TypeFloat64:
+        return Array::Float64Array;
+    default:
+        return Array::Generic;
     }
 }
 

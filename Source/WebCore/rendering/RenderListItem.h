@@ -23,14 +23,14 @@
 #ifndef RenderListItem_h
 #define RenderListItem_h
 
-#include "RenderBlock.h"
+#include "RenderBlockFlow.h"
 
 namespace WebCore {
 
 class HTMLOListElement;
 class RenderListMarker;
 
-class RenderListItem : public RenderBlock {
+class RenderListItem FINAL : public RenderBlockFlow {
 public:
     explicit RenderListItem(Element*);
 
@@ -75,8 +75,9 @@ private:
     virtual bool requiresForcedStyleRecalcPropagation() const { return true; }
 
     virtual void addOverflowFromChildren();
+    virtual void computePreferredLogicalWidths() OVERRIDE;
 
-    void updateMarkerLocation();
+    void insertOrMoveMarkerRendererIfNeeded();
     inline int calcValue() const;
     void updateValueNow() const;
     void explicitValueChanged();

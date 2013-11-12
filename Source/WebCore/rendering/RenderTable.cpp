@@ -248,7 +248,7 @@ void RenderTable::updateLogicalWidth()
     }
 
     RenderBlock* cb = containingBlock();
-    RenderView* renderView = view();
+    RenderView* renderView = &view();
 
     LayoutUnit availableLogicalWidth = containingBlockLogicalWidthForContent();
     bool hasPerpendicularContainingBlock = cb->style()->isHorizontalWritingMode() != style()->isHorizontalWritingMode();
@@ -324,7 +324,7 @@ LayoutUnit RenderTable::convertStyleLogicalWidthToComputedWidth(const Length& st
     if (isCSSTable && styleLogicalWidth.isSpecified() && styleLogicalWidth.isPositive() && style()->boxSizing() == CONTENT_BOX)
         borders = borderStart() + borderEnd() + (collapseBorders() ? LayoutUnit() : paddingStart() + paddingEnd());
 
-    return minimumValueForLength(styleLogicalWidth, availableWidth, view()) + borders;
+    return minimumValueForLength(styleLogicalWidth, availableWidth, &view()) + borders;
 }
 
 LayoutUnit RenderTable::convertStyleLogicalHeightToComputedHeight(const Length& styleLogicalHeight)
@@ -343,7 +343,7 @@ LayoutUnit RenderTable::convertStyleLogicalHeightToComputedHeight(const Length& 
     } else if (styleLogicalHeight.isPercent())
         computedLogicalHeight = computePercentageLogicalHeight(styleLogicalHeight);
     else if (styleLogicalHeight.isViewportPercentage())
-        computedLogicalHeight = minimumValueForLength(styleLogicalHeight, 0, view());
+        computedLogicalHeight = minimumValueForLength(styleLogicalHeight, 0, &view());
     else
         ASSERT_NOT_REACHED();
     return max<LayoutUnit>(0, computedLogicalHeight);
@@ -405,7 +405,7 @@ void RenderTable::layout()
     recalcBordersInRowDirection();
         
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
-    LayoutStateMaintainer statePusher(view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
+    LayoutStateMaintainer statePusher(&view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
 
     setLogicalHeight(0);
 
@@ -498,7 +498,7 @@ void RenderTable::layout()
     for (RenderTableSection* section = topSection(); section; section = sectionBelow(section))
         section->layoutRows();
 
-    if (!topSection() && computedLogicalHeight > totalSectionLogicalHeight && !document()->inQuirksMode()) {
+    if (!topSection() && computedLogicalHeight > totalSectionLogicalHeight && !document().inQuirksMode()) {
         // Completely empty tables (with no sections or anything) should at least honor specified height
         // in strict mode.
         setLogicalHeight(logicalHeight() + computedLogicalHeight);
@@ -545,8 +545,8 @@ void RenderTable::layout()
 
     statePusher.pop();
 
-    if (view()->layoutState()->pageLogicalHeight())
-        setPageLogicalOffset(view()->layoutState()->pageLogicalOffset(this, logicalTop()));
+    if (view().layoutState()->pageLogicalHeight())
+        setPageLogicalOffset(view().layoutState()->pageLogicalOffset(this, logicalTop()));
 
     bool didFullRepaint = repainter.repaintAfterLayout();
     // Repaint with our new bounds if they are different from our old bounds.
@@ -1417,7 +1417,7 @@ RenderTable* RenderTable::createAnonymousWithParentRenderer(const RenderObject* 
 {
     RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(parent->style(), TABLE);
     RenderTable* newTable = new (parent->renderArena()) RenderTable(0);
-    newTable->setDocumentForAnonymous(parent->document());
+    newTable->setDocumentForAnonymous(&parent->document());
     newTable->setStyle(newStyle.release());
     return newTable;
 }

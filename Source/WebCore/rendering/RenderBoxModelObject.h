@@ -53,6 +53,7 @@ enum ContentChangeType {
 
 class KeyframeList;
 class InlineFlowBox;
+class RenderTextFragment;
 class StickyPositionViewportConstraints;
 
 // This class is the base for all objects that adhere to the CSS box model as described
@@ -174,7 +175,7 @@ public:
 
     virtual void setSelectionState(SelectionState s);
 
-    bool canHaveBoxInfoInRegion() const { return !isFloating() && !isReplaced() && !isInline() && !hasColumns() && !isTableCell() && isBlockFlow() && !isRenderSVGBlock(); }
+    bool canHaveBoxInfoInRegion() const { return !isFloating() && !isReplaced() && !isInline() && !hasColumns() && !isTableCell() && isBlockFlowFlexBoxOrGrid() && !isRenderSVGBlock(); }
 
 
     void getGeometryForBackgroundImage(const RenderLayerModelObject* paintContainer, IntRect& destRect, IntPoint& phase, IntSize& tileSize) const;
@@ -227,7 +228,12 @@ protected:
         {
             m_tileSize = tileSize;
         }
-        
+        FloatSize spaceSize() const { return m_space; }
+        void setSpaceSize(const FloatSize& space)
+        {
+            m_space = space;
+        }
+
         void setPhaseX(int x) { m_phase.setX(x); }
         void setPhaseY(int y) { m_phase.setY(y); }
         
@@ -246,6 +252,7 @@ protected:
         IntPoint m_destOrigin;
         IntPoint m_phase;
         IntSize m_tileSize;
+        FloatSize m_space;
         bool m_hasNonLocalGeometry; // Has background-attachment: fixed. Implies that we can't always cheaply compute destRect.
     };
 
@@ -273,8 +280,8 @@ protected:
 
 public:
     // For RenderBlocks and RenderInlines with m_style->styleType() == FIRST_LETTER, this tracks their remaining text fragments
-    RenderObject* firstLetterRemainingText() const;
-    void setFirstLetterRemainingText(RenderObject*);
+    RenderTextFragment* firstLetterRemainingText() const;
+    void setFirstLetterRemainingText(RenderTextFragment*);
 
     // These functions are only used internally to manipulate the render tree structure via remove/insert/appendChildNode.
     // Since they are typically called only to move objects around within anonymous blocks (which only have layers in
@@ -302,7 +309,7 @@ public:
 
 private:
     LayoutUnit computedCSSPadding(Length) const;
-    virtual bool isBoxModelObject() const { return true; }
+    virtual bool isBoxModelObject() const OVERRIDE FINAL { return true; }
     
     virtual LayoutRect frameRectForStickyPositioning() const = 0;
 
@@ -332,6 +339,18 @@ private:
                             Color, EBorderStyle, BackgroundBleedAvoidance, bool includeLogicalLeftEdge, bool includeLogicalRightEdge);
 };
 
+inline RenderBoxModelObject& toRenderBoxModelObject(RenderObject& object)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(object.isBoxModelObject());
+    return static_cast<RenderBoxModelObject&>(object);
+}
+
+inline const RenderBoxModelObject& toRenderBoxModelObject(const RenderObject& object)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(object.isBoxModelObject());
+    return static_cast<const RenderBoxModelObject&>(object);
+}
+
 inline RenderBoxModelObject* toRenderBoxModelObject(RenderObject* object)
 { 
     ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isBoxModelObject());
@@ -346,6 +365,7 @@ inline const RenderBoxModelObject* toRenderBoxModelObject(const RenderObject* ob
 
 // This will catch anyone doing an unnecessary cast.
 void toRenderBoxModelObject(const RenderBoxModelObject*);
+void toRenderBoxModelObject(const RenderBoxModelObject&);
 
 } // namespace WebCore
 

@@ -29,16 +29,15 @@
 #if ENABLE(VIDEO_TRACK)
 
 #include "FloatPoint.h"
-#include "RenderBlock.h"
+#include "RenderBlockFlow.h"
 #include "RenderInline.h"
-#include "RenderView.h"
 
 namespace WebCore {
 
 class RenderBox;
 class TextTrackCueBox;
 
-class RenderTextTrackCue : public RenderBlock {
+class RenderTextTrackCue FINAL : public RenderBlockFlow {
 public:
     explicit RenderTextTrackCue(TextTrackCueBox*);
 

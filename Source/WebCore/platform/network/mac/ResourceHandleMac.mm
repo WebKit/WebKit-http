@@ -34,7 +34,6 @@
 #import "CookieStorage.h"
 #import "CredentialStorage.h"
 #import "CachedResourceLoader.h"
-#import "EmptyProtocolDefinitions.h"
 #import "FormDataStreamMac.h"
 #import "Frame.h"
 #import "FrameLoader.h"
@@ -52,6 +51,7 @@
 #import "SynchronousLoaderClient.h"
 #import "WebCoreSystemInterface.h"
 #import "WebCoreURLResponse.h"
+#import <wtf/Ref.h>
 #import <wtf/SchedulePair.h>
 #import <wtf/text/Base64.h>
 #import <wtf/text/CString.h>
@@ -317,19 +317,24 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     if (error.isNull())
         response = client->response();
     else {
+        // FIXME: We might not ever need to manufacture a response: This might all be dead code.
+        // When exploring removal of this code, we should substitute appropriate ASSERTs.
         response = ResourceResponse(request.url(), String(), 0, String(), String());
         if (error.domain() == String(NSURLErrorDomain))
             switch (error.errorCode()) {
             case NSURLErrorUserCancelledAuthentication:
-                // FIXME: we should really return the actual HTTP response, but sendSynchronousRequest doesn't provide us with one.
+                // FIXME: We don't need to manufacture a 401 response if we say continueWithoutCredentialForAuthenticationChallenge:
+                // in which case we'll get the real failure response. A reading of SynchronousLoaderClient.mm suggests we already do this.
                 response.setHTTPStatusCode(401);
                 break;
             default:
                 response.setHTTPStatusCode(error.errorCode());
             }
-        else
+        else {
+            // FIXME: This is wrong. We shouldn't need to ever make up a 404.
             response.setHTTPStatusCode(404);
-    }
+        }
+     }
 
     data.swap(client->mutableData());
 }
@@ -385,7 +390,7 @@ void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceRes
     if (client()->usesAsyncCallbacks()) {
         client()->willSendRequestAsync(this, request, redirectResponse);
     } else {
-        RefPtr<ResourceHandle> protect(this);
+        Ref<ResourceHandle> protect(*this);
         client()->willSendRequest(this, request, redirectResponse);
 
         // Client call may not preserve the session, especially if the request is sent over IPC.

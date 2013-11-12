@@ -72,12 +72,12 @@ void InitWebCoreSystemInterface(void)
         INIT(SignedPublicKeyAndChallengeString);
         INIT(GetPreferredExtensionForMIMEType);
         INIT(GetUserToBaseCTM);
+        INIT(CGContextIsPDFContext);
         INIT(GetWheelEventDeltas);
         INIT(GetNSEventKeyChar);
         INIT(HitTestMediaUIPart);
         INIT(InitializeMaximumHTTPConnectionCountPerHost);
         INIT(MeasureMediaUIPart);
-        INIT(MediaControllerThemeAvailable);
         INIT(PopupMenu);
         INIT(QTIncludeOnlyModernMediaFileTypes);
         INIT(QTMovieDataRate);
@@ -132,6 +132,8 @@ void InitWebCoreSystemInterface(void)
         INIT(SetCrashReportApplicationSpecificInformation);
         INIT(AVAssetResolvedURL);
         INIT(Cursor);
+        INIT(WindowSetScaledFrame);
+        INIT(WindowSetAlpha);
 
 #if USE(CFNETWORK)
         INIT(GetDefaultHTTPCookieStorage);

@@ -105,7 +105,7 @@ Node* InjectedBundleNodeHandle::coreNode() const
 
 PassRefPtr<InjectedBundleNodeHandle> InjectedBundleNodeHandle::document()
 {
-    return getOrCreate(m_node->document());
+    return getOrCreate(&m_node->document());
 }
 
 // Additional DOM Operations
@@ -127,7 +127,7 @@ IntRect InjectedBundleNodeHandle::renderRect(bool* isReplaced) const
 static PassRefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& rect, SnapshotOptions options)
 {
     IntSize bitmapSize = rect.size();
-    float scaleFactor = frameView->frame()->page()->deviceScaleFactor();
+    float scaleFactor = frameView->frame().page()->deviceScaleFactor();
     bitmapSize.scale(scaleFactor);
 
     RefPtr<WebImage> snapshot = WebImage::create(bitmapSize, snapshotOptionsToImageOptions(options));
@@ -139,7 +139,7 @@ static PassRefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& re
     graphicsContext->applyDeviceScaleFactor(scaleFactor);
     graphicsContext->translate(-rect.x(), -rect.y());
 
-    FrameView::SelectionInSnaphot shouldPaintSelection = FrameView::IncludeSelection;
+    FrameView::SelectionInSnapshot shouldPaintSelection = FrameView::IncludeSelection;
     if (options & SnapshotOptionsExcludeSelectionHighlighting)
         shouldPaintSelection = FrameView::ExcludeSelection;
 
@@ -150,11 +150,7 @@ static PassRefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& re
 
 PassRefPtr<WebImage> InjectedBundleNodeHandle::renderedImage(SnapshotOptions options)
 {
-    Document* document = m_node->document();
-    if (!document)
-        return 0;
-
-    Frame* frame = document->frame();
+    Frame* frame = m_node->document().frame();
     if (!frame)
         return 0;
 
@@ -162,7 +158,7 @@ PassRefPtr<WebImage> InjectedBundleNodeHandle::renderedImage(SnapshotOptions opt
     if (!frameView)
         return 0;
 
-    document->updateLayout();
+    m_node->document().updateLayout();
 
     RenderObject* renderer = m_node->renderer();
     if (!renderer)
@@ -235,7 +231,7 @@ PassRefPtr<WebFrame> InjectedBundleNodeHandle::documentFrame()
     if (!frame)
         return 0;
 
-    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader()->client());
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader().client());
     return webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
 }
 
@@ -248,7 +244,7 @@ PassRefPtr<WebFrame> InjectedBundleNodeHandle::htmlFrameElementContentFrame()
     if (!frame)
         return 0;
 
-    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader()->client());
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader().client());
     return webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
 }
 
@@ -261,7 +257,7 @@ PassRefPtr<WebFrame> InjectedBundleNodeHandle::htmlIFrameElementContentFrame()
     if (!frame)
         return 0;
 
-    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader()->client());
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader().client());
     return webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
 }
 

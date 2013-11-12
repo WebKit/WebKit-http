@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2010, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,6 @@
 #include "KURL.h"
 #include "ScriptCachedFrameData.h"
 #include <wtf/PassOwnPtr.h>
-#include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -42,8 +41,6 @@ class DocumentLoader;
 class FrameView;
 class Node;
 
-typedef Vector<RefPtr<CachedFrame> > CachedFrameVector;
-
 class CachedFrameBase {
 public:
     void restore();
@@ -54,7 +51,7 @@ public:
     bool isMainFrame() { return m_isMainFrame; }
 
 protected:
-    CachedFrameBase(Frame*);
+    CachedFrameBase(Frame&);
     ~CachedFrameBase();
     
     RefPtr<Document> m_document;
@@ -69,12 +66,12 @@ protected:
     bool m_isComposited;
 #endif
     
-    CachedFrameVector m_childFrames;
+    Vector<OwnPtr<CachedFrame>> m_childFrames;
 };
 
-class CachedFrame : public RefCounted<CachedFrame>, private CachedFrameBase {
+class CachedFrame : private CachedFrameBase {
 public:
-    static PassRefPtr<CachedFrame> create(Frame* frame) { return adoptRef(new CachedFrame(frame)); }
+    static PassOwnPtr<CachedFrame> create(Frame& frame) { return adoptPtr(new CachedFrame(frame)); }
 
     void open();
     void clear();
@@ -92,7 +89,7 @@ public:
     int descendantFrameCount() const;
 
 private:
-    explicit CachedFrame(Frame*);
+    explicit CachedFrame(Frame&);
 };
 
 } // namespace WebCore

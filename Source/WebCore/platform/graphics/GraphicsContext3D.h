@@ -34,9 +34,12 @@
 #include <wtf/ListHashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/OwnArrayPtr.h>
-#include <wtf/PassOwnArrayPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
+
+#if USE(CA)
+#include "PlatformCALayer.h"
+#endif
 
 // FIXME: Find a better way to avoid the name confliction for NO_ERROR.
 #if PLATFORM(WIN) || (PLATFORM(QT) && OS(WINDOWS))
@@ -603,16 +606,19 @@ public:
     // Check if the format is one of the formats from the ImageData or DOM elements.
     // The formats from ImageData is always RGBA8.
     // The formats from DOM elements vary with Graphics ports. It can only be RGBA8 or BGRA8 for non-CG port while a little more for CG port.
-    static ALWAYS_INLINE bool srcFormatComeFromDOMElementOrImageData(DataFormat SrcFormat)
+    static ALWAYS_INLINE bool srcFormatComesFromDOMElementOrImageData(DataFormat SrcFormat)
     {
 #if USE(CG)
 #if CPU(BIG_ENDIAN)
-    return SrcFormat == DataFormatRGBA8 || SrcFormat == DataFormatARGB8 || SrcFormat == DataFormatRGB8;
+    return SrcFormat == DataFormatRGBA8 || SrcFormat == DataFormatARGB8 || SrcFormat == DataFormatRGB8
+        || SrcFormat == DataFormatRA8 || SrcFormat == DataFormatAR8 || SrcFormat == DataFormatR8 || SrcFormat == DataFormatA8;
 #else
     // That LITTLE_ENDIAN case has more possible formats than BIG_ENDIAN case is because some decoded image data is actually big endian
     // even on little endian architectures.
     return SrcFormat == DataFormatBGRA8 || SrcFormat == DataFormatABGR8 || SrcFormat == DataFormatBGR8
-        || SrcFormat == DataFormatRGBA8 || SrcFormat == DataFormatARGB8 || SrcFormat == DataFormatRGB8;
+        || SrcFormat == DataFormatRGBA8 || SrcFormat == DataFormatARGB8 || SrcFormat == DataFormatRGB8
+        || SrcFormat == DataFormatR8 || SrcFormat == DataFormatA8
+        || SrcFormat == DataFormatRA8 || SrcFormat == DataFormatAR8;
 #endif
 #else
     return SrcFormat == DataFormatBGRA8 || SrcFormat == DataFormatRGBA8;
@@ -950,6 +956,8 @@ private:
 #if PLATFORM(MAC)
     CGLContextObj m_contextObj;
     RetainPtr<WebGLLayer> m_webGLLayer;
+#elif PLATFORM(WIN) && USE(CA)
+    RefPtr<PlatformCALayer> m_webGLLayer;
 #elif PLATFORM(BLACKBERRY)
 #if USE(ACCELERATED_COMPOSITING)
     RefPtr<PlatformLayer> m_compositingLayer;

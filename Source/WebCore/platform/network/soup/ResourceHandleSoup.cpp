@@ -352,9 +352,7 @@ static void gotHeadersCallback(SoupMessage* message, gpointer data)
 
     // The original response will be needed later to feed to willSendRequest in
     // doRedirect() in case we are redirected. For this reason, we store it here.
-    ResourceResponse response;
-    response.updateFromSoupMessage(message);
-    d->m_response = response;
+    d->m_response.updateFromSoupMessage(message);
 }
 
 static void applyAuthenticationToRequest(ResourceHandle* handle, ResourceRequest& request, bool redirect)
@@ -393,6 +391,7 @@ static void applyAuthenticationToRequest(ResourceHandle* handle, ResourceRequest
     request.setURL(urlWithCredentials);
 }
 
+#if ENABLE(WEB_TIMING)
 // Called each time the message is going to be sent again except the first time.
 // This happens when libsoup handles HTTP authentication.
 static void restartedCallback(SoupMessage*, gpointer data)
@@ -401,13 +400,12 @@ static void restartedCallback(SoupMessage*, gpointer data)
     if (!handle || handle->cancelledOrClientless())
         return;
 
-#if ENABLE(WEB_TIMING)
     ResourceHandleInternal* d = handle->getInternal();
     ResourceResponse& redirectResponse = d->m_response;
     redirectResponse.setResourceLoadTiming(ResourceLoadTiming::create());
     redirectResponse.resourceLoadTiming()->requestTime = monotonicallyIncreasingTime();
-#endif
 }
+#endif
 
 static bool shouldRedirect(ResourceHandle* handle)
 {
@@ -970,7 +968,6 @@ static bool createSoupMessageForHandleAndRequest(ResourceHandle* handle, const R
         soup_message_headers_set_content_length(soupMessage->request_headers, 0);
 
     g_signal_connect(d->m_soupMessage.get(), "got-headers", G_CALLBACK(gotHeadersCallback), handle);
-    g_signal_connect(d->m_soupMessage.get(), "restarted", G_CALLBACK(restartedCallback), handle);
     g_signal_connect(d->m_soupMessage.get(), "wrote-body-data", G_CALLBACK(wroteBodyDataCallback), handle);
 
     soup_message_set_flags(d->m_soupMessage.get(), static_cast<SoupMessageFlags>(soup_message_get_flags(d->m_soupMessage.get()) | SOUP_MESSAGE_NO_REDIRECT));
@@ -978,6 +975,7 @@ static bool createSoupMessageForHandleAndRequest(ResourceHandle* handle, const R
 #if ENABLE(WEB_TIMING)
     d->m_response.setResourceLoadTiming(ResourceLoadTiming::create());
     g_signal_connect(d->m_soupMessage.get(), "network-event", G_CALLBACK(networkEventCallback), handle);
+    g_signal_connect(d->m_soupMessage.get(), "restarted", G_CALLBACK(restartedCallback), handle);
     g_signal_connect(d->m_soupMessage.get(), "wrote-body", G_CALLBACK(wroteBodyCallback), handle);
 #endif
 
@@ -1366,9 +1364,8 @@ static void authenticateCallback(SoupSession* session, SoupMessage* soupMessage,
     handle->didReceiveAuthenticationChallenge(AuthenticationChallenge(session, soupMessage, soupAuth, retrying, handle.get()));
 }
 
-SoupSession* ResourceHandle::defaultSession()
+static SoupSession* createSoupSession()
 {
-    static SoupSession* session = 0;
     // Values taken from http://www.browserscope.org/  following
     // the rule "Do What Every Other Modern Browser Is Doing". They seem
     // to significantly improve page loading time compared to soup's
@@ -1376,23 +1373,42 @@ SoupSession* ResourceHandle::defaultSession()
     static const int maxConnections = 35;
     static const int maxConnectionsPerHost = 6;
 
-    if (!session) {
-        session = soup_session_async_new();
-        g_object_set(session,
-                     SOUP_SESSION_MAX_CONNS, maxConnections,
-                     SOUP_SESSION_MAX_CONNS_PER_HOST, maxConnectionsPerHost,
-                     SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_DECODER,
-                     SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_SNIFFER,
-                     SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_PROXY_RESOLVER_DEFAULT,
-                     SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
-                     NULL);
-        g_signal_connect(session, "authenticate", G_CALLBACK(authenticateCallback), 0);
+    SoupSession* session = soup_session_async_new();
+    g_object_set(session,
+        SOUP_SESSION_MAX_CONNS, maxConnections,
+        SOUP_SESSION_MAX_CONNS_PER_HOST, maxConnectionsPerHost,
+        SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_DECODER,
+        SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_SNIFFER,
+        SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_PROXY_RESOLVER_DEFAULT,
+        SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
+        NULL);
+    g_signal_connect(session, "authenticate", G_CALLBACK(authenticateCallback), 0);
 
 #if ENABLE(WEB_TIMING)
-        g_signal_connect(session, "request-started", G_CALLBACK(requestStartedCallback), 0);
+    g_signal_connect(session, "request-started", G_CALLBACK(requestStartedCallback), 0);
 #endif
-    }
 
+    return session;
+}
+
+SoupSession* ResourceHandle::defaultSession()
+{
+    static SoupSession* session = createSoupSession();
+    return session;
+}
+
+SoupSession* ResourceHandle::createTestingSession()
+{
+    SoupSession* session = createSoupSession();
+    // The testing session operates with the default cookie jar.
+    soup_session_add_feature(session, SOUP_SESSION_FEATURE(soupCookieJar()));
+    return session;
+}
+
+SoupSession* ResourceHandle::createPrivateBrowsingSession()
+{
+    SoupSession* session = createSoupSession();
+    soup_session_add_feature(session, SOUP_SESSION_FEATURE(createPrivateBrowsingCookieJar()));
     return session;
 }
 

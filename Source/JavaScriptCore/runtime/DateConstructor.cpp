@@ -72,7 +72,7 @@ const ClassInfo DateConstructor::s_info = { "Function", &InternalFunction::s_inf
 @end
 */
 
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(DateConstructor);
+STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DateConstructor);
 
 DateConstructor::DateConstructor(JSGlobalObject* globalObject, Structure* structure)
     : InternalFunction(globalObject, structure) 
@@ -86,14 +86,9 @@ void DateConstructor::finishCreation(ExecState* exec, DatePrototype* datePrototy
     putDirectWithoutTransition(exec->vm(), exec->propertyNames().length, jsNumber(7), ReadOnly | DontEnum | DontDelete);
 }
 
-bool DateConstructor::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
+bool DateConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
 {
-    return getStaticFunctionSlot<InternalFunction>(exec, ExecState::dateConstructorTable(exec), jsCast<DateConstructor*>(cell), propertyName, slot);
-}
-
-bool DateConstructor::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
-{
-    return getStaticFunctionDescriptor<InternalFunction>(exec, ExecState::dateConstructorTable(exec), jsCast<DateConstructor*>(object), propertyName, descriptor);
+    return getStaticFunctionSlot<InternalFunction>(exec, ExecState::dateConstructorTable(exec), jsCast<DateConstructor*>(object), propertyName, slot);
 }
 
 // ECMA 15.9.3
@@ -106,7 +101,7 @@ JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, const Arg
     if (numArgs == 0) // new Date() ECMA 15.9.3.3
         value = jsCurrentTime();
     else if (numArgs == 1) {
-        if (args.at(0).inherits(&DateInstance::s_info))
+        if (args.at(0).inherits(DateInstance::info()))
             value = asDateInstance(args.at(0))->internalNumber();
         else {
             JSValue primitive = args.at(0).toPrimitive(exec);

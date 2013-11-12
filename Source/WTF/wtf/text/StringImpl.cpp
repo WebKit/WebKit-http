@@ -31,7 +31,9 @@
 #include <wtf/ProcessID.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/WTFThreadData.h>
+#include <wtf/text/CString.h>
 #include <wtf/unicode/CharacterNames.h>
+#include <wtf/unicode/UTF8.h>
 
 #ifdef STRING_STATS
 #include <unistd.h>
@@ -189,6 +191,13 @@ inline PassRefPtr<StringImpl> StringImpl::createUninitializedInternal(unsigned l
         data = 0;
         return empty();
     }
+    return createUninitializedInternalNonEmpty(length, data);
+}
+
+template <typename CharType>
+inline PassRefPtr<StringImpl> StringImpl::createUninitializedInternalNonEmpty(unsigned length, CharType*& data)
+{
+    ASSERT(length);
 
     // Allocate a single buffer large enough to contain the StringImpl
     // struct as well as the data which it contains. This removes one
@@ -253,7 +262,7 @@ inline PassRefPtr<StringImpl> StringImpl::createInternal(const CharType* charact
         return empty();
 
     CharType* data;
-    RefPtr<StringImpl> string = createUninitialized(length, data);
+    RefPtr<StringImpl> string = createUninitializedInternalNonEmpty(length, data);
     memcpy(data, characters, length * sizeof(CharType));
     return string.release();
 }
@@ -274,7 +283,7 @@ PassRefPtr<StringImpl> StringImpl::create8BitIfPossible(const UChar* characters,
         return empty();
 
     LChar* data;
-    RefPtr<StringImpl> string = createUninitialized(length, data);
+    RefPtr<StringImpl> string = createUninitializedInternalNonEmpty(length, data);
 
     for (size_t i = 0; i < length; ++i) {
         if (characters[i] & 0xff00)
@@ -391,7 +400,6 @@ PassRefPtr<StringImpl> StringImpl::lower()
     // no-op code path up through the first 'return' statement.
 
     // First scan the string for uppercase and non-ASCII characters:
-    bool noUpper = true;
     if (is8Bit()) {
         unsigned failingIndex;
         for (unsigned i = 0; i < m_length; ++i) {
@@ -405,7 +413,7 @@ PassRefPtr<StringImpl> StringImpl::lower()
 
 SlowPath8bitLower:
         LChar* data8;
-        RefPtr<StringImpl> newImpl = createUninitialized(m_length, data8);
+        RefPtr<StringImpl> newImpl = createUninitializedInternalNonEmpty(m_length, data8);
 
         for (unsigned i = 0; i < failingIndex; ++i)
             data8[i] = m_data8[i];
@@ -420,6 +428,7 @@ SlowPath8bitLower:
 
         return newImpl.release();
     }
+    bool noUpper = true;
     unsigned ored = 0;
 
     for (unsigned i = 0; i < m_length; ++i) {
@@ -434,7 +443,7 @@ SlowPath8bitLower:
 
     if (!(ored & ~0x7F)) {
         UChar* data16;
-        RefPtr<StringImpl> newImpl = createUninitialized(m_length, data16);
+        RefPtr<StringImpl> newImpl = createUninitializedInternalNonEmpty(m_length, data16);
         
         for (unsigned i = 0; i < m_length; ++i) {
             UChar c = m_data16[i];
@@ -449,7 +458,7 @@ SlowPath8bitLower:
 
     // Do a slower implementation for cases that include non-ASCII characters.
     UChar* data16;
-    RefPtr<StringImpl> newImpl = createUninitialized(m_length, data16);
+    RefPtr<StringImpl> newImpl = createUninitializedInternalNonEmpty(m_length, data16);
 
     bool error;
     int32_t realLength = Unicode::toLower(data16, length, m_data16, m_length, &error);
@@ -636,7 +645,7 @@ template <class UCharPredicate>
 inline PassRefPtr<StringImpl> StringImpl::stripMatchedCharacters(UCharPredicate predicate)
 {
     if (!m_length)
-        return empty();
+        return this;
 
     unsigned start = 0;
     unsigned end = m_length - 1;
@@ -1332,7 +1341,7 @@ PassRefPtr<StringImpl> StringImpl::replace(UChar oldC, UChar newC)
             LChar oldChar = static_cast<LChar>(oldC);
             LChar newChar = static_cast<LChar>(newC);
 
-            RefPtr<StringImpl> newImpl = createUninitialized(m_length, data);
+            RefPtr<StringImpl> newImpl = createUninitializedInternalNonEmpty(m_length, data);
 
             for (i = 0; i != m_length; ++i) {
                 LChar ch = m_data8[i];
@@ -1346,7 +1355,7 @@ PassRefPtr<StringImpl> StringImpl::replace(UChar oldC, UChar newC)
         // There is the possibility we need to up convert from 8 to 16 bit,
         // create a 16 bit string for the result.
         UChar* data;
-        RefPtr<StringImpl> newImpl = createUninitialized(m_length, data);
+        RefPtr<StringImpl> newImpl = createUninitializedInternalNonEmpty(m_length, data);
 
         for (i = 0; i != m_length; ++i) {
             UChar ch = m_data8[i];
@@ -1359,7 +1368,7 @@ PassRefPtr<StringImpl> StringImpl::replace(UChar oldC, UChar newC)
     }
 
     UChar* data;
-    RefPtr<StringImpl> newImpl = createUninitialized(m_length, data);
+    RefPtr<StringImpl> newImpl = createUninitializedInternalNonEmpty(m_length, data);
 
     for (i = 0; i != m_length; ++i) {
         UChar ch = m_data16[i];
@@ -1946,6 +1955,123 @@ size_t StringImpl::sizeInBytes() const
     } else
         size *= 2;
     return size + sizeof(*this);
+}
+
+// Helper to write a three-byte UTF-8 code point to the buffer, caller must check room is available.
+static inline void putUTF8Triple(char*& buffer, UChar ch)
+{
+    ASSERT(ch >= 0x0800);
+    *buffer++ = static_cast<char>(((ch >> 12) & 0x0F) | 0xE0);
+    *buffer++ = static_cast<char>(((ch >> 6) & 0x3F) | 0x80);
+    *buffer++ = static_cast<char>((ch & 0x3F) | 0x80);
+}
+
+bool StringImpl::utf8Impl(
+    const UChar* characters, unsigned length, char*& buffer, size_t bufferSize, ConversionMode mode)
+{
+    if (mode == StrictConversionReplacingUnpairedSurrogatesWithFFFD) {
+        const UChar* charactersEnd = characters + length;
+        char* bufferEnd = buffer + bufferSize;
+        while (characters < charactersEnd) {
+            // Use strict conversion to detect unpaired surrogates.
+            ConversionResult result = convertUTF16ToUTF8(&characters, charactersEnd, &buffer, bufferEnd, true);
+            ASSERT(result != targetExhausted);
+            // Conversion fails when there is an unpaired surrogate.
+            // Put replacement character (U+FFFD) instead of the unpaired surrogate.
+            if (result != conversionOK) {
+                ASSERT((0xD800 <= *characters && *characters <= 0xDFFF));
+                // There should be room left, since one UChar hasn't been converted.
+                ASSERT((buffer + 3) <= bufferEnd);
+                putUTF8Triple(buffer, replacementCharacter);
+                ++characters;
+            }
+        }
+    } else {
+        bool strict = mode == StrictConversion;
+        const UChar* originalCharacters = characters;
+        ConversionResult result = convertUTF16ToUTF8(&characters, characters + length, &buffer, buffer + bufferSize, strict);
+        ASSERT(result != targetExhausted); // (length * 3) should be sufficient for any conversion
+
+        // Only produced from strict conversion.
+        if (result == sourceIllegal) {
+            ASSERT(strict);
+            return false;
+        }
+
+        // Check for an unconverted high surrogate.
+        if (result == sourceExhausted) {
+            if (strict)
+                return false;
+            // This should be one unpaired high surrogate. Treat it the same
+            // was as an unpaired high surrogate would have been handled in
+            // the middle of a string with non-strict conversion - which is
+            // to say, simply encode it to UTF-8.
+            ASSERT_UNUSED(
+                originalCharacters, (characters + 1) == (originalCharacters + length));
+            ASSERT((*characters >= 0xD800) && (*characters <= 0xDBFF));
+            // There should be room left, since one UChar hasn't been converted.
+            ASSERT((buffer + 3) <= (buffer + bufferSize));
+            putUTF8Triple(buffer, *characters);
+        }
+    }
+    
+    return true;
+}
+
+CString StringImpl::utf8ForCharacters(
+    const UChar* characters, unsigned length, ConversionMode mode)
+{
+    if (!length)
+        return CString("", 0);
+    if (length > numeric_limits<unsigned>::max() / 3)
+        return CString();
+    Vector<char, 1024> bufferVector(length * 3);
+    char* buffer = bufferVector.data();
+    if (!utf8Impl(characters, length, buffer, bufferVector.size(), mode))
+        return CString();
+    return CString(bufferVector.data(), buffer - bufferVector.data());
+}
+
+CString StringImpl::utf8ForRange(unsigned offset, unsigned length, ConversionMode mode) const
+{
+    ASSERT(offset <= this->length());
+    ASSERT(offset + length <= this->length());
+    
+    if (!length)
+        return CString("", 0);
+
+    // Allocate a buffer big enough to hold all the characters
+    // (an individual UTF-16 UChar can only expand to 3 UTF-8 bytes).
+    // Optimization ideas, if we find this function is hot:
+    //  * We could speculatively create a CStringBuffer to contain 'length' 
+    //    characters, and resize if necessary (i.e. if the buffer contains
+    //    non-ascii characters). (Alternatively, scan the buffer first for
+    //    ascii characters, so we know this will be sufficient).
+    //  * We could allocate a CStringBuffer with an appropriate size to
+    //    have a good chance of being able to write the string into the
+    //    buffer without reallocing (say, 1.5 x length).
+    if (length > numeric_limits<unsigned>::max() / 3)
+        return CString();
+    Vector<char, 1024> bufferVector(length * 3);
+
+    char* buffer = bufferVector.data();
+
+    if (is8Bit()) {
+        const LChar* characters = this->characters8() + offset;
+
+        ConversionResult result = convertLatin1ToUTF8(&characters, characters + length, &buffer, buffer + bufferVector.size());
+        ASSERT_UNUSED(result, result != targetExhausted); // (length * 3) should be sufficient for any conversion
+    } else {
+        if (!utf8Impl(this->characters16() + offset, length, buffer, bufferVector.size(), mode))
+            return CString();
+    }
+
+    return CString(bufferVector.data(), buffer - bufferVector.data());
+}
+
+CString StringImpl::utf8(ConversionMode mode) const
+{
+    return utf8ForRange(0, length(), mode);
 }
 
 } // namespace WTF

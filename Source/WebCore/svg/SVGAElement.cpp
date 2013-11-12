@@ -37,7 +37,6 @@
 #include "HTMLParserIdioms.h"
 #include "KeyboardEvent.h"
 #include "MouseEvent.h"
-#include "NodeRenderingContext.h"
 #include "PlatformMouseEvent.h"
 #include "RenderSVGInline.h"
 #include "RenderSVGText.h"
@@ -84,7 +83,7 @@ String SVGAElement::title() const
         return title;
 
     // Otherwise, use the title of this element.
-    return SVGStyledElement::title();
+    return SVGElement::title();
 }
 
 bool SVGAElement::isSupportedAttribute(const QualifiedName& attrName)
@@ -134,8 +133,7 @@ void SVGAElement::svgAttributeChanged(const QualifiedName& attrName)
     // as none of the other properties changes the linking behaviour for our <a> element.
     if (SVGURIReference::isKnownAttribute(attrName)) {
         bool wasLink = isLink();
-        setIsLink(!href().isNull());
-
+        setIsLink(!href().isNull() && !shouldProhibitLinks(this));
         if (wasLink != isLink())
             setNeedsStyleRecalc();
     }
@@ -164,7 +162,7 @@ void SVGAElement::defaultEventHandler(Event* event)
             if (url[0] == '#') {
                 Element* targetElement = treeScope()->getElementById(url.substring(1));
                 if (SVGSMILElement::isSMILElement(targetElement)) {
-                    static_cast<SVGSMILElement*>(targetElement)->beginByLinkActivation();
+                    toSVGSMILElement(targetElement)->beginByLinkActivation();
                     event->setDefaultHandled();
                     return;
                 }
@@ -178,10 +176,10 @@ void SVGAElement::defaultEventHandler(Event* event)
                 target = "_blank";
             event->setDefaultHandled();
 
-            Frame* frame = document()->frame();
+            Frame* frame = document().frame();
             if (!frame)
                 return;
-            frame->loader()->urlSelected(document()->completeURL(url), target, event, false, false, MaybeSendReferrer);
+            frame->loader().urlSelected(document().completeURL(url), target, event, false, false, MaybeSendReferrer);
             return;
         }
     }
@@ -219,22 +217,22 @@ bool SVGAElement::isKeyboardFocusable(KeyboardEvent* event) const
     if (!isFocusable())
         return false;
     
-    if (!document()->frame())
+    if (!document().frame())
         return false;
     
-    return document()->frame()->eventHandler()->tabsToLinks(event);
+    return document().frame()->eventHandler().tabsToLinks(event);
 }
 
-bool SVGAElement::childShouldCreateRenderer(const NodeRenderingContext& childContext) const
+bool SVGAElement::childShouldCreateRenderer(const Node* child) const
 {
     // http://www.w3.org/2003/01/REC-SVG11-20030114-errata#linking-text-environment
     // The 'a' element may contain any element that its parent may contain, except itself.
-    if (childContext.node()->hasTagName(SVGNames::aTag))
+    if (child->hasTagName(SVGNames::aTag))
         return false;
     if (parentNode() && parentNode()->isSVGElement())
-        return parentNode()->childShouldCreateRenderer(childContext);
+        return parentNode()->childShouldCreateRenderer(child);
 
-    return SVGElement::childShouldCreateRenderer(childContext);
+    return SVGElement::childShouldCreateRenderer(child);
 }
 
 } // namespace WebCore

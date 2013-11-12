@@ -84,14 +84,14 @@ JSValue JSHTMLCanvasElement::getContext(ExecState* exec)
     if (!context)
         return jsNull();
     JSValue jsValue = toJS(exec, globalObject(), WTF::getPtr(context));
-    if (InspectorInstrumentation::canvasAgentEnabled(canvas->document())) {
+    if (InspectorInstrumentation::canvasAgentEnabled(&canvas->document())) {
         ScriptObject contextObject(exec, jsValue.getObject());
         ScriptObject wrapped;
         if (context->is2d())
-            wrapped = InspectorInstrumentation::wrapCanvas2DRenderingContextForInstrumentation(canvas->document(), contextObject);
+            wrapped = InspectorInstrumentation::wrapCanvas2DRenderingContextForInstrumentation(&canvas->document(), contextObject);
 #if ENABLE(WEBGL)
         else if (context->is3d())
-            wrapped = InspectorInstrumentation::wrapWebGLRenderingContextForInstrumentation(canvas->document(), contextObject);
+            wrapped = InspectorInstrumentation::wrapWebGLRenderingContextForInstrumentation(&canvas->document(), contextObject);
 #endif
         if (!wrapped.hasNoValue())
             return wrapped.jsValue();
@@ -99,7 +99,7 @@ JSValue JSHTMLCanvasElement::getContext(ExecState* exec)
     return jsValue;
 }
 
-JSValue JSHTMLCanvasElement::supportsContext(ExecState* exec)
+JSValue JSHTMLCanvasElement::probablySupportsContext(ExecState* exec)
 {
     HTMLCanvasElement* canvas = static_cast<HTMLCanvasElement*>(impl());
     if (!exec->argumentCount())
@@ -117,7 +117,7 @@ JSValue JSHTMLCanvasElement::supportsContext(ExecState* exec)
     }
 #endif
     
-    return jsBoolean(canvas->supportsContext(contextId, attrs.get()));
+    return jsBoolean(canvas->probablySupportsContext(contextId, attrs.get()));
 }
 
 JSValue JSHTMLCanvasElement::toDataURL(ExecState* exec)

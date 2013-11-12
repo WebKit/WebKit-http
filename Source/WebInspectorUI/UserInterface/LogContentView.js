@@ -63,13 +63,13 @@ WebInspector.LogContentView = function(representedObject)
     this._scopeBar = new WebInspector.ScopeBar("log-scope-bar", scopeBarItems, scopeBarItems[0]);
     this._scopeBar.addEventListener(WebInspector.ScopeBar.Event.SelectionChanged, this._scopeBarSelectionDidChange, this);
 
-    this._clearLogNavigationItem = new WebInspector.ButtonNavigationItem("clear-log", WebInspector.UIString("Clear log (%s or %s)").format(this._logViewController.messagesClearKeyboardShortcut.displayName, this._logViewController.messagesAlternateClearKeyboardShortcut.displayName), "Images/NavigationItemTrash.pdf", 16, 16);
+    this._clearLogNavigationItem = new WebInspector.ButtonNavigationItem("clear-log", WebInspector.UIString("Clear log (%s or %s)").format(this._logViewController.messagesClearKeyboardShortcut.displayName, this._logViewController.messagesAlternateClearKeyboardShortcut.displayName), "Images/NavigationItemTrash.svg", 16, 16);
     this._clearLogNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._clearLog, this);
 
     var toolTip = WebInspector.UIString("Show split console");
     var altToolTip = WebInspector.UIString("Show full-height console");
 
-    this._toggleSplitNavigationItem = new WebInspector.ToggleButtonNavigationItem("split-toggle", toolTip, altToolTip, "Images/SplitToggleDown.pdf", "Images/SplitToggleUp.pdf", 16, 16);
+    this._toggleSplitNavigationItem = new WebInspector.ToggleButtonNavigationItem("split-toggle", toolTip, altToolTip, "Images/SplitToggleDown.svg", "Images/SplitToggleUp.svg", 16, 16);
     this._toggleSplitNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleSplit, this);
     this._toggleSplitNavigationItem.toggled = WebInspector.isShowingSplitConsole();
 
@@ -274,7 +274,7 @@ WebInspector.LogContentView.prototype = {
                 return;
 
             if (index > 0)
-                data += "\n"
+                data += "\n";
             data += messageObject.toClipboardString(isPrefixOptional);
         });
 
@@ -856,7 +856,7 @@ WebInspector.LogContentView.prototype = {
             this._matchingSearchElements = [];
             this.messagesElement.classList.remove(WebInspector.LogContentView.SearchInProgressStyleClassName);
             return;
-        };
+        }
 
         this.messagesElement.classList.add(WebInspector.LogContentView.SearchInProgressStyleClassName);
 
@@ -904,7 +904,7 @@ WebInspector.LogContentView.prototype = {
             });
 
             if (this._selectedSearchMatch && !this._selectedSearchMathIsValid && this._selectedSearchMatch.message === message) {
-                this._selectedSearchMathIsValid = this._rangesOverlap(this._selectedSearchMatch.range, range)
+                this._selectedSearchMathIsValid = this._rangesOverlap(this._selectedSearchMatch.range, range);
                 if (this._selectedSearchMathIsValid) {
                     delete this._selectedSearchMatch;
                     this._highlightSearchMatchAtIndex(this._searchMatches.length - 1);

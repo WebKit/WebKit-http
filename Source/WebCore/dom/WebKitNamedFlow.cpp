@@ -98,11 +98,19 @@ int WebKitNamedFlow::firstEmptyRegionIndex() const
     const RenderRegionList& regionList = m_parentFlowThread->renderRegionList();
     if (regionList.isEmpty())
         return -1;
+
+    int countNonPseudoRegions = -1;
     RenderRegionList::const_iterator iter = regionList.begin();
     for (int index = 0; iter != regionList.end(); ++index, ++iter) {
         const RenderRegion* renderRegion = *iter;
+        // FIXME: Pseudo-elements are not included in the list.
+        // They will be included when we will properly support the Region interface
+        // http://dev.w3.org/csswg/css-regions/#the-region-interface
+        if (renderRegion->isPseudoElement())
+            continue;
+        countNonPseudoRegions++;
         if (renderRegion->regionOversetState() == RegionEmpty)
-            return index;
+            return countNonPseudoRegions;
     }
     return -1;
 }
@@ -127,10 +135,12 @@ PassRefPtr<NodeList> WebKitNamedFlow::getRegionsByContent(Node* contentNode)
         for (RenderRegionList::const_iterator iter = regionList.begin(); iter != regionList.end(); ++iter) {
             const RenderRegion* renderRegion = *iter;
             // FIXME: Pseudo-elements are not included in the list.
-            if (!renderRegion->node())
+            // They will be included when we will properly support the Region interface
+            // http://dev.w3.org/csswg/css-regions/#the-region-interface
+            if (renderRegion->isPseudoElement())
                 continue;
             if (m_parentFlowThread->objectInFlowRegion(contentNode->renderer(), renderRegion))
-                regionNodes.append(renderRegion->node());
+                regionNodes.append(renderRegion->generatingElement());
         }
     }
 
@@ -153,9 +163,11 @@ PassRefPtr<NodeList> WebKitNamedFlow::getRegions()
     for (RenderRegionList::const_iterator iter = regionList.begin(); iter != regionList.end(); ++iter) {
         const RenderRegion* renderRegion = *iter;
         // FIXME: Pseudo-elements are not included in the list.
-        if (!renderRegion->node())
+        // They will be included when we will properly support the Region interface
+        // http://dev.w3.org/csswg/css-regions/#the-region-interface
+        if (renderRegion->isPseudoElement())
             continue;
-        regionNodes.append(renderRegion->node());
+        regionNodes.append(renderRegion->generatingElement());
     }
 
     return StaticNodeList::adopt(regionNodes);
@@ -197,9 +209,9 @@ EventTargetData* WebKitNamedFlow::eventTargetData()
     return &m_eventTargetData;
 }
 
-EventTargetData* WebKitNamedFlow::ensureEventTargetData()
+EventTargetData& WebKitNamedFlow::ensureEventTargetData()
 {
-    return &m_eventTargetData;
+    return m_eventTargetData;
 }
 
 void WebKitNamedFlow::dispatchRegionLayoutUpdateEvent()

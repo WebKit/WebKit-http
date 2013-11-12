@@ -26,6 +26,7 @@
 #include "config.h"
 #include "StructureRareData.h"
 
+#include "JSPropertyNameIterator.h"
 #include "JSString.h"
 #include "Operations.h"
 
@@ -35,7 +36,7 @@ const ClassInfo StructureRareData::s_info = { "StructureRareData", 0, 0, 0, CREA
 
 Structure* StructureRareData::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
 {
-    return Structure::create(vm, globalObject, prototype, TypeInfo(CompoundType, StructureFlags), &s_info);
+    return Structure::create(vm, globalObject, prototype, TypeInfo(CompoundType, StructureFlags), info());
 }
 
 StructureRareData* StructureRareData::create(VM& vm, Structure* previous)
@@ -71,7 +72,7 @@ StructureRareData::StructureRareData(VM& vm, const StructureRareData* other)
 void StructureRareData::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     StructureRareData* thisObject = jsCast<StructureRareData*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
 
     JSCell::visitChildren(thisObject, visitor);

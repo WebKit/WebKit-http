@@ -1,11 +1,11 @@
-This tests the events created by MediaKeys.
+This tests the events created by WebKitMediaKeys.
 
-RUN(mediaKeys = new MediaKeys("com.webcore.mock"))
+RUN(mediaKeys = new WebKitMediaKeys("com.webcore.mock"))
 RUN(mediaKeySession = mediaKeys.createSession("video/mock", initData))
 EVENT(webkitkeymessage)
-RUN(mediaKeySession.addKey(invalidKey))
+RUN(mediaKeySession.update(invalidKey))
 EVENT(webkitkeyerror)
-RUN(mediaKeySession.addKey(validKey))
+RUN(mediaKeySession.update(validKey))
 EVENT(webkitkeyadded)
 END OF TEST
 

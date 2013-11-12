@@ -77,6 +77,7 @@ PluginStream::PluginStream(PluginStreamClient* client, Frame* frame, const Resou
     m_stream.end = 0;
     m_stream.notifyData = 0;
     m_stream.lastmodified = 0;
+    m_stream.headers = 0;
 
     streams().add(&m_stream, m_instance);
 }
@@ -104,11 +105,11 @@ void PluginStream::stop()
     if (m_loadManually) {
         ASSERT(!m_loader);
 
-        DocumentLoader* documentLoader = m_frame->loader()->activeDocumentLoader();
+        DocumentLoader* documentLoader = m_frame->loader().activeDocumentLoader();
         ASSERT(documentLoader);
 
         if (documentLoader->isLoadingMainResource())
-            documentLoader->cancelMainResourceLoad(m_frame->loader()->cancelledError(m_resourceRequest));
+            documentLoader->cancelMainResourceLoad(m_frame->loader().cancelledError(m_resourceRequest));
 
         return;
     }
@@ -119,6 +120,15 @@ void PluginStream::stop()
     }
 
     m_client = 0;
+}
+
+static uint32_t lastModifiedDate(const ResourceResponse& response)
+{
+    double lastModified = response.lastModified();
+    if (!std::isfinite(lastModified))
+        return 0;
+
+    return lastModified * 1000;
 }
 
 void PluginStream::startStream()
@@ -167,7 +177,7 @@ void PluginStream::startStream()
     m_stream.pdata = 0;
     m_stream.ndata = this;
     m_stream.end = max(expectedContentLength, 0LL);
-    m_stream.lastmodified = m_resourceResponse.lastModifiedDate();
+    m_stream.lastmodified = lastModifiedDate(m_resourceResponse);
     m_stream.notifyData = m_notifyData;
 
     m_transferMode = NP_NORMAL;

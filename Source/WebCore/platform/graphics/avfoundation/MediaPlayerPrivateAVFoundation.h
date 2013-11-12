@@ -165,6 +165,9 @@ protected:
     virtual bool supportsAcceleratedRendering() const = 0;
     virtual void acceleratedRenderingStateChanged();
 #endif
+    virtual bool shouldMaintainAspectRatio() const OVERRIDE { return m_shouldMaintainAspectRatio; }
+    virtual void setShouldMaintainAspectRatio(bool) OVERRIDE;
+
     virtual MediaPlayer::MovieLoadType movieLoadType() const;
     virtual void prepareForRendering();
     virtual float mediaTimeForTimeValue(float) const = 0;
@@ -228,12 +231,16 @@ protected:
     virtual bool hasContextRenderer() const = 0;
     virtual bool hasLayerRenderer() const = 0;
 
+    virtual void updateVideoLayerGravity() = 0;
+
 protected:
     void updateStates();
 
     void setHasVideo(bool);
     void setHasAudio(bool);
     void setHasClosedCaptions(bool);
+    void characteristicsChanged();
+    void setDelayCharacteristicsChangedNotification(bool);
     void setDelayCallbacks(bool) const;
     void setIgnoreLoadStateChanges(bool delay) { m_ignoreLoadStateChanges = delay; }
     void setNaturalSize(IntSize);
@@ -292,6 +299,7 @@ private:
     double m_seekTo;
     float m_requestedRate;
     mutable int m_delayCallbacks;
+    int m_delayCharacteristicsChangedNotification;
     bool m_mainThreadCallPending;
     bool m_assetIsPlayable;
     bool m_visible;
@@ -304,6 +312,8 @@ private:
     bool m_haveReportedFirstVideoFrame;
     bool m_playWhenFramesAvailable;
     bool m_inbandTrackConfigurationPending;
+    bool m_characteristicsChanged;
+    bool m_shouldMaintainAspectRatio;
     size_t m_seekCount;
 };
 

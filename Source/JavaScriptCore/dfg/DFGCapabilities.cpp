@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,64 +53,175 @@ bool mightCompileFunctionForConstruct(CodeBlock* codeBlock)
 bool mightInlineFunctionForCall(CodeBlock* codeBlock)
 {
     return codeBlock->instructionCount() <= Options::maximumFunctionForCallInlineCandidateInstructionCount()
-        && !codeBlock->ownerExecutable()->needsActivation();
+        && !codeBlock->ownerExecutable()->needsActivation()
+        && codeBlock->ownerExecutable()->isInliningCandidate();
 }
 bool mightInlineFunctionForClosureCall(CodeBlock* codeBlock)
 {
     return codeBlock->instructionCount() <= Options::maximumFunctionForClosureCallInlineCandidateInstructionCount()
-        && !codeBlock->ownerExecutable()->needsActivation();
+        && !codeBlock->ownerExecutable()->needsActivation()
+        && codeBlock->ownerExecutable()->isInliningCandidate();
 }
 bool mightInlineFunctionForConstruct(CodeBlock* codeBlock)
 {
     return codeBlock->instructionCount() <= Options::maximumFunctionForConstructInlineCandidateInstructionCount()
-        && !codeBlock->ownerExecutable()->needsActivation();
+        && !codeBlock->ownerExecutable()->needsActivation()
+        && codeBlock->ownerExecutable()->isInliningCandidate();
 }
 
-static inline void debugFail(CodeBlock* codeBlock, OpcodeID opcodeID, bool result)
+inline void debugFail(CodeBlock* codeBlock, OpcodeID opcodeID, CapabilityLevel result)
 {
-    ASSERT_UNUSED(result, !result);
-#if DFG_ENABLE(DEBUG_VERBOSE)
-    dataLogF("Cannot handle code block %p because of opcode %s.\n", codeBlock, opcodeNames[opcodeID]);
-#else
-    UNUSED_PARAM(codeBlock);
-    UNUSED_PARAM(opcodeID);
-    UNUSED_PARAM(result);
+    if (Options::verboseCompilation() && !canCompile(result))
+        dataLog("Cannot compile code block ", *codeBlock, " because of opcode ", opcodeNames[opcodeID], "\n");
+}
+
+CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruction* pc)
+{
+    switch (opcodeID) {
+    case op_enter:
+    case op_to_this:
+    case op_create_this:
+    case op_get_callee:
+    case op_bitand:
+    case op_bitor:
+    case op_bitxor:
+    case op_rshift:
+    case op_lshift:
+    case op_urshift:
+    case op_inc:
+    case op_dec:
+    case op_add:
+    case op_sub:
+    case op_negate:
+    case op_mul:
+    case op_mod:
+    case op_div:
+#if ENABLE(DEBUG_WITH_BREAKPOINT)
+    case op_debug:
 #endif
-}
+    case op_mov:
+    case op_check_has_instance:
+    case op_instanceof:
+    case op_is_undefined:
+    case op_is_boolean:
+    case op_is_number:
+    case op_is_string:
+    case op_is_object:
+    case op_is_function:
+    case op_not:
+    case op_less:
+    case op_lesseq:
+    case op_greater:
+    case op_greatereq:
+    case op_eq:
+    case op_eq_null:
+    case op_stricteq:
+    case op_neq:
+    case op_neq_null:
+    case op_nstricteq:
+    case op_get_by_val:
+    case op_put_by_val:
+    case op_get_by_id:
+    case op_get_by_id_out_of_line:
+    case op_get_array_length:
+    case op_put_by_id:
+    case op_put_by_id_out_of_line:
+    case op_put_by_id_transition_direct:
+    case op_put_by_id_transition_direct_out_of_line:
+    case op_put_by_id_transition_normal:
+    case op_put_by_id_transition_normal_out_of_line:
+    case op_init_global_const_nop:
+    case op_init_global_const:
+    case op_jmp:
+    case op_jtrue:
+    case op_jfalse:
+    case op_jeq_null:
+    case op_jneq_null:
+    case op_jless:
+    case op_jlesseq:
+    case op_jgreater:
+    case op_jgreatereq:
+    case op_jnless:
+    case op_jnlesseq:
+    case op_jngreater:
+    case op_jngreatereq:
+    case op_loop_hint:
+    case op_ret:
+    case op_end:
+    case op_new_object:
+    case op_new_array:
+    case op_new_array_with_size:
+    case op_new_array_buffer:
+    case op_strcat:
+    case op_to_primitive:
+    case op_throw:
+    case op_throw_static_error:
+    case op_call:
+    case op_construct:
+    case op_init_lazy_reg:
+    case op_create_arguments:
+    case op_tear_off_arguments:
+    case op_get_argument_by_val:
+    case op_get_arguments_length:
+    case op_jneq_ptr:
+    case op_typeof:
+    case op_to_number:
+    case op_switch_imm:
+    case op_switch_char:
+    case op_in:
+    case op_get_from_scope:
+        return CanCompileAndInline;
 
-static inline void debugFail(CodeBlock* codeBlock, OpcodeID opcodeID, CapabilityLevel result)
-{
-    ASSERT(result != CanCompile);
-#if DFG_ENABLE(DEBUG_VERBOSE)
-    if (result == CannotCompile)
-        dataLogF("Cannot handle code block %p because of opcode %s.\n", codeBlock, opcodeNames[opcodeID]);
-    else {
-        dataLogF("Cannot compile code block %p because of opcode %s, but inlining might be possible.\n", codeBlock, opcodeNames[opcodeID]);
+    case op_put_to_scope: {
+        ResolveType resolveType = ResolveModeAndType(pc[4].u.operand).type();
+        // If we're writing to a readonly property we emit a Dynamic put that
+        // the DFG can't currently handle.
+        if (resolveType == Dynamic)
+            return CannotCompile;
+        return CanCompileAndInline;
     }
-#else
-    UNUSED_PARAM(codeBlock);
-    UNUSED_PARAM(opcodeID);
-    UNUSED_PARAM(result);
-#endif
+
+    case op_resolve_scope: {
+        // We don't compile 'catch' or 'with', so there's no point in compiling variable resolution within them.
+        ResolveType resolveType = ResolveModeAndType(pc[3].u.operand).type();
+        if (resolveType == Dynamic)
+            return CannotCompile;
+        return CanCompileAndInline;
+    }
+
+    case op_call_varargs:
+        if (codeBlock->usesArguments() && pc[4].u.operand == codeBlock->argumentsRegister())
+            return CanInline;
+        return CannotCompile;
+
+    case op_new_regexp: 
+    case op_create_activation:
+    case op_tear_off_activation:
+    case op_new_func:
+    case op_new_func_exp:
+    case op_switch_string: // Don't inline because we don't want to copy string tables in the concurrent JIT.
+        return CanCompile;
+
+    default:
+        return CannotCompile;
+    }
 }
 
-template<typename ReturnType, ReturnType (*canHandleOpcode)(OpcodeID, CodeBlock*, Instruction*)>
-ReturnType canHandleOpcodes(CodeBlock* codeBlock, ReturnType initialValue)
+CapabilityLevel capabilityLevel(CodeBlock* codeBlock)
 {
     Interpreter* interpreter = codeBlock->vm()->interpreter;
     Instruction* instructionsBegin = codeBlock->instructions().begin();
     unsigned instructionCount = codeBlock->instructions().size();
-    ReturnType result = initialValue;
+    CapabilityLevel result = CanCompileAndInline;
     
     for (unsigned bytecodeOffset = 0; bytecodeOffset < instructionCount; ) {
         switch (interpreter->getOpcodeID(instructionsBegin[bytecodeOffset].u.opcode)) {
 #define DEFINE_OP(opcode, length) \
         case opcode: { \
-            ReturnType current = canHandleOpcode( \
-                opcode, codeBlock, instructionsBegin + bytecodeOffset); \
-            if (current < result) { \
-                result = current; \
-                debugFail(codeBlock, opcode, current); \
+            CapabilityLevel newResult = leastUpperBound(result, capabilityLevel(opcode, codeBlock, instructionsBegin + bytecodeOffset)); \
+            if (newResult != result) { \
+                debugFail(codeBlock, opcode, newResult); \
+                result = newResult; \
             } \
             bytecodeOffset += length; \
             break; \
@@ -124,18 +235,6 @@ ReturnType canHandleOpcodes(CodeBlock* codeBlock, ReturnType initialValue)
     }
     
     return result;
-}
-
-CapabilityLevel canCompileOpcodes(CodeBlock* codeBlock)
-{
-    if (!MacroAssembler::supportsFloatingPoint())
-        return CannotCompile;
-    return canHandleOpcodes<CapabilityLevel, canCompileOpcode>(codeBlock, CanCompile);
-}
-
-bool canInlineOpcodes(CodeBlock* codeBlock)
-{
-    return canHandleOpcodes<bool, canInlineOpcode>(codeBlock, true);
 }
 
 #endif

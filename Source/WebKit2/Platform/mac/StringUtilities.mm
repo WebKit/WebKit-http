@@ -26,16 +26,16 @@
 #import "config.h"
 #import "StringUtilities.h"
 
-#import <WebCore/FoundationExtras.h>
 #import "WKSharedAPICast.h"
 #import "WKStringCF.h"
+#import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/text/WTFString.h>
 
 namespace WebKit {
 
-NSString* nsStringFromWebCoreString(const String& string)
+NSString *nsStringFromWebCoreString(const String& string)
 {
-    return string.impl() ? HardAutorelease(WKStringCopyCFString(0, toAPI(string.impl()))) : @"";
+    return string.isEmpty() ? @"" : CFBridgingRelease(WKStringCopyCFString(0, toAPI(string.impl())));
 }
 
 }

@@ -58,10 +58,11 @@
 #include "XMLHttpRequestUpload.h"
 #include "markup.h"
 #include <heap/Strong.h>
+#include <runtime/ArrayBuffer.h>
+#include <runtime/ArrayBufferView.h>
 #include <runtime/JSLock.h>
 #include <runtime/Operations.h>
-#include <wtf/ArrayBuffer.h>
-#include <wtf/ArrayBufferView.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
@@ -191,6 +192,7 @@ XMLHttpRequest::XMLHttpRequest(ScriptExecutionContext* context)
     , m_exceptionCode(0)
     , m_progressEventThrottle(this)
     , m_responseTypeCode(ResponseTypeDefault)
+    , m_responseCacheIsValid(false)
 {
     initializeXMLHttpRequestStaticData();
 #ifndef NDEBUG
@@ -237,7 +239,14 @@ String XMLHttpRequest::responseText(ExceptionCode& ec)
         ec = INVALID_STATE_ERR;
         return "";
     }
-    return m_responseBuilder.toStringPreserveCapacity();
+    return responseTextIgnoringResponseType();
+}
+
+void XMLHttpRequest::didCacheResponseJSON()
+{
+    ASSERT(m_responseTypeCode == ResponseTypeJSON && doneWithoutErrors());
+    m_responseCacheIsValid = true;
+    m_responseBuilder.clear();
 }
 
 Document* XMLHttpRequest::responseXML(ExceptionCode& ec)
@@ -247,7 +256,7 @@ Document* XMLHttpRequest::responseXML(ExceptionCode& ec)
         return 0;
     }
 
-    if (m_error || m_state != DONE)
+    if (!doneWithoutErrors())
         return 0;
 
     if (!m_createdDocument) {
@@ -277,12 +286,10 @@ Document* XMLHttpRequest::responseXML(ExceptionCode& ec)
     return m_responseDocument.get();
 }
 
-Blob* XMLHttpRequest::responseBlob(ExceptionCode& ec)
+Blob* XMLHttpRequest::responseBlob()
 {
-    if (m_responseTypeCode != ResponseTypeBlob) {
-        ec = INVALID_STATE_ERR;
-        return 0;
-    }
+    ASSERT(m_responseTypeCode == ResponseTypeBlob);
+
     // We always return null before DONE.
     if (m_state != DONE)
         return 0;
@@ -313,12 +320,9 @@ Blob* XMLHttpRequest::responseBlob(ExceptionCode& ec)
     return m_responseBlob.get();
 }
 
-ArrayBuffer* XMLHttpRequest::responseArrayBuffer(ExceptionCode& ec)
+ArrayBuffer* XMLHttpRequest::responseArrayBuffer()
 {
-    if (m_responseTypeCode != ResponseTypeArrayBuffer) {
-        ec = INVALID_STATE_ERR;
-        return 0;
-    }
+    ASSERT(m_responseTypeCode == ResponseTypeArrayBuffer);
 
     if (m_state != DONE)
         return 0;
@@ -366,6 +370,8 @@ void XMLHttpRequest::setResponseType(const String& responseType, ExceptionCode& 
         m_responseTypeCode = ResponseTypeDefault;
     else if (responseType == "text")
         m_responseTypeCode = ResponseTypeText;
+    else if (responseType == "json")
+        m_responseTypeCode = ResponseTypeJSON;
     else if (responseType == "document")
         m_responseTypeCode = ResponseTypeDocument;
     else if (responseType == "blob")
@@ -383,6 +389,8 @@ String XMLHttpRequest::responseType()
         return "";
     case ResponseTypeText:
         return "text";
+    case ResponseTypeJSON:
+        return "json";
     case ResponseTypeDocument:
         return "document";
     case ResponseTypeBlob:
@@ -497,7 +505,7 @@ void XMLHttpRequest::open(const String& method, const KURL& url, bool async, Exc
     if (scriptExecutionContext()->isDocument()) {
         Document* document = static_cast<Document*>(scriptExecutionContext());
         if (document->frame())
-            shouldBypassMainWorldContentSecurityPolicy = document->frame()->script()->shouldBypassMainWorldContentSecurityPolicy();
+            shouldBypassMainWorldContentSecurityPolicy = document->frame()->script().shouldBypassMainWorldContentSecurityPolicy();
     }
     if (!shouldBypassMainWorldContentSecurityPolicy && !scriptExecutionContext()->contentSecurityPolicy()->allowConnectToSource(url)) {
         // FIXME: Should this be throwing an exception?
@@ -827,7 +835,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
 void XMLHttpRequest::abort()
 {
     // internalAbort() calls dropProtection(), which may release the last reference.
-    RefPtr<XMLHttpRequest> protect(this);
+    Ref<XMLHttpRequest> protect(*this);
 
     bool sendFlag = m_loader;
 
@@ -885,11 +893,13 @@ void XMLHttpRequest::clearResponse()
 void XMLHttpRequest::clearResponseBuffers()
 {
     m_responseBuilder.clear();
+    m_responseEncoding = String();
     m_createdDocument = false;
     m_responseDocument = 0;
     m_responseBlob = 0;
     m_binaryResponseBuilder.clear();
     m_responseArrayBuffer.clear();
+    m_responseCacheIsValid = false;
 }
 
 void XMLHttpRequest::clearRequest()
@@ -910,24 +920,24 @@ void XMLHttpRequest::genericError()
 void XMLHttpRequest::networkError()
 {
     genericError();
-    m_progressEventThrottle.dispatchEventAndLoadEnd(XMLHttpRequestProgressEvent::create(eventNames().errorEvent));
     if (!m_uploadComplete) {
         m_uploadComplete = true;
         if (m_upload && m_uploadEventsAllowed)
             m_upload->dispatchEventAndLoadEnd(XMLHttpRequestProgressEvent::create(eventNames().errorEvent));
     }
+    m_progressEventThrottle.dispatchEventAndLoadEnd(XMLHttpRequestProgressEvent::create(eventNames().errorEvent));
     internalAbort();
 }
 
 void XMLHttpRequest::abortError()
 {
     genericError();
-    m_progressEventThrottle.dispatchEventAndLoadEnd(XMLHttpRequestProgressEvent::create(eventNames().abortEvent));
     if (!m_uploadComplete) {
         m_uploadComplete = true;
         if (m_upload && m_uploadEventsAllowed)
             m_upload->dispatchEventAndLoadEnd(XMLHttpRequestProgressEvent::create(eventNames().abortEvent));
     }
+    m_progressEventThrottle.dispatchEventAndLoadEnd(XMLHttpRequestProgressEvent::create(eventNames().abortEvent));
 }
 
 void XMLHttpRequest::dropProtection()
@@ -1148,6 +1158,7 @@ void XMLHttpRequest::didFinishLoading(unsigned long identifier, double)
     m_loader = 0;
 
     changeState(DONE);
+    m_responseEncoding = String();
     m_decoder = 0;
 
     if (hadLoader)
@@ -1191,7 +1202,7 @@ void XMLHttpRequest::didReceiveData(const char* data, int len)
     if (m_state < HEADERS_RECEIVED)
         changeState(HEADERS_RECEIVED);
 
-    bool useDecoder = m_responseTypeCode == ResponseTypeDefault || m_responseTypeCode == ResponseTypeText || m_responseTypeCode == ResponseTypeDocument;
+    bool useDecoder = shouldDecodeResponse();
 
     if (useDecoder && !m_decoder) {
         if (!m_responseEncoding.isEmpty())
@@ -1244,7 +1255,7 @@ void XMLHttpRequest::didReceiveData(const char* data, int len)
 void XMLHttpRequest::didTimeout()
 {
     // internalAbort() calls dropProtection(), which may release the last reference.
-    RefPtr<XMLHttpRequest> protect(this);
+    Ref<XMLHttpRequest> protect(*this);
     internalAbort();
 
     clearResponse();
@@ -1311,9 +1322,9 @@ EventTargetData* XMLHttpRequest::eventTargetData()
     return &m_eventTargetData;
 }
 
-EventTargetData* XMLHttpRequest::ensureEventTargetData()
+EventTargetData& XMLHttpRequest::ensureEventTargetData()
 {
-    return &m_eventTargetData;
+    return m_eventTargetData;
 }
 
 } // namespace WebCore

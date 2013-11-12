@@ -38,7 +38,7 @@
 #include "MIMETypeRegistry.h"
 #include "SourceBufferPrivate.h"
 #include "TimeRanges.h"
-#include <wtf/Uint8Array.h>
+#include <runtime/Uint8Array.h>
 
 namespace WebCore {
 
@@ -317,9 +317,9 @@ EventTargetData* MediaSource::eventTargetData()
     return &m_eventTargetData;
 }
 
-EventTargetData* MediaSource::ensureEventTargetData()
+EventTargetData& MediaSource::ensureEventTargetData()
 {
-    return &m_eventTargetData;
+    return m_eventTargetData;
 }
 
 void MediaSource::scheduleEvent(const AtomicString& eventName)

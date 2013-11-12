@@ -26,10 +26,9 @@
 #include "config.h"
 #include "CurlDownload.h"
 
-#include <WebCore/HTTPParsers.h>
-#include <WebCore/MainThreadTask.h>
-#include <WebCore/ResourceRequest.h>
-
+#include "HTTPParsers.h"
+#include "MainThreadTask.h"
+#include "ResourceRequest.h"
 #include <wtf/MainThread.h>
 #include <wtf/text/CString.h>
 
@@ -45,7 +44,6 @@ namespace WebCore {
 CurlDownloadManager::CurlDownloadManager()
 : m_threadId(0)
 , m_curlMultiHandle(0)
-, m_activeDownloadCount(0)
 , m_runThread(false)
 {
     curl_global_init(CURL_GLOBAL_ALL);
@@ -80,7 +78,8 @@ bool CurlDownloadManager::remove(CURL* curlHandle)
 
 int CurlDownloadManager::getActiveDownloadCount() const
 {
-    return m_activeDownloadCount;
+    MutexLocker locker(m_mutex);
+    return m_activeHandleList.size();
 }
 
 int CurlDownloadManager::getPendingDownloadCount() const
@@ -121,31 +120,41 @@ void CurlDownloadManager::updateHandleList()
 {
     MutexLocker locker(m_mutex);
 
-    // Add pending curl easy handles to multi list 
-    int size = m_pendingHandleList.size();
+    // Remove curl easy handles from multi list 
+    int size = m_removedHandleList.size();
     for (int i = 0; i < size; i++) {
-        if (addToCurl(m_pendingHandleList[0]))
-            m_pendingHandleList.remove(0);
+        removeFromCurl(m_removedHandleList[0]);
+        m_removedHandleList.remove(0);
     }
 
-    // Remove curl easy handles from multi list 
-    size = m_removedHandleList.size();
+    // Add pending curl easy handles to multi list 
+    size = m_pendingHandleList.size();
     for (int i = 0; i < size; i++) {
-        if (removeFromCurl(m_removedHandleList[0]))
-            m_removedHandleList.remove(0);
+        addToCurl(m_pendingHandleList[0]);
+        m_pendingHandleList.remove(0);
     }
 }
 
 bool CurlDownloadManager::addToCurl(CURL* curlHandle)
 {
     CURLMcode retval = curl_multi_add_handle(m_curlMultiHandle, curlHandle);
-    return retval == CURLM_OK;
+    if (retval == CURLM_OK) {
+        m_activeHandleList.append(curlHandle);
+        return true;
+    }
+    return false;
 }
 
 bool CurlDownloadManager::removeFromCurl(CURL* curlHandle)
 {
+    int handlePos = m_activeHandleList.find(curlHandle);
+
+    if (handlePos < 0)
+        return true;
+    
     CURLMcode retval = curl_multi_remove_handle(m_curlMultiHandle, curlHandle);
     if (retval == CURLM_OK) {
+        m_activeHandleList.remove(handlePos);
         curl_easy_cleanup(curlHandle);
         return true;
     }
@@ -186,7 +195,8 @@ void CurlDownloadManager::downloadThread(void* data)
                 rc = ::select(maxfd + 1, &fdread, &fdwrite, &fdexcep, &timeout);
         } while (rc == -1 && errno == EINTR);
 
-        while (curl_multi_perform(downloadManager->getMultiHandle(), &downloadManager->m_activeDownloadCount) == CURLM_CALL_MULTI_PERFORM) { }
+        int activeDownloadCount = 0;
+        while (curl_multi_perform(downloadManager->getMultiHandle(), &activeDownloadCount) == CURLM_CALL_MULTI_PERFORM) { }
 
         int messagesInQueue = 0;
         CURLMsg* msg = curl_multi_info_read(downloadManager->getMultiHandle(), &messagesInQueue);

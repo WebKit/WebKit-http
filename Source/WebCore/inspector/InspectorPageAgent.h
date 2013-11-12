@@ -34,10 +34,11 @@
 #if ENABLE(INSPECTOR)
 
 #include "DeviceOrientationData.h"
-#include "Frame.h"
 #include "GeolocationPosition.h"
 #include "InspectorBaseAgent.h"
 #include "InspectorFrontend.h"
+#include "IntSize.h"
+#include "LayoutRect.h"
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
@@ -131,6 +132,7 @@ public:
     virtual void setCompositingBordersVisible(ErrorString*, bool);
     virtual void captureScreenshot(ErrorString*, String* data);
     virtual void handleJavaScriptDialog(ErrorString*, bool accept, const String* promptText);
+    virtual void archive(ErrorString*, String* data);
 
     // Geolocation override helpers.
     GeolocationPosition* overrideGeolocationPosition(GeolocationPosition*);

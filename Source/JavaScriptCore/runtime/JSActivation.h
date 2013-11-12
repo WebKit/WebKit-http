@@ -62,24 +62,20 @@ namespace JSC {
 
         static void visitChildren(JSCell*, SlotVisitor&);
 
-        bool isDynamicScope(bool& requiresDynamicChecks) const;
-
-        static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
+        static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
         static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
-        JS_EXPORT_PRIVATE static bool getOwnPropertyDescriptor(JSObject*, ExecState*, PropertyName, PropertyDescriptor&);
 
         static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
-        static void putDirectVirtual(JSObject*, ExecState*, PropertyName, JSValue, unsigned attributes);
         static bool deleteProperty(JSCell*, ExecState*, PropertyName);
 
-        static JSObject* toThisObject(JSCell*, ExecState*);
+        static JSValue toThis(JSCell*, ExecState*, ECMAMode);
 
         void tearOff(VM&);
         
-        static const ClassInfo s_info;
+        DECLARE_INFO;
 
-        static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto) { return Structure::create(vm, globalObject, proto, TypeInfo(ActivationObjectType, StructureFlags), &s_info); }
+        static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto) { return Structure::create(vm, globalObject, proto, TypeInfo(ActivationObjectType, StructureFlags), info()); }
 
         WriteBarrierBase<Unknown>& registerAt(int) const;
         bool isValidIndex(int) const;
@@ -129,19 +125,13 @@ namespace JSC {
 
     inline JSActivation* asActivation(JSValue value)
     {
-        ASSERT(asObject(value)->inherits(&JSActivation::s_info));
+        ASSERT(asObject(value)->inherits(JSActivation::info()));
         return jsCast<JSActivation*>(asObject(value));
     }
     
     ALWAYS_INLINE JSActivation* Register::activation() const
     {
         return asActivation(jsValue());
-    }
-
-    inline bool JSActivation::isDynamicScope(bool& requiresDynamicChecks) const
-    {
-        requiresDynamicChecks = symbolTable()->usesNonStrictEval();
-        return false;
     }
 
     inline int JSActivation::registersOffset(SharedSymbolTable* symbolTable)

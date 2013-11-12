@@ -52,9 +52,9 @@ namespace WebCore {
 
 static void setImageLoadingSettings(Page* page)
 {
-    for (Frame* frame = page->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
-        frame->document()->cachedResourceLoader()->setImagesEnabled(page->settings()->areImagesEnabled());
-        frame->document()->cachedResourceLoader()->setAutoLoadImages(page->settings()->loadsImagesAutomatically());
+    for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        frame->document()->cachedResourceLoader()->setImagesEnabled(page->settings().areImagesEnabled());
+        frame->document()->cachedResourceLoader()->setAutoLoadImages(page->settings().loadsImagesAutomatically());
     }
 }
 
@@ -136,6 +136,7 @@ Settings::Settings(Page* page)
 #endif
 #endif
     SETTINGS_INITIALIZER_LIST
+    , m_screenFontSubstitutionEnabled(shouldEnableScreenFontSubstitutionByDefault())
     , m_isJavaEnabled(false)
     , m_isJavaEnabledForLocalFiles(true)
     , m_loadsImagesAutomatically(false)
@@ -181,9 +182,9 @@ Settings::~Settings()
 {
 }
 
-PassOwnPtr<Settings> Settings::create(Page* page)
+PassRefPtr<Settings> Settings::create(Page* page)
 {
-    return adoptPtr(new Settings(page));
+    return adoptRef(new Settings(page));
 }
 
 SETTINGS_SETTER_BODIES
@@ -197,6 +198,13 @@ double Settings::hiddenPageDOMTimerAlignmentInterval()
 {
     return gHiddenPageDOMTimerAlignmentInterval;
 }
+
+#if !PLATFORM(MAC)
+bool Settings::shouldEnableScreenFontSubstitutionByDefault()
+{
+    return true;
+}
+#endif
 
 #if !PLATFORM(MAC) && !PLATFORM(BLACKBERRY)
 void Settings::initializeDefaultFontFamilies()
@@ -313,7 +321,7 @@ void Settings::setTextAutosizingFontScaleFactor(float fontScaleFactor)
     m_textAutosizingFontScaleFactor = fontScaleFactor;
 
     // FIXME: I wonder if this needs to traverse frames like in WebViewImpl::resize, or whether there is only one document per Settings instance?
-    for (Frame* frame = m_page->mainFrame(); frame; frame = frame->tree()->traverseNext())
+    for (Frame* frame = m_page->mainFrame(); frame; frame = frame->tree().traverseNext())
         frame->document()->textAutosizer()->recalculateMultipliers();
 
     m_page->setNeedsRecalcStyleInAllFrames();
@@ -328,9 +336,7 @@ void Settings::setMediaTypeOverride(const String& mediaTypeOverride)
 
     m_mediaTypeOverride = mediaTypeOverride;
 
-    Frame* mainFrame = m_page->mainFrame();
-    ASSERT(mainFrame);
-    FrameView* view = mainFrame->view();
+    FrameView* view = m_page->mainFrame().view();
     ASSERT(view);
 
     view->setMediaType(mediaTypeOverride);
@@ -382,7 +388,11 @@ void Settings::setImagesEnabled(bool areImagesEnabled)
 
 void Settings::setPluginsEnabled(bool arePluginsEnabled)
 {
+    if (m_arePluginsEnabled == arePluginsEnabled)
+        return;
+
     m_arePluginsEnabled = arePluginsEnabled;
+    Page::refreshPlugins(false);
 }
 
 void Settings::setPrivateBrowsingEnabled(bool privateBrowsingEnabled)
@@ -465,6 +475,14 @@ void Settings::setUsesPageCache(bool usesPageCache)
     }
 }
 
+void Settings::setScreenFontSubstitutionEnabled(bool enabled)
+{
+    if (m_screenFontSubstitutionEnabled == enabled)
+        return;
+    m_screenFontSubstitutionEnabled = enabled;
+    m_page->setNeedsRecalcStyleInAllFrames();
+}
+
 void Settings::setFontRenderingMode(FontRenderingMode mode)
 {
     if (fontRenderingMode() == mode)
@@ -522,8 +540,7 @@ void Settings::setTiledBackingStoreEnabled(bool enabled)
 {
     m_tiledBackingStoreEnabled = enabled;
 #if USE(TILED_BACKING_STORE)
-    if (m_page->mainFrame())
-        m_page->mainFrame()->setTiledBackingStoreEnabled(enabled);
+    m_page->mainFrame().setTiledBackingStoreEnabled(enabled);
 #endif
 }
 
@@ -553,8 +570,8 @@ void Settings::setScrollingPerformanceLoggingEnabled(bool enabled)
 {
     m_scrollingPerformanceLoggingEnabled = enabled;
 
-    if (m_page->mainFrame() && m_page->mainFrame()->view())
-        m_page->mainFrame()->view()->setScrollingPerformanceLoggingEnabled(enabled);
+    if (m_page->mainFrame().view())
+        m_page->mainFrame().view()->setScrollingPerformanceLoggingEnabled(enabled);
 }
     
 void Settings::setAggressiveTileRetentionEnabled(bool enabled)

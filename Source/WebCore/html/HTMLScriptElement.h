@@ -46,7 +46,7 @@ private:
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
@@ -66,17 +66,6 @@ private:
 
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren();
 };
-
-inline bool isHTMLScriptElement(Node* node)
-{
-    return node->hasTagName(HTMLNames::scriptTag);
-}
-
-inline HTMLScriptElement* toHTMLScriptElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(HTMLNames::scriptTag));
-    return static_cast<HTMLScriptElement*>(node);
-}
 
 } //namespace
 

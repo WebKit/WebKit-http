@@ -63,7 +63,7 @@ RenderFrameSet::GridAxis::GridAxis()
 
 inline HTMLFrameSetElement* RenderFrameSet::frameSet() const
 {
-    return static_cast<HTMLFrameSetElement*>(node());
+    return toHTMLFrameSetElement(node());
 }
 
 static Color borderStartEdgeColor()
@@ -453,9 +453,9 @@ void RenderFrameSet::layout()
         oldBounds = clippedOverflowRectForRepaint(repaintContainer);
     }
 
-    if (!parent()->isFrameSet() && !document()->printing()) {
-        setWidth(view()->viewWidth());
-        setHeight(view()->viewHeight());
+    if (!parent()->isFrameSet() && !document().printing()) {
+        setWidth(view().viewWidth());
+        setHeight(view().viewHeight());
     }
 
     unsigned cols = frameSet()->totalCols();
@@ -644,7 +644,7 @@ void RenderFrameSet::positionFramesWithFlattening()
 
 bool RenderFrameSet::flattenFrameSet() const
 {
-    return frame() && frame()->settings() && frame()->settings()->frameFlatteningEnabled();
+    return frame().settings().frameFlatteningEnabled();
 }
 
 void RenderFrameSet::startResizing(GridAxis& axis, int position)
@@ -712,8 +712,7 @@ void RenderFrameSet::setIsResizing(bool isResizing)
         if (ancestor->isFrameSet())
             toRenderFrameSet(ancestor)->m_isChildResizing = isResizing;
     }
-    if (Frame* frame = this->frame())
-        frame->eventHandler()->setResizingFrameSet(isResizing ? frameSet() : 0);
+    frame().eventHandler().setResizingFrameSet(isResizing ? frameSet() : 0);
 }
 
 bool RenderFrameSet::isResizingRow() const

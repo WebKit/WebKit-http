@@ -1,7 +1,7 @@
 <html>
 <head>
 	<link rel="stylesheet" href="resources/js-test-style.css">
-	<script src="resources/js-test-pre.js"></script>
+	<script src="../../resources/js-test-pre.js"></script>
 </head>
 <body>
 	<p id="description"></p>
@@ -198,10 +198,39 @@ try {
 }
 </script>
 
+<!-- Case 21: Regression test from https://bugs.webkit.org/show_bug.cgi?id=118662 -->
+<script>testId++;</script>
+<script>
+try {
+    function toFuzz21() {
+        if (PriorityQueue.prototype.doSort() instanceof (this ^= function() {
+        })) return 2; 
+    }
+    toFuzz21();
+} catch(e) {
+    printStack(e.stack);
+}
+</script>
+
+<!-- Case 22: Regression test from https://bugs.webkit.org/show_bug.cgi?id=118664 -->
+<script>testId++;</script>
+<script>
+try {
+    function toFuzz22() {
+        for (var conf = new ConfigObject({
+        }) in str1.localeCompare) {
+        }
+    }
+    toFuzz22();
+} catch(e) {
+    printStack(e.stack);
+}
+</script>
+
 <!-- Now do it all over with a loaded script file. -->
 <script>testId = 0;</script>
 	<script src="script-tests/line-column-numbers.js"></script>
 
-	<script src="resources/js-test-post.js"></script>
+	<script src="../../resources/js-test-post.js"></script>
 </body>
 </html>

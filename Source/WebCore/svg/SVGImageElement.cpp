@@ -193,10 +193,8 @@ bool SVGImageElement::haveLoadedRequiredResources()
     return !externalResourcesRequiredBaseValue() || !m_imageLoader.hasPendingActivity();
 }
 
-void SVGImageElement::attach(const AttachContext& context)
+void SVGImageElement::didAttachRenderers()
 {
-    SVGGraphicsElement::attach(context);
-
     if (RenderSVGImage* imageObj = toRenderSVGImage(renderer())) {
         if (imageObj->imageResource()->hasImage())
             return;
@@ -225,7 +223,7 @@ void SVGImageElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) const
 {
     SVGGraphicsElement::addSubresourceAttributeURLs(urls);
 
-    addSubresourceURL(urls, document()->completeURL(href()));
+    addSubresourceURL(urls, document().completeURL(href()));
 }
 
 void SVGImageElement::didMoveToNewDocument(Document* oldDocument)

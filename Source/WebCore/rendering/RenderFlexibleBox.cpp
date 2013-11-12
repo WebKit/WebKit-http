@@ -336,13 +336,13 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
     LayoutUnit previousHeight = logicalHeight();
     setLogicalHeight(borderAndPaddingLogicalHeight() + scrollbarLogicalHeight());
 
-    LayoutStateMaintainer statePusher(view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
+    LayoutStateMaintainer statePusher(&view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
 
     // Regions changing widths can force us to relayout our children.
     RenderFlowThread* flowThread = flowThreadContainingBlock();
     if (logicalWidthChangedInRegions(flowThread))
         relayoutChildren = true;
-    if (updateRegionsAndShapesBeforeChildLayout(flowThread))
+    if (updateShapesBeforeBlockLayout())
         relayoutChildren = true;
 
     m_numberOfInFlowChildrenOnFirstLine = -1;
@@ -370,7 +370,7 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
 
     layoutPositionedObjects(relayoutChildren || isRoot());
 
-    updateRegionsAndShapesAfterChildLayout(flowThread);
+    updateShapesAfterBlockLayout();
 
     repaintChildrenDuringLayoutIfMoved(oldChildRects);
     // FIXME: css3/flexbox/repaint-rtl-column.html seems to repaint more overflow than it needs to.
@@ -914,7 +914,7 @@ LayoutUnit RenderFlexibleBox::computeChildMarginValue(Length margin, RenderView*
 
 void RenderFlexibleBox::computeMainAxisPreferredSizes(OrderHashSet& orderValues)
 {
-    RenderView* renderView = view();
+    RenderView* renderView = &view();
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         orderValues.add(child->style()->order());
 

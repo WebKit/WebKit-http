@@ -32,7 +32,7 @@
 
 #include "ExceptionCode.h"
 #include "ScriptWrappableInlines.h"
-#include <wtf/ArrayBufferView.h>
+#include <runtime/ArrayBufferView.h>
 #include <wtf/CryptographicallyRandomNumber.h>
 
 namespace WebCore {
@@ -41,14 +41,7 @@ namespace {
 
 bool isIntegerArray(ArrayBufferView* array)
 {
-    ArrayBufferView::ViewType type = array->getType();
-    return type == ArrayBufferView::TypeInt8
-           || type == ArrayBufferView::TypeUint8
-           || type == ArrayBufferView::TypeUint8Clamped
-           || type == ArrayBufferView::TypeInt16
-           || type == ArrayBufferView::TypeUint16
-           || type == ArrayBufferView::TypeInt32
-           || type == ArrayBufferView::TypeUint32;
+    return JSC::isInt(array->getType());
 }
 
 }

@@ -29,7 +29,6 @@
 
 #include "ContentData.h"
 #include "InspectorInstrumentation.h"
-#include "NodeRenderingContext.h"
 #include "RenderObject.h"
 #include "RenderQuote.h"
 
@@ -55,33 +54,30 @@ String PseudoElement::pseudoElementNameForEvents(PseudoId pseudoId)
     }
 }
 
-PseudoElement::PseudoElement(Element* parent, PseudoId pseudoId)
-    : Element(pseudoElementTagName(), parent->document(), CreatePseudoElement)
+PseudoElement::PseudoElement(Element* host, PseudoId pseudoId)
+    : Element(pseudoElementTagName(), &host->document(), CreatePseudoElement)
+    , m_hostElement(host)
     , m_pseudoId(pseudoId)
 {
-    ASSERT(pseudoId != NOPSEUDO);
-    setParentOrShadowHostNode(parent);
-    setHasCustomStyleCallbacks();
+    ASSERT(pseudoId == BEFORE || pseudoId == AFTER);
+    setHasCustomStyleResolveCallbacks();
 }
 
 PseudoElement::~PseudoElement()
 {
+    ASSERT(!m_hostElement);
 #if USE(ACCELERATED_COMPOSITING)
-    InspectorInstrumentation::pseudoElementDestroyed(document()->page(), this);
+    InspectorInstrumentation::pseudoElementDestroyed(document().page(), this);
 #endif
 }
 
 PassRefPtr<RenderStyle> PseudoElement::customStyleForRenderer()
 {
-    return parentOrShadowHostElement()->renderer()->getCachedPseudoStyle(m_pseudoId);
+    return m_hostElement->renderer()->getCachedPseudoStyle(m_pseudoId);
 }
 
-void PseudoElement::attach(const AttachContext& context)
+void PseudoElement::didAttachRenderers()
 {
-    ASSERT(!renderer());
-
-    Element::attach(context);
-
     RenderObject* renderer = this->renderer();
     if (!renderer || !renderer->style()->regionThread().isEmpty())
         return;
@@ -90,7 +86,7 @@ void PseudoElement::attach(const AttachContext& context)
     ASSERT(style->contentData());
 
     for (const ContentData* content = style->contentData(); content; content = content->next()) {
-        RenderObject* child = content->createRenderer(document(), style);
+        RenderObject* child = content->createRenderer(&document(), style);
         if (renderer->isChildAllowed(child, style)) {
             renderer->addChild(child);
             if (child->isQuote())
@@ -100,12 +96,12 @@ void PseudoElement::attach(const AttachContext& context)
     }
 }
 
-bool PseudoElement::rendererIsNeeded(const NodeRenderingContext& context)
+bool PseudoElement::rendererIsNeeded(const RenderStyle& style)
 {
-    return pseudoElementRendererIsNeeded(context.style());
+    return pseudoElementRendererIsNeeded(&style);
 }
 
-void PseudoElement::didRecalcStyle(StyleChange)
+void PseudoElement::didRecalcStyle(Style::Change)
 {
     if (!renderer())
         return;

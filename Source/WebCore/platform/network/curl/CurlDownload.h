@@ -26,9 +26,9 @@
 #ifndef CurlDownload_h
 #define CurlDownload_h
 
-#include <WebCore/FileSystem.h>
-#include <WebCore/ResourceHandle.h>
-#include <WebCore/ResourceResponse.h>
+#include "FileSystem.h"
+#include "ResourceHandle.h"
+#include "ResourceResponse.h"
 
 #if PLATFORM(WIN)
 #include <windows.h>
@@ -69,8 +69,8 @@ private:
 
     ThreadIdentifier m_threadId;
     CURLM* m_curlMultiHandle;
-    int m_activeDownloadCount;
     Vector<CURL*> m_pendingHandleList;
+    Vector<CURL*> m_activeHandleList;
     Vector<CURL*> m_removedHandleList;
     mutable Mutex m_mutex;
     bool m_runThread;

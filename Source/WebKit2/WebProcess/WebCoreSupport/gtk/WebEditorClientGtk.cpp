@@ -69,7 +69,7 @@ void WebEditorClient::handleKeyboardEvent(KeyboardEvent* event)
 {
     Node* node = event->target()->toNode();
     ASSERT(node);
-    Frame* frame = node->document()->frame();
+    Frame* frame = node->document().frame();
     ASSERT(frame);
 
     const PlatformKeyboardEvent* platformEvent = event->keyEvent();
@@ -166,7 +166,7 @@ static void collapseSelection(GtkClipboard* clipboard, Frame* frame)
 
     // Collapse the selection without clearing it.
     ASSERT(frame);
-    frame->selection()->setBase(frame->selection()->extent(), frame->selection()->affinity());
+    frame->selection().setBase(frame->selection().extent(), frame->selection().affinity());
 }
 #endif
 
@@ -176,11 +176,11 @@ void WebEditorClient::updateGlobalSelection(Frame* frame)
     GtkClipboard* clipboard = PasteboardHelper::defaultPasteboardHelper()->getPrimarySelectionClipboard(frame);
     DataObjectGtk* dataObject = DataObjectGtk::forClipboard(clipboard);
 
-    if (!frame->selection()->isRange())
+    if (!frame->selection().isRange())
         return;
 
     dataObject->clearAll();
-    dataObject->setRange(frame->selection()->toNormalizedRange());
+    dataObject->setRange(frame->selection().toNormalizedRange());
 
     frameSettingClipboard = frame;
     GClosure* callback = g_cclosure_new(G_CALLBACK(collapseSelection), frame, 0);

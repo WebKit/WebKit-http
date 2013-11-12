@@ -52,6 +52,36 @@ enum RespectImageOrientationEnum {
     RespectImageOrientation = 1
 };
 
+struct ImageOrientationDescription {
+    ImageOrientationDescription(RespectImageOrientationEnum shouldRespectImageOrientation,
+        ImageOrientationEnum orientation)
+        : m_respectOrientation(shouldRespectImageOrientation)
+        , m_orientation(orientation)
+    {
+    }
+
+    ImageOrientationDescription()
+        : m_respectOrientation(DoNotRespectImageOrientation)
+        , m_orientation(DefaultImageOrientation)
+    {
+    }
+
+    ImageOrientationDescription(RespectImageOrientationEnum shouldRespectImageOrientation)
+        : m_respectOrientation(shouldRespectImageOrientation)
+        , m_orientation(DefaultImageOrientation)
+    {
+    }
+
+    void setRespectImageOrientation(RespectImageOrientationEnum shouldRespectImageOrientation) { m_respectOrientation = shouldRespectImageOrientation; }
+    RespectImageOrientationEnum respectImageOrientation() { return m_respectOrientation; }
+
+    void setImageOrientationEnum(ImageOrientationEnum orientation) { m_orientation = orientation; }
+    ImageOrientationEnum imageOrientation() { return m_orientation; }
+
+    RespectImageOrientationEnum m_respectOrientation;
+    ImageOrientationEnum m_orientation;
+};
+
 class ImageOrientation {
 public:
     ImageOrientation(ImageOrientationEnum orientation = DefaultImageOrientation)

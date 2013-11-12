@@ -62,6 +62,11 @@
 
     readonly attribute CSSStyleDeclaration style;
 
+    // DOM 4
+#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
+    [Reflect] attribute DOMString id;
+#endif
+
     // Common extensions
 
     readonly attribute long offsetLeft;
@@ -184,6 +189,7 @@
     [NotEnumerable] attribute EventListener onscroll;
     [NotEnumerable] attribute EventListener onselect;
     [NotEnumerable] attribute EventListener onsubmit;
+    [NotEnumerable] attribute EventListener onwheel;
 
     // [NotEnumerable] attribute EventListener oncanplay;
     // [NotEnumerable] attribute EventListener oncanplaythrough;

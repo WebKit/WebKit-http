@@ -150,6 +150,7 @@ public:
 
     int size() const;
     bool sizeShouldIncludeDecoration(int& preferredSize) const;
+    float decorationWidth() const;
 
     void setType(const String&);
 
@@ -186,9 +187,11 @@ public:
 
     bool canHaveSelection() const;
 
-    virtual bool rendererIsNeeded(const NodeRenderingContext&);
+    virtual bool rendererIsNeeded(const RenderStyle&);
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
-    virtual void detach(const AttachContext& = AttachContext()) OVERRIDE;
+    virtual void willAttachRenderers() OVERRIDE;
+    virtual void didAttachRenderers() OVERRIDE;
+    virtual void didDetachRenderers() OVERRIDE;
 
     // FIXME: For isActivatedSubmit and setActivatedSubmit, we should use the NVI-idiom here by making
     // it private virtual in all classes and expose a public method in HTMLFormControlElement to call
@@ -351,8 +354,6 @@ private:
 
     virtual void copyNonAttributePropertiesFromElement(const Element&);
 
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
-
     virtual bool appendFormData(FormDataList&, bool);
 
     virtual bool isSuccessfulSubmitButton() const;
@@ -367,6 +368,9 @@ private:
     virtual bool isOutOfRange() const;
 
     virtual void documentDidResumeFromPageCache();
+#if ENABLE(INPUT_TYPE_COLOR)
+    virtual void documentWillSuspendForPageCache() OVERRIDE;
+#endif
 
     virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
 
@@ -438,22 +442,6 @@ private:
     OwnPtr<ListAttributeTargetObserver> m_listAttributeTargetObserver;
 #endif
 };
-
-inline bool isHTMLInputElement(Node* node)
-{
-    return node->hasTagName(HTMLNames::inputTag);
-}
-
-inline bool isHTMLInputElement(Element* element)
-{
-    return element->hasTagName(HTMLNames::inputTag);
-}
-
-inline HTMLInputElement* toHTMLInputElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLInputElement(node));
-    return static_cast<HTMLInputElement*>(node);
-}
 
 } //namespace
 #endif

@@ -42,9 +42,10 @@ namespace JSC {
 
 class ObjCCallbackFunctionImpl;
 
-class ObjCCallbackFunction : public JSCallbackFunction {
+class ObjCCallbackFunction : public InternalFunction {
+    friend struct APICallbackFunction;
 public:
-    typedef JSCallbackFunction Base;
+    typedef InternalFunction Base;
 
     static ObjCCallbackFunction* create(ExecState*, JSGlobalObject*, const String& name, PassOwnPtr<ObjCCallbackFunctionImpl>);
     static void destroy(JSCell*);
@@ -52,10 +53,10 @@ public:
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
         ASSERT(globalObject);
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
 
-    static JS_EXPORTDATA const ClassInfo s_info;
+    DECLARE_EXPORT_INFO;
 
     ObjCCallbackFunctionImpl* impl() { return m_impl.get(); }
 
@@ -63,6 +64,9 @@ protected:
     ObjCCallbackFunction(JSGlobalObject*, JSObjectCallAsFunctionCallback, PassOwnPtr<ObjCCallbackFunctionImpl>);
 
 private:
+    static CallType getCallData(JSCell*, CallData&);
+
+    JSObjectCallAsFunctionCallback m_callback;
     OwnPtr<ObjCCallbackFunctionImpl> m_impl;
 };
 

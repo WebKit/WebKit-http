@@ -99,8 +99,12 @@ static inline void executeTask(HTMLConstructionSiteTask& task)
     // JavaScript run from beforeload (or DOM Mutation or event handlers)
     // might have removed the child, in which case we should not attach it.
 
-    if (task.child->parentNode() && task.parent->attached() && !task.child->attached())
-        task.child->attach();
+    if (task.child->parentNode() && task.parent->attached() && !task.child->attached()) {
+        if (task.child->isElementNode())
+            Style::attachRenderTree(*toElement(task.child.get()));
+        else if (task.child->isTextNode())
+            Style::attachTextRenderer(*toText(task.child.get()));
+    }
 
     task.child->beginParsingChildren();
 
@@ -161,13 +165,13 @@ HTMLConstructionSite::HTMLConstructionSite(Document* document, ParserContentPoli
 }
 
 HTMLConstructionSite::HTMLConstructionSite(DocumentFragment* fragment, ParserContentPolicy parserContentPolicy, unsigned maximumDOMTreeDepth)
-    : m_document(fragment->document())
+    : m_document(&fragment->document())
     , m_attachmentRoot(fragment)
     , m_parserContentPolicy(parserContentPolicy)
     , m_isParsingFragment(true)
     , m_redirectAttachToFosterParent(false)
     , m_maximumDOMTreeDepth(maximumDOMTreeDepth)
-    , m_inQuirksMode(fragment->document()->inQuirksMode())
+    , m_inQuirksMode(fragment->document().inQuirksMode())
 {
     ASSERT(m_document->isHTMLDocument() || m_document->isXHTMLDocument());
 }
@@ -198,7 +202,7 @@ void HTMLConstructionSite::dispatchDocumentElementAvailableIfNeeded()
 {
     ASSERT(m_document);
     if (m_document->frame() && !m_isParsingFragment)
-        m_document->frame()->loader()->dispatchDocumentElementAvailable();
+        m_document->frame()->loader().dispatchDocumentElementAvailable();
 }
 
 void HTMLConstructionSite::insertHTMLHtmlStartTagBeforeHTML(AtomicHTMLToken* token)
@@ -220,7 +224,7 @@ void HTMLConstructionSite::mergeAttributesFromTokenIntoElement(AtomicHTMLToken* 
 
     for (unsigned i = 0; i < token->attributes().size(); ++i) {
         const Attribute& tokenAttribute = token->attributes().at(i);
-        if (!element->elementData() || !element->getAttributeItem(tokenAttribute.name()))
+        if (!element->elementData() || !element->findAttributeByName(tokenAttribute.name()))
             element->setAttribute(tokenAttribute.name(), tokenAttribute.value());
     }
 }
@@ -389,7 +393,7 @@ void HTMLConstructionSite::insertCommentOnHTMLHtmlElement(AtomicHTMLToken* token
 {
     ASSERT(token->type() == HTMLToken::Comment);
     ContainerNode* parent = m_openElements.rootNode();
-    attachLater(parent, Comment::create(parent->document(), token->comment()));
+    attachLater(parent, Comment::create(&parent->document(), token->comment()));
 }
 
 void HTMLConstructionSite::insertHTMLHeadElement(AtomicHTMLToken* token)
@@ -407,7 +411,7 @@ void HTMLConstructionSite::insertHTMLBodyElement(AtomicHTMLToken* token)
     attachLater(currentNode(), body);
     m_openElements.pushHTMLBodyElement(HTMLStackItem::create(body.release(), token));
     if (Frame* frame = m_document->frame())
-        frame->loader()->client()->dispatchWillInsertBody();
+        frame->loader().client().dispatchWillInsertBody();
 }
 
 void HTMLConstructionSite::insertHTMLFormElement(AtomicHTMLToken* token, bool isDemoted)
@@ -508,11 +512,11 @@ void HTMLConstructionSite::insertTextNode(const String& characters, WhitespaceMo
     }
 
     while (currentPosition < characters.length()) {
-        RefPtr<Text> textNode = Text::createWithLengthLimit(task.parent->document(), shouldUseAtomicString ? AtomicString(characters).string() : characters, currentPosition, lengthLimit);
+        RefPtr<Text> textNode = Text::createWithLengthLimit(&task.parent->document(), shouldUseAtomicString ? AtomicString(characters).string() : characters, currentPosition, lengthLimit);
         // If we have a whole string of unbreakable characters the above could lead to an infinite loop. Exceeding the length limit is the lesser evil.
         if (!textNode->length()) {
             String substring = characters.substring(currentPosition);
-            textNode = Text::create(task.parent->document(), shouldUseAtomicString ? AtomicString(substring).string() : substring);
+            textNode = Text::create(&task.parent->document(), shouldUseAtomicString ? AtomicString(substring).string() : substring);
         }
 
         currentPosition += textNode->length();
@@ -535,9 +539,9 @@ inline Document* HTMLConstructionSite::ownerDocumentForCurrentNode()
 {
 #if ENABLE(TEMPLATE_ELEMENT)
     if (currentNode()->hasTagName(templateTag))
-        return toHTMLTemplateElement(currentElement())->content()->document();
+        return &toHTMLTemplateElement(currentElement())->content()->document();
 #endif
-    return currentNode()->document();
+    return &currentNode()->document();
 }
 
 PassRefPtr<Element> HTMLConstructionSite::createHTMLElement(AtomicHTMLToken* token)

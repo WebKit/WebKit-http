@@ -74,9 +74,9 @@ static bool isCharsetSpecifyingNode(Node* node)
     HTMLMetaCharsetParser::AttributeList attributes;
     if (element->hasAttributes()) {
         for (unsigned i = 0; i < element->attributeCount(); ++i) {
-            const Attribute* attribute = element->attributeItem(i);
+            const Attribute& attribute = element->attributeAt(i);
             // FIXME: We should deal appropriately with the attribute if they have a namespace.
-            attributes.append(std::make_pair(attribute->name().toString(), attribute->value().string()));
+            attributes.append(std::make_pair(attribute.name().toString(), attribute.value().string()));
         }
     }
     TextEncoding textEncoding = HTMLMetaCharsetParser::encodingFromMetaAttributes(attributes);
@@ -189,7 +189,7 @@ PageSerializer::PageSerializer(Vector<PageSerializer::Resource>* resources)
 
 void PageSerializer::serialize(Page* page)
 {
-    serializeFrame(page->mainFrame());
+    serializeFrame(&page->mainFrame());
 }
 
 void PageSerializer::serializeFrame(Frame* frame)
@@ -249,7 +249,7 @@ void PageSerializer::serializeFrame(Frame* frame)
         }
     }
 
-    for (Frame* childFrame = frame->tree()->firstChild(); childFrame; childFrame = childFrame->tree()->nextSibling())
+    for (Frame* childFrame = frame->tree().firstChild(); childFrame; childFrame = childFrame->tree().nextSibling())
         serializeFrame(childFrame);
 }
 
@@ -314,7 +314,7 @@ void PageSerializer::addImageToResources(CachedImage* image, RenderObject* image
 
 void PageSerializer::retrieveResourcesForRule(StyleRule* rule, Document* document)
 {
-    retrieveResourcesForProperties(rule->properties(), document);
+    retrieveResourcesForProperties(&rule->properties(), document);
 }
 
 void PageSerializer::retrieveResourcesForProperties(const StylePropertySet* styleDeclaration, Document* document)

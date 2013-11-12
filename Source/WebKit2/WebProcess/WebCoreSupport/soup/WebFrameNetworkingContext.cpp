@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Igalia S.L.
+ * Copyright (C) 2013 Company 100 Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,10 +29,31 @@
 
 #include "WebFrame.h"
 #include "WebPage.h"
+#include <WebCore/Settings.h>
 
 using namespace WebCore;
 
 namespace WebKit {
+
+static NetworkStorageSession* privateSession;
+
+void WebFrameNetworkingContext::ensurePrivateBrowsingSession()
+{
+    ASSERT(isMainThread());
+
+    if (privateSession)
+        return;
+
+    privateSession = NetworkStorageSession::createPrivateBrowsingSession().leakPtr();
+}
+
+void WebFrameNetworkingContext::destroyPrivateBrowsingSession()
+{
+    ASSERT(isMainThread());
+
+    delete privateSession;
+    privateSession = 0;
+}
 
 WebFrameNetworkingContext::WebFrameNetworkingContext(WebFrame* frame)
     : FrameNetworkingContext(frame->coreFrame())
@@ -43,12 +65,23 @@ WebFrameNetworkingContext::WebFrameNetworkingContext(WebFrame* frame)
 
 NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 {
+    if (frame() && frame()->settings().privateBrowsingEnabled())
+        return *privateSession;
+
     return NetworkStorageSession::defaultStorageSession();
 }
 
 uint64_t WebFrameNetworkingContext::initiatingPageID() const
 {
     return m_initiatingPageID;
+}
+
+WebFrameLoaderClient* WebFrameNetworkingContext::webFrameLoaderClient() const
+{
+    if (!frame())
+        return 0;
+
+    return toWebFrameLoaderClient(frame()->loader().client());
 }
 
 }

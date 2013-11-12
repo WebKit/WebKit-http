@@ -188,7 +188,7 @@ static NSMutableArray *newArrayByConcatenatingArrays(NSArray *first, NSArray *se
     // If the document is a stand-alone media document, now is the right time to cancel the WebKit load
     Frame* coreFrame = core(webFrame);
     if (coreFrame->document()->isMediaDocument())
-        coreFrame->loader()->documentLoader()->cancelMainResourceLoad(coreFrame->loader()->client()->pluginWillHandleLoadError(coreFrame->loader()->documentLoader()->response()));
+        coreFrame->loader().documentLoader()->cancelMainResourceLoad(coreFrame->loader().client().pluginWillHandleLoadError(coreFrame->loader().documentLoader()->response()));
 
     if (_private->pluginView) {
         if (!_private->hasSentResponseToPlugin) {
@@ -276,7 +276,7 @@ static NSMutableArray *newArrayByConcatenatingArrays(NSArray *first, NSArray *se
 
 - (NSAttributedString *)attributedStringFrom:(DOMNode *)startNode startOffset:(int)startOffset to:(DOMNode *)endNode endOffset:(int)endOffset
 {
-    return [WebHTMLConverter editingAttributedStringFromRange:Range::create(core(startNode)->document(), core(startNode), startOffset, core(endNode), endOffset).get()];
+    return [WebHTMLConverter editingAttributedStringFromRange:Range::create(&core(startNode)->document(), core(startNode), startOffset, core(endNode), endOffset).get()];
 }
 
 static HTMLFormElement* formElementFromDOMElement(DOMElement *element)
@@ -329,7 +329,7 @@ static HTMLInputElement* inputElementFromDOMElement(DOMElement* element)
 
 - (DOMElement *)currentForm
 {
-    return kit(core([_private->dataSource webFrame])->selection()->currentForm());
+    return kit(core([_private->dataSource webFrame])->selection().currentForm());
 }
 
 - (NSArray *)controlsInForm:(DOMElement *)form

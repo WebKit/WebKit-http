@@ -27,7 +27,6 @@
 #include "SVGFilterElement.h"
 
 #include "Attr.h"
-#include "NodeRenderingContext.h"
 #include "RenderSVGResourceFilter.h"
 #include "SVGElementInstance.h"
 #include "SVGFilterBuilder.h"
@@ -64,7 +63,7 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGFilterElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
 inline SVGFilterElement::SVGFilterElement(const QualifiedName& tagName, Document* document)
-    : SVGStyledElement(tagName, document)
+    : SVGElement(tagName, document)
     , m_filterUnits(SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX)
     , m_primitiveUnits(SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE)
     , m_x(LengthModeWidth, "-10%")
@@ -127,7 +126,7 @@ void SVGFilterElement::parseAttribute(const QualifiedName& name, const AtomicStr
     SVGParsingError parseError = NoError;
 
     if (!isSupportedAttribute(name))
-        SVGStyledElement::parseAttribute(name, value);
+        SVGElement::parseAttribute(name, value);
     else if (name == SVGNames::filterUnitsAttr) {
         SVGUnitTypes::SVGUnitType propertyValue = SVGPropertyTraits<SVGUnitTypes::SVGUnitType>::fromString(value);
         if (propertyValue > 0)
@@ -162,7 +161,7 @@ void SVGFilterElement::parseAttribute(const QualifiedName& name, const AtomicStr
 void SVGFilterElement::svgAttributeChanged(const QualifiedName& attrName)
 {
     if (!isSupportedAttribute(attrName)) {
-        SVGStyledElement::svgAttributeChanged(attrName);
+        SVGElement::svgAttributeChanged(attrName);
         return;
     }
 
@@ -178,11 +177,11 @@ void SVGFilterElement::svgAttributeChanged(const QualifiedName& attrName)
         object->setNeedsLayout(true);
 }
 
-void SVGFilterElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void SVGFilterElement::childrenChanged(const ChildChange& change)
 {
-    SVGStyledElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
+    SVGElement::childrenChanged(change);
 
-    if (changedByParser)
+    if (change.source == ChildChangeSourceParser)
         return;
 
     if (RenderObject* object = renderer())
@@ -194,12 +193,12 @@ RenderObject* SVGFilterElement::createRenderer(RenderArena* arena, RenderStyle*)
     return new (arena) RenderSVGResourceFilter(this);
 }
 
-bool SVGFilterElement::childShouldCreateRenderer(const NodeRenderingContext& childContext) const
+bool SVGFilterElement::childShouldCreateRenderer(const Node* child) const
 {
-    if (!childContext.node()->isSVGElement())
+    if (!child->isSVGElement())
         return false;
 
-    SVGElement* svgElement = toSVGElement(childContext.node());
+    const SVGElement* svgElement = toSVGElement(child);
 
     DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, allowedChildElementTags, ());
     if (allowedChildElementTags.isEmpty()) {

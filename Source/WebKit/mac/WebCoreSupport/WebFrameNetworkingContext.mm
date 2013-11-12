@@ -57,12 +57,12 @@ void WebFrameNetworkingContext::destroyPrivateBrowsingSession()
 
 bool WebFrameNetworkingContext::needsSiteSpecificQuirks() const
 {
-    return frame() && frame()->settings() && frame()->settings()->needsSiteSpecificQuirks();
+    return frame() && frame()->settings().needsSiteSpecificQuirks();
 }
 
 bool WebFrameNetworkingContext::localFileContentSniffingEnabled() const
 {
-    return frame() && frame()->settings() && frame()->settings()->localFileContentSniffingEnabled();
+    return frame() && frame()->settings().localFileContentSniffingEnabled();
 }
 
 SchedulePairHashSet* WebFrameNetworkingContext::scheduledRunLoopPairs() const
@@ -86,14 +86,14 @@ RetainPtr<CFDataRef> WebFrameNetworkingContext::sourceApplicationAuditData() con
 
 ResourceError WebFrameNetworkingContext::blockedError(const ResourceRequest& request) const
 {
-    return frame()->loader()->client()->blockedError(request);
+    return frame()->loader().client().blockedError(request);
 }
 
 NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 {
     ASSERT(isMainThread());
 
-    if (frame() && frame()->settings() && frame()->settings()->privateBrowsingEnabled())
+    if (frame() && frame()->settings().privateBrowsingEnabled())
         return *privateSession;
 
     return NetworkStorageSession::defaultStorageSession();

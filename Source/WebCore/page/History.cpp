@@ -67,7 +67,7 @@ PassRefPtr<SerializedScriptValue> History::stateInternal() const
     if (!m_frame)
         return 0;
 
-    if (HistoryItem* historyItem = m_frame->loader()->history()->currentItem())
+    if (HistoryItem* historyItem = m_frame->loader().history().currentItem())
         return historyItem->stateObject();
 
     return 0;
@@ -108,7 +108,7 @@ void History::go(int distance)
     if (!m_frame)
         return;
 
-    m_frame->navigationScheduler()->scheduleHistoryNavigation(distance);
+    m_frame->navigationScheduler().scheduleHistoryNavigation(distance);
 }
 
 void History::go(ScriptExecutionContext* context, int distance)
@@ -124,7 +124,7 @@ void History::go(ScriptExecutionContext* context, int distance)
     if (!activeDocument->canNavigate(m_frame))
         return;
 
-    m_frame->navigationScheduler()->scheduleHistoryNavigation(distance);
+    m_frame->navigationScheduler().scheduleHistoryNavigation(distance);
 }
 
 KURL History::urlForState(const String& urlString)
@@ -148,17 +148,17 @@ void History::stateObjectAdded(PassRefPtr<SerializedScriptValue> data, const Str
     }
 
     if (stateObjectType == StateObjectPush)
-        m_frame->loader()->history()->pushState(data, title, fullURL.string());
+        m_frame->loader().history().pushState(data, title, fullURL.string());
     else if (stateObjectType == StateObjectReplace)
-        m_frame->loader()->history()->replaceState(data, title, fullURL.string());
+        m_frame->loader().history().replaceState(data, title, fullURL.string());
             
     if (!urlString.isEmpty())
         m_frame->document()->updateURLForPushOrReplaceState(fullURL);
 
     if (stateObjectType == StateObjectPush)
-        m_frame->loader()->client()->dispatchDidPushStateWithinPage();
+        m_frame->loader().client().dispatchDidPushStateWithinPage();
     else if (stateObjectType == StateObjectReplace)
-        m_frame->loader()->client()->dispatchDidReplaceStateWithinPage();
+        m_frame->loader().client().dispatchDidReplaceStateWithinPage();
 }
 
 } // namespace WebCore

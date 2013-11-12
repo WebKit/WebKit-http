@@ -150,6 +150,20 @@ inline long lround(double num) { return static_cast<long>(round(num)); }
 inline long lroundf(float num) { return static_cast<long>(roundf(num)); }
 inline double trunc(double num) { return num > 0 ? floor(num) : ceil(num); }
 
+#if defined(_MSC_VER) && (_MSC_VER <= 1600)
+
+inline double remainder(double numerator, double denominator)
+{
+    double result = fmod(numerator, denominator);
+    if (result > 0.5 * denominator)
+        return result - denominator;
+
+    return result;
+}
+
+#endif
+
+
 #endif
 
 #if COMPILER(GCC) && OS(QNX)
@@ -342,6 +356,11 @@ template <typename T> inline unsigned getLSBSet(T value)
     return result;
 }
 
+template<typename T> inline T divideRoundedUp(T a, T b)
+{
+    return (a + b - 1) / b;
+}
+
 template<typename T> inline T timesThreePlusOneDividedByTwo(T value)
 {
     // Mathematically equivalent to:
@@ -360,6 +379,13 @@ template<typename T> inline bool isNotZeroAndOrdered(T value)
 template<typename T> inline bool isZeroOrUnordered(T value)
 {
     return !isNotZeroAndOrdered(value);
+}
+
+template<typename T> inline bool isGreaterThanNonZeroPowerOfTwo(T value, unsigned power)
+{
+    // The crazy way of testing of index >= 2 ** power
+    // (where I use ** to denote pow()).
+    return !!((value >> 1) >> (power - 1));
 }
 
 #ifndef UINT64_C

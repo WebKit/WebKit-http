@@ -51,105 +51,126 @@ void dumpSpeculation(PrintStream& out, SpeculatedType value)
     
     bool isTop = true;
     
-    if (value & SpecCellOther)
-        myOut.print("Othercell");
-    else
-        isTop = false;
+    if ((value & SpecCell) == SpecCell)
+        myOut.print("Cell");
+    else {
+        if ((value & SpecObject) == SpecObject)
+            myOut.print("Object");
+        else {
+            if (value & SpecCellOther)
+                myOut.print("Othercell");
+            else
+                isTop = false;
     
-    if (value & SpecObjectOther)
-        myOut.print("Otherobj");
-    else
-        isTop = false;
+            if (value & SpecObjectOther)
+                myOut.print("Otherobj");
+            else
+                isTop = false;
     
-    if (value & SpecFinalObject)
-        myOut.print("Final");
-    else
-        isTop = false;
+            if (value & SpecFinalObject)
+                myOut.print("Final");
+            else
+                isTop = false;
 
-    if (value & SpecArray)
-        myOut.print("Array");
-    else
-        isTop = false;
+            if (value & SpecArray)
+                myOut.print("Array");
+            else
+                isTop = false;
     
-    if (value & SpecInt8Array)
-        myOut.print("Int8array");
-    else
-        isTop = false;
+            if (value & SpecInt8Array)
+                myOut.print("Int8array");
+            else
+                isTop = false;
     
-    if (value & SpecInt16Array)
-        myOut.print("Int16array");
-    else
-        isTop = false;
+            if (value & SpecInt16Array)
+                myOut.print("Int16array");
+            else
+                isTop = false;
     
-    if (value & SpecInt32Array)
-        myOut.print("Int32array");
-    else
-        isTop = false;
+            if (value & SpecInt32Array)
+                myOut.print("Int32array");
+            else
+                isTop = false;
     
-    if (value & SpecUint8Array)
-        myOut.print("Uint8array");
-    else
-        isTop = false;
+            if (value & SpecUint8Array)
+                myOut.print("Uint8array");
+            else
+                isTop = false;
 
-    if (value & SpecUint8ClampedArray)
-        myOut.print("Uint8clampedarray");
-    else
-        isTop = false;
+            if (value & SpecUint8ClampedArray)
+                myOut.print("Uint8clampedarray");
+            else
+                isTop = false;
     
-    if (value & SpecUint16Array)
-        myOut.print("Uint16array");
-    else
-        isTop = false;
+            if (value & SpecUint16Array)
+                myOut.print("Uint16array");
+            else
+                isTop = false;
     
-    if (value & SpecUint32Array)
-        myOut.print("Uint32array");
-    else
-        isTop = false;
+            if (value & SpecUint32Array)
+                myOut.print("Uint32array");
+            else
+                isTop = false;
     
-    if (value & SpecFloat32Array)
-        myOut.print("Float32array");
-    else
-        isTop = false;
+            if (value & SpecFloat32Array)
+                myOut.print("Float32array");
+            else
+                isTop = false;
     
-    if (value & SpecFloat64Array)
-        myOut.print("Float64array");
-    else
-        isTop = false;
+            if (value & SpecFloat64Array)
+                myOut.print("Float64array");
+            else
+                isTop = false;
     
-    if (value & SpecFunction)
-        myOut.print("Function");
-    else
-        isTop = false;
+            if (value & SpecFunction)
+                myOut.print("Function");
+            else
+                isTop = false;
     
-    if (value & SpecArguments)
-        myOut.print("Arguments");
-    else
-        isTop = false;
+            if (value & SpecArguments)
+                myOut.print("Arguments");
+            else
+                isTop = false;
     
-    if (value & SpecString)
-        myOut.print("String");
-    else
-        isTop = false;
-    
-    if (value & SpecStringObject)
-        myOut.print("Stringobject");
-    else
-        isTop = false;
+            if (value & SpecStringObject)
+                myOut.print("Stringobject");
+            else
+                isTop = false;
+        }
+
+        if ((value & SpecString) == SpecString)
+            myOut.print("String");
+        else {
+            if (value & SpecStringIdent)
+                myOut.print("Stringident");
+            else
+                isTop = false;
+            
+            if (value & SpecStringVar)
+                myOut.print("Stringvar");
+            else
+                isTop = false;
+        }
+    }
     
     if (value & SpecInt32)
         myOut.print("Int");
     else
         isTop = false;
     
-    if (value & SpecDoubleReal)
-        myOut.print("Doublereal");
-    else
-        isTop = false;
-    
-    if (value & SpecDoubleNaN)
-        myOut.print("Doublenan");
-    else
-        isTop = false;
+    if ((value & SpecDouble) == SpecDouble)
+        myOut.print("Double");
+    else {
+        if (value & SpecDoubleReal)
+            myOut.print("Doublereal");
+        else
+            isTop = false;
+        
+        if (value & SpecDoubleNaN)
+            myOut.print("Doublenan");
+        else
+            isTop = false;
+    }
     
     if (value & SpecBoolean)
         myOut.print("Bool");
@@ -178,6 +199,8 @@ static const char* speculationToAbbreviatedString(SpeculatedType prediction)
         return "<Final>";
     if (isArraySpeculation(prediction))
         return "<Array>";
+    if (isStringIdentSpeculation(prediction))
+        return "<StringIdent>";
     if (isStringSpeculation(prediction))
         return "<String>";
     if (isFunctionSpeculation(prediction))
@@ -226,49 +249,56 @@ void dumpSpeculationAbbreviated(PrintStream& out, SpeculatedType value)
     out.print(speculationToAbbreviatedString(value));
 }
 
+SpeculatedType speculationFromTypedArrayType(TypedArrayType type)
+{
+    switch (type) {
+    case TypeInt8:
+        return SpecInt8Array;
+    case TypeInt16:
+        return SpecInt16Array;
+    case TypeInt32:
+        return SpecInt32Array;
+    case TypeUint8:
+        return SpecUint8Array;
+    case TypeUint8Clamped:
+        return SpecUint8ClampedArray;
+    case TypeUint16:
+        return SpecUint16Array;
+    case TypeUint32:
+        return SpecUint32Array;
+    case TypeFloat32:
+        return SpecFloat32Array;
+    case TypeFloat64:
+        return SpecFloat64Array;
+    case NotTypedArray:
+    case TypeDataView:
+        break;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+    return SpecNone;
+}
+
 SpeculatedType speculationFromClassInfo(const ClassInfo* classInfo)
 {
-    if (classInfo == &JSFinalObject::s_info)
+    if (classInfo == JSFinalObject::info())
         return SpecFinalObject;
     
-    if (classInfo == &JSArray::s_info)
+    if (classInfo == JSArray::info())
         return SpecArray;
     
-    if (classInfo == &Arguments::s_info)
+    if (classInfo == Arguments::info())
         return SpecArguments;
     
-    if (classInfo == &StringObject::s_info)
+    if (classInfo == StringObject::info())
         return SpecStringObject;
     
-    if (classInfo->isSubClassOf(&JSFunction::s_info))
+    if (classInfo->isSubClassOf(JSFunction::info()))
         return SpecFunction;
     
-    if (classInfo->typedArrayStorageType != TypedArrayNone) {
-        switch (classInfo->typedArrayStorageType) {
-        case TypedArrayInt8:
-            return SpecInt8Array;
-        case TypedArrayInt16:
-            return SpecInt16Array;
-        case TypedArrayInt32:
-            return SpecInt32Array;
-        case TypedArrayUint8:
-            return SpecUint8Array;
-        case TypedArrayUint8Clamped:
-            return SpecUint8ClampedArray;
-        case TypedArrayUint16:
-            return SpecUint16Array;
-        case TypedArrayUint32:
-            return SpecUint32Array;
-        case TypedArrayFloat32:
-            return SpecFloat32Array;
-        case TypedArrayFloat64:
-            return SpecFloat64Array;
-        default:
-            break;
-        }
-    }
+    if (isTypedView(classInfo->typedArrayStorageType))
+        return speculationFromTypedArrayType(classInfo->typedArrayStorageType);
     
-    if (classInfo->isSubClassOf(&JSObject::s_info))
+    if (classInfo->isSubClassOf(JSObject::info()))
         return SpecObjectOther;
     
     return SpecCellOther;
@@ -283,6 +313,13 @@ SpeculatedType speculationFromStructure(Structure* structure)
 
 SpeculatedType speculationFromCell(JSCell* cell)
 {
+    if (JSString* string = jsDynamicCast<JSString*>(cell)) {
+        if (const StringImpl* impl = string->tryGetValueImpl()) {
+            if (impl->isIdentifier())
+                return SpecStringIdent;
+        }
+        return SpecStringVar;
+    }
     return speculationFromStructure(cell->structure());
 }
 
@@ -304,6 +341,38 @@ SpeculatedType speculationFromValue(JSValue value)
         return SpecBoolean;
     ASSERT(value.isUndefinedOrNull());
     return SpecOther;
+}
+
+TypedArrayType typedArrayTypeFromSpeculation(SpeculatedType type)
+{
+    if (isInt8ArraySpeculation(type))
+        return TypeInt8;
+        
+    if (isInt16ArraySpeculation(type))
+        return TypeInt16;
+        
+    if (isInt32ArraySpeculation(type))
+        return TypeInt32;
+        
+    if (isUint8ArraySpeculation(type))
+        return TypeUint8;
+        
+    if (isUint8ClampedArraySpeculation(type))
+        return TypeUint8Clamped;
+        
+    if (isUint16ArraySpeculation(type))
+        return TypeUint16;
+        
+    if (isUint32ArraySpeculation(type))
+        return TypeUint32;
+        
+    if (isFloat32ArraySpeculation(type))
+        return TypeFloat32;
+        
+    if (isFloat64ArraySpeculation(type))
+        return TypeFloat64;
+    
+    return NotTypedArray;
 }
 
 } // namespace JSC

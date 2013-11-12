@@ -588,7 +588,7 @@ void TextIterator::handleTextBox()
                 nextTextBox = m_sortedTextBoxes[m_sortedTextBoxesPosition + 1];
         } else 
             nextTextBox = m_textBox->nextTextBox();
-        ASSERT(!nextTextBox || nextTextBox->renderer() == renderer);
+        ASSERT(!nextTextBox || &nextTextBox->renderer() == renderer);
 
         if (runStart < runEnd) {
             // Handle either a single newline character (which becomes a space),
@@ -918,7 +918,7 @@ bool TextIterator::shouldRepresentNodeOffsetZero()
     // Additionally, if the range we are iterating over contains huge sections of unrendered content, 
     // we would create VisiblePositions on every call to this function without this check.
     if (!m_node->renderer() || m_node->renderer()->style()->visibility() != VISIBLE
-        || (m_node->renderer()->isBlockFlow() && !toRenderBlock(m_node->renderer())->height() && !m_node->hasTagName(bodyTag)))
+        || (m_node->renderer()->isBlockFlowFlexBoxOrGrid() && !toRenderBlock(m_node->renderer())->height() && !m_node->hasTagName(bodyTag)))
         return false;
 
     // The startPos.isNotNull() check is needed because the start could be before the body,
@@ -1063,12 +1063,12 @@ PassRefPtr<Range> TextIterator::range() const
             m_positionEndOffset += index;
             m_positionOffsetBaseNode = 0;
         }
-        return Range::create(m_positionNode->document(), m_positionNode, m_positionStartOffset, m_positionNode, m_positionEndOffset);
+        return Range::create(&m_positionNode->document(), m_positionNode, m_positionStartOffset, m_positionNode, m_positionEndOffset);
     }
 
     // otherwise, return the end of the overall range we were given
     if (m_endContainer)
-        return Range::create(m_endContainer->document(), m_endContainer, m_endOffset, m_endContainer, m_endOffset);
+        return Range::create(&m_endContainer->document(), m_endContainer, m_endOffset, m_endContainer, m_endOffset);
         
     return 0;
 }
@@ -1363,9 +1363,9 @@ bool SimplifiedBackwardsTextIterator::advanceRespectingRange(Node* next)
 PassRefPtr<Range> SimplifiedBackwardsTextIterator::range() const
 {
     if (m_positionNode)
-        return Range::create(m_positionNode->document(), m_positionNode, m_positionStartOffset, m_positionNode, m_positionEndOffset);
+        return Range::create(&m_positionNode->document(), m_positionNode, m_positionStartOffset, m_positionNode, m_positionEndOffset);
     
-    return Range::create(m_startNode->document(), m_startNode, m_startOffset, m_startNode, m_startOffset);
+    return Range::create(&m_startNode->document(), m_startNode, m_startOffset, m_startNode, m_startOffset);
 }
 
 // --------
@@ -1464,7 +1464,7 @@ static PassRefPtr<Range> characterSubrange(CharacterIterator& it, int offset, in
         it.advance(length - 1);
     RefPtr<Range> end = it.range();
 
-    return Range::create(start->startContainer()->document(), 
+    return Range::create(&start->startContainer()->document(),
         start->startContainer(), start->startOffset(), 
         end->endContainer(), end->endOffset());
 }
@@ -2394,7 +2394,7 @@ PassRefPtr<Range> TextIterator::subrange(Range* entireRange, int characterOffset
 
 PassRefPtr<Range> TextIterator::rangeFromLocationAndLength(ContainerNode* scope, int rangeLocation, int rangeLength, bool forSelectionPreservation)
 {
-    RefPtr<Range> resultRange = scope->document()->createRange();
+    RefPtr<Range> resultRange = scope->document().createRange();
 
     int docTextPosition = 0;
     int rangeEnd = rangeLocation + rangeLength;
@@ -2427,7 +2427,7 @@ PassRefPtr<Range> TextIterator::rangeFromLocationAndLength(ContainerNode* scope,
             // FIXME: This is a workaround for the fact that the end of a run is often at the wrong
             // position for emitted '\n's.
             if (len == 1 && it.characterAt(0) == '\n') {
-                scope->document()->updateLayoutIgnorePendingStylesheets();
+                scope->document().updateLayoutIgnorePendingStylesheets();
                 it.advance();
                 if (!it.atEnd()) {
                     RefPtr<Range> range = it.range();
@@ -2501,7 +2501,7 @@ bool TextIterator::getLocationAndLengthFromRange(Node* scope, const Range* range
     if (range->endContainer() != scope && !range->endContainer()->isDescendantOf(scope))
         return false;
 
-    RefPtr<Range> testRange = Range::create(scope->document(), scope, 0, range->startContainer(), range->startOffset());
+    RefPtr<Range> testRange = Range::create(&scope->document(), scope, 0, range->startContainer(), range->startOffset());
     ASSERT(testRange->startContainer() == scope);
     location = TextIterator::rangeLength(testRange.get());
 
@@ -2535,8 +2535,8 @@ String plainText(const Range* r, TextIteratorBehavior defaultBehavior, bool isDi
 
     String result = builder.toString();
 
-    if (isDisplayString && r->ownerDocument())
-        r->ownerDocument()->displayStringModifiedByEncoding(result);
+    if (isDisplayString)
+        r->ownerDocument().displayStringModifiedByEncoding(result);
 
     return result;
 }
@@ -2557,7 +2557,7 @@ static size_t findPlainText(CharacterIterator& it, const String& target, FindOpt
 
     if (buffer.needsMoreContext()) {
         RefPtr<Range> startRange = it.range();
-        RefPtr<Range> beforeStartRange = startRange->ownerDocument()->createRange();
+        RefPtr<Range> beforeStartRange = startRange->ownerDocument().createRange();
         beforeStartRange->setEnd(startRange->startContainer(), startRange->startOffset(), IGNORE_EXCEPTION);
         for (SimplifiedBackwardsTextIterator backwardsIterator(beforeStartRange.get()); !backwardsIterator.atEnd(); backwardsIterator.advance()) {
             buffer.prependContext(backwardsIterator.characters(), backwardsIterator.length());
@@ -2594,7 +2594,7 @@ tryAgain:
 PassRefPtr<Range> findPlainText(const Range* range, const String& target, FindOptions options)
 {
     // CharacterIterator requires renderers to be up-to-date
-    range->ownerDocument()->updateLayout();
+    range->ownerDocument().updateLayout();
 
     // First, find the text.
     size_t matchStart;

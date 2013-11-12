@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2003, 2010 Apple Inc. ALl rights reserved.
+ * Copyright (C) 2003, 2010, 2013 Apple Inc. ALl rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -24,7 +24,7 @@
 #define HTMLStyleElement_h
 
 #include "HTMLElement.h"
-#include "StyleElement.h"
+#include "InlineStyleSheetOwner.h"
 
 namespace WebCore {
 
@@ -34,12 +34,10 @@ class StyleSheet;
 template<typename T> class EventSender;
 typedef EventSender<HTMLStyleElement> StyleEventSender;
 
-class HTMLStyleElement FINAL : public HTMLElement, private StyleElement {
+class HTMLStyleElement FINAL : public HTMLElement {
 public:
     static PassRefPtr<HTMLStyleElement> create(const QualifiedName&, Document*, bool createdByParser);
     virtual ~HTMLStyleElement();
-
-    void setType(const AtomicString&);
 
     bool scoped() const;
     void setScoped(bool);
@@ -53,7 +51,7 @@ public:
         return true;
     }
 
-    using StyleElement::sheet;
+    CSSStyleSheet* sheet() const { return m_styleSheetOwner.sheet(); }
 
     bool disabled() const;
     void setDisabled(bool);
@@ -68,24 +66,22 @@ private:
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
     virtual void finishParsingChildren();
 
-    virtual bool isLoading() const { return StyleElement::isLoading(); }
-    virtual bool sheetLoaded() { return StyleElement::sheetLoaded(document()); }
+    virtual bool isLoading() const { return m_styleSheetOwner.isLoading(); }
+    virtual bool sheetLoaded() { return m_styleSheetOwner.sheetLoaded(&document()); }
     virtual void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred);
-    virtual void startLoadingDynamicSheet() { StyleElement::startLoadingDynamicSheet(document()); }
+    virtual void startLoadingDynamicSheet() { m_styleSheetOwner.startLoadingDynamicSheet(&document()); }
 
     virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
-
-    virtual const AtomicString& media() const;
-    virtual const AtomicString& type() const;
 
     void scopedAttributeChanged(bool);
     void registerWithScopingNode(bool);
     void unregisterWithScopingNode(ContainerNode*);
 
+    InlineStyleSheetOwner m_styleSheetOwner;
     bool m_firedLoad;
     bool m_loadedSheet;
 
@@ -96,22 +92,6 @@ private:
     };
     ScopedStyleRegistrationState m_scopedStyleRegistrationState;
 };
-
-inline bool isHTMLStyleElement(Node* node)
-{
-    return node->hasTagName(HTMLNames::styleTag);
-}
-
-inline bool isHTMLStyleElement(Element* element)
-{
-    return element->hasTagName(HTMLNames::styleTag);
-}
-
-inline HTMLStyleElement* toHTMLStyleElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLStyleElement(node));
-    return static_cast<HTMLStyleElement*>(node);
-}
 
 } //namespace
 

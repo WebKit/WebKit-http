@@ -62,7 +62,7 @@ AccessibilityObject* AccessibilityImageMapLink::parentObject() const
     if (!m_mapElement.get() || !m_mapElement->renderer())
         return 0;
     
-    return m_mapElement->document()->axObjectCache()->getOrCreate(m_mapElement->renderer());
+    return m_mapElement->document().axObjectCache()->getOrCreate(m_mapElement->renderer());
 }
     
 AccessibilityRole AccessibilityImageMapLink::roleValue() const
@@ -147,7 +147,14 @@ RenderObject* AccessibilityImageMapLink::imageMapLinkRenderer() const
     
     return renderer;
 }
-    
+
+void AccessibilityImageMapLink::detachFromParent()
+{
+    AccessibilityMockObject::detachFromParent();
+    m_areaElement = 0;
+    m_mapElement = 0;
+}
+
 Path AccessibilityImageMapLink::elementPath() const
 {
     RenderObject* renderer = imageMapLinkRenderer();

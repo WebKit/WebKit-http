@@ -8,6 +8,7 @@
 // http://msdn.microsoft.com/workshop/author/css/reference/attributes.asp
 // 
 
+
 // high-priority property names have to be listed first, to simplify the check
 // for applying them first.
 color
@@ -135,6 +136,7 @@ min-width
 mix
 parameters
 #endif
+object-fit
 opacity
 // Honor -webkit-opacity as a synonym for opacity. This was the only syntax that worked in Safari 1.1,
 // and may be in use on some websites and widgets.
@@ -301,12 +303,12 @@ z-index
 -webkit-font-size-delta
 -webkit-grid-auto-columns
 -webkit-grid-auto-rows
+-webkit-grid-column-end
+-webkit-grid-column-start
 -webkit-grid-definition-columns
 -webkit-grid-definition-rows
--webkit-grid-start
--webkit-grid-end
--webkit-grid-before
--webkit-grid-after
+-webkit-grid-row-end
+-webkit-grid-row-start
 -webkit-grid-column
 -webkit-grid-row
 -webkit-grid-auto-flow
@@ -358,6 +360,7 @@ z-index
 -webkit-mask-repeat-x
 -webkit-mask-repeat-y
 -webkit-mask-size
+-webkit-mask-source-type
 -webkit-max-logical-width
 -webkit-max-logical-height
 -webkit-min-logical-width
@@ -378,6 +381,7 @@ z-index
 -webkit-text-combine
 -epub-text-combine = -webkit-text-combine
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
+-webkit-text-decoration
 -webkit-text-decoration-line
 -webkit-text-decoration-style
 -webkit-text-decoration-color

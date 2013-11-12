@@ -26,10 +26,12 @@
 #include "JSEvent.h"
 #include "JSEventTarget.h"
 #include "JSMainThreadExecState.h"
+#include "JSMainThreadExecStateInstrumentation.h"
 #include "ScriptController.h"
 #include "WorkerGlobalScope.h"
 #include <runtime/ExceptionHelpers.h>
 #include <runtime/JSLock.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCountedLeakCounter.h>
 
 using namespace JSC;
@@ -94,8 +96,8 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
         if (!window->impl()->isCurrentlyDisplayedInFrame())
             return;
         // FIXME: Is this check needed for other contexts?
-        ScriptController* script = window->impl()->frame()->script();
-        if (!script->canExecuteScripts(AboutToExecuteScript) || script->isPaused())
+        ScriptController& script = window->impl()->frame()->script();
+        if (!script.canExecuteScripts(AboutToExecuteScript) || script.isPaused())
             return;
     }
 
@@ -111,7 +113,7 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
     }
 
     if (callType != CallTypeNone) {
-        RefPtr<JSEventListener> protect(this);
+        Ref<JSEventListener> protect(*this);
 
         MarkedArgumentBuffer args;
         args.append(toJS(exec, globalObject, event));

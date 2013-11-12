@@ -302,6 +302,16 @@ static NSRunningApplication *replacedNSWorkspace_launchApplicationAtURL_options_
     return NSWorkspace_launchApplicationAtURL_options_configuration_error(self, _cmd, url, options, configuration, error);
 }
 
+static BOOL (*NSWorkspace_openFile)(NSWorkspace *, SEL, NSString *);
+
+static BOOL replacedNSWorkspace_openFile(NSWorkspace *self, SEL _cmd, NSString *fullPath)
+{
+    if (PluginProcess::shared().openFile(fullPath))
+        return true;
+
+    return NSWorkspace_openFile(self, _cmd, fullPath);
+}
+
 static void initializeCocoaOverrides()
 {
     // Override -[NSConcreteTask launch:]
@@ -311,6 +321,10 @@ static void initializeCocoaOverrides()
     // Override -[NSWorkspace launchApplicationAtURL:options:configuration:error:]
     Method launchApplicationAtURLOptionsConfigurationErrorMethod = class_getInstanceMethod(objc_getClass("NSWorkspace"), @selector(launchApplicationAtURL:options:configuration:error:));
     NSWorkspace_launchApplicationAtURL_options_configuration_error = reinterpret_cast<NSRunningApplication *(*)(NSWorkspace *, SEL, NSURL *, NSWorkspaceLaunchOptions, NSDictionary *, NSError **)>(method_setImplementation(launchApplicationAtURLOptionsConfigurationErrorMethod, reinterpret_cast<IMP>(replacedNSWorkspace_launchApplicationAtURL_options_configuration_error)));
+
+    // Override -[NSWorkspace openFile:]
+    Method openFileMethod = class_getInstanceMethod(objc_getClass("NSWorkspace"), @selector(openFile:));
+    NSWorkspace_openFile = reinterpret_cast<BOOL (*)(NSWorkspace *, SEL, NSString *)>(method_setImplementation(openFileMethod, reinterpret_cast<IMP>(replacedNSWorkspace_openFile)));
 
     // Override -[NSApplication runModalForWindow:]
     Method runModalForWindowMethod = class_getInstanceMethod(objc_getClass("NSApplication"), @selector(runModalForWindow:));
@@ -371,6 +385,15 @@ bool PluginProcess::openURL(const String& urlString, int32_t& status, String& la
     return result;
 }
 
+bool PluginProcess::openFile(const String& fullPath)
+{
+    bool result;
+    if (!parentProcessConnection()->sendSync(Messages::PluginProcessProxy::OpenFile(fullPath), Messages::PluginProcessProxy::OpenFile::Reply(result), 0))
+        return false;
+
+    return result;
+}
+
 static void muteAudio(void)
 {
     AudioObjectPropertyAddress propertyAddress = { kAudioHardwarePropertyProcessIsAudible, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
@@ -415,6 +438,10 @@ void PluginProcess::platformInitializeProcess(const ChildProcessInitializationPa
         return;
 
     m_pluginBundleIdentifier = CFBundleGetIdentifier(pluginBundle.get());
+
+    // FIXME: Workaround for Java not liking its plugin process to be supressed - <rdar://problem/14267843>
+    if (m_pluginBundleIdentifier == "com.oracle.java.JavaAppletPlugin")
+        incrementActiveTaskCount();
 }
 
 void PluginProcess::initializeProcessName(const ChildProcessInitializationParameters& parameters)

@@ -24,9 +24,10 @@
 #include "config.h"
 #include "RenderListItem.h"
 
+#include "ElementTraversal.h"
 #include "HTMLNames.h"
 #include "HTMLOListElement.h"
-#include "NodeTraversal.h"
+#include "PseudoElement.h"
 #include "RenderListMarker.h"
 #include "RenderView.h"
 #include "StyleInheritedData.h"
@@ -41,7 +42,7 @@ namespace WebCore {
 using namespace HTMLNames;
 
 RenderListItem::RenderListItem(Element* element)
-    : RenderBlock(element)
+    : RenderBlockFlow(element)
     , m_marker(0)
     , m_hasExplicitValue(false)
     , m_isValueUpToDate(false)
@@ -75,7 +76,7 @@ void RenderListItem::willBeDestroyed()
         m_marker->destroy();
         m_marker = 0;
     }
-    RenderBlock::willBeDestroyed();
+    RenderBlockFlow::willBeDestroyed();
 }
 
 void RenderListItem::insertedIntoTree()
@@ -87,7 +88,7 @@ void RenderListItem::insertedIntoTree()
 
 void RenderListItem::willBeRemovedFromTree()
 {
-    RenderBlock::willBeRemovedFromTree();
+    RenderBlockFlow::willBeRemovedFromTree();
 
     updateListMarkerNumbers();
 }
@@ -102,8 +103,9 @@ static Node* enclosingList(const RenderListItem* listItem)
 {
     Node* listItemNode = listItem->node();
     Node* firstNode = 0;
+    Node* parent = listItemNode->isPseudoElement() ? toPseudoElement(listItemNode)->hostElement() : listItemNode->parentNode();
     // We use parentNode because the enclosing list could be a ShadowRoot that's not Element.
-    for (Node* parent = listItemNode->parentNode(); parent; parent = parent->parentNode()) {
+    for (; parent; parent = parent->parentNode()) {
         if (isList(parent))
             return parent;
         if (!firstNode)
@@ -223,7 +225,7 @@ static RenderObject* getParentOfFirstLineBox(RenderBlock* curr, RenderObject* ma
     if (!firstChild)
         return 0;
 
-    bool inQuirksMode = curr->document()->inQuirksMode();
+    bool inQuirksMode = curr->document().inQuirksMode();
     for (RenderObject* currChild = firstChild; currChild; currChild = currChild->nextSibling()) {
         if (currChild == marker)
             continue;
@@ -266,38 +268,36 @@ static RenderObject* firstNonMarkerChild(RenderObject* parent)
     return result;
 }
 
-void RenderListItem::updateMarkerLocation()
+void RenderListItem::insertOrMoveMarkerRendererIfNeeded()
 {
     // Sanity check the location of our marker.
-    if (m_marker) {
-        RenderObject* markerPar = m_marker->parent();
-        RenderObject* lineBoxParent = getParentOfFirstLineBox(this, m_marker);
-        if (!lineBoxParent) {
-            // If the marker is currently contained inside an anonymous box,
-            // then we are the only item in that anonymous box (since no line box
-            // parent was found).  It's ok to just leave the marker where it is
-            // in this case.
-            if (markerPar && markerPar->isAnonymousBlock())
-                lineBoxParent = markerPar;
-            else
-                lineBoxParent = this;
-        }
+    if (!m_marker)
+        return;
 
-        if (markerPar != lineBoxParent || m_marker->preferredLogicalWidthsDirty()) {
-            // Removing and adding the marker can trigger repainting in
-            // containers other than ourselves, so we need to disable LayoutState.
-            LayoutStateDisabler layoutStateDisabler(view());
-            updateFirstLetter();
-            m_marker->remove();
-            if (!lineBoxParent)
-                lineBoxParent = this;
-            lineBoxParent->addChild(m_marker, firstNonMarkerChild(lineBoxParent));
-            m_marker->updateMarginsAndContent();
-            // If markerPar is an anonymous block that has lost all its children, destroy it.
-            if (markerPar && markerPar->isAnonymousBlock() && !markerPar->firstChild() && !toRenderBlock(markerPar)->continuation())
-                markerPar->destroy();
-        }
+    RenderObject* currentParent = m_marker->parent();
+    RenderObject* newParent = getParentOfFirstLineBox(this, m_marker);
+    if (!newParent) {
+        // If the marker is currently contained inside an anonymous box,
+        // then we are the only item in that anonymous box (since no line box
+        // parent was found). It's ok to just leave the marker where it is
+        // in this case.
+        if (currentParent && currentParent->isAnonymousBlock())
+            return;
+        newParent = this;
     }
+
+    if (newParent != currentParent) {
+        // Removing and adding the marker can trigger repainting in
+        // containers other than ourselves, so we need to disable LayoutState.
+        LayoutStateDisabler layoutStateDisabler(&view());
+        m_marker->remove();
+        newParent->addChild(m_marker, firstNonMarkerChild(newParent));
+        m_marker->updateMarginsAndContent();
+        // If current parent is an anonymous block that has lost all its children, destroy it.
+        if (currentParent && currentParent->isAnonymousBlock() && !currentParent->firstChild() && !toRenderBlock(currentParent)->continuation())
+            currentParent->destroy();
+    }
+
 }
 
 void RenderListItem::layout()
@@ -305,14 +305,27 @@ void RenderListItem::layout()
     StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout()); 
 
-    updateMarkerLocation();    
-    RenderBlock::layout();
+    insertOrMoveMarkerRendererIfNeeded();
+    RenderBlockFlow::layout();
 }
 
 void RenderListItem::addOverflowFromChildren()
 {
-    RenderBlock::addOverflowFromChildren();
+    RenderBlockFlow::addOverflowFromChildren();
     positionListMarker();
+}
+
+void RenderListItem::computePreferredLogicalWidths()
+{
+#ifndef NDEBUG
+    // FIXME: We shouldn't be modifying the tree in computePreferredLogicalWidths.
+    // Instead, we should insert the marker soon after the tree construction.
+    // This is similar case to RenderCounter::computePreferredLogicalWidths()
+    // See https://bugs.webkit.org/show_bug.cgi?id=104829
+    SetLayoutNeededForbiddenScope layoutForbiddenScope(this, false);
+#endif
+    insertOrMoveMarkerRendererIfNeeded();
+    RenderBlockFlow::computePreferredLogicalWidths();
 }
 
 void RenderListItem::positionListMarker()
@@ -415,7 +428,7 @@ void RenderListItem::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     if (!logicalHeight() && hasOverflowClip())
         return;
 
-    RenderBlock::paint(paintInfo, paintOffset);
+    RenderBlockFlow::paint(paintInfo, paintOffset);
 }
 
 const String& RenderListItem::markerText() const

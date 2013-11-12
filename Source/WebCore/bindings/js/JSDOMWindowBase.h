@@ -51,11 +51,11 @@ namespace WebCore {
         // Called just before removing this window from the JSDOMWindowShell.
         void willRemoveFromWindowShell();
 
-        static const JSC::ClassInfo s_info;
+        DECLARE_INFO;
 
         static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSValue prototype)
         {
-            return JSC::Structure::create(vm, 0, prototype, JSC::TypeInfo(JSC::GlobalObjectType, StructureFlags), &s_info);
+            return JSC::Structure::create(vm, 0, prototype, JSC::TypeInfo(JSC::GlobalObjectType, StructureFlags), info());
         }
 
         static const JSC::GlobalObjectMethodTable s_globalObjectMethodTable;
@@ -64,6 +64,9 @@ namespace WebCore {
         static bool supportsRichSourceInfo(const JSC::JSGlobalObject*);
         static bool shouldInterruptScript(const JSC::JSGlobalObject*);
         static bool javaScriptExperimentsEnabled(const JSC::JSGlobalObject*);
+
+        static void queueTaskToEventLoop(const JSC::JSGlobalObject*, JSC::GlobalObjectMethodTable::QueueTaskToEventLoopCallbackFunctionPtr, PassRefPtr<JSC::TaskContext>);
+        
         void printErrorMessage(const String&) const;
 
         JSDOMWindowShell* shell() const;

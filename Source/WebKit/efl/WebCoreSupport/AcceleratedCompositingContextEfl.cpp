@@ -71,7 +71,7 @@ void AcceleratedCompositingContext::syncLayersNow()
     if (m_rootGraphicsLayer)
         m_rootGraphicsLayer->flushCompositingStateForThisLayerOnly();
 
-    EWKPrivate::corePage(m_view)->mainFrame()->view()->flushCompositingStateIncludingSubframes();
+    EWKPrivate::corePage(m_view)->mainFrame().view()->flushCompositingStateIncludingSubframes();
 }
 
 void AcceleratedCompositingContext::renderLayers()
@@ -101,7 +101,7 @@ void AcceleratedCompositingContext::attachRootGraphicsLayer(GraphicsLayer* rootL
         return;
     }
 
-    m_rootGraphicsLayer = WebCore::GraphicsLayer::create(0);
+    m_rootGraphicsLayer = WebCore::GraphicsLayer::create(0, 0);
     m_rootTextureMapperLayer = toTextureMapperLayer(m_rootGraphicsLayer.get());
     m_rootGraphicsLayer->addChild(rootLayer);
     m_rootGraphicsLayer->setDrawsContent(false);

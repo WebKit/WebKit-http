@@ -40,14 +40,13 @@ namespace WebCore {
 
     JSC::JSValue runtimeObjectPropertyGetter(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
     bool runtimeObjectCustomGetOwnPropertySlot(JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&, JSHTMLElement*);
-    bool runtimeObjectCustomGetOwnPropertyDescriptor(JSC::ExecState*, JSC::PropertyName, JSC::PropertyDescriptor&, JSHTMLElement*);
     bool runtimeObjectCustomPut(JSC::ExecState*, JSC::PropertyName, JSC::JSValue, JSHTMLElement*, JSC::PutPropertySlot&);
     JSC::CallType runtimeObjectGetCallData(JSHTMLElement*, JSC::CallData&);
 
     template <class Type, class Base> bool pluginElementCustomGetOwnPropertySlot(JSC::ExecState* exec, JSC::PropertyName propertyName, JSC::PropertySlot& slot, Type* element)
     {
         if (!element->globalObject()->world()->isNormal()) {
-            if (JSC::getStaticValueSlot<Type, Base>(exec, element->s_info.staticPropHashTable, element, propertyName, slot))
+            if (JSC::getStaticValueSlot<Type, Base>(exec, *Type::info()->staticPropHashTable, element, propertyName, slot))
                 return true;
 
             JSC::JSValue proto = element->prototype();
@@ -56,20 +55,6 @@ namespace WebCore {
         }
         
         return runtimeObjectCustomGetOwnPropertySlot(exec, propertyName, slot, element);
-    }
-
-    template <class Type, class Base> bool pluginElementCustomGetOwnPropertyDescriptor(JSC::ExecState* exec, JSC::PropertyName propertyName, JSC::PropertyDescriptor& descriptor, Type* element)
-    {
-        if (!element->globalObject()->world()->isNormal()) {
-            if (JSC::getStaticValueDescriptor<Type, Base>(exec, element->s_info.staticPropHashTable, element, propertyName, descriptor))
-                return true;
-
-            JSC::JSValue proto = element->prototype();
-            if (proto.isObject() && JSC::jsCast<JSC::JSObject*>(asObject(proto))->hasProperty(exec, propertyName))
-                return false;
-        }
-
-        return runtimeObjectCustomGetOwnPropertyDescriptor(exec, propertyName, descriptor, element);
     }
 
 } // namespace WebCore

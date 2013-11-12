@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #include "Watchpoint.h"
 
 #include "LinkBuffer.h"
+#include <wtf/CompilationThread.h>
 #include <wtf/PassRefPtr.h>
 
 namespace JSC {
@@ -53,6 +54,7 @@ WatchpointSet::~WatchpointSet()
 
 void WatchpointSet::add(Watchpoint* watchpoint)
 {
+    ASSERT(!isCompilationThread());
     if (!watchpoint)
         return;
     m_set.push(watchpoint);
@@ -66,6 +68,7 @@ void WatchpointSet::notifyWriteSlow()
     fireAllWatchpoints();
     m_isWatched = false;
     m_isInvalidated = true;
+    WTF::storeStoreFence();
 }
 
 void WatchpointSet::fireAllWatchpoints()
@@ -82,11 +85,13 @@ void InlineWatchpointSet::add(Watchpoint* watchpoint)
 WatchpointSet* InlineWatchpointSet::inflateSlow()
 {
     ASSERT(isThin());
+    ASSERT(!isCompilationThread());
     WatchpointSet* fat = adoptRef(new WatchpointSet(InitializedBlind)).leakRef();
     if (m_data & IsInvalidatedFlag)
         fat->m_isInvalidated = true;
     if (m_data & IsWatchedFlag)
         fat->m_isWatched = true;
+    WTF::storeStoreFence();
     m_data = bitwise_cast<uintptr_t>(fat);
     return fat;
 }

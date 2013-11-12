@@ -30,11 +30,12 @@
 #ifndef RenderRegion_h
 #define RenderRegion_h
 
-#include "RenderBlock.h"
+#include "RenderBlockFlow.h"
 #include "StyleInheritedData.h"
 
 namespace WebCore {
 
+class Element;
 struct LayerFragment;
 typedef Vector<LayerFragment, 1> LayerFragments;
 class RenderBox;
@@ -42,11 +43,11 @@ class RenderBoxRegionInfo;
 class RenderFlowThread;
 class RenderNamedFlowThread;
 
-class RenderRegion : public RenderBlock {
+class RenderRegion : public RenderBlockFlow {
 public:
     explicit RenderRegion(Element*, RenderFlowThread*);
 
-    virtual bool isRenderRegion() const { return true; }
+    virtual bool isRenderRegion() const OVERRIDE FINAL { return true; }
 
     virtual bool hitTestContents(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
@@ -138,18 +139,43 @@ public:
 
     virtual void collectLayerFragments(LayerFragments&, const LayoutRect&, const LayoutRect&) { }
 
+#if USE(ACCELERATED_COMPOSITING)
+    void setRequiresLayerForCompositing(bool);
+    virtual bool requiresLayer() const { return m_requiresLayerForCompositing || RenderBlock::requiresLayer(); }
+#endif
+
+    void addLayoutOverflowForBox(const RenderBox*, const LayoutRect&);
+    void addVisualOverflowForBox(const RenderBox*, const LayoutRect&);
+    LayoutRect layoutOverflowRectForBox(const RenderBox*);
+    LayoutRect visualOverflowRectForBox(const RenderBox*);
+    LayoutRect layoutOverflowRectForBoxForPropagation(const RenderBox*);
+    LayoutRect visualOverflowRectForBoxForPropagation(const RenderBox*);
+
+    LayoutRect rectFlowPortionForBox(const RenderBox*, const LayoutRect&) const;
+
+    Element* generatingElement() const { return toElement(RenderObject::generatingNode()); }
+
 protected:
+    RenderOverflow* ensureOverflowForBox(const RenderBox*);
+
     void setRegionObjectsRegionStyle();
     void restoreRegionObjectsOriginalStyle();
 
     virtual void computePreferredLogicalWidths() OVERRIDE;
     virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const OVERRIDE;
 
-    LayoutRect overflowRectForFlowThreadPortion(const LayoutRect& flowThreadPortionRect, bool isFirstPortion, bool isLastPortion) const;
+    enum OverflowType {
+        LayoutOverflow = 0,
+        VisualOverflow
+    };
+    LayoutRect overflowRectForFlowThreadPortion(const LayoutRect& flowThreadPortionRect, bool isFirstPortion, bool isLastPortion, OverflowType) const;
+
     void repaintFlowThreadContentRectangle(const LayoutRect& repaintRect, bool immediate, const LayoutRect& flowThreadPortionRect,
         const LayoutRect& flowThreadPortionOverflowRect, const LayoutPoint& regionLocation) const;
 
     virtual bool shouldHaveAutoLogicalHeight() const;
+
+    void computeOverflowFromFlowThread();
 
 private:
     virtual const char* renderName() const { return "RenderRegion"; }
@@ -208,6 +234,9 @@ private:
     bool m_isValid : 1;
     bool m_hasCustomRegionStyle : 1;
     bool m_hasAutoLogicalHeight : 1;
+#if USE(ACCELERATED_COMPOSITING)
+    bool m_requiresLayerForCompositing : 1;
+#endif
     bool m_hasComputedAutoHeight : 1;
 
     LayoutUnit m_computedAutoHeight;

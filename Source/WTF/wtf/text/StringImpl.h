@@ -25,10 +25,13 @@
 
 #include <limits.h>
 #include <wtf/ASCIICType.h>
+#include <wtf/CompilationThread.h>
 #include <wtf/Forward.h>
+#include <wtf/MathExtras.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringHasher.h>
 #include <wtf/Vector.h>
+#include <wtf/text/ConversionMode.h>
 #include <wtf/unicode/Unicode.h>
 
 #if PLATFORM(QT)
@@ -229,10 +232,10 @@ private:
     }
 
     // Create a StringImpl adopting ownership of the provided buffer (BufferOwned)
-    StringImpl(const LChar* characters, unsigned length)
+    StringImpl(MallocPtr<LChar> characters, unsigned length)
         : m_refCount(s_refCountIncrement)
         , m_length(length)
-        , m_data8(characters)
+        , m_data8(characters.leakPtr())
         , m_buffer(0)
         , m_hashAndFlags(s_hashFlag8BitBuffer | BufferOwned)
     {
@@ -270,10 +273,10 @@ private:
     }
 
     // Create a StringImpl adopting ownership of the provided buffer (BufferOwned)
-    StringImpl(const UChar* characters, unsigned length)
+    StringImpl(MallocPtr<UChar> characters, unsigned length)
         : m_refCount(s_refCountIncrement)
         , m_length(length)
-        , m_data16(characters)
+        , m_data16(characters.leakPtr())
         , m_buffer(0)
         , m_hashAndFlags(BufferOwned)
     {
@@ -459,6 +462,7 @@ public:
 
     static unsigned flagsOffset() { return OBJECT_OFFSETOF(StringImpl, m_hashAndFlags); }
     static unsigned flagIs8Bit() { return s_hashFlag8BitBuffer; }
+    static unsigned flagIsIdentifier() { return s_hashFlagIsIdentifier; }
     static unsigned dataOffset() { return OBJECT_OFFSETOF(StringImpl, m_data8); }
 
     template<typename CharType, size_t inlineCapacity, typename OverflowHandler>
@@ -507,7 +511,24 @@ public:
             return 0;
 
         m_hashAndFlags |= s_hashFlagDidReportCost;
-        return m_length;
+        size_t result = m_length;
+        if (!is8Bit())
+            result <<= 1;
+        return result;
+    }
+    
+    size_t costDuringGC()
+    {
+        if (isStatic())
+            return 0;
+        
+        if (bufferOwnership() == BufferSubstring)
+            return divideRoundedUp(m_substringBuffer->costDuringGC(), refCount());
+        
+        size_t result = m_length;
+        if (!is8Bit())
+            result <<= 1;
+        return divideRoundedUp(result, refCount());
     }
 
     WTF_EXPORT_STRING_API size_t sizeInBytes() const;
@@ -546,8 +567,14 @@ public:
 #if PLATFORM(QT)
     QStringData* qStringData() { return bufferOwnership() == BufferAdoptedQString ? m_qStringData : 0; }
 #endif
+    
+    static WTF_EXPORT_STRING_API CString utf8ForCharacters(const UChar* characters, unsigned length, ConversionMode = LenientConversion);
+    WTF_EXPORT_STRING_API CString utf8ForRange(unsigned offset, unsigned length, ConversionMode = LenientConversion) const;
+    WTF_EXPORT_STRING_API CString utf8(ConversionMode = LenientConversion) const;
 
 private:
+    static WTF_EXPORT_STRING_API bool utf8Impl(const UChar* characters, unsigned length, char*& buffer, size_t bufferSize, ConversionMode);
+    
     // The high bits of 'hash' are always empty, but we prefer to store our flags
     // in the low bits because it makes them slightly more efficient to access.
     // So, we shift left and right when setting and getting our hash code.
@@ -588,19 +615,34 @@ public:
             return existingHash();
         return hashSlowCase();
     }
+    
+    bool isStatic() const { return m_refCount & s_refCountFlagIsStaticString; }
 
+    inline size_t refCount() const
+    {
+        return m_refCount / s_refCountIncrement;
+    }
+    
     inline bool hasOneRef() const
     {
         return m_refCount == s_refCountIncrement;
     }
+    
+    // This method is useful for assertions.
+    inline bool hasAtLeastOneRef() const
+    {
+        return !!m_refCount;
+    }
 
     inline void ref()
     {
+        ASSERT(!isCompilationThread());
         m_refCount += s_refCountIncrement;
     }
 
     inline void deref()
     {
+        ASSERT(!isCompilationThread());        
         unsigned tempRefCount = m_refCount - s_refCountIncrement;
         if (!tempRefCount) {
             StringImpl::destroy(this);
@@ -652,13 +694,14 @@ public:
 
     WTF_EXPORT_STRING_API PassRefPtr<StringImpl> substring(unsigned pos, unsigned len = UINT_MAX);
 
-    UChar operator[](unsigned i) const
+    UChar at(unsigned i) const
     {
         ASSERT_WITH_SECURITY_IMPLICATION(i < m_length);
         if (is8Bit())
             return m_data8[i];
         return m_data16[i];
     }
+    UChar operator[](unsigned i) const { return at(i); }
     WTF_EXPORT_STRING_API UChar32 characterStartingAt(unsigned);
 
     WTF_EXPORT_STRING_API bool containsOnlyWhitespace();
@@ -764,11 +807,11 @@ private:
     static const unsigned s_copyCharsInlineCutOff = 20;
 
     BufferOwnership bufferOwnership() const { return static_cast<BufferOwnership>(m_hashAndFlags & s_hashMaskBufferOwnership); }
-    bool isStatic() const { return m_refCount & s_refCountFlagIsStaticString; }
     template <class UCharPredicate> PassRefPtr<StringImpl> stripMatchedCharacters(UCharPredicate);
     template <typename CharType, class UCharPredicate> PassRefPtr<StringImpl> simplifyMatchedCharactersToSpace(UCharPredicate);
     template <typename CharType> static PassRefPtr<StringImpl> constructInternal(StringImpl*, unsigned);
     template <typename CharType> static PassRefPtr<StringImpl> createUninitializedInternal(unsigned, CharType*&);
+    template <typename CharType> static PassRefPtr<StringImpl> createUninitializedInternalNonEmpty(unsigned, CharType*&);
     template <typename CharType> static PassRefPtr<StringImpl> reallocateInternal(PassRefPtr<StringImpl>, unsigned, CharType*&);
     template <typename CharType> static PassRefPtr<StringImpl> createInternal(const CharType*, unsigned);
     WTF_EXPORT_STRING_API NEVER_INLINE const UChar* getData16SlowCase() const;
@@ -1350,7 +1393,7 @@ template<> struct DefaultHash<RefPtr<StringImpl> > {
     typedef StringHash Hash;
 };
 
-}
+} // namespace WTF
 
 using WTF::StringImpl;
 using WTF::equal;

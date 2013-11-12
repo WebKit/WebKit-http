@@ -34,6 +34,6 @@
     ConstructorRaisesException
 ] interface RTCSessionDescription {
     [SetterRaisesException] attribute DOMString type;
-    [SetterRaisesException] attribute DOMString sdp;
+    attribute DOMString sdp;
 };
 

@@ -98,7 +98,7 @@ void RenderInline::willBeDestroyed()
             // FIXME: The FrameSelection should be responsible for this when it
             // is notified of DOM mutations.
             if (isSelectionBorder())
-                view()->clearSelection();
+                view().clearSelection();
 
             // If line boxes are contained inside a root, that means we're an inline.
             // In that case, we need to remove all the line boxes so that the parent
@@ -211,7 +211,7 @@ void RenderInline::updateAlwaysCreateLineBoxes(bool fullLayout)
 
     RenderStyle* parentStyle = parent()->style();
     RenderInline* parentRenderInline = parent()->isRenderInline() ? toRenderInline(parent()) : 0;
-    bool checkFonts = document()->inNoQuirksMode();
+    bool checkFonts = document().inNoQuirksMode();
     RenderFlowThread* flowThread = flowThreadContainingBlock();
     bool alwaysCreateLineBoxes = (parentRenderInline && parentRenderInline->alwaysCreateLineBoxes())
         || (parentRenderInline && parentStyle->verticalAlign() != BASELINE)
@@ -221,7 +221,7 @@ void RenderInline::updateAlwaysCreateLineBoxes(bool fullLayout)
         || parentStyle->lineHeight() != style()->lineHeight()))
         || (flowThread && flowThread->hasRegionsWithStyling());
 
-    if (!alwaysCreateLineBoxes && checkFonts && document()->styleSheetCollection()->usesFirstLineRules()) {
+    if (!alwaysCreateLineBoxes && checkFonts && document().styleSheetCollection()->usesFirstLineRules()) {
         // Have to check the first line style as well.
         parentStyle = parent()->style(true);
         RenderStyle* childStyle = style(true);
@@ -318,7 +318,7 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
         if (RenderObject* positionedAncestor = inFlowPositionedInlineAncestor(this))
             newStyle->setPosition(positionedAncestor->style()->position());
 
-        RenderBlock* newBox = RenderBlock::createAnonymous(document());
+        RenderBlock* newBox = RenderBlock::createAnonymous(&document());
         newBox->setStyle(newStyle.release());
         RenderBoxModelObject* oldContinuation = continuation();
         setContinuation(newBox);
@@ -354,9 +354,9 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
     // that renderer is wrapped in a RenderFullScreen, so |this| is not its
     // parent. Since the splitting logic expects |this| to be the parent, set
     // |beforeChild| to be the RenderFullScreen.
-    const Element* fullScreenElement = document()->webkitCurrentFullScreenElement();
+    const Element* fullScreenElement = document().webkitCurrentFullScreenElement();
     if (fullScreenElement && beforeChild && beforeChild->node() == fullScreenElement)
-        beforeChild = document()->fullScreenRenderer();
+        beforeChild = document().fullScreenRenderer();
 #endif
 
     // Now take all of the children from beforeChild to the end and remove
@@ -565,7 +565,7 @@ void RenderInline::generateCulledLineBoxRects(GeneratorContext& yield, const Ren
             RenderBox* currBox = toRenderBox(curr);
             if (currBox->inlineBoxWrapper()) {
                 RootInlineBox* rootBox = currBox->inlineBoxWrapper()->root();
-                int logicalTop = rootBox->logicalTop() + (rootBox->renderer()->style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent() - container->style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent());
+                int logicalTop = rootBox->logicalTop() + (rootBox->renderer().style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent() - container->style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent());
                 int logicalHeight = container->style(rootBox->isFirstLineStyle())->font().fontMetrics().height();
                 if (isHorizontal)
                     yield(FloatRect(currBox->inlineBoxWrapper()->x() - currBox->marginLeft(), logicalTop, currBox->width() + currBox->marginWidth(), logicalHeight));
@@ -580,7 +580,7 @@ void RenderInline::generateCulledLineBoxRects(GeneratorContext& yield, const Ren
             else {
                 for (InlineFlowBox* childLine = currInline->firstLineBox(); childLine; childLine = childLine->nextLineBox()) {
                     RootInlineBox* rootBox = childLine->root();
-                    int logicalTop = rootBox->logicalTop() + (rootBox->renderer()->style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent() - container->style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent());
+                    int logicalTop = rootBox->logicalTop() + (rootBox->renderer().style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent() - container->style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent());
                     int logicalHeight = container->style(rootBox->isFirstLineStyle())->font().fontMetrics().height();
                     if (isHorizontal)
                         yield(FloatRect(childLine->x() - childLine->marginLogicalLeft(),
@@ -598,7 +598,7 @@ void RenderInline::generateCulledLineBoxRects(GeneratorContext& yield, const Ren
             RenderText* currText = toRenderText(curr);
             for (InlineTextBox* childText = currText->firstTextBox(); childText; childText = childText->nextTextBox()) {
                 RootInlineBox* rootBox = childText->root();
-                int logicalTop = rootBox->logicalTop() + (rootBox->renderer()->style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent() - container->style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent());
+                int logicalTop = rootBox->logicalTop() + (rootBox->renderer().style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent() - container->style(rootBox->isFirstLineStyle())->font().fontMetrics().ascent());
                 int logicalHeight = container->style(rootBox->isFirstLineStyle())->font().fontMetrics().height();
                 if (isHorizontal)
                     yield(FloatRect(childText->x(), logicalTop, childText->logicalWidth(), logicalHeight));
@@ -701,7 +701,7 @@ static LayoutUnit computeMargin(const RenderInline* renderer, const Length& marg
     if (margin.isPercent())
         return minimumValueForLength(margin, max<LayoutUnit>(0, renderer->containingBlock()->availableLogicalWidth()));
     if (margin.isViewportPercentage())
-        return valueForLength(margin, 0, renderer->view());
+        return valueForLength(margin, 0, &renderer->view());
     return 0;
 }
 
@@ -1006,7 +1006,7 @@ LayoutRect RenderInline::linesVisualOverflowBoundingBox() const
 LayoutRect RenderInline::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
     // Only run-ins are allowed in here during layout.
-    ASSERT(!view() || !view()->layoutStateEnabled() || isRunIn());
+    ASSERT(!view().layoutStateEnabled() || isRunIn());
 
     if (!firstLineBoxIncludingCulling() && !continuation())
         return LayoutRect();
@@ -1066,17 +1066,15 @@ LayoutRect RenderInline::rectWithOutlineForRepaint(const RenderLayerModelObject*
 
 void RenderInline::computeRectForRepaint(const RenderLayerModelObject* repaintContainer, LayoutRect& rect, bool fixed) const
 {
-    if (RenderView* v = view()) {
-        // LayoutState is only valid for root-relative repainting
-        if (v->layoutStateEnabled() && !repaintContainer) {
-            LayoutState* layoutState = v->layoutState();
-            if (style()->hasInFlowPosition() && layer())
-                rect.move(layer()->offsetForInFlowPosition());
-            rect.move(layoutState->m_paintOffset);
-            if (layoutState->m_clipped)
-                rect.intersect(layoutState->m_clipRect);
-            return;
-        }
+    // LayoutState is only valid for root-relative repainting
+    if (view().layoutStateEnabled() && !repaintContainer) {
+        LayoutState* layoutState = view().layoutState();
+        if (style()->hasInFlowPosition() && layer())
+            rect.move(layer()->offsetForInFlowPosition());
+        rect.move(layoutState->m_paintOffset);
+        if (layoutState->m_clipped)
+            rect.intersect(layoutState->m_clipRect);
+        return;
     }
 
     if (repaintContainer == this)
@@ -1089,7 +1087,7 @@ void RenderInline::computeRectForRepaint(const RenderLayerModelObject* repaintCo
 
     LayoutPoint topLeft = rect.location();
 
-    if (o->isBlockFlow() && !style()->hasOutOfFlowPosition()) {
+    if (o->isBlockFlowFlexBoxOrGrid() && !style()->hasOutOfFlowPosition()) {
         RenderBlock* cb = toRenderBlock(o);
         if (cb->hasColumns()) {
             LayoutRect repaintRect(topLeft, rect.size());
@@ -1153,15 +1151,13 @@ void RenderInline::mapLocalToContainer(const RenderLayerModelObject* repaintCont
     if (repaintContainer == this)
         return;
 
-    if (RenderView *v = view()) {
-        if (v->layoutStateEnabled() && !repaintContainer) {
-            LayoutState* layoutState = v->layoutState();
-            LayoutSize offset = layoutState->m_paintOffset;
-            if (style()->hasInFlowPosition() && layer())
-                offset += layer()->offsetForInFlowPosition();
-            transformState.move(offset);
-            return;
-        }
+    if (view().layoutStateEnabled() && !repaintContainer) {
+        LayoutState* layoutState = view().layoutState();
+        LayoutSize offset = layoutState->m_paintOffset;
+        if (style()->hasInFlowPosition() && layer())
+            offset += layer()->offsetForInFlowPosition();
+        transformState.move(offset);
+        return;
     }
 
     bool containerSkipped;
@@ -1313,7 +1309,7 @@ void RenderInline::deleteLineBoxTree()
 
 InlineFlowBox* RenderInline::createInlineFlowBox() 
 {
-    return new (renderArena()) InlineFlowBox(this);
+    return new (renderArena()) InlineFlowBox(*this);
 }
 
 InlineFlowBox* RenderInline::createAndAppendInlineFlowBox()
@@ -1326,13 +1322,13 @@ InlineFlowBox* RenderInline::createAndAppendInlineFlowBox()
 
 LayoutUnit RenderInline::lineHeight(bool firstLine, LineDirectionMode /*direction*/, LinePositionMode /*linePositionMode*/) const
 {
-    if (firstLine && document()->styleSheetCollection()->usesFirstLineRules()) {
+    if (firstLine && document().styleSheetCollection()->usesFirstLineRules()) {
         RenderStyle* s = style(firstLine);
         if (s != style())
-            return s->computedLineHeight(view());
+            return s->computedLineHeight(&view());
     }
 
-    return style()->computedLineHeight(view());
+    return style()->computedLineHeight(&view());
 }
 
 int RenderInline::baselinePosition(FontBaseline baselineType, bool firstLine, LineDirectionMode direction, LinePositionMode linePositionMode) const
@@ -1476,6 +1472,8 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, const L
         LayoutSize(thisline.width() + offset, thisline.height() + offset));
 
     IntRect pixelSnappedBox = pixelSnappedIntRect(box);
+    if (pixelSnappedBox.isEmpty())
+        return;
     IntRect pixelSnappedLastLine = pixelSnappedIntRect(paintOffset.x() + lastline.x(), 0, lastline.width(), 0);
     IntRect pixelSnappedNextLine = pixelSnappedIntRect(paintOffset.x() + nextline.x(), 0, nextline.width(), 0);
     

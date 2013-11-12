@@ -371,11 +371,6 @@ PassRefPtr<CoordinatedSurface> CoordinatedLayerTreeHost::createCoordinatedSurfac
     return WebCoordinatedSurface::create(size, flags);
 }
 
-bool LayerTreeHost::supportsAcceleratedCompositing()
-{
-    return true;
-}
-
 void CoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged()
 {
     m_coordinator->deviceOrPageScaleFactorChanged();
@@ -401,8 +396,8 @@ void CoordinatedLayerTreeHost::scheduleAnimation()
     if (m_layerFlushTimer.isActive())
         return;
 
-    m_layerFlushTimer.startOneShot(m_coordinator->nextAnimationServiceTime());
     scheduleLayerFlush();
+    m_layerFlushTimer.startOneShot(m_coordinator->nextAnimationServiceTime());
 }
 #endif
 

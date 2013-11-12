@@ -139,7 +139,7 @@ void ScrollingCoordinatorMac::frameViewLayoutUpdated(FrameView* frameView)
     // Compute the region of the page that we can't do fast scrolling for. This currently includes
     // all scrollable areas, such as subframes, overflow divs and list boxes. We need to do this even if the
     // frame view whose layout was updated is not the main frame.
-    Region nonFastScrollableRegion = computeNonFastScrollableRegion(m_page->mainFrame(), IntPoint());
+    Region nonFastScrollableRegion = computeNonFastScrollableRegion(&m_page->mainFrame(), IntPoint());
 
     // In the future, we may want to have the ability to set non-fast scrolling regions for more than
     // just the root node. But right now, this concept only applies to the root.
@@ -163,7 +163,7 @@ void ScrollingCoordinatorMac::frameViewLayoutUpdated(FrameView* frameView)
     scrollParameters.scrollOrigin = frameView->scrollOrigin();
     scrollParameters.viewportRect = IntRect(IntPoint(), frameView->visibleContentRect().size());
     scrollParameters.totalContentsSize = frameView->totalContentsSize();
-    scrollParameters.frameScaleFactor = frameView->frame()->frameScaleFactor();
+    scrollParameters.frameScaleFactor = frameView->frame().frameScaleFactor();
     scrollParameters.headerHeight = frameView->headerHeight();
     scrollParameters.footerHeight = frameView->footerHeight();
 
@@ -204,7 +204,7 @@ void ScrollingCoordinatorMac::scrollableAreaScrollbarLayerDidChange(ScrollableAr
     ASSERT(isMainThread());
     ASSERT(m_page);
 
-    if (scrollableArea != static_cast<ScrollableArea*>(m_page->mainFrame()->view()))
+    if (scrollableArea != static_cast<ScrollableArea*>(m_page->mainFrame().view()))
         return;
 
     // FIXME: Implement.
@@ -218,12 +218,12 @@ bool ScrollingCoordinatorMac::requestScrollPositionUpdate(FrameView* frameView, 
     if (!coordinatesScrollingForFrameView(frameView))
         return false;
 
-    if (frameView->inProgrammaticScroll() || frameView->frame()->document()->inPageCache())
+    if (frameView->inProgrammaticScroll() || frameView->frame().document()->inPageCache())
         updateMainFrameScrollPosition(scrollPosition, frameView->inProgrammaticScroll(), SetScrollingLayerPosition);
 
     // If this frame view's document is being put into the page cache, we don't want to update our
     // main frame scroll position. Just let the FrameView think that we did.
-    if (frameView->frame()->document()->inPageCache())
+    if (frameView->frame().document()->inPageCache())
         return true;
 
     ScrollingStateScrollingNode* stateNode = toScrollingStateScrollingNode(m_scrollingStateTree->stateNodeForID(frameView->scrollLayerID()));
@@ -351,7 +351,7 @@ void ScrollingCoordinatorMac::updateMainFrameScrollLayerPosition()
     if (!m_page)
         return;
 
-    FrameView* frameView = m_page->mainFrame()->view();
+    FrameView* frameView = m_page->mainFrame().view();
     if (!frameView)
         return;
 
@@ -436,7 +436,7 @@ void ScrollingCoordinatorMac::commitTreeState()
     OwnPtr<ScrollingStateTree> treeState = m_scrollingStateTree->commit();
     ScrollingThread::dispatch(bind(&ScrollingTree::commitNewTreeState, m_scrollingTree.get(), treeState.release()));
 
-    FrameView* frameView = m_page->mainFrame()->view();
+    FrameView* frameView = m_page->mainFrame().view();
     if (!frameView)
         return;
     

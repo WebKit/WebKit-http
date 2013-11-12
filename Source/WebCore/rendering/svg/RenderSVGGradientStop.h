@@ -30,7 +30,7 @@ class SVGGradientElement;
 class SVGStopElement;
 
 // This class exists mostly so we can hear about gradient stop style changes
-class RenderSVGGradientStop : public RenderObject {
+class RenderSVGGradientStop FINAL : public RenderObject {
 public:
     RenderSVGGradientStop(SVGStopElement*);
     virtual ~RenderSVGGradientStop();
@@ -47,6 +47,7 @@ public:
     virtual FloatRect objectBoundingBox() const { return FloatRect(); }
     virtual FloatRect strokeBoundingBox() const { return FloatRect(); }
     virtual FloatRect repaintRectInLocalCoordinates() const { return FloatRect(); }
+    virtual bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint&, HitTestAction) OVERRIDE { return false; }
 
 protected:
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);

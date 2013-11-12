@@ -33,6 +33,7 @@
 namespace WebKit {
 
 class WebFrame;
+class WebFrameLoaderClient;
 
 class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
 public:
@@ -40,6 +41,11 @@ public:
     {
         return adoptRef(new WebFrameNetworkingContext(frame));
     }
+
+    static void ensurePrivateBrowsingSession();
+    static void destroyPrivateBrowsingSession();
+
+    WebFrameLoaderClient* webFrameLoaderClient() const;
 
 private:
     WebFrameNetworkingContext(WebFrame*);

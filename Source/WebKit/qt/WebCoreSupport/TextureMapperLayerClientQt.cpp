@@ -64,7 +64,7 @@ TextureMapperLayer* TextureMapperLayerClientQt::rootLayer()
 void TextureMapperLayerClientQt::setRootGraphicsLayer(GraphicsLayer* layer)
 {
     if (layer) {
-        m_rootGraphicsLayer = GraphicsLayer::create(0);
+        m_rootGraphicsLayer = GraphicsLayer::create(0, 0);
         m_rootTextureMapperLayer = toTextureMapperLayer(m_rootGraphicsLayer.get());
         m_rootGraphicsLayer->addChild(layer);
         m_rootGraphicsLayer->setDrawsContent(false);
@@ -104,7 +104,14 @@ void TextureMapperLayerClientQt::renderCompositedLayers(GraphicsContext* context
         return;
 
     m_textureMapper->setGraphicsContext(context);
-    m_textureMapper->setImageInterpolationQuality(context->imageInterpolationQuality());
+    // GraphicsContext::imageInterpolationQuality is always InterpolationDefault here,
+    // but 'default' may be interpreted differently due to a different backend QPainter,
+    // so we need to set an explicit imageInterpolationQuality.
+    if (context->platformContext()->renderHints() & QPainter::SmoothPixmapTransform)
+        m_textureMapper->setImageInterpolationQuality(WebCore::InterpolationMedium);
+    else
+        m_textureMapper->setImageInterpolationQuality(WebCore::InterpolationNone);
+
     m_textureMapper->setTextDrawingMode(context->textDrawingMode());
     QPainter* painter = context->platformContext();
     const QTransform transform = painter->worldTransform();

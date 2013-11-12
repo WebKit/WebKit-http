@@ -146,18 +146,9 @@ map {
     display: inline
 }
 
-#if defined(ENABLE_DIALOG_ELEMENT) && ENABLE_DIALOG_ELEMENT
-dialog:not([open]) { display: none; }
-dialog {
-    position: absolute;
-    left: 0; right: 0;
-    margin: auto;
-    border: solid;
-    padding: 1em;
-    background: white;
-    color: black;
+video {
+    object-fit: contain;
 }
-#endif
 
 /* heading elements */
 

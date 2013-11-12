@@ -344,7 +344,7 @@ WebInspector.NavigationSidebarPanel.prototype = {
         var scrollTop = this._contentElement.scrollTop;
 
         var topCoverage = Math.min(scrollTop, edgeThreshold);
-        var bottomCoverage = Math.max(0, (offsetHeight + scrollTop) - (scrollHeight - edgeThreshold))
+        var bottomCoverage = Math.max(0, (offsetHeight + scrollTop) - (scrollHeight - edgeThreshold));
 
         if (this._topOverflowShadowElement)
             this._topOverflowShadowElement.style.opacity = (topCoverage / edgeThreshold).toFixed(1);
@@ -467,8 +467,8 @@ WebInspector.NavigationSidebarPanel.prototype = {
             shadowBlur: 2
         };
 
-        generateColoredImagesForCSS("Images/DisclosureTriangleSmallOpen.pdf", specifications, 13, 13, WebInspector.NavigationSidebarPanel.DisclosureTriangleOpenCanvasIdentifier);
-        generateColoredImagesForCSS("Images/DisclosureTriangleSmallClosed.pdf", specifications, 13, 13, WebInspector.NavigationSidebarPanel.DisclosureTriangleClosedCanvasIdentifier);
+        generateColoredImagesForCSS("Images/DisclosureTriangleSmallOpen.svg", specifications, 13, 13, WebInspector.NavigationSidebarPanel.DisclosureTriangleOpenCanvasIdentifier);
+        generateColoredImagesForCSS("Images/DisclosureTriangleSmallClosed.svg", specifications, 13, 13, WebInspector.NavigationSidebarPanel.DisclosureTriangleClosedCanvasIdentifier);
     },
 
     _checkForOldResources: function(event)

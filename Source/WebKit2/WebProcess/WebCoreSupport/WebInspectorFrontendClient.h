@@ -45,7 +45,7 @@ private:
     virtual void closeWindow() OVERRIDE;
 
     virtual bool canSave() OVERRIDE;
-    virtual void save(const String&, const String&, bool) OVERRIDE;
+    virtual void save(const String&, const String&, bool base64Encoded, bool forceSaveAs) OVERRIDE;
     virtual void append(const String&, const String&) OVERRIDE;
 
     virtual void attachWindow(DockSide) OVERRIDE;

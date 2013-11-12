@@ -34,7 +34,7 @@
 #include "CSSValueList.h"
 #include "IntRect.h"
 #include "NodeRenderStyle.h"
-#include "SVGStyledElement.h"
+#include "SVGElement.h"
 
 using namespace std;
 
@@ -183,7 +183,10 @@ StyleDifference SVGRenderStyle::diff(const SVGRenderStyle* other) const
             || stroke->paintUri != other->stroke->paintUri
             || stroke->miterLimit != other->stroke->miterLimit
             || stroke->dashArray != other->stroke->dashArray
-            || stroke->dashOffset != other->stroke->dashOffset)
+            || stroke->dashOffset != other->stroke->dashOffset
+            || stroke->visitedLinkPaintColor != other->stroke->visitedLinkPaintColor
+            || stroke->visitedLinkPaintUri != other->stroke->visitedLinkPaintUri
+            || stroke->visitedLinkPaintType != other->stroke->visitedLinkPaintType)
             return StyleDifferenceLayout;
 
         // Only the stroke-opacity case remains, where we only need a repaint.

@@ -48,9 +48,10 @@ namespace WebCore {
         void setCapacity(int); // number of pages to cache
         int capacity() { return m_capacity; }
         
-        void add(PassRefPtr<HistoryItem>, Page*); // Prunes if capacity() is exceeded.
+        void add(PassRefPtr<HistoryItem>, Page&); // Prunes if capacity() is exceeded.
         void remove(HistoryItem*);
         CachedPage* get(HistoryItem* item);
+        PassOwnPtr<CachedPage> take(HistoryItem*);
 
         int pageCount() const { return m_size; }
         int frameCount() const;

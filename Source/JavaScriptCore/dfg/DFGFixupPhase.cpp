@@ -51,8 +51,8 @@ public:
         ASSERT(m_graph.m_form == ThreadedCPS);
         
         m_profitabilityChanged = false;
-        for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex)
-            fixupBlock(m_graph.m_blocks[blockIndex].get());
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex)
+            fixupBlock(m_graph.block(blockIndex));
         
         while (m_profitabilityChanged) {
             m_profitabilityChanged = false;
@@ -60,8 +60,8 @@ public:
             for (unsigned i = m_graph.m_argumentPositions.size(); i--;)
                 m_graph.m_argumentPositions[i].mergeArgumentUnboxingAwareness();
             
-            for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex)
-                fixupSetLocalsInBlock(m_graph.m_blocks[blockIndex].get());
+            for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex)
+                fixupSetLocalsInBlock(m_graph.block(blockIndex));
         }
         
         return true;
@@ -120,6 +120,7 @@ private:
         case ValueToInt32: {
             if (node->child1()->shouldSpeculateInteger()) {
                 setUseKindAndUnboxIfProfitable<Int32Use>(node->child1());
+                node->setOpAndDefaultFlags(Identity);
                 break;
             }
             
@@ -211,7 +212,8 @@ private:
             break;
         }
 
-        case ArithDiv: {
+        case ArithDiv:
+        case ArithMod: {
             if (Node::shouldSpeculateIntegerForArithmetic(node->child1().node(), node->child2().node())
                 && node->canSpeculateInteger()) {
                 if (isX86() || isARMv7s()) {
@@ -237,8 +239,7 @@ private:
         }
             
         case ArithMin:
-        case ArithMax:
-        case ArithMod: {
+        case ArithMax: {
             if (Node::shouldSpeculateIntegerForArithmetic(node->child1().node(), node->child2().node())
                 && node->canSpeculateInteger()) {
                 setUseKindAndUnboxIfProfitable<Int32Use>(node->child1());
@@ -311,6 +312,11 @@ private:
                 setUseKindAndUnboxIfProfitable<BooleanUse>(node->child2());
                 break;
             }
+            if (node->child1()->shouldSpeculateStringIdent() && node->child2()->shouldSpeculateStringIdent()) {
+                setUseKindAndUnboxIfProfitable<StringIdentUse>(node->child1());
+                setUseKindAndUnboxIfProfitable<StringIdentUse>(node->child2());
+                break;
+            }
             if (node->child1()->shouldSpeculateString() && node->child2()->shouldSpeculateString() && GPRInfo::numberOfRegisters >= 7) {
                 setUseKindAndUnboxIfProfitable<StringUse>(node->child1());
                 setUseKindAndUnboxIfProfitable<StringUse>(node->child2());
@@ -354,6 +360,11 @@ private:
                 fixDoubleEdge<NumberUse>(node->child2());
                 break;
             }
+            if (node->child1()->shouldSpeculateStringIdent() && node->child2()->shouldSpeculateStringIdent()) {
+                setUseKindAndUnboxIfProfitable<StringIdentUse>(node->child1());
+                setUseKindAndUnboxIfProfitable<StringIdentUse>(node->child2());
+                break;
+            }
             if (node->child1()->shouldSpeculateString() && node->child2()->shouldSpeculateString() && GPRInfo::numberOfRegisters >= 7) {
                 setUseKindAndUnboxIfProfitable<StringUse>(node->child1());
                 setUseKindAndUnboxIfProfitable<StringUse>(node->child2());
@@ -391,13 +402,24 @@ private:
             blessArrayOperation(node->child1(), node->child2(), node->child3());
             
             ArrayMode arrayMode = node->arrayMode();
-            if (arrayMode.type() == Array::Double
-                && arrayMode.arrayClass() == Array::OriginalArray
-                && arrayMode.speculation() == Array::InBounds
-                && arrayMode.conversion() == Array::AsIs
-                && m_graph.globalObjectFor(node->codeOrigin)->arrayPrototypeChainIsSane()
-                && !(node->flags() & NodeUsedAsOther))
-                node->setArrayMode(arrayMode.withSpeculation(Array::SaneChain));
+            switch (arrayMode.type()) {
+            case Array::Double:
+                if (arrayMode.arrayClass() == Array::OriginalArray
+                    && arrayMode.speculation() == Array::InBounds
+                    && m_graph.globalObjectFor(node->codeOrigin)->arrayPrototypeChainIsSane()
+                    && !(node->flags() & NodeUsedAsOther))
+                    node->setArrayMode(arrayMode.withSpeculation(Array::SaneChain));
+                break;
+                
+            case Array::String:
+                if ((node->prediction() & ~SpecString)
+                    || m_graph.hasExitSite(node->codeOrigin, OutOfBounds))
+                    node->setArrayMode(arrayMode.withSpeculation(Array::OutOfBounds));
+                break;
+                
+            default:
+                break;
+            }
             
             switch (node->arrayMode().type()) {
             case Array::SelectUsingPredictions:
@@ -568,12 +590,33 @@ private:
                     if (newChildEdge->hasBooleanResult()) {
                         node->children.setChild1(newChildEdge);
                         
-                        BlockIndex toBeTaken = node->notTakenBlockIndex();
-                        BlockIndex toBeNotTaken = node->takenBlockIndex();
-                        node->setTakenBlockIndex(toBeTaken);
-                        node->setNotTakenBlockIndex(toBeNotTaken);
+                        BasicBlock* toBeTaken = node->notTakenBlock();
+                        BasicBlock* toBeNotTaken = node->takenBlock();
+                        node->setTakenBlock(toBeTaken);
+                        node->setNotTakenBlock(toBeNotTaken);
                     }
                 }
+            }
+            break;
+        }
+            
+        case Switch: {
+            SwitchData* data = node->switchData();
+            switch (data->kind) {
+            case SwitchImm:
+                if (node->child1()->shouldSpeculateInteger())
+                    setUseKindAndUnboxIfProfitable<Int32Use>(node->child1());
+                break;
+            case SwitchChar:
+                if (node->child1()->shouldSpeculateString())
+                    setUseKindAndUnboxIfProfitable<StringUse>(node->child1());
+                break;
+            case SwitchString:
+                if (node->child1()->shouldSpeculateStringIdent())
+                    setUseKindAndUnboxIfProfitable<StringIdentUse>(node->child1());
+                else if (node->child1()->shouldSpeculateString())
+                    setUseKindAndUnboxIfProfitable<StringUse>(node->child1());
+                break;
             }
             break;
         }
@@ -618,7 +661,7 @@ private:
                 break;
             case ALL_DOUBLE_INDEXING_TYPES:
                 for (unsigned operandIndex = 0; operandIndex < node->numChildren(); ++operandIndex)
-                    setUseKindAndUnboxIfProfitable<RealNumberUse>(m_graph.m_varArgChildren[node->firstChild() + operandIndex]);
+                    fixDoubleEdge<RealNumberUse>(m_graph.m_varArgChildren[node->firstChild() + operandIndex]);
                 break;
             case ALL_CONTIGUOUS_INDEXING_TYPES:
             case ALL_ARRAY_STORAGE_INDEXING_TYPES:
@@ -630,13 +673,30 @@ private:
             break;
         }
             
+        case NewTypedArray: {
+            if (node->child1()->shouldSpeculateInteger()) {
+                setUseKindAndUnboxIfProfitable<Int32Use>(node->child1());
+                node->clearFlags(NodeMustGenerate | NodeClobbersWorld);
+                break;
+            }
+            break;
+        }
+            
         case NewArrayWithSize: {
             setUseKindAndUnboxIfProfitable<Int32Use>(node->child1());
             break;
         }
             
-        case ConvertThis: {
+        case ToThis: {
+            ECMAMode ecmaMode = m_graph.executableFor(node->codeOrigin)->isStrictMode() ? StrictMode : NotStrictMode;
+
             if (isOtherSpeculation(node->child1()->prediction())) {
+                if (ecmaMode == StrictMode) {
+                    setUseKindAndUnboxIfProfitable<OtherUse>(node->child1());
+                    node->convertToIdentity();
+                    break;
+                }
+
                 m_insertionSet.insertNode(
                     m_indexInBlock, SpecNone, Phantom, node->codeOrigin,
                     Edge(node->child1().node(), OtherUse));
@@ -645,17 +705,12 @@ private:
                 break;
             }
             
-            if (isObjectSpeculation(node->child1()->prediction())) {
-                setUseKindAndUnboxIfProfitable<ObjectUse>(node->child1());
+            if (isFinalObjectSpeculation(node->child1()->prediction())) {
+                setUseKindAndUnboxIfProfitable<FinalObjectUse>(node->child1());
                 node->convertToIdentity();
                 break;
             }
             
-            break;
-        }
-            
-        case CreateThis: {
-            setUseKindAndUnboxIfProfitable<CellUse>(node->child1());
             break;
         }
             
@@ -665,8 +720,8 @@ private:
             break;
         }
             
-        case GetScopeRegisters:
-        case PutScopedVar:
+        case GetClosureRegisters:
+        case PutClosureVar:
         case SkipTopScope:
         case SkipScope:
         case SetCallee:
@@ -674,79 +729,41 @@ private:
         case PutStructure:
         case AllocatePropertyStorage:
         case ReallocatePropertyStorage:
-        case GetScope:
-        case GetButterfly: {
+        case GetScope: {
             setUseKindAndUnboxIfProfitable<KnownCellUse>(node->child1());
             break;
         }
             
-        case GetById: {
+        case GetById:
+        case GetByIdFlush: {
             if (!node->child1()->shouldSpeculateCell())
                 break;
-            setUseKindAndUnboxIfProfitable<CellUse>(node->child1());
-            if (!isInt32Speculation(node->prediction()))
+            StringImpl* impl = m_graph.identifiers()[node->identifierNumber()];
+            if (impl == vm().propertyNames->length.impl()) {
+                attemptToMakeGetArrayLength(node);
                 break;
-            if (codeBlock()->identifier(node->identifierNumber()) != vm().propertyNames->length)
-                break;
-            ArrayProfile* arrayProfile = 
-                m_graph.baselineCodeBlockFor(node->codeOrigin)->getArrayProfile(
-                    node->codeOrigin.bytecodeIndex);
-            ArrayMode arrayMode = ArrayMode(Array::SelectUsingPredictions);
-            if (arrayProfile) {
-                arrayProfile->computeUpdatedPrediction(m_graph.baselineCodeBlockFor(node->codeOrigin));
-                arrayMode = ArrayMode::fromObserved(arrayProfile, Array::Read, false);
-                arrayMode = arrayMode.refine(
-                    node->child1()->prediction(), node->prediction());
-                if (arrayMode.supportsLength() && arrayProfile->hasDefiniteStructure()) {
-                    m_insertionSet.insertNode(
-                        m_indexInBlock, SpecNone, CheckStructure, node->codeOrigin,
-                        OpInfo(m_graph.addStructureSet(arrayProfile->expectedStructure())),
-                        node->child1());
-                }
-            } else
-                arrayMode = arrayMode.refine(node->child1()->prediction(), node->prediction());
-            
-            if (arrayMode.type() == Array::Generic) {
-                // Check if the input is something that we can't get array length for, but for which we
-                // could insert some conversions in order to transform it into something that we can do it
-                // for.
-                if (node->child1()->shouldSpeculateStringObject())
-                    attemptToForceStringArrayModeByToStringConversion<StringObjectUse>(arrayMode, node);
-                else if (node->child1()->shouldSpeculateStringOrStringObject())
-                    attemptToForceStringArrayModeByToStringConversion<StringOrStringObjectUse>(arrayMode, node);
             }
-            
-            if (!arrayMode.supportsLength())
+            if (impl == vm().propertyNames->byteLength.impl()) {
+                attemptToMakeGetTypedArrayByteLength(node);
                 break;
-            node->setOp(GetArrayLength);
-            ASSERT(node->flags() & NodeMustGenerate);
-            node->clearFlags(NodeMustGenerate | NodeClobbersWorld);
-            setUseKindAndUnboxIfProfitable<KnownCellUse>(node->child1());
-            node->setArrayMode(arrayMode);
-            
-            Node* storage = checkArray(arrayMode, node->codeOrigin, node->child1().node(), 0, lengthNeedsStorage);
-            if (!storage)
+            }
+            if (impl == vm().propertyNames->byteOffset.impl()) {
+                attemptToMakeGetTypedArrayByteOffset(node);
                 break;
-            
-            node->child2() = Edge(storage);
-            break;
-        }
-            
-        case GetByIdFlush: {
-            if (node->child1()->shouldSpeculateCell())
-                setUseKindAndUnboxIfProfitable<CellUse>(node->child1());
+            }
+            setUseKindAndUnboxIfProfitable<CellUse>(node->child1());
             break;
         }
             
         case CheckExecutable:
         case CheckStructure:
-        case ForwardCheckStructure:
         case StructureTransitionWatchpoint:
-        case ForwardStructureTransitionWatchpoint:
         case CheckFunction:
         case PutById:
         case PutByIdDirect:
-        case CheckHasInstance: {
+        case CheckHasInstance:
+        case CreateThis:
+        case GetButterfly: {
             setUseKindAndUnboxIfProfitable<CellUse>(node->child1());
             break;
         }
@@ -774,6 +791,7 @@ private:
         case GetByOffset: {
             if (!node->child1()->hasStorageResult())
                 setUseKindAndUnboxIfProfitable<KnownCellUse>(node->child1());
+            setUseKindAndUnboxIfProfitable<KnownCellUse>(node->child2());
             break;
         }
             
@@ -789,6 +807,14 @@ private:
             // check. https://bugs.webkit.org/show_bug.cgi?id=107479
             if (!(node->child1()->prediction() & ~SpecCell))
                 setUseKindAndUnboxIfProfitable<CellUse>(node->child1());
+            setUseKindAndUnboxIfProfitable<CellUse>(node->child2());
+            break;
+        }
+            
+        case In: {
+            // FIXME: We should at some point have array profiling on op_in, in which
+            // case we would be able to turn this into a kind of GetByVal.
+            
             setUseKindAndUnboxIfProfitable<CellUse>(node->child2());
             break;
         }
@@ -808,15 +834,19 @@ private:
         }
 
         case GetArrayLength:
-        case Nop:
         case Phi:
-        case ForwardInt32ToDouble:
+        case Upsilon:
+        case GetArgument:
         case PhantomPutStructure:
         case GetIndexedPropertyStorage:
+        case GetTypedArrayByteOffset:
         case LastNodeType:
         case MovHint:
         case MovHintAndCheck:
         case ZombieHint:
+        case CheckTierUpInLoop:
+        case CheckTierUpAtReturn:
+        case CheckTierUpAndOSREnter:
             RELEASE_ASSERT_NOT_REACHED();
             break;
         
@@ -832,21 +862,17 @@ private:
         case GetLocalUnlinked:
         case InlineStart:
         case GetMyScope:
-        case GetScopedVar:
+        case GetClosureVar:
         case GetGlobalVar:
         case PutGlobalVar:
         case GlobalVarWatchpoint:
-        case PutGlobalVarCheck:
+        case VarInjectionWatchpoint:
         case AllocationProfileWatchpoint:
         case Call:
         case Construct:
         case NewObject:
         case NewArrayBuffer:
         case NewRegexp:
-        case Resolve:
-        case ResolveBase:
-        case ResolveBaseStrictPut:
-        case ResolveGlobal:
         case Breakpoint:
         case IsUndefined:
         case IsBoolean:
@@ -869,10 +895,12 @@ private:
         case Return:
         case Throw:
         case ThrowReferenceError:
-        case GarbageValue:
         case CountExecution:
         case ForceOSRExit:
         case CheckWatchdogTimer:
+        case Unreachable:
+        case ExtractOSREntryLocal:
+        case LoopHint:
             break;
 #else
         default:
@@ -1079,19 +1107,19 @@ private:
         return true;
     }
     
-    bool isStringPrototypeMethodSane(Structure* stringPrototypeStructure, const Identifier& ident)
+    bool isStringPrototypeMethodSane(Structure* stringPrototypeStructure, StringImpl* uid)
     {
         unsigned attributesUnused;
         JSCell* specificValue;
-        PropertyOffset offset = stringPrototypeStructure->get(
-            vm(), ident, attributesUnused, specificValue);
+        PropertyOffset offset = stringPrototypeStructure->getConcurrently(
+            vm(), uid, attributesUnused, specificValue);
         if (!isValidOffset(offset))
             return false;
         
         if (!specificValue)
             return false;
         
-        if (!specificValue->inherits(&JSFunction::s_info))
+        if (!specificValue->inherits(JSFunction::info()))
             return false;
         
         JSFunction* function = jsCast<JSFunction*>(specificValue);
@@ -1108,11 +1136,11 @@ private:
         
         Structure* stringObjectStructure = m_graph.globalObjectFor(codeOrigin)->stringObjectStructure();
         ASSERT(stringObjectStructure->storedPrototype().isObject());
-        ASSERT(stringObjectStructure->storedPrototype().asCell()->classInfo() == &StringPrototype::s_info);
+        ASSERT(stringObjectStructure->storedPrototype().asCell()->classInfo() == StringPrototype::info());
         
         JSObject* stringPrototypeObject = asObject(stringObjectStructure->storedPrototype());
         Structure* stringPrototypeStructure = stringPrototypeObject->structure();
-        if (stringPrototypeStructure->transitionWatchpointSetHasBeenInvalidated())
+        if (!m_graph.watchpoints().isStillValid(stringPrototypeStructure->transitionWatchpointSet()))
             return false;
         
         if (stringPrototypeStructure->isDictionary())
@@ -1123,9 +1151,9 @@ private:
         // (that would call toString()). We don't want the DFG to have to distinguish
         // between the two, just because that seems like it would get confusing. So we
         // just require both methods to be sane.
-        if (!isStringPrototypeMethodSane(stringPrototypeStructure, vm().propertyNames->valueOf))
+        if (!isStringPrototypeMethodSane(stringPrototypeStructure, vm().propertyNames->valueOf.impl()))
             return false;
-        if (!isStringPrototypeMethodSane(stringPrototypeStructure, vm().propertyNames->toString))
+        if (!isStringPrototypeMethodSane(stringPrototypeStructure, vm().propertyNames->toString.impl()))
             return false;
         
         return true;
@@ -1163,25 +1191,6 @@ private:
         m_insertionSet.execute(block);
     }
     
-    void findAndRemoveUnnecessaryStructureCheck(Node* array, const CodeOrigin& codeOrigin)
-    {
-        for (unsigned index = m_indexInBlock; index--;) {
-            Node* previousNode = m_block->at(index);
-            if (previousNode->codeOrigin != codeOrigin)
-                return;
-            
-            if (previousNode->op() != CheckStructure)
-                continue;
-            
-            if (previousNode->child1() != array)
-                continue;
-            
-            previousNode->child1() = Edge();
-            previousNode->convertToPhantom();
-            return; // Assume we were smart enough to only insert one CheckStructure on the array.
-        }
-    }
-    
     Node* checkArray(ArrayMode arrayMode, const CodeOrigin& codeOrigin, Node* array, Node* index, bool (*storageCheck)(const ArrayMode&) = canCSEStorage)
     {
         ASSERT(arrayMode.isSpecific());
@@ -1192,13 +1201,6 @@ private:
         
         if (arrayMode.doesConversion()) {
             if (structure) {
-                if (m_indexInBlock > 0) {
-                    // If the previous node was a CheckStructure inserted because of stuff
-                    // that the array profile told us, then remove it, since we're going to be
-                    // doing arrayification instead.
-                    findAndRemoveUnnecessaryStructureCheck(array, codeOrigin);
-                }
-                
                 m_insertionSet.insertNode(
                     m_indexInBlock, SpecNone, ArrayifyToStructure, codeOrigin,
                     OpInfo(structure), OpInfo(arrayMode.asWord()), Edge(array, CellUse), indexEdge);
@@ -1224,7 +1226,7 @@ private:
         
         if (arrayMode.usesButterfly()) {
             return m_insertionSet.insertNode(
-                m_indexInBlock, SpecNone, GetButterfly, codeOrigin, Edge(array, KnownCellUse));
+                m_indexInBlock, SpecNone, GetButterfly, codeOrigin, Edge(array, CellUse));
         }
         
         return m_insertionSet.insertNode(
@@ -1249,7 +1251,6 @@ private:
             return;
             
         case Array::Generic:
-            findAndRemoveUnnecessaryStructureCheck(base.node(), node->codeOrigin);
             return;
             
         default: {
@@ -1307,6 +1308,7 @@ private:
                 m_profitabilityChanged |= variable->mergeIsProfitableToUnbox(true);
             break;
         case CellUse:
+        case KnownCellUse:
         case ObjectUse:
         case StringUse:
         case KnownStringUse:
@@ -1365,9 +1367,10 @@ private:
     void injectInt32ToDoubleNode(Edge& edge, UseKind useKind = NumberUse, SpeculationDirection direction = BackwardSpeculation)
     {
         Node* result = m_insertionSet.insertNode(
-            m_indexInBlock, SpecDouble, 
-            direction == BackwardSpeculation ? Int32ToDouble : ForwardInt32ToDouble,
+            m_indexInBlock, SpecDouble, Int32ToDouble,
             m_currentNode->codeOrigin, Edge(edge.node(), NumberUse));
+        if (direction == ForwardSpeculation)
+            result->mergeFlags(NodeExitsForward);
         
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
         dataLogF(
@@ -1389,9 +1392,20 @@ private:
         
         value = jsNumber(JSC::toInt32(value.asNumber()));
         ASSERT(value.isInt32());
+        unsigned constantRegister;
+        if (!codeBlock()->findConstant(value, constantRegister)) {
+            constantRegister = codeBlock()->addConstantLazily();
+            initializeLazyWriteBarrierForConstant(
+                m_graph.m_plan.writeBarriers,
+                codeBlock()->constants()[constantRegister],
+                codeBlock(),
+                constantRegister,
+                codeBlock()->ownerExecutable(),
+                value);
+        }
         edge.setNode(m_insertionSet.insertNode(
             m_indexInBlock, SpecInt32, JSConstant, m_currentNode->codeOrigin,
-            OpInfo(codeBlock()->addOrFindConstant(value))));
+            OpInfo(constantRegister)));
     }
     
     void truncateConstantsIfNecessary(Node* node, AddSpeculationMode mode)
@@ -1415,6 +1429,122 @@ private:
         truncateConstantsIfNecessary(node, mode);
         setUseKindAndUnboxIfProfitable<Int32Use>(node->child1());
         setUseKindAndUnboxIfProfitable<Int32Use>(node->child2());
+        return true;
+    }
+    
+    bool attemptToMakeGetArrayLength(Node* node)
+    {
+        if (!isInt32Speculation(node->prediction()))
+            return false;
+        CodeBlock* profiledBlock = m_graph.baselineCodeBlockFor(node->codeOrigin);
+        ArrayProfile* arrayProfile = 
+            profiledBlock->getArrayProfile(node->codeOrigin.bytecodeIndex);
+        ArrayMode arrayMode = ArrayMode(Array::SelectUsingPredictions);
+        if (arrayProfile) {
+            ConcurrentJITLocker locker(profiledBlock->m_lock);
+            arrayProfile->computeUpdatedPrediction(locker, profiledBlock);
+            arrayMode = ArrayMode::fromObserved(locker, arrayProfile, Array::Read, false);
+            if (arrayMode.type() == Array::Unprofiled) {
+                // For normal array operations, it makes sense to treat Unprofiled
+                // accesses as ForceExit and get more data rather than using
+                // predictions and then possibly ending up with a Generic. But here,
+                // we treat anything that is Unprofiled as Generic and keep the
+                // GetById. I.e. ForceExit = Generic. So, there is no harm - and only
+                // profit - from treating the Unprofiled case as
+                // SelectUsingPredictions.
+                arrayMode = ArrayMode(Array::SelectUsingPredictions);
+            }
+        }
+            
+        arrayMode = arrayMode.refine(node->child1()->prediction(), node->prediction());
+            
+        if (arrayMode.type() == Array::Generic) {
+            // Check if the input is something that we can't get array length for, but for which we
+            // could insert some conversions in order to transform it into something that we can do it
+            // for.
+            if (node->child1()->shouldSpeculateStringObject())
+                attemptToForceStringArrayModeByToStringConversion<StringObjectUse>(arrayMode, node);
+            else if (node->child1()->shouldSpeculateStringOrStringObject())
+                attemptToForceStringArrayModeByToStringConversion<StringOrStringObjectUse>(arrayMode, node);
+        }
+            
+        if (!arrayMode.supportsLength())
+            return false;
+        
+        convertToGetArrayLength(node, arrayMode);
+        return true;
+    }
+    
+    bool attemptToMakeGetTypedArrayByteLength(Node* node)
+    {
+        if (!isInt32Speculation(node->prediction()))
+            return false;
+        
+        TypedArrayType type = typedArrayTypeFromSpeculation(node->child1()->prediction());
+        if (!isTypedView(type))
+            return false;
+        
+        if (elementSize(type) == 1) {
+            convertToGetArrayLength(node, ArrayMode(toArrayType(type)));
+            return true;
+        }
+        
+        Node* length = prependGetArrayLength(
+            node->codeOrigin, node->child1().node(), ArrayMode(toArrayType(type)));
+        
+        Node* shiftAmount = m_insertionSet.insertNode(
+            m_indexInBlock, SpecInt32, JSConstant, node->codeOrigin,
+            OpInfo(m_graph.constantRegisterForConstant(jsNumber(logElementSize(type)))));
+        
+        // We can use a BitLShift here because typed arrays will never have a byteLength
+        // that overflows int32.
+        node->setOp(BitLShift);
+        node->clearFlags(NodeMustGenerate | NodeClobbersWorld);
+        observeUseKindOnNode(length, Int32Use);
+        observeUseKindOnNode(shiftAmount, Int32Use);
+        node->child1() = Edge(length, Int32Use);
+        node->child2() = Edge(shiftAmount, Int32Use);
+        return true;
+    }
+    
+    void convertToGetArrayLength(Node* node, ArrayMode arrayMode)
+    {
+        node->setOp(GetArrayLength);
+        node->clearFlags(NodeMustGenerate | NodeClobbersWorld);
+        setUseKindAndUnboxIfProfitable<KnownCellUse>(node->child1());
+        node->setArrayMode(arrayMode);
+            
+        Node* storage = checkArray(arrayMode, node->codeOrigin, node->child1().node(), 0, lengthNeedsStorage);
+        if (!storage)
+            return;
+            
+        node->child2() = Edge(storage);
+    }
+    
+    Node* prependGetArrayLength(CodeOrigin codeOrigin, Node* child, ArrayMode arrayMode)
+    {
+        Node* storage = checkArray(arrayMode, codeOrigin, child, 0, lengthNeedsStorage);
+        return m_insertionSet.insertNode(
+            m_indexInBlock, SpecInt32, GetArrayLength, codeOrigin,
+            OpInfo(arrayMode.asWord()), Edge(child, KnownCellUse), Edge(storage));
+    }
+    
+    bool attemptToMakeGetTypedArrayByteOffset(Node* node)
+    {
+        if (!isInt32Speculation(node->prediction()))
+            return false;
+        
+        TypedArrayType type = typedArrayTypeFromSpeculation(node->child1()->prediction());
+        if (!isTypedView(type))
+            return false;
+        
+        checkArray(
+            ArrayMode(toArrayType(type)), node->codeOrigin, node->child1().node(),
+            0, neverNeedsStorage);
+        
+        node->setOp(GetTypedArrayByteOffset);
+        node->clearFlags(NodeMustGenerate | NodeClobbersWorld);
+        setUseKindAndUnboxIfProfitable<KnownCellUse>(node->child1());
         return true;
     }
 

@@ -28,9 +28,12 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGAbstractState.h"
+#include "DFGAbstractInterpreterInlines.h"
 #include "DFGGraph.h"
+#include "DFGInPlaceAbstractState.h"
 #include "DFGPhase.h"
+#include "DFGSafeToExecute.h"
+#include "OperandsInlines.h"
 #include "Operations.h"
 
 namespace JSC { namespace DFG {
@@ -40,18 +43,23 @@ public:
     CFAPhase(Graph& graph)
         : Phase(graph, "control flow analysis")
         , m_state(graph)
+        , m_interpreter(graph, m_state)
+        , m_verbose(Options::verboseCFA())
     {
     }
     
     bool run()
     {
-        ASSERT(m_graph.m_form == ThreadedCPS);
+        ASSERT(m_graph.m_form == ThreadedCPS || m_graph.m_form == SSA);
         ASSERT(m_graph.m_unificationState == GloballyUnified);
         ASSERT(m_graph.m_refCountState == EverythingIsLive);
         
-#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
         m_count = 0;
-#endif
+        
+        if (m_verbose && !shouldDumpGraphAtEachPhase()) {
+            dataLog("Graph before CFA:\n");
+            m_graph.dump();
+        }
         
         // This implements a pseudo-worklist-based forward CFA, except that the visit order
         // of blocks is the bytecode program order (which is nearly topological), and
@@ -64,7 +72,7 @@ public:
         // after all predecessors have been visited. Only loops will cause this analysis to
         // revisit blocks, and the amount of revisiting is proportional to loop depth.
         
-        AbstractState::initialize(m_graph);
+        m_state.initialize();
         
         do {
             m_changed = false;
@@ -75,66 +83,66 @@ public:
     }
     
 private:
-    void performBlockCFA(BlockIndex blockIndex)
+    void performBlockCFA(BasicBlock* block)
     {
-        BasicBlock* block = m_graph.m_blocks[blockIndex].get();
         if (!block)
             return;
         if (!block->cfaShouldRevisit)
             return;
-#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLogF("   Block #%u (bc#%u):\n", blockIndex, block->bytecodeBegin);
-#endif
+        if (m_verbose)
+            dataLog("   Block ", *block, ":\n");
         m_state.beginBasicBlock(block);
-#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLogF("      head vars: ");
-        dumpOperands(block->valuesAtHead, WTF::dataFile());
-        dataLogF("\n");
-#endif
+        if (m_verbose)
+            dataLog("      head vars: ", block->valuesAtHead, "\n");
         for (unsigned i = 0; i < block->size(); ++i) {
-#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-            Node* node = block->at(i);
-            dataLogF("      %s @%u: ", Graph::opName(node->op()), node->index());
-            m_state.dump(WTF::dataFile());
-            dataLogF("\n");
-#endif
-            if (!m_state.execute(i)) {
-#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-                dataLogF("         Expect OSR exit.\n");
-#endif
+            if (m_verbose) {
+                Node* node = block->at(i);
+                dataLogF("      %s @%u: ", Graph::opName(node->op()), node->index());
+                
+                if (!safeToExecute(m_state, m_graph, node))
+                    dataLog("(UNSAFE) ");
+                
+                m_interpreter.dump(WTF::dataFile());
+                
+                if (m_state.haveStructures())
+                    dataLog(" (Have Structures)");
+                dataLogF("\n");
+            }
+            if (!m_interpreter.execute(i)) {
+                if (m_verbose)
+                    dataLogF("         Expect OSR exit.\n");
                 break;
             }
         }
-#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLogF("      tail regs: ");
-        m_state.dump(WTF::dataFile());
-        dataLogF("\n");
-#endif
-        m_changed |= m_state.endBasicBlock(AbstractState::MergeToSuccessors);
-#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLogF("      tail vars: ");
-        dumpOperands(block->valuesAtTail, WTF::dataFile());
-        dataLogF("\n");
-#endif
+        if (m_verbose) {
+            dataLogF("      tail regs: ");
+            m_interpreter.dump(WTF::dataFile());
+            dataLogF("\n");
+        }
+        m_changed |= m_state.endBasicBlock(MergeToSuccessors);
+        
+        if (m_verbose)
+            dataLog("      tail vars: ", block->valuesAtTail, "\n");
     }
     
     void performForwardCFA()
     {
-#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-        dataLogF("CFA [%u]\n", ++m_count);
-#endif
+        ++m_count;
+        if (m_verbose)
+            dataLogF("CFA [%u]\n", ++m_count);
         
-        for (BlockIndex block = 0; block < m_graph.m_blocks.size(); ++block)
-            performBlockCFA(block);
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex)
+            performBlockCFA(m_graph.block(blockIndex));
     }
 
 private:
-    AbstractState m_state;
+    InPlaceAbstractState m_state;
+    AbstractInterpreter<InPlaceAbstractState> m_interpreter;
+    
+    bool m_verbose;
     
     bool m_changed;
-#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
     unsigned m_count;
-#endif
 };
 
 bool performCFA(Graph& graph)

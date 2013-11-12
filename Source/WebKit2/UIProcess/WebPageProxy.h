@@ -343,6 +343,8 @@ public:
     };
     typedef unsigned ViewStateFlags;
     void viewStateDidChange(ViewStateFlags flags);
+    enum class WantsReplyOrNot { DoesNotWantReply, DoesWantReply };
+    void viewInWindowStateDidChange(WantsReplyOrNot = WantsReplyOrNot::DoesNotWantReply);
     bool isInWindow() const { return m_isInWindow; }
     void waitForDidUpdateInWindowState();
 
@@ -747,14 +749,17 @@ public:
     void postMessageToInjectedBundle(const String& messageName, APIObject* messageBody);
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    void setColorChooserColor(const WebCore::Color&);
-    void endColorChooser();
+    void setColorPickerColor(const WebCore::Color&);
+    void endColorPicker();
 #endif
 
     const WebLoaderClient& loaderClient() { return m_loaderClient; }
 
     WebCore::IntSize minimumLayoutSize() const { return m_minimumLayoutSize; }
     void setMinimumLayoutSize(const WebCore::IntSize&);
+
+    bool autoSizingShouldExpandToViewHeight() const { return m_autoSizingShouldExpandToViewHeight; }
+    void setAutoSizingShouldExpandToViewHeight(bool);
 
     bool mainFrameInViewSourceMode() const { return m_mainFrameInViewSourceMode; }
     void setMainFrameInViewSourceMode(bool);
@@ -811,7 +816,6 @@ private:
     void didReceiveTitleForFrame(uint64_t frameID, const String&, CoreIPC::MessageDecoder&);
     void didFirstLayoutForFrame(uint64_t frameID, CoreIPC::MessageDecoder&);
     void didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, CoreIPC::MessageDecoder&);
-    void didNewFirstVisuallyNonEmptyLayout(CoreIPC::MessageDecoder&);
     void didLayout(uint32_t layoutMilestones, CoreIPC::MessageDecoder&);
     void didRemoveFrameFromHierarchy(uint64_t frameID, CoreIPC::MessageDecoder&);
     void didDisplayInsecureContentForFrame(uint64_t frameID, CoreIPC::MessageDecoder&);
@@ -895,9 +899,9 @@ private:
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    void showColorChooser(const WebCore::Color& initialColor, const WebCore::IntRect&);
+    void showColorPicker(const WebCore::Color& initialColor, const WebCore::IntRect&);
     void didChooseColor(const WebCore::Color&);
-    void didEndColorChooser();
+    void didEndColorPicker();
 #endif
 
     void editorStateChanged(const EditorState&);
@@ -1252,6 +1256,7 @@ private:
     bool m_shouldSendEventsSynchronously;
 
     bool m_suppressVisibilityUpdates;
+    bool m_autoSizingShouldExpandToViewHeight;
     WebCore::IntSize m_minimumLayoutSize;
 
     float m_mediaVolume;

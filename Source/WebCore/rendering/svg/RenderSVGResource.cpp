@@ -32,6 +32,7 @@
 #include "RenderSVGResourceFilter.h"
 #include "RenderSVGResourceMasker.h"
 #include "RenderSVGResourceSolidColor.h"
+#include "RenderView.h"
 #include "SVGResources.h"
 #include "SVGResourcesCache.h"
 #include "SVGURIReference.h"
@@ -59,9 +60,7 @@ static inline RenderSVGResource* requestPaintingResource(RenderSVGResourceMode m
     if (!svgStyle)
         return 0;
 
-    bool isRenderingMask = false;
-    if (object->frame() && object->frame()->view())
-        isRenderingMask = object->frame()->view()->paintBehavior() & PaintBehaviorRenderingSVGMask;
+    bool isRenderingMask = object->view().frameView().paintBehavior() & PaintBehaviorRenderingSVGMask;
 
     // If we have no fill/stroke, return 0.
     if (mode == ApplyToFillMode) {
@@ -180,7 +179,7 @@ static inline void removeFromCacheAndInvalidateDependencies(RenderObject* object
 
     if (!object->node() || !object->node()->isSVGElement())
         return;
-    HashSet<SVGElement*>* dependencies = object->document()->accessSVGExtensions()->setOfElementsReferencingTarget(toSVGElement(object->node()));
+    HashSet<SVGElement*>* dependencies = object->document().accessSVGExtensions()->setOfElementsReferencingTarget(toSVGElement(object->node()));
     if (!dependencies)
         return;
     HashSet<SVGElement*>::iterator end = dependencies->end();
@@ -193,10 +192,9 @@ static inline void removeFromCacheAndInvalidateDependencies(RenderObject* object
 void RenderSVGResource::markForLayoutAndParentResourceInvalidation(RenderObject* object, bool needsLayout)
 {
     ASSERT(object);
-    ASSERT(object->document());
     ASSERT(object->node());
 
-    if (needsLayout)
+    if (needsLayout && !object->documentBeingDestroyed())
         object->setNeedsLayout(true);
 
     removeFromCacheAndInvalidateDependencies(object, needsLayout);

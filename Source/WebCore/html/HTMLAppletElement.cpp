@@ -24,7 +24,7 @@
 #include "config.h"
 #include "HTMLAppletElement.h"
 
-#include "Attribute.h"
+#include "ElementIterator.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "HTMLDocument.h"
@@ -33,6 +33,7 @@
 #include "RenderApplet.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include "SubframeLoader.h"
 #include "Widget.h"
 
 namespace WebCore {
@@ -67,11 +68,11 @@ void HTMLAppletElement::parseAttribute(const QualifiedName& name, const AtomicSt
     HTMLPlugInImageElement::parseAttribute(name, value);
 }
 
-bool HTMLAppletElement::rendererIsNeeded(const NodeRenderingContext& context)
+bool HTMLAppletElement::rendererIsNeeded(const RenderStyle& style)
 {
     if (!fastHasAttribute(codeAttr))
         return false;
-    return HTMLPlugInImageElement::rendererIsNeeded(context);
+    return HTMLPlugInImageElement::rendererIsNeeded(style);
 }
 
 RenderObject* HTMLAppletElement::createRenderer(RenderArena*, RenderStyle* style)
@@ -79,7 +80,7 @@ RenderObject* HTMLAppletElement::createRenderer(RenderArena*, RenderStyle* style
     if (!canEmbedJava())
         return RenderObject::createObject(this, style);
 
-    return new (document()->renderArena()) RenderApplet(this);
+    return new (document().renderArena()) RenderApplet(this);
 }
 
 RenderWidget* HTMLAppletElement::renderWidgetForJSBindings() const
@@ -87,7 +88,7 @@ RenderWidget* HTMLAppletElement::renderWidgetForJSBindings() const
     if (!canEmbedJava())
         return 0;
 
-    document()->updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIgnorePendingStylesheets();
     return renderPart();
 }
 
@@ -126,7 +127,7 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
         paramValues.append(codeBase.string());
     }
 
-    const AtomicString& name = document()->isHTMLDocument() ? getNameAttribute() : getIdAttribute();
+    const AtomicString& name = document().isHTMLDocument() ? getNameAttribute() : getIdAttribute();
     if (!name.isNull()) {
         paramNames.append("name");
         paramValues.append(name.string());
@@ -139,7 +140,7 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
     }
 
     paramNames.append("baseURL");
-    paramValues.append(document()->baseURL().string());
+    paramValues.append(document().baseURL().string());
 
     const AtomicString& mayScript = getAttribute(mayscriptAttr);
     if (!mayScript.isNull()) {
@@ -147,11 +148,8 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
         paramValues.append(mayScript.string());
     }
 
-    for (Node* child = firstChild(); child; child = child->nextSibling()) {
-        if (!child->hasTagName(paramTag))
-            continue;
-
-        HTMLParamElement* param = static_cast<HTMLParamElement*>(child);
+    auto paramChildren = childrenOfType<HTMLParamElement>(this);
+    for (auto param = paramChildren.begin(), end = paramChildren.end(); param != end; ++param) {
         if (param->name().isEmpty())
             continue;
 
@@ -159,25 +157,25 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
         paramValues.append(param->value());
     }
 
-    Frame* frame = document()->frame();
+    Frame* frame = document().frame();
     ASSERT(frame);
 
-    renderer->setWidget(frame->loader()->subframeLoader()->createJavaAppletWidget(roundedIntSize(LayoutSize(contentWidth, contentHeight)), this, paramNames, paramValues));
+    renderer->setWidget(frame->loader().subframeLoader().createJavaAppletWidget(roundedIntSize(LayoutSize(contentWidth, contentHeight)), this, paramNames, paramValues));
 }
 
 bool HTMLAppletElement::canEmbedJava() const
 {
-    if (document()->isSandboxed(SandboxPlugins))
+    if (document().isSandboxed(SandboxPlugins))
         return false;
 
-    Settings* settings = document()->settings();
+    Settings* settings = document().settings();
     if (!settings)
         return false;
 
     if (!settings->isJavaEnabled())
         return false;
 
-    if (document()->securityOrigin()->isLocal() && !settings->isJavaEnabledForLocalFiles())
+    if (document().securityOrigin()->isLocal() && !settings->isJavaEnabledForLocalFiles())
         return false;
 
     return true;

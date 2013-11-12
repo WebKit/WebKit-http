@@ -1,13 +1,13 @@
 <html>
 <head>
-<script src="../js/resources/js-test-pre.js"></script>
+<script src="../../resources/js-test-pre.js"></script>
 </head>
 <body>
 <script>
 var dt = document.implementation.createDocumentType("foo", "", "");
 var iter = document.createNodeIterator(dt, NodeFilter.SHOW_ALL, null, true);
 debug("NodeIterator rooted at a DocumentType node not yet associated with a document:");
-shouldBe('iter.referenceNode.ownerDocument', 'null');
+shouldBe('iter.referenceNode.ownerDocument', 'document');
 shouldBe('iter.nextNode()', 'dt');
 shouldBe('iter.nextNode()', 'null');
 shouldBe('iter.previousNode()', 'dt');
@@ -25,6 +25,6 @@ shouldBe('iter.nextNode()', 'dt');
 shouldBe('iter.previousNode()', 'dt');
 iter.detach();
 </script>
-<script src="../js/resources/js-test-post.js"></script>
+<script src="../../resources/js-test-post.js"></script>
 </body>
 </html>

@@ -113,7 +113,7 @@ DocumentFragment* WebEditorClient::documentFragmentFromAttributedString(NSAttrib
     NSDictionary *dictionary = [NSDictionary dictionaryWithObject:excludedElements forKey:NSExcludedElementsDocumentAttribute];
     
     NSArray *subResources;
-    Document* document = m_page->mainFrame() ? m_page->mainFrame()->document() : 0;
+    Document* document = m_page->mainFrame()->document();
     DOMDocumentFragment* fragment = [string _documentFromRange:NSMakeRange(0, [string length])
                                                       document:kit(document)
                                             documentAttributes:dictionary
@@ -133,14 +133,14 @@ void WebEditorClient::setInsertionPasteboard(const String&)
 
 static void changeWordCase(WebPage* page, SEL selector)
 {
-    Frame* frame = page->corePage()->focusController()->focusedOrMainFrame();
-    if (!frame->editor().canEdit())
+    Frame& frame = page->corePage()->focusController().focusedOrMainFrame();
+    if (!frame.editor().canEdit())
         return;
 
-    frame->editor().command("selectWord").execute();
+    frame.editor().command("selectWord").execute();
 
-    NSString *selectedString = frame->displayStringModifiedByEncoding(frame->editor().selectedText());
-    page->replaceSelectionWithText(frame, [selectedString performSelector:selector]);
+    NSString *selectedString = frame.displayStringModifiedByEncoding(frame.editor().selectedText());
+    page->replaceSelectionWithText(&frame, [selectedString performSelector:selector]);
 }
 
 #if USE(APPKIT)
@@ -233,11 +233,5 @@ void WebEditorClient::toggleAutomaticSpellingCorrection()
     notImplemented();
 }
 #endif // USE(AUTOMATIC_TEXT_REPLACEMENT)
-
-void WebEditorClient::checkTextOfParagraph(const UChar* text, int length, WebCore::TextCheckingTypeMask checkingTypes, Vector<TextCheckingResult>& results)
-{
-    // FIXME: It would be nice if we wouldn't have to copy the text here.
-    m_page->sendSync(Messages::WebPageProxy::CheckTextOfParagraph(String(text, length), checkingTypes), Messages::WebPageProxy::CheckTextOfParagraph::Reply(results));
-}
 
 } // namespace WebKit

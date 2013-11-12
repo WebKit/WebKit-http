@@ -69,13 +69,6 @@ static inline bool filenameHasSaneExtension(const String& filename)
     return dot > 0 && dot < length - 1;
 }
 
-static time_t toTimeT(CFAbsoluteTime time)
-{
-    static const double maxTimeAsDouble = std::numeric_limits<time_t>::max();
-    static const double minTimeAsDouble = std::numeric_limits<time_t>::min();
-    return static_cast<time_t>(min(max(minTimeAsDouble, time + kCFAbsoluteTimeIntervalSince1970), maxTimeAsDouble));
-}
-
 void ResourceResponse::platformLazyInit(InitLevel initLevel)
 {
     if (m_initLevel > initLevel)
@@ -94,8 +87,6 @@ void ResourceResponse::platformLazyInit(InitLevel initLevel)
         unsigned textEncodingNameLength = m_textEncodingName.length();
         if (textEncodingNameLength >= 2 && m_textEncodingName[0U] == '"' && m_textEncodingName[textEncodingNameLength - 1] == '"')
             m_textEncodingName = m_textEncodingName.substring(1, textEncodingNameLength - 2);
-
-        m_lastModifiedDate = toTimeT(CFURLResponseGetLastModifiedDate(m_cfResponse.get()));
 
         CFHTTPMessageRef httpResponse = CFURLResponseGetHTTPResponse(m_cfResponse.get());
         if (httpResponse) {

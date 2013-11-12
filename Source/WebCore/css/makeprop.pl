@@ -32,6 +32,7 @@ GetOptions('defines=s' => \$defines,
            'preprocessor=s' => \$preprocessor);
 
 my @NAMES = applyPreprocessor("CSSPropertyNames.in", $defines, $preprocessor);
+die "We've reached more than 1024 CSS properties, please make sure to update CSSProperty/StylePropertyMetadata accordingly" if (scalar(@NAMES) > 1024);
 
 my %namesHash;
 my @duplicates = ();
@@ -72,6 +73,12 @@ print GPERF << "EOF";
 #include <wtf/ASCIICType.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/WTFString.h>
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored \"-Wunknown-pragmas\"
+#pragma clang diagnostic ignored \"-Wdeprecated-register\"
+#endif
 
 namespace WebCore {
 EOF
@@ -115,7 +122,7 @@ foreach my $alias (@aliases) {
 
 print GPERF<< "EOF";
 %%
-const Property* findProperty(register const char* str, register unsigned int len)
+const Property* findProperty(const char* str, unsigned int len)
 {
     return CSSPropertyNamesHash::findPropertyImpl(str, len);
 }
@@ -176,6 +183,10 @@ String getJSPropertyName(CSSPropertyID id)
 }
 
 } // namespace WebCore
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 EOF
 
 open HEADER, ">CSSPropertyNames.h" || die "Could not open CSSPropertyNames.h for writing";
@@ -203,8 +214,8 @@ enum CSSPropertyID {
 #endif
 EOF
 
-my $first = 1001;
-my $i = 1001;
+my $first = 3;
+my $i = 3;
 my $maxLen = 0;
 foreach my $name (@names) {
   my $id = $name;

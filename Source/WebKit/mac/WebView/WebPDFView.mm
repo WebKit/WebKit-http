@@ -636,8 +636,8 @@ static BOOL _PDFSelectionsAreEqual(PDFSelection *selectionA, PDFSelection *selec
 static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
 {
     BOOL inRange = NO;
-    for (HTMLFrameOwnerElement* ownerElement = core(frame)->ownerElement(); ownerElement; ownerElement = ownerElement->document()->frame()->ownerElement()) {
-        if (ownerElement->document() == core(range)->ownerDocument()) {
+    for (HTMLFrameOwnerElement* ownerElement = core(frame)->ownerElement(); ownerElement; ownerElement = ownerElement->document().frame()->ownerElement()) {
+        if (&ownerElement->document() == &core(range)->ownerDocument()) {
             inRange = [range intersectsNode:kit(ownerElement)];
             break;
         }
@@ -979,7 +979,7 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
 
     // Call to the frame loader because this is where our security checks are made.
     Frame* frame = core([dataSource webFrame]);
-    frame->loader()->loadFrameRequest(FrameLoadRequest(frame->document()->securityOrigin(), ResourceRequest(URL)), false, false, event.get(), 0, MaybeSendReferrer);
+    frame->loader().loadFrameRequest(FrameLoadRequest(frame->document()->securityOrigin(), ResourceRequest(URL)), false, false, event.get(), 0, MaybeSendReferrer);
 }
 
 - (void)PDFViewOpenPDFInNativeApplication:(PDFView *)sender

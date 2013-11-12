@@ -28,7 +28,7 @@
 
 namespace JSC {
 
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(StringObject);
+STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(StringObject);
 
 const ClassInfo StringObject::s_info = { "String", &JSWrapperObject::s_info, 0, 0, CREATE_METHOD_TABLE(StringObject) };
 
@@ -40,11 +40,11 @@ StringObject::StringObject(VM& vm, Structure* structure)
 void StringObject::finishCreation(VM& vm, JSString* string)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(&s_info));
+    ASSERT(inherits(info()));
     setInternalValue(vm, string);
 }
 
-bool StringObject::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+bool StringObject::getOwnPropertySlot(JSObject* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     StringObject* thisObject = jsCast<StringObject*>(cell);
     if (thisObject->internalValue()->getStringPropertySlot(exec, propertyName, slot))
@@ -52,20 +52,12 @@ bool StringObject::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyNam
     return JSObject::getOwnPropertySlot(thisObject, exec, propertyName, slot);
 }
     
-bool StringObject::getOwnPropertySlotByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, PropertySlot& slot)
+bool StringObject::getOwnPropertySlotByIndex(JSObject* object, ExecState* exec, unsigned propertyName, PropertySlot& slot)
 {
-    StringObject* thisObject = jsCast<StringObject*>(cell);
+    StringObject* thisObject = jsCast<StringObject*>(object);
     if (thisObject->internalValue()->getStringPropertySlot(exec, propertyName, slot))
         return true;    
     return JSObject::getOwnPropertySlot(thisObject, exec, Identifier::from(exec, propertyName), slot);
-}
-
-bool StringObject::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
-{
-    StringObject* thisObject = jsCast<StringObject*>(object);
-    if (thisObject->internalValue()->getStringPropertyDescriptor(exec, propertyName, descriptor))
-        return true;    
-    return JSObject::getOwnPropertyDescriptor(thisObject, exec, propertyName, descriptor);
 }
 
 void StringObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
@@ -89,34 +81,34 @@ void StringObject::putByIndex(JSCell* cell, ExecState* exec, unsigned propertyNa
     JSObject::putByIndex(cell, exec, propertyName, value, shouldThrow);
 }
 
-bool StringObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor, bool throwException)
+bool StringObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool throwException)
 {
     StringObject* thisObject = jsCast<StringObject*>(object);
 
     if (propertyName == exec->propertyNames().length) {
         if (!object->isExtensible()) {
             if (throwException)
-                throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to define property on object that is not extensible.")));
+                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to define property on object that is not extensible.")));
             return false;
         }
         if (descriptor.configurablePresent() && descriptor.configurable()) {
             if (throwException)
-                throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to configurable attribute of unconfigurable property.")));
+                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to configurable attribute of unconfigurable property.")));
             return false;
         }
         if (descriptor.enumerablePresent() && descriptor.enumerable()) {
             if (throwException)
-                throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to change enumerable attribute of unconfigurable property.")));
+                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change enumerable attribute of unconfigurable property.")));
             return false;
         }
         if (descriptor.isAccessorDescriptor()) {
             if (throwException)
-                throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to change access mechanism for an unconfigurable property.")));
+                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change access mechanism for an unconfigurable property.")));
             return false;
         }
         if (descriptor.writablePresent() && descriptor.writable()) {
             if (throwException)
-                throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to change writable attribute of unconfigurable property.")));
+                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change writable attribute of unconfigurable property.")));
             return false;
         }
         if (!descriptor.value())
@@ -124,7 +116,7 @@ bool StringObject::defineOwnProperty(JSObject* object, ExecState* exec, Property
         if (propertyName == exec->propertyNames().length && sameValue(exec, descriptor.value(), jsNumber(thisObject->internalValue()->length())))
             return true;
         if (throwException)
-            throwError(exec, createTypeError(exec, ASCIILiteral("Attempting to change value of a readonly property.")));
+            exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change value of a readonly property.")));
         return false;
     }
 

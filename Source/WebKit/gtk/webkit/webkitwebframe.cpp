@@ -188,7 +188,7 @@ static void webkit_web_frame_finalize(GObject* object)
 
     if (priv->coreFrame) {
         DOMObjectCache::clearByFrame(priv->coreFrame);
-        priv->coreFrame->loader()->cancelAndClear();
+        priv->coreFrame->loader().cancelAndClear();
         priv->coreFrame = 0;
     }
 
@@ -552,8 +552,8 @@ WebKitWebFrame* webkit_web_frame_new(WebKitWebView* webView)
     WebKitWebViewPrivate* viewPriv = webView->priv;
 
     priv->webView = webView;
-    WebKit::FrameLoaderClient* client = new WebKit::FrameLoaderClient(frame);
-    priv->coreFrame = Frame::create(viewPriv->corePage, 0, client).get();
+    priv->coreFrame = &viewPriv->corePage->mainFrame();
+    static_cast<WebKit::FrameLoaderClient*>(&viewPriv->corePage->mainFrame().loader().client())->setWebFrame(frame);
     priv->coreFrame->init();
 
     priv->origin = 0;
@@ -630,7 +630,7 @@ const gchar* webkit_web_frame_get_name(WebKitWebFrame* frame)
         return "";
 
     WebKitWebFramePrivate* priv = frame->priv;
-    CString frameName = coreFrame->tree()->uniqueName().string().utf8();
+    CString frameName = coreFrame->tree().uniqueName().string().utf8();
     if (!g_strcmp0(frameName.data(), priv->name))
         return priv->name;
 
@@ -655,7 +655,7 @@ WebKitWebFrame* webkit_web_frame_get_parent(WebKitWebFrame* frame)
     if (!coreFrame)
         return 0;
 
-    return kit(coreFrame->tree()->parent());
+    return kit(coreFrame->tree().parent());
 }
 
 /**
@@ -676,7 +676,7 @@ void webkit_web_frame_load_uri(WebKitWebFrame* frame, const gchar* uri)
     if (!coreFrame)
         return;
 
-    coreFrame->loader()->load(FrameLoadRequest(coreFrame, ResourceRequest(KURL(KURL(), String::fromUTF8(uri)))));
+    coreFrame->loader().load(FrameLoadRequest(coreFrame, ResourceRequest(KURL(KURL(), String::fromUTF8(uri)))));
 }
 
 static void webkit_web_frame_load_data(WebKitWebFrame* frame, const gchar* content, const gchar* mimeType, const gchar* encoding, const gchar* baseURL, const gchar* unreachableURL)
@@ -695,7 +695,7 @@ static void webkit_web_frame_load_data(WebKitWebFrame* frame, const gchar* conte
                                   KURL(KURL(), String::fromUTF8(unreachableURL)),
                                   KURL(KURL(), String::fromUTF8(unreachableURL)));
 
-    coreFrame->loader()->load(FrameLoadRequest(coreFrame, request, substituteData));
+    coreFrame->loader().load(FrameLoadRequest(coreFrame, request, substituteData));
 }
 
 /**
@@ -764,7 +764,7 @@ void webkit_web_frame_load_request(WebKitWebFrame* frame, WebKitNetworkRequest* 
     if (!coreFrame)
         return;
 
-    coreFrame->loader()->load(FrameLoadRequest(coreFrame->document()->securityOrigin(), core(request)));
+    coreFrame->loader().load(FrameLoadRequest(coreFrame->document()->securityOrigin(), core(request)));
 }
 
 /**
@@ -781,7 +781,7 @@ void webkit_web_frame_stop_loading(WebKitWebFrame* frame)
     if (!coreFrame)
         return;
 
-    coreFrame->loader()->stopAllLoaders();
+    coreFrame->loader().stopAllLoaders();
 }
 
 /**
@@ -798,7 +798,7 @@ void webkit_web_frame_reload(WebKitWebFrame* frame)
     if (!coreFrame)
         return;
 
-    coreFrame->loader()->reload();
+    coreFrame->loader().reload();
 }
 
 /**
@@ -828,7 +828,7 @@ WebKitWebFrame* webkit_web_frame_find_frame(WebKitWebFrame* frame, const gchar* 
         return 0;
 
     String nameString = String::fromUTF8(name);
-    return kit(coreFrame->tree()->find(AtomicString(nameString)));
+    return kit(coreFrame->tree().find(AtomicString(nameString)));
 }
 
 /**
@@ -848,7 +848,7 @@ JSGlobalContextRef webkit_web_frame_get_global_context(WebKitWebFrame* frame)
     if (!coreFrame)
         return 0;
 
-    return toGlobalRef(coreFrame->script()->globalObject(mainThreadNormalWorld())->globalExec());
+    return toGlobalRef(coreFrame->script().globalObject(mainThreadNormalWorld())->globalExec());
 }
 
 /**
@@ -866,7 +866,7 @@ WebKitWebDataSource* webkit_web_frame_get_data_source(WebKitWebFrame* frame)
     g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), 0);
 
     Frame* coreFrame = core(frame);
-    return webkit_web_frame_get_data_source_from_core_loader(coreFrame->loader()->documentLoader());
+    return webkit_web_frame_get_data_source_from_core_loader(coreFrame->loader().documentLoader());
 }
 
 /**
@@ -888,7 +888,7 @@ WebKitWebDataSource* webkit_web_frame_get_provisional_data_source(WebKitWebFrame
     g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), 0);
 
     Frame* coreFrame = core(frame);
-    return webkit_web_frame_get_data_source_from_core_loader(coreFrame->loader()->provisionalDocumentLoader());
+    return webkit_web_frame_get_data_source_from_core_loader(coreFrame->loader().provisionalDocumentLoader());
 }
 
 static void begin_print_callback(GtkPrintOperation* op, GtkPrintContext* context, gpointer user_data)
@@ -1005,7 +1005,7 @@ void webkit_web_frame_print(WebKitWebFrame* frame)
 gchar* webkit_web_frame_get_response_mime_type(WebKitWebFrame* frame)
 {
     Frame* coreFrame = core(frame);
-    WebCore::DocumentLoader* docLoader = coreFrame->loader()->documentLoader();
+    WebCore::DocumentLoader* docLoader = coreFrame->loader().documentLoader();
     String mimeType = docLoader->responseMIMEType();
     return g_strdup(mimeType.utf8().data());
 }
@@ -1113,7 +1113,7 @@ WebKitNetworkResponse* webkit_web_frame_get_network_response(WebKitWebFrame* fra
     if (!coreFrame)
         return 0;
 
-    WebCore::DocumentLoader* loader = coreFrame->loader()->activeDocumentLoader();
+    WebCore::DocumentLoader* loader = coreFrame->loader().activeDocumentLoader();
     if (!loader)
         return 0;
 
@@ -1155,10 +1155,10 @@ WebKitDOMRange* webkit_web_frame_get_range_for_word_around_caret(WebKitWebFrame*
     g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), 0);
 
     Frame* coreFrame = core(frame);
-    FrameSelection* selection = coreFrame->selection();
-    if (selection->isNone() || selection->isRange())
+    FrameSelection& selection = coreFrame->selection();
+    if (selection.isNone() || selection.isRange())
         return 0;
-    VisibleSelection visibleSelection(selection->selection().visibleStart());
+    VisibleSelection visibleSelection(selection.selection().visibleStart());
     visibleSelection.expandUsingGranularity(WordGranularity);
 
     return kit(visibleSelection.firstRange().get());
@@ -1210,9 +1210,7 @@ WebKitWebFrame* kit(WebCore::Frame* coreFrame)
     if (!coreFrame)
         return 0;
 
-    ASSERT(coreFrame->loader());
-    WebKit::FrameLoaderClient* client = static_cast<WebKit::FrameLoaderClient*>(coreFrame->loader()->client());
-    return client ? client->webFrame() : 0;
+    return static_cast<WebKit::FrameLoaderClient&>(coreFrame->loader().client()).webFrame();
 }
 
 }

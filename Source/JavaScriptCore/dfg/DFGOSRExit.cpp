@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,21 +29,19 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGAssemblyHelpers.h"
+#include "DFGGraph.h"
 #include "DFGSpeculativeJIT.h"
 #include "JSCellInlines.h"
 
 namespace JSC { namespace DFG {
 
 OSRExit::OSRExit(ExitKind kind, JSValueSource jsValueSource, MethodOfGettingAValueProfile valueProfile, SpeculativeJIT* jit, unsigned streamIndex, unsigned recoveryIndex)
-    : m_jsValueSource(jsValueSource)
+    : OSRExitBase(kind, jit->m_codeOriginForExitTarget, jit->m_codeOriginForExitProfile)
+    , m_jsValueSource(jsValueSource)
     , m_valueProfile(valueProfile)
     , m_patchableCodeOffset(0)
-    , m_codeOrigin(jit->m_codeOriginForOSR)
-    , m_codeOriginForExitProfile(m_codeOrigin)
     , m_recoveryIndex(recoveryIndex)
     , m_watchpointIndex(std::numeric_limits<unsigned>::max())
-    , m_kind(kind)
-    , m_count(0)
     , m_streamIndex(streamIndex)
     , m_lastSetOperand(jit->m_lastSetOperand)
 {
@@ -62,7 +60,7 @@ MacroAssembler::Jump OSRExit::getPatchableCodeOffsetAsJump() const
 
 CodeLocationJump OSRExit::codeLocationForRepatch(CodeBlock* dfgCodeBlock) const
 {
-    return CodeLocationJump(dfgCodeBlock->getJITCode().dataAddressAtOffset(m_patchableCodeOffset));
+    return CodeLocationJump(dfgCodeBlock->jitCode()->dataAddressAtOffset(m_patchableCodeOffset));
 }
 
 void OSRExit::correctJump(LinkBuffer& linkBuffer)
@@ -72,18 +70,25 @@ void OSRExit::correctJump(LinkBuffer& linkBuffer)
     m_patchableCodeOffset = linkBuffer.offsetOf(label);
 }
 
-bool OSRExit::considerAddingAsFrequentExitSiteSlow(CodeBlock* profiledCodeBlock)
+void OSRExit::convertToForward(BasicBlock* block, Node* currentNode, unsigned nodeIndex, const ValueRecovery& valueRecovery)
 {
-    FrequentExitSite exitSite;
+    Node* node;
+    Node* lastMovHint;
+    if (!doSearchForForwardConversion(block, currentNode, nodeIndex, !!valueRecovery, node, lastMovHint))
+        return;
+
+    ASSERT(node->codeOrigin != currentNode->codeOrigin);
     
-    if (m_kind == ArgumentsEscaped) {
-        // Count this one globally. It doesn't matter where in the code block the arguments excaped;
-        // the fact that they did is not associated with any particular instruction.
-        exitSite = FrequentExitSite(m_kind);
-    } else
-        exitSite = FrequentExitSite(m_codeOriginForExitProfile.bytecodeIndex, m_kind);
+    m_codeOrigin = node->codeOrigin;
     
-    return baselineCodeBlockForOriginAndBaselineCodeBlock(m_codeOriginForExitProfile, profiledCodeBlock)->addFrequentExitSite(exitSite);
+    if (!valueRecovery)
+        return;
+    
+    ASSERT(lastMovHint);
+    ASSERT(lastMovHint->child1() == currentNode);
+    m_lastSetOperand = lastMovHint->local();
+    m_valueRecoveryOverride = adoptRef(
+        new ValueRecoveryOverride(lastMovHint->local(), valueRecovery));
 }
 
 } } // namespace JSC::DFG

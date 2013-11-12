@@ -68,10 +68,6 @@ public:
     void didTruncate();
     void didFail(FileError::ErrorCode);
 
-    // ActiveDOMObject
-    virtual bool canSuspend() const;
-    virtual void stop();
-
     // EventTarget
     virtual const AtomicString& interfaceName() const;
     virtual ScriptExecutionContext* scriptExecutionContext() const { return ActiveDOMObject::scriptExecutionContext(); }
@@ -98,11 +94,15 @@ private:
 
     virtual ~FileWriter();
 
+    // ActiveDOMObject
+    virtual bool canSuspend() const OVERRIDE;
+    virtual void stop() OVERRIDE;
+
     // EventTarget
-    virtual void refEventTarget() { ref(); }
-    virtual void derefEventTarget() { deref(); }
-    virtual EventTargetData* eventTargetData() { return &m_eventTargetData; }
-    virtual EventTargetData* ensureEventTargetData() { return &m_eventTargetData; }
+    virtual void refEventTarget() OVERRIDE { ref(); }
+    virtual void derefEventTarget() OVERRIDE { deref(); }
+    virtual EventTargetData* eventTargetData() OVERRIDE { return &m_eventTargetData; }
+    virtual EventTargetData& ensureEventTargetData() OVERRIDE { return m_eventTargetData; }
 
     void completeAbort();
 

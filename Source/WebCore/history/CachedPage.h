@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
 #define CachedPage_h
 
 #include "CachedFrame.h"
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
     
@@ -35,14 +34,13 @@ class Document;
 class DocumentLoader;
 class Page;
 
-class CachedPage : public RefCounted<CachedPage> {
+class CachedPage {
 public:
-    static PassRefPtr<CachedPage> create(Page*);
+    static PassOwnPtr<CachedPage> create(Page&);
     ~CachedPage();
 
-    void restore(Page*);
+    void restore(Page&);
     void clear();
-    void destroy();
 
     Document* document() const { return m_cachedMainFrame->document(); }
     DocumentLoader* documentLoader() const { return m_cachedMainFrame->documentLoader(); }
@@ -63,11 +61,12 @@ public:
 #endif
 
 private:
-    CachedPage(Page*);
+    explicit CachedPage(Page&);
+    void destroy();
 
     double m_timeStamp;
     double m_expirationTime;
-    RefPtr<CachedFrame> m_cachedMainFrame;
+    OwnPtr<CachedFrame> m_cachedMainFrame;
     bool m_needStyleRecalcForVisitedLinks;
     bool m_needsFullStyleRecalc;
     bool m_needsCaptionPreferencesChanged;

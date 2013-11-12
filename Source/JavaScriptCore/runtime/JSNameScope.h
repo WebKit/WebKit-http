@@ -51,14 +51,13 @@ public:
     }
 
     static void visitChildren(JSCell*, SlotVisitor&);
-    bool isDynamicScope(bool& requiresDynamicChecks) const;
-    static JSObject* toThisObject(JSCell*, ExecState*);
-    static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
+    static JSValue toThis(JSCell*, ExecState*, ECMAMode);
+    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto) { return Structure::create(vm, globalObject, proto, TypeInfo(NameScopeObjectType, StructureFlags), &s_info); }
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto) { return Structure::create(vm, globalObject, proto, TypeInfo(NameScopeObjectType, StructureFlags), info()); }
 
-    static const ClassInfo s_info;
+    DECLARE_INFO;
 
 protected:
     void finishCreation(ExecState* exec, const Identifier& identifier, JSValue value, unsigned attributes)
@@ -83,11 +82,6 @@ private:
 
     WriteBarrier<Unknown> m_registerStore;
 };
-
-inline bool JSNameScope::isDynamicScope(bool&) const
-{
-    return false;
-}
 
 }
 

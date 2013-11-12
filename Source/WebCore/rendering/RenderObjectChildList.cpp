@@ -67,7 +67,7 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
         oldChild->setNeedsLayoutAndPrefWidthsRecalc();
         // We only repaint |oldChild| if we have a RenderLayer as its visual overflow may not be tracked by its parent.
         if (oldChild->isBody())
-            owner->view()->repaint();
+            owner->view().repaintRootContents();
         else
             oldChild->repaint();
     }
@@ -81,7 +81,7 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
     // FIXME: The FrameSelection should be responsible for this when it
     // is notified of DOM mutations.
     if (!owner->documentBeingDestroyed() && oldChild->isSelectionBorder())
-        owner->view()->clearSelection();
+        owner->view().clearSelection();
 
     if (!owner->documentBeingDestroyed() && notifyRenderer)
         oldChild->willBeRemovedFromTree();
@@ -109,7 +109,7 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
     if (!owner->documentBeingDestroyed())
         RenderCounter::rendererRemovedFromTree(oldChild);
 
-    if (AXObjectCache* cache = owner->document()->existingAXObjectCache())
+    if (AXObjectCache* cache = owner->document().existingAXObjectCache())
         cache->childrenChanged(owner);
 
     return oldChild;
@@ -118,7 +118,7 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
 void RenderObjectChildList::insertChildNode(RenderObject* owner, RenderObject* newChild, RenderObject* beforeChild, bool notifyRenderer)
 {
     ASSERT(!newChild->parent());
-    ASSERT(!owner->isBlockFlow() || (!newChild->isTableSection() && !newChild->isTableRow() && !newChild->isTableCell()));
+    ASSERT(!owner->isBlockFlowFlexBoxOrGrid() || (!newChild->isTableSection() && !newChild->isTableRow() && !newChild->isTableCell()));
 
     while (beforeChild && beforeChild->parent() && beforeChild->parent() != owner)
         beforeChild = beforeChild->parent();
@@ -162,7 +162,7 @@ void RenderObjectChildList::insertChildNode(RenderObject* owner, RenderObject* n
     if (!owner->normalChildNeedsLayout())
         owner->setChildNeedsLayout(true); // We may supply the static position for an absolute positioned child.
 
-    if (AXObjectCache* cache = owner->document()->axObjectCache())
+    if (AXObjectCache* cache = owner->document().axObjectCache())
         cache->childrenChanged(owner);
 }
 

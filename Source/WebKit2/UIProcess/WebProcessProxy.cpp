@@ -47,15 +47,12 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(MAC)
-#include "SimplePDFPlugin.h"
-#if ENABLE(PDFKIT_PLUGIN)
-#include "PDFPlugin.h"
-#endif
-#endif
-
 #if ENABLE(CUSTOM_PROTOCOLS)
 #include "CustomProtocolManagerProxyMessages.h"
+#endif
+
+#if PLATFORM(MAC)
+#include "PDFPlugin.h"
 #endif
 
 #if USE(SECURITY_FRAMEWORK)
@@ -309,7 +306,7 @@ void WebProcessProxy::addBackForwardItem(uint64_t itemID, const String& original
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-void WebProcessProxy::getPlugins(bool refresh, Vector<PluginInfo>& plugins)
+void WebProcessProxy::getPlugins(bool refresh, Vector<PluginInfo>& plugins, Vector<PluginInfo>& applicationPlugins)
 {
     if (refresh)
         m_context->pluginInfoStore().refresh();
@@ -318,13 +315,11 @@ void WebProcessProxy::getPlugins(bool refresh, Vector<PluginInfo>& plugins)
     for (size_t i = 0; i < pluginModules.size(); ++i)
         plugins.append(pluginModules[i].info);
 
-#if PLATFORM(MAC)
+#if ENABLE(PDFKIT_PLUGIN)
     // Add built-in PDF last, so that it's not used when a real plug-in is installed.
     if (!m_context->omitPDFSupport()) {
-#if ENABLE(PDFKIT_PLUGIN)
         plugins.append(PDFPlugin::pluginInfo());
-#endif
-        plugins.append(SimplePDFPlugin::pluginInfo());
+        applicationPlugins.append(PDFPlugin::pluginInfo());
     }
 #endif
 }

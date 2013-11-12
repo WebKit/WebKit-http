@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2003, 2006, 2007, 2013 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -91,8 +91,15 @@
 #if COMPILER(GCC) && !defined(__OBJC__)
 #define WTF_ATTRIBUTE_PRINTF(formatStringArgument, extraArguments) __attribute__((__format__(printf, formatStringArgument, extraArguments)))
 #else
-#define WTF_ATTRIBUTE_PRINTF(formatStringArgument, extraArguments) 
+#define WTF_ATTRIBUTE_PRINTF(formatStringArgument, extraArguments)
 #endif
+
+#if PLATFORM(IOS)
+/* For a project that uses WTF but has no config.h, we need to explicitly set the export defines here. */
+#ifndef WTF_EXPORT_PRIVATE
+#define WTF_EXPORT_PRIVATE
+#endif
+#endif // PLATFORM(IOS)
 
 /* These helper functions are always declared, but not necessarily always defined if the corresponding function is disabled. */
 
@@ -103,9 +110,8 @@ extern "C" {
 typedef enum { WTFLogChannelOff, WTFLogChannelOn } WTFLogChannelState;
 
 typedef struct {
-    unsigned mask;
-    const char *defaultName;
     WTFLogChannelState state;
+    const char* name;
 } WTFLogChannel;
 
 WTF_EXPORT_PRIVATE void WTFReportAssertionFailure(const char* file, int line, const char* function, const char* assertion);
@@ -116,6 +122,8 @@ WTF_EXPORT_PRIVATE void WTFReportError(const char* file, int line, const char* f
 WTF_EXPORT_PRIVATE void WTFLog(WTFLogChannel*, const char* format, ...) WTF_ATTRIBUTE_PRINTF(2, 3);
 WTF_EXPORT_PRIVATE void WTFLogVerbose(const char* file, int line, const char* function, WTFLogChannel*, const char* format, ...) WTF_ATTRIBUTE_PRINTF(5, 6);
 WTF_EXPORT_PRIVATE void WTFLogAlways(const char* format, ...) WTF_ATTRIBUTE_PRINTF(1, 2);
+WTF_EXPORT_PRIVATE WTFLogChannel* WTFLogChannelByName(WTFLogChannel*[], size_t count, const char*);
+WTF_EXPORT_PRIVATE void WTFInitializeLogChannelStatesFromString(WTFLogChannel*[], size_t count, const char*);
 
 WTF_EXPORT_PRIVATE void WTFGetBacktrace(void** stack, int* size);
 WTF_EXPORT_PRIVATE void WTFReportBacktrace();

@@ -29,6 +29,7 @@
 #include "CachedImage.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "ElementIterator.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FormDataList.h"
@@ -42,7 +43,6 @@
 #include "HTMLParserIdioms.h"
 #include "MIMETypeRegistry.h"
 #include "NodeList.h"
-#include "NodeTraversal.h"
 #include "Page.h"
 #include "PluginViewBase.h"
 #include "RenderEmbeddedObject.h"
@@ -50,8 +50,10 @@
 #include "RenderWidget.h"
 #include "ScriptEventListener.h"
 #include "Settings.h"
+#include "SubframeLoader.h"
 #include "Text.h"
 #include "Widget.h"
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
@@ -63,7 +65,7 @@ inline HTMLObjectElement::HTMLObjectElement(const QualifiedName& tagName, Docume
     , m_useFallbackContent(false)
 {
     ASSERT(hasTagName(objectTag));
-    setForm(form ? form : findFormAncestor());
+    setForm(form ? form : HTMLFormElement::findClosestFormAncestor(*this));
 }
 
 inline HTMLObjectElement::~HTMLObjectElement()
@@ -77,7 +79,7 @@ PassRefPtr<HTMLObjectElement> HTMLObjectElement::create(const QualifiedName& tag
 
 RenderWidget* HTMLObjectElement::renderWidgetForJSBindings() const
 {
-    document()->updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIgnorePendingStylesheets();
     return renderPart(); // This will return 0 if the renderer is not a RenderPart.
 }
 
@@ -153,25 +155,22 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
     
     // Scan the PARAM children and store their name/value pairs.
     // Get the URL and type from the params if we don't already have them.
-    for (Node* child = firstChild(); child; child = child->nextSibling()) {
-        if (!child->hasTagName(paramTag))
-            continue;
-
-        HTMLParamElement* p = static_cast<HTMLParamElement*>(child);
-        String name = p->name();
+    auto paramChildren = childrenOfType<HTMLParamElement>(this);
+    for (auto param = paramChildren.begin(), end = paramChildren.end(); param != end; ++param) {
+        String name = param->name();
         if (name.isEmpty())
             continue;
 
         uniqueParamNames.add(name.impl());
-        paramNames.append(p->name());
-        paramValues.append(p->value());
+        paramNames.append(param->name());
+        paramValues.append(param->value());
 
         // FIXME: url adjustment does not belong in this function.
         if (url.isEmpty() && urlParameter.isEmpty() && (equalIgnoringCase(name, "src") || equalIgnoringCase(name, "movie") || equalIgnoringCase(name, "code") || equalIgnoringCase(name, "url")))
-            urlParameter = stripLeadingAndTrailingHTMLSpaces(p->value());
+            urlParameter = stripLeadingAndTrailingHTMLSpaces(param->value());
         // FIXME: serviceType calculation does not belong in this function.
         if (serviceType.isEmpty() && equalIgnoringCase(name, "type")) {
-            serviceType = p->value();
+            serviceType = param->value();
             size_t pos = serviceType.find(";");
             if (pos != notFound)
                 serviceType = serviceType.left(pos);
@@ -192,11 +191,11 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
     // Turn the attributes of the <object> element into arrays, but don't override <param> values.
     if (hasAttributes()) {
         for (unsigned i = 0; i < attributeCount(); ++i) {
-            const Attribute* attribute = attributeItem(i);
-            const AtomicString& name = attribute->name().localName();
+            const Attribute& attribute = attributeAt(i);
+            const AtomicString& name = attribute.name().localName();
             if (!uniqueParamNames.contains(name.impl())) {
                 paramNames.append(name.string());
-                paramValues.append(attribute->value().string());
+                paramValues.append(attribute.value().string());
             }
         }
     }
@@ -208,8 +207,8 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
     // resource's URL to be given by a param named "src", "movie", "code" or "url"
     // if we know that resource points to a plug-in.
     if (url.isEmpty() && !urlParameter.isEmpty()) {
-        SubframeLoader* loader = document()->frame()->loader()->subframeLoader();
-        if (loader->resourceWillUsePlugin(urlParameter, serviceType, shouldPreferPlugInsForImages()))
+        SubframeLoader& loader = document().frame()->loader().subframeLoader();
+        if (loader.resourceWillUsePlugin(urlParameter, serviceType, shouldPreferPlugInsForImages()))
             url = urlParameter;
     }
 }
@@ -236,13 +235,13 @@ bool HTMLObjectElement::shouldAllowQuickTimeClassIdQuirk()
     // 'generator' meta tag is present. Only apply this quirk if there is no
     // fallback content, which ensures the quirk will disable itself if Wiki
     // Server is updated to generate an alternate embed tag as fallback content.
-    if (!document()->page()
-        || !document()->page()->settings()->needsSiteSpecificQuirks()
+    if (!document().page()
+        || !document().page()->settings().needsSiteSpecificQuirks()
         || hasFallbackContent()
         || !equalIgnoringCase(classId(), "clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B"))
         return false;
 
-    RefPtr<NodeList> metaElements = document()->getElementsByTagName(HTMLNames::metaTag.localName());
+    RefPtr<NodeList> metaElements = document().getElementsByTagName(HTMLNames::metaTag.localName());
     unsigned length = metaElements->length();
     for (unsigned i = 0; i < length; ++i) {
         ASSERT(metaElements->item(i)->isHTMLElement());
@@ -313,25 +312,25 @@ void HTMLObjectElement::updateWidget(PluginCreationOption pluginCreationOption)
         return;
     }
 
-    RefPtr<HTMLObjectElement> protect(this); // beforeload and plugin loading can make arbitrary DOM mutations.
+    Ref<HTMLObjectElement> protect(*this); // beforeload and plugin loading can make arbitrary DOM mutations.
     bool beforeLoadAllowedLoad = guardedDispatchBeforeLoadEvent(url);
     if (!renderer()) // Do not load the plugin if beforeload removed this element or its renderer.
         return;
 
-    SubframeLoader* loader = document()->frame()->loader()->subframeLoader();
-    bool success = beforeLoadAllowedLoad && hasValidClassId() && loader->requestObject(this, url, getNameAttribute(), serviceType, paramNames, paramValues);
+    SubframeLoader& loader = document().frame()->loader().subframeLoader();
+    bool success = beforeLoadAllowedLoad && hasValidClassId() && loader.requestObject(this, url, getNameAttribute(), serviceType, paramNames, paramValues);
     if (!success && fallbackContent)
         renderFallbackContent();
 }
 
-bool HTMLObjectElement::rendererIsNeeded(const NodeRenderingContext& context)
+bool HTMLObjectElement::rendererIsNeeded(const RenderStyle& style)
 {
     // FIXME: This check should not be needed, detached documents never render!
-    Frame* frame = document()->frame();
+    Frame* frame = document().frame();
     if (!frame)
         return false;
 
-    return HTMLPlugInImageElement::rendererIsNeeded(context);
+    return HTMLPlugInImageElement::rendererIsNeeded(style);
 }
 
 Node::InsertionNotificationRequest HTMLObjectElement::insertedInto(ContainerNode* insertionPoint)
@@ -347,14 +346,14 @@ void HTMLObjectElement::removedFrom(ContainerNode* insertionPoint)
     FormAssociatedElement::removedFrom(insertionPoint);
 }
 
-void HTMLObjectElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void HTMLObjectElement::childrenChanged(const ChildChange& change)
 {
     updateDocNamedItem();
     if (inDocument() && !useFallbackContent()) {
         setNeedsWidgetUpdate(true);
         setNeedsStyleRecalc();
     }
-    HTMLPlugInImageElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
+    HTMLPlugInImageElement::childrenChanged(change);
 }
 
 bool HTMLObjectElement::isURLAttribute(const Attribute& attribute) const
@@ -381,7 +380,7 @@ void HTMLObjectElement::renderFallbackContent()
         if (!isImageType()) {
             // If we don't think we have an image type anymore, then clear the image from the loader.
             m_imageLoader->setImage(0);
-            reattach();
+            Style::reattachRenderTree(*this);
             return;
         }
     }
@@ -389,8 +388,7 @@ void HTMLObjectElement::renderFallbackContent()
     m_useFallbackContent = true;
 
     // FIXME: Style gets recalculated which is suboptimal.
-    detach();
-    attach();
+    Style::reattachRenderTree(*this);
 }
 
 // FIXME: This should be removed, all callers are almost certainly wrong.
@@ -439,23 +437,23 @@ void HTMLObjectElement::updateDocNamedItem()
             isNamedItem = false;
         child = child->nextSibling();
     }
-    if (isNamedItem != wasNamedItem && inDocument() && document()->isHTMLDocument()) {
-        HTMLDocument* document = toHTMLDocument(this->document());
+    if (isNamedItem != wasNamedItem && inDocument() && document().isHTMLDocument()) {
+        HTMLDocument* document = toHTMLDocument(&this->document());
 
         const AtomicString& id = getIdAttribute();
         if (!id.isEmpty()) {
             if (isNamedItem)
-                document->documentNamedItemMap().add(id.impl(), this);
+                document->addDocumentNamedItem(id, this);
             else
-                document->documentNamedItemMap().remove(id.impl(), this);
+                document->removeDocumentNamedItem(id, this);
         }
 
         const AtomicString& name = getNameAttribute();
         if (!name.isEmpty() && id != name) {
             if (isNamedItem)
-                document->documentNamedItemMap().add(name.impl(), this);
+                document->addDocumentNamedItem(name, this);
             else
-                document->documentNamedItemMap().remove(name.impl(), this);
+                document->removeDocumentNamedItem(name, this);
         }
     }
     m_docNamedItem = isNamedItem;
@@ -465,14 +463,12 @@ bool HTMLObjectElement::containsJavaApplet() const
 {
     if (MIMETypeRegistry::isJavaAppletMIMEType(getAttribute(typeAttr)))
         return true;
-        
-    for (Element* child = ElementTraversal::firstWithin(this); child; child = ElementTraversal::nextSkippingChildren(child, this)) {
-        if (child->hasTagName(paramTag)
-                && equalIgnoringCase(child->getNameAttribute(), "type")
-                && MIMETypeRegistry::isJavaAppletMIMEType(child->getAttribute(valueAttr).string()))
+
+    for (auto child = elementChildren(this).begin(), end = elementChildren(this).end(); child != end; ++child) {
+        if (child->hasTagName(paramTag) && equalIgnoringCase(child->getNameAttribute(), "type")
+            && MIMETypeRegistry::isJavaAppletMIMEType(child->getAttribute(valueAttr).string()))
             return true;
-        if (child->hasTagName(objectTag)
-                && static_cast<HTMLObjectElement*>(child)->containsJavaApplet())
+        if (child->hasTagName(objectTag) && static_cast<const HTMLObjectElement&>(*child).containsJavaApplet())
             return true;
         if (child->hasTagName(appletTag))
             return true;
@@ -485,13 +481,13 @@ void HTMLObjectElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) con
 {
     HTMLPlugInImageElement::addSubresourceAttributeURLs(urls);
 
-    addSubresourceURL(urls, document()->completeURL(getAttribute(dataAttr)));
+    addSubresourceURL(urls, document().completeURL(getAttribute(dataAttr)));
 
     // FIXME: Passing a string that starts with "#" to the completeURL function does
     // not seem like it would work. The image element has similar but not identical code.
     const AtomicString& useMap = getAttribute(usemapAttr);
     if (useMap.startsWith('#'))
-        addSubresourceURL(urls, document()->completeURL(useMap));
+        addSubresourceURL(urls, document().completeURL(useMap));
 }
 
 void HTMLObjectElement::didMoveToNewDocument(Document* oldDocument)
@@ -519,17 +515,5 @@ HTMLFormElement* HTMLObjectElement::virtualForm() const
 {
     return FormAssociatedElement::form();
 }
-
-#if ENABLE(MICRODATA)
-String HTMLObjectElement::itemValueText() const
-{
-    return getURLAttribute(dataAttr);
-}
-
-void HTMLObjectElement::setItemValueText(const String& value, ExceptionCode&)
-{
-    setAttribute(dataAttr, value);
-}
-#endif
 
 }

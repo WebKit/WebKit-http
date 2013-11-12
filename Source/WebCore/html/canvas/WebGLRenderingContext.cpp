@@ -74,9 +74,10 @@
 #include "WebGLTexture.h"
 #include "WebGLUniformLocation.h"
 
+#include <runtime/Operations.h>
+#include <runtime/TypedArrayInlines.h>
+#include <runtime/Uint32Array.h>
 #include <wtf/OwnArrayPtr.h>
-#include <wtf/PassOwnArrayPtr.h>
-#include <wtf/Uint32Array.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -405,24 +406,23 @@ private:
 
 PassOwnPtr<WebGLRenderingContext> WebGLRenderingContext::create(HTMLCanvasElement* canvas, WebGLContextAttributes* attrs)
 {
-    Document* document = canvas->document();
-    Frame* frame = document->frame();
+    Document& document = canvas->document();
+    Frame* frame = document.frame();
     if (!frame)
         return nullptr;
-    Settings* settings = frame->settings();
 
     // The FrameLoaderClient might creation of a new WebGL context despite the page settings; in
     // particular, if WebGL contexts were lost one or more times via the GL_ARB_robustness extension.
-    if (!frame->loader()->client()->allowWebGL(settings && settings->webGLEnabled())) {
+    if (!frame->loader().client().allowWebGL(frame->settings().webGLEnabled())) {
         canvas->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextcreationerrorEvent, false, true, "Web page was not allowed to create a WebGL context."));
         return nullptr;
     }
 
-    HostWindow* hostWindow = document->view()->root()->hostWindow();
+    HostWindow* hostWindow = document.view()->root()->hostWindow();
     GraphicsContext3D::Attributes attributes = attrs ? attrs->attributes() : GraphicsContext3D::Attributes();
 
     if (attributes.antialias) {
-        if (settings && !settings->openGLMultisamplingEnabled())
+        if (!frame->settings().openGLMultisamplingEnabled())
             attributes.antialias = false;
     }
 
@@ -450,7 +450,7 @@ PassOwnPtr<WebGLRenderingContext> WebGLRenderingContext::create(HTMLCanvasElemen
 WebGLRenderingContext::WebGLRenderingContext(HTMLCanvasElement* passedCanvas, PassRefPtr<GraphicsContext3D> context,
                                              GraphicsContext3D::Attributes attributes)
     : CanvasRenderingContext(passedCanvas)
-    , ActiveDOMObject(passedCanvas->document())
+    , ActiveDOMObject(&passedCanvas->document())
     , m_context(context)
     , m_drawingBuffer(0)
     , m_dispatchContextLostEventTimer(this, &WebGLRenderingContext::dispatchContextLostEvent)
@@ -562,9 +562,8 @@ void WebGLRenderingContext::setupFlags()
 {
     ASSERT(m_context);
 
-    Page* p = canvas()->document()->page();
-    if (p)
-        m_synthesizedErrorsToConsole = p->settings()->webGLErrorsToConsoleEnabled();
+    if (Page* page = canvas()->document().page())
+        m_synthesizedErrorsToConsole = page->settings().webGLErrorsToConsoleEnabled();
 
     m_isGLES2Compliant = m_context->isGLES2Compliant();
     m_isErrorGeneratedOnOutOfBoundsAccesses = m_context->getExtensions()->isEnabled("GL_CHROMIUM_strict_attribs");
@@ -581,9 +580,8 @@ void WebGLRenderingContext::setupFlags()
 
 bool WebGLRenderingContext::allowPrivilegedExtensions() const
 {
-    Page* p = canvas()->document()->page();
-    if (p && p->settings())
-        return p->settings()->privilegedWebGLExtensionsEnabled();
+    if (Page* page = canvas()->document().page())
+        return page->settings().privilegedWebGLExtensionsEnabled();
     return false;
 }
 
@@ -734,7 +732,7 @@ void WebGLRenderingContext::markLayerComposited()
 
 void WebGLRenderingContext::paintRenderingResultsToCanvas()
 {
-    if (canvas()->document()->printing())
+    if (canvas()->document().printing())
         canvas()->clearPresentationCopy();
 
     // Until the canvas is written to by the application, the clear that
@@ -1874,16 +1872,14 @@ bool WebGLRenderingContext::validateIndexArrayPrecise(GC3Dsizei count, GC3Denum 
     return numElementsRequired > 0;
 }
 
-bool WebGLRenderingContext::validateRenderingState(unsigned numElementsRequired)
+bool WebGLRenderingContext::validateVertexAttributes(unsigned numElementsRequired)
 {
     if (!m_currentProgram)
         return false;
 
     // Look in each enabled vertex attrib and check if they've been bound to a buffer.
     for (unsigned i = 0; i < m_maxVertexAttribs; ++i) {
-        const WebGLVertexArrayObjectOES::VertexAttribState& state = m_boundVertexArrayObject->getVertexAttribState(i);
-        if (state.enabled
-            && (!state.bufferBinding || !state.bufferBinding->object()))
+        if (!m_boundVertexArrayObject->getVertexAttribState(i).validateBinding())
             return false;
     }
 
@@ -1956,12 +1952,12 @@ void WebGLRenderingContext::drawArrays(GC3Denum mode, GC3Dint first, GC3Dsizei c
         Checked<GC3Dint, RecordOverflow> checkedFirst(first);
         Checked<GC3Dint, RecordOverflow> checkedCount(count);
         Checked<GC3Dint, RecordOverflow> checkedSum = checkedFirst + checkedCount;
-        if (checkedSum.hasOverflowed() || !validateRenderingState(checkedSum.unsafeGet())) {
+        if (checkedSum.hasOverflowed() || !validateVertexAttributes(checkedSum.unsafeGet())) {
             synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, "drawArrays", "attempt to access out of bounds arrays");
             return;
         }
     } else {
-        if (!validateRenderingState(0)) {
+        if (!validateVertexAttributes(0)) {
             synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, "drawArrays", "attribs not setup correctly");
             return;
         }
@@ -2036,14 +2032,14 @@ void WebGLRenderingContext::drawElements(GC3Denum mode, GC3Dsizei count, GC3Denu
         }
         if (!count)
             return;
-        if (!validateIndexArrayConservative(type, numElements) || !validateRenderingState(numElements)) {
-            if (!validateIndexArrayPrecise(count, type, static_cast<GC3Dintptr>(offset), numElements) || !validateRenderingState(numElements)) {
+        if (!validateIndexArrayConservative(type, numElements) || !validateVertexAttributes(numElements)) {
+            if (!validateIndexArrayPrecise(count, type, static_cast<GC3Dintptr>(offset), numElements) || !validateVertexAttributes(numElements)) {
                 synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, "drawElements", "attempt to access out of bounds arrays");
                 return;
             }
         }
     } else {
-        if (!validateRenderingState(0)) {
+        if (!validateVertexAttributes(0)) {
             synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, "drawElements", "attribs not setup correctly");
             return;
         }
@@ -3417,7 +3413,7 @@ void WebGLRenderingContext::readPixels(GC3Dint x, GC3Dint y, GC3Dsizei width, GC
         return;
     }
     // Validate array type against pixel type.
-    if (pixels->getType() != ArrayBufferView::TypeUint8) {
+    if (pixels->getType() != JSC::TypeUint8) {
         synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, "readPixels", "ArrayBufferView not Uint8Array");
         return;
     }
@@ -4601,10 +4597,8 @@ void WebGLRenderingContext::loseContextImpl(WebGLRenderingContext::LostContextMo
     if (mode == RealLostContext) {
         // Inform the embedder that a lost context was received. In response, the embedder might
         // decide to take action such as asking the user for permission to use WebGL again.
-        if (Document* document = canvas()->document()) {
-            if (Frame* frame = document->frame())
-                frame->loader()->client()->didLoseWebGLContext(m_context->getExtensions()->getGraphicsResetStatusARB());
-        }
+        if (Frame* frame = canvas()->document().frame())
+            frame->loader().client().didLoseWebGLContext(m_context->getExtensions()->getGraphicsResetStatusARB());
     }
 
     detachAndRemoveAllObjects();
@@ -5158,7 +5152,7 @@ bool WebGLRenderingContext::validateTexFuncData(const char* functionName, GC3Din
 
     switch (type) {
     case GraphicsContext3D::UNSIGNED_BYTE:
-        if (pixels->getType() != ArrayBufferView::TypeUint8) {
+        if (pixels->getType() != JSC::TypeUint8) {
             synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, functionName, "type UNSIGNED_BYTE but ArrayBufferView not Uint8Array");
             return false;
         }
@@ -5166,13 +5160,13 @@ bool WebGLRenderingContext::validateTexFuncData(const char* functionName, GC3Din
     case GraphicsContext3D::UNSIGNED_SHORT_5_6_5:
     case GraphicsContext3D::UNSIGNED_SHORT_4_4_4_4:
     case GraphicsContext3D::UNSIGNED_SHORT_5_5_5_1:
-        if (pixels->getType() != ArrayBufferView::TypeUint16) {
+        if (pixels->getType() != JSC::TypeUint16) {
             synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, functionName, "type UNSIGNED_SHORT but ArrayBufferView not Uint16Array");
             return false;
         }
         break;
     case GraphicsContext3D::FLOAT: // OES_texture_float
-        if (pixels->getType() != ArrayBufferView::TypeFloat32) {
+        if (pixels->getType() != JSC::TypeFloat32) {
             synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, functionName, "type FLOAT but ArrayBufferView not Float32Array");
             return false;
         }
@@ -5403,10 +5397,7 @@ void WebGLRenderingContext::printWarningToConsole(const String& message)
 {
     if (!canvas())
         return;
-    Document* document = canvas()->document();
-    if (!document)
-        return;
-    document->addConsoleMessage(RenderingMessageSource, WarningMessageLevel, message);
+    canvas()->document().addConsoleMessage(RenderingMessageSource, WarningMessageLevel, message);
 }
 
 bool WebGLRenderingContext::validateFramebufferFuncParameters(const char* functionName, GC3Denum target, GC3Denum attachment)
@@ -5815,14 +5806,11 @@ void WebGLRenderingContext::maybeRestoreContext(Timer<WebGLRenderingContext>*)
         break;
     }
 
-    Document* document = canvas()->document();
-    if (!document)
-        return;
-    Frame* frame = document->frame();
+    Frame* frame = canvas()->document().frame();
     if (!frame)
         return;
 
-    if (!frame->loader()->client()->allowWebGL(frame->settings() && frame->settings()->webGLEnabled()))
+    if (!frame->loader().client().allowWebGL(frame->settings().webGLEnabled()))
         return;
 
     FrameView* view = frame->view();

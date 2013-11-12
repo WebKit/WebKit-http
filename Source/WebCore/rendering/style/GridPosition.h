@@ -31,11 +31,14 @@
 #ifndef GridPosition_h
 #define GridPosition_h
 
+#include <wtf/text/WTFString.h>
+
 namespace WebCore {
 
 enum GridPositionType {
     AutoPosition,
-    IntegerPosition
+    ExplicitPosition, // [ <integer> || <string> ]
+    SpanPosition
 };
 
 class GridPosition {
@@ -50,16 +53,40 @@ public:
 
     GridPositionType type() const { return m_type; }
     bool isAuto() const { return m_type == AutoPosition; }
+    bool isSpan() const { return m_type == SpanPosition; }
 
-    void setIntegerPosition(int position)
+    void setExplicitPosition(int position, const String& namedGridLine)
     {
-        m_type = IntegerPosition;
+        m_type = ExplicitPosition;
         m_integerPosition = position;
+        m_namedGridLine = namedGridLine;
+    }
+
+    // 'span' values cannot be negative, yet we reuse the <integer> position which can
+    // be. This means that we have to convert the span position to an integer, losing
+    // some precision here. It shouldn't be an issue in practice though.
+    void setSpanPosition(int position, const String& namedGridLine)
+    {
+        m_type = SpanPosition;
+        m_integerPosition = position;
+        m_namedGridLine = namedGridLine;
     }
 
     int integerPosition() const
     {
-        ASSERT(type() == IntegerPosition);
+        ASSERT(type() == ExplicitPosition);
+        return m_integerPosition;
+    }
+
+    String namedGridLine() const
+    {
+        ASSERT(type() == ExplicitPosition || type() == SpanPosition);
+        return m_namedGridLine;
+    }
+
+    int spanPosition() const
+    {
+        ASSERT(type() == SpanPosition);
         return m_integerPosition;
     }
 
@@ -68,10 +95,14 @@ public:
         return m_type == other.m_type && m_integerPosition == other.m_integerPosition;
     }
 
+    bool shouldBeResolvedAgainstOppositePosition() const
+    {
+        return isAuto() || isSpan();
+    }
 private:
     GridPositionType m_type;
-    // FIXME: This should probably be a size_t but the spec currently allows any <integer>.
     int m_integerPosition;
+    String m_namedGridLine;
 };
 
 } // namespace WebCore

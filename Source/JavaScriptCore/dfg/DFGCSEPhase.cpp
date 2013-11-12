@@ -28,6 +28,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGEdgeUsesStructure.h"
 #include "DFGGraph.h"
 #include "DFGPhase.h"
 #include "JSCellInlines.h"
@@ -52,8 +53,10 @@ public:
         
         m_changed = false;
         
-        for (unsigned block = 0; block < m_graph.m_blocks.size(); ++block)
-            performBlockCSE(m_graph.m_blocks[block].get());
+        m_graph.clearReplacements();
+        
+        for (unsigned blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex)
+            performBlockCSE(m_graph.block(blockIndex));
         
         return m_changed;
     }
@@ -137,7 +140,6 @@ private:
                 return 0;
             switch (otherNode->op()) {
             case Int32ToDouble:
-            case ForwardInt32ToDouble:
                 if (otherNode->child1() == node->child1())
                     return otherNode;
                 break;
@@ -248,15 +250,17 @@ private:
         for (unsigned i = m_indexInBlock; i--;) {
             Node* node = m_currentBlock->at(i);
             switch (node->op()) {
-            case GetScopedVar: {
+            case GetClosureVar: {
                 if (node->child1() == registers && node->varNumber() == varNumber)
                     return node;
                 break;
             } 
-            case PutScopedVar: {
-                if (node->child2() == registers && node->varNumber() == varNumber)
+            case PutClosureVar: {
+                if (node->varNumber() != varNumber)
+                    break;
+                if (node->child2() == registers)
                     return node->child3().node();
-                break;
+                return 0;
             }
             case SetLocal: {
                 VariableAccessData* variableAccessData = node->variableAccessData();
@@ -295,6 +299,18 @@ private:
         }
         return false;
     }
+
+    bool varInjectionWatchpointElimination()
+    {
+        for (unsigned i = m_indexInBlock; i--;) {
+            Node* node = m_currentBlock->at(i);
+            if (node->op() == VarInjectionWatchpoint)
+                return true;
+            if (m_graph.clobbersWorld(node))
+                break;
+        }
+        return false;
+    }
     
     Node* globalVarStoreElimination(WriteBarrier<Unknown>* registerPointer)
     {
@@ -302,7 +318,6 @@ private:
             Node* node = m_currentBlock->at(i);
             switch (node->op()) {
             case PutGlobalVar:
-            case PutGlobalVarCheck:
                 if (node->registerPointer() == registerPointer)
                     return node;
                 break;
@@ -326,13 +341,15 @@ private:
         for (unsigned i = m_indexInBlock; i--;) {
             Node* node = m_currentBlock->at(i);
             switch (node->op()) {
-            case PutScopedVar: {
-                if (node->child1() == scope && node->child2() == registers && node->varNumber() == varNumber)
+            case PutClosureVar: {
+                if (node->varNumber() != varNumber)
+                    break;
+                if (node->child1() == scope && node->child2() == registers)
                     return node;
-                break;
+                return 0;
             }
                 
-            case GetScopedVar: {
+            case GetClosureVar: {
                 // Let's be conservative.
                 if (node->varNumber() == varNumber)
                     return 0;
@@ -383,13 +400,6 @@ private:
                 // typed arrays!  An Int32Array can alias a Float64Array for example, and so on.
                 return 0;
             }
-            case PutStructure:
-            case PutByOffset:
-                // GetByVal currently always speculates that it's accessing an
-                // array with an integer index, which means that it's impossible
-                // for a structure change or a put to property storage to affect
-                // the GetByVal.
-                break;
             default:
                 if (m_graph.clobbersWorld(node))
                     return 0;
@@ -434,14 +444,12 @@ private:
 
             switch (node->op()) {
             case CheckStructure:
-            case ForwardCheckStructure:
                 if (node->child1() == child1
                     && structureSet.isSupersetOf(node->structureSet()))
                     return true;
                 break;
                 
             case StructureTransitionWatchpoint:
-            case ForwardStructureTransitionWatchpoint:
                 if (node->child1() == child1
                     && structureSet.contains(node->structure()))
                     return true;
@@ -493,7 +501,6 @@ private:
 
             switch (node->op()) {
             case CheckStructure:
-            case ForwardCheckStructure:
                 if (node->child1() == child1
                     && node->structureSet().containsOnly(structure))
                     return true;
@@ -518,7 +525,6 @@ private:
                 return false;
                 
             case StructureTransitionWatchpoint:
-            case ForwardStructureTransitionWatchpoint:
                 if (node->structure() == structure && node->child1() == child1)
                     return true;
                 break;
@@ -546,7 +552,6 @@ private:
                 break;
             switch (node->op()) {
             case CheckStructure:
-            case ForwardCheckStructure:
                 return 0;
                 
             case PhantomPutStructure:
@@ -580,6 +585,13 @@ private:
             case ToString:
             case NewStringObject:
             case MakeRope:
+            case NewTypedArray:
+                return 0;
+                
+            // This either exits, causes a GC (lazy string allocation), or clobbers
+            // the world. The chances of it not doing any of those things are so
+            // slim that we might as well not even try to reason about it.
+            case GetByVal:
                 return 0;
                 
             case GetIndexedPropertyStorage:
@@ -591,6 +603,8 @@ private:
                 break;
             }
             if (m_graph.clobbersWorld(node) || node->canExit())
+                return 0;
+            if (edgesUseStructure(m_graph, node))
                 return 0;
         }
         return 0;
@@ -616,10 +630,6 @@ private:
                         return node->child3().node();
                     return 0;
                 }
-                break;
-                
-            case PutStructure:
-                // Changing the structure cannot change the outcome of a property get.
                 break;
                 
             case PutByVal:
@@ -708,12 +718,6 @@ private:
                 // pointer of any object, including ours.
                 return 0;
                 
-            case PutByOffset:
-            case PutStructure:
-                // Changing the structure or putting to the storage cannot
-                // change the property storage pointer.
-                break;
-                
             case PutByVal:
             case PutByValAlias:
                 if (m_graph.byValIsPure(node)) {
@@ -747,12 +751,6 @@ private:
                 break;
 
             switch (node->op()) {
-            case PutByOffset:
-            case PutStructure:
-                // Changing the structure or putting to the storage cannot
-                // change the property storage pointer.
-                break;
-                
             case CheckArray:
                 if (node->child1() == child1 && node->arrayMode() == arrayMode)
                     return true;
@@ -787,12 +785,29 @@ private:
                 break;
             }
 
-            case PutByOffset:
-            case PutStructure:
-                // Changing the structure or putting to the storage cannot
-                // change the property storage pointer.
+            default:
+                if (m_graph.clobbersWorld(node))
+                    return 0;
                 break;
-                
+            }
+        }
+        return 0;
+    }
+    
+    Node* getTypedArrayByteOffsetLoadElimination(Node* child1)
+    {
+        for (unsigned i = m_indexInBlock; i--;) {
+            Node* node = m_currentBlock->at(i);
+            if (node == child1) 
+                break;
+
+            switch (node->op()) {
+            case GetTypedArrayByteOffset: {
+                if (node->child1() == child1)
+                    return node;
+                break;
+            }
+
             default:
                 if (m_graph.clobbersWorld(node))
                     return 0;
@@ -851,7 +866,7 @@ private:
                 }
                 break;
                 
-            case PutScopedVar:
+            case PutClosureVar:
                 if (static_cast<VirtualRegister>(node->varNumber()) == local)
                     return 0;
                 break;
@@ -903,7 +918,7 @@ private:
                 return result;
             }
                 
-            case GetScopedVar:
+            case GetClosureVar:
                 if (static_cast<VirtualRegister>(node->varNumber()) == local)
                     result.mayBeAccessed = true;
                 break;
@@ -987,7 +1002,7 @@ private:
         eliminateIrrelevantPhantomChildren(m_currentNode);
         
         // At this point we will eliminate all references to this node.
-        m_currentNode->replacement = replacement;
+        m_currentNode->misc.replacement = replacement;
         
         m_changed = true;
         
@@ -1031,15 +1046,6 @@ private:
         dataLogF("   %s @%u: ", Graph::opName(node->op()), node->index());
 #endif
         
-        // NOTE: there are some nodes that we deliberately don't CSE even though we
-        // probably could, like MakeRope and ToPrimitive. That's because there is no
-        // evidence that doing CSE on these nodes would result in a performance
-        // progression. Hence considering these nodes in CSE would just mean that this
-        // code does more work with no win. Of course, we may want to reconsider this,
-        // since MakeRope is trivially CSE-able. It's not trivially doable for
-        // ToPrimitive, but we could change that with some speculations if we really
-        // needed to.
-        
         switch (node->op()) {
         
         case Identity:
@@ -1078,18 +1084,18 @@ private:
         case LogicalNot:
         case SkipTopScope:
         case SkipScope:
-        case GetScopeRegisters:
+        case GetClosureRegisters:
         case GetScope:
         case TypeOf:
         case CompareEqConstant:
         case ValueToInt32:
+        case MakeRope:
             if (cseMode == StoreElimination)
                 break;
             setReplacement(pureCSE(node));
             break;
             
         case Int32ToDouble:
-        case ForwardInt32ToDouble:
             if (cseMode == StoreElimination)
                 break;
             setReplacement(int32ToDoubleCSE(node));
@@ -1175,8 +1181,7 @@ private:
             node->convertToPhantom();
             Node* dataNode = replacement->child1().node();
             ASSERT(dataNode->hasResult());
-            m_graph.clearAndDerefChild1(node);
-            node->children.child1() = Edge(dataNode);
+            node->child1() = Edge(dataNode);
             m_graph.dethread();
             m_changed = true;
             break;
@@ -1235,7 +1240,7 @@ private:
             setReplacement(globalVarLoadElimination(node->registerPointer()));
             break;
 
-        case GetScopedVar: {
+        case GetClosureVar: {
             if (cseMode == StoreElimination)
                 break;
             setReplacement(scopedVarLoadElimination(node->child1().node(), node->varNumber()));
@@ -1249,14 +1254,20 @@ private:
                 eliminate();
             break;
             
+        case VarInjectionWatchpoint:
+            if (cseMode == StoreElimination)
+                break;
+            if (varInjectionWatchpointElimination())
+                eliminate();
+            break;
+            
         case PutGlobalVar:
-        case PutGlobalVarCheck:
             if (cseMode == NormalCSE)
                 break;
             eliminate(globalVarStoreElimination(node->registerPointer()));
             break;
             
-        case PutScopedVar: {
+        case PutClosureVar: {
             if (cseMode == NormalCSE)
                 break;
             eliminate(scopedVarStoreElimination(node->child1().node(), node->child2().node(), node->varNumber()));
@@ -1285,7 +1296,6 @@ private:
         }
             
         case CheckStructure:
-        case ForwardCheckStructure:
             if (cseMode == StoreElimination)
                 break;
             if (checkStructureElimination(node->structureSet(), node->child1().node()))
@@ -1293,7 +1303,6 @@ private:
             break;
             
         case StructureTransitionWatchpoint:
-        case ForwardStructureTransitionWatchpoint:
             if (cseMode == StoreElimination)
                 break;
             if (structureTransitionWatchpointElimination(node->structure(), node->child1().node()))
@@ -1331,6 +1340,13 @@ private:
             if (cseMode == StoreElimination)
                 break;
             setReplacement(getIndexedPropertyStorageLoadElimination(node->child1().node(), node->arrayMode()));
+            break;
+        }
+            
+        case GetTypedArrayByteOffset: {
+            if (cseMode == StoreElimination)
+                break;
+            setReplacement(getTypedArrayByteOffsetLoadElimination(node->child1().node()));
             break;
         }
 
@@ -1380,20 +1396,16 @@ private:
         for (unsigned i = 0; i < LastNodeType; ++i)
             m_lastSeen[i] = UINT_MAX;
         
-        // All Phis need to already be marked as relevant to OSR, and have their
-        // replacements cleared, so we don't get confused while doing substitutions on
-        // GetLocal's.
-        for (unsigned i = 0; i < block->phis.size(); ++i) {
-            ASSERT(block->phis[i]->flags() & NodeRelevantToOSR);
-            block->phis[i]->replacement = 0;
+        // All Phis need to already be marked as relevant to OSR.
+        if (!ASSERT_DISABLED) {
+            for (unsigned i = 0; i < block->phis.size(); ++i)
+                ASSERT(block->phis[i]->flags() & NodeRelevantToOSR);
         }
         
         // Make all of my SetLocal and GetLocal nodes relevant to OSR, and do some other
         // necessary bookkeeping.
         for (unsigned i = 0; i < block->size(); ++i) {
             Node* node = block->at(i);
-            
-            node->replacement = 0;
             
             switch (node->op()) {
             case SetLocal:
@@ -1414,7 +1426,7 @@ private:
         if (!ASSERT_DISABLED && cseMode == StoreElimination) {
             // Nobody should have replacements set.
             for (unsigned i = 0; i < block->size(); ++i)
-                ASSERT(!block->at(i)->replacement);
+                ASSERT(!block->at(i)->misc.replacement);
         }
     }
     

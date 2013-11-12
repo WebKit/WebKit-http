@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2009, 2010, 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@
 #include "TextEventInputType.h"
 #include "TextGranularity.h"
 #include "Timer.h"
+#include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/RefPtr.h>
@@ -100,7 +101,7 @@ enum CheckDragHysteresis { ShouldCheckDragHysteresis, DontCheckDragHysteresis };
 class EventHandler {
     WTF_MAKE_NONCOPYABLE(EventHandler);
 public:
-    explicit EventHandler(Frame*);
+    explicit EventHandler(Frame&);
     ~EventHandler();
 
     void clear();
@@ -216,6 +217,8 @@ public:
     bool keyEvent(const PlatformKeyboardEvent&);
     void defaultKeyboardEventHandler(KeyboardEvent*);
 
+    void handleKeyboardSelectionMovementForAccessibility(KeyboardEvent*);
+
     bool handleTextInputEvent(const String& text, Event* underlyingEvent = 0, TextEventInputType = TextEventInputKeyboard);
     void defaultTextInputEventHandler(TextEvent*);
 
@@ -290,6 +293,14 @@ private:
     bool logicalScrollOverflow(ScrollLogicalDirection, ScrollGranularity, Node* startingNode = 0);
     
     bool shouldTurnVerticalTicksIntoHorizontal(const HitTestResult&, const PlatformWheelEvent&) const;
+    void recordWheelEventDelta(const PlatformWheelEvent&);
+    enum DominantScrollGestureDirection {
+        DominantScrollDirectionNone,
+        DominantScrollDirectionVertical,
+        DominantScrollDirectionHorizontal
+    };
+    DominantScrollGestureDirection dominantScrollGestureDirection() const;
+    
     bool mouseDownMayStartSelect() const { return m_mouseDownMayStartSelect; }
 
     static bool isKeyboardOptionTab(KeyboardEvent*);
@@ -398,7 +409,7 @@ private:
     void autoHideCursorTimerFired(Timer<EventHandler>*);
 #endif
 
-    Frame* m_frame;
+    Frame& m_frame;
 
     bool m_mousePressed;
     bool m_capturesDragging;
@@ -464,7 +475,9 @@ private:
     double m_mouseDownTimestamp;
     PlatformMouseEvent m_mouseDown;
 
+    Deque<FloatSize> m_recentWheelEventDeltas;
     RefPtr<Node> m_latchedWheelEventNode;
+    bool m_inTrackingScrollGesturePhase;
     bool m_widgetIsLatched;
 
     RefPtr<Node> m_previousWheelScrolledNode;

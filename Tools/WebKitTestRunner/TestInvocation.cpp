@@ -38,7 +38,6 @@
 #include <WebKit2/WKInspector.h>
 #include <WebKit2/WKRetainPtr.h>
 #include <wtf/OwnArrayPtr.h>
-#include <wtf/PassOwnArrayPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/text/CString.h>
 
@@ -310,6 +309,13 @@ void TestInvocation::dump(const char* textToStdout, const char* textToStderr, bo
     fflush(stderr);
 }
 
+void TestInvocation::forceRepaintDoneCallback(WKErrorRef, void* context)
+{
+    TestInvocation* testInvocation = static_cast<TestInvocation*>(context);
+    testInvocation->m_gotRepaint = true;
+    TestController::shared().notifyDone();
+}
+
 void TestInvocation::dumpResults()
 {
     if (m_textOutput.length() || !m_audioResult)
@@ -317,8 +323,19 @@ void TestInvocation::dumpResults()
     else
         dumpAudio(m_audioResult.get());
 
-    if (m_dumpPixels && m_pixelResult)
+    if (m_dumpPixels && m_pixelResult) {
+        if (PlatformWebView::windowSnapshotEnabled()) {
+            m_gotRepaint = false;
+            WKPageForceRepaint(TestController::shared().mainWebView()->page(), this, TestInvocation::forceRepaintDoneCallback);
+            TestController::shared().runUntil(m_gotRepaint, TestController::ShortTimeout);
+            if (!m_gotRepaint) {
+                m_errorMessage = "Timed out waiting for pre-pixel dump repaint\n";
+                m_webProcessIsUnresponsive = true;
+                return;
+            }
+        }
         dumpPixelsAndCompareWithExpected(m_pixelResult.get(), m_repaintRects.get());
+    }
 
     fputs("#EOF\n", stdout);
     fflush(stdout);

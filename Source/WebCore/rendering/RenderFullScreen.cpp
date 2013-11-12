@@ -28,6 +28,7 @@
 
 #include "RenderFullScreen.h"
 
+#include "RenderBlockFlow.h"
 #include "RenderLayer.h"
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -36,13 +37,13 @@
 
 using namespace WebCore;
 
-class RenderFullScreenPlaceholder : public RenderBlock {
+class RenderFullScreenPlaceholder FINAL : public RenderBlockFlow {
 public:
     RenderFullScreenPlaceholder(RenderFullScreen* owner) 
-        : RenderBlock(0)
+        : RenderBlockFlow(0)
         , m_owner(owner) 
     {
-        setDocumentForAnonymous(owner->document());
+        setDocumentForAnonymous(&owner->document());
     }
 private:
     virtual bool isRenderFullScreenPlaceholder() const { return true; }
@@ -81,8 +82,8 @@ void RenderFullScreen::willBeDestroyed()
 
     // RenderObjects are unretained, so notify the document (which holds a pointer to a RenderFullScreen)
     // if it's RenderFullScreen is destroyed.
-    if (document() && document()->fullScreenRenderer() == this)
-        document()->fullScreenRendererDestroyed();
+    if (document().fullScreenRenderer() == this)
+        document().fullScreenRendererDestroyed();
 
     RenderFlexibleBox::willBeDestroyed();
 }
@@ -165,7 +166,7 @@ void RenderFullScreen::unwrapRenderer()
     if (placeholder())
         placeholder()->remove();
     remove();
-    document()->setFullScreenRenderer(0);
+    document().setFullScreenRenderer(0);
 }
 
 void RenderFullScreen::setPlaceholder(RenderBlock* placeholder)
@@ -181,7 +182,7 @@ void RenderFullScreen::createPlaceholder(PassRefPtr<RenderStyle> style, const La
         style->setHeight(Length(frameRect.height(), Fixed));
 
     if (!m_placeholder) {
-        m_placeholder = new (document()->renderArena()) RenderFullScreenPlaceholder(this);
+        m_placeholder = new (renderArena()) RenderFullScreenPlaceholder(this);
         m_placeholder->setStyle(style);
         if (parent()) {
             parent()->addChild(m_placeholder, this);

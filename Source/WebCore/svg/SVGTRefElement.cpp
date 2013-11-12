@@ -24,12 +24,10 @@
 #if ENABLE(SVG)
 #include "SVGTRefElement.h"
 
-#include "ElementShadow.h"
 #include "EventListener.h"
 #include "EventNames.h"
 #include "ExceptionCodePlaceholder.h"
 #include "MutationEvent.h"
-#include "NodeRenderingContext.h"
 #include "RenderSVGInline.h"
 #include "RenderSVGInlineText.h"
 #include "RenderSVGResource.h"
@@ -150,10 +148,10 @@ void SVGTRefElement::updateReferencedText(Element* target)
     if (target)
         textContent = target->textContent();
 
-    ASSERT(shadow());
-    ShadowRoot* root = shadow()->shadowRoot();
+    ASSERT(shadowRoot());
+    ShadowRoot* root = shadowRoot();
     if (!root->firstChild())
-        root->appendChild(Text::create(document(), textContent), ASSERT_NO_EXCEPTION);
+        root->appendChild(Text::create(&document(), textContent), ASSERT_NO_EXCEPTION);
     else {
         ASSERT(root->firstChild()->isTextNode());
         root->firstChild()->setTextContent(textContent, ASSERT_NO_EXCEPTION);
@@ -167,8 +165,8 @@ void SVGTRefElement::detachTarget()
 
     String emptyContent;
 
-    ASSERT(shadow());
-    Node* container = shadow()->shadowRoot()->firstChild();
+    ASSERT(shadowRoot());
+    Node* container = shadowRoot()->firstChild();
     if (container)
         container->setTextContent(emptyContent, IGNORE_EXCEPTION);
 
@@ -177,9 +175,9 @@ void SVGTRefElement::detachTarget()
 
     // Mark the referenced ID as pending.
     String id;
-    SVGURIReference::targetElementFromIRIString(href(), document(), &id);
+    SVGURIReference::targetElementFromIRIString(href(), &document(), &id);
     if (!id.isEmpty())
-        document()->accessSVGExtensions()->addPendingResource(id, this);
+        document().accessSVGExtensions()->addPendingResource(id, this);
 }
 
 bool SVGTRefElement::isSupportedAttribute(const QualifiedName& attrName)
@@ -227,12 +225,12 @@ RenderObject* SVGTRefElement::createRenderer(RenderArena* arena, RenderStyle*)
     return new (arena) RenderSVGInline(this);
 }
 
-bool SVGTRefElement::childShouldCreateRenderer(const NodeRenderingContext& childContext) const
+bool SVGTRefElement::childShouldCreateRenderer(const Node* child) const
 {
-    return childContext.node()->isInShadowTree();
+    return child->isInShadowTree();
 }
 
-bool SVGTRefElement::rendererIsNeeded(const NodeRenderingContext& context)
+bool SVGTRefElement::rendererIsNeeded(const RenderStyle& style)
 {
     if (parentNode()
         && (parentNode()->hasTagName(SVGNames::aTag)
@@ -242,7 +240,7 @@ bool SVGTRefElement::rendererIsNeeded(const NodeRenderingContext& context)
             || parentNode()->hasTagName(SVGNames::textTag)
             || parentNode()->hasTagName(SVGNames::textPathTag)
             || parentNode()->hasTagName(SVGNames::tspanTag)))
-        return StyledElement::rendererIsNeeded(context);
+        return StyledElement::rendererIsNeeded(style);
 
     return false;
 }
@@ -257,12 +255,12 @@ void SVGTRefElement::buildPendingResource()
         return;
 
     String id;
-    RefPtr<Element> target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
+    RefPtr<Element> target = SVGURIReference::targetElementFromIRIString(href(), &document(), &id);
     if (!target.get()) {
         if (id.isEmpty())
             return;
 
-        document()->accessSVGExtensions()->addPendingResource(id, this);
+        document().accessSVGExtensions()->addPendingResource(id, this);
         ASSERT(hasPendingResources());
         return;
     }
@@ -279,7 +277,7 @@ void SVGTRefElement::buildPendingResource()
 
 Node::InsertionNotificationRequest SVGTRefElement::insertedInto(ContainerNode* rootParent)
 {
-    SVGStyledElement::insertedInto(rootParent);
+    SVGElement::insertedInto(rootParent);
     if (rootParent->inDocument())
         buildPendingResource();
     return InsertionDone;
@@ -287,7 +285,7 @@ Node::InsertionNotificationRequest SVGTRefElement::insertedInto(ContainerNode* r
 
 void SVGTRefElement::removedFrom(ContainerNode* rootParent)
 {
-    SVGStyledElement::removedFrom(rootParent);
+    SVGElement::removedFrom(rootParent);
     if (rootParent->inDocument())
         m_targetListener->detach();
 }

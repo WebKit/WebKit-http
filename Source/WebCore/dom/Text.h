@@ -24,6 +24,7 @@
 #define Text_h
 
 #include "CharacterData.h"
+#include "StyleResolveTree.h"
 
 namespace WebCore {
 
@@ -37,6 +38,8 @@ public:
     static PassRefPtr<Text> createWithLengthLimit(Document*, const String&, unsigned positionInString, unsigned lengthLimit = defaultLengthLimit);
     static PassRefPtr<Text> createEditingText(Document*, const String&);
 
+    virtual ~Text();
+
     PassRefPtr<Text> splitText(unsigned offset, ExceptionCode&);
 
     // DOM Level 3: http://www.w3.org/TR/DOM-Level-3-Core/core.html#ID-1312295772
@@ -44,13 +47,7 @@ public:
     String wholeText() const;
     PassRefPtr<Text> replaceWholeText(const String&, ExceptionCode&);
     
-    void recalcTextStyle(StyleChange);
-    void createTextRendererIfNeeded();
-    bool textRendererIsNeeded(const NodeRenderingContext&);
     RenderText* createTextRenderer(RenderArena*, RenderStyle*);
-    void updateTextRenderer(unsigned offsetOfReplacedData, unsigned lengthOfReplacedData);
-
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE FINAL;
     
     virtual bool canContainRangeEndPoint() const OVERRIDE FINAL { return true; }
 
@@ -77,6 +74,12 @@ inline Text* toText(Node* node)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isTextNode());
     return static_cast<Text*>(node);
+}
+
+inline const Text* toText(const Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isTextNode());
+    return static_cast<const Text*>(node);
 }
 
 } // namespace WebCore

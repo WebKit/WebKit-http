@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -52,8 +52,6 @@
 #include <wtf/text/StringHash.h>
 
 namespace WebCore {
-
-enum ESmartMinimumForFontSize { DoNotUseSmartMinimumForFontSize, UseSmartMinimumForFontFize };
 
 class CSSCursorImageValue;
 class CSSFontSelector;
@@ -168,7 +166,7 @@ public:
 class StyleResolver {
     WTF_MAKE_NONCOPYABLE(StyleResolver); WTF_MAKE_FAST_ALLOCATED;
 public:
-    StyleResolver(Document*, bool matchAuthorAndUserStyles);
+    StyleResolver(Document&, bool matchAuthorAndUserStyles);
     ~StyleResolver();
 
     // Using these during tree walk will allow style selector to optimize child and descendant selector lookups.
@@ -189,15 +187,12 @@ public:
 
     PassRefPtr<RenderStyle> styleForPage(int pageIndex);
     PassRefPtr<RenderStyle> defaultStyleForElement();
-    PassRefPtr<RenderStyle> styleForText(Text*);
-
-    static PassRefPtr<RenderStyle> styleForDocument(Document*, CSSFontSelector* = 0);
 
     RenderStyle* style() const { return m_state.style(); }
     RenderStyle* parentStyle() const { return m_state.parentStyle(); }
     RenderStyle* rootElementStyle() const { return m_state.rootElementStyle(); }
     Element* element() { return m_state.element(); }
-    Document* document() { return m_document; }
+    Document& document() { return m_document; }
     StyleScopeResolver* scopeResolver() const { return m_scopeResolver.get(); }
     bool hasParentNode() const { return m_state.parentNode(); }
 
@@ -251,13 +246,6 @@ public:
     Vector<RefPtr<StyleRuleBase> > styleRulesForElement(Element*, unsigned rulesToInclude = AllButEmptyCSSRules);
     Vector<RefPtr<StyleRuleBase> > pseudoStyleRulesForElement(Element*, PseudoId, unsigned rulesToInclude = AllButEmptyCSSRules);
 
-    // Given a CSS keyword in the range (xx-small to -webkit-xxx-large), this function will return
-    // the correct font size scaled relative to the user's default (medium).
-    static float fontSizeForKeyword(Document*, int keyword, bool shouldUseFixedDefaultSize);
-
-    // Given a font size in pixel, this function will return legacy font size between 1 and 7.
-    static int legacyFontSize(Document*, int pixelFontSize, bool shouldUseFixedDefaultSize);
-
 public:
     void applyPropertyToStyle(CSSPropertyID, CSSValue*, RenderStyle*);
 
@@ -266,12 +254,7 @@ public:
     void updateFont();
     void initializeFontStyle(Settings*);
 
-    static float getComputedSizeFromSpecifiedSize(Document*, float zoomFactor, bool isAbsoluteSize, float specifiedSize, ESmartMinimumForFontSize = UseSmartMinimumForFontFize);
-
     void setFontSize(FontDescription&, float size);
-
-private:
-    static float getComputedSizeFromSpecifiedSize(Document*, RenderStyle*, bool isAbsoluteSize, float specifiedSize, bool useSVGZoomRules);
 
 public:
     bool useSVGZoomRules();
@@ -303,7 +286,7 @@ public:
     void invalidateMatchedPropertiesCache();
 
 #if ENABLE(CSS_FILTERS)
-    bool createFilterOperations(CSSValue* inValue, RenderStyle* inStyle, RenderStyle* rootStyle, FilterOperations& outOperations);
+    bool createFilterOperations(CSSValue* inValue, FilterOperations& outOperations);
 #if ENABLE(CSS_SHADERS)
     StyleShader* styleShader(CSSValue*);
     StyleShader* cachedOrPendingStyleShaderFromValue(WebKitCSSShaderValue*);
@@ -368,7 +351,7 @@ public:
         MatchRanges ranges;
         bool isCacheable;
 
-        void addMatchedProperties(const StylePropertySet* properties, StyleRule* = 0, unsigned linkMatchType = SelectorChecker::MatchAll, PropertyWhitelistType = PropertyWhitelistNone);
+        void addMatchedProperties(const StylePropertySet& properties, StyleRule* = 0, unsigned linkMatchType = SelectorChecker::MatchAll, PropertyWhitelistType = PropertyWhitelistNone);
     };
 
 private:
@@ -377,6 +360,7 @@ private:
     void checkForZoomChange(RenderStyle*, RenderStyle* parentStyle);
 
     void adjustRenderStyle(RenderStyle* styleToAdjust, RenderStyle* parentStyle, Element*);
+    void adjustGridItemPosition(RenderStyle* styleToAdjust) const;
 
     bool fastRejectSelector(const RuleData&) const;
 
@@ -402,7 +386,7 @@ private:
 #endif
     void matchPageRules(MatchResult&, RuleSet*, bool isLeftPage, bool isFirstPage, const String& pageName);
     void matchPageRulesForList(Vector<StyleRulePage*>& matchedRules, const Vector<StyleRulePage*>&, bool isLeftPage, bool isFirstPage, const String& pageName);
-    Settings* documentSettings() { return m_document->settings(); }
+    Settings* documentSettings() { return m_document.settings(); }
 
     bool isLeftPage(int pageIndex) const;
     bool isRightPage(int pageIndex) const { return !isLeftPage(pageIndex); }
@@ -431,7 +415,6 @@ public:
         , m_rootElementStyle(0)
         , m_regionForStyling(0)
         , m_elementLinkState(NotInsideLink)
-        , m_distributedToInsertionPoint(false)
         , m_elementAffectedByClassRules(false)
         , m_applyPropertyToRegularStyle(true)
         , m_applyPropertyToVisitedLinkStyle(false)
@@ -445,10 +428,10 @@ public:
 
     public:
         void initElement(Element*);
-        void initForStyleResolve(Document*, Element*, RenderStyle* parentStyle = 0, RenderRegion* regionForStyling = 0);
+        void initForStyleResolve(Document&, Element*, RenderStyle* parentStyle = 0, RenderRegion* regionForStyling = 0);
         void clear();
 
-        Document* document() const { return m_element->document(); }
+        Document& document() const { return m_element->document(); }
         Element* element() const { return m_element; }
         StyledElement* styledElement() const { return m_styledElement; }
         void setStyle(PassRefPtr<RenderStyle> style) { m_style = style; }
@@ -462,7 +445,6 @@ public:
 
         const RenderRegion* regionForStyling() const { return m_regionForStyling; }
         EInsideLink elementLinkState() const { return m_elementLinkState; }
-        bool distributedToInsertionPoint() const { return m_distributedToInsertionPoint; }
         void setElementAffectedByClassRules(bool isAffected) { m_elementAffectedByClassRules = isAffected; }
         bool elementAffectedByClassRules() const { return m_elementAffectedByClassRules; }
 
@@ -515,8 +497,6 @@ public:
         RenderRegion* m_regionForStyling;
         
         EInsideLink m_elementLinkState;
-
-        bool m_distributedToInsertionPoint;
 
         bool m_elementAffectedByClassRules;
 
@@ -612,7 +592,7 @@ private:
     OwnPtr<MediaQueryEvaluator> m_medium;
     RefPtr<RenderStyle> m_rootDefaultStyle;
 
-    Document* m_document;
+    Document& m_document;
     SelectorFilter m_selectorFilter;
 
     bool m_matchAuthorAndUserStyles;
@@ -675,6 +655,36 @@ inline bool checkRegionSelector(const CSSSelector* regionSelector, Element* regi
     }
     return false;
 }
+
+class StyleResolverParentPusher {
+public:
+    StyleResolverParentPusher(Element* parent)
+        : m_parent(parent)
+        , m_pushedStyleResolver(0)
+    { }
+    void push()
+    {
+        if (m_pushedStyleResolver)
+            return;
+        m_pushedStyleResolver = &m_parent->document().ensureStyleResolver();
+        m_pushedStyleResolver->pushParentElement(m_parent);
+    }
+    ~StyleResolverParentPusher()
+    {
+        if (!m_pushedStyleResolver)
+            return;
+        // This tells us that our pushed style selector is in a bad state,
+        // so we should just bail out in that scenario.
+        ASSERT(m_pushedStyleResolver == &m_parent->document().ensureStyleResolver());
+        if (m_pushedStyleResolver != &m_parent->document().ensureStyleResolver())
+            return;
+        m_pushedStyleResolver->popParentElement(m_parent);
+    }
+    
+private:
+    Element* m_parent;
+    StyleResolver* m_pushedStyleResolver;
+};
 
 } // namespace WebCore
 

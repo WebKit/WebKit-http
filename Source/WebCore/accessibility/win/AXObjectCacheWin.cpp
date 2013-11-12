@@ -142,9 +142,9 @@ void AXObjectCache::frameLoadingEventPlatformNotification(AccessibilityObject* o
         return;
 
     if (notification == AXLoadingStarted)
-        page->chrome().client()->AXStartFrameLoad();
+        page->chrome().client().AXStartFrameLoad();
     else if (notification == AXLoadingFinished)
-        page->chrome().client()->AXFinishFrameLoad();
+        page->chrome().client().AXFinishFrameLoad();
 }
 
 AXID AXObjectCache::platformGenerateAXID() const
@@ -171,7 +171,7 @@ void AXObjectCache::handleFocusedUIElementChanged(Node*, Node* newFocusedNode)
     if (!newFocusedNode)
         return;
 
-    Page* page = newFocusedNode->document()->page();
+    Page* page = newFocusedNode->document().page();
     if (!page || !page->chrome().platformPageClient())
         return;
 

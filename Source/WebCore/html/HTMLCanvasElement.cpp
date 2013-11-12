@@ -80,6 +80,7 @@ HTMLCanvasElement::HTMLCanvasElement(const QualifiedName& tagName, Document* doc
     , m_didClearImageBuffer(false)
 {
     ASSERT(hasTagName(canvasTag));
+    setHasCustomStyleResolveCallbacks();
 }
 
 PassRefPtr<HTMLCanvasElement> HTMLCanvasElement::create(Document* document)
@@ -110,8 +111,8 @@ void HTMLCanvasElement::parseAttribute(const QualifiedName& name, const AtomicSt
 
 RenderObject* HTMLCanvasElement::createRenderer(RenderArena* arena, RenderStyle* style)
 {
-    Frame* frame = document()->frame();
-    if (frame && frame->script()->canExecuteScripts(NotAboutToExecuteScript)) {
+    Frame* frame = document().frame();
+    if (frame && frame->script().canExecuteScripts(NotAboutToExecuteScript)) {
         m_rendererIsCanvas = true;
         return new (arena) RenderHTMLCanvas(this);
     }
@@ -120,10 +121,9 @@ RenderObject* HTMLCanvasElement::createRenderer(RenderArena* arena, RenderStyle*
     return HTMLElement::createRenderer(arena, style);
 }
 
-void HTMLCanvasElement::attach(const AttachContext& context)
+void HTMLCanvasElement::willAttachRenderers()
 {
     setIsInCanvasSubtree(true);
-    HTMLElement::attach(context);
 }
 
 bool HTMLCanvasElement::areAuthorShadowsAllowed() const
@@ -202,10 +202,10 @@ CanvasRenderingContext* HTMLCanvasElement::getContext(const String& type, Canvas
         if (!m_context) {
             bool usesDashbardCompatibilityMode = false;
 #if ENABLE(DASHBOARD_SUPPORT)
-            if (Settings* settings = document()->settings())
+            if (Settings* settings = document().settings())
                 usesDashbardCompatibilityMode = settings->usesDashboardBackwardCompatibilityMode();
 #endif
-            m_context = CanvasRenderingContext2D::create(this, document()->inQuirksMode(), usesDashbardCompatibilityMode);
+            m_context = CanvasRenderingContext2D::create(this, document().inQuirksMode(), usesDashbardCompatibilityMode);
 #if USE(IOSURFACE_CANVAS_BACKING_STORE) || (ENABLE(ACCELERATED_2D_CANVAS) && USE(ACCELERATED_COMPOSITING))
             // Need to make sure a RenderLayer and compositing layer get created for the Canvas
             setNeedsStyleRecalc(SyntheticStyleChange);
@@ -214,7 +214,7 @@ CanvasRenderingContext* HTMLCanvasElement::getContext(const String& type, Canvas
         return m_context.get();
     }
 #if ENABLE(WEBGL)
-    if (shouldEnableWebGL(document()->settings())) {
+    if (shouldEnableWebGL(document().settings())) {
 
         if (is3dType(type)) {
             if (m_context && !m_context->is3d())
@@ -235,7 +235,7 @@ CanvasRenderingContext* HTMLCanvasElement::getContext(const String& type, Canvas
     return 0;
 }
     
-bool HTMLCanvasElement::supportsContext(const String& type, CanvasContextAttributes*)
+bool HTMLCanvasElement::probablySupportsContext(const String& type, CanvasContextAttributes*)
 {
     // FIXME: Provide implementation that accounts for attributes. Bugzilla bug 117093
     // https://bugs.webkit.org/show_bug.cgi?id=117093
@@ -246,7 +246,7 @@ bool HTMLCanvasElement::supportsContext(const String& type, CanvasContextAttribu
         return !m_context || m_context->is2d();
 
 #if ENABLE(WEBGL)
-    if (shouldEnableWebGL(document()->settings())) {
+    if (shouldEnableWebGL(document().settings())) {
         if (is3dType(type))
             return !m_context || m_context->is3d();
     }
@@ -362,7 +362,7 @@ void HTMLCanvasElement::reset()
 float HTMLCanvasElement::targetDeviceScaleFactor() const
 {
 #if ENABLE(HIGH_DPI_CANVAS)
-    return document()->frame() ? document()->frame()->page()->deviceScaleFactor() : 1;
+    return document().frame() ? document().frame()->page()->deviceScaleFactor() : 1;
 #else
     return 1;
 #endif
@@ -396,7 +396,7 @@ void HTMLCanvasElement::paint(GraphicsContext* context, const LayoutRect& r, boo
         return;
     
     if (m_context) {
-        if (!paintsIntoCanvasBuffer() && !document()->printing())
+        if (!paintsIntoCanvasBuffer() && !document().printing())
             return;
         m_context->paintRenderingResultsToCanvas();
     }
@@ -404,9 +404,13 @@ void HTMLCanvasElement::paint(GraphicsContext* context, const LayoutRect& r, boo
     if (hasCreatedImageBuffer()) {
         ImageBuffer* imageBuffer = buffer();
         if (imageBuffer) {
-            if (m_presentedImage)
-                context->drawImage(m_presentedImage.get(), ColorSpaceDeviceRGB, pixelSnappedIntRect(r), CompositeSourceOver, DoNotRespectImageOrientation, useLowQualityScale);
-            else
+            if (m_presentedImage) {
+                ImageOrientationDescription orientationDescription;
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+                orientationDescription.setImageOrientationEnum(renderer()->style()->imageOrientation());
+#endif 
+                context->drawImage(m_presentedImage.get(), ColorSpaceDeviceRGB, pixelSnappedIntRect(r), CompositeSourceOver, orientationDescription, useLowQualityScale);
+            } else
                 context->drawImageBuffer(imageBuffer, ColorSpaceDeviceRGB, pixelSnappedIntRect(r), CompositeSourceOver, BlendModeNormal, useLowQualityScale);
         }
     }
@@ -535,19 +539,19 @@ FloatSize HTMLCanvasElement::convertDeviceToLogical(const FloatSize& deviceSize)
 
 SecurityOrigin* HTMLCanvasElement::securityOrigin() const
 {
-    return document()->securityOrigin();
+    return document().securityOrigin();
 }
 
 bool HTMLCanvasElement::shouldAccelerate(const IntSize& size) const
 {
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
     UNUSED_PARAM(size);
-    return document()->settings() && document()->settings()->canvasUsesAcceleratedDrawing();
+    return document().settings() && document().settings()->canvasUsesAcceleratedDrawing();
 #elif ENABLE(ACCELERATED_2D_CANVAS)
     if (m_context && !m_context->is2d())
         return false;
 
-    Settings* settings = document()->settings();
+    Settings* settings = document().settings();
     if (!settings || !settings->accelerated2dCanvasEnabled())
         return false;
 
@@ -587,7 +591,7 @@ void HTMLCanvasElement::createImageBuffer() const
         return;
     m_imageBuffer->context()->setShadowsIgnoreTransforms(true);
     m_imageBuffer->context()->setImageInterpolationQuality(DefaultInterpolationQuality);
-    if (document()->settings() && !document()->settings()->antialiased2dCanvasEnabled())
+    if (document().settings() && !document().settings()->antialiased2dCanvasEnabled())
         m_imageBuffer->context()->setShouldAntialias(false);
     m_imageBuffer->context()->setStrokeThickness(1);
     m_contextStateSaver = adoptPtr(new GraphicsContextStateSaver(*m_imageBuffer->context()));

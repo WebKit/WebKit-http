@@ -49,7 +49,7 @@ struct KeyboardEventInit : public UIEventInit {
     KeyboardEventInit();
 
     String keyIdentifier;
-    unsigned keyLocation;
+    unsigned location;
     bool ctrlKey;
     bool altKey;
     bool shiftKey;
@@ -59,10 +59,13 @@ struct KeyboardEventInit : public UIEventInit {
 class KeyboardEvent : public UIEventWithKeyState {
 public:
     enum KeyLocationCode {
-        DOMKeyLocationStandard      = 0x00,
-        DOMKeyLocationLeft          = 0x01,
-        DOMKeyLocationRight         = 0x02,
-        DOMKeyLocationNumpad        = 0x03
+        DOM_KEY_LOCATION_STANDARD   = 0x00,
+        DOM_KEY_LOCATION_LEFT       = 0x01,
+        DOM_KEY_LOCATION_RIGHT      = 0x02,
+        DOM_KEY_LOCATION_NUMPAD     = 0x03
+        // FIXME: The following values are not supported yet (crbug.com/265446)
+        // DOM_KEY_LOCATION_MOBILE     = 0x04,
+        // DOM_KEY_LOCATION_JOYSTICK   = 0x05
     };
         
     static PassRefPtr<KeyboardEvent> create()
@@ -83,11 +86,11 @@ public:
     virtual ~KeyboardEvent();
     
     void initKeyboardEvent(const AtomicString& type, bool canBubble, bool cancelable, AbstractView*,
-        const String& keyIdentifier, unsigned keyLocation,
+        const String& keyIdentifier, unsigned location,
         bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, bool altGraphKey = false);
     
     const String& keyIdentifier() const { return m_keyIdentifier; }
-    unsigned keyLocation() const { return m_keyLocation; }
+    unsigned location() const { return m_location; }
 
     bool getModifierState(const String& keyIdentifier) const;
 
@@ -114,7 +117,7 @@ private:
 
     OwnPtr<PlatformKeyboardEvent> m_keyEvent;
     String m_keyIdentifier;
-    unsigned m_keyLocation;
+    unsigned m_location;
     bool m_altGraphKey : 1;
 
 #if PLATFORM(MAC)

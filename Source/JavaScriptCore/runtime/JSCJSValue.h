@@ -66,13 +66,14 @@ class CLoop;
 #endif
 
 struct ClassInfo;
+struct DumpContext;
 struct Instruction;
 struct MethodTable;
 
 template <class T> class WriteBarrierBase;
 
 enum PreferredPrimitiveType { NoPreference, PreferNumber, PreferString };
-
+enum ECMAMode { StrictMode, NotStrictMode };
 
 typedef int64_t EncodedJSValue;
     
@@ -111,6 +112,7 @@ inline uint32_t toUInt32(double number)
 class JSValue {
     friend struct EncodedJSValueHashTraits;
     friend class JIT;
+    friend class JITSlowPathCall;
     friend class JITStubs;
     friend class JITStubCall;
     friend class JSInterfaceJIT;
@@ -171,7 +173,8 @@ public:
     explicit JSValue(long long);
     explicit JSValue(unsigned long long);
 
-    operator bool() const;
+    typedef void* (JSValue::*UnspecifiedBoolType);
+    operator UnspecifiedBoolType*() const;
     bool operator==(const JSValue& other) const;
     bool operator!=(const JSValue& other) const;
 
@@ -245,7 +248,7 @@ public:
     void putToPrimitiveByIndex(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
     void putByIndex(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
 
-    JSObject* toThisObject(ExecState*) const;
+    JSValue toThis(ExecState*, ECMAMode) const;
 
     static bool equal(ExecState*, JSValue v1, JSValue v2);
     static bool equalSlowCase(ExecState*, JSValue v1, JSValue v2);
@@ -253,6 +256,7 @@ public:
     static bool strictEqual(ExecState*, JSValue v1, JSValue v2);
     static bool strictEqualSlowCase(ExecState*, JSValue v1, JSValue v2);
     static bool strictEqualSlowCaseInline(ExecState*, JSValue v1, JSValue v2);
+    static TriState pureStrictEqual(JSValue v1, JSValue v2);
 
     bool isCell() const;
     JSCell* asCell() const;
@@ -261,6 +265,7 @@ public:
     JSValue structureOrUndefined() const;
 
     JS_EXPORT_PRIVATE void dump(PrintStream&) const;
+    void dumpInContext(PrintStream&, DumpContext*) const;
 
     JS_EXPORT_PRIVATE JSObject* synthesizePrototype(ExecState*) const;
 
@@ -275,7 +280,7 @@ private:
     JS_EXPORT_PRIVATE JSString* toStringSlowCase(ExecState*) const;
     JS_EXPORT_PRIVATE WTF::String toWTFStringSlowCase(ExecState*) const;
     JS_EXPORT_PRIVATE JSObject* toObjectSlowCase(ExecState*, JSGlobalObject*) const;
-    JS_EXPORT_PRIVATE JSObject* toThisObjectSlowCase(ExecState*) const;
+    JS_EXPORT_PRIVATE JSValue toThisSlowCase(ExecState*, ECMAMode) const;
 
 #if USE(JSVALUE32_64)
     /*

@@ -136,20 +136,6 @@ static bool isFormattingTag(const AtomicString& tagName)
     return tagName == aTag || isNonAnchorFormattingTag(tagName);
 }
 
-static HTMLFormElement* closestFormAncestor(Element* element)
-{
-    ASSERT(isMainThread());
-    while (element) {
-        if (isHTMLFormElement(element))
-            return toHTMLFormElement(element);
-        ContainerNode* parent = element->parentNode();
-        if (!parent || !parent->isElementNode())
-            return 0;
-        element = toElement(parent);
-    }
-    return 0;
-}
-
 class HTMLTreeBuilder::ExternalCharacterTokenBuffer {
     WTF_MAKE_NONCOPYABLE(ExternalCharacterTokenBuffer);
 public:
@@ -313,7 +299,7 @@ HTMLTreeBuilder::HTMLTreeBuilder(HTMLDocumentParser* parser, DocumentFragment* f
 #endif
 
         resetInsertionModeAppropriately();
-        m_tree.setForm(closestFormAncestor(contextElement));
+        m_tree.setForm(!contextElement || isHTMLFormElement(contextElement) ? toHTMLFormElement(contextElement) : HTMLFormElement::findClosestFormAncestor(*contextElement));
     }
 }
 
@@ -1639,7 +1625,7 @@ void HTMLTreeBuilder::callTheAdoptionAgency(AtomicHTMLToken* token)
         if (furthestBlockElement->attached() && !newItem->element()->attached()) {
             // Notice that newItem->element() might already be attached if, for example, one of the reparented
             // children is a style element, which attaches itself automatically.
-            newItem->element()->attach();
+            Style::attachRenderTree(*newItem->element());
         }
         // 14.
         m_tree.activeFormattingElements()->swapTo(formattingElement, newItem, bookmark);

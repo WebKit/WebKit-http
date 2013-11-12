@@ -51,7 +51,8 @@ public:
         , m_sameOriginOnly(false)
         , m_mode(SelectorChecker::ResolvingStyle)
         , m_canUseFastReject(m_selectorFilter.parentStackIsConsistent(state.parentNode()))
-        , m_behaviorAtBoundary(SelectorChecker::DoesNotCrossBoundary) { }
+    {
+    }
 
     void matchAllRules(bool matchAuthorAndUserStyles, bool includeSMILProperties);
     void matchUARules();
@@ -70,7 +71,7 @@ public:
     const Vector<RefPtr<StyleRuleBase> >& matchedRuleList() const;
 
 private:
-    Document* document() { return m_state.document(); }
+    Document& document() { return m_state.document(); }
     void addElementStyleProperties(const StylePropertySet*, bool isCacheable = true);
 
     void matchUARules(RuleSet*);
@@ -87,8 +88,7 @@ private:
 
     void addMatchedRule(const RuleData*);
     void clearMatchedRules();
-        
-private:
+
     template<bool hasInspectorFrontends>
     void doCollectMatchingRulesForList(const Vector<RuleData>*, const MatchRequest&, StyleResolver::RuleRange&);
 
@@ -104,7 +104,6 @@ private:
     bool m_sameOriginOnly;
     SelectorChecker::Mode m_mode;
     bool m_canUseFastReject;
-    SelectorChecker::BehaviorAtBoundary m_behaviorAtBoundary;
 
     OwnPtr<Vector<const RuleData*, 32> > m_matchedRules;
 

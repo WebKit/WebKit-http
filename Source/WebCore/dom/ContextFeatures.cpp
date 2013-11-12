@@ -46,20 +46,8 @@ const char* ContextFeatures::supplementName()
 
 ContextFeatures* ContextFeatures::defaultSwitch()
 {
-    DEFINE_STATIC_LOCAL(RefPtr<ContextFeatures>, instance, (ContextFeatures::create(ContextFeaturesClient::empty())));
-    return instance.get();
-}
-
-bool ContextFeatures::dialogElementEnabled(Document* document)
-{
-#if ENABLE(DIALOG_ELEMENT)
-    if (!document)
-        return RuntimeEnabledFeatures::dialogElementEnabled();
-    return document->contextFeatures()->isEnabled(document, DialogElement, RuntimeEnabledFeatures::dialogElementEnabled());
-#else
-    UNUSED_PARAM(document);
-    return false;
-#endif
+    static ContextFeatures* instance = ContextFeatures::create(ContextFeaturesClient::empty()).leakRef();
+    return instance;
 }
 
 bool ContextFeatures::styleScopedEnabled(Document* document)

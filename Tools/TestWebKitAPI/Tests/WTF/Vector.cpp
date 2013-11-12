@@ -28,6 +28,14 @@
 
 namespace TestWebKitAPI {
 
+TEST(WTF_Vector, Basic)
+{
+    Vector<int> intVector;
+    EXPECT_TRUE(intVector.isEmpty());
+    EXPECT_EQ(0ul, intVector.size());
+    EXPECT_EQ(0ul, intVector.capacity());
+}
+
 TEST(WTF_Vector, Iterator)
 {
     Vector<int> intVector;
@@ -52,6 +60,30 @@ TEST(WTF_Vector, Iterator)
     EXPECT_TRUE(end == it);
 }
 
+TEST(WTF_Vector, Reverse)
+{
+    Vector<int> intVector;
+    intVector.append(10);
+    intVector.append(11);
+    intVector.append(12);
+    intVector.append(13);
+    intVector.reverse();
+
+    EXPECT_EQ(13, intVector[0]);
+    EXPECT_EQ(12, intVector[1]);
+    EXPECT_EQ(11, intVector[2]);
+    EXPECT_EQ(10, intVector[3]);
+
+    intVector.append(9);
+    intVector.reverse();
+
+    EXPECT_EQ(9, intVector[0]);
+    EXPECT_EQ(10, intVector[1]);
+    EXPECT_EQ(11, intVector[2]);
+    EXPECT_EQ(12, intVector[3]);
+    EXPECT_EQ(13, intVector[4]);
+}
+
 TEST(WTF_Vector, ReverseIterator)
 {
     Vector<int> intVector;
@@ -74,6 +106,53 @@ TEST(WTF_Vector, ReverseIterator)
     ++it;
 
     EXPECT_TRUE(end == it);
+}
+
+class MoveOnly {
+public:
+    MoveOnly(unsigned value)
+        : m_value(value)
+    {
+    }
+
+    unsigned value() const
+    {
+        return m_value;
+    }
+
+    MoveOnly(MoveOnly&& other)
+        : m_value(other.m_value)
+    {
+        other.m_value = 0;
+    }
+
+    MoveOnly& operator=(MoveOnly&& other)
+    {
+        if (this == &other)
+            return *this;
+
+        m_value = other.m_value;
+        other.m_value = 0;
+        return *this;
+    }
+
+private:
+    unsigned m_value;
+};
+
+TEST(WTF_Vector, MoveOnly_UncheckedAppend)
+{
+    Vector<MoveOnly> vector;
+
+    vector.reserveInitialCapacity(100);
+    for (size_t i = 0; i < 100; ++i) {
+        MoveOnly moveOnly(i);
+        vector.uncheckedAppend(std::move(moveOnly));
+        EXPECT_EQ(moveOnly.value(), 0U);
+    }
+
+    for (size_t i = 0; i < 100; ++i)
+        EXPECT_EQ(vector[i].value(), i);
 }
 
 } // namespace TestWebKitAPI

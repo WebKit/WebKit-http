@@ -65,7 +65,7 @@ JSPropertyNameIterator* JSPropertyNameIterator::create(ExecState* exec, JSObject
     if (o->structure()->typeInfo().overridesGetPropertyNames())
         return jsPropertyNameIterator;
     
-    if (hasIndexingHeader(o->structure()->indexingType()))
+    if (hasIndexedProperties(o->structure()->indexingType()))
         return jsPropertyNameIterator;
     
     size_t count = normalizePrototypeChain(exec, o);
@@ -101,7 +101,7 @@ JSValue JSPropertyNameIterator::get(ExecState* exec, JSObject* base, size_t i)
 void JSPropertyNameIterator::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSPropertyNameIterator* thisObject = jsCast<JSPropertyNameIterator*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     visitor.appendValues(thisObject->m_jsStrings.get(), thisObject->m_jsStringsSize);
     visitor.append(&thisObject->m_cachedPrototypeChain);

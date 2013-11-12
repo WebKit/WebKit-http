@@ -75,7 +75,7 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
-#ifdef GDK_WINDOWING_X11
+#if PLATFORM(X11) && defined(GDK_WINDOWING_X11)
 #define Font XFont
 #define Cursor XCursor
 #define Region XRegion
@@ -95,7 +95,7 @@
 #include "HTMLMediaElement.h"
 #endif
 
-#ifdef GDK_WINDOWING_X11
+#if PLATFORM(X11) && defined(GDK_WINDOWING_X11)
 #include "WidgetBackingStoreGtkX11.h"
 #endif
 #include "WidgetBackingStoreCairo.h"
@@ -106,7 +106,7 @@ namespace WebKit {
 
 static PassOwnPtr<WidgetBackingStore> createBackingStore(GtkWidget* widget, const IntSize& size)
 {
-#ifdef GDK_WINDOWING_X11
+#if PLATFORM(X11) && defined(GDK_WINDOWING_X11)
     GdkDisplay* display = gdk_display_manager_get_default_display(gdk_display_manager_get());
     if (GDK_IS_X11_DISPLAY(display))
         return WebCore::WidgetBackingStoreGtkX11::create(widget, size);
@@ -171,8 +171,7 @@ void ChromeClient::setWindowRect(const FloatRect& rect)
     GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(m_webView));
     if (widgetIsOnscreenToplevelWindow(window)) {
         gtk_window_move(GTK_WINDOW(window), intrect.x(), intrect.y());
-        if (!intrect.isEmpty())
-            gtk_window_resize(GTK_WINDOW(window), intrect.width(), intrect.height());
+        gtk_window_resize(GTK_WINDOW(window), intrect.width(), intrect.height());
     }
 }
 
@@ -343,7 +342,7 @@ void ChromeClient::takeFocus(FocusDirection)
     unfocus();
 }
 
-void ChromeClient::focusedNodeChanged(Node*)
+void ChromeClient::focusedElementChanged(Element*)
 {
 }
 
@@ -589,7 +588,7 @@ void ChromeClient::performAllPendingScrolls()
 void ChromeClient::paint(WebCore::Timer<ChromeClient>*)
 {
     static const double minimumFrameInterval = 1.0 / 60.0; // No more than 60 frames a second.
-    double timeSinceLastDisplay = currentTime() - m_lastDisplayTime;
+    double timeSinceLastDisplay = monotonicallyIncreasingTime() - m_lastDisplayTime;
     double timeUntilNextDisplay = minimumFrameInterval - timeSinceLastDisplay;
 
     if (timeUntilNextDisplay > 0 && !m_forcePaint) {
@@ -597,13 +596,13 @@ void ChromeClient::paint(WebCore::Timer<ChromeClient>*)
         return;
     }
 
-    Frame* frame = core(m_webView)->mainFrame();
-    if (!frame || !frame->contentRenderer() || !frame->view())
+    Frame& frame = core(m_webView)->mainFrame();
+    if (!frame.contentRenderer() || !frame.view())
         return;
 
-    frame->view()->updateLayoutAndStyleIfNeededRecursive();
+    frame.view()->updateLayoutAndStyleIfNeededRecursive();
     performAllPendingScrolls();
-    paintWebView(m_webView, frame, m_dirtyRegion);
+    paintWebView(m_webView, &frame, m_dirtyRegion);
 
     HashSet<GtkWidget*> children = m_webView->priv->children;
     HashSet<GtkWidget*>::const_iterator end = children.end();
@@ -618,15 +617,15 @@ void ChromeClient::paint(WebCore::Timer<ChromeClient>*)
     gtk_widget_queue_draw_area(GTK_WIDGET(m_webView), rect.x(), rect.y(), rect.width(), rect.height());
 
     m_dirtyRegion = Region();
-    m_lastDisplayTime = currentTime();
+    m_lastDisplayTime = monotonicallyIncreasingTime();
     m_repaintSoonSourceId = 0;
 
     // We update the IM context window location here, because we want it to be
     // synced with cursor movement. For instance, a text field can move without
     // the selection changing.
-    Frame* focusedFrame = core(m_webView)->focusController()->focusedOrMainFrame();
-    if (focusedFrame && focusedFrame->editor().canEdit())
-        m_webView->priv->imFilter.setCursorRect(frame->selection()->absoluteCaretBounds());
+    Frame& focusedFrame = core(m_webView)->focusController().focusedOrMainFrame();
+    if (focusedFrame.editor().canEdit())
+        m_webView->priv->imFilter.setCursorRect(frame.selection().absoluteCaretBounds());
 }
 
 void ChromeClient::forcePaint()
@@ -753,7 +752,7 @@ void ChromeClient::contentsSizeChanged(Frame* frame, const IntSize& size) const
         gtk_widget_queue_resize_no_redraw(widget);
 
     // If this was a main frame size change, update the scrollbars.
-    if (frame != frame->page()->mainFrame())
+    if (frame != &frame->page()->mainFrame())
         return;
     m_adjustmentWatcher.updateAdjustmentsFromScrollbarsLater();
 }
@@ -813,7 +812,7 @@ void ChromeClient::mouseDidMoveOverElement(const HitTestResult& hit, unsigned mo
     }
 
     if (Node* node = hit.innerNonSharedNode()) {
-        Frame* frame = node->document()->frame();
+        Frame* frame = node->document().frame();
         FrameView* view = frame ? frame->view() : 0;
         m_webView->priv->tooltipArea = view ? view->contentsToWindow(node->pixelSnappedBoundingBox()) : IntRect();
     } else
@@ -982,7 +981,7 @@ static gboolean onFullscreenGtkKeyPressEvent(GtkWidget* widget, GdkEventKey* eve
 void ChromeClient::cancelFullScreen()
 {
     ASSERT(m_fullScreenElement);
-    m_fullScreenElement->document()->webkitCancelFullScreen();
+    m_fullScreenElement->document().webkitCancelFullScreen();
 }
 
 void ChromeClient::enterFullScreenForElement(WebCore::Element* element)
@@ -997,10 +996,10 @@ void ChromeClient::enterFullScreenForElement(WebCore::Element* element)
     if (element && element->isMediaElement()) {
         HTMLMediaElement* mediaElement = toHTMLMediaElement(element);
         if (mediaElement->player() && mediaElement->player()->canEnterFullscreen()) {
-            element->document()->webkitWillEnterFullScreenForElement(element);
+            element->document().webkitWillEnterFullScreenForElement(element);
             mediaElement->player()->enterFullscreen();
             m_fullScreenElement = element;
-            element->document()->webkitDidEnterFullScreenForElement(element);
+            element->document().webkitDidEnterFullScreenForElement(element);
         }
         return;
     }
@@ -1014,10 +1013,10 @@ void ChromeClient::enterFullScreenForElement(WebCore::Element* element)
 
     m_fullScreenElement = element;
 
-    element->document()->webkitWillEnterFullScreenForElement(element);
+    element->document().webkitWillEnterFullScreenForElement(element);
     m_adjustmentWatcher.disableAllScrollbars();
     gtk_window_fullscreen(GTK_WINDOW(window));
-    element->document()->webkitDidEnterFullScreenForElement(element);
+    element->document().webkitDidEnterFullScreenForElement(element);
 }
 
 void ChromeClient::exitFullScreenForElement(WebCore::Element*)
@@ -1035,11 +1034,11 @@ void ChromeClient::exitFullScreenForElement(WebCore::Element*)
 
 #if ENABLE(VIDEO) && USE(NATIVE_FULLSCREEN_VIDEO)
     if (m_fullScreenElement && m_fullScreenElement->isMediaElement()) {
-        m_fullScreenElement->document()->webkitWillExitFullScreenForElement(m_fullScreenElement.get());
+        m_fullScreenElement->document().webkitWillExitFullScreenForElement(m_fullScreenElement.get());
         HTMLMediaElement* mediaElement = toHTMLMediaElement(m_fullScreenElement.get());
         if (mediaElement->player()) {
             mediaElement->player()->exitFullscreen();
-            m_fullScreenElement->document()->webkitDidExitFullScreenForElement(m_fullScreenElement.get());
+            m_fullScreenElement->document().webkitDidExitFullScreenForElement(m_fullScreenElement.get());
             m_fullScreenElement.clear();
         }
         return;
@@ -1050,10 +1049,10 @@ void ChromeClient::exitFullScreenForElement(WebCore::Element*)
     ASSERT(widgetIsOnscreenToplevelWindow(window));
     g_signal_handlers_disconnect_by_func(window, reinterpret_cast<void*>(onFullscreenGtkKeyPressEvent), this);
 
-    m_fullScreenElement->document()->webkitWillExitFullScreenForElement(m_fullScreenElement.get());
+    m_fullScreenElement->document().webkitWillExitFullScreenForElement(m_fullScreenElement.get());
     gtk_window_unfullscreen(GTK_WINDOW(window));
     m_adjustmentWatcher.enableAllScrollbars();
-    m_fullScreenElement->document()->webkitDidExitFullScreenForElement(m_fullScreenElement.get());
+    m_fullScreenElement->document().webkitDidExitFullScreenForElement(m_fullScreenElement.get());
     m_fullScreenElement.clear();
 }
 #endif

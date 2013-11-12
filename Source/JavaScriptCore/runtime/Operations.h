@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2002, 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2002, 2005, 2006, 2007, 2008, 2009, 2013 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -23,10 +23,14 @@
 #define Operations_h
 
 #include "ExceptionHelpers.h"
+#include "GCIncomingRefCountedInlines.h"
 #include "Interpreter.h"
+#include "JSArrayBufferViewInlines.h"
 #include "JSCJSValueInlines.h"
+#include "JSFunctionInlines.h"
 #include "JSProxy.h"
 #include "JSString.h"
+#include "SlotVisitorInlines.h"
 #include "StructureInlines.h"
 
 namespace JSC {
@@ -210,7 +214,7 @@ inline size_t normalizePrototypeChainForChainAccess(CallFrame* callFrame, JSValu
     JSCell* cell = base.asCell();
     size_t count = 0;
         
-    while (slotBase != cell) {
+    while (!slotBase || slotBase != cell) {
         if (cell->isProxy())
             return InvalidPrototypeChain;
             
@@ -222,8 +226,11 @@ inline size_t normalizePrototypeChainForChainAccess(CallFrame* callFrame, JSValu
         // If we didn't find slotBase in base's prototype chain, then base
         // must be a proxy for another object.
 
-        if (v.isNull())
+        if (v.isNull()) {
+            if (!slotBase)
+                return count;
             return InvalidPrototypeChain;
+        }
 
         cell = v.asCell();
 
@@ -238,7 +245,6 @@ inline size_t normalizePrototypeChainForChainAccess(CallFrame* callFrame, JSValu
         ++count;
     }
         
-    ASSERT(count);
     return count;
 }
 

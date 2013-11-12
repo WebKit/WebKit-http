@@ -95,7 +95,7 @@ if (!window.InspectorFrontendHost) {
             window.open(url, "_blank");
         },
 
-        save: function(url, content, forceSaveAs)
+        save: function(url, content, base64Encoded, forceSaveAs)
         {
         },
 
@@ -118,5 +118,6 @@ if (!window.InspectorFrontendHost) {
     }
 
     InspectorFrontendHost = new WebInspector.InspectorFrontendHostStub();
+    WebInspector.dontLocalizeUserInterface = true;
 }
 

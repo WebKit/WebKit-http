@@ -29,6 +29,7 @@
 #include "StylePropertySet.h"
 #include "StyledElement.h"
 #include "Text.h"
+#include "TextNodeTraversal.h"
 #include "XMLNSNames.h"
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/StringBuilder.h>
@@ -38,7 +39,7 @@ namespace WebCore {
 using namespace HTMLNames;
 
 Attr::Attr(Element* element, const QualifiedName& name)
-    : ContainerNode(element->document())
+    : ContainerNode(&element->document())
     , m_element(element)
     , m_name(name)
     , m_ignoreChildrenChanged(0)
@@ -78,11 +79,11 @@ void Attr::createTextChild()
 {
     ASSERT(refCount());
     if (!value().isEmpty()) {
-        RefPtr<Text> textNode = document()->createTextNode(value().string());
+        RefPtr<Text> textNode = document().createTextNode(value().string());
 
         // This does everything appendChild() would do in this situation (assuming m_ignoreChildrenChanged was set),
         // but much more efficiently.
-        textNode->setParentOrShadowHostNode(this);
+        textNode->setParentNode(this);
         setFirstChild(textNode.get());
         setLastChild(textNode.get());
     }
@@ -141,7 +142,7 @@ void Attr::setNodeValue(const String& v, ExceptionCode& ec)
 
 PassRefPtr<Node> Attr::cloneNode(bool /*deep*/)
 {
-    RefPtr<Attr> clone = adoptRef(new Attr(document(), qualifiedName(), value()));
+    RefPtr<Attr> clone = adoptRef(new Attr(&document(), qualifiedName(), value()));
     cloneChildNodes(clone.get());
     return clone.release();
 }
@@ -158,20 +159,15 @@ bool Attr::childTypeAllowed(NodeType type) const
     }
 }
 
-void Attr::childrenChanged(bool, Node*, Node*, int)
+void Attr::childrenChanged(const ChildChange&)
 {
     if (m_ignoreChildrenChanged > 0)
         return;
 
     invalidateNodeListCachesInAncestors(&qualifiedName(), m_element);
 
-    // FIXME: We should include entity references in the value
-
     StringBuilder valueBuilder;
-    for (Node *n = firstChild(); n; n = n->nextSibling()) {
-        if (n->isTextNode())
-            valueBuilder.append(toText(n)->data());
-    }
+    TextNodeTraversal::appendContents(this, valueBuilder);
 
     AtomicString newValue = valueBuilder.toAtomicString();
     if (m_element)
@@ -188,7 +184,7 @@ void Attr::childrenChanged(bool, Node*, Node*, int)
 
 bool Attr::isId() const
 {
-    return qualifiedName().matches(document()->idAttributeName());
+    return qualifiedName().matches(document().idAttributeName());
 }
 
 CSSStyleDeclaration* Attr::style()
@@ -212,7 +208,7 @@ Attribute& Attr::elementAttribute()
 {
     ASSERT(m_element);
     ASSERT(m_element->elementData());
-    return *m_element->ensureUniqueElementData()->getAttributeItem(qualifiedName());
+    return *m_element->ensureUniqueElementData().findAttributeByName(qualifiedName());
 }
 
 void Attr::detachFromElementWithValue(const AtomicString& value)

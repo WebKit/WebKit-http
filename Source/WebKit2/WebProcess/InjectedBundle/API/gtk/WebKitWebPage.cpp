@@ -25,11 +25,12 @@
 #include "InjectedBundle.h"
 #include "WKBundleAPICast.h"
 #include "WKBundleFrame.h"
-#include "WebFrame.h"
 #include "WebImage.h"
 #include "WebKitDOMDocumentPrivate.h"
+#include "WebKitFramePrivate.h"
 #include "WebKitMarshal.h"
 #include "WebKitPrivate.h"
+#include "WebKitScriptWorldPrivate.h"
 #include "WebKitURIRequestPrivate.h"
 #include "WebKitURIResponsePrivate.h"
 #include "WebKitWebPagePrivate.h"
@@ -39,6 +40,7 @@
 #include <WebCore/Frame.h>
 #include <WebCore/FrameView.h>
 #include <glib/gi18n-lib.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
 using namespace WebKit;
@@ -67,9 +69,29 @@ static guint signals[LAST_SIGNAL] = { 0, };
 
 WEBKIT_DEFINE_TYPE(WebKitWebPage, webkit_web_page, G_TYPE_OBJECT)
 
+typedef HashMap<WebFrame*, GRefPtr<WebKitFrame>> WebFrameMap;
+
+static WebFrameMap& webFrameMap()
+{
+    static NeverDestroyed<WebFrameMap> map;
+    return map;
+}
+
+static WebKitFrame* webkitFrameGetOrCreate(WebFrame* webFrame)
+{
+    GRefPtr<WebKitFrame> frame = webFrameMap().get(webFrame);
+    if (frame)
+        return frame.get();
+
+    frame = adoptGRef(webkitFrameCreate(webFrame));
+    webFrameMap().set(webFrame, frame);
+
+    return frame.get();
+}
+
 static CString getProvisionalURLForFrame(WebFrame* webFrame)
 {
-    DocumentLoader* documentLoader = webFrame->coreFrame()->loader()->provisionalDocumentLoader();
+    DocumentLoader* documentLoader = webFrame->coreFrame()->loader().provisionalDocumentLoader();
     if (!documentLoader->unreachableURL().isEmpty())
         return documentLoader->unreachableURL().string().utf8();
 
@@ -115,6 +137,17 @@ static void didFinishDocumentLoadForFrame(WKBundlePageRef, WKBundleFrameRef fram
         return;
 
     g_signal_emit(WEBKIT_WEB_PAGE(clientInfo), signals[DOCUMENT_LOADED], 0);
+}
+
+static void willDestroyFrame(WKBundlePageRef, WKBundleFrameRef frame, const void *clientInfo)
+{
+    webFrameMap().remove(toImpl(frame));
+}
+
+static void didClearWindowObjectForFrame(WKBundlePageRef, WKBundleFrameRef frame, WKBundleScriptWorldRef wkWorld, const void* clientInfo)
+{
+    if (WebKitScriptWorld* world = webkitScriptWorldGet(toImpl(wkWorld)))
+        webkitScriptWorldWindowObjectCleared(world, WEBKIT_WEB_PAGE(clientInfo), webkitFrameGetOrCreate(toImpl(frame)));
 }
 
 static void didInitiateLoadForResource(WKBundlePageRef page, WKBundleFrameRef frame, uint64_t identifier, WKURLRequestRef request, bool pageLoadIsProvisional, const void*)
@@ -277,7 +310,7 @@ WebKitWebPage* webkitWebPageCreate(WebPage* webPage)
     page->priv->webPage = webPage;
 
     WKBundlePageLoaderClient loaderClient = {
-        kWKBundlePageResourceLoadClientCurrentVersion,
+        kWKBundlePageLoaderClientCurrentVersion,
         page,
         didStartProvisionalLoadForFrame,
         didReceiveServerRedirectForProvisionalLoadForFrame,
@@ -293,7 +326,7 @@ WebKitWebPage* webkitWebPageCreate(WebPage* webPage)
         0, // didRemoveFrameFromHierarchy
         0, // didDisplayInsecureContentForFrame
         0, // didRunInsecureContentForFrame
-        0, // didClearWindowObjectForFrame
+        didClearWindowObjectForFrame,
         0, // didCancelClientRedirectForFrame
         0, // willPerformClientRedirectForFrame
         0, // didHandleOnloadEventsForFrame
@@ -311,8 +344,9 @@ WebKitWebPage* webkitWebPageCreate(WebPage* webPage)
         0, // registerIntentServiceForFrame_unavailable
         0, // didLayout
         0, // featuresUsedInPage
-        0, // willLoadURLRequest;
-        0, // willLoadDataRequest;
+        0, // willLoadURLRequest
+        0, // willLoadDataRequest
+        willDestroyFrame
     };
     WKBundlePageSetPageLoaderClient(toAPI(webPage), &loaderClient);
 
@@ -419,4 +453,11 @@ const gchar* webkit_web_page_get_uri(WebKitWebPage* webPage)
     g_return_val_if_fail(WEBKIT_IS_WEB_PAGE(webPage), 0);
 
     return webPage->priv->uri.data();
+}
+
+WebKitFrame* webkit_web_page_get_main_frame(WebKitWebPage* webPage)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_PAGE(webPage), 0);
+
+    return webkitFrameGetOrCreate(webPage->priv->webPage->mainWebFrame());
 }

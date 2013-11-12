@@ -31,8 +31,8 @@
 #include "ContextDestructionObserver.h"
 #include "ExceptionCodePlaceholder.h"
 #include "NodeList.h"
-#include <wtf/ArrayBuffer.h>
-#include <wtf/Float32Array.h>
+#include <runtime/ArrayBuffer.h>
+#include <runtime/Float32Array.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -93,6 +93,9 @@ public:
     Element* includerFor(Node*, ExceptionCode&);
     String shadowPseudoId(Element*, ExceptionCode&);
     void setShadowPseudoId(Element*, const String&, ExceptionCode&);
+
+    // Spatial Navigation testing.
+    unsigned lastSpatialNavigationCandidateCount(ExceptionCode&) const;
 
     // CSS Animation testing.
     unsigned numberOfActiveAnimations() const;
@@ -222,7 +225,8 @@ public:
         LAYER_TREE_INCLUDES_VISIBLE_RECTS = 1,
         LAYER_TREE_INCLUDES_TILE_CACHES = 2,
         LAYER_TREE_INCLUDES_REPAINT_RECTS = 4,
-        LAYER_TREE_INCLUDES_PAINTING_PHASES = 8
+        LAYER_TREE_INCLUDES_PAINTING_PHASES = 8,
+        LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16
     };
     String layerTreeAsText(Document*, unsigned flags, ExceptionCode&) const;
     String layerTreeAsText(Document*, ExceptionCode&) const;

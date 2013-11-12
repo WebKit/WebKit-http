@@ -80,11 +80,6 @@ private:
 
     void loadTimerFired(Timer<HTMLTrackElement>*);
 
-#if ENABLE(MICRODATA)
-    virtual String itemValueText() const OVERRIDE;
-    virtual void setItemValueText(const String&, ExceptionCode&) OVERRIDE;
-#endif
-
     HTMLMediaElement* mediaElement() const;
 
     // TextTrackClient
@@ -95,7 +90,7 @@ private:
     virtual void textTrackAddCue(TextTrack*, PassRefPtr<TextTrackCue>);
     virtual void textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue>);
 
-    LoadableTextTrack* ensureTrack();
+    LoadableTextTrack& ensureTrack();
     virtual bool canLoadUrl(const KURL&);
 
     RefPtr<LoadableTextTrack> m_track;

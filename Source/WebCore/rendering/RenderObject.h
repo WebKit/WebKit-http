@@ -211,6 +211,7 @@ public:
     RenderBox* enclosingBox() const;
     RenderBoxModelObject* enclosingBoxModelObject() const;
 
+    bool fixedPositionedWithNamedFlowContainingBlock() const;
     // Function to return our enclosing flow thread if we are contained inside one. This
     // function follows the containing block chain.
     RenderFlowThread* flowThreadContainingBlock() const
@@ -315,17 +316,13 @@ private:
     void* operator new(size_t) throw();
 
 public:
-    RenderArena* renderArena() const { return document()->renderArena(); }
+    RenderArena* renderArena() const { return document().renderArena(); }
 
     bool isPseudoElement() const { return node() && node()->isPseudoElement(); }
 
     virtual bool isBR() const { return false; }
-    virtual bool isBlockFlow() const { return false; }
     virtual bool isBoxModelObject() const { return false; }
     virtual bool isCounter() const { return false; }
-#if ENABLE(DIALOG_ELEMENT)
-    virtual bool isDialog() const { return false; }
-#endif
     virtual bool isQuote() const { return false; }
 
 #if ENABLE(DETAILS_ELEMENT)
@@ -352,6 +349,7 @@ public:
     virtual bool isProgress() const { return false; }
 #endif
     virtual bool isRenderBlock() const { return false; }
+    virtual bool isRenderBlockFlow() const { return false; }
     virtual bool isRenderSVGBlock() const { return false; };
     virtual bool isRenderButton() const { return false; }
     virtual bool isRenderIFrame() const { return false; }
@@ -359,6 +357,7 @@ public:
     virtual bool isRenderInline() const { return false; }
     virtual bool isRenderPart() const { return false; }
     virtual bool isRenderRegion() const { return false; }
+    virtual bool isRenderReplaced() const { return false; }
     virtual bool isRenderView() const { return false; }
     virtual bool isReplica() const { return false; }
 
@@ -398,7 +397,7 @@ public:
 
     virtual bool isRenderScrollbarPart() const { return false; }
 
-    bool isRoot() const { return document()->documentElement() == m_node; }
+    bool isRoot() const { return document().documentElement() == m_node; }
     bool isBody() const;
     bool isHR() const;
     bool isLegend() const;
@@ -406,6 +405,12 @@ public:
     bool isHTMLMarquee() const;
 
     bool isTablePart() const { return isTableCell() || isRenderTableCol() || isTableCaption() || isTableRow() || isTableSection(); }
+
+    // FIXME: This is the renamed version of isBlockFlow() and it makes it more obvious that flexible boxes and grids are being included. Most
+    // of the current callers did not in fact intend to include flexible boxes and grids (but have been for years), so we will want to
+    // convert those callers over to isRenderBlockFlow() instead. We'll do this call site by call site in order to try to find the
+    // code that is making bad assumptions and change it. Once that's finished, this method will just go away.
+    bool isBlockFlowFlexBoxOrGrid() const { return isRenderBlockFlow() || isFlexibleBoxIncludingDeprecated() || isRenderGrid(); }
 
     inline bool isBeforeContent() const;
     inline bool isAfterContent() const;
@@ -622,7 +627,7 @@ public:
     
     virtual void updateDragState(bool dragOn);
 
-    RenderView* view() const { return document()->renderView(); };
+    RenderView& view() const { return *document().renderView(); };
 
     // Returns true if this renderer is rooted, and optionally returns the hosting view (the root of the hierarchy).
     bool isRooted(RenderView** = 0) const;
@@ -636,10 +641,10 @@ public:
     // Returns the styled node that caused the generation of this renderer.
     // This is the same as node() except for renderers of :before and :after
     // pseudo elements for which their parent node is returned.
-    Node* generatingNode() const { return isPseudoElement() ? node()->parentOrShadowHostNode() : node(); }
+    Node* generatingNode() const { return isPseudoElement() ? generatingPseudoHostElement() : node(); }
 
-    Document* document() const { return m_node->document(); }
-    Frame* frame() const { return document()->frame(); }
+    Document& document() const { return m_node->document(); }
+    Frame& frame() const; // Defined in RenderView.h
 
     bool hasOutlineAnnotation() const;
     bool hasOutline() const { return style()->hasOutline() || hasOutlineAnnotation(); }
@@ -694,6 +699,9 @@ public:
 
     void updateFillImages(const FillLayer*, const FillLayer*);
     void updateImage(StyleImage*, StyleImage*);
+#if ENABLE(CSS_SHAPES)
+    void updateShapeImage(const ShapeValue*, const ShapeValue*);
+#endif
 
     virtual void paint(PaintInfo&, const LayoutPoint&);
 
@@ -794,7 +802,7 @@ public:
     virtual LayoutUnit maxPreferredLogicalWidth() const { return 0; }
 
     RenderStyle* style() const { return m_style.get(); }
-    RenderStyle* firstLineStyle() const { return document()->styleSheetCollection()->usesFirstLineRules() ? cachedFirstLineStyle() : style(); }
+    RenderStyle* firstLineStyle() const { return document().styleSheetCollection()->usesFirstLineRules() ? cachedFirstLineStyle() : style(); }
     RenderStyle* style(bool firstLine) const { return firstLine ? firstLineStyle() : style(); }
 
     // Used only by Element::pseudoStyleCacheIsInvalid to get a first line style based off of a
@@ -864,7 +872,6 @@ public:
     virtual unsigned int length() const { return 1; }
 
     bool isFloatingOrOutOfFlowPositioned() const { return (isFloating() || isOutOfFlowPositioned()); }
-    bool isFloatingWithShapeOutside() const { return isBox() && isFloating() && style()->shapeOutside(); }
 
     bool isTransparent() const { return style()->opacity() < 1.0f; }
     float opacity() const { return style()->opacity(); }
@@ -949,7 +956,7 @@ public:
     
     void remove() { if (parent()) parent()->removeChild(this); }
 
-    AnimationController* animation() const;
+    AnimationController& animation() const;
 
     bool visibleToHitTesting() const { return style()->visibility() == VISIBLE && style()->pointerEvents() != PE_NONE; }
 
@@ -1023,6 +1030,12 @@ private:
     StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
 
     Color selectionColor(int colorProperty) const;
+
+    Node* generatingPseudoHostElement() const;
+
+#if ENABLE(CSS_SHAPES)
+    void removeShapeImageClient(ShapeValue*);
+#endif
 
 #ifndef NDEBUG
     void checkBlockPositionedObjectsNeedLayout();
@@ -1166,7 +1179,7 @@ private:
 
 inline bool RenderObject::documentBeingDestroyed() const
 {
-    return !document()->renderer();
+    return document().renderTreeBeingDestroyed();
 }
 
 inline bool RenderObject::isBeforeContent() const

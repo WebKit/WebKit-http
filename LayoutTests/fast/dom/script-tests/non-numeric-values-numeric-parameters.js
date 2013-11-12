@@ -250,7 +250,7 @@ shouldBe("nonNumericPolicy('createHTMLOptionsCollection().remove(x)')", "'any ty
 // HTMLSelectElement
 
 shouldBe("nonNumericPolicy('createHTMLSelectElement().remove(x)')", "'any type allowed'");
-shouldBe("nonNumericPolicy('createHTMLSelectElement().item(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('createHTMLSelectElement().item(x)')", "'any type allowed (but not omitted)'");
 
 // HTMLTableElement
 
@@ -299,7 +299,7 @@ shouldBe("nonNumericPolicy('document.createNodeIterator(document, x, null, false
 
 // NodeList
 
-shouldBe("nonNumericPolicy('document.getElementsByTagName(\"div\").item(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('document.getElementsByTagName(\"div\").item(x)')", "'any type allowed (but not omitted)'");
 
 // Range
 

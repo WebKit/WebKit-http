@@ -29,24 +29,8 @@
 #include "DragActions.h"
 #include "DragImage.h"
 #include "IntPoint.h"
-#include "Node.h"
-
-// This DOM object now works by calling through to classes in the platform layer.
-// Specifically, the class currently named Pasteboard. The legacy style instead
-// uses this as an abstract base class.
-#define WTF_USE_LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS (PLATFORM(IOS) || PLATFORM(HAIKU))
-
-#if USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
-#define LEGACY_VIRTUAL virtual
-#else
-#define LEGACY_VIRTUAL
-#endif
-
-#if USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
-#define LEGACY_PURE = 0
-#else
-#define LEGACY_PURE
-#endif
+#include <wtf/RefCounted.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -54,136 +38,85 @@ namespace WebCore {
     class DataTransferItemList;
     class DragData;
     class DragImageLoader;
+    class Element;
     class FileList;
-    class Frame;
     class Pasteboard;
 
-    // State available during IE's events for drag and drop and copy/paste
     class Clipboard : public RefCounted<Clipboard> {
     public:
-        // Whether this clipboard is serving a drag-drop or copy-paste request.
-        enum ClipboardType {
-            CopyAndPaste,
-            DragAndDrop,
-        };
-        
-        static PassRefPtr<Clipboard> create(ClipboardAccessPolicy, DragData*, Frame*);
+        static PassRefPtr<Clipboard> createForCopyAndPaste(ClipboardAccessPolicy);
 
-        LEGACY_VIRTUAL ~Clipboard();
+        ~Clipboard();
 
-        bool isForCopyAndPaste() const { return m_clipboardType == CopyAndPaste; }
-        bool isForDragAndDrop() const { return m_clipboardType == DragAndDrop; }
-
-        String dropEffect() const { return dropEffectIsUninitialized() ? "none" : m_dropEffect; }
+        String dropEffect() const;
         void setDropEffect(const String&);
-        bool dropEffectIsUninitialized() const { return m_dropEffect == "uninitialized"; }
-        String effectAllowed() const { return m_effectAllowed; }
+
+        String effectAllowed() const;
         void setEffectAllowed(const String&);
-    
-        LEGACY_VIRTUAL void clearData(const String& type) LEGACY_PURE;
-        LEGACY_VIRTUAL void clearData() LEGACY_PURE;
+
+        Vector<String> types() const;
+
+        PassRefPtr<FileList> files() const;
+
+        void clearData(const String& type);
+        void clearData();
+
+        String getData(const String& type) const;
+
+        bool setData(const String& type, const String& data);
 
         void setDragImage(Element*, int x, int y);
-#if USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
-        virtual void setDragImage(CachedImage*, const IntPoint&) = 0;
-        virtual void setDragImageElement(Node*, const IntPoint&) = 0;
+
+#if ENABLE(DATA_TRANSFER_ITEMS)
+        PassRefPtr<DataTransferItemList> items() = 0;
 #endif
-
-        LEGACY_VIRTUAL String getData(const String& type) const LEGACY_PURE;
-        LEGACY_VIRTUAL bool setData(const String& type, const String& data) LEGACY_PURE;
-    
-        LEGACY_VIRTUAL ListHashSet<String> types() const LEGACY_PURE;
-        LEGACY_VIRTUAL PassRefPtr<FileList> files() const LEGACY_PURE;
-
-        IntPoint dragLocation() const { return m_dragLoc; }
-        CachedImage* dragImage() const { return m_dragImage.get(); }
-        Node* dragImageElement() const { return m_dragImageElement.get(); }
-        
-        LEGACY_VIRTUAL DragImageRef createDragImage(IntPoint& dragLocation) const LEGACY_PURE;
-#if ENABLE(DRAG_SUPPORT)
-        LEGACY_VIRTUAL void declareAndWriteDragImage(Element*, const KURL&, const String& title, Frame*) LEGACY_PURE;
-#endif
-        LEGACY_VIRTUAL void writeURL(const KURL&, const String&, Frame*) LEGACY_PURE;
-        LEGACY_VIRTUAL void writeRange(Range*, Frame*) LEGACY_PURE;
-        LEGACY_VIRTUAL void writePlainText(const String&) LEGACY_PURE;
-
-        LEGACY_VIRTUAL bool hasData() LEGACY_PURE;
 
         void setAccessPolicy(ClipboardAccessPolicy);
         bool canReadTypes() const;
         bool canReadData() const;
         bool canWriteData() const;
-        // Note that the spec doesn't actually allow drag image modification outside the dragstart
-        // event. This capability is maintained for backwards compatiblity for ports that have
-        // supported this in the past. On many ports, attempting to set a drag image outside the
-        // dragstart operation is a no-op anyway.
-        bool canSetDragImage() const;
+
+        Pasteboard& pasteboard() { return *m_pasteboard; }
+
+#if ENABLE(DRAG_SUPPORT)
+        static PassRefPtr<Clipboard> createForDragAndDrop();
+        static PassRefPtr<Clipboard> createForDragAndDrop(ClipboardAccessPolicy, const DragData&);
+
+        bool dropEffectIsUninitialized() const { return m_dropEffect == "uninitialized"; }
 
         DragOperation sourceOperation() const;
         DragOperation destinationOperation() const;
         void setSourceOperation(DragOperation);
         void setDestinationOperation(DragOperation);
-        
-        bool hasDropZoneType(const String&);
-        
-        void setDragHasStarted() { m_dragStarted = true; }
 
-#if ENABLE(DATA_TRANSFER_ITEMS)
-        LEGACY_VIRTUAL PassRefPtr<DataTransferItemList> items() = 0;
-#endif
-        
-#if !USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
-        static PassRefPtr<Clipboard> createForCopyAndPaste(ClipboardAccessPolicy);
-
-        const Pasteboard& pasteboard() { return *m_pasteboard; }
-#endif
-
-#if !USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS) && ENABLE(DRAG_SUPPORT)
-        static PassRefPtr<Clipboard> createForDragAndDrop();
-
+        void setDragHasStarted() { m_shouldUpdateDragImage = true; }
+        DragImageRef createDragImage(IntPoint& dragLocation) const;
         void updateDragImage();
 #endif
 
-    protected:
-#if !USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
-        Clipboard(ClipboardAccessPolicy, ClipboardType, PassOwnPtr<Pasteboard>, bool forFileDrag = false);
-#else
-        Clipboard(ClipboardAccessPolicy, ClipboardType);
+    private:
+        enum ClipboardType { CopyAndPaste, DragAndDrop };
+        Clipboard(ClipboardAccessPolicy, PassOwnPtr<Pasteboard>, ClipboardType = CopyAndPaste, bool forFileDrag = false);
+
+#if ENABLE(DRAG_SUPPORT)
+        bool canSetDragImage() const;
 #endif
 
-        bool dragStarted() const { return m_dragStarted; }
-        
-    private:
-        bool hasFileOfType(const String&) const;
-        bool hasStringOfType(const String&) const;
-
-        // Instead of using this member directly, prefer to use the can*() methods above.
         ClipboardAccessPolicy m_policy;
+        OwnPtr<Pasteboard> m_pasteboard;
+
+#if ENABLE(DRAG_SUPPORT)
+        bool m_forDrag;
+        bool m_forFileDrag;
         String m_dropEffect;
         String m_effectAllowed;
-        bool m_dragStarted;
-        ClipboardType m_clipboardType;
-        
-    protected:
-        IntPoint m_dragLoc;
+        bool m_shouldUpdateDragImage;
+        IntPoint m_dragLocation;
         CachedResourceHandle<CachedImage> m_dragImage;
-        RefPtr<Node> m_dragImageElement;
-
-#if !USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
-    private:
-        OwnPtr<Pasteboard> m_pasteboard;
-        bool m_forFileDrag;
-#if ENABLE(DRAG_SUPPORT)
+        RefPtr<Element> m_dragImageElement;
         OwnPtr<DragImageLoader> m_dragImageLoader;
 #endif
-#endif
     };
-
-    DragOperation convertDropZoneOperationToDragOperation(const String& dragOperation);
-    String convertDragOperationToDropZoneOperation(DragOperation);
-
-#undef LEGACY_VIRTUAL
-#undef LEGACY_PURE
 
 } // namespace WebCore
 

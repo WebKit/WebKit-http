@@ -423,6 +423,12 @@ String AXDescriptionListDetailText()
     return String();
 }
 
+String AXSearchFieldCancelButtonText()
+{
+    notImplemented();
+    return String();
+}
+
 String AXButtonActionVerb()
 {
     notImplemented();
@@ -756,7 +762,13 @@ String textTrackSubtitlesText()
     return String();
 }
 
-String textTrackOffText()
+String textTrackOffMenuItemText()
+{
+    notImplemented();
+    return String();
+}
+
+String textTrackAutomaticMenuItemText()
 {
     notImplemented();
     return String();

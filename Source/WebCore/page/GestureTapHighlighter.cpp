@@ -41,6 +41,7 @@
 #include "RenderInline.h"
 #include "RenderLayer.h"
 #include "RenderObject.h"
+#include "RenderView.h"
 
 namespace WebCore {
 
@@ -49,13 +50,11 @@ namespace {
 inline LayoutPoint ownerFrameToMainFrameOffset(const RenderObject* o)
 {
     ASSERT(o->node());
-    Frame* containingFrame = o->frame();
-    if (!containingFrame)
-        return LayoutPoint();
+    Frame& containingFrame = o->frame();
 
-    Frame* mainFrame = containingFrame->page()->mainFrame();
+    Frame& mainFrame = containingFrame.page()->mainFrame();
 
-    LayoutPoint mainFramePoint = mainFrame->view()->windowToContents(containingFrame->view()->contentsToWindow(IntPoint()));
+    LayoutPoint mainFramePoint = mainFrame.view()->windowToContents(containingFrame.view()->contentsToWindow(IntPoint()));
     return mainFramePoint;
 }
 
@@ -199,8 +198,7 @@ Path absolutePathForRenderer(RenderObject* const o)
         drawableRects.append(last);
 
     // Clip the overflow rects if needed, before the ring path is formed to
-    // ensure rounded highlight rects. This clipping has the problem with nested
-    // divs with transforms, which could be resolved by proper Path::intersecting.
+    // ensure rounded highlight rects.
     for (int i = drawableRects.size() - 1; i >= 0; --i) {
         LayoutRect& ringRect = drawableRects.at(i);
         LayoutPoint ringRectLocation = ringRect.location();
@@ -212,7 +210,7 @@ Path absolutePathForRenderer(RenderObject* const o)
 
         // Check ancestor layers for overflow clip and intersect them.
         for (; layer; layer = layer->parent()) {
-            RenderLayerModelObject* layerRenderer = layer->renderer();
+            RenderLayerModelObject* layerRenderer = &layer->renderer();
 
             if (layerRenderer->hasOverflowClip() && layerRenderer != currentRenderer) {
                 bool containerSkipped = false;
@@ -220,7 +218,12 @@ Path absolutePathForRenderer(RenderObject* const o)
                 currentRenderer->container(layerRenderer, &containerSkipped);
                 if (containerSkipped)
                     continue;
-                ringRect.move(currentRenderer->offsetFromAncestorContainer(layerRenderer));
+                FloatQuad ringQuad = currentRenderer->localToContainerQuad(FloatQuad(ringRect), layerRenderer);
+                // Ignore quads that are not rectangular, since we can not currently highlight them nicely.
+                if (ringQuad.isRectilinear())
+                    ringRect = ringQuad.enclosingBoundingBox();
+                else
+                    ringRect = LayoutRect();
                 currentRenderer = layerRenderer;
 
                 ASSERT(layerRenderer->isBox());

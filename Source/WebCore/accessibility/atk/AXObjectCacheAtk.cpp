@@ -164,7 +164,8 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* coreObject, AX
         atk_value_get_current_value(ATK_VALUE(axObject), &propertyValues.new_value);
 
         g_signal_emit_by_name(ATK_OBJECT(axObject), "property-change::accessible-value", &propertyValues, NULL);
-    }
+    } else if (notification == AXInvalidStatusChanged)
+        g_signal_emit_by_name(axObject, "state-change", "invalid-entry", coreObject->invalidStatus() != "false");
 }
 
 void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObject* object, AXTextChange textChange, unsigned offset, const String& text)
@@ -185,8 +186,8 @@ void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObject* obje
         return;
 
     // Ensure document's layout is up-to-date before using TextIterator.
-    Document* document = node->document();
-    document->updateLayout();
+    Document& document = node->document();
+    document.updateLayout();
 
     // Select the right signal to be emitted
     CString detail;
@@ -211,7 +212,7 @@ void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObject* obje
         // Consider previous text objects that might be present for
         // the current accessibility object to ensure we emit the
         // right offset (e.g. multiline text areas).
-        RefPtr<Range> range = Range::create(document, node->parentNode(), 0, node, 0);
+        RefPtr<Range> range = Range::create(&document, node->parentNode(), 0, node, 0);
         offsetToEmit = offset + TextIterator::rangeLength(range.get());
     }
 

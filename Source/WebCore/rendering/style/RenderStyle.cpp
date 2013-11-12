@@ -402,10 +402,14 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
             return true;
 
         if (rareNonInheritedData->m_wrapFlow != other->rareNonInheritedData->m_wrapFlow
-            || rareNonInheritedData->m_wrapThrough != other->rareNonInheritedData->m_wrapThrough
-            || rareNonInheritedData->m_shapeMargin != other->rareNonInheritedData->m_shapeMargin
+            || rareNonInheritedData->m_wrapThrough != other->rareNonInheritedData->m_wrapThrough)
+            return true;
+
+#if ENABLE(CSS_SHAPES)
+        if (rareNonInheritedData->m_shapeMargin != other->rareNonInheritedData->m_shapeMargin
             || rareNonInheritedData->m_shapePadding != other->rareNonInheritedData->m_shapePadding)
             return true;
+#endif
 
         if (rareNonInheritedData->m_deprecatedFlexibleBox.get() != other->rareNonInheritedData->m_deprecatedFlexibleBox.get()
             && *rareNonInheritedData->m_deprecatedFlexibleBox.get() != *other->rareNonInheritedData->m_deprecatedFlexibleBox.get())
@@ -501,6 +505,9 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
 #endif
             || rareInheritedData->m_lineSnap != other->rareInheritedData->m_lineSnap
             || rareInheritedData->m_lineAlign != other->rareInheritedData->m_lineAlign
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
+            || rareInheritedData->useTouchOverflowScrolling != other->rareInheritedData->useTouchOverflowScrolling
+#endif
             || rareInheritedData->listStyleImage != other->rareInheritedData->listStyleImage)
             return true;
 
@@ -593,8 +600,7 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
     if ((visibility() == COLLAPSE) != (other->visibility() == COLLAPSE))
         return true;
 
-    if ((rareNonInheritedData->opacity == 1 && other->rareNonInheritedData->opacity < 1)
-        || (rareNonInheritedData->opacity < 1 && other->rareNonInheritedData->opacity == 1)) {
+    if (rareNonInheritedData->hasOpacity() != other->rareNonInheritedData->hasOpacity()) {
         // FIXME: We would like to use SimplifiedLayout here, but we can't quite do that yet.
         // We need to make sure SimplifiedLayout can operate correctly on RenderInlines (we will need
         // to add a selfNeedsSimplifiedLayout bit in order to not get confused and taint every line).
@@ -602,6 +608,11 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
         // a full layout is necessary to keep floating object lists sane.
         return true;
     }
+
+#if ENABLE(CSS_FILTERS)
+    if (rareNonInheritedData->hasFilters() != other->rareNonInheritedData->hasFilters())
+        return true;
+#endif
 
     const QuotesData* quotesDataA = rareInheritedData->quotes.get();
     const QuotesData* quotesDataB = other->rareInheritedData->quotes.get();
@@ -693,9 +704,11 @@ bool RenderStyle::changeRequiresRepaint(const RenderStyle* other, unsigned&) con
         || rareInheritedData->userSelect != other->rareInheritedData->userSelect
         || rareNonInheritedData->userDrag != other->rareNonInheritedData->userDrag
         || rareNonInheritedData->m_borderFit != other->rareNonInheritedData->m_borderFit
+        || rareNonInheritedData->m_objectFit != other->rareNonInheritedData->m_objectFit
         || rareInheritedData->m_imageRendering != other->rareInheritedData->m_imageRendering)
         return true;
-        
+
+#if ENABLE(CSS_SHAPES)
     // FIXME: The current spec is being reworked to remove dependencies between exclusions and affected 
     // content. There's a proposal to use floats instead. In that case, wrap-shape should actually relayout 
     // the parent container. For sure, I will have to revisit this code, but for now I've added this in order 
@@ -703,6 +716,7 @@ bool RenderStyle::changeRequiresRepaint(const RenderStyle* other, unsigned&) con
     // Tracking bug: https://bugs.webkit.org/show_bug.cgi?id=62991
     if (rareNonInheritedData->m_shapeOutside != other->rareNonInheritedData->m_shapeOutside)
         return true;
+#endif
 
     if (rareNonInheritedData->m_clipPath != other->rareNonInheritedData->m_clipPath)
         return true;
@@ -1244,7 +1258,7 @@ void RenderStyle::adjustAnimations()
 
     // Get rid of empty animations and anything beyond them
     for (size_t i = 0; i < animationList->size(); ++i) {
-        if (animationList->animation(i)->isEmpty()) {
+        if (animationList->animation(i).isEmpty()) {
             animationList->resize(i);
             break;
         }
@@ -1267,7 +1281,7 @@ void RenderStyle::adjustTransitions()
 
     // Get rid of empty transitions and anything beyond them
     for (size_t i = 0; i < transitionList->size(); ++i) {
-        if (transitionList->animation(i)->isEmpty()) {
+        if (transitionList->animation(i).isEmpty()) {
             transitionList->resize(i);
             break;
         }
@@ -1285,7 +1299,7 @@ void RenderStyle::adjustTransitions()
     // but the lists tend to be very short, so it is probably ok
     for (size_t i = 0; i < transitionList->size(); ++i) {
         for (size_t j = i+1; j < transitionList->size(); ++j) {
-            if (transitionList->animation(i)->property() == transitionList->animation(j)->property()) {
+            if (transitionList->animation(i).property() == transitionList->animation(j).property()) {
                 // toss i
                 transitionList->remove(i);
                 j = i;
@@ -1312,9 +1326,9 @@ const Animation* RenderStyle::transitionForProperty(CSSPropertyID property) cons
 {
     if (transitions()) {
         for (size_t i = 0; i < transitions()->size(); ++i) {
-            const Animation* p = transitions()->animation(i);
-            if (p->animationMode() == Animation::AnimateAll || p->property() == property) {
-                return p;
+            const Animation& p = transitions()->animation(i);
+            if (p.animationMode() == Animation::AnimateAll || p.property() == property) {
+                return &p;
             }
         }
     }
@@ -1710,6 +1724,45 @@ LayoutBoxExtent RenderStyle::imageOutsets(const NinePieceImage& image) const
                            NinePieceImage::computeOutset(image.outset().left(), borderLeftWidth()));
 }
 
+void RenderStyle::getFontAndGlyphOrientation(FontOrientation& fontOrientation, NonCJKGlyphOrientation& glyphOrientation)
+{
+    if (isHorizontalWritingMode()) {
+        fontOrientation = Horizontal;
+        glyphOrientation = NonCJKGlyphOrientationVerticalRight;
+        return;
+    }
+
+    switch (textOrientation()) {
+    case TextOrientationVerticalRight:
+        fontOrientation = Vertical;
+        glyphOrientation = NonCJKGlyphOrientationVerticalRight;
+        return;
+    case TextOrientationUpright:
+        fontOrientation = Vertical;
+        glyphOrientation = NonCJKGlyphOrientationUpright;
+        return;
+    case TextOrientationSideways:
+        if (writingMode() == LeftToRightWritingMode) {
+            // FIXME: This should map to sideways-left, which is not supported yet.
+            fontOrientation = Vertical;
+            glyphOrientation = NonCJKGlyphOrientationVerticalRight;
+            return;
+        }
+        fontOrientation = Horizontal;
+        glyphOrientation = NonCJKGlyphOrientationVerticalRight;
+        return;
+    case TextOrientationSidewaysRight:
+        fontOrientation = Horizontal;
+        glyphOrientation = NonCJKGlyphOrientationVerticalRight;
+        return;
+    default:
+        ASSERT_NOT_REACHED();
+        fontOrientation = Horizontal;
+        glyphOrientation = NonCJKGlyphOrientationVerticalRight;
+        return;
+    }
+}
+
 void RenderStyle::setBorderImageSource(PassRefPtr<StyleImage> image)
 {
     if (surround->border.m_image.image() == image.get())
@@ -1738,11 +1791,13 @@ void RenderStyle::setBorderImageOutset(LengthBox outset)
     surround.access()->border.m_image.setOutset(outset);
 }
 
+#if ENABLE(CSS_SHAPES)
 ShapeValue* RenderStyle::initialShapeInside()
 {
-    DEFINE_STATIC_LOCAL(RefPtr<ShapeValue>, sOutsideValue, (ShapeValue::createOutsideValue()));
-    return sOutsideValue.get();
+    static ShapeValue* outsideValue = ShapeValue::createOutsideValue().leakRef();
+    return outsideValue;
 }
+#endif
 
 void RenderStyle::setColumnStylesFromPaginationMode(const Pagination::Mode& paginationMode)
 {

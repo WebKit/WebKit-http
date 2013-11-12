@@ -39,11 +39,11 @@
 #include "GraphicsTypes3D.h"
 #include "IntSize.h"
 #include "ImageBufferData.h"
+#include <runtime/Uint8ClampedArray.h>
 #include <wtf/Forward.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
-#include <wtf/Uint8ClampedArray.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -128,6 +128,12 @@ namespace WebCore {
         // with textures that are RGB or RGBA format, and UNSIGNED_BYTE type.
         bool copyToPlatformTexture(GraphicsContext3D&, Platform3DObject, GC3Denum, bool, bool);
 
+        FloatSize spaceSize() const { return m_space; }
+        void setSpaceSize(const FloatSize& space)
+        {
+            m_space = space;
+        }
+
     private:
 #if USE(CG)
         PassNativeImagePtr copyNativeImage(BackingStoreCopy = CopyBackingStore) const;
@@ -152,6 +158,7 @@ namespace WebCore {
         IntSize m_logicalSize;
         float m_resolutionScale;
         OwnPtr<GraphicsContext> m_context;
+        FloatSize m_space;
 
         // This constructor will place its success into the given out-variable
         // so that create() knows when it should return failure.

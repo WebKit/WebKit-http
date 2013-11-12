@@ -27,6 +27,7 @@
 #include "LayerTreeHost.h"
 #include <WebCore/CompositingCoordinator.h>
 #include <WebCore/GraphicsLayerFactory.h>
+#include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
 
 #if ENABLE(CSS_SHADERS)
@@ -68,7 +69,6 @@ public:
     virtual void didUninstallPageOverlay(PageOverlay*);
     virtual void setPageOverlayNeedsDisplay(PageOverlay*, const WebCore::IntRect&);
     virtual void setPageOverlayOpacity(PageOverlay*, float);
-    virtual bool pageOverlayShouldApplyFadeWhenPainting() const { return false; }
 
     virtual void pauseRendering() { m_isSuspended = true; }
     virtual void resumeRendering() { m_isSuspended = false; scheduleLayerFlush(); }

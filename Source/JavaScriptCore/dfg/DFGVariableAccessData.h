@@ -27,6 +27,7 @@
 #define DFGVariableAccessData_h
 
 #include "DFGDoubleFormatState.h"
+#include "DFGFlushFormat.h"
 #include "DFGNodeFlags.h"
 #include "Operands.h"
 #include "SpeculatedType.h"
@@ -50,6 +51,7 @@ public:
         , m_shouldNeverUnbox(false)
         , m_isArgumentsAlias(false)
         , m_structureCheckHoistingFailed(false)
+        , m_checkArrayHoistingFailed(false)
         , m_isProfitableToUnbox(false)
         , m_isLoadedFrom(false)
         , m_doubleFormatState(EmptyDoubleFormatState)
@@ -66,6 +68,7 @@ public:
         , m_shouldNeverUnbox(isCaptured)
         , m_isArgumentsAlias(false)
         , m_structureCheckHoistingFailed(false)
+        , m_checkArrayHoistingFailed(false)
         , m_isProfitableToUnbox(false)
         , m_doubleFormatState(EmptyDoubleFormatState)
     {
@@ -135,9 +138,19 @@ public:
         return checkAndSet(m_structureCheckHoistingFailed, m_structureCheckHoistingFailed | failed);
     }
     
+    bool mergeCheckArrayHoistingFailed(bool failed)
+    {
+        return checkAndSet(m_checkArrayHoistingFailed, m_checkArrayHoistingFailed | failed);
+    }
+    
     bool structureCheckHoistingFailed()
     {
         return m_structureCheckHoistingFailed;
+    }
+    
+    bool checkArrayHoistingFailed()
+    {
+        return m_checkArrayHoistingFailed;
     }
     
     bool mergeIsArgumentsAlias(bool isArgumentsAlias)
@@ -306,6 +319,29 @@ public:
         return checkAndSet(m_flags, m_flags | newFlags);
     }
     
+    FlushFormat flushFormat()
+    {
+        ASSERT(find() == this);
+        
+        if (!shouldUnboxIfPossible())
+            return FlushedJSValue;
+        
+        if (shouldUseDoubleFormat())
+            return FlushedDouble;
+        
+        SpeculatedType prediction = argumentAwarePrediction();
+        if (isInt32Speculation(prediction))
+            return FlushedInt32;
+        
+        if (isCellSpeculation(prediction))
+            return FlushedCell;
+        
+        if (isBooleanSpeculation(prediction))
+            return FlushedBoolean;
+        
+        return FlushedJSValue;
+    }
+    
 private:
     // This is slightly space-inefficient, since anything we're unified with
     // will have the same operand and should have the same prediction. But
@@ -321,6 +357,7 @@ private:
     bool m_shouldNeverUnbox;
     bool m_isArgumentsAlias;
     bool m_structureCheckHoistingFailed;
+    bool m_checkArrayHoistingFailed;
     bool m_isProfitableToUnbox;
     bool m_isLoadedFrom;
 

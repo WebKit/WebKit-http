@@ -186,11 +186,7 @@ private:
         case Call:
         case Construct:
         case GetGlobalVar:
-        case GetScopedVar:
-        case Resolve:
-        case ResolveBase:
-        case ResolveBaseStrictPut:
-        case ResolveGlobal: {
+        case GetClosureVar: {
             changed |= setPrediction(node->getHeapPrediction());
             break;
         }
@@ -372,7 +368,7 @@ private:
             break;
         }
 
-        case GetScopeRegisters:            
+        case GetClosureRegisters:            
         case GetButterfly: 
         case GetIndexedPropertyStorage:
         case AllocatePropertyStorage:
@@ -381,7 +377,7 @@ private:
             break;
         }
 
-        case ConvertThis: {
+        case ToThis: {
             SpeculatedType prediction = node->child1()->prediction();
             if (prediction) {
                 if (prediction & ~SpecObject) {
@@ -396,7 +392,7 @@ private:
         case GetMyScope:
         case SkipTopScope:
         case SkipScope: {
-            changed |= setPrediction(SpecCellOther);
+            changed |= setPrediction(SpecObjectOther);
             break;
         }
             
@@ -415,6 +411,11 @@ private:
         case NewArrayWithSize:
         case NewArrayBuffer: {
             changed |= setPrediction(SpecArray);
+            break;
+        }
+            
+        case NewTypedArray: {
+            changed |= setPrediction(speculationFromTypedArrayType(node->typedArrayType()));
             break;
         }
             
@@ -470,8 +471,8 @@ private:
             
         case PutByValAlias:
         case GetArrayLength:
+        case GetTypedArrayByteOffset:
         case Int32ToDouble:
-        case ForwardInt32ToDouble:
         case DoubleAsInt32:
         case GetLocalUnlinked:
         case GetMyArgumentsLength:
@@ -483,21 +484,34 @@ private:
         case ArrayifyToStructure:
         case MovHint:
         case MovHintAndCheck:
-        case ZombieHint: {
+        case ZombieHint:
+        case CheckTierUpInLoop:
+        case CheckTierUpAtReturn:
+        case CheckTierUpAndOSREnter: {
             // This node should never be visible at this stage of compilation. It is
             // inserted by fixup(), which follows this phase.
-            CRASH();
+            RELEASE_ASSERT_NOT_REACHED();
             break;
         }
         
         case Phi:
             // Phis should not be visible here since we're iterating the all-but-Phi's
             // part of basic blocks.
-            CRASH();
+            RELEASE_ASSERT_NOT_REACHED();
+            break;
+            
+        case Upsilon:
+        case GetArgument:
+            // These don't get inserted until we go into SSA.
+            RELEASE_ASSERT_NOT_REACHED();
             break;
 
         case GetScope:
-            changed |= setPrediction(SpecCellOther);
+            changed |= setPrediction(SpecObjectOther);
+            break;
+            
+        case In:
+            changed |= setPrediction(SpecBoolean);
             break;
 
         case Identity:
@@ -507,7 +521,7 @@ private:
 #ifndef NDEBUG
         // These get ignored because they don't return anything.
         case PutByVal:
-        case PutScopedVar:
+        case PutClosureVar:
         case Return:
         case Throw:
         case PutById:
@@ -517,6 +531,7 @@ private:
         case SetMyScope:
         case DFG::Jump:
         case Branch:
+        case Switch:
         case Breakpoint:
         case CheckHasInstance:
         case ThrowReferenceError:
@@ -524,33 +539,35 @@ private:
         case SetArgument:
         case CheckStructure:
         case CheckExecutable:
-        case ForwardCheckStructure:
         case StructureTransitionWatchpoint:
-        case ForwardStructureTransitionWatchpoint:
         case CheckFunction:
         case PutStructure:
         case TearOffActivation:
         case TearOffArguments:
         case CheckArgumentsNotCreated:
         case GlobalVarWatchpoint:
-        case GarbageValue:
+        case VarInjectionWatchpoint:
         case AllocationProfileWatchpoint:
         case Phantom:
         case PutGlobalVar:
-        case PutGlobalVarCheck:
         case CheckWatchdogTimer:
+        case Unreachable:
+        case LoopHint:
+            break;
+            
+        // This gets ignored because it already has a prediction.
+        case ExtractOSREntryLocal:
             break;
             
         // These gets ignored because it doesn't do anything.
         case InlineStart:
-        case Nop:
         case CountExecution:
         case PhantomLocal:
         case Flush:
             break;
             
         case LastNodeType:
-            CRASH();
+            RELEASE_ASSERT_NOT_REACHED();
             break;
 #else
         default:
@@ -570,8 +587,8 @@ private:
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
         dataLogF("Propagating predictions forward [%u]\n", ++m_count);
 #endif
-        for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             ASSERT(block->isReachable);
@@ -587,8 +604,8 @@ private:
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
         dataLogF("Propagating predictions backward [%u]\n", ++m_count);
 #endif
-        for (BlockIndex blockIndex = m_graph.m_blocks.size(); blockIndex--;) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             ASSERT(block->isReachable);
@@ -712,8 +729,8 @@ private:
 #endif
         for (unsigned i = 0; i < m_graph.m_variableAccessData.size(); ++i)
             m_graph.m_variableAccessData[i].find()->clearVotes();
-        for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             ASSERT(block->isReachable);

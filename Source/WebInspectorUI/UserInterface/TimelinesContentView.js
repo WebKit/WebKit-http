@@ -215,8 +215,8 @@ WebInspector.TimelinesContentView.generateEmbossedCollapseImages = function()
         return;
     WebInspector.TimelinesContentView._generatedImages = true;
 
-    generateEmbossedImages("Images/MoreColumns.pdf", 15, 13, WebInspector.TimelinesContentView.CollapseButton.States, canvasIdentifier.bind(this, WebInspector.TimelinesContentView.CollapseButton.More));
-    generateEmbossedImages("Images/LessColumns.pdf", 15, 13, WebInspector.TimelinesContentView.CollapseButton.States, canvasIdentifier.bind(this, WebInspector.TimelinesContentView.CollapseButton.Less));
+    generateEmbossedImages("Images/MoreColumns.svg", 15, 13, WebInspector.TimelinesContentView.CollapseButton.States, canvasIdentifier.bind(this, WebInspector.TimelinesContentView.CollapseButton.More));
+    generateEmbossedImages("Images/LessColumns.svg", 15, 13, WebInspector.TimelinesContentView.CollapseButton.States, canvasIdentifier.bind(this, WebInspector.TimelinesContentView.CollapseButton.Less));
 
     function canvasIdentifier(type, state) {
         return "timeline-datagrid-collapse-button-" + type + "-" + state;
@@ -264,7 +264,7 @@ WebInspector.TimelinesContentView.prototype = {
 
         // Restore scroll positon now that we are back in the document.
         if (this._currentDataGrid._savedIsScrolledToLastRow)
-            this._currentDataGrid.scrollToLastRow()
+            this._currentDataGrid.scrollToLastRow();
         else if (this._currentDataGrid._savedScrollTop)
             this._currentDataGrid.scrollContainer.scrollTop = this._currentDataGrid._savedScrollTop;
 

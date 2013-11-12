@@ -185,7 +185,7 @@ void BitmapImage::updateSize() const
         return;
 
     m_size = m_source.size();
-    m_sizeRespectingOrientation = m_source.size(RespectImageOrientation);
+    m_sizeRespectingOrientation = m_source.size(ImageOrientationDescription(RespectImageOrientation));
     m_haveSize = true;
     didDecodeProperties();
 }
@@ -305,16 +305,16 @@ PassNativeImagePtr BitmapImage::frameAtIndex(size_t index)
 
 bool BitmapImage::frameIsCompleteAtIndex(size_t index)
 {
-    if (index < m_frames.size() && m_frames[index].m_haveMetadata && m_frames[index].m_isComplete)
-        return true;
-    return m_source.frameIsCompleteAtIndex(index);
+    if (!ensureFrameIsCached(index))
+        return false;
+    return m_frames[index].m_isComplete;
 }
 
 float BitmapImage::frameDurationAtIndex(size_t index)
 {
-    if (index < m_frames.size() && m_frames[index].m_haveMetadata)
-        return m_frames[index].m_duration;
-    return m_source.frameDurationAtIndex(index);
+    if (!ensureFrameIsCached(index))
+        return 0;
+    return m_frames[index].m_duration;
 }
 
 PassNativeImagePtr BitmapImage::nativeImageForCurrentFrame()
@@ -338,14 +338,9 @@ bool BitmapImage::currentFrameKnownToBeOpaque()
     return !frameHasAlphaAtIndex(currentFrame());
 }
 
-ImageOrientation BitmapImage::currentFrameOrientation()
-{
-    return frameOrientationAtIndex(currentFrame());
-}
-
 ImageOrientation BitmapImage::frameOrientationAtIndex(size_t index)
 {
-    if (m_frames.size() <= index)
+    if (!ensureFrameIsCached(index))
         return DefaultImageOrientation;
 
     if (m_frames[index].m_haveMetadata)

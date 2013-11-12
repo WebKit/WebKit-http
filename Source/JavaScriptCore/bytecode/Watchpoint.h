@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,8 @@
 #ifndef Watchpoint_h
 #define Watchpoint_h
 
-#include <wtf/RefCounted.h>
 #include <wtf/SentinelLinkedList.h>
+#include <wtf/ThreadSafeRefCounted.h>
 
 namespace JSC {
 
@@ -49,13 +49,25 @@ enum InitialWatchpointSetMode { InitializedWatching, InitializedBlind };
 
 class InlineWatchpointSet;
 
-class WatchpointSet : public RefCounted<WatchpointSet> {
+class WatchpointSet : public ThreadSafeRefCounted<WatchpointSet> {
+    friend class LLIntOffsetsExtractor;
 public:
     WatchpointSet(InitialWatchpointSetMode);
     ~WatchpointSet();
     
-    bool isStillValid() const { return !m_isInvalidated; }
-    bool hasBeenInvalidated() const { return m_isInvalidated; }
+    // It is safe to call this from another thread.  It may return true
+    // even if the set actually had been invalidated, but that ought to happen
+    // only in the case of races, and should be rare. Guarantees that if you
+    // call this after observing something that must imply that the set is
+    // invalidated, then you will see this return false. This is ensured by
+    // issuing a load-load fence prior to querying the state.
+    bool isStillValid() const
+    {
+        WTF::loadLoadFence();
+        return !m_isInvalidated;
+    }
+    // Like isStillValid(), may be called from another thread.
+    bool hasBeenInvalidated() const { return !isStillValid(); }
     
     // As a convenience, this will ignore 0. That's because code paths in the DFG
     // that create speculation watchpoints may choose to bail out if speculation
@@ -77,6 +89,7 @@ public:
     }
     
     bool* addressOfIsWatched() { return &m_isWatched; }
+    bool* addressOfIsInvalidated() { return &m_isInvalidated; }
     
     JS_EXPORT_PRIVATE void notifyWriteSlow(); // Call only if you've checked isWatched.
     
@@ -124,13 +137,21 @@ public:
         freeFat();
     }
     
+    // It is safe to call this from another thread.  It may return false
+    // even if the set actually had been invalidated, but that ought to happen
+    // only in the case of races, and should be rare.
     bool hasBeenInvalidated() const
     {
-        if (isFat())
-            return fat()->hasBeenInvalidated();
-        return m_data & IsInvalidatedFlag;
+        WTF::loadLoadFence();
+        uintptr_t data = m_data;
+        if (isFat(data)) {
+            WTF::loadLoadFence();
+            return fat(data)->hasBeenInvalidated();
+        }
+        return data & IsInvalidatedFlag;
     }
     
+    // Like hasBeenInvalidated(), may be called from another thread.
     bool isStillValid() const
     {
         return !hasBeenInvalidated();
@@ -156,6 +177,7 @@ public:
         if (!(m_data & IsWatchedFlag))
             return;
         m_data |= IsInvalidatedFlag;
+        WTF::storeStoreFence();
     }
     
 private:
@@ -163,19 +185,27 @@ private:
     static const uintptr_t IsInvalidatedFlag = 2;
     static const uintptr_t IsWatchedFlag     = 4;
     
-    bool isThin() const { return m_data & IsThinFlag; }
-    bool isFat() const { return !isThin(); };
+    static bool isThin(uintptr_t data) { return data & IsThinFlag; }
+    static bool isFat(uintptr_t data) { return !isThin(data); }
+    
+    bool isThin() const { return isThin(m_data); }
+    bool isFat() const { return isFat(m_data); };
+    
+    static WatchpointSet* fat(uintptr_t data)
+    {
+        return bitwise_cast<WatchpointSet*>(data);
+    }
     
     WatchpointSet* fat()
     {
         ASSERT(isFat());
-        return bitwise_cast<WatchpointSet*>(m_data);
+        return fat(m_data);
     }
     
     const WatchpointSet* fat() const
     {
         ASSERT(isFat());
-        return bitwise_cast<WatchpointSet*>(m_data);
+        return fat(m_data);
     }
     
     WatchpointSet* inflate()

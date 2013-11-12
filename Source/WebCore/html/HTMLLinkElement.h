@@ -101,8 +101,8 @@ private:
     virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
 
     virtual void finishParsingChildren();
-    
-    enum PendingSheetType { None, NonBlocking, Blocking };
+
+    enum PendingSheetType { Unknown, ActiveSheet, InactiveSheet };
     void addPendingSheet(PendingSheetType);
 
     enum RemovePendingSheetNotificationType {
@@ -111,11 +111,6 @@ private:
     };
 
     void removePendingSheet(RemovePendingSheetNotificationType = RemovePendingSheetNotifyImmediately);
-
-#if ENABLE(MICRODATA)
-    virtual String itemValueText() const OVERRIDE;
-    virtual void setItemValueText(const String&, ExceptionCode&) OVERRIDE;
-#endif
 
 private:
     HTMLLinkElement(const QualifiedName&, Document*, bool createdByParser);

@@ -339,10 +339,10 @@ static inline void updateFontInAllDescendants(RenderObject* start, SVGTextLayout
     for (RenderObject* descendant = start; descendant; descendant = descendant->nextInPreOrder(start)) {
         if (!descendant->isSVGInlineText())
             continue;
-        RenderSVGInlineText* text = toRenderSVGInlineText(descendant);
-        text->updateScaledFont();
+        RenderSVGInlineText& text = toRenderSVGInlineText(*descendant);
+        text.updateScaledFont();
         if (builder)
-            builder->rebuildMetricsForTextRenderer(text);
+            builder->rebuildMetricsForTextRenderer(&text);
     }
 }
 
@@ -436,7 +436,7 @@ void RenderSVGText::layout()
 
 RootInlineBox* RenderSVGText::createRootInlineBox() 
 {
-    RootInlineBox* box = new (renderArena()) SVGRootInlineBox(this);
+    RootInlineBox* box = new (renderArena()) SVGRootInlineBox(*this);
     box->setHasVirtualLogicalHeight();
     return box;
 }
@@ -481,7 +481,7 @@ VisiblePosition RenderSVGText::positionForPoint(const LayoutPoint& pointInConten
     if (!closestBox)
         return createVisiblePosition(0, DOWNSTREAM);
 
-    return closestBox->renderer()->positionForPoint(LayoutPoint(pointInContents.x(), closestBox->y()));
+    return closestBox->renderer().positionForPoint(LayoutPoint(pointInContents.x(), closestBox->y()));
 }
 
 void RenderSVGText::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const

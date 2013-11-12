@@ -62,15 +62,13 @@ namespace JSC {
     JSObject* addErrorInfo(ExecState*, JSObject* error, int line, const SourceCode&);
 
     // Methods to throw Errors.
-    JS_EXPORT_PRIVATE JSValue throwError(ExecState*, JSValue);
-    JS_EXPORT_PRIVATE JSObject* throwError(ExecState*, JSObject*);
 
     // Convenience wrappers, create an throw an exception with a default message.
     JS_EXPORT_PRIVATE JSObject* throwTypeError(ExecState*);
     JS_EXPORT_PRIVATE JSObject* throwSyntaxError(ExecState*);
 
     // Convenience wrappers, wrap result as an EncodedJSValue.
-    inline EncodedJSValue throwVMError(ExecState* exec, JSValue error) { return JSValue::encode(throwError(exec, error)); }
+    inline EncodedJSValue throwVMError(ExecState* exec, JSValue error) { return JSValue::encode(exec->vm().throwException(exec, error)); }
     inline EncodedJSValue throwVMTypeError(ExecState* exec) { return JSValue::encode(throwTypeError(exec)); }
 
     class StrictModeTypeErrorFunction : public InternalFunction {
@@ -117,11 +115,11 @@ namespace JSC {
             return CallTypeHost;
         }
 
-        static const ClassInfo s_info;
+        DECLARE_INFO;
 
         static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype) 
         { 
-            return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info); 
+            return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info()); 
         }
 
     private:

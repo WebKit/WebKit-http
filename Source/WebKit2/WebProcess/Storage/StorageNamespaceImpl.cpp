@@ -56,7 +56,7 @@ PassRefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createLocalStorageNamespa
     if (!result.isNewEntry)
         return result.iterator->value;
 
-    unsigned quota = pageGroup->groupSettings()->localStorageQuotaBytes();
+    unsigned quota = pageGroup->groupSettings().localStorageQuotaBytes();
     RefPtr<StorageNamespaceImpl> localStorageNamespace = adoptRef(new StorageNamespaceImpl(LocalStorage, pageGroupID, quota));
 
     result.iterator->value = localStorageNamespace.get();
@@ -65,7 +65,7 @@ PassRefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createLocalStorageNamespa
 
 PassRefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createSessionStorageNamespace(WebPage* webPage)
 {
-    return adoptRef(new StorageNamespaceImpl(SessionStorage, webPage->pageID(), webPage->corePage()->settings()->sessionStorageQuota()));
+    return adoptRef(new StorageNamespaceImpl(SessionStorage, webPage->pageID(), webPage->corePage()->settings().sessionStorageQuota()));
 }
 
 StorageNamespaceImpl::StorageNamespaceImpl(WebCore::StorageType storageType, uint64_t storageNamespaceID, unsigned quotaInBytes)

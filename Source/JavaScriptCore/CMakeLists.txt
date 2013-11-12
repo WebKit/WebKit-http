@@ -8,6 +8,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/bytecompiler"
     "${JAVASCRIPTCORE_DIR}/dfg"
     "${JAVASCRIPTCORE_DIR}/disassembler"
+    "${JAVASCRIPTCORE_DIR}/ftl"
     "${JAVASCRIPTCORE_DIR}/heap"
     "${JAVASCRIPTCORE_DIR}/debugger"
     "${JAVASCRIPTCORE_DIR}/interpreter"
@@ -25,6 +26,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
 
 set(JavaScriptCore_SOURCES
     API/JSBase.cpp
+    API/JSCTestRunnerUtils.cpp
     API/JSCallbackConstructor.cpp
     API/JSCallbackFunction.cpp
     API/JSCallbackObject.cpp
@@ -40,6 +42,7 @@ set(JavaScriptCore_SOURCES
 
     assembler/MacroAssembler.cpp
     assembler/LinkBuffer.cpp
+    assembler/MacroAssemblerX86Common.cpp
 
     bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
@@ -50,6 +53,7 @@ set(JavaScriptCore_SOURCES
     bytecode/CodeOrigin.cpp
     bytecode/CodeType.cpp
     bytecode/DFGExitProfile.cpp
+    bytecode/DeferredCompilationCallback.cpp
     bytecode/ExecutionCounter.cpp
     bytecode/ExitKind.cpp
     bytecode/GetByIdStatus.cpp
@@ -60,11 +64,10 @@ set(JavaScriptCore_SOURCES
     bytecode/PolymorphicPutByIdList.cpp
     bytecode/PreciseJumpTargets.cpp
     bytecode/PutByIdStatus.cpp
-    bytecode/SpeculatedType.cpp
     bytecode/ReduceWhitespace.cpp
-    bytecode/ResolveGlobalStatus.cpp
     bytecode/SamplingTool.cpp
     bytecode/SpecialPointer.cpp
+    bytecode/SpeculatedType.cpp
     bytecode/StructureStubClearingWatchpoint.cpp
     bytecode/StructureStubInfo.cpp
     bytecode/UnlinkedCodeBlock.cpp
@@ -73,63 +76,105 @@ set(JavaScriptCore_SOURCES
     bytecompiler/BytecodeGenerator.cpp
     bytecompiler/NodesCodegen.cpp
 
-    dfg/DFGAbstractState.cpp
+    dfg/DFGAbstractHeap.cpp
+    dfg/DFGAbstractValue.cpp
     dfg/DFGArgumentsSimplificationPhase.cpp
     dfg/DFGArrayMode.cpp
     dfg/DFGAssemblyHelpers.cpp
+    dfg/DFGAtTailAbstractState.cpp
     dfg/DFGBackwardsPropagationPhase.cpp
+    dfg/DFGBasicBlock.cpp
+    dfg/DFGBinarySwitch.cpp
+    dfg/DFGBlockInsertionSet.cpp
     dfg/DFGByteCodeParser.cpp
-    dfg/DFGCapabilities.cpp
-    dfg/DFGCommon.cpp
     dfg/DFGCFAPhase.cpp
     dfg/DFGCFGSimplificationPhase.cpp
     dfg/DFGCPSRethreadingPhase.cpp
-    dfg/DFGConstantFoldingPhase.cpp
     dfg/DFGCSEPhase.cpp
+    dfg/DFGCapabilities.cpp
+    dfg/DFGClobberSet.cpp
+    dfg/DFGClobberize.cpp
+    dfg/DFGCommon.cpp
+    dfg/DFGCommonData.cpp
+    dfg/DFGCompilationKey.cpp
+    dfg/DFGCompilationMode.cpp
+    dfg/DFGConstantFoldingPhase.cpp
+    dfg/DFGCriticalEdgeBreakingPhase.cpp
     dfg/DFGDCEPhase.cpp
+    dfg/DFGDesiredIdentifiers.cpp
+    dfg/DFGDesiredStructureChains.cpp
+    dfg/DFGDesiredTransitions.cpp
+    dfg/DFGDesiredWatchpoints.cpp
+    dfg/DFGDesiredWeakReferences.cpp
+    dfg/DFGDesiredWriteBarriers.cpp
     dfg/DFGDisassembler.cpp
     dfg/DFGDominators.cpp
     dfg/DFGDriver.cpp
     dfg/DFGEdge.cpp
+    dfg/DFGFailedFinalizer.cpp
+    dfg/DFGFinalizer.cpp
     dfg/DFGFixupPhase.cpp
+    dfg/DFGFlushFormat.cpp
+    dfg/DFGFlushLivenessAnalysisPhase.cpp
     dfg/DFGGraph.cpp
+    dfg/DFGInPlaceAbstractState.cpp
+    dfg/DFGJITCode.cpp
     dfg/DFGJITCompiler.cpp
+    dfg/DFGJITFinalizer.cpp
+    dfg/DFGLICMPhase.cpp
+    dfg/DFGLazyJSValue.cpp
+    dfg/DFGLivenessAnalysisPhase.cpp
     dfg/DFGLongLivedState.cpp
+    dfg/DFGLoopPreHeaderCreationPhase.cpp
     dfg/DFGMinifiedNode.cpp
+    dfg/DFGNaturalLoops.cpp
     dfg/DFGNode.cpp
     dfg/DFGNodeFlags.cpp
+    dfg/DFGOSRAvailabilityAnalysisPhase.cpp
     dfg/DFGOSREntry.cpp
+    dfg/DFGOSREntrypointCreationPhase.cpp
     dfg/DFGOSRExit.cpp
+    dfg/DFGOSRExitBase.cpp
     dfg/DFGOSRExitCompiler.cpp
     dfg/DFGOSRExitCompiler32_64.cpp
     dfg/DFGOSRExitCompiler64.cpp
+    dfg/DFGOSRExitCompilerCommon.cpp
     dfg/DFGOSRExitJumpPlaceholder.cpp
+    dfg/DFGOSRExitPreparation.cpp
     dfg/DFGOperations.cpp
     dfg/DFGPhase.cpp
-    dfg/DFGPredictionPropagationPhase.cpp
+    dfg/DFGPlan.cpp
     dfg/DFGPredictionInjectionPhase.cpp
+    dfg/DFGPredictionPropagationPhase.cpp
     dfg/DFGRepatch.cpp
+    dfg/DFGSSAConversionPhase.cpp
     dfg/DFGSpeculativeJIT.cpp
     dfg/DFGSpeculativeJIT32_64.cpp
     dfg/DFGSpeculativeJIT64.cpp
-    dfg/DFGTypeCheckHoistingPhase.cpp
     dfg/DFGThunks.cpp
+    dfg/DFGTierUpCheckInjectionPhase.cpp
+    dfg/DFGTypeCheckHoistingPhase.cpp
     dfg/DFGUnificationPhase.cpp
     dfg/DFGUseKind.cpp
+    dfg/DFGValidate.cpp
     dfg/DFGValueSource.cpp
     dfg/DFGVariableAccessDataDump.cpp
     dfg/DFGVariableEvent.cpp
     dfg/DFGVariableEventStream.cpp
-    dfg/DFGValidate.cpp
     dfg/DFGVirtualRegisterAllocationPhase.cpp
+    dfg/DFGWorklist.cpp
 
+    disassembler/ARMv7Disassembler.cpp
     disassembler/Disassembler.cpp
+    disassembler/LLVMDisassembler.cpp
+    disassembler/UDis86Disassembler.cpp
+    disassembler/X86Disassembler.cpp
 
     heap/BlockAllocator.cpp
+    heap/CodeBlockSet.cpp
+    heap/ConservativeRoots.cpp
     heap/CopiedSpace.cpp
     heap/CopyVisitor.cpp
-    heap/ConservativeRoots.cpp
-    heap/DFGCodeBlocks.cpp
     heap/GCThread.cpp
     heap/GCThreadSharedData.cpp
     heap/HandleSet.cpp
@@ -140,17 +185,18 @@ set(JavaScriptCore_SOURCES
     heap/IncrementalSweeper.cpp
     heap/JITStubRoutineSet.cpp
     heap/MachineStackMarker.cpp
-
+    heap/MarkStack.cpp
     heap/MarkedAllocator.cpp
     heap/MarkedBlock.cpp
     heap/MarkedSpace.cpp
-    heap/MarkStack.cpp
     heap/SlotVisitor.cpp
     heap/SuperRegion.cpp
+    heap/VTableSpectrum.cpp
     heap/Weak.cpp
     heap/WeakBlock.cpp
     heap/WeakHandleOwner.cpp
     heap/WeakSet.cpp
+    heap/WriteBarrierSupport.cpp
 
     debugger/Debugger.cpp
     debugger/DebuggerActivation.cpp
@@ -160,28 +206,30 @@ set(JavaScriptCore_SOURCES
     interpreter/CallFrame.cpp
     interpreter/Interpreter.cpp
     interpreter/JSStack.cpp
+    interpreter/StackVisitor.cpp
     interpreter/VMInspector.cpp
 
     jit/ClosureCallStubRoutine.cpp
     jit/ExecutableAllocator.cpp
     jit/ExecutableAllocatorFixedVMPool.cpp
-    jit/HostCallReturnValue.cpp
     jit/GCAwareJITStubRoutine.cpp
-    jit/JITArithmetic32_64.cpp
-    jit/JITArithmetic.cpp
-    jit/JITCall32_64.cpp
-    jit/JITCall.cpp
-    jit/JITCode.cpp
+    jit/HostCallReturnValue.cpp
     jit/JIT.cpp
+    jit/JITArithmetic.cpp
+    jit/JITArithmetic32_64.cpp
+    jit/JITCall.cpp
+    jit/JITCall32_64.cpp
+    jit/JITCode.cpp
     jit/JITDisassembler.cpp
     jit/JITExceptions.cpp
-    jit/JITOpcodes32_64.cpp
     jit/JITOpcodes.cpp
-    jit/JITPropertyAccess32_64.cpp
+    jit/JITOpcodes32_64.cpp
     jit/JITPropertyAccess.cpp
+    jit/JITPropertyAccess32_64.cpp
     jit/JITStubRoutine.cpp
     jit/JITStubs.cpp
     jit/JITThunks.cpp
+    jit/JITToDFGDeferredCompilationCallback.cpp
     jit/JumpReplacementWatchpoint.cpp
     jit/ThunkGenerators.cpp
 
@@ -189,6 +237,7 @@ set(JavaScriptCore_SOURCES
     parser/Nodes.cpp
     parser/Parser.cpp
     parser/ParserArena.cpp
+    parser/SourceCode.cpp
     parser/SourceProvider.cpp
     parser/SourceProviderCache.cpp
 
@@ -211,6 +260,8 @@ set(JavaScriptCore_SOURCES
 
     runtime/ArgList.cpp
     runtime/Arguments.cpp
+    runtime/ArrayBuffer.cpp
+    runtime/ArrayBufferView.cpp
     runtime/ArrayConstructor.cpp
     runtime/ArrayPrototype.cpp
     runtime/BooleanConstructor.cpp
@@ -220,12 +271,18 @@ set(JavaScriptCore_SOURCES
     runtime/CodeCache.cpp
     runtime/CodeSpecializationKind.cpp
     runtime/CommonIdentifiers.cpp
+    runtime/CommonSlowPaths.cpp
+    runtime/CommonSlowPathsExceptions.cpp
+    runtime/CompilationResult.cpp
     runtime/Completion.cpp
     runtime/ConstructData.cpp
+    runtime/DataView.cpp
+    runtime/DataView.h
     runtime/DateConstructor.cpp
     runtime/DateConversion.cpp
     runtime/DateInstance.cpp
     runtime/DatePrototype.cpp
+    runtime/DumpContext.cpp
     runtime/Error.cpp
     runtime/ErrorConstructor.cpp
     runtime/ErrorInstance.cpp
@@ -240,35 +297,58 @@ set(JavaScriptCore_SOURCES
     runtime/Identifier.cpp
     runtime/IndexingType.cpp
     runtime/InitializeThreading.cpp
+    runtime/IntendedStructureChain.cpp
     runtime/InternalFunction.cpp
-    runtime/JSActivation.cpp
     runtime/JSAPIValueWrapper.cpp
+    runtime/JSActivation.cpp
     runtime/JSArray.cpp
+    runtime/JSArrayBuffer.cpp
+    runtime/JSArrayBufferConstructor.cpp
+    runtime/JSArrayBufferPrototype.cpp
+    runtime/JSArrayBufferView.cpp
+    runtime/JSBoundFunction.cpp
+    runtime/JSCJSValue.cpp
     runtime/JSCell.cpp
+    runtime/JSChunk.cpp
+    runtime/JSDataView.cpp
+    runtime/JSDataViewPrototype.cpp
     runtime/JSDateMath.cpp
     runtime/JSFunction.cpp
-    runtime/JSBoundFunction.cpp
-    runtime/VM.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSGlobalObjectFunctions.cpp
-    runtime/JSProxy.cpp
     runtime/JSLock.cpp
-    runtime/JSNotAnObject.cpp
-    runtime/JSObject.cpp
-    runtime/JSONObject.cpp
-    runtime/JSPropertyNameIterator.cpp
-    runtime/JSSegmentedVariableObject.cpp
+    runtime/JSMap.cpp
     runtime/JSNameScope.cpp
-    runtime/JSWithScope.cpp
+    runtime/JSNotAnObject.cpp
+    runtime/JSONObject.cpp
+    runtime/JSObject.cpp
+    runtime/JSPromise.cpp
+    runtime/JSPromiseCallback.cpp
+    runtime/JSPromiseConstructor.cpp
+    runtime/JSPromisePrototype.cpp
+    runtime/JSPromiseResolver.cpp
+    runtime/JSPromiseResolverConstructor.cpp
+    runtime/JSPromiseResolverPrototype.cpp
+    runtime/JSPropertyNameIterator.cpp
+    runtime/JSProxy.cpp
     runtime/JSScope.cpp
+    runtime/JSSegmentedVariableObject.cpp
+    runtime/JSSet.cpp
+    runtime/JSStaticScopeObject.cpp
     runtime/JSString.cpp
     runtime/JSStringJoiner.cpp
     runtime/JSSymbolTableObject.cpp
-    runtime/JSCJSValue.cpp
+    runtime/JSTypedArrayConstructors.cpp
+    runtime/JSTypedArrayPrototypes.cpp
+    runtime/JSTypedArrays.cpp
     runtime/JSVariableObject.cpp
+    runtime/JSWithScope.cpp
     runtime/JSWrapperObject.cpp
     runtime/LiteralParser.cpp
     runtime/Lookup.cpp
+    runtime/MapConstructor.cpp
+    runtime/MapData.cpp
+    runtime/MapPrototype.cpp
     runtime/MathObject.cpp
     runtime/MemoryStatistics.cpp
     runtime/NameConstructor.cpp
@@ -290,11 +370,15 @@ set(JavaScriptCore_SOURCES
     runtime/PrototypeMap.cpp
     runtime/RegExp.cpp
     runtime/RegExpCache.cpp
-    runtime/RegExpConstructor.cpp
     runtime/RegExpCachedResult.cpp
+    runtime/RegExpConstructor.cpp
     runtime/RegExpMatchesArray.cpp
     runtime/RegExpObject.cpp
     runtime/RegExpPrototype.cpp
+    runtime/SamplingCounter.cpp
+    runtime/SetConstructor.cpp
+    runtime/SetPrototype.cpp
+    runtime/SimpleTypedArrayController.cpp
     runtime/SmallStrings.cpp
     runtime/SparseArrayValueMap.cpp
     runtime/StrictEvalActivation.cpp
@@ -303,9 +387,13 @@ set(JavaScriptCore_SOURCES
     runtime/StringPrototype.cpp
     runtime/StringRecursionChecker.cpp
     runtime/Structure.cpp
-    runtime/StructureRareData.cpp
     runtime/StructureChain.cpp
+    runtime/StructureRareData.cpp
     runtime/SymbolTable.cpp
+    runtime/TestRunnerUtils.cpp
+    runtime/TypedArrayController.cpp
+    runtime/TypedArrayType.cpp
+    runtime/VM.cpp
     runtime/Watchdog.cpp
     runtime/WatchdogNone.cpp
 
@@ -326,9 +414,12 @@ set(JavaScriptCore_LUT_FILES
     runtime/DateConstructor.cpp
     runtime/DatePrototype.cpp
     runtime/ErrorPrototype.cpp
+    runtime/JSDataViewPrototype.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSONObject.cpp
-    runtime/MathObject.cpp
+    runtime/JSPromiseConstructor.cpp
+    runtime/JSPromisePrototype.cpp
+    runtime/JSPromiseResolverPrototype.cpp
     runtime/NamePrototype.cpp
     runtime/NumberConstructor.cpp
     runtime/NumberPrototype.cpp
@@ -430,7 +521,7 @@ if (ENABLE_LLINT)
     list(APPEND JavaScriptCore_SOURCES
         llint/LLIntCLoop.cpp
         llint/LLIntData.cpp
-        llint/LLIntEntrypoints.cpp
+        llint/LLIntEntrypoint.cpp
         llint/LLIntExceptions.cpp
         llint/LLIntSlowPaths.cpp
         llint/LLIntThunks.cpp
@@ -474,6 +565,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_FILES
     API/APIShims.h
     API/JavaScript.h
     API/JSBase.h
+    API/JSCTestRunnerUtils.h
     API/JSContextRef.h
     API/JSContextRefPrivate.h
     API/JSObjectRef.h
@@ -523,8 +615,9 @@ if (WTF_CPU_ARM)
         add_custom_command(
             OUTPUT ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.asm
             MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/create_jit_stubs
+            DEPENDS ${JAVASCRIPTCORE_DIR}/jit/JITStubsARM.h
             DEPENDS ${JAVASCRIPTCORE_DIR}/jit/JITStubs.cpp
-            COMMAND ${PERL_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/create_jit_stubs --prefix=MSVC ${JAVASCRIPTCORE_DIR}/jit/JITStubs.cpp > ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.asm
+            COMMAND ${PERL_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/create_jit_stubs --prefix=MSVC --header ${JAVASCRIPTCORE_DIR}/jit/JITStubsARM.h ${JAVASCRIPTCORE_DIR}/jit/JITStubs.cpp > ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.asm
             VERBATIM)
 
         add_custom_command(
@@ -537,6 +630,9 @@ if (WTF_CPU_ARM)
     endif ()
 elseif (WTF_CPU_MIPS)
 elseif (WTF_CPU_X86)
+    list(APPEND JavaScriptCore_SOURCES
+        assembler/MacroAssemblerX86Common.cpp
+    )
 elseif (WTF_CPU_X86_64)
     if (MSVC AND ENABLE_JIT)
         add_custom_command(
@@ -547,6 +643,9 @@ elseif (WTF_CPU_X86_64)
 
         list(APPEND JavaScriptCore_SOURCES ${DERIVED_SOURCES_DIR}/JITStubsMSVC64.obj)
     endif ()
+    list(APPEND JavaScriptCore_SOURCES
+        assembler/MacroAssemblerX86Common.cpp
+    )
 else ()
     message(FATAL_ERROR "Unknown CPU")
 endif ()

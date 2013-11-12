@@ -23,8 +23,8 @@
 #if ENABLE(SVG)
 #include "FloatRect.h"
 #include "RenderSVGResourceContainer.h"
+#include "SVGElement.h"
 #include "SVGMarkerElement.h"
-#include "SVGStyledElement.h"
 
 #include <wtf/HashSet.h>
 
@@ -33,7 +33,7 @@ namespace WebCore {
 class AffineTransform;
 class RenderObject;
 
-class RenderSVGResourceMarker : public RenderSVGResourceContainer {
+class RenderSVGResourceMarker FINAL : public RenderSVGResourceContainer {
 public:
     RenderSVGResourceMarker(SVGMarkerElement*);
     virtual ~RenderSVGResourceMarker();

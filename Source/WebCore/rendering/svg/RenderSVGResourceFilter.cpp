@@ -30,6 +30,7 @@
 #include "FilterEffect.h"
 #include "FloatPoint.h"
 #include "FloatRect.h"
+#include "Frame.h"
 #include "GraphicsContext.h"
 #include "Image.h"
 #include "ImageBuffer.h"
@@ -38,13 +39,13 @@
 #include "Page.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceFilterPrimitive.h"
+#include "RenderView.h"
 #include "SVGElement.h"
 #include "SVGFilter.h"
 #include "SVGFilterElement.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 #include "SVGNames.h"
 #include "SVGRenderingContext.h"
-#include "SVGStyledElement.h"
 #include "SVGUnitTypes.h"
 #include "Settings.h"
 #include "SourceAlpha.h"
@@ -233,7 +234,7 @@ bool RenderSVGResourceFilter::applyResource(RenderObject* object, RenderStyle*, 
     effectiveTransform.multiply(filterData->shearFreeAbsoluteTransform);
 
     OwnPtr<ImageBuffer> sourceGraphic;
-    RenderingMode renderingMode = object->document()->page()->settings()->acceleratedFiltersEnabled() ? Accelerated : Unaccelerated;
+    RenderingMode renderingMode = object->frame().settings().acceleratedFiltersEnabled() ? Accelerated : Unaccelerated;
     if (!SVGRenderingContext::createImageBuffer(filterData->drawingRegion, effectiveTransform, sourceGraphic, ColorSpaceLinearRGB, renderingMode)) {
         ASSERT(!m_filter.contains(object));
         filterData->savedContext = context;

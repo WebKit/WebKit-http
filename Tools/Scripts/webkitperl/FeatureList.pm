@@ -73,7 +73,6 @@ my (
     $datalistElementSupport,
     $detailsElementSupport,
     $deviceOrientationSupport,
-    $dialogElementSupport,
     $directoryUploadSupport,
     $dom4EventsConstructor,
     $downloadAttributeSupport,
@@ -110,7 +109,6 @@ my (
     $mediaStreamSupport,
     $meterElementSupport,
     $mhtmlSupport,
-    $microdataSupport,
     $mouseCursorScaleSupport,
     $netscapePluginAPISupport,
     $networkInfoSupport,
@@ -120,6 +118,7 @@ my (
     $pageVisibilityAPISupport,
     $performanceTimelineSupport,
     $progressElementSupport,
+    $promiseSupport,
     $proximityEventsSupport,
     $quotaSupport,
     $resolutionMediaQuerySupport,
@@ -155,6 +154,7 @@ my (
     $workersSupport,
     $xhrTimeoutSupport,
     $xsltSupport,
+    $ftlJITSupport,
 );
 
 my @features = (
@@ -247,9 +247,6 @@ my @features = (
 
     { option => "device-orientation", desc => "Toggle Device Orientation support",
       define => "ENABLE_DEVICE_ORIENTATION", default => isBlackBerry(), value => \$deviceOrientationSupport },
-
-    { option => "dialog-element", desc => "Toggle Dialog Element support",
-      define => "ENABLE_DIALOG_ELEMENT", default => 0, value => \$dialogElementSupport },
 
     { option => "directory-upload", desc => "Toggle Directory Upload support",
       define => "ENABLE_DIRECTORY_UPLOAD", default => 0, value => \$directoryUploadSupport },
@@ -356,9 +353,6 @@ my @features = (
     { option => "mhtml", desc => "Toggle MHTML support",
       define => "ENABLE_MHTML", default => (isGtk() || isEfl()), value => \$mhtmlSupport },
 
-    { option => "microdata", desc => "Toggle Microdata support",
-      define => "ENABLE_MICRODATA", default => (isEfl() || isBlackBerry() || isGtk()), value => \$microdataSupport },
-
     { option => "mouse-cursor-scale", desc => "Toggle Scaled mouse cursor support",
       define => "ENABLE_MOUSE_CURSOR_SCALE", default => isEfl(), value => \$mouseCursorScaleSupport },
 
@@ -388,6 +382,9 @@ my @features = (
 
     { option => "progress-element", desc => "Toggle Progress Element support",
       define => "ENABLE_PROGRESS_ELEMENT", default => 1, value => \$progressElementSupport },
+
+    { option => "promises", desc => "Toggle Promise support",
+      define => "ENABLE_PROMISE", default => 1, value => \$promiseSupport },
 
     { option => "proximity-events", desc => "Toggle Proximity Events support",
       define => "ENABLE_PROXIMITY_EVENTS", default => 0, value => \$proximityEventsSupport },
@@ -487,6 +484,9 @@ my @features = (
 
     { option => "xslt", desc => "Toggle XSLT support",
       define => "ENABLE_XSLT", default => 1, value => \$xsltSupport },
+
+    { option => "ftl-jit", desc => "Toggle FTLJIT support",
+      define => "ENABLE_FTL_JIT", default => 0, value => \$ftlJITSupport },
 );
 
 sub getFeatureOptionList()

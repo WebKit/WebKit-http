@@ -38,7 +38,7 @@ private:
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
 
-    virtual bool rendererIsNeeded(const NodeRenderingContext&);
+    virtual bool rendererIsNeeded(const RenderStyle&);
 
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
     virtual const AtomicString& imageSourceURL() const OVERRIDE;
@@ -50,11 +50,6 @@ private:
     virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
 
     void parametersForPlugin(Vector<String>& paramNames, Vector<String>& paramValues);
-
-#if ENABLE(MICRODATA)
-    virtual String itemValueText() const OVERRIDE;
-    virtual void setItemValueText(const String&, ExceptionCode&) OVERRIDE;
-#endif
 };
 
 }

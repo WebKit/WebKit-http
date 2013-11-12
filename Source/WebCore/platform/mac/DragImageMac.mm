@@ -77,17 +77,17 @@ RetainPtr<NSImage> dissolveDragImageToFraction(RetainPtr<NSImage> image, float d
     return dissolvedImage;
 }
         
-RetainPtr<NSImage> createDragImageFromImage(Image* image, RespectImageOrientationEnum shouldRespectImageOrientation)
+RetainPtr<NSImage> createDragImageFromImage(Image* image, ImageOrientationDescription description)
 {
     IntSize size = image->size();
 
     if (image->isBitmapImage()) {
-        ImageOrientation orientation = DefaultImageOrientation;
+        ImageOrientation orientation;
         BitmapImage* bitmapImage = static_cast<BitmapImage *>(image);
         IntSize sizeRespectingOrientation = bitmapImage->sizeRespectingOrientation();
 
-        if (shouldRespectImageOrientation == RespectImageOrientation)
-            orientation = bitmapImage->currentFrameOrientation();
+        if (description.respectImageOrientation() == RespectImageOrientation)
+            orientation = bitmapImage->orientationForCurrentFrame();
 
         if (orientation != DefaultImageOrientation) {
             // Construct a correctly-rotated copy of the image to use as the drag image.

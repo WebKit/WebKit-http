@@ -7,6 +7,7 @@
  * Copyright (C) 2008 Holger Hans Peter Freyther
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2010 Patrick Gansterer <paroga@paroga.com>
+ * Copyright (C) 2013 Samsung Electronics. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -44,6 +45,7 @@
 #include "HTMLNames.h"
 #include "HTMLStyleElement.h"
 #include "HTMLTemplateElement.h"
+#include "Page.h"
 #include "ProcessingInstruction.h"
 #include "ResourceError.h"
 #include "ResourceRequest.h"
@@ -52,16 +54,18 @@
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
 #include "SecurityOrigin.h"
+#include "Settings.h"
 #include "TextResourceDecoder.h"
 #include "TransformSource.h"
 #include "XMLNSNames.h"
 #include "XMLDocumentParserScope.h"
 #include <libxml/parser.h>
 #include <libxml/parserInternals.h>
-#include <wtf/text/CString.h>
+#include <wtf/Ref.h>
 #include <wtf/StringExtras.h>
 #include <wtf/Threading.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
 #include <wtf/unicode/UTF8.h>
 
 #if ENABLE(XSLT)
@@ -72,6 +76,26 @@
 using namespace std;
 
 namespace WebCore {
+
+static inline bool hasNoStyleInformation(Document* document)
+{
+    if (document->sawElementsInKnownNamespaces())
+        return false;
+#if ENABLE(XSLT)
+    if (document->transformSourceDocument())
+        return false;
+#endif
+    if (!document->frame() || !document->frame()->page())
+        return false;
+
+    if (!document->frame()->page()->settings().developerExtrasEnabled())
+        return false;
+
+    if (document->frame()->tree().parent())
+        return false; // This document is not in a top frame
+
+    return true;
+}
 
 class PendingCallbacks {
     WTF_MAKE_NONCOPYABLE(PendingCallbacks); WTF_MAKE_FAST_ALLOCATED;
@@ -443,7 +467,7 @@ static void* openFunc(const char* uri)
         // FIXME: We should restore the original global error handler as well.
 
         if (cachedResourceLoader->frame())
-            cachedResourceLoader->frame()->loader()->loadResourceSynchronously(url, AllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, error, response, data);
+            cachedResourceLoader->frame()->loader().loadResourceSynchronously(url, AllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, error, response, data);
     }
 
     // We have to check the URL again after the load to catch redirects.
@@ -568,7 +592,6 @@ XMLDocumentParser::XMLDocumentParser(Document* document, FrameView* frameView)
     , m_parserPaused(false)
     , m_requestingScript(false)
     , m_finishCalled(false)
-    , m_xmlErrors(document)
     , m_pendingScript(0)
     , m_scriptStartPosition(TextPosition::belowRangePosition())
     , m_parsingFragment(false)
@@ -576,7 +599,7 @@ XMLDocumentParser::XMLDocumentParser(Document* document, FrameView* frameView)
 }
 
 XMLDocumentParser::XMLDocumentParser(DocumentFragment* fragment, Element* parentElement, ParserContentPolicy parserContentPolicy)
-    : ScriptableDocumentParser(fragment->document(), parserContentPolicy)
+    : ScriptableDocumentParser(&fragment->document(), parserContentPolicy)
     , m_view(0)
     , m_context(0)
     , m_pendingCallbacks(PendingCallbacks::create())
@@ -591,7 +614,6 @@ XMLDocumentParser::XMLDocumentParser(DocumentFragment* fragment, Element* parent
     , m_parserPaused(false)
     , m_requestingScript(false)
     , m_finishCalled(false)
-    , m_xmlErrors(fragment->document())
     , m_pendingScript(0)
     , m_scriptStartPosition(TextPosition::belowRangePosition())
     , m_parsingFragment(true)
@@ -616,11 +638,11 @@ XMLDocumentParser::XMLDocumentParser(DocumentFragment* fragment, Element* parent
         Element* element = elemStack.last();
         if (element->hasAttributes()) {
             for (unsigned i = 0; i < element->attributeCount(); i++) {
-                const Attribute* attribute = element->attributeItem(i);
-                if (attribute->localName() == xmlnsAtom)
-                    m_defaultNamespaceURI = attribute->value();
-                else if (attribute->prefix() == xmlnsAtom)
-                    m_prefixToNamespaceMap.set(attribute->localName(), attribute->value());
+                const Attribute& attribute = element->attributeAt(i);
+                if (attribute.localName() == xmlnsAtom)
+                    m_defaultNamespaceURI = attribute.value();
+                else if (attribute.prefix() == xmlnsAtom)
+                    m_prefixToNamespaceMap.set(attribute.localName(), attribute.value());
             }
         }
     }
@@ -661,7 +683,7 @@ void XMLDocumentParser::doWrite(const String& parseString)
     if (parseString.length()) {
         // JavaScript may cause the parser to detach during xmlParseChunk
         // keep this alive until this function is done.
-        RefPtr<XMLDocumentParser> protect(this);
+        Ref<XMLDocumentParser> protect(*this);
 
         switchToUTF16(context->context());
         XMLDocumentParserScope scope(document()->cachedResourceLoader());
@@ -798,7 +820,7 @@ void XMLDocumentParser::startElementNs(const xmlChar* xmlLocalName, const xmlCha
     m_sawFirstElement = true;
 
     QualifiedName qName(prefix, localName, uri);
-    RefPtr<Element> newElement = m_currentNode->document()->createElement(qName, true);
+    RefPtr<Element> newElement = m_currentNode->document().createElement(qName, true);
     if (!newElement) {
         stopParsing();
         return;
@@ -839,13 +861,13 @@ void XMLDocumentParser::startElementNs(const xmlChar* xmlLocalName, const xmlCha
 #endif
 
     if (m_view && currentNode->attached() && !newElement->attached())
-        newElement->attach();
+        Style::attachRenderTree(*newElement);
 
     if (newElement->hasTagName(HTMLNames::htmlTag))
         static_cast<HTMLHtmlElement*>(newElement.get())->insertedByParser();
 
     if (!m_parsingFragment && isFirstElement && document()->frame())
-        document()->frame()->loader()->dispatchDocumentElementAvailable();
+        document()->frame()->loader().dispatchDocumentElementAvailable();
 }
 
 void XMLDocumentParser::endElementNs()
@@ -860,7 +882,7 @@ void XMLDocumentParser::endElementNs()
 
     // JavaScript can detach the parser.  Make sure this is not released
     // before the end of this method.
-    RefPtr<XMLDocumentParser> protect(this);
+    Ref<XMLDocumentParser> protect(*this);
 
     exitText();
 
@@ -979,7 +1001,7 @@ void XMLDocumentParser::processingInstruction(const xmlChar* target, const xmlCh
 
     // ### handle exceptions
     ExceptionCode ec = 0;
-    RefPtr<ProcessingInstruction> pi = m_currentNode->document()->createProcessingInstruction(
+    RefPtr<ProcessingInstruction> pi = m_currentNode->document().createProcessingInstruction(
         toString(target), toString(data), ec);
     if (ec)
         return;
@@ -987,8 +1009,6 @@ void XMLDocumentParser::processingInstruction(const xmlChar* target, const xmlCh
     pi->setCreatedByParser(true);
 
     m_currentNode->parserAppendChild(pi.get());
-    if (m_view && !pi->attached())
-        pi->attach();
 
     pi->finishParsingChildren();
 
@@ -1013,10 +1033,10 @@ void XMLDocumentParser::cdataBlock(const xmlChar* s, int len)
 
     exitText();
 
-    RefPtr<CDATASection> newNode = CDATASection::create(m_currentNode->document(), toString(s, len));
+    RefPtr<CDATASection> newNode = CDATASection::create(&m_currentNode->document(), toString(s, len));
     m_currentNode->parserAppendChild(newNode.get());
     if (m_view && !newNode->attached())
-        newNode->attach();
+        Style::attachTextRenderer(*newNode);
 }
 
 void XMLDocumentParser::comment(const xmlChar* s)
@@ -1031,10 +1051,8 @@ void XMLDocumentParser::comment(const xmlChar* s)
 
     exitText();
 
-    RefPtr<Comment> newNode = Comment::create(m_currentNode->document(), toString(s));
+    RefPtr<Comment> newNode = Comment::create(&m_currentNode->document(), toString(s));
     m_currentNode->parserAppendChild(newNode.get());
-    if (m_view && !newNode->attached())
-        newNode->attach();
 }
 
 enum StandaloneInfo {
@@ -1364,12 +1382,11 @@ void XMLDocumentParser::doEnd()
     }
 
 #if ENABLE(XSLT)
-    XMLTreeViewer xmlTreeViewer(document());
-    bool xmlViewerMode = !m_sawError && !m_sawCSS && !m_sawXSLTransform && xmlTreeViewer.hasNoStyleInformation();
-    if (xmlViewerMode)
+    bool xmlViewerMode = !m_sawError && !m_sawCSS && !m_sawXSLTransform && hasNoStyleInformation(document());
+    if (xmlViewerMode) {
+        XMLTreeViewer xmlTreeViewer(document());
         xmlTreeViewer.transformDocumentToTreeView();
-
-    if (m_sawXSLTransform) {
+    } else if (m_sawXSLTransform) {
         void* doc = xmlDocPtrForString(document()->cachedResourceLoader(), m_originalSourceForTransform.toString(), document()->url().string());
         document()->setTransformSource(adoptPtr(new TransformSource(doc)));
 

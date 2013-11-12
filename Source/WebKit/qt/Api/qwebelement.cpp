@@ -503,9 +503,9 @@ QStringList QWebElement::attributeNames(const QString& namespaceUri) const
         const String namespaceUriString(namespaceUri); // convert QString -> String once
         const unsigned attrsCount = m_element->attributeCount();
         for (unsigned i = 0; i < attrsCount; ++i) {
-            const Attribute* const attribute = m_element->attributeItem(i);
-            if (namespaceUriString == attribute->namespaceURI())
-                attributeNameList.append(attribute->localName());
+            const Attribute& attribute = m_element->attributeAt(i);
+            if (namespaceUriString == attribute.namespaceURI())
+                attributeNameList.append(attribute.localName());
         }
     }
     return attributeNameList;
@@ -520,9 +520,7 @@ bool QWebElement::hasFocus() const
 {
     if (!m_element)
         return false;
-    if (m_element->document())
-        return m_element == m_element->document()->focusedElement();
-    return false;
+    return m_element == m_element->document().focusedElement();
 }
 
 /*!
@@ -534,8 +532,8 @@ void QWebElement::setFocus()
 {
     if (!m_element)
         return;
-    if (m_element->document() && m_element->isFocusable())
-        m_element->document()->setFocusedElement(m_element);
+    if (m_element->isFocusable())
+        m_element->document().setFocusedElement(m_element);
 }
 
 /*!
@@ -685,10 +683,7 @@ QWebElement QWebElement::document() const
 {
     if (!m_element)
         return QWebElement();
-    Document* document = m_element->document();
-    if (!document)
-        return QWebElement();
-    return QWebElement(document->documentElement());
+    return QWebElement(m_element->document().documentElement());
 }
 
 /*!
@@ -700,35 +695,23 @@ QWebFrame *QWebElement::webFrame() const
     if (!m_element)
         return 0;
 
-    Document* document = m_element->document();
-    if (!document)
-        return 0;
-
-    Frame* frame = document->frame();
+    Frame* frame = m_element->document().frame();
     if (!frame)
         return 0;
     QWebFrameAdapter* frameAdapter = QWebFrameAdapter::kit(frame);
     return frameAdapter->apiHandle();
 }
 
-static bool setupScriptContext(WebCore::Element* element, ScriptState*& state, ScriptController*& scriptController)
+static bool setupScriptContext(WebCore::Element* element, ScriptState*& state)
 {
     if (!element)
         return false;
 
-    Document* document = element->document();
-    if (!document)
-        return false;
-
-    Frame* frame = document->frame();
+    Frame* frame = element->document().frame();
     if (!frame)
         return false;
 
-    scriptController = frame->script();
-    if (!scriptController)
-        return false;
-
-    state = scriptController->globalObject(mainThreadNormalWorld())->globalExec();
+    state = frame->script().globalObject(mainThreadNormalWorld())->globalExec();
     if (!state)
         return false;
 
@@ -744,15 +727,14 @@ QVariant QWebElement::evaluateJavaScript(const QString& scriptSource)
         return QVariant();
 
     ScriptState* state = 0;
-    ScriptController* scriptController = 0;
 
-    if (!setupScriptContext(m_element, state, scriptController))
+    if (!setupScriptContext(m_element, state))
         return QVariant();
 
     JSC::JSLockHolder lock(state);
     RefPtr<Element> protect = m_element;
 
-    JSC::JSValue thisValue = toJS(state, toJSDOMGlobalObject(m_element->document(), state), m_element);
+    JSC::JSValue thisValue = toJS(state, toJSDOMGlobalObject(&m_element->document(), state), m_element);
     if (!thisValue)
         return QVariant();
 
@@ -833,18 +815,18 @@ QString QWebElement::styleProperty(const QString &name, StyleResolveStrategy str
         // by importance and inheritance order. This include external CSS
         // declarations, as well as embedded and inline style declarations.
 
-        Document* doc = m_element->document();
-        Vector<RefPtr<StyleRuleBase> > rules = doc->ensureStyleResolver()->styleRulesForElement(m_element, StyleResolver::AuthorCSSRules | StyleResolver::CrossOriginCSSRules);
+        Document& document = m_element->document();
+        Vector<RefPtr<StyleRuleBase> > rules = document.ensureStyleResolver().styleRulesForElement(m_element, StyleResolver::AuthorCSSRules | StyleResolver::CrossOriginCSSRules);
         for (int i = rules.size(); i > 0; --i) {
             if (!rules[i - 1]->isStyleRule())
                 continue;
             StyleRule* styleRule = static_cast<StyleRule*>(rules[i - 1].get());
 
-            if (styleRule->properties()->propertyIsImportant(propID))
-                return styleRule->properties()->getPropertyValue(propID);
+            if (styleRule->properties().propertyIsImportant(propID))
+                return styleRule->properties().getPropertyValue(propID);
 
             if (!style || style->getPropertyValue(propID).isEmpty())
-                style = styleRule->properties();
+                style = &styleRule->properties();
         }
 
         if (!style)
@@ -1464,11 +1446,10 @@ void QWebElement::render(QPainter* painter)
 void QWebElement::render(QPainter* painter, const QRect& clip)
 {
     WebCore::Element* e = m_element;
-    Document* doc = e ? e->document() : 0;
-    if (!doc)
+    if (!e)
         return;
 
-    Frame* frame = doc->frame();
+    Frame* frame = e->document().frame();
     if (!frame || !frame->view() || !frame->contentRenderer())
         return;
 
@@ -2073,13 +2054,13 @@ static QVariant convertJSValueToWebElementVariant(JSC::JSObject* object, int *di
 {
     Element* element = 0;
     QVariant ret;
-    if (object && object->inherits(&JSElement::s_info)) {
+    if (object && object->inherits(JSElement::info())) {
         element =(static_cast<JSElement*>(object))->impl();
         *distance = 0;
         // Allow other objects to reach this one. This won't cause our algorithm to
         // loop since when we find an Element we do not recurse.
         visitedObjects->remove(toRef(object));
-    } else if (object && object->inherits(&JSDocument::s_info)) {
+    } else if (object && object->inherits(JSDocument::info())) {
         // To support TestRunnerQt::nodesFromRect(), used in DRT, we do an implicit
         // conversion from 'document' to the QWebElement representing the 'document.documentElement'.
         // We can't simply use a QVariantMap in nodesFromRect() because it currently times out

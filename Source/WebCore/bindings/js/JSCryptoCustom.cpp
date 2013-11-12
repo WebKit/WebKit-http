@@ -26,10 +26,10 @@
 #include "JSCrypto.h"
 
 #include "ExceptionCode.h"
-#include "JSArrayBufferView.h"
 
+#include <runtime/ArrayBufferView.h>
 #include <runtime/Error.h>
-#include <wtf/ArrayBufferView.h>
+#include <runtime/JSArrayBufferView.h>
 
 using namespace JSC;
 
@@ -38,15 +38,15 @@ namespace WebCore {
 JSValue JSCrypto::getRandomValues(ExecState* exec)
 {
     if (exec->argumentCount() < 1)
-        return throwError(exec, createNotEnoughArgumentsError(exec));
+        return exec->vm().throwException(exec, createNotEnoughArgumentsError(exec));
 
     JSValue buffer = exec->argument(0);
-    ArrayBufferView* arrayBufferView = toArrayBufferView(buffer);
+    RefPtr<ArrayBufferView> arrayBufferView = toArrayBufferView(buffer);
     if (!arrayBufferView)
         return throwTypeError(exec);
 
     ExceptionCode ec = 0;
-    impl()->getRandomValues(arrayBufferView, ec);
+    impl()->getRandomValues(arrayBufferView.get(), ec);
 
     if (ec) {
         setDOMException(exec, ec);

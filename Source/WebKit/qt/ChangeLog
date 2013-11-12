@@ -1,3 +1,441 @@
+2013-09-03  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Images scaled poorly on composited canvas
+        https://bugs.webkit.org/show_bug.cgi?id=120632
+
+        Reviewed by Jocelyn Turcotte.
+
+        Explicitly set a imageInterpolationQuality on the TextureMapper, because
+        InterpolationDefault may be interpreted differently by nested GraphicsContexts.
+
+        * WebCoreSupport/TextureMapperLayerClientQt.cpp:
+        (TextureMapperLayerClientQt::renderCompositedLayers):
+
+2013-09-03  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Tiled-backing store not clipped to frame or visible rect
+        https://bugs.webkit.org/show_bug.cgi?id=120606
+
+        Reviewed by Jocelyn Turcotte.
+
+        Clip painting from the tiled-backing store to the frame rect.
+
+        * WebCoreSupport/QWebFrameAdapter.cpp:
+        (QWebFrameAdapter::renderFromTiledBackingStore):
+
+2013-09-03  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt][WK1] PageVisibility tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=120418
+
+        Reviewed by Jocelyn Turcotte.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::resetPageVisibility):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-08-28  Zeno Albisser  <zeno@webkit.org>
+
+        [Qt] Option key combinations do not work in Input Elements.
+        https://bugs.webkit.org/show_bug.cgi?id=120423
+
+        Q_WS_MAC is obsolete. We should use Q_OS_MAC instead.
+        This caused QTBUG-32388.
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/EditorClientQt.cpp:
+        (WebCore::EditorClientQt::handleKeyboardEvent):
+
+2013-08-28  Darin Adler  <darin@apple.com>
+
+        Eliminate Pasteboard::generalPasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=120392
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/EditorClientQt.cpp:
+        (WebCore::EditorClientQt::respondToChangedSelection):
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::triggerAction):
+        Use createForGlobalSelection instead of generalPasteboard and setSelectionMode.
+
+2013-08-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r154593.
+        http://trac.webkit.org/changeset/154593
+        https://bugs.webkit.org/show_bug.cgi?id=120403
+
+        Caused 50+ flaky tests on WebKit1 bots (Requested by carewolf
+        on #webkit).
+
+        * WidgetApi/qwebpage.cpp:
+        (QWebPage::javaScriptConsoleMessage):
+
+2013-08-27  Arunprasad Rajkumar  <arurajku@cisco.com>
+
+        [Qt] Let Page create the main Frame.
+        https://bugs.webkit.org/show_bug.cgi?id=120349
+
+        Adjust to latest changes in WebCore::Page to create the main frame.
+
+        Reviewed by Simon Hausmann.
+
+        * WebCoreSupport/QWebFrameAdapter.cpp:
+        (QWebFrameData::QWebFrameData):
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::initializeWebCorePage):
+
+2013-08-26  Arunprasad Rajkumar  <arurajku@cisco.com>
+
+        [Qt] Remove the fix in QWebPage::javaScriptConsoleMessage introduced by (r61433)
+        https://bugs.webkit.org/show_bug.cgi?id=119791
+
+        Reviewed by Jocelyn Turcotte.
+
+        * WidgetApi/qwebpage.cpp:
+        (QWebPage::javaScriptConsoleMessage): Removed hack specific to DRT, introduced by
+        (r61433).
+
+2013-08-24  Darin Adler  <darin@apple.com>
+
+        Frame::tree should return a reference instead of a pointer
+        https://bugs.webkit.org/show_bug.cgi?id=120259
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::clearFrameName):
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (drtDescriptionSuitableForTestResult):
+        (WebCore::FrameLoaderClientQt::dispatchDidCommitLoad):
+        (WebCore::FrameLoaderClientQt::dispatchDidFinishDocumentLoad):
+        (WebCore::FrameLoaderClientQt::postProgressStartedNotification):
+        (WebCore::FrameLoaderClientQt::didPerformFirstNavigation):
+        (WebCore::FrameLoaderClientQt::createFrame):
+        * WebCoreSupport/QWebFrameAdapter.cpp:
+        (QWebFrameData::QWebFrameData):
+        (QWebFrameAdapter::load):
+        (QWebFrameAdapter::uniqueName):
+        (QWebFrameAdapter::childFrames):
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::findText):
+        Use tree(). instead of tree()->.
+
+2013-08-23  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Update outdated source-paths in documentation
+        https://bugs.webkit.org/show_bug.cgi?id=120206
+
+        Reviewed by Anders Carlsson.
+
+        * docs/qtwebkit.qdoc:
+
+2013-08-19  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/119918> Frame::selection() should return a reference
+
+        Reviewed by Darin Adler.
+
+        m_selection is never NULL so return a reference from Frame::selection(). Also removed some
+        unnecessary null checks and assert diff ts exposed as a result.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::selectedRange):
+        (DumpRenderTreeSupportQt::firstRectForCharacterRange):
+        * WebCoreSupport/EditorClientQt.cpp:
+        (WebCore::EditorClientQt::respondToChangedSelection):
+        (WebCore::EditorClientQt::handleKeyboardEvent):
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::hasSelection):
+        (QWebPageAdapter::selectedText):
+        (QWebPageAdapter::findText):
+        (QWebPageAdapter::inputMethodEvent):
+        (QWebPageAdapter::inputMethodQuery):
+
+2013-08-19  Arunprasad Rajkumar  <arurajku@cisco.com>
+
+        <https://webkit.org/b/119933> [Qt] Fix tst_QObjectBridge::connectAndDisconnect() fail
+
+        Reviewed by Allan Sandfeld Jensen.
+
+        Latest version of JSC has unquoted undefined in exception messages. So replaced 'undefined' with undefined.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::connectAndDisconnect):
+
+2013-08-17  Darin Adler  <darin@apple.com>
+
+        <https://webkit.org/b/119941> Make Page::dragController return a reference
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DragClientQt.cpp:
+        (WebCore::DragClientQt::startDrag):
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::dragEntered):
+        (QWebPageAdapter::dragLeaveEvent):
+        (QWebPageAdapter::dragUpdated):
+        (QWebPageAdapter::performDrag):
+        Updated call sites.
+
+2013-08-16  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/119852> Frame::scriptController() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        m_script is never NULL so we can just return a reference. Also remove some pointless null
+        checks as a result of doing this.
+
+        * Api/qwebelement.cpp:
+        (setupScriptContext):
+        (QWebElement::evaluateJavaScript):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::evaluateScriptInIsolatedWorld):
+        * WebCoreSupport/QWebFrameAdapter.cpp:
+        (QWebFrameAdapter::evaluateJavaScript):
+        (QWebFrameAdapter::addToJavaScriptWindowObject):
+
+2013-08-15  Anders Carlsson  <andersca@apple.com>
+
+        <https://webkit.org/b/119859> Frame::loader() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore::ChromeClientQt::closeWindowSoon):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::shouldClose):
+        (DumpRenderTreeSupportQt::responseMimeType):
+        (DumpRenderTreeSupportQt::clearOpener):
+        (DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows):
+        (DumpRenderTreeSupportQt::setAlternateHtml):
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::callPolicyFunction):
+        (WebCore::FrameLoaderClientQt::dispatchDidStartProvisionalLoad):
+        (WebCore::FrameLoaderClientQt::updateGlobalHistory):
+        (WebCore::FrameLoaderClientQt::updateGlobalHistoryRedirectLinks):
+        (WebCore::FrameLoaderClientQt::callErrorPageExtension):
+        (WebCore::FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction):
+        (WebCore::FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction):
+        (WebCore::FrameLoaderClientQt::startDownload):
+        (WebCore::FrameLoaderClientQt::createFrame):
+        (WebCore::FrameLoaderClientQt::objectContentType):
+        * WebCoreSupport/QWebFrameAdapter.cpp:
+        (QWebFrameAdapter::load):
+        (QWebFrameAdapter::setContent):
+        (QWebFrameAdapter::setHtml):
+        (QWebFrameAdapter::kit):
+        (QWebFrameAdapter::title):
+        (QWebFrameAdapter::clearCoreFrame):
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (frameLoadRequest):
+        (openNewWindow):
+        (QWebPageAdapter::triggerAction):
+        (QWebPageAdapter::currentFrame):
+
+2013-08-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Foo::s_info should be Foo::info(), so that you can change how the s_info is actually linked
+        https://bugs.webkit.org/show_bug.cgi?id=119770
+
+        Reviewed by Mark Hahnenberg.
+
+        * Api/qwebelement.cpp:
+        (convertJSValueToWebElementVariant):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (convertJSValueToNodeVariant):
+
+2013-08-11  Andreas Kling  <akling@apple.com>
+
+        Make some things that return never-null pointers return references instead.
+        <http://webkit.org/b/119660>
+
+        Reviewed by Antti Koivisto.
+
+        * Api/qwebelement.cpp:
+        (QWebElement::styleProperty):
+
+2013-08-09  Arunprasad Rajkumar  <arurajku@cisco.com>
+
+        [Qt] QtWebKit should allow sending domain specific keycode to HTML applications
+        https://bugs.webkit.org/show_bug.cgi?id=118445
+
+        Reviewed by Allan Sandfeld Jensen.
+
+        Added API test.
+
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::QWebPageAdapter):
+        (QWebPageAdapter::dynamicPropertyChangeEvent):
+        (QWebPageAdapter::handleKeyEvent):
+        * WebCoreSupport/QWebPageAdapter.h:
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage::domainSpecificKeyEvent):
+
+2013-08-09  Andreas Kling  <akling@apple.com>
+
+        StyleRule*::properties() should return const references.
+        <http://webkit.org/b/119596>
+
+        Reviewed by Antti Koivisto.
+
+        * Api/qwebelement.cpp:
+        (QWebElement::styleProperty):
+
+2013-08-08  Andreas Kling  <akling@apple.com>
+
+        Element: Modernize attribute storage accessor functions.
+        <http://webkit.org/b/119578>
+
+        Reviewed by Antti Koivisto.
+
+        * Api/qwebelement.cpp:
+        (QWebElement::attributeNames):
+
+2013-08-07  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Build fix after r153751
+
+        Unreviewed build fix.
+
+        Fix build when PAGE_VISIBILITY_API is disabled.
+
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::visibilityState):
+
+2013-08-06  Benjamin Dupont   <bdupont@nds.com>
+
+        [Qt] Add Page Visibility API support
+        https://bugs.webkit.org/show_bug.cgi?id=109422
+
+        Reviewed by Simon Hausmann.
+
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (webPageVisibilityStateToWebCoreVisibilityState):
+        (webCoreVisibilityStateToWebPageVisibilityState):
+        (QWebPageAdapter::setVisibilityState):
+        (QWebPageAdapter::visibilityState):
+        * WebCoreSupport/QWebPageAdapter.h:
+        * WidgetApi/qwebpage.cpp:
+        (QWebPage::setVisibilityState):
+        (QWebPage::visibilityState):
+        * WidgetApi/qwebpage.h:
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage::changeVisibilityState):
+
+2013-07-27  Mark Rowe  <mrowe@apple.com>
+
+        Logging should be configurable using human-readable channel names rather than crazy bitmasks
+        <http://webkit.org/b/119031>
+
+        Implement shared logic for initializing logging channels based on human-readable channel names in WTF,
+        and rework the WebCore, WebKit and WebKit2 logging initialization on top of it.
+
+        Logging channels may now be enabled by providing a comma-separated list of channel names, with the special
+        "all" name enabling all channels. Channel names prefixed with a leading "-" will result in the named channel
+        being disabled. For instance, specifying "all,-history,-loading" will result in all logging channels except
+        for history and loading being enabled.
+
+        For OS X developers, this also changes the name of the user defaults used to enable logging. This is done to allow
+        the old user defaults to remain set for those people that need to switch between version of WebKit before and
+        after this change. Where the old user default keys were WebCoreLogLevel, WebKitLogLevel and WebKit2LogLevel,
+        the new user default keys are WebCoreLogging, WebKitLogging and WebKit2Logging.
+
+        For GTK developers, this changes the separator used in the WEBKIT_DEBUG environment variable to a comma for
+        consistency with the other platforms and to enable more code sharing.
+
+        While doing this work I've also taken the opportunity to eliminate the need to touch multiple files when
+        adding a new logging channel. Now only the header in the relevant project needs to be updated.
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/InitWebCoreQt.cpp: Switch from WebCore's InitializeLogging.h to Logging.h.
+
+2013-07-31  Kwang Yul Seo  <skyul@company100.net>
+
+        Use emptyString instead of String("")
+        https://bugs.webkit.org/show_bug.cgi?id=119335
+
+        Reviewed by Darin Adler.
+
+        Use emptyString() instead of String("") because it is better style and
+        faster. This is a followup to r116908, removing all occurrences of
+        String("") from WebKit.
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore::ChromeClientQt::runJavaScriptPrompt):
+
+2013-07-31  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt][WK1] navigator.plugins shows too few entries.
+        https://bugs.webkit.org/show_bug.cgi?id=119332
+
+        Reviewed by Jocelyn Turcotte.
+
+        Based on input by Choon Sik Cho.
+
+        PlatformStrategiesQt::getPluginInfo was using the
+        WTF::Vector::resize method wrongly.
+
+        This patch removes the call to Vector::resize as
+        Vector::append will take care of increasing capacity
+        if needed.
+
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        (PlatformStrategiesQt::getPluginInfo):
+
+2013-07-31  Deepjyoti Saha  <deesaha@cisco.com>
+
+        [Qt] Add interface API for origin whitelisting
+        https://bugs.webkit.org/show_bug.cgi?id=117823
+
+        Reviewed by Jocelyn Turcotte.
+
+        Adding interface APIs in QWebSecurityOrigin to add and remove whiteList entires.
+
+        Re-used most of the test cases written by Carol Szabo  <carol.szabo@nokia.com> 
+        for https://bugs.webkit.org/show_bug.cgi?id=31875 and added the same.
+
+        * Api/qwebsecurityorigin.cpp:
+        (QWebSecurityOrigin::addAccessWhitelistEntry):
+        (QWebSecurityOrigin::removeAccessWhitelistEntry):
+        * Api/qwebsecurityorigin.h:
+        * tests/qwebsecurityorigin: Added.
+        * tests/qwebsecurityorigin/qwebsecurityorigin.pro: Added.
+        * tests/qwebsecurityorigin/resources: Added.
+        * tests/qwebsecurityorigin/resources/test.html: Added.
+        * tests/qwebsecurityorigin/tst_qwebsecurityorigin.cpp: Added.
+        (tst_QWebSecurityOrigin::tst_QWebSecurityOrigin):
+        (tst_QWebSecurityOrigin::~tst_QWebSecurityOrigin):
+        (tst_QWebSecurityOrigin::init):
+        (tst_QWebSecurityOrigin::cleanup):
+        (tst_QWebSecurityOrigin::whiteList_data):
+        (tst_QWebSecurityOrigin::whiteList):
+        * tests/qwebsecurityorigin/tst_qwebsecurityorigin.qrc: Added.
+
+2013-07-27  Jacky Jiang  <zhajiang@blackberry.com>
+
+        Replace all uses of GraphicsLayer::create function with the one that takes a GraphicsLayerFactory
+        https://bugs.webkit.org/show_bug.cgi?id=119186
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/TextureMapperLayerClientQt.cpp:
+        (TextureMapperLayerClientQt::setRootGraphicsLayer):
+
+2013-07-25  Andreas Kling  <akling@apple.com>
+
+        ChromeClient::focusedNodeChanged() should be focusedElementChanged().
+        <http://webkit.org/b/119110>
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore::ChromeClientQt::focusedElementChanged):
+        * WebCoreSupport/ChromeClientQt.h:
+
 2013-07-23  Allan Sandfeld Jensen  <allan.jensen@digia.com>
 
         Remove deprecated and unused compositing settings

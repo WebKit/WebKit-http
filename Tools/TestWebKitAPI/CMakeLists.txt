@@ -23,6 +23,30 @@ include_directories(${CMAKE_BINARY_DIR}
     ${WTF_DIR}
 )
 
+set(test_wtf_LIBRARIES
+    WTF
+    gtest
+)
+
+set(test_webcore_LIBRARIES
+    gtest
+    WTF
+    WebCore
+)
+
+set(test_webkit2_api_LIBRARIES
+    TestWebKitAPIBase
+    WTF
+    JavaScriptCore
+    WebKit2
+    gtest
+)
+
+set(TestWebKitAPI_LIBRARIES
+    WTF
+    WebKit2
+)
+
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 add_library(TestWebKitAPIInjectedBundle SHARED
@@ -55,11 +79,6 @@ add_library(TestWebKitAPIInjectedBundle SHARED
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WillSendSubmitEvent_Bundle.cpp
 )
 
-set(TestWebKitAPI_LIBRARIES
-    WTF
-    WebKit2
-)
-
 target_link_libraries(TestWebKitAPIInjectedBundle ${TestWebKitAPI_LIBRARIES})
 add_dependencies(TestWebKitAPIInjectedBundle ${ForwardingHeadersForTestWebKitAPI_NAME} ${ForwardingNetworkHeadersForTestWebKitAPI_NAME})
 
@@ -68,11 +87,6 @@ get_property(TestWebKitAPIInjectedBundle_PATH TARGET TestWebKitAPIInjectedBundle
 add_definitions(-DGTEST_LINKED_AS_SHARED_LIBRARY=1
     -DTEST_WEBKIT2_RESOURCES_DIR=\"${TESTWEBKITAPI_DIR}/Tests/WebKit2\"
     -DTEST_INJECTED_BUNDLE_PATH=\"${TestWebKitAPIInjectedBundle_PATH}\"
-)
-
-set(test_wtf_LIBRARIES
-    WTF
-    gtest
 )
 
 add_executable(test_wtf
@@ -97,8 +111,6 @@ add_executable(test_wtf
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringOperators.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/TemporaryChange.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Vector.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WTF/VectorBasic.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WTF/VectorReverse.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/WTFString.cpp
 )
 
@@ -106,12 +118,6 @@ target_link_libraries(test_wtf ${test_wtf_LIBRARIES})
 add_dependencies(test_wtf ${ForwardingHeadersForTestWebKitAPI_NAME} ${ForwardingNetworkHeadersForTestWebKitAPI_NAME})
 add_test(test_wtf ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_wtf)
 set_tests_properties(test_wtf PROPERTIES TIMEOUT 60)
-
-set(test_webcore_LIBRARIES
-    gtest
-    WTF
-    WebCore
-)
 
 foreach (testName ${test_webcore_BINARIES})
     add_executable(test_webcore_${testName} ${test_main_SOURCES} ${TESTWEBKITAPI_DIR}/TestsController.cpp ${TESTWEBKITAPI_DIR}/Tests/WebCore/${testName}.cpp)
@@ -129,14 +135,6 @@ add_library(TestWebKitAPIBase
 )
 
 add_dependencies(TestWebKitAPIBase WebKit2 ${ForwardingHeadersForTestWebKitAPI_NAME} ${ForwardingNetworkHeadersForTestWebKitAPI_NAME})
-
-set(test_webkit2_api_LIBRARIES
-    TestWebKitAPIBase
-    WTF
-    JavaScriptCore
-    WebKit2
-    gtest
-)
 
 foreach (testName ${test_webkit2_api_BINARIES})
     get_filename_component(testBaseName ${testName} NAME)

@@ -54,7 +54,7 @@ static IntRect screenRectOfContents(Element* element)
     if (element->renderer() && element->renderer()->hasLayer() && element->renderer()->enclosingLayer()->isComposited()) {
         FloatQuad contentsBox = static_cast<FloatRect>(element->renderer()->enclosingLayer()->backing()->contentsBox());
         contentsBox = element->renderer()->localToAbsoluteQuad(contentsBox);
-        return element->renderer()->view()->frameView()->contentsToScreen(contentsBox.enclosingBoundingBox());
+        return element->renderer()->view().frameView().contentsToScreen(contentsBox.enclosingBoundingBox());
     }
 #endif
     return element->screenRect();
@@ -86,7 +86,7 @@ void WebFullScreenManager::didReceiveMessage(CoreIPC::Connection* connection, Co
 
 bool WebFullScreenManager::supportsFullScreen(bool withKeyboard)
 {
-    if (!m_page->corePage()->settings()->fullScreenEnabled())
+    if (!m_page->corePage()->settings().fullScreenEnabled())
         return false;
 
     return m_page->injectedBundleFullScreenClient().supportsFullScreen(m_page.get(), withKeyboard);
@@ -108,9 +108,9 @@ void WebFullScreenManager::exitFullScreenForElement(WebCore::Element* element)
 void WebFullScreenManager::willEnterFullScreen()
 {
     ASSERT(m_element);
-    m_element->document()->webkitWillEnterFullScreenForElement(m_element.get());
+    m_element->document().webkitWillEnterFullScreenForElement(m_element.get());
     m_page->hidePageBanners();
-    m_element->document()->updateLayout();
+    m_element->document().updateLayout();
     m_page->forceRepaintWithoutCallback();
     m_finalFrame = screenRectOfContents(m_element.get());
     m_page->injectedBundleFullScreenClient().beganEnterFullScreen(m_page.get(), m_initialFrame, m_finalFrame);
@@ -119,14 +119,14 @@ void WebFullScreenManager::willEnterFullScreen()
 void WebFullScreenManager::didEnterFullScreen()
 {
     ASSERT(m_element);
-    m_element->document()->webkitDidEnterFullScreenForElement(m_element.get());
+    m_element->document().webkitDidEnterFullScreenForElement(m_element.get());
 }
 
 void WebFullScreenManager::willExitFullScreen()
 {
     ASSERT(m_element);
     m_finalFrame = screenRectOfContents(m_element.get());
-    m_element->document()->webkitWillExitFullScreenForElement(m_element.get());
+    m_element->document().webkitWillExitFullScreenForElement(m_element.get());
     m_page->showPageBanners();
     m_page->injectedBundleFullScreenClient().beganExitFullScreen(m_page.get(), m_finalFrame, m_initialFrame);
 }
@@ -134,19 +134,19 @@ void WebFullScreenManager::willExitFullScreen()
 void WebFullScreenManager::didExitFullScreen()
 {
     ASSERT(m_element);
-    m_element->document()->webkitDidExitFullScreenForElement(m_element.get());
+    m_element->document().webkitDidExitFullScreenForElement(m_element.get());
 }
 
 void WebFullScreenManager::setAnimatingFullScreen(bool animating)
 {
     ASSERT(m_element);
-    m_element->document()->setAnimatingFullScreen(animating);
+    m_element->document().setAnimatingFullScreen(animating);
 }
 
 void WebFullScreenManager::requestExitFullScreen()
 {
     ASSERT(m_element);
-    m_element->document()->webkitCancelFullScreen();
+    m_element->document().webkitCancelFullScreen();
 }
 
 void WebFullScreenManager::close()
@@ -156,12 +156,12 @@ void WebFullScreenManager::close()
 
 void WebFullScreenManager::saveScrollPosition()
 {
-    m_scrollPosition = m_page->corePage()->mainFrame()->view()->scrollPosition();
+    m_scrollPosition = m_page->corePage()->mainFrame().view()->scrollPosition();
 }
 
 void WebFullScreenManager::restoreScrollPosition()
 {
-    m_page->corePage()->mainFrame()->view()->setScrollPosition(m_scrollPosition);
+    m_page->corePage()->mainFrame().view()->setScrollPosition(m_scrollPosition);
 }
 
 } // namespace WebKit

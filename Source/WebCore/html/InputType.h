@@ -36,8 +36,8 @@
 #include "FeatureObserver.h"
 #include "HTMLTextFormControlElement.h"
 #include "StepRange.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/Forward.h>
-#include <wtf/FastAllocBase.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
 
@@ -166,6 +166,7 @@ public:
     double minimum() const;
     double maximum() const;
     virtual bool sizeShouldIncludeDecoration(int defaultSize, int& preferredSize) const;
+    virtual float decorationWidth() const;
     bool stepMismatch(const String&) const;
     virtual bool getAllowedValueStep(Decimal*) const;
     virtual StepRange createStepRange(AnyStepHandling) const;
@@ -311,7 +312,7 @@ public:
     void dispatchSimulatedClickIfActive(KeyboardEvent*) const;
 
 protected:
-    InputType(HTMLInputElement* element) : m_element(element) { }
+    explicit InputType(HTMLInputElement* element) : m_element(element) { }
     HTMLInputElement* element() const { return m_element; }
     Chrome* chrome() const;
     Decimal parseToNumberOrNaN(const String&) const;

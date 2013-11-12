@@ -47,15 +47,15 @@ void WebPage::findZoomableAreaForPoint(const IntPoint& point, const IntSize& are
 {
     Node* node = 0;
     IntRect zoomableArea;
-    bool foundAreaForTouchPoint = m_mainFrame->coreFrame()->eventHandler()->bestZoomableAreaForTouchPoint(point, IntSize(area.width() / 2, area.height() / 2), zoomableArea, node);
+    bool foundAreaForTouchPoint = m_mainFrame->coreFrame()->eventHandler().bestZoomableAreaForTouchPoint(point, IntSize(area.width() / 2, area.height() / 2), zoomableArea, node);
 
     if (!foundAreaForTouchPoint)
         return;
 
     ASSERT(node);
 
-    if (node->document() && node->document()->view())
-        zoomableArea = node->document()->view()->contentsToWindow(zoomableArea);
+    if (node->document().view())
+        zoomableArea = node->document().view()->contentsToWindow(zoomableArea);
 
     send(Messages::WebPageProxy::DidFindZoomableArea(point, zoomableArea));
 }
@@ -65,7 +65,7 @@ void WebPage::findZoomableAreaForPoint(const IntPoint& point, const IntSize& are
 {
     UNUSED_PARAM(area);
     Frame* mainframe = m_mainFrame->coreFrame();
-    HitTestResult result = mainframe->eventHandler()->hitTestResultAtPoint(mainframe->view()->windowToContents(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent);
+    HitTestResult result = mainframe->eventHandler().hitTestResultAtPoint(mainframe->view()->windowToContents(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent);
 
     Node* node = result.innerNode();
 
@@ -91,8 +91,8 @@ void WebPage::findZoomableAreaForPoint(const IntPoint& point, const IntSize& are
         zoomableArea.unite(node->pixelSnappedBoundingBox());
     }
 
-    if (node->document() && node->document()->frame() && node->document()->frame()->view()) {
-        const ScrollView* view = node->document()->frame()->view();
+    if (node->document().frame() && node->document().frame()->view()) {
+        const ScrollView* view = node->document().frame()->view();
         zoomableArea = view->contentsToWindow(zoomableArea);
     }
 

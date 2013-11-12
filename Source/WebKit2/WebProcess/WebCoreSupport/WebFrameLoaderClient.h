@@ -35,9 +35,10 @@ class WebFrame;
     
 class WebFrameLoaderClient : public WebCore::FrameLoaderClient {
 public:
-    WebFrameLoaderClient(WebFrame*);
+    WebFrameLoaderClient();
     ~WebFrameLoaderClient();
 
+    void setWebFrame(WebFrame* webFrame) { m_frame = webFrame; }
     WebFrame* webFrame() const { return m_frame; }
 
 private:
@@ -232,9 +233,9 @@ private:
 };
 
 // As long as EmptyFrameLoaderClient exists in WebCore, this can return 0.
-inline WebFrameLoaderClient* toWebFrameLoaderClient(WebCore::FrameLoaderClient* client)
+inline WebFrameLoaderClient* toWebFrameLoaderClient(WebCore::FrameLoaderClient& client)
 {
-    return client->isEmptyFrameLoaderClient() ? 0 : static_cast<WebFrameLoaderClient*>(client);
+    return client.isEmptyFrameLoaderClient() ? 0 : static_cast<WebFrameLoaderClient*>(&client);
 }
 
 } // namespace WebKit

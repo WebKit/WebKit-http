@@ -40,6 +40,7 @@
 #import "WebContext.h"
 #import "WebData.h"
 #import "WebPageProxy.h"
+#import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/RetainPtr.h>
 
 #import "WKBrowsingContextLoadDelegate.h"
@@ -48,14 +49,12 @@ using namespace WebKit;
 
 static inline NSString *autoreleased(WKStringRef string)
 {
-    WKRetainPtr<WKStringRef> wkString = adoptWK(string);
-    return [(NSString *)WKStringCopyCFString(kCFAllocatorDefault, wkString.get()) autorelease];
+    return CFBridgingRelease(WKStringCopyCFString(kCFAllocatorDefault, adoptWK(string).get()));
 }
 
 static inline NSURL *autoreleased(WKURLRef url)
 {
-    WKRetainPtr<WKURLRef> wkURL = adoptWK(url);
-    return [(NSURL *)WKURLCopyCFURL(kCFAllocatorDefault, wkURL.get()) autorelease];
+    return CFBridgingRelease(WKURLCopyCFURL(kCFAllocatorDefault, adoptWK(url).get()));
 }
 
 @interface WKBrowsingContextControllerData : NSObject {

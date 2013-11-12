@@ -31,14 +31,15 @@
 #include "FrameLoader.h"
 #include "ScriptController.h"
 #include "Settings.h"
+#include "SubframeLoader.h"
 
 namespace WebCore {
 
 HTMLParserOptions::HTMLParserOptions(Document* document)
 {
     Frame* frame = document ? document->frame() : 0;
-    scriptEnabled = frame && frame->script()->canExecuteScripts(NotAboutToExecuteScript);
-    pluginsEnabled = frame && frame->loader()->subframeLoader()->allowPlugins(NotAboutToInstantiatePlugin);
+    scriptEnabled = frame && frame->script().canExecuteScripts(NotAboutToExecuteScript);
+    pluginsEnabled = frame && frame->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin);
 
     Settings* settings = document ? document->settings() : 0;
     usePreHTML5ParserQuirks = settings && settings->usePreHTML5ParserQuirks();

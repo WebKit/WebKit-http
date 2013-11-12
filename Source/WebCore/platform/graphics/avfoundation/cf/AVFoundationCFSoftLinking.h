@@ -28,8 +28,7 @@
 // Soft-link against AVFoundationCF functions and variables required by MediaPlayerPrivateAVFoundationCF.cpp.
 
 #ifdef DEBUG_ALL
-// FIXME: <rdar://problem/9898937> AVFoundationCF doesn't currently deliver a debug library.
-SOFT_LINK_LIBRARY(AVFoundationCF)
+SOFT_LINK_DEBUG_LIBRARY(AVFoundationCF)
 #else
 SOFT_LINK_LIBRARY(AVFoundationCF)
 #endif
@@ -165,9 +164,6 @@ SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerItemIsPlaybackLikelyToKeepUp, Boo
 SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerItemLegibleOutputGetTypeID, CFTypeID, __cdecl, (), ())
 #define AVCFPlayerItemLegibleOutputGetTypeID softLink_AVCFPlayerItemLegibleOutputGetTypeID
 
-SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerItemRemoveOutput, void, __cdecl, (AVCFPlayerItemRef playerItem, AVCFPlayerItemOutputRef output), (playerItem, output))
-#define AVCFPlayerItemRemoveOutput softLink_AVCFPlayerItemRemoveOutput
-
 SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerItemSeekToTimeWithToleranceAndCompletionCallback, AVCFAssetRef, __cdecl, (AVCFPlayerItemRef playerItem, CMTime time, CMTime toleranceBefore, CMTime toleranceAfter, AVCFPlayerItemSeekCompletionCallback completionCallback, void *context), (playerItem, time, toleranceBefore, toleranceAfter, completionCallback, context))
 #define AVCFPlayerItemSeekToTimeWithToleranceAndCompletionCallback softLink_AVCFPlayerItemSeekToTimeWithToleranceAndCompletionCallback
 
@@ -188,6 +184,9 @@ SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerLayerCreateWithAVCFPlayer, AVCFPl
 
 SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerLayerIsReadyForDisplay, Boolean, __cdecl, (AVCFPlayerLayerRef playerLayer), (playerLayer))
 #define AVCFPlayerLayerIsReadyForDisplay softLink_AVCFPlayerLayerIsReadyForDisplay
+
+SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerLayerSetFrame, void, __cdecl, (AVCFPlayerLayerRef playerLayer, CGRect rect), (playerLayer, rect))
+#define AVCFPlayerLayerSetFrame softLink_AVCFPlayerLayerSetFrame
 
 SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerLayerSetPlayer, void, __cdecl, (AVCFPlayerLayerRef playerLayer, AVCFPlayerRef player), (playerLayer, player))
 #define AVCFPlayerLayerSetPlayer softLink_AVCFPlayerLayerSetPlayer
@@ -261,6 +260,9 @@ SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerItemLegibleOutputSetTextStylingRe
 
 SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerItemOutputSetSuppressPlayerRendering, void, __cdecl, (AVCFPlayerItemOutputRef output, Boolean suppressed), (output, suppressed))
 #define AVCFPlayerItemOutputSetSuppressPlayerRendering softLink_AVCFPlayerItemOutputSetSuppressPlayerRendering
+
+SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerItemRemoveOutput, void, __cdecl, (AVCFPlayerItemRef playerItem, AVCFPlayerItemOutputRef output), (playerItem, output))
+#define AVCFPlayerItemRemoveOutput softLink_AVCFPlayerItemRemoveOutput
 
 SOFT_LINK_DLL_IMPORT(AVFoundationCF, AVCFPlayerItemSelectMediaOptionInMediaSelectionGroup, void, __cdecl, (AVCFPlayerItemRef playerItem, AVCFMediaSelectionOptionRef selectionOption, AVCFMediaSelectionGroupRef selectionGroup), (playerItem, selectionOption, selectionGroup))
 #define AVCFPlayerItemSelectMediaOptionInMediaSelectionGroup softLink_AVCFPlayerItemSelectMediaOptionInMediaSelectionGroup

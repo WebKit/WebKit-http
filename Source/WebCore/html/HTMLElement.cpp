@@ -32,6 +32,7 @@
 #include "CSSValuePool.h"
 #include "DOMSettableTokenList.h"
 #include "DocumentFragment.h"
+#include "ElementIterator.h"
 #include "Event.h"
 #include "EventListener.h"
 #include "EventNames.h"
@@ -53,17 +54,13 @@
 #include "ScriptEventListener.h"
 #include "Settings.h"
 #include "StylePropertySet.h"
+#include "SubframeLoader.h"
 #include "Text.h"
 #include "TextIterator.h"
 #include "XMLNames.h"
 #include "markup.h"
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
-
-#if ENABLE(MICRODATA)
-#include "HTMLPropertiesCollection.h"
-#include "MicroDataItemValue.h"
-#endif
 
 namespace WebCore {
 
@@ -83,7 +80,7 @@ String HTMLElement::nodeName() const
     // FIXME: Would be nice to have an atomicstring lookup based off uppercase
     // chars that does not have to copy the string on a hit in the hash.
     // FIXME: We should have a way to detect XHTML elements and replace the hasPrefix() check with it.
-    if (document()->isHTMLDocument() && !tagQName().hasPrefix())
+    if (document().isHTMLDocument() && !tagQName().hasPrefix())
         return tagQName().localNameUpper();
     return Element::nodeName();
 }
@@ -119,7 +116,7 @@ bool HTMLElement::ieForbidsInsertHTML() const
     // serialization of <canvas>, that seems like a bad idea.
 #if ENABLE(DASHBOARD_SUPPORT)
     if (hasLocalName(canvasTag)) {
-        Settings* settings = document()->settings();
+        Settings* settings = document().settings();
         if (settings && settings->usesDashboardBackwardCompatibilityMode())
             return true;
     }
@@ -233,6 +230,7 @@ AtomicString HTMLElement::eventNameForAttributeName(const QualifiedName& attrNam
         attributeNameToEventNameMap.set(onmouseoverAttr.localName(), eventNames().mouseoverEvent);
         attributeNameToEventNameMap.set(onmouseupAttr.localName(), eventNames().mouseupEvent);
         attributeNameToEventNameMap.set(onmousewheelAttr.localName(), eventNames().mousewheelEvent);
+        attributeNameToEventNameMap.set(onwheelAttr.localName(), eventNames().wheelEvent);
         attributeNameToEventNameMap.set(onfocusAttr.localName(), eventNames().focusEvent);
         attributeNameToEventNameMap.set(onfocusinAttr.localName(), eventNames().focusinEvent);
         attributeNameToEventNameMap.set(onfocusoutAttr.localName(), eventNames().focusoutEvent);
@@ -317,14 +315,6 @@ void HTMLElement::parseAttribute(const QualifiedName& name, const AtomicString& 
             // Clamp tabindex to the range of 'short' to match Firefox's behavior.
             setTabIndexExplicitly(max(static_cast<int>(std::numeric_limits<short>::min()), min(tabindex, static_cast<int>(std::numeric_limits<short>::max()))));
         }
-#if ENABLE(MICRODATA)
-    } else if (name == itempropAttr) {
-        setItemProp(value);
-    } else if (name == itemrefAttr) {
-        setItemRef(value);
-    } else if (name == itemtypeAttr) {
-        setItemType(value);
-#endif
     } else {
         AtomicString eventName = eventNameForAttributeName(name);
         if (!eventName.isNull())
@@ -396,7 +386,7 @@ void HTMLElement::setOuterHTML(const String& html, ExceptionCode& ec)
 
 PassRefPtr<DocumentFragment> HTMLElement::textToFragment(const String& text, ExceptionCode& ec)
 {
-    RefPtr<DocumentFragment> fragment = DocumentFragment::create(document());
+    RefPtr<DocumentFragment> fragment = DocumentFragment::create(&document());
     unsigned int i, length = text.length();
     UChar c = 0;
     for (unsigned int start = 0; start < length; ) {
@@ -408,12 +398,12 @@ PassRefPtr<DocumentFragment> HTMLElement::textToFragment(const String& text, Exc
               break;
         }
 
-        fragment->appendChild(Text::create(document(), text.substring(start, i - start)), ec);
+        fragment->appendChild(Text::create(&document(), text.substring(start, i - start)), ec);
         if (ec)
             return 0;
 
         if (c == '\r' || c == '\n') {
-            fragment->appendChild(HTMLBRElement::create(document()), ec);
+            fragment->appendChild(HTMLBRElement::create(&document()), ec);
             if (ec)
                 return 0;
             // Make sure \r\n doesn't result in two line breaks.
@@ -504,7 +494,7 @@ void HTMLElement::setOuterText(const String &text, ExceptionCode& ec)
     if (text.contains('\r') || text.contains('\n'))
         newChild = textToFragment(text, ec);
     else
-        newChild = Text::create(document(), text);
+        newChild = Text::create(&document(), text);
 
     if (!this || !parentNode())
         ec = HIERARCHY_REQUEST_ERR;
@@ -594,7 +584,7 @@ void HTMLElement::insertAdjacentHTML(const String& where, const String& markup, 
 
 void HTMLElement::insertAdjacentText(const String& where, const String& text, ExceptionCode& ec)
 {
-    RefPtr<Text> textNode = document()->createTextNode(text);
+    RefPtr<Text> textNode = document().createTextNode(text);
     insertAdjacent(where, textNode.get(), ec);
 }
 
@@ -762,18 +752,18 @@ PassRefPtr<HTMLCollection> HTMLElement::children()
     return ensureCachedHTMLCollection(NodeChildren);
 }
 
-bool HTMLElement::rendererIsNeeded(const NodeRenderingContext& context)
+bool HTMLElement::rendererIsNeeded(const RenderStyle& style)
 {
     if (hasLocalName(noscriptTag)) {
-        Frame* frame = document()->frame();
-        if (frame && frame->script()->canExecuteScripts(NotAboutToExecuteScript))
+        Frame* frame = document().frame();
+        if (frame && frame->script().canExecuteScripts(NotAboutToExecuteScript))
             return false;
     } else if (hasLocalName(noembedTag)) {
-        Frame* frame = document()->frame();
-        if (frame && frame->loader()->subframeLoader()->allowPlugins(NotAboutToInstantiatePlugin))
+        Frame* frame = document().frame();
+        if (frame && frame->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
             return false;
     }
-    return StyledElement::rendererIsNeeded(context);
+    return StyledElement::rendererIsNeeded(style);
 }
 
 RenderObject* HTMLElement::createRenderer(RenderArena* arena, RenderStyle* style)
@@ -783,18 +773,9 @@ RenderObject* HTMLElement::createRenderer(RenderArena* arena, RenderStyle* style
     return RenderObject::createObject(this, style);
 }
 
-HTMLFormElement* HTMLElement::findFormAncestor() const
-{
-    for (ContainerNode* ancestor = parentNode(); ancestor; ancestor = ancestor->parentNode()) {
-        if (isHTMLFormElement(ancestor))
-            return toHTMLFormElement(ancestor);
-    }
-    return 0;
-}
-
 HTMLFormElement* HTMLElement::virtualForm() const
 {
-    return findFormAncestor();
+    return HTMLFormElement::findClosestFormAncestor(*this);
 }
 
 static inline bool elementAffectsDirectionality(const Node* node)
@@ -825,10 +806,10 @@ static void setHasDirAutoFlagRecursively(Node* firstNode, bool flag, Node* lastN
     }
 }
 
-void HTMLElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void HTMLElement::childrenChanged(const ChildChange& change)
 {
-    StyledElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
-    adjustDirectionalityIfNeededAfterChildrenChanged(beforeChange, childCountDelta);
+    StyledElement::childrenChanged(change);
+    adjustDirectionalityIfNeededAfterChildrenChanged(change.previousSiblingElement, change.type);
 }
 
 bool HTMLElement::hasDirectionAuto() const
@@ -910,13 +891,13 @@ void HTMLElement::adjustDirectionalityIfNeededAfterChildAttributeChanged(Element
     Node* strongDirectionalityTextNode;
     TextDirection textDirection = directionality(&strongDirectionalityTextNode);
     setHasDirAutoFlagRecursively(child, false);
-    if (renderer() && renderer()->style() && renderer()->style()->direction() != textDirection) {
-        Element* elementToAdjust = this;
-        for (; elementToAdjust; elementToAdjust = elementToAdjust->parentElement()) {
-            if (elementAffectsDirectionality(elementToAdjust)) {
-                elementToAdjust->setNeedsStyleRecalc();
-                return;
-            }
+    if (!renderer() || !renderer()->style() || renderer()->style()->direction() == textDirection)
+        return;
+    auto lineage = elementLineage(this);
+    for (auto elementToAdjust = lineage.begin(), end = lineage.end(); elementToAdjust != end; ++elementToAdjust) {
+        if (elementAffectsDirectionality(&*elementToAdjust)) {
+            elementToAdjust->setNeedsStyleRecalc();
+            return;
         }
     }
 }
@@ -930,11 +911,12 @@ void HTMLElement::calculateAndAdjustDirectionality()
         setNeedsStyleRecalc();
 }
 
-void HTMLElement::adjustDirectionalityIfNeededAfterChildrenChanged(Node* beforeChange, int childCountDelta)
+void HTMLElement::adjustDirectionalityIfNeededAfterChildrenChanged(Element* beforeChange, ChildChangeType changeType)
 {
-    if ((!document() || document()->renderer()) && childCountDelta < 0) {
-        Node* node = beforeChange ? NodeTraversal::nextSkippingChildren(beforeChange) : 0;
-        for (int counter = 0; node && counter < childCountDelta; counter++, node = NodeTraversal::nextSkippingChildren(node)) {
+    // FIXME: This function looks suspicious.
+    if (document().renderer() && (changeType == ElementRemoved || changeType == TextRemoved)) {
+        Node* node = beforeChange ? beforeChange->nextSibling() : 0;
+        for (; node; node = node->nextSibling()) {
             if (elementAffectsDirectionality(node))
                 continue;
 
@@ -945,15 +927,19 @@ void HTMLElement::adjustDirectionalityIfNeededAfterChildrenChanged(Node* beforeC
     if (!selfOrAncestorHasDirAutoAttribute())
         return;
 
-    Node* oldMarkedNode = beforeChange ? NodeTraversal::nextSkippingChildren(beforeChange) : 0;
+    Node* oldMarkedNode = 0;
+    if (beforeChange)
+        oldMarkedNode = changeType == ElementInserted ? ElementTraversal::nextSibling(beforeChange) : beforeChange->nextSibling();
+
     while (oldMarkedNode && elementAffectsDirectionality(oldMarkedNode))
-        oldMarkedNode = NodeTraversal::nextSkippingChildren(oldMarkedNode, this);
+        oldMarkedNode = oldMarkedNode->nextSibling();
     if (oldMarkedNode)
         setHasDirAutoFlagRecursively(oldMarkedNode, false);
 
-    for (Element* elementToAdjust = this; elementToAdjust; elementToAdjust = elementToAdjust->parentElement()) {
-        if (elementAffectsDirectionality(elementToAdjust)) {
-            toHTMLElement(elementToAdjust)->calculateAndAdjustDirectionality();
+    auto lineage = lineageOfType<HTMLElement>(this);
+    for (auto elementToAdjust = lineage.begin(), end = lineage.end(); elementToAdjust != end; ++elementToAdjust) {
+        if (elementAffectsDirectionality(&*elementToAdjust)) {
+            elementToAdjust->calculateAndAdjustDirectionality();
             return;
         }
     }
@@ -961,91 +947,8 @@ void HTMLElement::adjustDirectionalityIfNeededAfterChildrenChanged(Node* beforeC
 
 bool HTMLElement::isURLAttribute(const Attribute& attribute) const
 {
-#if ENABLE(MICRODATA)
-    if (attribute.name() == itemidAttr)
-        return true;
-#endif
     return StyledElement::isURLAttribute(attribute);
 }
-
-#if ENABLE(MICRODATA)
-void HTMLElement::setItemValue(const String& value, ExceptionCode& ec)
-{
-    if (!hasAttribute(itempropAttr) || hasAttribute(itemscopeAttr)) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-    setItemValueText(value, ec);
-}
-
-PassRefPtr<MicroDataItemValue> HTMLElement::itemValue() const
-{
-    if (!hasAttribute(itempropAttr))
-        return 0;
-
-    if (hasAttribute(itemscopeAttr))
-        return MicroDataItemValue::createFromNode(const_cast<HTMLElement* const>(this));
-
-    return MicroDataItemValue::createFromString(itemValueText());
-}
-
-String HTMLElement::itemValueText() const
-{
-    return textContent(true);
-}
-
-void HTMLElement::setItemValueText(const String& value, ExceptionCode& ec)
-{
-    setTextContent(value, ec);
-}
-
-PassRefPtr<HTMLPropertiesCollection> HTMLElement::properties()
-{
-    return static_cast<HTMLPropertiesCollection*>(ensureCachedHTMLCollection(ItemProperties).get());
-}
-
-void HTMLElement::getItemRefElements(Vector<HTMLElement*>& itemRefElements)
-{
-    if (!fastHasAttribute(itemscopeAttr))
-        return;
-
-    if (!fastHasAttribute(itemrefAttr) || !itemRef()->length()) {
-        itemRefElements.append(this);
-        return;
-    }
-
-    DOMSettableTokenList* itemRefs = itemRef();
-    RefPtr<DOMSettableTokenList> processedItemRef = DOMSettableTokenList::create();
-
-    Node* rootNode;
-    if (inDocument())
-        rootNode = document();
-    else {
-        rootNode = this;
-        while (Node* parent = rootNode->parentNode())
-            rootNode = parent;
-    }
-
-    for (Node* current = rootNode; current; current = NodeTraversal::next(current, rootNode)) {
-        if (!current->isHTMLElement())
-            continue;
-        HTMLElement* element = toHTMLElement(current);
-
-        if (element == this) {
-            itemRefElements.append(element);
-            continue;
-        }
-
-        const AtomicString& id = element->getIdAttribute();
-        if (!processedItemRef->tokens().contains(id) && itemRefs->tokens().contains(id)) {
-            processedItemRef->setValue(id);
-            if (!element->isDescendantOf(this))
-                itemRefElements.append(element);
-        }
-    }
-}
-#endif
 
 void HTMLElement::addHTMLLengthToStyle(MutableStylePropertySet* style, CSSPropertyID propertyID, const String& value)
 {

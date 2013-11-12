@@ -65,8 +65,14 @@ void printInternal(PrintStream& out, UseKind useKind)
     case ObjectUse:
         out.print("Object");
         break;
+    case FinalObjectUse:
+        out.print("FinalObject");
+        break;
     case ObjectOrOtherUse:
         out.print("ObjectOrOther");
+        break;
+    case StringIdentUse:
+        out.print("StringIdent");
         break;
     case StringUse:
         out.print("String");

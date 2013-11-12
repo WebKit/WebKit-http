@@ -25,11 +25,11 @@
 #include "config.h"
 #include "HTMLFieldSetElement.h"
 
+#include "ElementIterator.h"
 #include "HTMLCollection.h"
 #include "HTMLLegendElement.h"
 #include "HTMLNames.h"
 #include "HTMLObjectElement.h"
-#include "NodeTraversal.h"
 #include "RenderFieldset.h"
 #include <wtf/StdLibExtras.h>
 
@@ -51,10 +51,9 @@ PassRefPtr<HTMLFieldSetElement> HTMLFieldSetElement::create(const QualifiedName&
 
 void HTMLFieldSetElement::invalidateDisabledStateUnder(Element* base)
 {
-    for (Element* element = ElementTraversal::firstWithin(base); element; element = ElementTraversal::next(element, base)) {
-        if (element->isFormControlElement())
-            static_cast<HTMLFormControlElement*>(element)->ancestorDisabledStateWasChanged();
-    }
+    auto formControlDescendants = descendantsOfType<HTMLFormControlElement>(base);
+    for (auto control = formControlDescendants.begin(), end = formControlDescendants.end(); control != end; ++control)
+        control->ancestorDisabledStateWasChanged();
 }
 
 void HTMLFieldSetElement::disabledAttributeChanged()
@@ -64,13 +63,13 @@ void HTMLFieldSetElement::disabledAttributeChanged()
     invalidateDisabledStateUnder(this);
 }
 
-void HTMLFieldSetElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void HTMLFieldSetElement::childrenChanged(const ChildChange& change)
 {
-    HTMLFormControlElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
-    for (Element* element = ElementTraversal::firstWithin(this); element; element = ElementTraversal::nextSkippingChildren(element, this)) {
-        if (element->hasTagName(legendTag))
-            invalidateDisabledStateUnder(element);
-    }
+    HTMLFormControlElement::childrenChanged(change);
+
+    auto legendChildren = childrenOfType<HTMLLegendElement>(this);
+    for (auto legend = legendChildren.begin(), end = legendChildren.end(); legend != end; ++legend)
+        invalidateDisabledStateUnder(&*legend);
 }
 
 bool HTMLFieldSetElement::supportsFocus() const
@@ -89,13 +88,13 @@ RenderObject* HTMLFieldSetElement::createRenderer(RenderArena* arena, RenderStyl
     return new (arena) RenderFieldset(this);
 }
 
-HTMLLegendElement* HTMLFieldSetElement::legend() const
+const HTMLLegendElement* HTMLFieldSetElement::legend() const
 {
-    for (Element* child = ElementTraversal::firstWithin(this); child; child = ElementTraversal::nextSkippingChildren(child, this)) {
-        if (child->hasTagName(legendTag))
-            return static_cast<HTMLLegendElement*>(child);
-    }
-    return 0;
+    auto legendDescendants = descendantsOfType<HTMLLegendElement>(this);
+    auto firstLegend = legendDescendants.begin();
+    if (firstLegend != legendDescendants.end())
+        return &*firstLegend;
+    return nullptr;
 }
 
 PassRefPtr<HTMLCollection> HTMLFieldSetElement::elements()
@@ -105,7 +104,7 @@ PassRefPtr<HTMLCollection> HTMLFieldSetElement::elements()
 
 void HTMLFieldSetElement::refreshElementsIfNeeded() const
 {
-    uint64_t docVersion = document()->domTreeVersion();
+    uint64_t docVersion = document().domTreeVersion();
     if (m_documentVersion == docVersion)
         return;
 

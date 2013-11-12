@@ -31,6 +31,7 @@
 
 namespace JSC {
 
+class ArrayBuffer;
 class Butterfly;
 class LLIntOffsetsExtractor;
 class Structure;
@@ -44,6 +45,7 @@ public:
     
     static ptrdiff_t offsetOfIndexingHeader() { return -static_cast<ptrdiff_t>(sizeof(IndexingHeader)); }
     
+    static ptrdiff_t offsetOfArrayBuffer() { return OBJECT_OFFSETOF(IndexingHeader, u.typedArray.buffer); }
     static ptrdiff_t offsetOfPublicLength() { return OBJECT_OFFSETOF(IndexingHeader, u.lengths.publicLength); }
     static ptrdiff_t offsetOfVectorLength() { return OBJECT_OFFSETOF(IndexingHeader, u.lengths.vectorLength); }
     
@@ -63,6 +65,9 @@ public:
     
     uint32_t publicLength() { return u.lengths.publicLength; }
     void setPublicLength(uint32_t auxWord) { u.lengths.publicLength = auxWord; }
+    
+    ArrayBuffer* arrayBuffer() { return u.typedArray.buffer; }
+    void setArrayBuffer(ArrayBuffer* buffer) { u.typedArray.buffer = buffer; }
     
     static IndexingHeader* from(Butterfly* butterfly)
     {
@@ -117,6 +122,10 @@ private:
             uint32_t publicLength; // The meaning of this field depends on the array type, but for all JSArrays we rely on this being the publicly visible length (array.length).
             uint32_t vectorLength; // The length of the indexed property storage. The actual size of the storage depends on this, and the type.
         } lengths;
+        
+        struct {
+            ArrayBuffer* buffer;
+        } typedArray;
     } u;
 };
 

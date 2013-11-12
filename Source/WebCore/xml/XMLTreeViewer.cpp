@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Samsung Electronics. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -35,11 +36,9 @@
 #include "Element.h"
 #include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
-#include "Page.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
-#include "Settings.h"
 #include "Text.h"
 #include "XMLViewerCSS.h"
 #include "XMLViewerJS.h"
@@ -53,30 +52,13 @@ XMLTreeViewer::XMLTreeViewer(Document* document)
 {
 }
 
-bool XMLTreeViewer::hasNoStyleInformation() const
-{
-    if (m_document->sawElementsInKnownNamespaces() || m_document->transformSourceDocument())
-        return false;
-
-    if (!m_document->frame() || !m_document->frame()->page())
-        return false;
-
-    if (!m_document->frame()->page()->settings()->developerExtrasEnabled())
-        return false;
-
-    if (m_document->frame()->tree()->parent())
-        return false; // This document is not in a top frame
-
-    return true;
-}
-
 void XMLTreeViewer::transformDocumentToTreeView()
 {
     m_document->setIsViewSource(true);
     String scriptString(reinterpret_cast<const char*>(XMLViewer_js), sizeof(XMLViewer_js));
-    m_document->frame()->script()->evaluate(ScriptSourceCode(scriptString));
+    m_document->frame()->script().evaluate(ScriptSourceCode(scriptString));
     String noStyleMessage("This XML file does not appear to have any style information associated with it. The document tree is shown below.");
-    m_document->frame()->script()->evaluate(ScriptSourceCode("prepareWebKitXMLViewer('" + noStyleMessage + "');"));
+    m_document->frame()->script().evaluate(ScriptSourceCode("prepareWebKitXMLViewer('" + noStyleMessage + "');"));
 
     String cssString(reinterpret_cast<const char*>(XMLViewer_css), sizeof(XMLViewer_css));
     RefPtr<Text> text = m_document->createTextNode(cssString);

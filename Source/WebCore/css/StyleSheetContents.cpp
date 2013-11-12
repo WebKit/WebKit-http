@@ -34,6 +34,7 @@
 #include "StyleRule.h"
 #include "StyleRuleImport.h"
 #include <wtf/Deque.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
@@ -341,12 +342,10 @@ void StyleSheetContents::checkLoaded()
     if (isLoading())
         return;
 
-    RefPtr<StyleSheetContents> protect(this);
-
     // Avoid |this| being deleted by scripts that run via
     // ScriptableDocumentParser::executeScriptsWaitingForStylesheets().
     // See <rdar://problem/6622300>.
-    RefPtr<StyleSheetContents> protector(this);
+    Ref<StyleSheetContents> protect(*this);
     StyleSheetContents* parentSheet = parentStyleSheet();
     if (parentSheet) {
         parentSheet->checkLoaded();
@@ -395,7 +394,7 @@ Node* StyleSheetContents::singleOwnerNode() const
 Document* StyleSheetContents::singleOwnerDocument() const
 {
     Node* ownerNode = singleOwnerNode();
-    return ownerNode ? ownerNode->document() : 0;
+    return ownerNode ? &ownerNode->document() : 0;
 }
 
 KURL StyleSheetContents::completeURL(const String& url) const
@@ -421,9 +420,9 @@ void StyleSheetContents::addSubresourceStyleURLs(ListHashSet<KURL>& urls)
         for (unsigned i = 0; i < styleSheet->m_childRules.size(); ++i) {
             StyleRuleBase* rule = styleSheet->m_childRules[i].get();
             if (rule->isStyleRule())
-                static_cast<StyleRule*>(rule)->properties()->addSubresourceStyleURLs(urls, this);
+                static_cast<StyleRule*>(rule)->properties().addSubresourceStyleURLs(urls, this);
             else if (rule->isFontFaceRule())
-                static_cast<StyleRuleFontFace*>(rule)->properties()->addSubresourceStyleURLs(urls, this);
+                static_cast<StyleRuleFontFace*>(rule)->properties().addSubresourceStyleURLs(urls, this);
         }
     }
 }
@@ -434,11 +433,11 @@ static bool childRulesHaveFailedOrCanceledSubresources(const Vector<RefPtr<Style
         const StyleRuleBase* rule = rules[i].get();
         switch (rule->type()) {
         case StyleRuleBase::Style:
-            if (static_cast<const StyleRule*>(rule)->properties()->hasFailedOrCanceledSubresources())
+            if (static_cast<const StyleRule*>(rule)->properties().hasFailedOrCanceledSubresources())
                 return true;
             break;
         case StyleRuleBase::FontFace:
-            if (static_cast<const StyleRuleFontFace*>(rule)->properties()->hasFailedOrCanceledSubresources())
+            if (static_cast<const StyleRuleFontFace*>(rule)->properties().hasFailedOrCanceledSubresources())
                 return true;
             break;
         case StyleRuleBase::Media:

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007 Apple, Inc.  All rights reserved.
+ * Copyright (C) 2005, 2006, 2007, 2013 Apple, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,28 +39,32 @@
 
 namespace WebCore {
 
-EditCommand::EditCommand(Document* document)
-    : m_document(document)
+EditCommand::EditCommand(Document& document)
+    : m_document(&document)
     , m_parent(0)
 {
-    ASSERT(m_document);
-    ASSERT(m_document->frame());
-    setStartingSelection(m_document->frame()->editor().avoidIntersectionWithDeleteButtonController(m_document->frame()->selection()->selection()));
+    ASSERT(document.frame());
+    setStartingSelection(m_document->frame()->editor().avoidIntersectionWithDeleteButtonController(m_document->frame()->selection().selection()));
     setEndingSelection(m_startingSelection);
 }
 
-EditCommand::EditCommand(Document* document, const VisibleSelection& startingSelection, const VisibleSelection& endingSelection)
-    : m_document(document)
+EditCommand::EditCommand(Document& document, const VisibleSelection& startingSelection, const VisibleSelection& endingSelection)
+    : m_document(&document)
     , m_parent(0)
 {
-    ASSERT(m_document);
-    ASSERT(m_document->frame());
+    ASSERT(document.frame());
     setStartingSelection(startingSelection);
     setEndingSelection(endingSelection);
 }
 
 EditCommand::~EditCommand()
 {
+}
+
+Frame& EditCommand::frame() const
+{
+    ASSERT(document().frame());
+    return *document().frame();
 }
 
 EditAction EditCommand::editingAction() const

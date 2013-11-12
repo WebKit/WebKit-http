@@ -35,7 +35,7 @@
 
 namespace JSC {
 
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(FunctionConstructor);
+STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(FunctionConstructor);
 
 const ClassInfo FunctionConstructor::s_info = { "Function", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(FunctionConstructor) };
 
@@ -82,7 +82,7 @@ CallType FunctionConstructor::getCallData(JSCell*, CallData& callData)
 JSObject* constructFunction(ExecState* exec, JSGlobalObject* globalObject, const ArgList& args, const Identifier& functionName, const String& sourceURL, const TextPosition& position)
 {
     if (!globalObject->evalEnabled())
-        return throwError(exec, createEvalError(exec, globalObject->evalDisabledErrorMessage()));
+        return exec->vm().throwException(exec, createEvalError(exec, globalObject->evalDisabledErrorMessage()));
     return constructFunctionSkippingEvalEnabledCheck(exec, globalObject, args, functionName, sourceURL, position);
 }
 
@@ -115,7 +115,7 @@ JSObject* constructFunctionSkippingEvalEnabledCheck(ExecState* exec, JSGlobalObj
     FunctionExecutable* function = FunctionExecutable::fromGlobalCode(functionName, exec, exec->dynamicGlobalObject()->debugger(), source, &exception);
     if (!function) {
         ASSERT(exception);
-        return throwError(exec, exception);
+        return exec->vm().throwException(exec, exception);
     }
 
     return JSFunction::create(exec, function, globalObject);

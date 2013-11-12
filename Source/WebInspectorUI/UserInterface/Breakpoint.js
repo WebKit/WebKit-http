@@ -37,6 +37,10 @@ WebInspector.Breakpoint = function(sourceCodeLocationOrInfo, disabled, condition
         var lineNumber = sourceCodeLocationOrInfo.lineNumber || 0;
         var columnNumber = sourceCodeLocationOrInfo.columnNumber || 0;
         var location = new WebInspector.SourceCodeLocation(null, lineNumber, columnNumber);
+        var autoContinue = sourceCodeLocationOrInfo.autoContinue || false;
+        var actions = sourceCodeLocationOrInfo.actions || [];
+        for (var i = 0; i < actions.length; ++i)
+            actions[i] = new WebInspector.BreakpointAction(this, actions[i]);
         disabled = sourceCodeLocationOrInfo.disabled;
         condition = sourceCodeLocationOrInfo.condition;
     } else
@@ -47,6 +51,8 @@ WebInspector.Breakpoint = function(sourceCodeLocationOrInfo, disabled, condition
     this._scriptIdentifier = scriptIdentifier || null;
     this._disabled = disabled || false;
     this._condition = condition || "";
+    this._autoContinue = autoContinue || false;
+    this._actions = actions || [];
     this._resolved = false;
 
     this._sourceCodeLocation = location;
@@ -57,12 +63,18 @@ WebInspector.Breakpoint = function(sourceCodeLocationOrInfo, disabled, condition
 WebInspector.Object.addConstructorFunctions(WebInspector.Breakpoint);
 
 WebInspector.Breakpoint.PopoverClassName = "edit-breakpoint-popover-content";
+WebInspector.Breakpoint.WidePopoverClassName = "wide";
 WebInspector.Breakpoint.PopoverConditionInputId = "edit-breakpoint-popover-condition";
+WebInspector.Breakpoint.PopoverOptionsAutoContinueInputId = "edit-breakpoint-popoover-auto-continue";
+
+WebInspector.Breakpoint.DefaultBreakpointActionType = WebInspector.BreakpointAction.Type.Log;
 
 WebInspector.Breakpoint.Event = {
     DisabledStateDidChange: "breakpoint-disabled-state-did-change",
     ResolvedStateDidChange: "breakpoint-resolved-state-did-change",
     ConditionDidChange: "breakpoint-condition-did-change",
+    ActionsDidChange: "breakpoint-actions-did-change",
+    AutoContinueDidChange: "breakpoint-auto-continue-did-change",
     LocationDidChange: "breakpoint-location-did-change",
     DisplayLocationDidChange: "breakpoint-display-location-did-change",
 };
@@ -142,6 +154,35 @@ WebInspector.Breakpoint.prototype = {
         this.dispatchEventToListeners(WebInspector.Breakpoint.Event.ConditionDidChange);
     },
 
+    get autoContinue()
+    {
+        return this._autoContinue;
+    },
+
+    set autoContinue(cont)
+    {
+        if (this._autoContinue === cont)
+            return;
+
+        this._autoContinue = cont;
+
+        this.dispatchEventToListeners(WebInspector.Breakpoint.Event.AutoContinueDidChange);
+    },
+
+    get actions()
+    {
+        return this._actions;
+    },
+
+    get options()
+    {
+        return {
+            condition: this._condition,
+            actions: this._serializableActions(),
+            autoContinue: this._autoContinue
+        };
+    },
+
     get info()
     {
         // The id, scriptIdentifier and resolved state are tied to the current session, so don't include them for serialization.
@@ -150,15 +191,21 @@ WebInspector.Breakpoint.prototype = {
             lineNumber: this._sourceCodeLocation.lineNumber,
             columnNumber: this._sourceCodeLocation.columnNumber,
             disabled: this._disabled,
-            condition: this._condition
+            condition: this._condition,
+            actions: this._serializableActions(),
+            autoContinue: this._autoContinue
         };
     },
 
     appendContextMenuItems: function(contextMenu, breakpointDisplayElement)
     {
+        console.assert(document.body.contains(breakpointDisplayElement), "breakpoint popover display element must be in the DOM");
+
+        var boundingClientRect = breakpointDisplayElement.getBoundingClientRect();
+
         function editBreakpoint()
         {
-            this._showEditBreakpointPopover(breakpointDisplayElement);
+            this._showEditBreakpointPopover(boundingClientRect);
         }
 
         function removeBreakpoint()
@@ -195,9 +242,77 @@ WebInspector.Breakpoint.prototype = {
         }
     },
 
+    createAction: function(type, precedingAction)
+    {
+        var newAction = new WebInspector.BreakpointAction(this, type, null);
+
+        if (!precedingAction)
+            this._actions.push(newAction);
+        else {
+            var index = this._actions.indexOf(precedingAction);
+            console.assert(index !== -1);
+            if (index === -1)
+                this._actions.push(newAction);
+            else
+                this._actions.splice(index + 1, 0, newAction);
+        }
+
+        this.dispatchEventToListeners(WebInspector.Breakpoint.Event.ActionsDidChange);
+
+        return newAction;
+    },
+
+    recreateAction: function(type, actionToReplace)
+    {
+        var newAction = new WebInspector.BreakpointAction(this, type, null);
+
+        var index = this._actions.indexOf(actionToReplace);
+        console.assert(index !== -1);
+        if (index === -1)
+            return null;
+
+        this._actions[index] = newAction;
+
+        this.dispatchEventToListeners(WebInspector.Breakpoint.Event.ActionsDidChange);
+
+        return newAction;
+    },
+
+    removeAction: function(action)
+    {
+        var index = this._actions.indexOf(action);
+        console.assert(index !== -1);
+        if (index === -1)
+            return;
+
+        this._actions.splice(index, 1);
+
+        this.dispatchEventToListeners(WebInspector.Breakpoint.Event.ActionsDidChange);
+    },
+
+    // Protected (Called by BreakpointAction)
+
+    breakpointActionDidChange: function(action)
+    {
+        var index = this._actions.indexOf(action);
+        console.assert(index !== -1);
+        if (index === -1)
+            return;
+
+        this.dispatchEventToListeners(WebInspector.Breakpoint.Event.ActionsDidChange);
+    },
+
     // Private
 
-    _popoverToggleCheckboxChanged: function(event)
+    _serializableActions: function()
+    {
+        var actions = [];
+        for (var i = 0; i < this._actions.length; ++i)
+            actions.push(this._actions[i].info);
+        return actions;
+    },
+
+    _popoverToggleEnabledCheckboxChanged: function(event)
     {
         this.disabled = !event.target.checked;
     },
@@ -205,6 +320,11 @@ WebInspector.Breakpoint.prototype = {
     _popoverConditionInputChanged: function(event)
     {
         this.condition = event.target.value;
+    },
+
+    _popoverToggleAutoContinueCheckboxChanged: function(event)
+    {
+        this.autoContinue = event.target.checked;
     },
 
     _popoverConditionInputKeyDown: function(event)
@@ -218,13 +338,13 @@ WebInspector.Breakpoint.prototype = {
 
     _editBreakpointPopoverContentElement: function()
     {
-        var content = document.createElement("div");
+        var content = this._popoverContentElement = document.createElement("div");
         content.className = WebInspector.Breakpoint.PopoverClassName;
 
         var checkboxElement = document.createElement("input");
         checkboxElement.type = "checkbox";
         checkboxElement.checked = !this._disabled;
-        checkboxElement.addEventListener("change", this._popoverToggleCheckboxChanged.bind(this));
+        checkboxElement.addEventListener("change", this._popoverToggleEnabledCheckboxChanged.bind(this));
 
         var checkboxLabel = document.createElement("label");
         checkboxLabel.className = "toggle";
@@ -247,21 +367,127 @@ WebInspector.Breakpoint.prototype = {
         conditionLabel.setAttribute("for", conditionInput.id);
         conditionLabel.textContent = WebInspector.UIString("Condition");
 
+        if (DebuggerAgent.setBreakpoint.supports("options")) {
+            var actionRow = table.appendChild(document.createElement("tr"));
+            var actionHeader = actionRow.appendChild(document.createElement("th"));
+            var actionData = this._actionsContainer = actionRow.appendChild(document.createElement("td"));
+            var actionLabel = actionHeader.appendChild(document.createElement("label"));
+            actionLabel.textContent = WebInspector.UIString("Action");
+
+            if (!this._actions.length)
+                this._popoverActionsCreateAddActionButton();
+            else {
+                this._popoverContentElement.classList.add(WebInspector.Breakpoint.WidePopoverClassName);
+                for (var i = 0; i < this._actions.length; ++i) {
+                    var breakpointActionView = new WebInspector.BreakpointActionView(this._actions[i], this, true);
+                    this._popoverActionsInsertBreakpointActionView(breakpointActionView, i);
+                }
+            }
+
+            var optionsRow = table.appendChild(document.createElement("tr"));
+            var optionsHeader = optionsRow.appendChild(document.createElement("th"));
+            var optionsData = optionsRow.appendChild(document.createElement("td"));
+            var optionsLabel = optionsHeader.appendChild(document.createElement("label"));
+            var optionsCheckbox = optionsData.appendChild(document.createElement("input"));
+            var optionsCheckboxLabel = optionsData.appendChild(document.createElement("label"));
+            optionsCheckbox.id = WebInspector.Breakpoint.PopoverOptionsAutoContinueInputId;
+            optionsCheckbox.type = "checkbox";
+            optionsCheckbox.checked = this._autoContinue;
+            optionsCheckbox.addEventListener("change", this._popoverToggleAutoContinueCheckboxChanged.bind(this));
+            optionsLabel.textContent = WebInspector.UIString("Options");
+            optionsCheckboxLabel.setAttribute("for", optionsCheckbox.id);
+            optionsCheckboxLabel.textContent = WebInspector.UIString("Automatically continue after evaluating");
+        }
+
         content.appendChild(checkboxLabel);
         content.appendChild(table);
 
         return content;
     },
 
-    _showEditBreakpointPopover: function(element)
+    _popoverActionsCreateAddActionButton: function()
+    {
+        this._popoverContentElement.classList.remove(WebInspector.Breakpoint.WidePopoverClassName);
+        this._actionsContainer.removeChildren();
+
+        var addActionButton = this._actionsContainer.appendChild(document.createElement("button"));
+        addActionButton.textContent = WebInspector.UIString("Add Action");
+        addActionButton.addEventListener("click", this._popoverActionsAddActionButtonClicked.bind(this));
+    },
+
+    _popoverActionsAddActionButtonClicked: function(event)
+    {
+        this._popoverContentElement.classList.add(WebInspector.Breakpoint.WidePopoverClassName);
+        this._actionsContainer.removeChildren();
+
+        var newAction = this.createAction(WebInspector.Breakpoint.DefaultBreakpointActionType);
+        var newBreakpointActionView = new WebInspector.BreakpointActionView(newAction, this);
+        this._popoverActionsInsertBreakpointActionView(newBreakpointActionView, -1);
+
+        this._popover.update();
+    },
+
+    _popoverActionsInsertBreakpointActionView: function(breakpointActionView, index)
+    {
+        if (index === -1)
+            this._actionsContainer.appendChild(breakpointActionView.element);
+        else {
+            var nextElement = this._actionsContainer.children[index + 1] || null;
+            this._actionsContainer.insertBefore(breakpointActionView.element, nextElement);
+        }
+    },
+
+    breakpointActionViewAppendActionView: function(breakpointActionView, newAction)
+    {
+        var newBreakpointActionView = new WebInspector.BreakpointActionView(newAction, this);
+
+        var index = 0;
+        var children = this._actionsContainer.children;
+        for (var i = 0; children.length; ++i) {
+            if (children[i] === breakpointActionView.element) {
+                index = i;
+                break;
+            }
+        }
+
+        this._popoverActionsInsertBreakpointActionView(newBreakpointActionView, index);
+
+        this._popover.update();
+    },
+
+    breakpointActionViewRemoveActionView: function(breakpointActionView)
+    {
+        breakpointActionView.element.remove();
+
+        if (!this._actionsContainer.children.length)
+            this._popoverActionsCreateAddActionButton();
+
+        this._popover.update();
+    },
+
+    breakpointActionViewResized: function(breakpointActionView)
+    {
+        this._popover.update();
+    },
+
+    willDismissPopover: function(popover)
+    {
+        console.assert(this._popover === popover);
+        delete this._popoverContentElement;
+        delete this._actionsContainer;
+        delete this._popover;
+    },
+
+    _showEditBreakpointPopover: function(boundingClientRect)
     {
         const padding = 2;
-        var bounds = WebInspector.Rect.rectFromClientRect(element.getBoundingClientRect());
+        var bounds = WebInspector.Rect.rectFromClientRect(boundingClientRect);
+
         bounds.origin.x -= 1; // Move the anchor left one pixel so it looks more centered.
         bounds.origin.x -= padding;
         bounds.origin.y -= padding;
-        bounds.size.width += padding * 2; 
-        bounds.size.height += padding * 2; 
+        bounds.size.width += padding * 2;
+        bounds.size.height += padding * 2;
 
         this._popover = this._popover || new WebInspector.Popover(this);
         this._popover.content = this._editBreakpointPopoverContentElement();

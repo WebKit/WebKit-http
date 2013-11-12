@@ -84,7 +84,7 @@ bool CaptionUserPreferences::userPrefersCaptions() const
     if (!page)
         return false;
 
-    return page->settings()->shouldDisplayCaptions();
+    return page->settings().shouldDisplayCaptions();
 }
 
 void CaptionUserPreferences::setUserPrefersCaptions(bool preference)
@@ -93,7 +93,7 @@ void CaptionUserPreferences::setUserPrefersCaptions(bool preference)
     if (!page)
         return;
 
-    page->settings()->setShouldDisplayCaptions(preference);
+    page->settings().setShouldDisplayCaptions(preference);
     notify();
 }
 
@@ -103,7 +103,7 @@ bool CaptionUserPreferences::userPrefersSubtitles() const
     if (!page)
         return false;
 
-    return page->settings()->shouldDisplaySubtitles();
+    return page->settings().shouldDisplaySubtitles();
 }
 
 void CaptionUserPreferences::setUserPrefersSubtitles(bool preference)
@@ -112,7 +112,7 @@ void CaptionUserPreferences::setUserPrefersSubtitles(bool preference)
     if (!page)
         return;
 
-    page->settings()->setShouldDisplaySubtitles(preference);
+    page->settings().setShouldDisplaySubtitles(preference);
     notify();
 }
 
@@ -122,7 +122,7 @@ bool CaptionUserPreferences::userPrefersTextDescriptions() const
     if (!page)
         return false;
     
-    return page->settings()->shouldDisplayTextDescriptions();
+    return page->settings().shouldDisplayTextDescriptions();
 }
 
 void CaptionUserPreferences::setUserPrefersTextDescriptions(bool preference)
@@ -131,7 +131,7 @@ void CaptionUserPreferences::setUserPrefersTextDescriptions(bool preference)
     if (!page)
         return;
     
-    page->settings()->setShouldDisplayTextDescriptions(preference);
+    page->settings().setShouldDisplayTextDescriptions(preference);
     notify();
 }
 
@@ -157,6 +157,11 @@ void CaptionUserPreferences::setPreferredLanguage(const String& language)
 
 static String trackDisplayName(TextTrack* track)
 {
+    if (track == TextTrack::captionMenuOffItem())
+        return textTrackOffMenuItemText();
+    if (track == TextTrack::captionMenuAutomaticItem())
+        return textTrackAutomaticMenuItemText();
+
     if (track->label().isEmpty() && track->language().isEmpty())
         return textTrackNoLabelText();
     if (!track->label().isEmpty())
@@ -184,6 +189,8 @@ Vector<RefPtr<TextTrack> > CaptionUserPreferences::sortedTrackListForMenu(TextTr
         tracksForMenu.append(trackList->item(i));
 
     nonCopyingSort(tracksForMenu.begin(), tracksForMenu.end(), textTrackCompare);
+    tracksForMenu.insert(0, TextTrack::captionMenuOffItem());
+    tracksForMenu.insert(1, TextTrack::captionMenuAutomaticItem());
 
     return tracksForMenu;
 }

@@ -228,6 +228,15 @@ public:
         addCallArgument(arg3);
     }
 
+    ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImmPtr arg1, GPRReg arg2, GPRReg arg3)
+    {
+        resetCallArguments();
+        addCallArgument(GPRInfo::callFrameRegister);
+        addCallArgument(arg1);
+        addCallArgument(arg2);
+        addCallArgument(arg3);
+    }
+
     ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImmPtr arg1, TrustedImmPtr arg2, TrustedImmPtr arg3)
     {
         resetCallArguments();
@@ -609,6 +618,37 @@ public:
         move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
         poke(arg3, 4);
     }
+#elif CPU(SH4)
+    ALWAYS_INLINE void setupArguments(FPRReg arg1)
+    {
+        moveDouble(arg1, FPRInfo::argumentFPR0);
+    }
+
+    ALWAYS_INLINE void setupArguments(FPRReg arg1, FPRReg arg2)
+    {
+        if (arg2 != FPRInfo::argumentFPR0) {
+            moveDouble(arg1, FPRInfo::argumentFPR0);
+            moveDouble(arg2, FPRInfo::argumentFPR1);
+        } else if (arg1 != FPRInfo::argumentFPR1) {
+            moveDouble(arg2, FPRInfo::argumentFPR1);
+            moveDouble(arg1, FPRInfo::argumentFPR0);
+        } else
+            swapDouble(FPRInfo::argumentFPR0, FPRInfo::argumentFPR1);
+    }
+
+    ALWAYS_INLINE void setupArgumentsWithExecState(FPRReg arg1, GPRReg arg2)
+    {
+        moveDouble(arg1, FPRInfo::argumentFPR0);
+        move(arg2, GPRInfo::argumentGPR1);
+        move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
+    }
+
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, FPRReg arg3)
+    {
+        moveDouble(arg3, FPRInfo::argumentFPR0);
+        setupStubArguments(arg1, arg2);
+        move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
+    }
 #else
 #error "DFG JIT not supported on this platform."
 #endif
@@ -816,6 +856,13 @@ public:
         move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
     }
 
+    ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImmPtr arg1, GPRReg arg2, GPRReg arg3)
+    {
+        setupTwoStubArgs<GPRInfo::argumentGPR2, GPRInfo::argumentGPR3>(arg2, arg3);
+        move(arg1, GPRInfo::argumentGPR1);
+        move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
+    }
+
     ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImmPtr arg1, TrustedImmPtr arg2, TrustedImmPtr arg3)
     {
         move(arg1, GPRInfo::argumentGPR1);
@@ -870,6 +917,13 @@ public:
 
     ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, TrustedImm32 arg3, TrustedImm32 arg4)
     {
+        poke(arg4, POKE_ARGUMENT_OFFSET);
+        setupArgumentsWithExecState(arg1, arg2, arg3);
+    }
+
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, TrustedImm32 arg3, TrustedImm32 arg4, TrustedImm32 arg5)
+    {
+        poke(arg5, POKE_ARGUMENT_OFFSET + 1);
         poke(arg4, POKE_ARGUMENT_OFFSET);
         setupArgumentsWithExecState(arg1, arg2, arg3);
     }
@@ -976,7 +1030,11 @@ public:
         GPRReg srcA = GPRInfo::returnValueGPR;
         GPRReg srcB = GPRInfo::returnValueGPR2;
 
-        if (srcB != destA) {
+        if (destA == InvalidGPRReg)
+            move(srcB, destB);
+        else if (destB == InvalidGPRReg)
+            move(srcA, destA);
+        else if (srcB != destA) {
             // Handle the easy cases - two simple moves.
             move(srcA, destA);
             move(srcB, destB);

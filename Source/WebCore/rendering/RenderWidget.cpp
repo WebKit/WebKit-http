@@ -33,6 +33,7 @@
 #include "RenderView.h"
 #include "RenderWidgetProtector.h"
 #include <wtf/StackStats.h>
+#include <wtf/Ref.h>
 
 #if USE(ACCELERATED_COMPOSITING)
 #include "RenderLayerBacking.h"
@@ -89,21 +90,20 @@ static void moveWidgetToParentSoon(Widget* child, FrameView* parent)
 RenderWidget::RenderWidget(Element* element)
     : RenderReplaced(element)
     , m_widget(0)
-    , m_frameView(element->document()->view())
+    , m_frameView(element->document().view())
     // Reference counting is used to prevent the widget from being
     // destroyed while inside the Widget code, which might not be
     // able to handle that.
     , m_refCount(1)
 {
-    view()->addWidget(this);
+    view().addWidget(this);
 }
 
 void RenderWidget::willBeDestroyed()
 {
-    if (RenderView* v = view())
-        v->removeWidget(this);
+    view().removeWidget(this);
     
-    if (AXObjectCache* cache = document()->existingAXObjectCache()) {
+    if (AXObjectCache* cache = document().existingAXObjectCache()) {
         cache->childrenChanged(this->parent());
         cache->remove(this);
     }
@@ -117,7 +117,7 @@ void RenderWidget::destroy()
 {
     willBeDestroyed();
 
-    // Grab the arena from node()->document()->renderArena() before clearing the node pointer.
+    // Grab the arena from node()->document().renderArena() before clearing the node pointer.
     // Clear the node before deref-ing, as this may be deleted when deref is called.
     RenderArena* arena = renderArena();
     clearNode();
@@ -154,7 +154,7 @@ bool RenderWidget::setWidgetGeometry(const LayoutRect& frame)
     m_clipRect = clipRect;
 
     RenderWidgetProtector protector(this);
-    RefPtr<Node> protectedNode(node());
+    Ref<Node> protectNode(*node());
     m_widget->setFrameRect(newFrame);
 
     if (clipChanged && !boundsChanged)
@@ -318,7 +318,7 @@ void RenderWidget::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
         paintInfo.context->restore();
 
     // Paint a partially transparent wash over selected widgets.
-    if (isSelected() && !document()->printing()) {
+    if (isSelected() && !document().printing()) {
         // FIXME: selectionRect() is in absolute, not painting coordinates.
         paintInfo.context->fillRect(pixelSnappedIntRect(selectionRect()), selectionBackgroundColor(), style()->colorSpace());
     }
@@ -352,7 +352,7 @@ void RenderWidget::updateWidgetPosition()
     if (m_widget && m_widget->isFrameView()) {
         FrameView* frameView = toFrameView(m_widget.get());
         // Check the frame's page to make sure that the frame isn't in the process of being destroyed.
-        if ((boundsChanged || frameView->needsLayout()) && frameView->frame()->page())
+        if ((boundsChanged || frameView->needsLayout()) && frameView->frame().page())
             frameView->layout();
     }
 }

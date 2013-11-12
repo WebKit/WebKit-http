@@ -29,6 +29,7 @@
 
 #include "Color.h"
 #include "ColorSpace.h"
+#include "FloatSize.h"
 #include "GraphicsTypes.h"
 #include "ImageOrientation.h"
 #include "IntRect.h"
@@ -143,6 +144,7 @@ public:
     enum TileRule { StretchTile, RoundTile, SpaceTile, RepeatTile };
 
     virtual PassNativeImagePtr nativeImageForCurrentFrame() { return 0; }
+    virtual ImageOrientation orientationForCurrentFrame() { return ImageOrientation(); }
     
 #if PLATFORM(MAC)
     // Accessors for native image formats.
@@ -186,6 +188,11 @@ public:
     virtual bool notSolidColor() { return true; }
 #endif
 
+    FloatSize spaceSize() const { return m_space; }
+    void setSpaceSize(const FloatSize& space)
+    {
+        m_space = space;
+    }
 protected:
     Image(ImageObserver* = 0);
 
@@ -196,7 +203,7 @@ protected:
     virtual void drawFrameMatchingSourceSize(GraphicsContext*, const FloatRect& dstRect, const IntSize& srcSize, ColorSpace styleColorSpace, CompositeOperator) { }
 #endif
     virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode) = 0;
-    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, RespectImageOrientationEnum);
+    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, ImageOrientationDescription);
     void drawTiled(GraphicsContext*, const FloatRect& dstRect, const FloatPoint& srcPoint, const FloatSize& tileSize, ColorSpace styleColorSpace,
         CompositeOperator , BlendMode);
     void drawTiled(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, const FloatSize& tileScaleFactor, TileRule hRule, TileRule vRule, ColorSpace styleColorSpace, CompositeOperator);
@@ -208,6 +215,7 @@ protected:
 private:
     RefPtr<SharedBuffer> m_encodedImageData;
     ImageObserver* m_imageObserver;
+    FloatSize m_space;
 };
 
 }

@@ -27,7 +27,6 @@
 #define UnlinkedCodeBlock_h
 
 #include "BytecodeConventions.h"
-#include "CodeCache.h"
 #include "CodeSpecializationKind.h"
 #include "CodeType.h"
 #include "ExpressionRangeInfo.h"
@@ -40,6 +39,7 @@
 #include "SpecialPointer.h"
 #include "SymbolTable.h"
 
+#include <wtf/Compression.h>
 #include <wtf/RefCountedArray.h>
 #include <wtf/Vector.h>
 
@@ -109,7 +109,7 @@ public:
 
     String paramString() const;
 
-    UnlinkedFunctionCodeBlock* codeBlockFor(VM&, JSScope*, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, ParserError&);
+    UnlinkedFunctionCodeBlock* codeBlockFor(VM&, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, ParserError&);
 
     static UnlinkedFunctionExecutable* fromGlobalCode(const Identifier&, ExecState*, Debugger*, const SourceCode&, JSObject** exception);
 
@@ -180,12 +180,12 @@ protected:
 public:
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     {
-        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedFunctionExecutableType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedFunctionExecutableType, StructureFlags), info());
     }
 
     static const unsigned StructureFlags = OverridesVisitChildren | JSCell::StructureFlags;
 
-    static const ClassInfo s_info;
+    DECLARE_INFO;
 };
 
 struct UnlinkedStringJumpTable {
@@ -332,8 +332,7 @@ public:
             m_rareData->m_exceptionHandlers.shrinkToFit();
             m_rareData->m_regexps.shrinkToFit();
             m_rareData->m_constantBuffers.shrinkToFit();
-            m_rareData->m_immediateSwitchJumpTables.shrinkToFit();
-            m_rareData->m_characterSwitchJumpTables.shrinkToFit();
+            m_rareData->m_switchJumpTables.shrinkToFit();
             m_rareData->m_stringSwitchJumpTables.shrinkToFit();
             m_rareData->m_expressionInfoFatPositions.shrinkToFit();
         }
@@ -349,13 +348,9 @@ public:
 
     // Jump Tables
 
-    size_t numberOfImmediateSwitchJumpTables() const { return m_rareData ? m_rareData->m_immediateSwitchJumpTables.size() : 0; }
-    UnlinkedSimpleJumpTable& addImmediateSwitchJumpTable() { createRareDataIfNecessary(); m_rareData->m_immediateSwitchJumpTables.append(UnlinkedSimpleJumpTable()); return m_rareData->m_immediateSwitchJumpTables.last(); }
-    UnlinkedSimpleJumpTable& immediateSwitchJumpTable(int tableIndex) { ASSERT(m_rareData); return m_rareData->m_immediateSwitchJumpTables[tableIndex]; }
-
-    size_t numberOfCharacterSwitchJumpTables() const { return m_rareData ? m_rareData->m_characterSwitchJumpTables.size() : 0; }
-    UnlinkedSimpleJumpTable& addCharacterSwitchJumpTable() { createRareDataIfNecessary(); m_rareData->m_characterSwitchJumpTables.append(UnlinkedSimpleJumpTable()); return m_rareData->m_characterSwitchJumpTables.last(); }
-    UnlinkedSimpleJumpTable& characterSwitchJumpTable(int tableIndex) { ASSERT(m_rareData); return m_rareData->m_characterSwitchJumpTables[tableIndex]; }
+    size_t numberOfSwitchJumpTables() const { return m_rareData ? m_rareData->m_switchJumpTables.size() : 0; }
+    UnlinkedSimpleJumpTable& addSwitchJumpTable() { createRareDataIfNecessary(); m_rareData->m_switchJumpTables.append(UnlinkedSimpleJumpTable()); return m_rareData->m_switchJumpTables.last(); }
+    UnlinkedSimpleJumpTable& switchJumpTable(int tableIndex) { ASSERT(m_rareData); return m_rareData->m_switchJumpTables[tableIndex]; }
 
     size_t numberOfStringSwitchJumpTables() const { return m_rareData ? m_rareData->m_stringSwitchJumpTables.size() : 0; }
     UnlinkedStringJumpTable& addStringSwitchJumpTable() { createRareDataIfNecessary(); m_rareData->m_stringSwitchJumpTables.append(UnlinkedStringJumpTable()); return m_rareData->m_stringSwitchJumpTables.last(); }
@@ -388,11 +383,6 @@ public:
     SharedSymbolTable* symbolTable() const { return m_symbolTable.get(); }
 
     VM* vm() const { return m_vm; }
-
-    unsigned addResolve() { return m_resolveOperationCount++; }
-    unsigned numberOfResolveOperations() const { return m_resolveOperationCount; }
-    unsigned addPutToBase() { return m_putToBaseOperationCount++; }
-    unsigned numberOfPutToBaseOperations() const { return m_putToBaseOperationCount; }
 
     UnlinkedArrayProfile addArrayProfile() { return m_arrayProfileCount++; }
     unsigned numberOfArrayProfiles() { return m_arrayProfileCount; }
@@ -463,16 +453,6 @@ public:
     unsigned firstLine() const { return m_firstLine; }
     unsigned lineCount() const { return m_lineCount; }
 
-    PassRefPtr<CodeCache> codeCacheForEval()
-    {
-        if (m_codeType == GlobalCode)
-            return m_vm->codeCache();
-        createRareDataIfNecessary();
-        if (!m_rareData->m_evalCodeCache)
-            m_rareData->m_evalCodeCache = CodeCache::create(CodeCache::NonGlobalCodeCache);
-        return m_rareData->m_evalCodeCache.get();
-    }
-
 protected:
     UnlinkedCodeBlock(VM*, Structure*, CodeType, const ExecutableInfo&);
     ~UnlinkedCodeBlock();
@@ -533,8 +513,6 @@ private:
     size_t m_bytecodeCommentIterator;
 #endif
 
-    unsigned m_resolveOperationCount;
-    unsigned m_putToBaseOperationCount;
     unsigned m_arrayProfileCount;
     unsigned m_arrayAllocationProfileCount;
     unsigned m_objectAllocationProfileCount;
@@ -554,17 +532,15 @@ public:
         Vector<ConstantBuffer> m_constantBuffers;
 
         // Jump Tables
-        Vector<UnlinkedSimpleJumpTable> m_immediateSwitchJumpTables;
-        Vector<UnlinkedSimpleJumpTable> m_characterSwitchJumpTables;
+        Vector<UnlinkedSimpleJumpTable> m_switchJumpTables;
         Vector<UnlinkedStringJumpTable> m_stringSwitchJumpTables;
-        RefPtr<CodeCache> m_evalCodeCache;
 
         Vector<ExpressionRangeInfo::FatPosition> m_expressionInfoFatPositions;
     };
 
 private:
     OwnPtr<RareData> m_rareData;
-    Vector<ExpressionRangeInfo> m_expressionInfo;
+    CompressibleVector<ExpressionRangeInfo> m_expressionInfo;
 
 protected:
 
@@ -572,7 +548,7 @@ protected:
     static void visitChildren(JSCell*, SlotVisitor&);
 
 public:
-    static const ClassInfo s_info;
+    DECLARE_INFO;
 };
 
 class UnlinkedGlobalCodeBlock : public UnlinkedCodeBlock {
@@ -587,7 +563,7 @@ protected:
 
     static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;
 
-    static const ClassInfo s_info;
+    DECLARE_INFO;
 };
 
 class UnlinkedProgramCodeBlock : public UnlinkedGlobalCodeBlock {
@@ -634,12 +610,12 @@ private:
 public:
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     {
-        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedProgramCodeBlockType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedProgramCodeBlockType, StructureFlags), info());
     }
 
     static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;
 
-    static const ClassInfo s_info;
+    DECLARE_INFO;
 };
 
 class UnlinkedEvalCodeBlock : public UnlinkedGlobalCodeBlock {
@@ -676,12 +652,12 @@ private:
 public:
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     {
-        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedEvalCodeBlockType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedEvalCodeBlockType, StructureFlags), info());
     }
 
     static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;
 
-    static const ClassInfo s_info;
+    DECLARE_INFO;
 };
 
 class UnlinkedFunctionCodeBlock : public UnlinkedCodeBlock {
@@ -705,12 +681,12 @@ private:
 public:
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     {
-        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedFunctionCodeBlockType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedFunctionCodeBlockType, StructureFlags), info());
     }
 
     static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;
 
-    static const ClassInfo s_info;
+    DECLARE_INFO;
 };
 
 }

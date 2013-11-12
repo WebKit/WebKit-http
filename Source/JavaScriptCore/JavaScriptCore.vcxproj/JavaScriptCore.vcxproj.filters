@@ -207,9 +207,6 @@
     <ClCompile Include="..\heap\CopyVisitor.cpp">
       <Filter>heap</Filter>
     </ClCompile>
-    <ClCompile Include="..\heap\DFGCodeBlocks.cpp">
-      <Filter>heap</Filter>
-    </ClCompile>
     <ClCompile Include="..\heap\GCThread.cpp">
       <Filter>heap</Filter>
     </ClCompile>
@@ -288,6 +285,9 @@
     <ClCompile Include="..\interpreter\JSStack.cpp">
       <Filter>interpreter</Filter>
     </ClCompile>
+    <ClCompile Include="..\interpreter\StackVisitor.cpp">
+      <Filter>interpreter</Filter>
+    </ClCompile>
     <ClCompile Include="..\interpreter\VMInspector.cpp">
       <Filter>interpreter</Filter>
     </ClCompile>
@@ -358,9 +358,6 @@
       <Filter>llint</Filter>
     </ClCompile>
     <ClCompile Include="..\llint\LLIntData.cpp">
-      <Filter>llint</Filter>
-    </ClCompile>
-    <ClCompile Include="..\llint\LLIntEntrypoints.cpp">
       <Filter>llint</Filter>
     </ClCompile>
     <ClCompile Include="..\llint\LLIntExceptions.cpp">
@@ -440,6 +437,12 @@
     </ClCompile>
     <ClCompile Include="..\profiler\ProfilerProfiledBytecodes.cpp">
       <Filter>profiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\ArrayBuffer.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\ArrayBufferView.cpp">
+      <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\ArgList.cpp">
       <Filter>runtime</Filter>
@@ -555,9 +558,6 @@
     <ClCompile Include="..\runtime\JSFunction.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\runtime\VM.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
     <ClCompile Include="..\runtime\JSGlobalObject.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -565,6 +565,9 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSLock.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSMap.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSNameScope.cpp">
@@ -586,6 +589,9 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSScope.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSSet.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSSegmentedVariableObject.cpp">
@@ -613,6 +619,15 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\Lookup.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\MapPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\MapData.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\MapConstructor.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\MathObject.cpp">
@@ -690,6 +705,12 @@
     <ClCompile Include="..\runtime\SmallStrings.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\SetPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\SetConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\SparseArrayValueMap.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -759,8 +780,111 @@
     <ClCompile Include="..\runtime\PropertyTable.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\VM.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\parser\SourceCode.cpp">
+      <Filter>parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\IntendedStructureChain.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\CommonSlowPathsExceptions.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\CommonSlowPaths.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\API\JSCTestRunnerUtils.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSArrayBuffer.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSArrayBufferConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSArrayBufferPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSArrayBufferView.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\TypedArrayController.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\TypedArrayType.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSTypedArrayConstructors.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSTypedArrayPrototypes.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSTypedArrays.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\DataView.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSDataView.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSDataViewPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\SimpleTypedArrayController.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSPromiseResolverPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSPromiseResolverConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSPromiseResolver.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSPromisePrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSPromiseConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSPromiseCallback.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSPromise.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\heap\CodeBlockSet.cpp">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bytecode\DeferredCompilationCallback.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dfg\DFGCompilationKey.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dfg\DFGDriver.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dfg\DFGCompilationMode.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\JITToDFGDeferredCompilationCallback.cpp">
+      <Filter>jit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\llint\LLIntEntrypoint.cpp">
+      <Filter>llint</Filter>
+    </ClCompile>
+
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\API\APICallbackFunction.h">
+      <Filter>API</Filter>
+    </ClInclude>
     <ClInclude Include="..\API\APICast.h">
       <Filter>API</Filter>
     </ClInclude>
@@ -929,9 +1053,6 @@
     <ClInclude Include="..\bytecode\GetByIdStatus.h">
       <Filter>bytecode</Filter>
     </ClInclude>
-    <ClInclude Include="..\bytecode\GlobalResolveInfo.h">
-      <Filter>bytecode</Filter>
-    </ClInclude>
     <ClInclude Include="..\bytecode\HandlerInfo.h">
       <Filter>bytecode</Filter>
     </ClInclude>
@@ -1062,9 +1183,6 @@
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\CopyWorkList.h">
-      <Filter>heap</Filter>
-    </ClInclude>
-    <ClInclude Include="..\heap\DFGCodeBlocks.h">
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\GCAssertions.h">
@@ -1208,6 +1326,9 @@
     <ClInclude Include="..\interpreter\CallFrame.h">
       <Filter>interpreter</Filter>
     </ClInclude>
+    <ClInclude Include="..\interpreter\CallFrameInlines.h">
+      <Filter>interpreter</Filter>
+    </ClInclude>
     <ClInclude Include="..\interpreter\CallFrameClosure.h">
       <Filter>interpreter</Filter>
     </ClInclude>
@@ -1221,6 +1342,9 @@
       <Filter>interpreter</Filter>
     </ClInclude>
     <ClInclude Include="..\interpreter\Register.h">
+      <Filter>interpreter</Filter>
+    </ClInclude>
+    <ClInclude Include="..\interpreter\StackVisitor.h">
       <Filter>interpreter</Filter>
     </ClInclude>
     <ClInclude Include="..\interpreter\VMInspector.h">
@@ -1253,9 +1377,6 @@
     <ClInclude Include="..\jit\JITDisassembler.h">
       <Filter>jit</Filter>
     </ClInclude>
-    <ClInclude Include="..\jit\JITDriver.h">
-      <Filter>jit</Filter>
-    </ClInclude>
     <ClInclude Include="..\jit\JITExceptions.h">
       <Filter>jit</Filter>
     </ClInclude>
@@ -1269,6 +1390,15 @@
       <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\jit\JITStubs.h">
+      <Filter>jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\JITStubsX86.h">
+      <Filter>jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\JITStubsX86Common.h">
+      <Filter>jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\JITStubsX86_64.h">
       <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\jit\JITThunks.h">
@@ -1302,9 +1432,6 @@
       <Filter>llint</Filter>
     </ClInclude>
     <ClInclude Include="..\llint\LLIntData.h">
-      <Filter>llint</Filter>
-    </ClInclude>
-    <ClInclude Include="..\llint\LLIntEntrypoints.h">
       <Filter>llint</Filter>
     </ClInclude>
     <ClInclude Include="..\llint\LLIntExceptions.h">
@@ -1523,9 +1650,6 @@
     <ClInclude Include="..\runtime\Executable.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\runtime\ExecutionHarness.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
     <ClInclude Include="..\runtime\FunctionConstructor.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -1584,9 +1708,6 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSFunction.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\VM.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSGlobalObject.h">
@@ -1799,9 +1920,6 @@
     <ClInclude Include="..\runtime\Tracing.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\runtime\TypedArrayDescriptor.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
     <ClInclude Include="..\runtime\Uint16WithFraction.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -1875,56 +1993,290 @@
     <ClInclude Include="..\API\JSAPIWrapperObject.h">
       <Filter>API</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\BooleanPrototype.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\BooleanPrototype.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\DatePrototype.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\DatePrototype.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\ErrorPrototype.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ErrorPrototype.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\HeaderDetection.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\HeaderDetection.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSGlobalObject.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSGlobalObject.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSONObject.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSONObject.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\Lexer.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\Lexer.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\NumberConstructor.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\NumberConstructor.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\ObjectConstructor.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ObjectConstructor.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\ObjectPrototype.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpConstructor.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\RegExpConstructor.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\NumberPrototype.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\NumberPrototype.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpJitTables.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\LLIntAssembly.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpPrototype.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\RegExpJitTables.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\StringConstructor.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\RegExpPrototype.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ArrayPrototype.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\StringConstructor.lut.h">
+    <ClInclude Include="..\runtime\VM.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\assembler\MacroAssemblerX86Common.cpp">
+      <Filter>assembler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\IntendedStructureChain.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\CommonSlowPathsExceptions.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\API\JSCTestRunnerUtils.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\ArrayBuffer.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\ArrayBufferView.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\heap\CopyToken.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSArrayBufferConstructor.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSArrayBuffer.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSArrayBufferView.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSArrayBufferPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSArrayBufferViewInlines.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSGenericTypedArrayView.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototypeInlines.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSGenericTypedArrayViewConstructor.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSGenericTypedArrayViewConstructorInlines.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSGenericTypedArrayViewInlines.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSPromiseResolverPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSPromise.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSPromiseCallback.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSPromiseConstructor.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSPromisePrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSPromiseResolver.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSPromiseResolverConstructor.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSInt8Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSFloat32Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSFloat64Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSInt16Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSInt32Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\Uint8Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\Uint16Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\Uint32Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\TypedArrayType.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\TypedArrayAdaptors.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\TypedArrayController.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\TypedArrayInlines.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\TypedArrays.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSUint8ClampedArray.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSTypedArrayConstructors.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSTypedArrayPrototypes.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSTypedArrays.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSUint16Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSUint32Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSUint8Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\Float32Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\Float64Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\Int16Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\Int32Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\Int8Array.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\DataView.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\SimpleTypedArrayController.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSDataView.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSDataViewPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataViewPrototype.lut.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\GenericTypedArrayViewInlines.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\GenericTypedArrayView.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\ToNativeFromValue.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ArrayConstructor.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\ArrayPrototype.lut.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\DateConstructor.lut.h">
       <Filter>Derived Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromiseConstructor.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromisePrototype.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromiseResolverPrototype.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\KeywordLookup.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpObject.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\NamePrototype.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\heap\CodeBlockSet.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bytecode\DeferredCompilationCallback.h">
+      <Filter>bytecode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dfg\DFGCompilationKey.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dfg\DFGCompilationMode.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\jit\JITToDFGDeferredCompilationCallback.h">
+      <Filter>jit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSMap.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSSet.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\llint\LLIntEntrypoint.h">
+      <Filter>llint</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\MapConstructor.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\MapData.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\SetPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\MapPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\SetConstructor.h">
+      <Filter>runtime</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

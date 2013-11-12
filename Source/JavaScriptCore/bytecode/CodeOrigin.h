@@ -39,42 +39,34 @@ namespace JSC {
 
 struct InlineCallFrame;
 class ExecState;
-class ExecutableBase;
+class ScriptExecutable;
 class JSFunction;
 
 struct CodeOrigin {
-    static const unsigned maximumBytecodeIndex = (1u << 29) - 1;
+    static const unsigned invalidBytecodeIndex = UINT_MAX;
     
-    // Bytecode offset that you'd use to re-execute this instruction.
-    unsigned bytecodeIndex : 29;
-    // Bytecode offset corresponding to the opcode that gives the result (needed to handle
-    // op_call/op_call_put_result and op_method_check/op_get_by_id).
-    unsigned valueProfileOffset : 3;
+    // Bytecode offset that you'd use to re-execute this instruction, and the
+    // bytecode index of the bytecode instruction that produces some result that
+    // you're interested in (used for mapping Nodes whose values you're using
+    // to bytecode instructions that have the appropriate value profile).
+    unsigned bytecodeIndex;
     
     InlineCallFrame* inlineCallFrame;
     
     CodeOrigin()
-        : bytecodeIndex(maximumBytecodeIndex)
-        , valueProfileOffset(0)
+        : bytecodeIndex(invalidBytecodeIndex)
         , inlineCallFrame(0)
     {
     }
     
-    explicit CodeOrigin(unsigned bytecodeIndex, InlineCallFrame* inlineCallFrame = 0, unsigned valueProfileOffset = 0)
+    explicit CodeOrigin(unsigned bytecodeIndex, InlineCallFrame* inlineCallFrame = 0)
         : bytecodeIndex(bytecodeIndex)
-        , valueProfileOffset(valueProfileOffset)
         , inlineCallFrame(inlineCallFrame)
     {
-        RELEASE_ASSERT(bytecodeIndex <= maximumBytecodeIndex);
-        RELEASE_ASSERT(valueProfileOffset < (1u << 3));
+        ASSERT(bytecodeIndex < invalidBytecodeIndex);
     }
     
-    bool isSet() const { return bytecodeIndex != maximumBytecodeIndex; }
-    
-    unsigned bytecodeIndexForValueProfile() const
-    {
-        return bytecodeIndex + valueProfileOffset;
-    }
+    bool isSet() const { return bytecodeIndex != invalidBytecodeIndex; }
     
     // The inline depth is the depth of the inline stack, so 1 = not inlined,
     // 2 = inlined one deep, etc.
@@ -82,7 +74,7 @@ struct CodeOrigin {
     
     // If the code origin corresponds to inlined code, gives you the heap object that
     // would have owned the code if it had not been inlined. Otherwise returns 0.
-    ExecutableBase* codeOriginOwner() const;
+    ScriptExecutable* codeOriginOwner() const;
     
     unsigned stackOffset() const;
     
@@ -96,11 +88,12 @@ struct CodeOrigin {
     Vector<CodeOrigin> inlineStack() const;
     
     void dump(PrintStream&) const;
+    void dumpInContext(PrintStream&, DumpContext*) const;
 };
 
 struct InlineCallFrame {
     Vector<ValueRecovery> arguments;
-    WriteBarrier<ExecutableBase> executable;
+    WriteBarrier<ScriptExecutable> executable;
     WriteBarrier<JSFunction> callee; // This may be null, indicating that this is a closure call and that the JSFunction and JSScope are already on the stack.
     CodeOrigin caller;
     BitVector capturedVars; // Indexed by the machine call frame's variable numbering.
@@ -114,20 +107,16 @@ struct InlineCallFrame {
     // Get the callee given a machine call frame to which this InlineCallFrame belongs.
     JSFunction* calleeForCallFrame(ExecState*) const;
     
-    String inferredName() const;
+    CString inferredName() const;
     CodeBlockHash hash() const;
     
     CodeBlock* baselineCodeBlock() const;
     
     void dumpBriefFunctionInformation(PrintStream&) const;
     void dump(PrintStream&) const;
+    void dumpInContext(PrintStream&, DumpContext*) const;
 
     MAKE_PRINT_METHOD(InlineCallFrame, dumpBriefFunctionInformation, briefFunctionInformation);
-};
-
-struct CodeOriginAtCallReturnOffset {
-    CodeOrigin codeOrigin;
-    unsigned callReturnOffset;
 };
 
 inline unsigned CodeOrigin::stackOffset() const
@@ -144,12 +133,7 @@ inline bool CodeOrigin::operator==(const CodeOrigin& other) const
         && inlineCallFrame == other.inlineCallFrame;
 }
     
-inline unsigned getCallReturnOffsetForCodeOrigin(CodeOriginAtCallReturnOffset* data)
-{
-    return data->callReturnOffset;
-}
-
-inline ExecutableBase* CodeOrigin::codeOriginOwner() const
+inline ScriptExecutable* CodeOrigin::codeOriginOwner() const
 {
     if (!inlineCallFrame)
         return 0;

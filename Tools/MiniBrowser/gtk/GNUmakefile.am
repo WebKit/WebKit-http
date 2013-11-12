@@ -10,6 +10,7 @@ Programs_MiniBrowser_CPPFLAGS = \
 	-I$(top_builddir)/DerivedSources/WebKit2/webkit2gtk/include \
 	-DWEBKIT_EXEC_PATH=\"${shell pwd}/$(top_builddir)/Programs/\" \
 	-DWEBKIT_INJECTED_BUNDLE_PATH=\"${shell pwd}/$(top_builddir)/.libs\" \
+	-DGDK_VERSION_MIN_REQUIRED=GDK_VERSION_3_6 \
 	$(global_cppflags) \
 	$(javascriptcore_cppflags) \
 	$(FREETYPE_CFLAGS) \
@@ -39,6 +40,7 @@ Programs_MiniBrowser_LDADD = \
 	$(FREETYPE_LIBS) \
 	$(GLIB_LIBS) \
 	$(GTK_LIBS) \
+	$(LIBXSLT_LIBS) \
 	$(LIBSOUP_LIBS)
 
 Programs_MiniBrowser_LDFLAGS = \

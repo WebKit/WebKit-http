@@ -34,8 +34,7 @@ namespace WebCore {
 
 static SoupCookieJar* cookieJarForSession(const NetworkStorageSession& session)
 {
-    if (!session.soupSession())
-        return soupCookieJar();
+    ASSERT(session.soupSession());
     return SOUP_COOKIE_JAR(soup_session_get_feature(session.soupSession(), SOUP_TYPE_COOKIE_JAR));
 }
 
@@ -53,6 +52,15 @@ SoupCookieJar* soupCookieJar()
     SoupCookieJar* jar = soup_cookie_jar_new();
     soup_cookie_jar_set_accept_policy(jar, SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY);
     setSoupCookieJar(jar);
+    return jar;
+}
+
+SoupCookieJar* createPrivateBrowsingCookieJar()
+{
+    SoupCookieJar* jar = soup_cookie_jar_new();
+
+    soup_cookie_jar_set_accept_policy(jar, SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY);
+
     return jar;
 }
 

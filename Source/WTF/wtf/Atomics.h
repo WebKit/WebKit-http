@@ -203,6 +203,11 @@ inline bool weakCompareAndSwapUIntPtr(volatile uintptr_t* location, uintptr_t ex
     return weakCompareAndSwap(reinterpret_cast<void*volatile*>(location), reinterpret_cast<void*>(expected), reinterpret_cast<void*>(newValue));
 }
 
+inline bool weakCompareAndSwapSize(volatile size_t* location, size_t expected, size_t newValue)
+{
+    return weakCompareAndSwap(reinterpret_cast<void*volatile*>(location), reinterpret_cast<void*>(expected), reinterpret_cast<void*>(newValue));
+}
+
 // Just a compiler fence. Has no effect on the hardware, but tells the compiler
 // not to move things around this call. Should not affect the compiler's ability
 // to do things like register allocation and code motion over pure operations.
@@ -269,6 +274,61 @@ inline void memoryBarrierAfterLock() { compilerFence(); }
 inline void memoryBarrierBeforeUnlock() { compilerFence(); }
 
 #endif
+
+inline bool weakCompareAndSwap(uint8_t* location, uint8_t expected, uint8_t newValue)
+{
+#if ENABLE(COMPARE_AND_SWAP)
+#if !OS(WINDOWS) && (CPU(X86) || CPU(X86_64))
+    unsigned char result;
+    asm volatile(
+        "lock; cmpxchgb %3, %2\n\t"
+        "sete %1"
+        : "+a"(expected), "=q"(result), "+m"(*location)
+        : "r"(newValue)
+        : "memory"
+        );
+    return result;
+#elif OS(WINDOWS) && CPU(X86)
+    // FIXME: We need a 64-bit ASM implementation, but this cannot be inline due to
+    // Microsoft's decision to exclude it from the compiler.
+    bool result = false;
+
+    __asm {
+        mov al, expected
+        mov edx, location
+        mov cl, newValue
+        lock cmpxchg byte ptr[edx], cl
+        setz result
+    }
+
+    return result;
+#else
+    uintptr_t locationValue = bitwise_cast<uintptr_t>(location);
+    uintptr_t alignedLocationValue = locationValue & ~(sizeof(unsigned) - 1);
+    uintptr_t locationOffset = locationValue - alignedLocationValue;
+    ASSERT(locationOffset < sizeof(unsigned));
+    unsigned* alignedLocation = bitwise_cast<unsigned*>(alignedLocationValue);
+    // Make sure that this load is always issued and never optimized away.
+    unsigned oldAlignedValue = *const_cast<volatile unsigned*>(alignedLocation);
+    union {
+        uint8_t bytes[sizeof(unsigned)];
+        unsigned word;
+    } u;
+    u.word = oldAlignedValue;
+    if (u.bytes[locationOffset] != expected)
+        return false;
+    u.bytes[locationOffset] = newValue;
+    unsigned newAlignedValue = u.word;
+    return weakCompareAndSwap(alignedLocation, oldAlignedValue, newAlignedValue);
+#endif
+#else
+    UNUSED_PARAM(location);
+    UNUSED_PARAM(expected);
+    UNUSED_PARAM(newValue);
+    CRASH();
+    return false;
+#endif
+}
 
 } // namespace WTF
 

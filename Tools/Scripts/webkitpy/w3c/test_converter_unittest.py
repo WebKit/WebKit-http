@@ -50,8 +50,6 @@ class W3CTestConverterTest(unittest.TestCase):
         converter = W3CTestConverter()
         prop_list = converter.prefixed_properties
         self.assertTrue(prop_list, 'No prefixed properties found')
-        for prop in prop_list:
-            self.assertTrue(prop.startswith('-webkit-'))
 
     def test_convert_for_webkit_nothing_to_convert(self):
         """ Tests convert_for_webkit() using a basic test that has nothing to convert """
@@ -294,7 +292,7 @@ CONTENT OF TEST
         self.assertEquals(len(converted.findAll(href=relpath_pattern)), num_href_paths, 'testharness href relative path not correct')
 
     def verify_prefixed_properties(self, converted, test_properties):
-        self.assertEqual(len(converted[0]), len(test_properties), 'Incorrect number of properties converted')
+        self.assertEqual(len(set(converted[0])), len(set(test_properties)), 'Incorrect number of properties converted')
         for test_prop in test_properties:
             self.assertTrue((test_prop in converted[1]), 'Property ' + test_prop + ' not found in converted doc')
 

@@ -70,9 +70,8 @@ public:
 
     void remove(RootObject* rootObject)
     {
-        HashMap<RootObject*, JSToNPObjectMap>::iterator iter = m_map.find(rootObject);
-        ASSERT(iter != m_map.end());
-        m_map.remove(iter);
+        ASSERT(m_map.contains(rootObject));
+        m_map.remove(rootObject);
     }
 
     void remove(RootObject* rootObject, JSObject* jsObject)
@@ -234,7 +233,7 @@ bool _NPN_Invoke(NPP npp, NPObject* o, NPIdentifier methodName, const NPVariant*
         // Call the function object.
         MarkedArgumentBuffer argList;
         getListFromVariantArgs(exec, args, argCount, rootObject, argList);
-        JSValue resultV = JSC::call(exec, function, callType, callData, obj->imp->methodTable()->toThisObject(obj->imp, exec), argList);
+        JSValue resultV = JSC::call(exec, function, callType, callData, obj->imp, argList);
 
         // Convert and return the result of the function call.
         convertValueToNPVariant(exec, resultV, result);

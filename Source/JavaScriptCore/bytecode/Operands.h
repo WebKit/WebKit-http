@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,10 +43,12 @@ template<typename T> struct OperandValueTraits;
 template<typename T>
 struct OperandValueTraits {
     static T defaultValue() { return T(); }
-    static void dump(const T& value, PrintStream& out) { value.dump(out); }
+    static bool isEmptyForDump(const T& value) { return !value; }
 };
 
 enum OperandKind { ArgumentOperand, LocalOperand };
+
+enum OperandsLikeTag { OperandsLike };
 
 template<typename T, typename Traits = OperandValueTraits<T> >
 class Operands {
@@ -57,6 +59,13 @@ public:
     {
         m_arguments.fill(Traits::defaultValue(), numArguments);
         m_locals.fill(Traits::defaultValue(), numLocals);
+    }
+    
+    template<typename U, typename OtherTraits>
+    explicit Operands(OperandsLikeTag, const Operands<U, OtherTraits>& other)
+    {
+        m_arguments.fill(Traits::defaultValue(), other.numberOfArguments());
+        m_locals.fill(Traits::defaultValue(), other.numberOfLocals());
     }
     
     size_t numberOfArguments() const { return m_arguments.size(); }
@@ -200,36 +209,38 @@ public:
         setLocalFirstTime(operand, value);
     }
     
-    void clear()
+    void fill(T value)
     {
         for (size_t i = 0; i < m_arguments.size(); ++i)
-            m_arguments[i] = Traits::defaultValue();
+            m_arguments[i] = value;
         for (size_t i = 0; i < m_locals.size(); ++i)
-            m_locals[i] = Traits::defaultValue();
+            m_locals[i] = value;
+    }
+    
+    void clear()
+    {
+        fill(Traits::defaultValue());
+    }
+    
+    bool operator==(const Operands& other) const
+    {
+        ASSERT(numberOfArguments() == other.numberOfArguments());
+        ASSERT(numberOfLocals() == other.numberOfLocals());
+        
+        return m_arguments == other.m_arguments && m_locals == other.m_locals;
+    }
+    
+    void dumpInContext(PrintStream& out, DumpContext* context) const;
+    
+    void dump(PrintStream& out) const
+    {
+        dumpInContext(out, 0);
     }
     
 private:
     Vector<T, 8> m_arguments;
     Vector<T, 16> m_locals;
 };
-
-template<typename T, typename Traits>
-void dumpOperands(const Operands<T, Traits>& operands, PrintStream& out)
-{
-    for (size_t argument = operands.numberOfArguments(); argument--;) {
-        if (argument != operands.numberOfArguments() - 1)
-            out.printf(" ");
-        out.print("arg", argument, ":");
-        Traits::dump(operands.argument(argument), out);
-    }
-    out.printf(" : ");
-    for (size_t local = 0; local < operands.numberOfLocals(); ++local) {
-        if (local)
-            out.printf(" ");
-        out.print("r", local, ":");
-        Traits::dump(operands.local(local), out);
-    }
-}
 
 } // namespace JSC
 

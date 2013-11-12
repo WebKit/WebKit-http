@@ -30,12 +30,14 @@
 #include "BasicShapes.h"
 #include "Frame.h"
 #include "FrameView.h"
+#include "Page.h"
 #include "RenderLayer.h"
 #include "RenderSVGImage.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceClipper.h"
 #include "RenderSVGResourceFilter.h"
 #include "RenderSVGResourceMasker.h"
+#include "RenderView.h"
 #include "SVGResources.h"
 #include "SVGResourcesCache.h"
 
@@ -43,11 +45,9 @@ static int kMaxImageBufferSize = 4096;
 
 namespace WebCore {
 
-static inline bool isRenderingMaskImage(RenderObject* object)
+static inline bool isRenderingMaskImage(const RenderObject& object)
 {
-    if (object->frame() && object->frame()->view())
-        return object->frame()->view()->paintBehavior() & PaintBehaviorRenderingSVGMask;
-    return false;
+    return object.view().frameView().paintBehavior() & PaintBehaviorRenderingSVGMask;
 }
 
 SVGRenderingContext::~SVGRenderingContext()
@@ -106,7 +106,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderObject* object, PaintI
     ASSERT(svgStyle);
 
     // Setup transparency layers before setting up SVG resources!
-    bool isRenderingMask = isRenderingMaskImage(m_object);
+    bool isRenderingMask = isRenderingMaskImage(*m_object);
     float opacity = isRenderingMask ? 1 : style->opacity();
     const ShadowData* shadow = svgStyle->shadow();
     if (opacity < 1 || shadow) {
@@ -199,6 +199,10 @@ void SVGRenderingContext::calculateTransformationToOutermostCoordinateSystem(con
     ASSERT(renderer);
     absoluteTransform = currentContentTransformation();
 
+    float deviceScaleFactor = 1;
+    if (Page* page = renderer->document().page())
+        deviceScaleFactor = page->deviceScaleFactor();
+
     // Walk up the render tree, accumulating SVG transforms.
     while (renderer) {
         absoluteTransform = renderer->localToParentTransform() * absoluteTransform;
@@ -219,6 +223,8 @@ void SVGRenderingContext::calculateTransformationToOutermostCoordinateSystem(con
 
         layer = layer->parent();
     }
+
+    absoluteTransform.scale(deviceScaleFactor);
 }
 
 bool SVGRenderingContext::createImageBuffer(const FloatRect& targetRect, const AffineTransform& absoluteTransform, OwnPtr<ImageBuffer>& imageBuffer, ColorSpace colorSpace, RenderingMode renderingMode)

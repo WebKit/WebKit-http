@@ -57,15 +57,11 @@ WebFrame* InjectedBundleHitTestResult::frame() const
     if (!node)
         return 0;
 
-    Document* document = node->document();
-    if (!document)
-        return 0;
-
-    Frame* frame = document->frame();
+    Frame* frame = node->document().frame();
     if (!frame)
         return 0;
 
-    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader()->client());
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader().client());
     return webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
 }
 
@@ -75,7 +71,7 @@ WebFrame* InjectedBundleHitTestResult::targetFrame() const
     if (!frame)
         return 0;
 
-    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader()->client());
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader().client());
     return webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
 }
 

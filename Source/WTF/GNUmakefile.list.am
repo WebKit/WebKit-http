@@ -4,10 +4,6 @@ wtf_sources += \
     Source/WTF/wtf/ASCIICType.h \
     Source/WTF/wtf/AVLTree.h \
     Source/WTF/wtf/Alignment.h \
-    Source/WTF/wtf/ArrayBuffer.cpp \
-    Source/WTF/wtf/ArrayBuffer.h \
-    Source/WTF/wtf/ArrayBufferView.cpp \
-    Source/WTF/wtf/ArrayBufferView.h \
     Source/WTF/wtf/Assertions.cpp \
     Source/WTF/wtf/Assertions.h \
     Source/WTF/wtf/Atomics.cpp \
@@ -22,10 +18,15 @@ wtf_sources += \
     Source/WTF/wtf/BoundsCheckedPointer.h \
     Source/WTF/wtf/BumpPointerAllocator.h \
     Source/WTF/wtf/ByteOrder.h \
+    Source/WTF/wtf/ByteSpinLock.h \
     Source/WTF/wtf/CheckedArithmetic.h \
     Source/WTF/wtf/CheckedBoolean.h \
     Source/WTF/wtf/CommaPrinter.h \
     Source/WTF/wtf/Compiler.h \
+    Source/WTF/wtf/CompilationThread.cpp \
+    Source/WTF/wtf/CompilationThread.h \
+    Source/WTF/wtf/Compression.h \
+    Source/WTF/wtf/Compression.cpp \
     Source/WTF/wtf/CryptographicallyRandomNumber.cpp \
     Source/WTF/wtf/CryptographicallyRandomNumber.h \
     Source/WTF/wtf/CurrentTime.cpp \
@@ -37,6 +38,7 @@ wtf_sources += \
     Source/WTF/wtf/DecimalNumber.cpp \
     Source/WTF/wtf/DecimalNumber.h \
     Source/WTF/wtf/Decoder.h \
+    Source/WTF/wtf/DeferrableRefCounted.h \
     Source/WTF/wtf/Deque.h \
     Source/WTF/wtf/DisallowCType.h \
     Source/WTF/wtf/DoublyLinkedList.h \
@@ -53,8 +55,7 @@ wtf_sources += \
     Source/WTF/wtf/FilePrintStream.cpp \
     Source/WTF/wtf/FilePrintStream.h \
     Source/WTF/wtf/FixedArray.h \
-    Source/WTF/wtf/Float32Array.h \
-    Source/WTF/wtf/Float64Array.h \
+    Source/WTF/wtf/FlipBytes.h \
     Source/WTF/wtf/Forward.h \
     Source/WTF/wtf/FunctionDispatcher.cpp \
     Source/WTF/wtf/FunctionDispatcher.h \
@@ -72,11 +73,10 @@ wtf_sources += \
     Source/WTF/wtf/HashTraits.h \
     Source/WTF/wtf/HexNumber.h \
     Source/WTF/wtf/InlineASM.h \
-    Source/WTF/wtf/Int16Array.h \
-    Source/WTF/wtf/Int32Array.h \
-    Source/WTF/wtf/Int8Array.h \
-    Source/WTF/wtf/IntegralTypedArrayBase.h \
+    Source/WTF/wtf/Insertion.h \
+    Source/WTF/wtf/ListDump.h \
     Source/WTF/wtf/ListHashSet.h \
+    Source/WTF/wtf/LLVMHeaders.h \
     Source/WTF/wtf/Locker.h \
     Source/WTF/wtf/MD5.cpp \
     Source/WTF/wtf/MD5.h \
@@ -90,6 +90,7 @@ wtf_sources += \
     Source/WTF/wtf/MetaAllocator.h \
     Source/WTF/wtf/MetaAllocatorHandle.h \
     Source/WTF/wtf/NeverDestroyed.h \
+    Source/WTF/wtf/NoLock.h \
     Source/WTF/wtf/NonCopyingSort.h \
     Source/WTF/wtf/Noncopyable.h \
     Source/WTF/wtf/NotFound.h \
@@ -119,7 +120,6 @@ wtf_sources += \
     Source/WTF/wtf/ParallelJobsGeneric.h \
     Source/WTF/wtf/ParallelJobsLibdispatch.h \
     Source/WTF/wtf/ParallelJobsOpenMP.h \
-    Source/WTF/wtf/PassOwnArrayPtr.h \
     Source/WTF/wtf/PassOwnPtr.h \
     Source/WTF/wtf/PassRefPtr.h \
     Source/WTF/wtf/PassTraits.h \
@@ -147,6 +147,8 @@ wtf_sources += \
     Source/WTF/wtf/SentinelLinkedList.h \
     Source/WTF/wtf/SimpleStats.h \
     Source/WTF/wtf/SinglyLinkedList.h \
+    Source/WTF/wtf/SixCharacterHash.cpp \
+    Source/WTF/wtf/SixCharacterHash.h \
     Source/WTF/wtf/Spectrum.h \
     Source/WTF/wtf/StackBounds.cpp \
     Source/WTF/wtf/StackBounds.h \
@@ -155,6 +157,7 @@ wtf_sources += \
     Source/WTF/wtf/StdLibExtras.h \
     Source/WTF/wtf/StreamBuffer.h \
     Source/WTF/wtf/StringExtras.h \
+    Source/WTF/wtf/StringHashDumpContext.h \
     Source/WTF/wtf/StringPrintStream.cpp \
     Source/WTF/wtf/StringPrintStream.h \
     Source/WTF/wtf/StringHasher.h \
@@ -179,11 +182,6 @@ wtf_sources += \
     Source/WTF/wtf/TriState.h \
     Source/WTF/wtf/TypeTraits.cpp \
     Source/WTF/wtf/TypeTraits.h \
-    Source/WTF/wtf/TypedArrayBase.h \
-    Source/WTF/wtf/Uint16Array.h \
-    Source/WTF/wtf/Uint32Array.h \
-    Source/WTF/wtf/Uint8Array.h \
-    Source/WTF/wtf/Uint8ClampedArray.h \
     Source/WTF/wtf/UnionFind.h \
     Source/WTF/wtf/UniStdExtras.h \
     Source/WTF/wtf/VMTags.h \
@@ -193,6 +191,7 @@ wtf_sources += \
     Source/WTF/wtf/WTFThreadData.cpp \
     Source/WTF/wtf/WTFThreadData.h \
     Source/WTF/wtf/WeakPtr.h \
+    Source/WTF/wtf/WindowsExtras.h \
     Source/WTF/wtf/dtoa.cpp \
     Source/WTF/wtf/dtoa.h \
     Source/WTF/wtf/dtoa/bignum-dtoa.cc \
@@ -213,6 +212,7 @@ wtf_sources += \
     Source/WTF/wtf/dtoa/strtod.cc \
     Source/WTF/wtf/dtoa/strtod.h \
     Source/WTF/wtf/dtoa/utils.h \
+    Source/WTF/wtf/gobject/GMutexLocker.h \
     Source/WTF/wtf/gobject/GOwnPtr.cpp \
     Source/WTF/wtf/gobject/GOwnPtr.h \
     Source/WTF/wtf/gobject/GRefPtr.cpp \
@@ -230,6 +230,7 @@ wtf_sources += \
     Source/WTF/wtf/text/AtomicStringTable.h \
     Source/WTF/wtf/text/Base64.cpp \
     Source/WTF/wtf/text/Base64.h \
+    Source/WTF/wtf/text/ConversionMode.h \
     Source/WTF/wtf/text/CString.cpp \
     Source/WTF/wtf/text/CString.h \
     Source/WTF/wtf/text/IntegerToStringConversion.h \

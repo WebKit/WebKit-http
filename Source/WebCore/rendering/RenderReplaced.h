@@ -35,18 +35,22 @@ public:
     virtual LayoutUnit computeReplacedLogicalWidth(ShouldComputePreferred  = ComputeActual) const OVERRIDE;
     virtual LayoutUnit computeReplacedLogicalHeight() const;
 
+    LayoutRect replacedContentRect(const LayoutSize& intrinsicSize) const;
+
     bool hasReplacedLogicalWidth() const;
     bool hasReplacedLogicalHeight() const;
 
 protected:
+    virtual bool isRenderReplaced() const OVERRIDE FINAL { return true; }
+
     virtual void willBeDestroyed();
 
     virtual void layout();
 
-    virtual LayoutSize intrinsicSize() const OVERRIDE { return m_intrinsicSize; }
+    virtual LayoutSize intrinsicSize() const OVERRIDE FINAL { return m_intrinsicSize; }
     virtual void computeIntrinsicRatioInformation(FloatSize& intrinsicSize, double& intrinsicRatio, bool& isPercentageIntrinsicSize) const;
 
-    virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const OVERRIDE;
+    virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const OVERRIDE FINAL;
 
     virtual LayoutUnit minimumReplacedHeight() const { return LayoutUnit(); }
 
@@ -60,30 +64,45 @@ protected:
     virtual void intrinsicSizeChanged();
     virtual bool hasRelativeIntrinsicLogicalWidth() const { return false; }
 
-    virtual void paint(PaintInfo&, const LayoutPoint&);
+    virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
     bool shouldPaint(PaintInfo&, const LayoutPoint&);
     LayoutRect localSelectionRect(bool checkWhetherSelected = true) const; // This is in local coordinates, but it's a physical rect (so the top left corner is physical top left).
 
 private:
     virtual RenderBox* embeddedContentBox() const { return 0; }
-    virtual const char* renderName() const { return "RenderReplaced"; }
+    virtual const char* renderName() const OVERRIDE { return "RenderReplaced"; }
 
     virtual bool canHaveChildren() const { return false; }
 
-    virtual void computePreferredLogicalWidths();
+    virtual void computePreferredLogicalWidths() OVERRIDE FINAL;
     virtual void paintReplaced(PaintInfo&, const LayoutPoint&) { }
 
     virtual LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const OVERRIDE;
 
-    virtual VisiblePosition positionForPoint(const LayoutPoint&);
+    virtual VisiblePosition positionForPoint(const LayoutPoint&) OVERRIDE FINAL;
     
     virtual bool canBeSelectionLeaf() const { return true; }
 
-    virtual LayoutRect selectionRectForRepaint(const RenderLayerModelObject* repaintContainer, bool clipToVisibleContent = true) OVERRIDE;
+    virtual LayoutRect selectionRectForRepaint(const RenderLayerModelObject* repaintContainer, bool clipToVisibleContent = true) OVERRIDE FINAL;
     void computeAspectRatioInformationForRenderBox(RenderBox*, FloatSize& constrainedSize, double& intrinsicRatio, bool& isPercentageIntrinsicSize) const;
 
     mutable LayoutSize m_intrinsicSize;
 };
+
+inline RenderReplaced* toRenderReplaced(RenderObject* object)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderReplaced());
+    return static_cast<RenderReplaced*>(object);
+}
+
+inline const RenderReplaced* toRenderReplaced(const RenderObject* object)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderReplaced());
+    return static_cast<const RenderReplaced*>(object);
+}
+
+// This will catch anyone doing an unnecessary cast.
+void toRenderReplaced(const RenderReplaced*);
 
 }
 

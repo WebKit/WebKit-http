@@ -34,6 +34,7 @@
 #include "AccessibilityListBox.h"
 #include "AccessibilitySpinButton.h"
 #include "AccessibilityTable.h"
+#include "ElementIterator.h"
 #include "EventNames.h"
 #include "FloatRect.h"
 #include "Frame.h"
@@ -68,7 +69,6 @@
 #include "ProgressTracker.h"
 #include "SVGElement.h"
 #include "SVGNames.h"
-#include "SVGStyledElement.h"
 #include "Text.h"
 #include "TextControlInnerElements.h"
 #include "TextIterator.h"
@@ -262,7 +262,7 @@ Document* AccessibilityNodeObject::document() const
 {
     if (!node())
         return 0;
-    return node()->document();
+    return &node()->document();
 }
 
 AccessibilityRole AccessibilityNodeObject::determineAccessibilityRole()
@@ -374,6 +374,10 @@ bool AccessibilityNodeObject::canHaveChildren() const
     if (!node() && !isAccessibilityRenderObject())
         return false;
 
+    // When <noscript> is not being used (its renderer() == 0), ignore its children.
+    if (node() && !renderer() && node()->hasTagName(noscriptTag))
+        return false;
+    
     // Elements that should not have children
     switch (roleValue()) {
     case ImageRole:
@@ -413,16 +417,11 @@ bool AccessibilityNodeObject::canvasHasFallbackContent() const
     Node* node = this->node();
     if (!node || !node->hasTagName(canvasTag))
         return false;
-
+    Element* canvasElement = toElement(node);
     // If it has any children that are elements, we'll assume it might be fallback
     // content. If it has no children or its only children are not elements
     // (e.g. just text nodes), it doesn't have fallback content.
-    for (Node* child = node->firstChild(); child; child = child->nextSibling()) {
-        if (child->isElementNode())
-            return true;
-    }
-
-    return false;
+    return elementChildren(canvasElement).begin() != elementChildren(canvasElement).end();
 }
 
 bool AccessibilityNodeObject::isImageButton() const
@@ -978,21 +977,16 @@ Element* AccessibilityNodeObject::mouseButtonListener() const
         return 0;
 
     // check if our parent is a mouse button listener
-    while (node && !node->isElementNode())
-        node = node->parentNode();
-
-    if (!node)
-        return 0;
-
     // FIXME: Do the continuation search like anchorElement does
-    for (Element* element = toElement(node); element; element = element->parentElement()) {
+    auto lineage = elementLineage(node->isElementNode() ? toElement(node) : node->parentElement());
+    for (auto element = lineage.begin(), end = lineage.end(); element != end; ++element) {
         // If we've reached the body and this is not a control element, do not expose press action for this element.
         // It can cause false positives, where every piece of text is labeled as accepting press actions. 
         if (element->hasTagName(bodyTag) && isStaticText())
             break;
         
         if (element->hasEventListeners(eventNames().clickEvent) || element->hasEventListeners(eventNames().mousedownEvent) || element->hasEventListeners(eventNames().mouseupEvent))
-            return element;
+            return &*element;
     }
 
     return 0;
@@ -1100,12 +1094,9 @@ HTMLLabelElement* AccessibilityNodeObject::labelForElement(Element* element) con
             return label;
     }
 
-    for (Element* parent = element->parentElement(); parent; parent = parent->parentElement()) {
-        if (isHTMLLabelElement(parent))
-            return toHTMLLabelElement(parent);
-    }
-
-    return 0;
+    auto labelAncestors = ancestorsOfType<HTMLLabelElement>(element);
+    auto enclosingLabel = labelAncestors.begin();
+    return enclosingLabel != labelAncestors.end() ? &*enclosingLabel : nullptr;
 }
 
 String AccessibilityNodeObject::ariaAccessibilityDescription() const
@@ -1123,18 +1114,15 @@ String AccessibilityNodeObject::ariaAccessibilityDescription() const
 
 static Element* siblingWithAriaRole(String role, Node* node)
 {
-    Node* parent = node->parentNode();
+    ContainerNode* parent = node->parentNode();
     if (!parent)
         return 0;
-    
-    for (Node* sibling = parent->firstChild(); sibling; sibling = sibling->nextSibling()) {
-        if (sibling->isElementNode()) {
-            const AtomicString& siblingAriaRole = toElement(sibling)->getAttribute(roleAttr);
-            if (equalIgnoringCase(siblingAriaRole, role))
-                return toElement(sibling);
-        }
+    for (auto sibling = elementChildren(parent).begin(), end = elementChildren(parent).end(); sibling != end; ++sibling) {
+        const AtomicString& siblingAriaRole = sibling->fastGetAttribute(roleAttr);
+        if (equalIgnoringCase(siblingAriaRole, role))
+            return &*sibling;
     }
-    
+
     return 0;
 }
 
@@ -1183,7 +1171,9 @@ void AccessibilityNodeObject::titleElementText(Vector<AccessibilityText>& textOr
         HTMLLabelElement* label = labelForElement(toElement(node));
         if (label) {
             AccessibilityObject* labelObject = axObjectCache()->getOrCreate(label);
-            textOrder.append(AccessibilityText(label->innerText(), LabelByElementText, labelObject));
+            String innerText = label->innerText();
+            if (!innerText.isEmpty())
+                textOrder.append(AccessibilityText(innerText, LabelByElementText, labelObject));
             return;
         }
     }
@@ -1222,8 +1212,8 @@ void AccessibilityNodeObject::alternativeText(Vector<AccessibilityText>& textOrd
     
 #if ENABLE(SVG)
     // SVG elements all can have a <svg:title> element inside which should act as the descriptive text.
-    if (node->isSVGElement() && toSVGElement(node)->isSVGStyledElement())
-        textOrder.append(AccessibilityText(toSVGStyledElement(node)->title(), AlternativeText));
+    if (node->isSVGElement())
+        textOrder.append(AccessibilityText(toSVGElement(node)->title(), AlternativeText));
 #endif
     
 #if ENABLE(MATHML)
@@ -1280,7 +1270,13 @@ void AccessibilityNodeObject::visibleText(Vector<AccessibilityText>& textOrder) 
         useTextUnderElement = true;
     
     if (useTextUnderElement) {
-        String text = textUnderElement();
+        AccessibilityTextUnderElementMode mode;
+        
+        // Headings often include links as direct children. Those links need to be included in text under element.
+        if (isHeading())
+            mode.includeFocusableContent = true;
+
+        String text = textUnderElement(mode);
         if (!text.isEmpty())
             textOrder.append(AccessibilityText(text, ChildrenText));
     }
@@ -1415,8 +1411,8 @@ String AccessibilityNodeObject::accessibilityDescription() const
 
 #if ENABLE(SVG)
     // SVG elements all can have a <svg:title> element inside which should act as the descriptive text.
-    if (m_node && m_node->isSVGElement() && toSVGElement(m_node)->isSVGStyledElement())
-        return toSVGStyledElement(m_node)->title();
+    if (m_node && m_node->isSVGElement())
+        return toSVGElement(m_node)->title();
 #endif
     
 #if ENABLE(MATHML)
@@ -1507,7 +1503,7 @@ unsigned AccessibilityNodeObject::hierarchicalLevel() const
 static bool shouldUseAccessiblityObjectInnerText(AccessibilityObject* obj, AccessibilityTextUnderElementMode mode)
 {
     // Do not use any heuristic if we are explicitly asking to include all the children.
-    if (mode == TextUnderElementModeIncludeAllChildren)
+    if (mode.childrenInclusion == AccessibilityTextUnderElementMode::TextUnderElementModeIncludeAllChildren)
         return true;
 
     // Consider this hypothetical example:
@@ -1536,7 +1532,7 @@ static bool shouldUseAccessiblityObjectInnerText(AccessibilityObject* obj, Acces
         return true;
     
     // Skip focusable children, so we don't include the text of links and controls.
-    if (obj->canSetFocusAttribute())
+    if (obj->canSetFocusAttribute() && !mode.includeFocusableContent)
         return false;
 
     // Skip big container elements like lists, tables, etc.
@@ -1624,10 +1620,12 @@ String AccessibilityNodeObject::title() const
         break;
     }
 
-    if (isHeading() || isLink())
+    if (isLink())
         return textUnderElement();
+    if (isHeading())
+        return textUnderElement(AccessibilityTextUnderElementMode(AccessibilityTextUnderElementMode::TextUnderElementModeSkipIgnoredChildren, true));
 
-    // If it's focusable but it's not content editable or a known control type, then it will appear to                  
+    // If it's focusable but it's not content editable or a known control type, then it will appear to
     // the user as a single atomic object, so we should use its text as the default title.                              
     if (isGenericFocusableElement())
         return textUnderElement();
@@ -1854,6 +1852,10 @@ AccessibilityRole AccessibilityNodeObject::determineAriaRoleAttribute() const
         role = TextFieldRole;
 
     role = remapAriaRoleDueToParent(role);
+    
+    // Presentational roles are invalidated by the presence of ARIA attributes.
+    if (role == PresentationalRole && supportsARIAAttributes())
+        role = UnknownRole;
     
     if (role)
         return role;

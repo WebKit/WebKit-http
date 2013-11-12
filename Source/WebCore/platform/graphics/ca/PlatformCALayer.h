@@ -51,7 +51,7 @@ typedef Vector<RefPtr<PlatformCALayer> > PlatformCALayerList;
 
 class PlatformCALayer : public RefCounted<PlatformCALayer> {
 public:
-    static CFTimeInterval currentTimeToMediaTime(double t) { return CACurrentMediaTime() + t - WTF::currentTime(); }
+    static CFTimeInterval currentTimeToMediaTime(double t) { return CACurrentMediaTime() + t - monotonicallyIncreasingTime(); }
 
     // LayerTypeRootLayer is used on some platforms. It has no backing store, so setNeedsDisplay
     // should not call CACFLayerSetNeedsDisplay, but rather just notify the renderer that it
@@ -156,9 +156,6 @@ public:
     TransformationMatrix sublayerTransform() const;
     void setSublayerTransform(const TransformationMatrix&);
 
-    TransformationMatrix contentsTransform() const;
-    void setContentsTransform(const TransformationMatrix&);
-
     bool isHidden() const;
     void setHidden(bool);
 
@@ -226,7 +223,7 @@ public:
     void printTree() const;
 #endif
 
-#if PLATFORM(MAC) && (PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070)
+#if PLATFORM(MAC)
     void synchronouslyDisplayTilesInRect(const FloatRect&);
 #endif
 

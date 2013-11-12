@@ -35,6 +35,8 @@
 
 namespace WebCore {
 
+class MediaControlsGtkEventListener;
+
 class MediaControlsGtk : public MediaControls {
 public:
     // Called from port-specific parent create function to create custom controls.
@@ -46,6 +48,10 @@ public:
     void changedMute() OVERRIDE;
     virtual void updateCurrentTimeDisplay() OVERRIDE;
     virtual void showVolumeSlider() OVERRIDE;
+    virtual void makeTransparent() OVERRIDE;
+    virtual void toggleClosedCaptionTrackList() OVERRIDE;
+
+    void handleClickEvent(Event*);
 
 #if ENABLE(VIDEO_TRACK)
     void createTextTrackDisplay() OVERRIDE;
@@ -53,13 +59,21 @@ public:
 
 protected:
     explicit MediaControlsGtk(Document*);
-
     bool initializeControls(Document*);
 
 private:
+    void showClosedCaptionTrackList();
+    void hideClosedCaptionTrackList();
+
+    PassRefPtr<MediaControlsGtkEventListener> eventListener();
+
     MediaControlTimeRemainingDisplayElement* m_durationDisplay;
     MediaControlPanelEnclosureElement* m_enclosure;
     MediaControlVolumeSliderContainerElement* m_volumeSliderContainer;
+    MediaControlClosedCaptionsTrackListElement* m_closedCaptionsTrackList;
+    MediaControlClosedCaptionsContainerElement* m_closedCaptionsContainer;
+
+    RefPtr<MediaControlsGtkEventListener> m_eventListener;
 };
 
 }

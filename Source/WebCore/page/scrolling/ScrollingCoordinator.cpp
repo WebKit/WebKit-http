@@ -102,12 +102,12 @@ bool ScrollingCoordinator::coordinatesScrollingForFrameView(FrameView* frameView
     ASSERT(m_page);
 
     // We currently only handle the main frame.
-    if (frameView->frame() != m_page->mainFrame())
+    if (&frameView->frame() != &m_page->mainFrame())
         return false;
 
     // We currently only support composited mode.
 #if USE(ACCELERATED_COMPOSITING)
-    RenderView* renderView = m_page->mainFrame()->contentRenderer();
+    RenderView* renderView = m_page->mainFrame().contentRenderer();
     if (!renderView)
         return false;
     return renderView->usesCompositing();
@@ -140,20 +140,16 @@ Region ScrollingCoordinator::computeNonFastScrollableRegion(const Frame* frame, 
         }
     }
 
-    if (const HashSet<RefPtr<Widget> >* children = frameView->children()) {
-        for (HashSet<RefPtr<Widget> >::const_iterator it = children->begin(), end = children->end(); it != end; ++it) {
-            if (!(*it)->isPluginViewBase())
-                continue;
-
-            PluginViewBase* pluginViewBase = toPluginViewBase((*it).get());
-            if (pluginViewBase->wantsWheelEvents())
-                nonFastScrollableRegion.unite(pluginViewBase->frameRect());
-        }
+    for (auto it = frameView->children().begin(), end = frameView->children().end(); it != end; ++it) {
+        if (!(*it)->isPluginViewBase())
+            continue;
+        PluginViewBase* pluginViewBase = toPluginViewBase((*it).get());
+        if (pluginViewBase->wantsWheelEvents())
+            nonFastScrollableRegion.unite(pluginViewBase->frameRect());
     }
 
-    FrameTree* tree = frame->tree();
-    for (Frame* subFrame = tree->firstChild(); subFrame; subFrame = subFrame->tree()->nextSibling())
-        nonFastScrollableRegion.unite(computeNonFastScrollableRegion(subFrame, offset));
+    for (Frame* subframe = frame->tree().firstChild(); subframe; subframe = subframe->tree().nextSibling())
+        nonFastScrollableRegion.unite(computeNonFastScrollableRegion(subframe, offset));
 
     return nonFastScrollableRegion;
 }
@@ -235,7 +231,7 @@ unsigned ScrollingCoordinator::computeCurrentWheelEventHandlerCount()
 {
     unsigned wheelEventHandlerCount = 0;
 
-    for (Frame* frame = m_page->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
+    for (Frame* frame = &m_page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (frame->document())
             wheelEventHandlerCount += frame->document()->wheelEventHandlerCount();
     }
@@ -293,14 +289,9 @@ GraphicsLayer* ScrollingCoordinator::verticalScrollbarLayerForScrollableArea(Scr
 GraphicsLayer* ScrollingCoordinator::scrollLayerForFrameView(FrameView* frameView)
 {
 #if USE(ACCELERATED_COMPOSITING)
-    Frame* frame = frameView->frame();
-    if (!frame)
-        return 0;
-
-    RenderView* renderView = frame->contentRenderer();
-    if (!renderView)
-        return 0;
-    return renderView->compositor()->scrollLayer();
+    if (RenderView* renderView = frameView->frame().contentRenderer())
+        return renderView->compositor().scrollLayer();
+    return 0;
 #else
     UNUSED_PARAM(frameView);
     return 0;
@@ -310,15 +301,9 @@ GraphicsLayer* ScrollingCoordinator::scrollLayerForFrameView(FrameView* frameVie
 GraphicsLayer* ScrollingCoordinator::headerLayerForFrameView(FrameView* frameView)
 {
 #if USE(ACCELERATED_COMPOSITING) && ENABLE(RUBBER_BANDING)
-    Frame* frame = frameView->frame();
-    if (!frame)
-        return 0;
-
-    RenderView* renderView = frame->contentRenderer();
-    if (!renderView)
-        return 0;
-
-    return renderView->compositor()->headerLayer();
+    if (RenderView* renderView = frameView->frame().contentRenderer())
+        renderView->compositor().headerLayer();
+    return 0;
 #else
     UNUSED_PARAM(frameView);
     return 0;
@@ -328,14 +313,9 @@ GraphicsLayer* ScrollingCoordinator::headerLayerForFrameView(FrameView* frameVie
 GraphicsLayer* ScrollingCoordinator::footerLayerForFrameView(FrameView* frameView)
 {
 #if USE(ACCELERATED_COMPOSITING) && ENABLE(RUBBER_BANDING)
-    Frame* frame = frameView->frame();
-    if (!frame)
-        return 0;
-
-    RenderView* renderView = frame->contentRenderer();
-    if (!renderView)
-        return 0;
-    return renderView->compositor()->footerLayer();
+    if (RenderView* renderView = frameView->frame().contentRenderer())
+        return renderView->compositor().footerLayer();
+    return 0;
 #else
     UNUSED_PARAM(frameView);
     return 0;
@@ -345,14 +325,9 @@ GraphicsLayer* ScrollingCoordinator::footerLayerForFrameView(FrameView* frameVie
 GraphicsLayer* ScrollingCoordinator::counterScrollingLayerForFrameView(FrameView* frameView)
 {
 #if USE(ACCELERATED_COMPOSITING)
-    Frame* frame = frameView->frame();
-    if (!frame)
-        return 0;
-
-    RenderView* renderView = frame->contentRenderer();
-    if (!renderView)
-        return 0;
-    return renderView->compositor()->fixedRootBackgroundLayer();
+    if (RenderView* renderView = frameView->frame().contentRenderer())
+        return renderView->compositor().fixedRootBackgroundLayer();
+    return 0;
 #else
     UNUSED_PARAM(frameView);
     return 0;
@@ -406,7 +381,7 @@ void ScrollingCoordinator::updateMainFrameScrollPosition(const IntPoint& scrollP
     if (!m_page)
         return;
 
-    FrameView* frameView = m_page->mainFrame()->view();
+    FrameView* frameView = m_page->mainFrame().view();
     if (!frameView)
         return;
 
@@ -460,7 +435,7 @@ void ScrollingCoordinator::handleWheelEventPhase(PlatformWheelEventPhase phase)
     if (!m_page)
         return;
 
-    FrameView* frameView = m_page->mainFrame()->view();
+    FrameView* frameView = m_page->mainFrame().view();
     if (!frameView)
         return;
 
@@ -492,7 +467,7 @@ bool ScrollingCoordinator::hasVisibleSlowRepaintViewportConstrainedObjects(Frame
 
 MainThreadScrollingReasons ScrollingCoordinator::mainThreadScrollingReasons() const
 {
-    FrameView* frameView = m_page->mainFrame()->view();
+    FrameView* frameView = m_page->mainFrame().view();
     if (!frameView)
         return static_cast<MainThreadScrollingReasons>(0);
 
@@ -506,7 +481,7 @@ MainThreadScrollingReasons ScrollingCoordinator::mainThreadScrollingReasons() co
         mainThreadScrollingReasons |= HasViewportConstrainedObjectsWithoutSupportingFixedLayers;
     if (supportsFixedPositionLayers() && hasVisibleSlowRepaintViewportConstrainedObjects(frameView))
         mainThreadScrollingReasons |= HasNonLayerViewportConstrainedObjects;
-    if (m_page->mainFrame()->document() && m_page->mainFrame()->document()->isImageDocument())
+    if (m_page->mainFrame().document() && m_page->mainFrame().document()->isImageDocument())
         mainThreadScrollingReasons |= IsImageDocument;
 
     return mainThreadScrollingReasons;

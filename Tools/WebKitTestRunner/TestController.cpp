@@ -26,6 +26,7 @@
 #include "config.h"
 #include "TestController.h"
 
+#include "EventSenderProxy.h"
 #include "PlatformWebView.h"
 #include "StringFunctions.h"
 #include "TestInvocation.h"
@@ -52,10 +53,6 @@
 
 #if PLATFORM(MAC)
 #include <WebKit2/WKPagePrivateMac.h>
-#endif
-
-#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
-#include "EventSenderProxy.h"
 #endif
 
 #if !PLATFORM(MAC)
@@ -375,6 +372,9 @@ void TestController::initialize(int argc, const char* argv[])
         WKContextSetIconDatabasePath(m_context.get(), toWK(temporaryFolder + separator + "IconDatabase" + separator + "WebpageIcons.db").get());
     }
 
+    WKContextUseTestingNetworkSession(m_context.get());
+    WKContextSetCacheModel(m_context.get(), kWKCacheModelDocumentBrowser);
+
     platformInitializeContext();
 
     WKContextInjectedBundleClient injectedBundleClient = {
@@ -480,7 +480,7 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
         0, // shouldGoToBackForwardListItem
         0, // didRunInsecureContentForFrame
         0, // didDetectXSSForFrame
-        0, // didNewFirstVisuallyNonEmptyLayout
+        0, // didNewFirstVisuallyNonEmptyLayout_unavailable
         0, // willGoToBackForwardListItem
         0, // interactionOccurredWhileProcessUnresponsive
         0, // pluginDidFail_deprecatedForUseWithV1
@@ -543,9 +543,7 @@ bool TestController::resetStateToConsistentValues()
     // FIXME: This function should also ensure that there is only one page open.
 
     // Reset the EventSender for each test.
-#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
     m_eventSenderProxy = adoptPtr(new EventSenderProxy(this));
-#endif
 
     // Reset preferences
     WKPreferencesRef preferences = WKPageGroupGetPreferences(m_pageGroup.get());
@@ -831,7 +829,6 @@ void TestController::didReceiveKeyDownMessageFromInjectedBundle(WKDictionaryRef 
 
 void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody)
 {
-#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
     if (WKStringIsEqualToUTF8CString(messageName, "EventSender")) {
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
@@ -864,7 +861,6 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
 
         ASSERT_NOT_REACHED();
     }
-#endif
 
     if (!m_currentInvocation)
         return;
@@ -874,7 +870,6 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
 
 WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody)
 {
-#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
     if (WKStringIsEqualToUTF8CString(messageName, "EventSender")) {
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
@@ -1055,7 +1050,6 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
 #endif
         ASSERT_NOT_REACHED();
     }
-#endif
     return m_currentInvocation->didReceiveSynchronousMessageFromInjectedBundle(messageName, messageBody);
 }
 

@@ -41,7 +41,6 @@ NSArray *WKGetExtensionsForMIMEType(NSString *type);
 NSString *WKGetMIMETypeForExtension(NSString *extension);
 
 NSDate *WKGetNSURLResponseLastModifiedDate(NSURLResponse *response);
-NSTimeInterval WKGetNSURLResponseFreshnessLifetime(NSURLResponse *response);
 NSString *WKCopyNSURLResponseStatusLine(NSURLResponse *response);
 
 CFArrayRef WKCopyNSURLResponseCertificateChain(NSURLResponse *response);
@@ -210,6 +209,7 @@ OSStatus WKThemeDrawTrack(const HIThemeTrackDrawInfo* inDrawInfo, CGContextRef i
 
 
 BOOL WKCGContextIsBitmapContext(CGContextRef context);
+bool WKCGContextIsPDFContext(CGContextRef context);
 
 void WKGetWheelEventDeltas(NSEvent *, float *deltaX, float *deltaY, float *wheelTicksX, float *wheelTicksY, BOOL *continuous);
 
@@ -298,22 +298,16 @@ typedef enum {
 } WKMediaUIPart;
 
 typedef enum {
-    WKMediaControllerThemeClassic   = 1,
-    WKMediaControllerThemeQuickTime = 2
-} WKMediaControllerThemeStyle;
-
-typedef enum {
     WKMediaControllerFlagDisabled = 1 << 0,
     WKMediaControllerFlagPressed = 1 << 1,
     WKMediaControllerFlagDrawEndCaps = 1 << 3,
     WKMediaControllerFlagFocused = 1 << 4
 } WKMediaControllerThemeState;
 
-BOOL WKMediaControllerThemeAvailable(int themeStyle);
-BOOL WKHitTestMediaUIPart(int part, int themeStyle, CGRect bounds, CGPoint point);
-void WKMeasureMediaUIPart(int part, int themeStyle, CGRect *bounds, CGSize *naturalSize);
-void WKDrawMediaUIPart(int part, int themeStyle, CGContextRef context, CGRect rect, unsigned state);
-void WKDrawMediaSliderTrack(int themeStyle, CGContextRef context, CGRect rect, float timeLoaded, float currentTime, float duration, unsigned state);
+BOOL WKHitTestMediaUIPart(int part, CGRect bounds, CGPoint point);
+void WKMeasureMediaUIPart(int part, CGRect *bounds, CGSize *naturalSize);
+void WKDrawMediaUIPart(int part, CGContextRef context, CGRect rect, unsigned state);
+void WKDrawMediaSliderTrack(CGContextRef context, CGRect rect, float timeLoaded, float currentTime, float duration, unsigned state);
 NSView *WKCreateMediaUIBackgroundView(void);
 
 typedef enum {
@@ -455,7 +449,10 @@ NSURL* WKAVAssetResolvedURL(AVAsset*);
 NSCursor *WKCursor(const char *name);
 
 dispatch_source_t WKCreateVMPressureDispatchOnMainQueue(void);
-
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+dispatch_source_t WKCreateMemoryStatusPressureCriticalDispatchOnMainQueue(void);
+#endif
+    
 #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 bool WKExecutableWasLinkedOnOrBeforeLion(void);
 #endif
@@ -501,9 +498,6 @@ bool WKRegisterOcclusionNotificationHandler(WKOcclusionNotificationType, WKOcclu
 bool WKUnregisterOcclusionNotificationHandler(WKOcclusionNotificationType, WKOcclusionNotificationHandler);
 bool WKEnableWindowOcclusionNotifications(NSInteger windowID, bool *outCurrentOcclusionState);
 #endif
-
-bool WKIsJavaPlugInActive(void);
-void WKActivateJavaPlugIn(void);
 
 void WKCFNetworkSetOverrideSystemProxySettings(CFDictionaryRef);
 

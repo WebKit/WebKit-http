@@ -30,6 +30,7 @@
 #include "DisplayRefreshMonitor.h"
 
 #include <wtf/CurrentTime.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
@@ -81,12 +82,7 @@ void DisplayRefreshMonitor::addClient(DisplayRefreshMonitorClient* client)
 
 bool DisplayRefreshMonitor::removeClient(DisplayRefreshMonitorClient* client)
 {
-    DisplayRefreshMonitorClientSet::iterator it = m_clients.find(client);
-    if (it != m_clients.end()) {
-        m_clients.remove(it);
-        return true;
-    }
-    return false;
+    return m_clients.remove(client);
 }
 
 void DisplayRefreshMonitor::displayDidRefresh()
@@ -105,7 +101,7 @@ void DisplayRefreshMonitor::displayDidRefresh()
 
     // The call back can cause all our clients to be unregistered, so we need to protect
     // against deletion until the end of the method.
-    RefPtr<DisplayRefreshMonitor> protector(this);
+    Ref<DisplayRefreshMonitor> protect(*this);
     
     Vector<DisplayRefreshMonitorClient*> clients;
     copyToVector(m_clients, clients);
@@ -178,9 +174,8 @@ bool DisplayRefreshMonitorManager::scheduleAnimation(DisplayRefreshMonitorClient
 void DisplayRefreshMonitorManager::displayDidRefresh(DisplayRefreshMonitor* monitor)
 {
     if (monitor->shouldBeTerminated()) {
-        DisplayRefreshMonitorMap::iterator it = m_monitors.find(monitor->displayID());
-        ASSERT(it != m_monitors.end());
-        m_monitors.remove(it);
+        ASSERT(m_monitors.contains(monitor->displayID()));
+        m_monitors.remove(monitor->displayID());
     }
 }
 

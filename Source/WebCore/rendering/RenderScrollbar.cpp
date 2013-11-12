@@ -253,7 +253,7 @@ void RenderScrollbar::updateScrollbarPart(ScrollbarPart partType, bool destroy)
     
     RenderScrollbarPart* partRenderer = m_parts.get(partType);
     if (!partRenderer && needRenderer) {
-        partRenderer = RenderScrollbarPart::createAnonymous(owningRenderer()->document(), this, partType);
+        partRenderer = RenderScrollbarPart::createAnonymous(&owningRenderer()->document(), this, partType);
         m_parts.set(partType, partRenderer);
     } else if (partRenderer && !needRenderer) {
         m_parts.remove(partType);
@@ -355,6 +355,15 @@ int RenderScrollbar::minimumThumbLength()
         return 0;    
     partRenderer->layout();
     return orientation() == HorizontalScrollbar ? partRenderer->width() : partRenderer->height();
+}
+
+float RenderScrollbar::opacity()
+{
+    RenderScrollbarPart* partRenderer = m_parts.get(ScrollbarBGPart);
+    if (!partRenderer)
+        return 1;
+
+    return partRenderer->style()->opacity();
 }
 
 }

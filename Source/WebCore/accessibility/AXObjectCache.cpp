@@ -48,6 +48,7 @@
 #include "AccessibilitySVGRoot.h"
 #include "AccessibilityScrollView.h"
 #include "AccessibilityScrollbar.h"
+#include "AccessibilitySearchFieldButtons.h"
 #include "AccessibilitySlider.h"
 #include "AccessibilitySpinButton.h"
 #include "AccessibilityTable.h"
@@ -137,7 +138,7 @@ AccessibilityObject* AXObjectCache::focusedImageMapUIElement(HTMLAreaElement* ar
     if (!imageElement)
         return 0;
     
-    AccessibilityObject* axRenderImage = areaElement->document()->axObjectCache()->getOrCreate(imageElement);
+    AccessibilityObject* axRenderImage = areaElement->document().axObjectCache()->getOrCreate(imageElement);
     if (!axRenderImage)
         return 0;
     
@@ -161,7 +162,7 @@ AccessibilityObject* AXObjectCache::focusedUIElementForPage(const Page* page)
         return 0;
 
     // get the focused node in the page
-    Document* focusedDocument = page->focusController()->focusedOrMainFrame()->document();
+    Document* focusedDocument = page->focusController().focusedOrMainFrame().document();
     Element* focusedElement = focusedDocument->focusedElement();
     if (focusedElement && isHTMLAreaElement(focusedElement))
         return focusedImageMapUIElement(toHTMLAreaElement(focusedElement));
@@ -276,6 +277,10 @@ static PassRefPtr<AccessibilityObject> createFromRenderer(RenderObject* renderer
         return AccessibilitySVGRoot::create(renderer);
 #endif
     
+    // Search field buttons
+    if (node && node->isElementNode() && toElement(node)->isSearchFieldCancelButtonElement())
+        return AccessibilitySearchFieldCancelButton::create(renderer);
+    
     if (renderer->isBoxModelObject()) {
         RenderBoxModelObject* cssBox = toRenderBoxModelObject(renderer);
         if (cssBox->isListBox())
@@ -330,7 +335,12 @@ AccessibilityObject* AXObjectCache::getOrCreate(Widget* widget)
 
     // Will crash later if we have two objects for the same widget.
     ASSERT(!get(widget));
-        
+
+    // Catch the case if an (unsupported) widget type is used. Only FrameView and ScrollBar are supported now.
+    ASSERT(newObj);
+    if (!newObj)
+        return 0;
+
     getAXID(newObj.get());
     
     m_widgetObjectMapping.set(widget, newObj->axObjectID());
@@ -410,6 +420,9 @@ AccessibilityObject* AXObjectCache::getOrCreate(RenderObject* renderer)
 AccessibilityObject* AXObjectCache::rootObject()
 {
     if (!gAccessibilityEnabled)
+        return 0;
+
+    if (!m_document)
         return 0;
     
     return getOrCreate(m_document->view());
@@ -640,14 +653,17 @@ void AXObjectCache::notificationPostTimerFired(Timer<AXObjectCache>*)
         if (!obj->axObjectID())
             continue;
 
+        if (!obj->axObjectCache())
+            continue;
+        
 #ifndef NDEBUG
         // Make sure none of the render views are in the process of being layed out.
         // Notifications should only be sent after the renderer has finished
         if (obj->isAccessibilityRenderObject()) {
             AccessibilityRenderObject* renderObj = static_cast<AccessibilityRenderObject*>(obj);
             RenderObject* renderer = renderObj->renderer();
-            if (renderer && renderer->view())
-                ASSERT(!renderer->view()->layoutState());
+            if (renderer)
+                ASSERT(!renderer->view().layoutState());
         }
 #endif
         
@@ -679,7 +695,7 @@ void AXObjectCache::postNotification(RenderObject* renderer, AXNotification noti
     if (!renderer)
         return;
     
-    postNotification(object.get(), renderer->document(), notification, postToElement, postType);
+    postNotification(object.get(), &renderer->document(), notification, postToElement, postType);
 }
 
 void AXObjectCache::postNotification(Node* node, AXNotification notification, bool postToElement, PostType postType)
@@ -700,7 +716,7 @@ void AXObjectCache::postNotification(Node* node, AXNotification notification, bo
     if (!node)
         return;
     
-    postNotification(object.get(), node->document(), notification, postToElement, postType);
+    postNotification(object.get(), &node->document(), notification, postToElement, postType);
 }
 
 void AXObjectCache::postNotification(AccessibilityObject* object, Document* document, AXNotification notification, bool postToElement, PostType postType)
@@ -875,7 +891,7 @@ VisiblePosition AXObjectCache::visiblePositionForTextMarkerData(TextMarkerData& 
     if (!renderer)
         return VisiblePosition();
     
-    AXObjectCache* cache = renderer->document()->axObjectCache();
+    AXObjectCache* cache = renderer->document().axObjectCache();
     if (!cache->isIDinUse(textMarkerData.axID))
         return VisiblePosition();
     
@@ -907,7 +923,7 @@ void AXObjectCache::textMarkerDataForVisiblePosition(TextMarkerData& textMarkerD
     }
     
     // find or create an accessibility object for this node
-    AXObjectCache* cache = domNode->document()->axObjectCache();
+    AXObjectCache* cache = domNode->document().axObjectCache();
     RefPtr<AccessibilityObject> obj = cache->getOrCreate(domNode);
     
     textMarkerData.axID = obj.get()->axObjectID();
@@ -931,6 +947,24 @@ const Element* AXObjectCache::rootAXEditableElement(const Node* node)
     return result;
 }
 
+void AXObjectCache::clearTextMarkerNodesInUse(Document* document)
+{
+    HashSet<Node*>::iterator it = m_textMarkerNodes.begin();
+    HashSet<Node*>::iterator end = m_textMarkerNodes.end();
+
+    // Check each node to see if it's inside the document being deleted.
+    HashSet<Node*> nodesToDelete;
+    for (; it != end; ++it) {
+        if (&(*it)->document() == document)
+            nodesToDelete.add(*it);
+    }
+    
+    it = nodesToDelete.begin();
+    end = nodesToDelete.end();
+    for (; it != end; ++it)
+        m_textMarkerNodes.remove(*it);
+}
+    
 bool AXObjectCache::nodeIsTextControl(const Node* node)
 {
     if (!node)

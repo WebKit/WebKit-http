@@ -38,7 +38,7 @@ CSSCanvasValue::~CSSCanvasValue()
         m_element->removeObserver(&m_canvasObserver);
 }
 
-String CSSCanvasValue::customCssText() const
+String CSSCanvasValue::customCSSText() const
 {
     StringBuilder result;
     result.appendLiteral("-webkit-canvas(");
@@ -75,10 +75,10 @@ IntSize CSSCanvasValue::fixedSize(const RenderObject* renderer)
     return IntSize();
 }
 
-HTMLCanvasElement* CSSCanvasValue::element(Document* document)
+HTMLCanvasElement* CSSCanvasValue::element(Document& document)
 {
      if (!m_element) {
-        m_element = document->getCSSCanvasElement(m_name);
+        m_element = document.getCSSCanvasElement(m_name);
         if (!m_element)
             return 0;
         m_element->addObserver(&m_canvasObserver);

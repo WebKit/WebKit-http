@@ -205,9 +205,9 @@ PASS: input[type='button']
       AXRoleDescription: button
       
 PASS: input[type='color']
-      AXRole: AXTextField
+      AXRole: AXColorWell
       AXSubrole: 
-      AXRoleDescription: text field
+      AXRoleDescription: color well
       
 PASS: input[type='checkbox']
       AXRole: AXCheckBox
@@ -325,9 +325,9 @@ PASS: mark
       AXRoleDescription: 
       
 PASS: math
-      AXRole: 
-      AXSubrole: 
-      AXRoleDescription: 
+      AXRole: AXGroup
+      AXSubrole: AXDocumentMath
+      AXRoleDescription: math
       
 PASS: meter
       AXRole: AXProgressIndicator

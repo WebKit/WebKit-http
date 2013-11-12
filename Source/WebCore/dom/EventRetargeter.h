@@ -22,6 +22,7 @@
 
 #include "ContainerNode.h"
 #include "EventContext.h"
+#include "PseudoElement.h"
 #include "ShadowRoot.h"
 #include <wtf/HashMap.h>
 #include <wtf/PassRefPtr.h>
@@ -81,7 +82,7 @@ inline EventTarget* EventRetargeter::eventTargetRespectingTargetRules(Node* refe
     ASSERT(referenceNode);
 
     if (referenceNode->isPseudoElement())
-        return referenceNode->parentNode();
+        return toPseudoElement(referenceNode)->hostElement();
 
 #if ENABLE(SVG)
     if (!referenceNode->isSVGElement() || !referenceNode->isInShadowTree())
@@ -89,7 +90,8 @@ inline EventTarget* EventRetargeter::eventTargetRespectingTargetRules(Node* refe
 
     // Spec: The event handling for the non-exposed tree works as if the referenced element had been textually included
     // as a deeply cloned child of the 'use' element, except that events are dispatched to the SVGElementInstance objects
-    Element* shadowHostElement = toShadowRoot(referenceNode->treeScope()->rootNode())->host();
+    Node* rootNode = referenceNode->treeScope()->rootNode();
+    Element* shadowHostElement = rootNode->isShadowRoot() ? toShadowRoot(rootNode)->hostElement() : 0;
     // At this time, SVG nodes are not supported in non-<use> shadow trees.
     if (!shadowHostElement || !shadowHostElement->hasTagName(SVGNames::useTag))
         return referenceNode;

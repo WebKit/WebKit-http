@@ -94,12 +94,14 @@ webkit2_h_api += \
 	$(WebKit2)/UIProcess/API/cpp/WKRetainPtr.h
 
 webkit2gtk_h_api += \
+	$(WebKit2)/UIProcess/API/gtk/WebKitAuthenticationRequest.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitBackForwardList.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitBackForwardListItem.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitContextMenu.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitContextMenuActions.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitContextMenuItem.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitCookieManager.h \
+	$(WebKit2)/UIProcess/API/gtk/WebKitCredential.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitDefines.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitDownload.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitEditingCommands.h \
@@ -136,7 +138,9 @@ webkit2gtk_h_api += \
 
 webkit2_web_extension_h_api += \
 	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.h \
+	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/WebKitFrame.h \
 	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/WebKitWebPage.h \
+	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/WebKitScriptWorld.h \
 	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/webkit-web-extension.h
 
 webkit2_built_sources += \
@@ -441,7 +445,6 @@ webkit2_sources += \
 	Source/WebKit2/Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp \
 	Source/WebKit2/Shared/Plugins/Netscape/PluginInformation.cpp \
 	Source/WebKit2/Shared/Plugins/Netscape/PluginInformation.h \
-	Source/WebKit2/Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp \
 	Source/WebKit2/Shared/Plugins/NPIdentifierData.cpp \
 	Source/WebKit2/Shared/Plugins/NPIdentifierData.h \
 	Source/WebKit2/Shared/Plugins/NPObjectMessageReceiver.cpp \
@@ -653,6 +656,9 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/PageClientImpl.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitAuthenticationDialog.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitAuthenticationDialog.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitAuthenticationRequest.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitAuthenticationRequest.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitAuthenticationRequestPrivate.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardList.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardList.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardListItem.h \
@@ -672,6 +678,9 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitCookieManager.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitCookieManager.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitCookieManagerPrivate.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitCredential.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitCredential.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitCredentialPrivate.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitDefines.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitDownload.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitDownload.h \
@@ -815,6 +824,7 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/GeolocationPermissionRequestProxy.h \
 	Source/WebKit2/UIProcess/cairo/BackingStoreCairo.cpp \
 	Source/WebKit2/UIProcess/gtk/ExperimentalFeatures.cpp \
+	Source/WebKit2/UIProcess/gtk/ExperimentalFeatures.h \
 	Source/WebKit2/UIProcess/gtk/TextCheckerGtk.cpp \
 	Source/WebKit2/UIProcess/gtk/WebContextGtk.cpp \
 	Source/WebKit2/UIProcess/gtk/WebContextMenuProxyGtk.cpp \
@@ -1050,6 +1060,12 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleRangeHandlePrivate.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitFrame.cpp \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitFrame.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitFramePrivate.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitScriptWorld.cpp \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitScriptWorld.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitScriptWorldPrivate.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtensionPrivate.h \
@@ -1124,7 +1140,6 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NPRuntimeUtilities.cpp \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NPRuntimeUtilities.h \
 	Source/WebKit2/WebProcess/Plugins/Netscape/unix/PluginProxyUnix.cpp \
-	Source/WebKit2/WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp \
 	Source/WebKit2/WebProcess/Plugins/PluginController.h \
 	Source/WebKit2/WebProcess/Plugins/Plugin.cpp \
 	Source/WebKit2/WebProcess/Plugins/Plugin.h \
@@ -1244,6 +1259,16 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebProcess.cpp \
 	Source/WebKit2/WebProcess/WebProcess.h
 
+if TARGET_X11
+webkit2_sources += \
+	Source/WebKit2/Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp \
+	Source/WebKit2/WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp \
+else
+webkit2_sources += \
+	Source/WebKit2/Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp \
+	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePluginNone.cpp
+endif # END TARGET_X11
+
 if USE_TEXTURE_MAPPER_GL
 webkit2_sources += \
    Source/WebKit2/WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp \
@@ -1296,7 +1321,6 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/Shared/Plugins/NPVariantData.h \
 	Source/WebKit2/Shared/Plugins/Netscape/NetscapePluginModule.cpp \
 	Source/WebKit2/Shared/Plugins/Netscape/NetscapePluginModule.h \
-	Source/WebKit2/Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp \
 	Source/WebKit2/Shared/ShareableBitmap.cpp \
 	Source/WebKit2/Shared/ShareableBitmap.h \
 	Source/WebKit2/Shared/WebCoreArgumentCoders.cpp \
@@ -1330,5 +1354,14 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePlugin.h \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePluginStream.cpp \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePluginStream.h \
-	Source/WebKit2/WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp \
 	Source/WebKit2/unix/PluginMainUnix.cpp
+
+if TARGET_X11
+webkit2_plugin_process_sources += \
+	Source/WebKit2/Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp \
+	Source/WebKit2/WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp
+else
+webkit2_plugin_process_sources += \
+	Source/WebKit2/Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp \
+	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePluginNone.cpp
+endif # END TARGET_X11

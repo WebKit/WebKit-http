@@ -327,6 +327,9 @@ Bug(EFL) fast/canvas/canvas-gradient-addStop-error.html
 Bug(EFL) fast/canvas/fill-stroke-clip-reset-path.html
 Bug(EFL) http/tests/xmlhttprequest/default-content-type-dashboard.html
 
+# Accelerated overflow scrolling (ENABLE_ACCELERATED_OVERFLOW_SCROLLING) is not enabled.
+fast/repaint/overflow-scroll-touch-repaint.html [ Skip ]
+
 # Doesn't apply to platforms that don't enforce the CFNetwork-style 3rd party cookie policy
 webkit.org/b/35824 http/tests/cookies/third-party-cookie-relaxing.html
 
@@ -392,6 +395,7 @@ webkit.org/b/86623 editing/pasteboard/drop-text-events.html [ Failure ]
 webkit.org/b/86623 editing/pasteboard/files-during-page-drags.html [ Failure ]
 webkit.org/b/86623 editing/pasteboard/get-data-text-plain-drop.html [ Failure ]
 webkit.org/b/86623 editing/pasteboard/copy-image-with-alt-text.html [ Failure ]
+webkit.org/b/86623 editing/pasteboard/simplfiying-markup-should-not-strip-content.html [ Failure ]
 webkit.org/b/86623 editing/selection/4895428-1.html [ Failure ]
 webkit.org/b/86623 editing/selection/4895428-4.html [ Failure ]
 webkit.org/b/86623 editing/selection/drag-text-delay.html [ Failure ]
@@ -498,9 +502,6 @@ webkit.org/b/86080 fast/encoding/idn-security.html [ Skip ]
 # Text Autosizing is not yet enabled.
 webkit.org/b/84186 fast/text-autosizing
 
-# Dialog element is not yet enabled.
-webkit.org/b/84635 fast/dom/HTMLDialogElement [ Skip ]
-
 # HIGH_DPI_CANVAS is not enabled.
 webkit.org/b/101809 fast/canvas/canvas-resize-reset-pixelRatio.html [ Skip ]
 
@@ -584,10 +585,6 @@ webkit.org/b/104809 media/remove-from-document.html [ Crash Pass ]
 webkit.org/b/104809 media/video-timeupdate-during-playback.html [ Crash Pass ]
 
 webkit.org/b/111521 editing/selection/selection-invalid-offset.html [ Crash Pass ]
-
-# ASSERTION FAILED: static_cast<unsigned>(m_start + length) <= string.length().
-webkit.org/b/116024 fast/table/crash-section-logical-height-changed-needsCellRecalc.html [ Crash ]
-webkit.org/b/116024 fast/table/crash-split-table-section-no-cell-recalc.html [ Crash Pass ]
 
 # Sometimes crashes in PlatformContextCairo::drawSurfaceToContext().
 webkit.org/b/116025 compositing/video/video-background-color.html [ Crash Pass ]
@@ -729,8 +726,6 @@ webkit.org/b/107024 compositing/video-page-visibility.html [ Pass Failure ]
 webkit.org/b/78819 fast/workers/shared-worker-load-error.html [ Failure Pass ]
 
 # Libsoup 2.42.0 regressions
-webkit.org/b/114918 http/tests/cache/reload-main-resource.php [ Failure ]
-webkit.org/b/114918 http/tests/cache/xhr-vary-header.html [ Failure ]
 webkit.org/b/114918 http/tests/xmlhttprequest/cache-override.html [ Failure Pass ]
 webkit.org/b/114918 http/tests/xmlhttprequest/range-test.html [ Failure Pass ]
 
@@ -1049,7 +1044,6 @@ Bug(EFL) fast/images/pdf-as-tiled-background.html
 Bug(EFL) fast/replaced/pdf-as-image.html
 
 # Started failing after sub-pixel layout was enabled.
-Bug(EFL) fast/replaced/table-percent-height-text-controls.html [ Failure ]
 Bug(EFL) fast/regions/overflow-last-region-vert-lr.html [ ImageOnlyFailure ]
 Bug(EFL) fast/spatial-navigation/snav-unit-overflow-and-scroll-in-direction.html [ Failure ]
 
@@ -1259,7 +1253,6 @@ Bug(EFL) fast/media/media-query-list-03.html [ Failure ]
 Bug(EFL) fast/media/media-query-list-04.html [ Failure ]
 Bug(EFL) fast/media/media-query-list-05.html [ Failure ]
 Bug(EFL) fast/media/media-query-list-06.html [ Failure ]
-Bug(EFL) fast/media/media-query-list-07.html [ Failure ]
 
 # EFL's TestRunner should support for the Geolocation API
 webkit.org/b/82140 fast/dom/Geolocation [ Skip ]
@@ -1325,8 +1318,6 @@ webkit.org/b/91339 css2.1/20110323/vertical-align-boxes-001.htm [ ImageOnlyFailu
 
 # Failing after r121121 on both GTK and EFL
 webkit.org/b/89845 fast/forms/input-set-composition-scroll.html [ Failure ]
-
-webkit.org/b/90007 http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Failure ]
 
 # These tests are failing after r122528.
 webkit.org/b/91210 http/tests/w3c/webperf/approved/navigation-timing/html/test_performance_attributes_exist_in_object.html [ Failure ]
@@ -1494,8 +1485,8 @@ webkit.org/b/102068 webkit.org/b/102993 media/media-document-audio-repaint.html 
 webkit.org/b/100859 ietestcenter/css3/bordersbackgrounds/background-repeat-space-padding-box.htm [ Failure ]
 webkit.org/b/100857 ietestcenter/css3/text/textshadow-005.htm [ Missing ]
 
-webkit.org/b/100846 inspector-protocol/debugger-pause-dedicated-worker.html [ Skip ]
-webkit.org/b/100846 inspector-protocol/debugger-terminate-dedicated-worker-while-paused.html [ Skip ]
+webkit.org/b/100846 inspector-protocol/debugger/pause-dedicated-worker.html [ Skip ]
+webkit.org/b/100846 inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html [ Skip ]
 
 # New media test introduced in r133660 fails.
 webkit.org/b/101439 media/progress-events-generated-correctly.html [ Failure ]
@@ -1537,16 +1528,14 @@ webkit.org/b/101670 media/video-controls-captions-trackmenu-includes-enabled-tra
 # Fails until we enable the Resource Timing API.
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Google/resource-timing [ Skip ]
 
-# No support for exposing in-band text tracks
+# In-band tracks only work on GStreamer >= 1.1.2
 Bug(EFL) media/track/track-in-band.html [ Skip ]
 Bug(EFL) media/track/track-in-band-cues-added-once.html [ Skip ]
 Bug(EFL) media/track/track-in-band-style.html [ Skip ]
 Bug(EFL) media/track/track-in-band-legacy-api.html [ Skip ]
 Bug(EFL) media/track/track-forced-subtitles-in-band.html [ Skip ]
 Bug(EFL) media/track/track-in-band-mode.html [ Skip ]
-
-# All debug bots timeout (crash) on this one
-webkit.org/b/56496 [ Debug ] fast/js/array-sort-modifying-tostring.html [ Crash Pass ]
+Bug(EFL) media/track/in-band [ Skip ]
 
 # Rendering failure, also missing expected results:
 webkit.org/b/105093 compositing/webgl/webgl-nonpremultiplied-blend.html [ Skip ]
@@ -1577,8 +1566,6 @@ webkit.org/b/105294 webaudio/codec-tests/mp3/128kbps-44khz.html [ Missing Failur
 webkit.org/b/105294 webaudio/codec-tests/vorbis/vbr-128kbps-44khz.html [ Failure ]
 webkit.org/b/105294 webaudio/codec-tests/vorbis/vbr-96kbps-44khz.html [ Failure ]
 webkit.org/b/105294 webaudio/codec-tests/vorbis/vbr-70kbps-44khz.html [ Failure ]
-webkit.org/b/105535 inspector-protocol/nmi-webaudio.html [ Failure ]
-webkit.org/b/105535 inspector-protocol/nmi-webaudio-leak-test.html [ Failure ]
 
 # Enable when support drag-and-drop autoscrolling
 webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
@@ -1620,7 +1607,6 @@ webkit.org/b/106957 svg/dom/SVGViewSpec-invalid-ref-crash.html [ Failure ]
 # Fail to generate proper pixel results - let's wait with rebaselining.
 webkit.org/b/106992 scrollingcoordinator/non-fast-scrollable-region-scaled-iframe.html [ Failure Pass ]
 webkit.org/b/106992 scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ Failure Pass ]
-webkit.org/b/106992 svg/zoom/page/zoom-replaced-intrinsic-ratio-001.htm [ Failure ]
 webkit.org/b/106992 http/tests/misc/object-embedding-svg-delayed-size-negotiation-2.htm [ Failure ]
 
 webkit.org/b/107375 fast/css/sticky/sticky-top-zoomed.html [ ImageOnlyFailure ]
@@ -1673,9 +1659,6 @@ webkit.org/b/110654 css3/flexbox/button.html [ Failure ]
 webkit.org/b/111016 http/tests/loading/promote-img-preload-priority.html [ Failure ]
 
 webkit.org/b/111058 plugins/plugin-clip-subframe.html [ Failure ]
-
-# Button has focus but should not.
-webkit.org/b/114150 fast/forms/datalist/update-range-with-datalist.html [ ImageOnlyFailure ]
 
 # Newly added tests in r144190 are failing.
 webkit.org/b/111172 compositing/overlap-blending/children-opacity-huge.html [ ImageOnlyFailure ]
@@ -1764,3 +1747,6 @@ fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]
 
 # vibration api doesn't support visibilitychange event.
 webkit.org/b/118378 vibration/cancelVibration-after-pagevisibility-changed-to-hidden.html [ Skip ]
+
+webkit.org/b/119782 fast/forms/search-styled.html [ Failure ]
+

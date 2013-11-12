@@ -43,7 +43,7 @@ typedef ListHashSet<RenderNamedFlowThread*> RenderNamedFlowThreadList;
 typedef HashCountedSet<RenderNamedFlowThread*> RenderNamedFlowThreadCountedSet;
 typedef ListHashSet<Node*> NamedFlowContentNodes;
 
-class RenderNamedFlowThread : public RenderFlowThread {
+class RenderNamedFlowThread FINAL : public RenderFlowThread {
 public:
     virtual ~RenderNamedFlowThread();
 
@@ -67,6 +67,8 @@ public:
 
     virtual void addRegionToThread(RenderRegion*) OVERRIDE;
     virtual void removeRegionFromThread(RenderRegion*) OVERRIDE;
+
+    virtual void regionChangedWritingMode(RenderRegion*) OVERRIDE;
 
     bool overset() const { return m_overset; }
     void computeOversetStateForRegions(LayoutUnit oldClientAfterEdge);
@@ -104,6 +106,7 @@ private:
     void regionLayoutUpdateEventTimerFired(Timer<RenderNamedFlowThread>*);
     void regionOversetChangeEventTimerFired(Timer<RenderNamedFlowThread>*);
     void clearContentNodes();
+    void updateWritingMode();
 
 private:
     // Observer flow threads have invalid regions that depend on the state of this thread

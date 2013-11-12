@@ -468,7 +468,7 @@ bool CSSGradientValue::knownToBeOpaque(const RenderObject*) const
     return true;
 }
 
-String CSSLinearGradientValue::customCssText() const
+String CSSLinearGradientValue::customCSSText() const
 {
     StringBuilder result;
     if (m_gradientType == CSSDeprecatedLinearGradient) {
@@ -647,7 +647,7 @@ PassRefPtr<Gradient> CSSLinearGradientValue::createGradient(RenderObject* render
 {
     ASSERT(!size.isEmpty());
 
-    RenderStyle* rootStyle = renderer->document()->documentElement()->renderStyle();
+    RenderStyle* rootStyle = renderer->document().documentElement()->renderStyle();
 
     FloatPoint firstPoint;
     FloatPoint secondPoint;
@@ -741,7 +741,7 @@ bool CSSLinearGradientValue::equals(const CSSLinearGradientValue& other) const
     return equalXorY && m_stops == other.m_stops;
 }
 
-String CSSRadialGradientValue::customCssText() const
+String CSSRadialGradientValue::customCSSText() const
 {
     StringBuilder result;
 
@@ -987,7 +987,7 @@ PassRefPtr<Gradient> CSSRadialGradientValue::createGradient(RenderObject* render
 {
     ASSERT(!size.isEmpty());
 
-    RenderStyle* rootStyle = renderer->document()->documentElement()->renderStyle();
+    RenderStyle* rootStyle = renderer->document().documentElement()->renderStyle();
 
     FloatPoint firstPoint = computeEndPoint(m_firstX.get(), m_firstY.get(), renderer->style(), rootStyle, size);
     if (!m_firstX)

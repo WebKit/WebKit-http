@@ -24,12 +24,16 @@
     JSGenerateToNativeObject,
     Conditional=SVG
 ] interface SVGElement : Element {
-    [Reflect] attribute DOMString id;
     [TreatNullAs=NullString, SetterRaisesException] attribute DOMString xmlbase;
     readonly attribute SVGSVGElement ownerSVGElement;
     readonly attribute SVGElement viewportElement;
 
     attribute DOMString xmllang;
     attribute DOMString xmlspace;
+
+    readonly attribute SVGAnimatedString className;
+    readonly attribute CSSStyleDeclaration style;
+
+    CSSValue getPresentationAttribute([Default=Undefined] optional DOMString name);
 };
 

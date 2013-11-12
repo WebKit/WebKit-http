@@ -44,7 +44,7 @@ struct SparseArrayEntry : public WriteBarrier<Unknown> {
     SparseArrayEntry() : attributes(0) { }
 
     JSValue get(ExecState*, JSObject*) const;
-    void get(PropertySlot&) const;
+    void get(JSObject*, PropertySlot&) const;
     void get(PropertyDescriptor&) const;
     void put(ExecState*, JSValue thisValue, SparseArrayValueMap*, JSValue, bool shouldThrow);
     JSValue getNonSparseMode() const;
@@ -73,7 +73,7 @@ private:
     static const unsigned StructureFlags = OverridesVisitChildren | JSCell::StructureFlags;
 
 public:
-    static JS_EXPORTDATA const ClassInfo s_info;
+    DECLARE_EXPORT_INFO;
     
     typedef Map::iterator iterator;
     typedef Map::const_iterator const_iterator;

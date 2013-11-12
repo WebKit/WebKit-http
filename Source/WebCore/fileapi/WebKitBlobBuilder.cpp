@@ -40,8 +40,8 @@
 #include "LineEnding.h"
 #include "ScriptCallStack.h"
 #include "TextEncoding.h"
-#include <wtf/ArrayBuffer.h>
-#include <wtf/ArrayBufferView.h>
+#include <runtime/ArrayBuffer.h>
+#include <runtime/ArrayBufferView.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
@@ -98,7 +98,7 @@ void BlobBuilder::append(ArrayBuffer* arrayBuffer)
     appendBytesData(arrayBuffer->data(), arrayBuffer->byteLength());
 }
 
-void BlobBuilder::append(ArrayBufferView* arrayBufferView)
+void BlobBuilder::append(PassRefPtr<ArrayBufferView> arrayBufferView)
 {
     HistogramSupport::histogramEnumeration("WebCore.Blob.constructor.ArrayBufferOrView", BlobConstructorArrayBufferView, BlobConstructorArrayBufferOrViewMax);
 

@@ -39,9 +39,9 @@ public:
 private:
     HTMLFrameElement(const QualifiedName&, Document*);
 
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
+    virtual void didAttachRenderers() OVERRIDE;
 
-    virtual bool rendererIsNeeded(const NodeRenderingContext&);
+    virtual bool rendererIsNeeded(const RenderStyle&);
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;

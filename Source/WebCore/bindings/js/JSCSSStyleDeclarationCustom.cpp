@@ -52,7 +52,7 @@ namespace WebCore {
 void JSCSSStyleDeclaration::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSCSSStyleDeclaration* thisObject = jsCast<JSCSSStyleDeclaration*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
@@ -330,24 +330,9 @@ bool JSCSSStyleDeclaration::getOwnPropertySlotDelegate(ExecState*, PropertyName 
         return false;
 
     if (propertyInfo.hadPixelOrPosPrefix)
-        slot.setCustomIndex(this, static_cast<unsigned>(propertyInfo.propertyID), cssPropertyGetterPixelOrPosPrefixCallback);
+        slot.setCustomIndex(this, ReadOnly | DontDelete | DontEnum, static_cast<unsigned>(propertyInfo.propertyID), cssPropertyGetterPixelOrPosPrefixCallback);
     else
-        slot.setCustomIndex(this, static_cast<unsigned>(propertyInfo.propertyID), cssPropertyGetterCallback);
-    return true;
-}
-
-bool JSCSSStyleDeclaration::getOwnPropertyDescriptorDelegate(JSC::ExecState* exec, JSC::PropertyName propertyIdentifier, JSC::PropertyDescriptor& descriptor)
-{
-    CSSPropertyInfo propertyInfo = cssPropertyIDForJSCSSPropertyName(propertyIdentifier);
-    if (!propertyInfo.propertyID)
-        return false;
-
-    JSValue value;
-    if (propertyInfo.hadPixelOrPosPrefix)
-        value = cssPropertyGetterPixelOrPosPrefix(exec, this, propertyInfo.propertyID);
-    else
-        value = cssPropertyGetter(exec, this, propertyInfo.propertyID);
-    descriptor.setDescriptor(value, ReadOnly | DontDelete | DontEnum);
+        slot.setCustomIndex(this, ReadOnly | DontDelete | DontEnum, static_cast<unsigned>(propertyInfo.propertyID), cssPropertyGetterCallback);
     return true;
 }
 
@@ -393,7 +378,7 @@ JSValue JSCSSStyleDeclaration::getPropertyCSSValue(ExecState* exec)
 void JSCSSStyleDeclaration::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
     JSCSSStyleDeclaration* thisObject = jsCast<JSCSSStyleDeclaration*>(object);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
 
     unsigned length = thisObject->impl()->length();
     for (unsigned i = 0; i < length; ++i)

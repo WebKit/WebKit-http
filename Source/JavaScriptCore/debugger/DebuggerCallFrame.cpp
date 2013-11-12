@@ -46,7 +46,7 @@ String DebuggerCallFrame::functionName() const
         return String();
 
     JSObject* function = m_callFrame->callee();
-    if (!function || !function->inherits(&JSFunction::s_info))
+    if (!function || !function->inherits(JSFunction::info()))
         return String();
     return jsCast<JSFunction*>(function)->name(m_callFrame);
 }
@@ -91,16 +91,16 @@ JSValue DebuggerCallFrame::evaluate(const String& script, JSValue& exception) co
         return JSValue();
     
     VM& vm = m_callFrame->vm();
-    EvalExecutable* eval = EvalExecutable::create(m_callFrame, m_callFrame->codeBlock()->unlinkedCodeBlock()->codeCacheForEval(), makeSource(script), m_callFrame->codeBlock()->isStrictMode());
-    if (vm.exception) {
-        exception = vm.exception;
-        vm.exception = JSValue();
+    EvalExecutable* eval = EvalExecutable::create(m_callFrame, makeSource(script), m_callFrame->codeBlock()->isStrictMode());
+    if (vm.exception()) {
+        exception = vm.exception();
+        vm.clearException();
     }
 
     JSValue result = vm.interpreter->execute(eval, m_callFrame, thisObject(), m_callFrame->scope());
-    if (vm.exception) {
-        exception = vm.exception;
-        vm.exception = JSValue();
+    if (vm.exception()) {
+        exception = vm.exception();
+        vm.clearException();
     }
     ASSERT(result);
     return result;

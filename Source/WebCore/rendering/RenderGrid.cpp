@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-static const int infinity = intMaxForLayoutUnit;
+static const int infinity = -1;
 
 class GridTrack {
 public:
@@ -147,13 +147,13 @@ void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
     // FIXME: Much of this method is boiler plate that matches RenderBox::layoutBlock and Render*FlexibleBox::layoutBlock.
     // It would be nice to refactor some of the duplicate code.
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
-    LayoutStateMaintainer statePusher(view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
+    LayoutStateMaintainer statePusher(&view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
 
     // Regions changing widths can force us to relayout our children.
     RenderFlowThread* flowThread = flowThreadContainingBlock();
     if (logicalWidthChangedInRegions(flowThread))
         relayoutChildren = true;
-    if (updateRegionsAndShapesBeforeChildLayout(flowThread))
+    if (updateShapesBeforeBlockLayout())
         relayoutChildren = true;
 
     LayoutSize previousSize = size();
@@ -171,7 +171,7 @@ void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
 
     layoutPositionedObjects(relayoutChildren || isRoot());
 
-    updateRegionsAndShapesAfterChildLayout(flowThread);
+    updateShapesAfterBlockLayout();
 
     computeOverflow(oldClientAfterEdge);
     statePusher.pop();
@@ -303,8 +303,7 @@ LayoutUnit RenderGrid::computeUsedBreadthOfMaxLength(TrackSizingDirection direct
 {
     if (trackLength.isFixed() || trackLength.isPercent() || trackLength.isViewportPercentage()) {
         LayoutUnit computedBreadth = computeUsedBreadthOfSpecifiedLength(direction, trackLength);
-        // FIXME: We should ASSERT that computedBreadth cannot return infinity but it's currently
-        // possible. See https://bugs.webkit.org/show_bug.cgi?id=107053
+        ASSERT(computedBreadth != infinity);
         return computedBreadth;
     }
 
@@ -316,7 +315,7 @@ LayoutUnit RenderGrid::computeUsedBreadthOfSpecifiedLength(TrackSizingDirection 
 {
     // FIXME: We still need to support calc() here (https://webkit.org/b/103761).
     ASSERT(trackLength.isFixed() || trackLength.isPercent() || trackLength.isViewportPercentage());
-    return valueForLength(trackLength, direction == ForColumns ? logicalWidth() : computeContentLogicalHeight(style()->logicalHeight()), view());
+    return valueForLength(trackLength, direction == ForColumns ? logicalWidth() : computeContentLogicalHeight(style()->logicalHeight()), &view());
 }
 
 const GridTrackSize& RenderGrid::gridTrackSize(TrackSizingDirection direction, size_t i) const
@@ -328,34 +327,34 @@ const GridTrackSize& RenderGrid::gridTrackSize(TrackSizingDirection direction, s
     return trackStyles[i];
 }
 
-static size_t estimatedGridSizeForPosition(const GridPosition& position)
+size_t RenderGrid::explicitGridColumnCount() const
 {
-    if (position.isAuto())
-        return 1;
+    return style()->gridColumns().size();
+}
 
-    return std::max(position.integerPosition(), 1);
+size_t RenderGrid::explicitGridRowCount() const
+{
+    return style()->gridRows().size();
+}
+
+size_t RenderGrid::explicitGridSizeForSide(GridPositionSide side) const
+{
+    return (side == ColumnStartSide || side == ColumnEndSide) ? explicitGridColumnCount() : explicitGridRowCount();
 }
 
 size_t RenderGrid::maximumIndexInDirection(TrackSizingDirection direction) const
 {
-    const Vector<GridTrackSize>& trackStyles = (direction == ForColumns) ? style()->gridColumns() : style()->gridRows();
-
-    size_t maximumIndex = std::max<size_t>(1, trackStyles.size());
+    size_t maximumIndex = std::max<size_t>(1, (direction == ForColumns) ? explicitGridColumnCount() : explicitGridRowCount());
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        // This function bypasses the cache (cachedGridCoordinate()) as it is used to build it.
-        // Also we can't call resolveGridPositionsFromStyle here as it assumes that the grid is build and we are in
-        // the middle of building it. However we should be able to share more code with the previous logic (FIXME).
-        const GridPosition& initialPosition = (direction == ForColumns) ? child->style()->gridItemStart() : child->style()->gridItemBefore();
-        const GridPosition& finalPosition = (direction == ForColumns) ? child->style()->gridItemEnd() : child->style()->gridItemAfter();
+        OwnPtr<GridSpan> positions = resolveGridPositionsFromStyle(child, direction);
 
-        size_t estimatedSizeForInitialPosition = estimatedGridSizeForPosition(initialPosition);
-        size_t estimatedSizeForFinalPosition = estimatedGridSizeForPosition(finalPosition);
-        ASSERT(estimatedSizeForInitialPosition);
-        ASSERT(estimatedSizeForFinalPosition);
+        // |positions| is null if we need to run the auto-placement algorithm. Our estimation ignores
+        // this case as the auto-placement algorithm will grow the grid as needed.
+        if (!positions)
+            continue;
 
-        maximumIndex = std::max(maximumIndex, estimatedSizeForInitialPosition);
-        maximumIndex = std::max(maximumIndex, estimatedSizeForFinalPosition);
+        maximumIndex = std::max(maximumIndex, positions->finalPositionIndex + 1);
     }
 
     return maximumIndex;
@@ -721,12 +720,13 @@ RenderGrid::GridSpan RenderGrid::resolveGridPositionsFromAutoPlacementPosition(c
 
 PassOwnPtr<RenderGrid::GridSpan> RenderGrid::resolveGridPositionsFromStyle(const RenderBox* gridItem, TrackSizingDirection direction) const
 {
-    ASSERT(gridWasPopulated());
+    const GridPosition& initialPosition = (direction == ForColumns) ? gridItem->style()->gridItemColumnStart() : gridItem->style()->gridItemRowStart();
+    const GridPositionSide initialPositionSide = (direction == ForColumns) ? ColumnStartSide : RowStartSide;
+    const GridPosition& finalPosition = (direction == ForColumns) ? gridItem->style()->gridItemColumnEnd() : gridItem->style()->gridItemRowEnd();
+    const GridPositionSide finalPositionSide = (direction == ForColumns) ? ColumnEndSide : RowEndSide;
 
-    const GridPosition& initialPosition = (direction == ForColumns) ? gridItem->style()->gridItemStart() : gridItem->style()->gridItemBefore();
-    const GridPositionSide initialPositionSide = (direction == ForColumns) ? StartSide : BeforeSide;
-    const GridPosition& finalPosition = (direction == ForColumns) ? gridItem->style()->gridItemEnd() : gridItem->style()->gridItemAfter();
-    const GridPositionSide finalPositionSide = (direction == ForColumns) ? EndSide : AfterSide;
+    // We should NEVER see both spans as they should have been handled during style resolve.
+    ASSERT(!initialPosition.isSpan() || !finalPosition.isSpan());
 
     if (initialPosition.isAuto() && finalPosition.isAuto()) {
         if (style()->gridAutoFlow() == AutoFlowNone)
@@ -736,45 +736,170 @@ PassOwnPtr<RenderGrid::GridSpan> RenderGrid::resolveGridPositionsFromStyle(const
         return nullptr;
     }
 
-    if (initialPosition.isAuto()) {
-        // Infer the position from the final position ('auto / 1' case).
+    if (initialPosition.shouldBeResolvedAgainstOppositePosition()) {
+        // Infer the position from the final position ('auto / 1' or 'span 2 / 3' case).
         const size_t finalResolvedPosition = resolveGridPositionFromStyle(finalPosition, finalPositionSide);
-        return adoptPtr(new GridSpan(finalResolvedPosition, finalResolvedPosition));
+        return resolveGridPositionAgainstOppositePosition(finalResolvedPosition, initialPosition, initialPositionSide);
     }
 
-    if (finalPosition.isAuto()) {
-        // Infer our position from the initial position ('1 / auto' case).
+    if (finalPosition.shouldBeResolvedAgainstOppositePosition()) {
+        // Infer our position from the initial position ('1 / auto' or '3 / span 2' case).
         const size_t initialResolvedPosition = resolveGridPositionFromStyle(initialPosition, initialPositionSide);
-        return adoptPtr(new GridSpan(initialResolvedPosition, initialResolvedPosition));
+        return resolveGridPositionAgainstOppositePosition(initialResolvedPosition, finalPosition, finalPositionSide);
     }
 
-    return adoptPtr(new GridSpan(resolveGridPositionFromStyle(initialPosition, initialPositionSide), resolveGridPositionFromStyle(finalPosition, finalPositionSide)));
+    size_t resolvedInitialPosition = resolveGridPositionFromStyle(initialPosition, initialPositionSide);
+    size_t resolvedFinalPosition = resolveGridPositionFromStyle(finalPosition, finalPositionSide);
+
+    // If 'grid-row-end' specifies a line at or before that specified by 'grid-row-start', it computes to 'span 1'.
+    if (resolvedFinalPosition < resolvedInitialPosition)
+        resolvedFinalPosition = resolvedInitialPosition;
+
+    return adoptPtr(new GridSpan(resolvedInitialPosition, resolvedFinalPosition));
+}
+
+inline static size_t adjustGridPositionForRowEndColumnEndSide(size_t resolvedPosition)
+{
+    return resolvedPosition ? resolvedPosition - 1 : 0;
+}
+
+static size_t adjustGridPositionForSide(size_t resolvedPosition, RenderGrid::GridPositionSide side)
+{
+    // An item finishing on the N-th line belongs to the N-1-th cell.
+    if (side == RenderGrid::ColumnEndSide || side == RenderGrid::RowEndSide)
+        return adjustGridPositionForRowEndColumnEndSide(resolvedPosition);
+
+    return resolvedPosition;
+}
+
+size_t RenderGrid::resolveNamedGridLinePositionFromStyle(const GridPosition& position, GridPositionSide side) const
+{
+    ASSERT(!position.namedGridLine().isNull());
+
+    const NamedGridLinesMap& gridLinesNames = (side == ColumnStartSide || side == ColumnEndSide) ? style()->namedGridColumnLines() : style()->namedGridRowLines();
+    NamedGridLinesMap::const_iterator it = gridLinesNames.find(position.namedGridLine());
+    if (it == gridLinesNames.end()) {
+        if (position.isPositive())
+            return 0;
+        const size_t lastLine = explicitGridSizeForSide(side);
+        return adjustGridPositionForSide(lastLine, side);
+    }
+
+    size_t namedGridLineIndex;
+    if (position.isPositive())
+        namedGridLineIndex = std::min<size_t>(position.integerPosition(), it->value.size()) - 1;
+    else
+        namedGridLineIndex = std::max<int>(it->value.size() - abs(position.integerPosition()), 0);
+    return adjustGridPositionForSide(it->value[namedGridLineIndex], side);
 }
 
 size_t RenderGrid::resolveGridPositionFromStyle(const GridPosition& position, GridPositionSide side) const
 {
-    ASSERT(gridWasPopulated());
-
     // FIXME: Handle other values for grid-{row,column} like ranges or line names.
     switch (position.type()) {
-    case IntegerPosition: {
-        // FIXME: What does a non-positive integer mean for a column/row?
-        size_t resolvedPosition = position.isPositive() ? position.integerPosition() - 1 : 0;
+    case ExplicitPosition: {
+        ASSERT(position.integerPosition());
 
-        if (side == StartSide || side == BeforeSide)
-            return resolvedPosition;
+        if (!position.namedGridLine().isNull())
+            return resolveNamedGridLinePositionFromStyle(position, side);
 
-        const size_t endOfTrack = (side == EndSide) ? gridColumnCount() - 1 : gridRowCount() - 1;
-        ASSERT(endOfTrack >= resolvedPosition);
-        return endOfTrack - resolvedPosition;
+        // Handle <integer> explicit position.
+        if (position.isPositive())
+            return adjustGridPositionForSide(position.integerPosition() - 1, side);
+
+        size_t resolvedPosition = abs(position.integerPosition()) - 1;
+        const size_t endOfTrack = explicitGridSizeForSide(side);
+
+        // Per http://lists.w3.org/Archives/Public/www-style/2013Mar/0589.html, we clamp negative value to the first line.
+        if (endOfTrack < resolvedPosition)
+            return 0;
+
+        return adjustGridPositionForSide(endOfTrack - resolvedPosition, side);
     }
     case AutoPosition:
         // 'auto' depends on the opposite position for resolution (e.g. grid-row: auto / 1).
         ASSERT_NOT_REACHED();
         return 0;
+    case SpanPosition:
+        // FIXME: Handle span positions.
+        ASSERT_NOT_REACHED();
+        return 0;
     }
     ASSERT_NOT_REACHED();
     return 0;
+}
+
+PassOwnPtr<RenderGrid::GridSpan> RenderGrid::resolveGridPositionAgainstOppositePosition(size_t resolvedOppositePosition, const GridPosition& position, GridPositionSide side) const
+{
+    if (position.isAuto())
+        return GridSpan::create(resolvedOppositePosition, resolvedOppositePosition);
+
+    ASSERT(position.isSpan());
+    ASSERT(position.spanPosition() > 0);
+
+    if (!position.namedGridLine().isNull()) {
+        // span 2 'c' -> we need to find the appropriate grid line before / after our opposite position.
+        return resolveNamedGridLinePositionAgainstOppositePosition(resolvedOppositePosition, position, side);
+    }
+
+    // 'span 1' is contained inside a single grid track regardless of the direction.
+    // That's why the CSS span value is one more than the offset we apply.
+    size_t positionOffset = position.spanPosition() - 1;
+    if (side == ColumnStartSide || side == RowStartSide) {
+        size_t initialResolvedPosition = std::max<int>(0, resolvedOppositePosition - positionOffset);
+        return GridSpan::create(initialResolvedPosition, resolvedOppositePosition);
+    }
+
+    return GridSpan::create(resolvedOppositePosition, resolvedOppositePosition + positionOffset);
+}
+
+PassOwnPtr<RenderGrid::GridSpan> RenderGrid::resolveNamedGridLinePositionAgainstOppositePosition(size_t resolvedOppositePosition, const GridPosition& position, GridPositionSide side) const
+{
+    ASSERT(position.isSpan());
+    ASSERT(!position.namedGridLine().isNull());
+    // Negative positions are not allowed per the specification and should have been handled during parsing.
+    ASSERT(position.spanPosition() > 0);
+
+    const NamedGridLinesMap& gridLinesNames = (side == ColumnStartSide || side == ColumnEndSide) ? style()->namedGridColumnLines() : style()->namedGridRowLines();
+    NamedGridLinesMap::const_iterator it = gridLinesNames.find(position.namedGridLine());
+
+    // If there is no named grid line of that name, we resolve the position to 'auto' (which is equivalent to 'span 1' in this case).
+    // See http://lists.w3.org/Archives/Public/www-style/2013Jun/0394.html.
+    if (it == gridLinesNames.end())
+        return GridSpan::create(resolvedOppositePosition, resolvedOppositePosition);
+
+    if (side == RowStartSide || side == ColumnStartSide)
+        return resolveRowStartColumnStartNamedGridLinePositionAgainstOppositePosition(resolvedOppositePosition, position, it->value);
+
+    return resolveRowEndColumnEndNamedGridLinePositionAgainstOppositePosition(resolvedOppositePosition, position, it->value);
+}
+
+PassOwnPtr<RenderGrid::GridSpan> RenderGrid::resolveRowStartColumnStartNamedGridLinePositionAgainstOppositePosition(size_t resolvedOppositePosition, const GridPosition& position, const Vector<size_t>& gridLines) const
+{
+    // The grid line inequality needs to be strict (which doesn't match the after / end case) because |resolvedOppositePosition|
+    // is already converted to an index in our grid representation (ie one was removed from the grid line to account for the side).
+    // FIXME: This could be a binary search as |gridLines| is ordered.
+    int firstLineBeforeOppositePositionIndex = gridLines.size() - 1;
+    for (; firstLineBeforeOppositePositionIndex >= 0 && gridLines[firstLineBeforeOppositePositionIndex] > resolvedOppositePosition; --firstLineBeforeOppositePositionIndex) { }
+
+    size_t gridLineIndex = std::max<int>(0, firstLineBeforeOppositePositionIndex - position.spanPosition() + 1);
+    size_t resolvedGridLinePosition = gridLines[gridLineIndex];
+    if (resolvedGridLinePosition > resolvedOppositePosition)
+        resolvedGridLinePosition = resolvedOppositePosition;
+    return GridSpan::create(resolvedGridLinePosition, resolvedOppositePosition);
+}
+
+PassOwnPtr<RenderGrid::GridSpan> RenderGrid::resolveRowEndColumnEndNamedGridLinePositionAgainstOppositePosition(size_t resolvedOppositePosition, const GridPosition& position, const Vector<size_t>& gridLines) const
+{
+    // FIXME: This could be a binary search as |gridLines| is ordered.
+    size_t firstLineAfterOppositePositionIndex = 0;
+    for (; firstLineAfterOppositePositionIndex < gridLines.size() && gridLines[firstLineAfterOppositePositionIndex] <= resolvedOppositePosition; ++firstLineAfterOppositePositionIndex) { }
+
+    size_t gridLineIndex = std::min(gridLines.size() - 1, firstLineAfterOppositePositionIndex + position.spanPosition() - 1);
+    size_t resolvedGridLinePosition = adjustGridPositionForRowEndColumnEndSide(gridLines[gridLineIndex]);
+    if (resolvedGridLinePosition < resolvedOppositePosition)
+        resolvedGridLinePosition = resolvedOppositePosition;
+    return GridSpan::create(resolvedOppositePosition, resolvedGridLinePosition);
 }
 
 LayoutUnit RenderGrid::gridAreaBreadthForChild(const RenderBox* child, TrackSizingDirection direction, const Vector<GridTrack>& tracks) const

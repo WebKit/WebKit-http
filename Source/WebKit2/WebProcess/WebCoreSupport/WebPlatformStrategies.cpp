@@ -35,10 +35,14 @@
 #include "WebCookieManager.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
+#include "WebFrame.h"
+#include "WebFrameLoaderClient.h"
+#include "WebFrameNetworkingContext.h"
 #include "WebPage.h"
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
 #include <WebCore/Color.h>
+#include <WebCore/Frame.h>
 #include <WebCore/KURL.h>
 #include <WebCore/LoaderStrategy.h>
 #include <WebCore/NetworkStorageSession.h>
@@ -49,6 +53,7 @@
 #include <WebCore/PlatformPasteboard.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/StorageNamespace.h>
+#include <WebCore/SubframeLoader.h>
 #include <wtf/Atomics.h>
 
 #if ENABLE(NETWORK_PROCESS)
@@ -232,10 +237,20 @@ void WebPlatformStrategies::loadResourceSynchronously(NetworkingContext* context
         return;
     }
 
+    WebFrameNetworkingContext* webContext = static_cast<WebFrameNetworkingContext*>(context);
+    // FIXME: Some entities in WebCore use WebCore's "EmptyFrameLoaderClient" instead of having a proper WebFrameLoaderClient.
+    // EmptyFrameLoaderClient shouldn't exist and everything should be using a WebFrameLoaderClient,
+    // but in the meantime we have to make sure not to mis-cast.
+    WebFrameLoaderClient* webFrameLoaderClient = webContext->webFrameLoaderClient();
+    WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
+    WebPage* webPage = webFrame ? webFrame->page() : 0;
+
     CoreIPC::DataReference dataReference;
 
     NetworkResourceLoadParameters loadParameters;
     loadParameters.identifier = resourceLoadIdentifier;
+    loadParameters.webPageID = webPage ? webPage->pageID() : 0;
+    loadParameters.webFrameID = webFrame ? webFrame->frameID() : 0;
     loadParameters.request = request;
     loadParameters.priority = ResourceLoadPriorityHighest;
     loadParameters.contentSniffingPolicy = SniffContent;
@@ -274,16 +289,23 @@ void WebPlatformStrategies::refreshPlugins()
     m_cachedPlugins.clear();
     m_pluginCacheIsPopulated = false;
     m_shouldRefreshPlugins = true;
-
-    populatePluginCache();
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 }
 
-void WebPlatformStrategies::getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>& plugins)
+void WebPlatformStrategies::getPluginInfo(const WebCore::Page* page, Vector<WebCore::PluginInfo>& plugins)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
     populatePluginCache();
-    plugins = m_cachedPlugins;
+
+    if (page->mainFrame().loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin)) {
+        plugins = m_cachedPlugins;
+        return;
+    }
+
+    plugins = m_cachedApplicationPlugins;
+#else
+    UNUSED_PARAM(page);
+    UNUSED_PARAM(plugins);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 }
 
@@ -296,7 +318,7 @@ void WebPlatformStrategies::populatePluginCache()
     ASSERT(m_cachedPlugins.isEmpty());
     
     // FIXME: Should we do something in case of error here?
-    if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetPlugins(m_shouldRefreshPlugins), Messages::WebProcessProxy::GetPlugins::Reply(m_cachedPlugins), 0))
+    if (!WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetPlugins(m_shouldRefreshPlugins), Messages::WebProcessProxy::GetPlugins::Reply(m_cachedPlugins, m_cachedApplicationPlugins), 0))
         return;
 
     m_shouldRefreshPlugins = false;
@@ -330,6 +352,7 @@ PassRefPtr<StorageNamespace> WebPlatformStrategies::localStorageNamespace(PageGr
 PassRefPtr<StorageNamespace> WebPlatformStrategies::transientLocalStorageNamespace(PageGroup* pageGroup, SecurityOrigin*securityOrigin)
 {
 #if ENABLE(UI_PROCESS_STORAGE)
+    UNUSED_PARAM(securityOrigin);
     // FIXME: This could be more clever and made to work across processes.
     return StorageStrategy::sessionStorageNamespace(*pageGroup->pages().begin());
 #else
@@ -393,12 +416,15 @@ String WebPlatformStrategies::stringForType(const String& pasteboardType, const 
     return value;
 }
 
-void WebPlatformStrategies::copy(const String& fromPasteboard, const String& toPasteboard)
+long WebPlatformStrategies::copy(const String& fromPasteboard, const String& toPasteboard)
 {
-    WebProcess::shared().parentProcessConnection()->send(Messages::WebContext::PasteboardCopy(fromPasteboard, toPasteboard), 0);
+    uint64_t newChangeCount;
+    WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebContext::PasteboardCopy(fromPasteboard, toPasteboard),
+        Messages::WebContext::PasteboardCopy::Reply(newChangeCount), 0);
+    return newChangeCount;
 }
 
-int WebPlatformStrategies::changeCount(const WTF::String &pasteboardName)
+long WebPlatformStrategies::changeCount(const WTF::String &pasteboardName)
 {
     uint64_t changeCount;
     WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebContext::GetPasteboardChangeCount(pasteboardName),
@@ -430,17 +456,23 @@ KURL WebPlatformStrategies::url(const String& pasteboardName)
     return KURL(ParsedURLString, urlString);
 }
 
-void WebPlatformStrategies::addTypes(const Vector<String>& pasteboardTypes, const String& pasteboardName)
+long WebPlatformStrategies::addTypes(const Vector<String>& pasteboardTypes, const String& pasteboardName)
 {
-    WebProcess::shared().parentProcessConnection()->send(Messages::WebContext::AddPasteboardTypes(pasteboardName, pasteboardTypes), 0);
+    uint64_t newChangeCount;
+    WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebContext::AddPasteboardTypes(pasteboardName, pasteboardTypes),
+        Messages::WebContext::AddPasteboardTypes::Reply(newChangeCount), 0);
+    return newChangeCount;
 }
 
-void WebPlatformStrategies::setTypes(const Vector<String>& pasteboardTypes, const String& pasteboardName)
+long WebPlatformStrategies::setTypes(const Vector<String>& pasteboardTypes, const String& pasteboardName)
 {
-    WebProcess::shared().parentProcessConnection()->send(Messages::WebContext::SetPasteboardTypes(pasteboardName, pasteboardTypes), 0);
+    uint64_t newChangeCount;
+    WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebContext::SetPasteboardTypes(pasteboardName, pasteboardTypes),
+        Messages::WebContext::SetPasteboardTypes::Reply(newChangeCount), 0);
+    return newChangeCount;
 }
 
-void WebPlatformStrategies::setBufferForType(PassRefPtr<SharedBuffer> buffer, const String& pasteboardType, const String& pasteboardName)
+long WebPlatformStrategies::setBufferForType(PassRefPtr<SharedBuffer> buffer, const String& pasteboardType, const String& pasteboardName)
 {
     SharedMemory::Handle handle;
     if (buffer) {
@@ -448,17 +480,26 @@ void WebPlatformStrategies::setBufferForType(PassRefPtr<SharedBuffer> buffer, co
         memcpy(sharedMemoryBuffer->data(), buffer->data(), buffer->size());
         sharedMemoryBuffer->createHandle(handle, SharedMemory::ReadOnly);
     }
-    WebProcess::shared().parentProcessConnection()->send(Messages::WebContext::SetPasteboardBufferForType(pasteboardName, pasteboardType, handle, buffer ? buffer->size() : 0), 0);
+    uint64_t newChangeCount;
+    WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebContext::SetPasteboardBufferForType(pasteboardName, pasteboardType, handle, buffer ? buffer->size() : 0),
+        Messages::WebContext::SetPasteboardBufferForType::Reply(newChangeCount), 0);
+    return newChangeCount;
 }
 
-void WebPlatformStrategies::setPathnamesForType(const Vector<String>& pathnames, const String& pasteboardType, const String& pasteboardName)
+long WebPlatformStrategies::setPathnamesForType(const Vector<String>& pathnames, const String& pasteboardType, const String& pasteboardName)
 {
-    WebProcess::shared().parentProcessConnection()->send(Messages::WebContext::SetPasteboardPathnamesForType(pasteboardName, pasteboardType, pathnames), 0);
+    uint64_t newChangeCount;
+    WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebContext::SetPasteboardPathnamesForType(pasteboardName, pasteboardType, pathnames),
+        Messages::WebContext::SetPasteboardPathnamesForType::Reply(newChangeCount), 0);
+    return newChangeCount;
 }
 
-void WebPlatformStrategies::setStringForType(const String& string, const String& pasteboardType, const String& pasteboardName)
+long WebPlatformStrategies::setStringForType(const String& string, const String& pasteboardType, const String& pasteboardName)
 {
-    WebProcess::shared().parentProcessConnection()->send(Messages::WebContext::SetPasteboardStringForType(pasteboardName, pasteboardType, string), 0);
+    uint64_t newChangeCount;
+    WebProcess::shared().parentProcessConnection()->sendSync(Messages::WebContext::SetPasteboardStringForType(pasteboardName, pasteboardType, string),
+        Messages::WebContext::SetPasteboardStringForType::Reply(newChangeCount), 0);
+    return newChangeCount;
 }
 #endif
 

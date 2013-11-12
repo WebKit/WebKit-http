@@ -29,16 +29,12 @@
 #import <WebKit/WebNSFileManagerExtras.h>
 
 #import "WebKitNSStringExtras.h"
-#import "WebNSObjectExtras.h"
 #import "WebNSURLExtras.h"
 #import <wtf/Assertions.h>
 #import <WebKitSystemInterface.h>
 #import <sys/stat.h>
+#import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/RetainPtr.h>
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
-extern "C" DADiskRef DADiskCreateFromVolumePath(CFAllocatorRef allocator, DASessionRef session, CFURLRef path);
-#endif
 
 @implementation NSFileManager (WebNSFileManagerExtras)
 
@@ -100,9 +96,7 @@ static void *setMetaData(void* context)
 {
     RetainPtr<DASessionRef> session = adoptCF(DASessionCreate(kCFAllocatorDefault));
     RetainPtr<DADiskRef> disk = adoptCF(DADiskCreateFromVolumePath(kCFAllocatorDefault, session.get(), (CFURLRef)[NSURL fileURLWithPath:@"/"]));
-    RetainPtr<CFDictionaryRef> diskDescription = adoptCF(DADiskCopyDescription(disk.get()));
-    RetainPtr<NSString> diskName = (NSString *)CFDictionaryGetValue(diskDescription.get(), kDADiskDescriptionVolumeNameKey);
-    return WebCFAutorelease(diskName.leakRef());
+    return [[(NSString *)CFDictionaryGetValue(adoptCF(DADiskCopyDescription(disk.get())).get(), kDADiskDescriptionVolumeNameKey) copy] autorelease];
 }
 
 // -[NSFileManager fileExistsAtPath:] returns NO if there is a broken symlink at the path.

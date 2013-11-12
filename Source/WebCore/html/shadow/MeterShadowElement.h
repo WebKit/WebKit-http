@@ -46,16 +46,17 @@ public:
     HTMLMeterElement* meterElement() const;
 
 private:
-    virtual bool rendererIsNeeded(const NodeRenderingContext&);
+    virtual bool rendererIsNeeded(const RenderStyle&);
 };
 
 class MeterInnerElement FINAL : public MeterShadowElement {
 public:
-    MeterInnerElement(Document*);
     static PassRefPtr<MeterInnerElement> create(Document*);
 
 private:
-    virtual bool rendererIsNeeded(const NodeRenderingContext&) OVERRIDE;
+    MeterInnerElement(Document*);
+
+    virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
 };
 
@@ -66,14 +67,15 @@ inline PassRefPtr<MeterInnerElement> MeterInnerElement::create(Document* documen
 
 class MeterBarElement FINAL : public MeterShadowElement {
 public:
+    static PassRefPtr<MeterBarElement> create(Document*);
+
+private:
     MeterBarElement(Document* document) 
         : MeterShadowElement(document)
     {
         DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-meter-bar", AtomicString::ConstructFromLiteral));
         setPseudo(pseudoId);
     }
-
-    static PassRefPtr<MeterBarElement> create(Document*);
 };
 
 inline PassRefPtr<MeterBarElement> MeterBarElement::create(Document* document)
@@ -83,17 +85,17 @@ inline PassRefPtr<MeterBarElement> MeterBarElement::create(Document* document)
 
 class MeterValueElement FINAL : public MeterShadowElement {
 public:
+    static PassRefPtr<MeterValueElement> create(Document*);
+    void setWidthPercentage(double);
+    void updatePseudo() { setPseudo(valuePseudoId()); }
+
+private:
     MeterValueElement(Document* document) 
         : MeterShadowElement(document)
     {
         updatePseudo();
     }
 
-    static PassRefPtr<MeterValueElement> create(Document*);
-    void setWidthPercentage(double);
-    void updatePseudo() { setPseudo(valuePseudoId()); }
-
-private:
     const AtomicString& valuePseudoId() const;
 };
 

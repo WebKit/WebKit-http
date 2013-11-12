@@ -30,7 +30,7 @@
 
 namespace JSC {
 
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(InternalFunction);
+STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(InternalFunction);
 
 const ClassInfo InternalFunction::s_info = { "Function", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(InternalFunction) };
 
@@ -42,8 +42,8 @@ InternalFunction::InternalFunction(JSGlobalObject* globalObject, Structure* stru
 void InternalFunction::finishCreation(VM& vm, const String& name)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(&s_info));
-    ASSERT(methodTable()->getCallData != InternalFunction::s_info.methodTable.getCallData);
+    ASSERT(inherits(info()));
+    ASSERT(methodTable()->getCallData != InternalFunction::info()->methodTable.getCallData);
     putDirect(vm, vm.propertyNames->name, jsString(&vm, name), DontDelete | ReadOnly | DontEnum);
 }
 

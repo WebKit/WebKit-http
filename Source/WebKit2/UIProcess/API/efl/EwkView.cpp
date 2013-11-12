@@ -276,6 +276,7 @@ EwkView::EwkView(WKViewRef view, Evas_Object* evasObject)
     , m_mouseEventsEnabled(false)
 #if ENABLE(TOUCH_EVENTS)
     , m_touchEventsEnabled(false)
+    , m_gestureRecognizer(GestureRecognizer::create(this))
 #endif
     , m_displayTimer(this, &EwkView::displayTimerFired)
     , m_inputMethodContext(InputMethodContextEfl::create(this, smartData()->base.evas))
@@ -793,9 +794,14 @@ void EwkView::setTouchEventsEnabled(bool enabled)
     }
 }
 
-void EwkView::doneWithTouchEvent(WKTouchEventRef, bool /* wasEventHandled */)
+void EwkView::doneWithTouchEvent(WKTouchEventRef event, bool wasEventHandled)
 {
-    notImplemented();
+    if (wasEventHandled) {
+        m_gestureRecognizer->reset();
+        return;
+    }
+
+    m_gestureRecognizer->processTouchEvent(event);
 }
 #endif
 
@@ -1384,6 +1390,8 @@ PassRefPtr<cairo_surface_t> EwkView::takeSnapshot()
 void EwkView::didFindZoomableArea(const WKPoint& point, const WKRect& area)
 {
     notImplemented();
+    UNUSED_PARAM(point);
+    UNUSED_PARAM(area);
 }
 
 Evas_Smart_Class EwkView::parentSmartClass = EVAS_SMART_CLASS_INIT_NULL;

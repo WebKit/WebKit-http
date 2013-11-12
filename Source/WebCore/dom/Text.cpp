@@ -24,11 +24,11 @@
 
 #include "ExceptionCode.h"
 #include "ExceptionCodePlaceholder.h"
-#include "NodeRenderingContext.h"
 #include "RenderCombineText.h"
 #include "RenderText.h"
 #include "ScopedEventQueue.h"
 #include "ShadowRoot.h"
+#include "TextNodeTraversal.h"
 
 #if ENABLE(SVG)
 #include "RenderSVGInlineText.h"
@@ -37,6 +37,7 @@
 
 #include "StyleInheritedData.h"
 #include "StyleResolver.h"
+#include <wtf/CheckedArithmetic.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -52,6 +53,11 @@ PassRefPtr<Text> Text::create(Document* document, const String& data)
 PassRefPtr<Text> Text::createEditingText(Document* document, const String& data)
 {
     return adoptRef(new Text(document, data, CreateEditingText));
+}
+
+Text::~Text()
+{
+    ASSERT(!renderer());
 }
 
 PassRefPtr<Text> Text::splitText(unsigned offset, ExceptionCode& ec)
@@ -78,7 +84,7 @@ PassRefPtr<Text> Text::splitText(unsigned offset, ExceptionCode& ec)
         return 0;
 
     if (parentNode())
-        document()->textNodeSplit(this);
+        document().textNodeSplit(this);
 
     if (renderer())
         toRenderText(renderer())->setTextWithOffset(dataImpl(), 0, oldStr.length());
@@ -86,66 +92,37 @@ PassRefPtr<Text> Text::splitText(unsigned offset, ExceptionCode& ec)
     return newText.release();
 }
 
-static const Text* earliestLogicallyAdjacentTextNode(const Text* t)
+static const Text* earliestLogicallyAdjacentTextNode(const Text* text)
 {
-    const Node* n = t;
-    while ((n = n->previousSibling())) {
-        Node::NodeType type = n->nodeType();
-        if (type == Node::TEXT_NODE || type == Node::CDATA_SECTION_NODE) {
-            t = static_cast<const Text*>(n);
-            continue;
-        }
-
-        // We would need to visit EntityReference child text nodes if they existed
-        ASSERT(type != Node::ENTITY_REFERENCE_NODE || !n->hasChildNodes());
-        break;
+    const Node* node = text;
+    while ((node = node->previousSibling())) {
+        if (!node->isTextNode())
+            break;
+        text = toText(node);
     }
-    return t;
+    return text;
 }
 
-static const Text* latestLogicallyAdjacentTextNode(const Text* t)
+static const Text* latestLogicallyAdjacentTextNode(const Text* text)
 {
-    const Node* n = t;
-    while ((n = n->nextSibling())) {
-        Node::NodeType type = n->nodeType();
-        if (type == Node::TEXT_NODE || type == Node::CDATA_SECTION_NODE) {
-            t = static_cast<const Text*>(n);
-            continue;
-        }
-
-        // We would need to visit EntityReference child text nodes if they existed
-        ASSERT(type != Node::ENTITY_REFERENCE_NODE || !n->hasChildNodes());
-        break;
+    const Node* node = text;
+    while ((node = node->nextSibling())) {
+        if (!node->isTextNode())
+            break;
+        text = toText(node);
     }
-    return t;
+    return text;
 }
 
 String Text::wholeText() const
 {
     const Text* startText = earliestLogicallyAdjacentTextNode(this);
     const Text* endText = latestLogicallyAdjacentTextNode(this);
+    const Node* onePastEndText = TextNodeTraversal::nextSibling(endText);
 
-    Node* onePastEndText = endText->nextSibling();
-    unsigned resultLength = 0;
-    for (const Node* n = startText; n != onePastEndText; n = n->nextSibling()) {
-        if (!n->isTextNode())
-            continue;
-        const Text* t = static_cast<const Text*>(n);
-        const String& data = t->data();
-        if (std::numeric_limits<unsigned>::max() - data.length() < resultLength)
-            CRASH();
-        resultLength += data.length();
-    }
     StringBuilder result;
-    result.reserveCapacity(resultLength);
-    for (const Node* n = startText; n != onePastEndText; n = n->nextSibling()) {
-        if (!n->isTextNode())
-            continue;
-        const Text* t = static_cast<const Text*>(n);
-        result.append(t->data());
-    }
-    ASSERT(result.length() == resultLength);
-
+    for (const Text* text = startText; text != onePastEndText; text = TextNodeTraversal::nextSibling(text))
+        result.append(text->data());
     return result.toString();
 }
 
@@ -196,61 +173,15 @@ Node::NodeType Text::nodeType() const
 
 PassRefPtr<Node> Text::cloneNode(bool /*deep*/)
 {
-    return create(document(), data());
+    return create(&document(), data());
 }
 
-bool Text::textRendererIsNeeded(const NodeRenderingContext& context)
-{
-    if (isEditingText())
-        return true;
-
-    if (!length())
-        return false;
-
-    if (context.style()->display() == NONE)
-        return false;
-
-    bool onlyWS = containsOnlyWhitespace();
-    if (!onlyWS)
-        return true;
-
-    RenderObject* parent = context.parentRenderer();
-    if (parent->isTable() || parent->isTableRow() || parent->isTableSection() || parent->isRenderTableCol() || parent->isFrameSet())
-        return false;
-    
-    if (context.style()->preserveNewline()) // pre/pre-wrap/pre-line always make renderers.
-        return true;
-    
-    RenderObject* prev = context.previousRenderer();
-    if (prev && prev->isBR()) // <span><br/> <br/></span>
-        return false;
-        
-    if (parent->isRenderInline()) {
-        // <span><div/> <div/></span>
-        if (prev && !prev->isInline())
-            return false;
-    } else {
-        if (parent->isRenderBlock() && !parent->childrenInline() && (!prev || !prev->isInline()))
-            return false;
-        
-        RenderObject* first = parent->firstChild();
-        while (first && first->isFloatingOrOutOfFlowPositioned())
-            first = first->nextSibling();
-        RenderObject* next = context.nextRenderer();
-        if (!first || next == first)
-            // Whitespace at the start of a block just goes away.  Don't even
-            // make a render object for this text.
-            return false;
-    }
-    
-    return true;
-}
 
 #if ENABLE(SVG)
 static bool isSVGShadowText(Text* text)
 {
     Node* parentNode = text->parentNode();
-    return parentNode->isShadowRoot() && toShadowRoot(parentNode)->host()->hasTagName(SVGNames::trefTag);
+    return parentNode->isShadowRoot() && toShadowRoot(parentNode)->hostElement()->hasTagName(SVGNames::trefTag);
 }
 
 static bool isSVGText(Text* text)
@@ -259,11 +190,6 @@ static bool isSVGText(Text* text)
     return parentOrShadowHostNode->isSVGElement() && !parentOrShadowHostNode->hasTagName(SVGNames::foreignObjectTag);
 }
 #endif
-
-void Text::createTextRendererIfNeeded()
-{
-    NodeRenderingContext(this).createRendererForTextIfNeeded();
-}
 
 RenderText* Text::createTextRenderer(RenderArena* arena, RenderStyle* style)
 {
@@ -277,45 +203,6 @@ RenderText* Text::createTextRenderer(RenderArena* arena, RenderStyle* style)
     return new (arena) RenderText(this, dataImpl());
 }
 
-void Text::attach(const AttachContext& context)
-{
-    createTextRendererIfNeeded();
-    CharacterData::attach(context);
-}
-
-void Text::recalcTextStyle(StyleChange change)
-{
-    RenderText* renderer = toRenderText(this->renderer());
-
-    if (change != NoChange && renderer)
-        renderer->setStyle(document()->ensureStyleResolver()->styleForText(this));
-
-    if (needsStyleRecalc()) {
-        if (renderer)
-            renderer->setText(dataImpl());
-        else
-            reattach();
-    }
-    clearNeedsStyleRecalc();
-}
-
-void Text::updateTextRenderer(unsigned offsetOfReplacedData, unsigned lengthOfReplacedData)
-{
-    if (!attached())
-        return;
-    RenderText* textRenderer = toRenderText(renderer());
-    if (!textRenderer) {
-        reattach();
-        return;
-    }
-    NodeRenderingContext renderingContext(this, textRenderer->style());
-    if (!textRendererIsNeeded(renderingContext)) {
-        reattach();
-        return;
-    }
-    textRenderer->setTextWithOffset(dataImpl(), offsetOfReplacedData, lengthOfReplacedData);
-}
-
 bool Text::childTypeAllowed(NodeType) const
 {
     return false;
@@ -323,7 +210,7 @@ bool Text::childTypeAllowed(NodeType) const
 
 PassRefPtr<Text> Text::virtualCreate(const String& data)
 {
-    return create(document(), data);
+    return create(&document(), data);
 }
 
 PassRefPtr<Text> Text::createWithLengthLimit(Document* document, const String& data, unsigned start, unsigned lengthLimit)

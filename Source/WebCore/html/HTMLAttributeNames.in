@@ -237,6 +237,7 @@ onselect
 onselectstart
 onselectionchange
 onwebkitspeechchange
+onwheel
 onstalled
 onstorage
 onsuspend
@@ -283,7 +284,6 @@ pseudo
 readonly
 rel
 required
-reset-style-inheritance
 results
 rev
 reversed
@@ -311,6 +311,7 @@ x-webkit-speech
 x-webkit-grammar
 spellcheck
 src
+srcset
 srcdoc
 srclang
 standby

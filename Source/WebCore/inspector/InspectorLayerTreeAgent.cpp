@@ -159,7 +159,7 @@ void InspectorLayerTreeAgent::gatherLayersUsingRenderLayerHierarchy(ErrorString*
 
 PassRefPtr<TypeBuilder::LayerTree::Layer> InspectorLayerTreeAgent::buildObjectForLayer(ErrorString* errorString, RenderLayer* renderLayer)
 {
-    RenderObject* renderer = renderLayer->renderer();
+    RenderObject* renderer = &renderLayer->renderer();
     RenderLayerBacking* backing = renderLayer->backing();
     Node* node = renderer->node();
 
@@ -180,7 +180,7 @@ PassRefPtr<TypeBuilder::LayerTree::Layer> InspectorLayerTreeAgent::buildObjectFo
         .setNodeId(idForNode(errorString, node))
         .setBounds(buildObjectForIntRect(renderer->absoluteBoundingBoxRect()))
         .setMemory(backing->backingStoreMemoryEstimate())
-        .setCompositedBounds(buildObjectForIntRect(backing->compositedBounds()))
+        .setCompositedBounds(buildObjectForIntRect(enclosingIntRect(backing->compositedBounds())))
         .setPaintCount(backing->graphicsLayer()->repaintCount());
 
     if (node && node->shadowHost())
@@ -193,7 +193,7 @@ PassRefPtr<TypeBuilder::LayerTree::Layer> InspectorLayerTreeAgent::buildObjectFo
         if (isReflection)
             renderer = renderer->parent();
         layerObject->setIsGeneratedContent(true);
-        layerObject->setPseudoElementId(bindPseudoElement(static_cast<PseudoElement*>(renderer->node())));
+        layerObject->setPseudoElementId(bindPseudoElement(toPseudoElement(renderer->node())));
         if (renderer->isBeforeContent())
             layerObject->setPseudoElement("before");
         else if (renderer->isAfterContent())
@@ -222,7 +222,7 @@ int InspectorLayerTreeAgent::idForNode(ErrorString* errorString, Node* node)
     
     int nodeId = domAgent->boundNodeId(node);
     if (!nodeId)
-        nodeId = domAgent->pushNodeToFrontend(errorString, domAgent->boundNodeId(node->document()), node);
+        nodeId = domAgent->pushNodeToFrontend(errorString, domAgent->boundNodeId(&node->document()), node);
 
     return nodeId;
 }
@@ -245,7 +245,7 @@ void InspectorLayerTreeAgent::reasonsForCompositingLayer(ErrorString* errorStrin
         return;
     }
 
-    CompositingReasons reasonsBitmask = renderLayer->compositor()->reasonsForCompositing(renderLayer);
+    CompositingReasons reasonsBitmask = renderLayer->compositor().reasonsForCompositing(renderLayer);
     compositingReasons = TypeBuilder::LayerTree::CompositingReasons::create();
 
     if (reasonsBitmask & CompositingReason3DTransform)

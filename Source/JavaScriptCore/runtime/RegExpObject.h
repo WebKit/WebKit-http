@@ -70,15 +70,14 @@ namespace JSC {
         bool test(ExecState* exec, JSString* string) { return match(exec, string); }
         JSValue exec(ExecState*, JSString*);
 
-        static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
-        static bool getOwnPropertyDescriptor(JSObject*, ExecState*, PropertyName, PropertyDescriptor&);
+        static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
         static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
-        static JS_EXPORTDATA const ClassInfo s_info;
+        DECLARE_EXPORT_INFO;
 
         static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
         {
-            return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info);
+            return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
         }
 
     protected:
@@ -92,7 +91,7 @@ namespace JSC {
         JS_EXPORT_PRIVATE static bool deleteProperty(JSCell*, ExecState*, PropertyName);
         JS_EXPORT_PRIVATE static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
         JS_EXPORT_PRIVATE static void getPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
-        JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, PropertyDescriptor&, bool shouldThrow);
+        JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
 
     private:
         MatchResult match(ExecState*, JSString*);
@@ -106,7 +105,7 @@ namespace JSC {
 
     inline RegExpObject* asRegExpObject(JSValue value)
     {
-        ASSERT(asObject(value)->inherits(&RegExpObject::s_info));
+        ASSERT(asObject(value)->inherits(RegExpObject::info()));
         return static_cast<RegExpObject*>(asObject(value));
     }
 

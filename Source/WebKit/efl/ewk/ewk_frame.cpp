@@ -81,6 +81,7 @@ struct Ewk_Frame_Smart_Data {
 #ifdef EWK_FRAME_DEBUG
     Evas_Object* region;
 #endif
+    OwnPtr<WebCore::FrameLoaderClientEfl> frameLoaderClient;
     WebCore::Frame* frame;
     Ewk_Text_With_Direction title;
     const char* uri;
@@ -153,7 +154,7 @@ static inline void _ewk_frame_debug(Evas_Object* ewkFrame)
 
 static WebCore::FrameLoaderClientEfl* _ewk_frame_loader_efl_get(const WebCore::Frame* frame)
 {
-    return static_cast<WebCore::FrameLoaderClientEfl*>(frame->loader()->client());
+    return &static_cast<WebCore::FrameLoaderClientEfl&>(frame->loader().client());
 }
 
 static Eina_Bool _ewk_frame_children_iterator_next(Eina_Iterator_Ewk_Frame* iterator, Evas_Object** data)
@@ -161,11 +162,8 @@ static Eina_Bool _ewk_frame_children_iterator_next(Eina_Iterator_Ewk_Frame* iter
     EWK_FRAME_SD_GET_OR_RETURN(iterator->object, smartData, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, false);
 
-    WebCore::FrameTree* tree = smartData->frame->tree(); // check if it's still valid
-    EINA_SAFETY_ON_NULL_RETURN_VAL(tree, false);
-
-    if (iterator->currentIndex < tree->childCount()) {
-        *data = EWKPrivate::kitFrame(tree->child(iterator->currentIndex++));
+    if (iterator->currentIndex < smartData->frame->tree().childCount()) {
+        *data = EWKPrivate::kitFrame(smartData->frame->tree().child(iterator->currentIndex++));
         return true;
     }
 
@@ -244,7 +242,7 @@ static void _ewk_frame_smart_del(Evas_Object* ewkFrame)
             flc->setWebFrame(0);
             EWK_FRAME_SD_GET(ewk_view_frame_main_get(smartData->view), mainSmartData);
             if (mainSmartData->frame == smartData->frame) // applying only for main frame is enough (will traverse through frame tree)
-                smartData->frame->loader()->detachFromParent();
+                smartData->frame->loader().detachFromParent();
             smartData->frame = 0;
         }
 
@@ -332,7 +330,7 @@ Evas_Object* ewk_frame_child_find(Evas_Object* ewkFrame, const char* name)
     EINA_SAFETY_ON_NULL_RETURN_VAL(name, 0);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, 0);
     WTF::String frameName = WTF::String::fromUTF8(name);
-    return EWKPrivate::kitFrame(smartData->frame->tree()->find(WTF::AtomicString(frameName)));
+    return EWKPrivate::kitFrame(smartData->frame->tree().find(WTF::AtomicString(frameName)));
 }
 
 Eina_Bool ewk_frame_uri_set(Evas_Object* ewkFrame, const char* uri)
@@ -340,8 +338,8 @@ Eina_Bool ewk_frame_uri_set(Evas_Object* ewkFrame, const char* uri)
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, false);
     WebCore::KURL kurl(WebCore::KURL(), WTF::String::fromUTF8(uri));
     WebCore::ResourceRequest req(kurl);
-    WebCore::FrameLoader* loader = smartData->frame->loader();
-    loader->load(WebCore::FrameLoadRequest(smartData->frame, req));
+    smartData->frame->loader().load(WebCore::FrameLoadRequest(smartData->frame, req));
+
     return true;
 }
 
@@ -366,7 +364,7 @@ const char* ewk_frame_name_get(const Evas_Object* ewkFrame)
         return 0;
     }
 
-    const WTF::String frameName = smartData->frame->tree()->uniqueName();
+    const WTF::String frameName = smartData->frame->tree().uniqueName();
 
     if ((smartData->name) && (smartData->name == frameName))
         return smartData->name;
@@ -419,7 +417,7 @@ static Eina_Bool _ewk_frame_contents_set_internal(Ewk_Frame_Smart_Data* smartDat
         baseKURL, unreachableKURL);
     WebCore::ResourceRequest request(baseKURL);
 
-    smartData->frame->loader()->load(WebCore::FrameLoadRequest(smartData->frame, request, substituteData));
+    smartData->frame->loader().load(WebCore::FrameLoadRequest(smartData->frame, request, substituteData));
     return true;
 }
 
@@ -450,7 +448,7 @@ const char* ewk_frame_script_execute(Evas_Object* ewkFrame, const char* script)
     EINA_SAFETY_ON_NULL_RETURN_VAL(script, 0);
 
     WTF::String resultString;
-    JSC::JSValue result = smartData->frame->script()->executeScript(WTF::String::fromUTF8(script), true).jsValue();
+    JSC::JSValue result = smartData->frame->script().executeScript(WTF::String::fromUTF8(script), true).jsValue();
 
     if (!smartData->frame) // In case the script removed our frame from the page.
         return 0;
@@ -458,7 +456,7 @@ const char* ewk_frame_script_execute(Evas_Object* ewkFrame, const char* script)
     if (!result || (!result.isBoolean() && !result.isString() && !result.isNumber()))
         return 0;
 
-    JSC::ExecState* exec = smartData->frame->script()->globalObject(WebCore::mainThreadNormalWorld())->globalExec();
+    JSC::ExecState* exec = smartData->frame->script().globalObject(WebCore::mainThreadNormalWorld())->globalExec();
     JSC::JSLockHolder lock(exec);
     resultString = result.toString(exec)->value(exec);
     return eina_stringshare_add(resultString.utf8().data());
@@ -518,7 +516,7 @@ Eina_Bool ewk_frame_text_matches_unmark_all(Evas_Object* ewkFrame)
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, false);
 
-    smartData->frame->document()->markers()->removeMarkers(WebCore::DocumentMarker::TextMatch);
+    smartData->frame->document()->markers().removeMarkers(WebCore::DocumentMarker::TextMatch);
     return true;
 }
 
@@ -558,7 +556,7 @@ Eina_Bool ewk_frame_text_matches_nth_pos_get(const Evas_Object* ewkFrame, size_t
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, false);
 
-    Vector<WebCore::IntRect> intRects = smartData->frame->document()->markers()->renderedRectsForMarkers(WebCore::DocumentMarker::TextMatch);
+    Vector<WebCore::IntRect> intRects = smartData->frame->document()->markers().renderedRectsForMarkers(WebCore::DocumentMarker::TextMatch);
 
     /* remove useless values */
     std::remove_if(intRects.begin(), intRects.end(), _ewk_frame_rect_is_negative_value);
@@ -579,7 +577,7 @@ Eina_Bool ewk_frame_stop(Evas_Object* ewkFrame)
 {
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, false);
-    smartData->frame->loader()->stopAllLoaders();
+    smartData->frame->loader().stopAllLoaders();
     return true;
 }
 
@@ -587,7 +585,7 @@ Eina_Bool ewk_frame_reload(Evas_Object* ewkFrame)
 {
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, false);
-    smartData->frame->loader()->reload();
+    smartData->frame->loader().reload();
     return true;
 }
 
@@ -595,7 +593,7 @@ Eina_Bool ewk_frame_reload_full(Evas_Object* ewkFrame)
 {
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, false);
-    smartData->frame->loader()->reload(true);
+    smartData->frame->loader().reload(true);
     return true;
 }
 
@@ -690,7 +688,7 @@ Ewk_Hit_Test* ewk_frame_hit_test_new(const Evas_Object* ewkFrame, int x, int y)
     EINA_SAFETY_ON_NULL_RETURN_VAL(view, 0);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame->contentRenderer(), 0);
 
-    WebCore::HitTestResult result = smartData->frame->eventHandler()->hitTestResultAtPoint
+    WebCore::HitTestResult result = smartData->frame->eventHandler().hitTestResultAtPoint
                                         (view->windowToContents(WebCore::IntPoint(x, y)), 
                                         WebCore::HitTestRequest::ReadOnly | WebCore::HitTestRequest::Active | WebCore::HitTestRequest::IgnoreClipping | WebCore::HitTestRequest::DisallowShadowContent);
 
@@ -720,9 +718,9 @@ Ewk_Hit_Test* ewk_frame_hit_test_new(const Evas_Object* ewkFrame, int x, int y)
     hitTest->title.string = eina_stringshare_add(result.title(direction).utf8().data());
     hitTest->title.direction = (direction == WebCore::LTR) ? EWK_TEXT_DIRECTION_LEFT_TO_RIGHT : EWK_TEXT_DIRECTION_RIGHT_TO_LEFT;
     hitTest->alternate_text = eina_stringshare_add(result.altDisplayString().utf8().data());
-    if (result.innerNonSharedNode() && result.innerNonSharedNode()->document()
-        && result.innerNonSharedNode()->document()->frame())
-        hitTest->frame = EWKPrivate::kitFrame(result.innerNonSharedNode()->document()->frame());
+    if (result.innerNonSharedNode()
+        && result.innerNonSharedNode()->document().frame())
+        hitTest->frame = EWKPrivate::kitFrame(result.innerNonSharedNode()->document().frame());
 
     hitTest->link.text = eina_stringshare_add(result.textContent().utf8().data());
     hitTest->link.url = eina_stringshare_add(result.absoluteLinkURL().string().utf8().data());
@@ -851,8 +849,7 @@ Eina_Bool ewk_frame_feed_focus_in(Evas_Object* ewkFrame)
 {
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, false);
-    WebCore::FocusController* focusController = smartData->frame->page()->focusController();
-    focusController->setFocusedFrame(smartData->frame);
+    smartData->frame->page()->focusController().setFocusedFrame(smartData->frame);
     return true;
 }
 
@@ -896,7 +893,7 @@ Eina_Bool ewk_frame_feed_mouse_wheel(Evas_Object* ewkFrame, const Evas_Event_Mou
     EINA_SAFETY_ON_NULL_RETURN_VAL(view, false);
 
     WebCore::PlatformWheelEvent event(wheelEvent);
-    return smartData->frame->eventHandler()->handleWheelEvent(event);
+    return smartData->frame->eventHandler().handleWheelEvent(event);
 }
 
 Eina_Bool ewk_frame_feed_mouse_down(Evas_Object* ewkFrame, const Evas_Event_Mouse_Down* downEvent)
@@ -914,7 +911,7 @@ Eina_Bool ewk_frame_feed_mouse_down(Evas_Object* ewkFrame, const Evas_Event_Mous
     evas_object_geometry_get(smartData->view, &x, &y, 0, 0);
 
     WebCore::PlatformMouseEvent event(downEvent, WebCore::IntPoint(x, y));
-    return smartData->frame->eventHandler()->handleMousePressEvent(event);
+    return smartData->frame->eventHandler().handleMousePressEvent(event);
 }
 
 Eina_Bool ewk_frame_feed_mouse_up(Evas_Object* ewkFrame, const Evas_Event_Mouse_Up* upEvent)
@@ -932,7 +929,7 @@ Eina_Bool ewk_frame_feed_mouse_up(Evas_Object* ewkFrame, const Evas_Event_Mouse_
     evas_object_geometry_get(smartData->view, &x, &y, 0, 0);
 
     WebCore::PlatformMouseEvent event(upEvent, WebCore::IntPoint(x, y));
-    return smartData->frame->eventHandler()->handleMouseReleaseEvent(event);
+    return smartData->frame->eventHandler().handleMouseReleaseEvent(event);
 }
 
 Eina_Bool ewk_frame_feed_mouse_move(Evas_Object* ewkFrame, const Evas_Event_Mouse_Move* moveEvent)
@@ -951,7 +948,7 @@ Eina_Bool ewk_frame_feed_mouse_move(Evas_Object* ewkFrame, const Evas_Event_Mous
     evas_object_geometry_get(smartData->view, &x, &y, 0, 0);
 
     WebCore::PlatformMouseEvent event(moveEvent, WebCore::IntPoint(x, y));
-    return smartData->frame->eventHandler()->mouseMoved(event);
+    return smartData->frame->eventHandler().mouseMoved(event);
 }
 
 Eina_Bool ewk_frame_feed_touch_event(Evas_Object* ewkFrame, Ewk_Touch_Event_Type action, Eina_List* points, unsigned modifiers)
@@ -966,7 +963,7 @@ Eina_Bool ewk_frame_feed_touch_event(Evas_Object* ewkFrame, Ewk_Touch_Event_Type
     Evas_Coord x, y;
     evas_object_geometry_get(smartData->view, &x, &y, 0, 0);
 
-    return smartData->frame->eventHandler()->handleTouchEvent(EWKPrivate::platformTouchEvent(x, y, points, action, modifiers));
+    return smartData->frame->eventHandler().handleTouchEvent(EWKPrivate::platformTouchEvent(x, y, points, action, modifiers));
 #else
     UNUSED_PARAM(ewkFrame);
     UNUSED_PARAM(action);
@@ -1033,7 +1030,7 @@ static inline Eina_Bool _ewk_frame_handle_key_scrolling(WebCore::Frame* frame, c
         return false;
     }
 
-    if (frame->eventHandler()->scrollOverflow(direction, granularity))
+    if (frame->eventHandler().scrollOverflow(direction, granularity))
         return false;
 
     frame->view()->scroll(direction, granularity);
@@ -1050,7 +1047,7 @@ Eina_Bool ewk_frame_feed_key_down(Evas_Object* ewkFrame, const Evas_Event_Key_Do
         ewkFrame, downEvent->keyname, downEvent->key ? downEvent->key : "", downEvent->string ? downEvent->string : "");
 
     WebCore::PlatformKeyboardEvent event(downEvent);
-    if (smartData->frame->eventHandler()->keyEvent(event))
+    if (smartData->frame->eventHandler().keyEvent(event))
         return true;
 
     return _ewk_frame_handle_key_scrolling(smartData->frame, event);
@@ -1066,7 +1063,7 @@ Eina_Bool ewk_frame_feed_key_up(Evas_Object* ewkFrame, const Evas_Event_Key_Up* 
         ewkFrame, upEvent->keyname, upEvent->key ? upEvent->key : "", upEvent->string ? upEvent->string : "");
 
     WebCore::PlatformKeyboardEvent event(upEvent);
-    return smartData->frame->eventHandler()->keyEvent(event);
+    return smartData->frame->eventHandler().keyEvent(event);
 }
 
 Ewk_Text_Selection_Type ewk_frame_text_selection_type_get(const Evas_Object* ewkFrame)
@@ -1074,11 +1071,9 @@ Ewk_Text_Selection_Type ewk_frame_text_selection_type_get(const Evas_Object* ewk
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, EWK_TEXT_SELECTION_NONE);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, EWK_TEXT_SELECTION_NONE);
 
-    WebCore::FrameSelection* controller = smartData->frame->selection();
-    if (!controller)
-        return EWK_TEXT_SELECTION_NONE;
+    WebCore::FrameSelection& controller = smartData->frame->selection();
 
-    return static_cast<Ewk_Text_Selection_Type>(controller->selectionType());
+    return static_cast<Ewk_Text_Selection_Type>(controller.selectionType());
 }
 
 /* internal methods ****************************************************/
@@ -1108,20 +1103,19 @@ Evas_Object* ewk_frame_add(Evas* canvas)
  *
  * This is internal and should never be called by external users.
  */
-bool ewk_frame_init(Evas_Object* ewkFrame, Evas_Object* view, WebCore::Frame* frame)
+bool ewk_frame_init(Evas_Object* ewkFrame, Evas_Object* view, PassOwnPtr<WebCore::FrameLoaderClientEfl> frameLoaderClient)
 {
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, false);
     if (!smartData->frame) {
-        WebCore::FrameLoaderClientEfl* frameLoaderClient = _ewk_frame_loader_efl_get(frame);
-        frameLoaderClient->setWebFrame(ewkFrame);
-        smartData->frame = frame;
+        smartData->frameLoaderClient = frameLoaderClient;
+        smartData->frameLoaderClient->setWebFrame(ewkFrame);
         smartData->view = view;
-        frame->init();
+
+        // FIXME: FrameLoaderClientEfl should get user agent directly from ewk_view.
+        smartData->frameLoaderClient->setCustomUserAgent(String::fromUTF8(ewk_view_setting_user_agent_get(view)));
         return true;
     }
 
-    ERR("frame %p already set for %p, ignored new %p",
-        smartData->frame, ewkFrame, frame);
     return false;
 }
 
@@ -1130,52 +1124,40 @@ bool ewk_frame_init(Evas_Object* ewkFrame, Evas_Object* view, WebCore::Frame* fr
  *
  * Adds child to the frame.
  */
-bool ewk_frame_child_add(Evas_Object* ewkFrame, WTF::PassRefPtr<WebCore::Frame> child, const WTF::String& name, const WebCore::KURL& url, const WTF::String& referrer)
+Evas_Object* ewk_frame_child_add(Evas_Object* ewkFrame, const WTF::String& name, WebCore::HTMLFrameOwnerElement* ownerElement)
 {
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, 0);
     char buffer[256];
-    Evas_Object* frame;
-    WebCore::Frame* coreFrame;
 
-    frame = ewk_frame_add(smartData->base.evas);
+    Evas_Object* frame = ewk_frame_add(smartData->base.evas);
     if (!frame) {
         ERR("Could not create ewk_frame object.");
-        return false;
+        return 0;
     }
 
-    coreFrame = child.get();
-    if (coreFrame->tree())
-        coreFrame->tree()->setName(name);
-    else
-        ERR("no tree for child object");
-    smartData->frame->tree()->appendChild(child);
-
-    if (!ewk_frame_init(frame, smartData->view, coreFrame)) {
+    if (!ewk_frame_init(frame, smartData->view, adoptPtr(new WebCore::FrameLoaderClientEfl(smartData->view)))) {
+        ERR("Could not init ewk_frame object.");
         evas_object_del(frame);
-        return false;
+        return 0;
     }
+
+    EWK_FRAME_SD_GET_OR_RETURN(frame, childFrameSmartData, 0);
+    RefPtr<WebCore::Frame> coreFrame = WebCore::Frame::create(smartData->frame->page(), ownerElement, childFrameSmartData->frameLoaderClient.get());
+    childFrameSmartData->frame = coreFrame.get();
+    coreFrame->tree().setName(name);
+
+    if (ownerElement) {
+        ASSERT(ownerElement->document().frame());
+        ownerElement->document().frame()->tree().appendChild(coreFrame.release());
+    }
+    childFrameSmartData->frame->init();
+
     snprintf(buffer, sizeof(buffer), "EWK_Frame:child/%s", name.utf8().data());
     evas_object_name_set(frame, buffer);
     evas_object_smart_member_add(frame, ewkFrame);
     evas_object_show(frame);
 
-    // The creation of the frame may have run arbitrary JavaScript that removed it from the page already.
-    if (!coreFrame->page()) {
-        evas_object_del(frame);
-        return true;
-    }
-
-    evas_object_smart_callback_call(smartData->view, "frame,created", frame);
-    smartData->frame->loader()->loadURLIntoChildFrame(url, referrer, coreFrame);
-
-    // The frame's onload handler may have removed it from the document.
-    // See fast/dom/null-page-show-modal-dialog-crash.html for an example.
-    if (!coreFrame->tree()->parent()) {
-        evas_object_del(frame);
-        return true;
-    }
-
-    return true;
+    return frame;
 }
 
 /**
@@ -1514,7 +1496,7 @@ void ewk_frame_load_progress_changed(Evas_Object* ewkFrame)
     EINA_SAFETY_ON_NULL_RETURN(smartData->frame);
 
     // TODO: this is per page, there should be a way to have per-frame.
-    double progress = smartData->frame->page()->progress()->estimatedProgress();
+    double progress = smartData->frame->page()->progress().estimatedProgress();
 
     DBG("ewkFrame=%p (p=%0.3f)", ewkFrame, progress);
 
@@ -1706,14 +1688,14 @@ Ewk_Certificate_Status ewk_frame_certificate_status_get(Evas_Object* ewkFrame)
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, EWK_CERTIFICATE_STATUS_NO_CERTIFICATE);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, EWK_CERTIFICATE_STATUS_NO_CERTIFICATE);
 
-    const WebCore::FrameLoader* frameLoader = smartData->frame->loader();
-    const WebCore::DocumentLoader* documentLoader = frameLoader->documentLoader();
+    const WebCore::FrameLoader& frameLoader = smartData->frame->loader();
+    const WebCore::DocumentLoader* documentLoader = frameLoader.documentLoader();
     const WebCore::KURL documentURL = documentLoader->requestURL();
 
     if (!documentURL.protocolIs("https"))
         return EWK_CERTIFICATE_STATUS_NO_CERTIFICATE;
 
-    if (frameLoader->subframeIsLoading())
+    if (frameLoader.subframeIsLoading())
         return EWK_CERTIFICATE_STATUS_NO_CERTIFICATE;
 
     SoupMessage* soupMessage = documentLoader->request().toSoupMessage();
@@ -1904,6 +1886,12 @@ void ewk_frame_xss_detected(Evas_Object* ewkFrame, const Ewk_Frame_Xss_Notificat
 }
 
 namespace EWKPrivate {
+
+void setCoreFrame(Evas_Object* ewkFrame, WebCore::Frame* coreFrame)
+{
+    EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData);
+    smartData->frame = coreFrame;
+}
 
 WebCore::Frame* coreFrame(const Evas_Object* ewkFrame)
 {

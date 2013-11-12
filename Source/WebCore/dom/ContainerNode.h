@@ -106,21 +106,22 @@ public:
 
     void cloneChildNodes(ContainerNode* clone);
 
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
-    virtual void detach(const AttachContext& = AttachContext()) OVERRIDE;
     virtual LayoutRect boundingBox() const OVERRIDE;
     virtual void scheduleSetNeedsStyleRecalc(StyleChangeType = FullStyleChange) OVERRIDE FINAL;
 
-    // -----------------------------------------------------------------------------
-    // Notification of document structure changes (see Node.h for more notification methods)
-
-    // Notifies the node that it's list of children have changed (either by adding or removing child nodes), or a child
-    // node that is of the type CDATA_SECTION_NODE, TEXT_NODE or COMMENT_NODE has changed its value.
-    virtual void childrenChanged(bool createdByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    enum ChildChangeType { ElementInserted, ElementRemoved, TextInserted, TextRemoved, TextChanged, AllChildrenRemoved, NonContentsChildChanged };
+    enum ChildChangeSource { ChildChangeSourceParser, ChildChangeSourceAPI };
+    struct ChildChange {
+        ChildChangeType type;
+        Element* previousSiblingElement;
+        Element* nextSiblingElement;
+        ChildChangeSource source;
+    };
+    virtual void childrenChanged(const ChildChange&);
 
     void disconnectDescendantFrames();
 
-    virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const { return true; }
+    virtual bool childShouldCreateRenderer(const Node*) const { return true; }
 
 protected:
     ContainerNode(Document*, ConstructionType = CreateContainer);
@@ -142,9 +143,6 @@ private:
     void removeBetween(Node* previousChild, Node* nextChild, Node* oldChild);
     void insertBeforeCommon(Node* nextChild, Node* oldChild);
 
-    void attachChildren(const AttachContext& = AttachContext());
-    void detachChildren(const AttachContext& = AttachContext());
-
     static void dispatchPostAttachCallbacks();
     void suspendPostAttachCallbacks();
     void resumePostAttachCallbacks();
@@ -152,13 +150,16 @@ private:
     bool getUpperLeftCorner(FloatPoint&) const;
     bool getLowerRightCorner(FloatPoint&) const;
 
+    void notifyChildInserted(Node* child, ChildChangeSource);
+    void notifyChildRemoved(Node* child, Node* previousSibling, Node* nextSibling, ChildChangeSource);
+
+    void updateTreeAfterInsertion(Node* child, AttachBehavior);
+
+    bool isContainerNode() const WTF_DELETED_FUNCTION;
+
     Node* m_firstChild;
     Node* m_lastChild;
 };
-
-#ifndef NDEBUG
-bool childAttachedAllowedWhenAttachingChildren(ContainerNode*);
-#endif
 
 inline ContainerNode* toContainerNode(Node* node)
 {
@@ -180,27 +181,6 @@ inline ContainerNode::ContainerNode(Document* document, ConstructionType type)
     , m_firstChild(0)
     , m_lastChild(0)
 {
-}
-
-inline void ContainerNode::attachChildren(const AttachContext& context)
-{
-    AttachContext childrenContext(context);
-    childrenContext.resolvedStyle = 0;
-
-    for (Node* child = firstChild(); child; child = child->nextSibling()) {
-        ASSERT(!child->attached() || childAttachedAllowedWhenAttachingChildren(this));
-        if (!child->attached())
-            child->attach(childrenContext);
-    }
-}
-
-inline void ContainerNode::detachChildren(const AttachContext& context)
-{
-    AttachContext childrenContext(context);
-    childrenContext.resolvedStyle = 0;
-
-    for (Node* child = firstChild(); child; child = child->nextSibling())
-        child->detach(childrenContext);
 }
 
 inline unsigned Node::childNodeCount() const
@@ -333,20 +313,19 @@ private:
 
 class PostAttachCallbackDisabler {
 public:
-    PostAttachCallbackDisabler(ContainerNode* node)
+    PostAttachCallbackDisabler(ContainerNode& node)
         : m_node(node)
     {
-        ASSERT(m_node);
-        m_node->suspendPostAttachCallbacks();
+        m_node.suspendPostAttachCallbacks();
     }
 
     ~PostAttachCallbackDisabler()
     {
-        m_node->resumePostAttachCallbacks();
+        m_node.resumePostAttachCallbacks();
     }
 
 private:
-    ContainerNode* m_node;
+    ContainerNode& m_node;
 };
 
 } // namespace WebCore

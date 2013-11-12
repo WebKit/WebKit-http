@@ -1,3 +1,407 @@
+2013-09-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Add support for the Wayland build target
+        https://bugs.webkit.org/show_bug.cgi?id=120627
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::createBackingStore): Additionally guard the <gdk/gdkx.h> inclusion and the inclusion and use of
+        WidgetBackingStoreGtkX11 with PLATFORM(X11), ensuring this code is built when also building with X11 target
+        enabled. GDK_WINDOWING_X11 macro can be defined even if the X11 target is disabled.
+
+2013-09-02  Brian Holt  <brian.holt@samsung.com>
+
+        [ATK] Leak: Leaks in testatk.c
+        https://bugs.webkit.org/show_bug.cgi?id=118675
+
+        Reviewed by Mario Sanchez Prada.
+
+        Fixed memory leaks by matching ref calls with unrefs.
+
+        * tests/testatk.c:
+        (testWebkitAtkCaretOffsets):
+        (testWebkitAtkCaretOffsetsAndExtranousWhiteSpaces):
+        (testWebkitAtkGetTextAtOffset):
+        (testWebkitAtkGetTextAtOffsetNewlines):
+        (testWebkitAtkGetTextAtOffsetTextarea):
+        (testWebkitAtkGetTextAtOffsetTextInput):
+        (testWebkitAtkGetTextInParagraphAndBodySimple):
+        (testWebkitAtkGetTextInParagraphAndBodyModerate):
+        (testWebkitAtkTextAttributes):
+        (testWebkitAtkTextSelections):
+        (testWebkitAtkListsOfItems):
+
+2013-08-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Automake] libWebCoreDOM.la could use a better name
+        https://bugs.webkit.org/show_bug.cgi?id=120232
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: libWebCoreDOM has a new name - libGObjectDOMBindings.
+
+2013-08-29  Arnaud Renevier  <a.renevier@samsung.com>
+
+        [cairo] canvas drawing on itself doesn't work with accelerated canvas
+        https://bugs.webkit.org/show_bug.cgi?id=118808
+
+        Reviewed by Martin Robinson.
+
+        Change cairoImageSurfaceToGdkPixbuf to cairoSurfaceToGdkPixbuf.
+
+        * webkit/webkitfavicondatabase.cpp:
+        (getIconPixbufSynchronously):
+
+2013-08-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK build fix.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::FrameLoaderClient): Remove an assertion that was not removed in r154658.
+
+2013-08-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another GTK+ build fix.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+
+2013-08-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        GTK+ build fix. Like r154620.
+
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_new):
+
+2013-08-26  Pratik Solanki  <psolanki@apple.com>
+
+        PageGroup::groupSettings() should return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=120319
+
+        Reviewed by Andreas Kling.
+
+        PageGroup::m_groupSettings is never NULL so we can just return a reference from groupSettings().
+
+        * webkit/webkitwebdatabase.cpp:
+        (webkit_set_web_database_directory_path):
+
+2013-08-26  Andreas Kling  <akling@apple.com>
+
+        WebCore: Let Page create the main Frame.
+        <https://webkit.org/b/119964>
+
+        Tweak WebKit1/GTK for changes in WebCore.
+
+        Patch by Zan Dobersek <zdobersek@igalia.com>
+        Reviewed by Gustavo Noronha Silva.
+
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+        (WebKit::FrameLoaderClient::setWebFrame):
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_new):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_init):
+
+2013-08-24  Darin Adler  <darin@apple.com>
+
+        Frame::tree should return a reference instead of a pointer
+        https://bugs.webkit.org/show_bug.cgi?id=120259
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::getFrameChildren):
+        (DumpRenderTreeSupportGtk::clearMainFrameName):
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::createFrame):
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_get_name):
+        (webkit_web_frame_get_parent):
+        (webkit_web_frame_find_frame):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_set_highlight_text_matches):
+        Use tree(). instead of tree()->.
+
+2013-08-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        <https://webkit.org/b/119836> [GTK] ChromeClient::paint is susceptible to system time changes
+
+        Reviewed by Martin Robinson.
+
+        Instead of using WTF::currentTime() as the value of the last display occurrence,
+        WTF::monotonicallyIncreasingTime() should be used. The latter is not affected by
+        the changes is the system's time, which can cause a halt in the display updating.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::paint):
+
+2013-08-19  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/119918> Frame::selection() should return a reference
+
+        Reviewed by Darin Adler.
+
+        m_selection is never NULL so return a reference from Frame::selection(). Also removed some
+        unnecessary null checks and assert diff ts exposed as a result.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::paint):
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::firstRectForCharacterRange):
+        (DumpRenderTreeSupportGtk::selectedRange):
+        (DumpRenderTreeSupportGtk::rectangleForSelection):
+        * WebCoreSupport/EditorClientGtk.cpp:
+        (WebKit::collapseSelection):
+        (WebKit::setSelectionPrimaryClipboardIfNeeded):
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_get_range_for_word_around_caret):
+        * webkit/webkitwebview.cpp:
+        (getLocationForKeyboardGeneratedContextMenu):
+
+2013-08-17  Darin Adler  <darin@apple.com>
+
+        <https://webkit.org/b/119941> Make Page::dragController return a reference
+
+        Reviewed by Andreas Kling.
+
+        * webkit/webkitwebview.cpp:
+        (dragExitedCallback):
+        (webkit_web_view_drag_motion):
+        (webkit_web_view_drag_data_received):
+        (webkit_web_view_drag_drop):
+        Updated call sites.
+
+2013-08-16  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/119852> Frame::scriptController() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        m_script is never NULL so we can just return a reference. Also remove some pointless null
+        checks as a result of doing this.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::dispatchDidClearWindowObjectInWorld):
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_get_global_context):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_execute_script):
+
+2013-08-15  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK build fix for debug configurations.
+
+        * webkit/webkitwebframe.cpp:
+        (WebKit::kit): Remove the bogus assertion for Frame::loader() that now returns a reference.
+
+2013-08-15  Anders Carlsson  <andersca@apple.com>
+
+        <https://webkit.org/b/119859> Frame::loader() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::clearOpener):
+        (DumpRenderTreeSupportGtk::shouldClose):
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::dispatchWillSubmitForm):
+        (WebKit::FrameLoaderClient::committedLoad):
+        (WebKit::FrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebKit::FrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebKit::FrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        (WebKit::FrameLoaderClient::createFrame):
+        (WebKit::FrameLoaderClient::dispatchDidCommitLoad):
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_finalize):
+        (webkit_web_frame_load_uri):
+        (webkit_web_frame_load_data):
+        (webkit_web_frame_load_request):
+        (webkit_web_frame_stop_loading):
+        (webkit_web_frame_reload):
+        (webkit_web_frame_get_data_source):
+        (webkit_web_frame_get_provisional_data_source):
+        (webkit_web_frame_get_response_mime_type):
+        (webkit_web_frame_get_network_response):
+        (WebKit::kit):
+        * webkit/webkitwebpolicydecision.cpp:
+        (webkit_web_policy_decision_use):
+        (webkit_web_policy_decision_ignore):
+        (webkit_web_policy_decision_download):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_dispose):
+        (webkit_web_view_reload):
+        (webkit_web_view_reload_bypass_cache):
+        (webkit_web_view_stop_loading):
+        (webkit_web_view_can_show_mime_type):
+        (webkit_web_view_set_custom_encoding):
+        (webkit_web_view_get_custom_encoding):
+        (webkit_web_view_get_subresources):
+
+2013-08-15  Simon Pena  <simon.pena@samsung.com>
+
+        <https://webkit.org/b/119584> [Gtk] URL printing code in DumpRenderTree doesn't match WTR or Mac DRT
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Following a similar approach as in r153977, return a path string
+        that is relative to main frame URL or just file name if the
+        resource is not in the same directory subtree, and replace empty
+        strings with "(null)".
+
+        Update the AuthenticationCallback used in DumpRenderTree so that
+        it receives a WebKitWebResource, and update
+        dispatchDidReceiveAuthenticationChallenge so that it retrieves the
+        WebKitWebResource and passes it to the callback.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h: Update the
+        AuthenticationCallback adding a WebKitWebResource parameter.
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::toString): Define this function earlier so we can use it
+        to get the WebKitWebResource from the identifier in the
+        AuthenticationChallenge.
+        (WebKit::FrameLoaderClient::dispatchDidReceiveAuthenticationChallenge):
+        Use toString to retrieve a WebKitWebResource from the identifier
+        in the authentication challenge, and pass that WebKitWebResource
+        to the AuthenticationCallback.
+
+2013-08-13  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK] WK does not link properly against libxslt
+        https://bugs.webkit.org/show_bug.cgi?id=119688
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * GNUmakefile.am: Added LIBXSLT_LIBS to the unit tests.
+
+2013-08-13  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] Closing inspector window crashes wk
+        https://bugs.webkit.org/show_bug.cgi?id=110865
+
+        Reviewed by Carlos Garcia Campos.
+
+        The previous fix for the inspector window crash breaks some unit
+        tests. This one goes back to the original code and only moves the
+        actual deletion of priv->corePage to the end of the function.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_dispose):
+
+2013-08-13  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] Closing inspector window crashes wk
+        https://bugs.webkit.org/show_bug.cgi?id=110865
+
+        Reviewed by Carlos Garcia Campos.
+
+        Deleting priv->corePage during the destruction of a webView will
+        trigger the deletion of InspectorFrontendClient. However that
+        object is supposed to handle the webView's destroy signal first in
+        order to do the necessary cleanup.
+
+        The solution is to wait until webkit_web_view_dispose finishes
+        before deleting priv->corePage.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_dispose):
+
+2013-08-12  Anton Obzhirov  <a.obzhirov@samsung.com>
+
+        [GTK] Don't load GAIL when using GTK 3.2 or greater
+        https://bugs.webkit.org/show_bug.cgi?id=72735
+
+        Reviewed by Carlos Garcia Campos.
+
+        * tests/testatk.c:
+        (initializeTestingFramework):
+        (main):
+
+2013-08-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and Versions.m4 for 2.1.4 release.
+
+        * NEWS: Update release notes.
+
+2013-08-09  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r142755): window.open creates an invisible window when width and height are 0
+        https://bugs.webkit.org/show_bug.cgi?id=119633
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/ChromeClientGtk.cpp: (WebKit::ChromeClient::setWindowRect):
+        Once again, the passed rect cannot be empty.
+
+2013-07-27  Mark Rowe  <mrowe@apple.com>
+
+        Logging should be configurable using human-readable channel names rather than crazy bitmasks
+        <http://webkit.org/b/119031>
+
+        Implement shared logic for initializing logging channels based on human-readable channel names in WTF,
+        and rework the WebCore, WebKit and WebKit2 logging initialization on top of it.
+
+        Logging channels may now be enabled by providing a comma-separated list of channel names, with the special
+        "all" name enabling all channels. Channel names prefixed with a leading "-" will result in the named channel
+        being disabled. For instance, specifying "all,-history,-loading" will result in all logging channels except
+        for history and loading being enabled.
+
+        For OS X developers, this also changes the name of the user defaults used to enable logging. This is done to allow
+        the old user defaults to remain set for those people that need to switch between version of WebKit before and
+        after this change. Where the old user default keys were WebCoreLogLevel, WebKitLogLevel and WebKit2LogLevel,
+        the new user default keys are WebCoreLogging, WebKitLogging and WebKit2Logging.
+
+        For GTK developers, this changes the separator used in the WEBKIT_DEBUG environment variable to a comma for
+        consistency with the other platforms and to enable more code sharing.
+
+        While doing this work I've also taken the opportunity to eliminate the need to touch multiple files when
+        adding a new logging channel. Now only the header in the relevant project needs to be updated.
+
+        Reviewed by Sam Weinig.
+
+        * webkit/webkitglobals.cpp: Switch from WebCore's InitializeLogging.h to Logging.h.
+
+2013-08-02  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Implement atk_text_get_text_*_offset for WORD
+        https://bugs.webkit.org/show_bug.cgi?id=114871
+
+        Reviewed by Martin Robinson.
+
+        Updated current unit tests and add a new one specific for embedded
+        objects, to ensure we are covering even more cases than before.
+
+        * tests/testatk.c:
+        (testWebkitAtkGetTextAtOffsetWithEmbeddedObjects): New.
+        (main): Added new test to the test suite.
+
+2013-07-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and Versions.m4 for 2.1.4 release.
+
+        * NEWS: Added release notes for 2.1.4.
+
+2013-07-29  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Issues with edge cases when getting offsets for a text range in AtkText
+        https://bugs.webkit.org/show_bug.cgi?id=118908
+
+        Reviewed by Martin Robinson.
+
+        * tests/testatk.c:
+        (runGetTextTests): Updated unit tests to check more cases of
+        calling the atk_text_get_text_*_offset() functions for WORD.
+
+2013-07-25  Andreas Kling  <akling@apple.com>
+
+        ChromeClient::focusedNodeChanged() should be focusedElementChanged().
+        <http://webkit.org/b/119110>
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::focusedElementChanged):
+        * WebCoreSupport/ChromeClientGtk.h:
+
 2013-07-23  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] GtkAdjustmentWatcher idle source not correctly handled

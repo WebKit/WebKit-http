@@ -1069,27 +1069,6 @@ void CoordinatedGraphicsLayer::setNeedsVisibleRectAdjustment()
         m_pendingVisibleRectAdjustment = true;
 }
 
-bool CoordinatedGraphicsLayer::hasPendingVisibleChanges()
-{
-    if (opacity() < 0.01 && !m_animations.hasActiveAnimationsOfType(AnimatedPropertyOpacity))
-        return false;
-
-    for (size_t i = 0; i < children().size(); ++i) {
-        if (toCoordinatedGraphicsLayer(children()[i])->hasPendingVisibleChanges())
-            return true;
-    }
-
-    bool shouldSyncCanvas = false;
-#if USE(GRAPHICS_SURFACE)
-    shouldSyncCanvas = m_pendingCanvasOperation & SyncCanvas;
-#endif
-
-    if (!m_shouldSyncLayerState && !m_shouldSyncChildren && !m_shouldSyncFilters && !m_shouldSyncImageBacking && !m_shouldSyncAnimations && !shouldSyncCanvas)
-        return false;
-
-    return tiledBackingStoreVisibleRect().intersects(tiledBackingStoreContentsRect());
-}
-
 static inline bool isIntegral(float value)
 {
     return static_cast<int>(value) == value;
@@ -1216,7 +1195,7 @@ bool CoordinatedGraphicsLayer::addAnimation(const KeyframeValueList& valueList, 
     if (valueList.property() == AnimatedPropertyWebkitTransform)
         listsMatch = validateTransformOperations(valueList, ignoredHasBigRotation) >= 0;
 
-    m_lastAnimationStartTime = WTF::currentTime() - delayAsNegativeTimeOffset;
+    m_lastAnimationStartTime = monotonicallyIncreasingTime() - delayAsNegativeTimeOffset;
     m_animations.add(GraphicsLayerAnimation(keyframesName, valueList, boxSize, anim, m_lastAnimationStartTime, listsMatch));
     m_animationStartedTimer.startOneShot(0);
     didChangeAnimations();

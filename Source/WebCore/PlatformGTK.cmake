@@ -59,7 +59,6 @@ list(APPEND WebCore_SOURCES
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
 
     platform/gtk/AsyncFileSystemGtk.cpp
-    platform/gtk/ClipboardGtk.cpp
     platform/gtk/ClipboardUtilitiesGtk.cpp
     platform/gtk/ContextMenuGtk.cpp
     platform/gtk/ContextMenuItemGtk.cpp
@@ -119,10 +118,10 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/DrawingBufferCairo.cpp
     platform/graphics/cairo/FontCairo.cpp
     platform/graphics/cairo/FontCairoHarfbuzzNG.cpp
-    platform/graphics/cairo/GLContext.cpp
+    platform/graphics/GLContext.cpp
     platform/graphics/cairo/GradientCairo.cpp
     platform/graphics/cairo/GraphicsContext3DCairo.cpp
-    platform/graphics/cairo/GraphicsContext3DPrivate.cpp
+    platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/cairo/GraphicsContextCairo.cpp
     platform/graphics/cairo/ImageBufferCairo.cpp
     platform/graphics/cairo/ImageCairo.cpp
@@ -203,6 +202,7 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/ResourceResponseSoup.cpp
     platform/network/soup/SocketStreamHandleSoup.cpp
     platform/network/soup/SoupURIUtils.cpp
+    platform/network/soup/SynchronousLoaderClientSoup.cpp
 
     platform/PlatformStrategies.cpp
 

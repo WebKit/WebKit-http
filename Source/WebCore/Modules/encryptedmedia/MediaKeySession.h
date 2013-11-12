@@ -32,10 +32,10 @@
 #include "EventTarget.h"
 #include "ExceptionCode.h"
 #include "Timer.h"
+#include <runtime/Uint8Array.h>
 #include <wtf/Deque.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
-#include <wtf/Uint8Array.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -103,7 +103,7 @@ private:
     virtual void derefEventTarget() OVERRIDE { deref(); }
 
     virtual EventTargetData* eventTargetData() OVERRIDE { return &m_eventTargetData; }
-    virtual EventTargetData* ensureEventTargetData() OVERRIDE { return &m_eventTargetData; }
+    virtual EventTargetData& ensureEventTargetData() OVERRIDE { return m_eventTargetData; }
 
     EventTargetData m_eventTargetData;
 };

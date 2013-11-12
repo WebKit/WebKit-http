@@ -149,12 +149,12 @@ ObjcArray::ObjcArray(ObjectStructPtr a, PassRefPtr<RootObject> rootObject)
 void ObjcArray::setValueAt(ExecState* exec, unsigned int index, JSValue aValue) const
 {
     if (![_array.get() respondsToSelector:@selector(insertObject:atIndex:)]) {
-        throwError(exec, createTypeError(exec, "Array is not mutable."));
+        exec->vm().throwException(exec, createTypeError(exec, "Array is not mutable."));
         return;
     }
 
     if (index > [_array.get() count]) {
-        throwError(exec, createRangeError(exec, "Index exceeds array size."));
+        exec->vm().throwException(exec, createRangeError(exec, "Index exceeds array size."));
         return;
     }
     
@@ -165,20 +165,20 @@ void ObjcArray::setValueAt(ExecState* exec, unsigned int index, JSValue aValue) 
     @try {
         [_array.get() insertObject:oValue.objectValue atIndex:index];
     } @catch(NSException* localException) {
-        throwError(exec, createError(exec, "Objective-C exception."));
+        exec->vm().throwException(exec, createError(exec, "Objective-C exception."));
     }
 }
 
 JSValue ObjcArray::valueAt(ExecState* exec, unsigned int index) const
 {
     if (index > [_array.get() count])
-        return throwError(exec, createRangeError(exec, "Index exceeds array size."));
+        return exec->vm().throwException(exec, createRangeError(exec, "Index exceeds array size."));
     @try {
         id obj = [_array.get() objectAtIndex:index];
         if (obj)
             return convertObjcValueToValue (exec, &obj, ObjcObjectType, m_rootObject.get());
     } @catch(NSException* localException) {
-        return throwError(exec, createError(exec, "Objective-C exception."));
+        return exec->vm().throwException(exec, createError(exec, "Objective-C exception."));
     }
     return jsUndefined();
 }
@@ -205,20 +205,13 @@ void ObjcFallbackObjectImp::destroy(JSCell* cell)
 void ObjcFallbackObjectImp::finishCreation(JSGlobalObject* globalObject)
 {
     Base::finishCreation(globalObject->vm());
-    ASSERT(inherits(&s_info));
+    ASSERT(inherits(info()));
 }
 
-bool ObjcFallbackObjectImp::getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot& slot)
+bool ObjcFallbackObjectImp::getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot& slot)
 {
     // keep the prototype from getting called instead of just returning false
     slot.setUndefined();
-    return true;
-}
-
-bool ObjcFallbackObjectImp::getOwnPropertyDescriptor(JSObject*, ExecState*, PropertyName, PropertyDescriptor& descriptor)
-{
-    // keep the prototype from getting called instead of just returning false
-    descriptor.setUndefined();
     return true;
 }
 
@@ -229,7 +222,7 @@ void ObjcFallbackObjectImp::put(JSCell*, ExecState*, PropertyName, JSValue, PutP
 static EncodedJSValue JSC_HOST_CALL callObjCFallbackObject(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&ObjCRuntimeObject::s_info))
+    if (!thisValue.inherits(ObjCRuntimeObject::info()))
         return throwVMTypeError(exec);
 
     JSValue result = jsUndefined();

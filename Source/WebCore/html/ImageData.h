@@ -30,9 +30,9 @@
 #define ImageData_h
 
 #include "IntSize.h"
+#include <runtime/Uint8ClampedArray.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
-#include <wtf/Uint8ClampedArray.h>
 
 namespace WebCore {
 
@@ -47,7 +47,7 @@ public:
     Uint8ClampedArray* data() const { return m_data.get(); }
 
 private:
-    ImageData(const IntSize&);
+    explicit ImageData(const IntSize&);
     ImageData(const IntSize&, PassRefPtr<Uint8ClampedArray>);
 
     IntSize m_size;

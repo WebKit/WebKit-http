@@ -67,6 +67,7 @@
 #include "PageDebuggerAgent.h"
 #include "PageRuntimeAgent.h"
 #include "RenderObject.h"
+#include "RenderView.h"
 #include "ScriptArguments.h"
 #include "ScriptCallStack.h"
 #include "ScriptController.h"
@@ -533,7 +534,7 @@ void InspectorInstrumentation::didDispatchXHRLoadEventImpl(const InspectorInstru
 void InspectorInstrumentation::willPaintImpl(InstrumentingAgents* instrumentingAgents, RenderObject* renderer)
 {
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents->inspectorTimelineAgent())
-        timelineAgent->willPaint(renderer->frame());
+        timelineAgent->willPaint(&renderer->frame());
 }
 
 void InspectorInstrumentation::didPaintImpl(InstrumentingAgents*  instrumentingAgents, RenderObject* renderer, GraphicsContext* context, const LayoutRect& rect)
@@ -605,7 +606,7 @@ void InspectorInstrumentation::didMatchRuleImpl(const InspectorInstrumentationCo
         cssAgent->didMatchRule(matched);
 }
 
-InspectorInstrumentationCookie InspectorInstrumentation::willProcessRuleImpl(InstrumentingAgents* instrumentingAgents, StyleRule* rule, StyleResolver* styleResolver)
+InspectorInstrumentationCookie InspectorInstrumentation::willProcessRuleImpl(InstrumentingAgents* instrumentingAgents, StyleRule* rule, StyleResolver& styleResolver)
 {
     InspectorCSSAgent* cssAgent = instrumentingAgents->inspectorCSSAgent();
     if (cssAgent) {
@@ -859,7 +860,7 @@ void InspectorInstrumentation::domContentLoadedEventFiredImpl(InstrumentingAgent
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents->inspectorTimelineAgent())
         timelineAgent->didMarkDOMContentEvent(frame);
 
-    if (frame->page()->mainFrame() != frame)
+    if (&frame->page()->mainFrame() != frame)
         return;
 
     if (InspectorAgent* inspectorAgent = instrumentingAgents->inspectorAgent())
@@ -880,7 +881,7 @@ void InspectorInstrumentation::loadEventFiredImpl(InstrumentingAgents* instrumen
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents->inspectorTimelineAgent())
         timelineAgent->didMarkLoadEvent(frame);
 
-    if (frame->page()->mainFrame() != frame)
+    if (&frame->page()->mainFrame() != frame)
         return;
 
     if (InspectorPageAgent* pageAgent = instrumentingAgents->inspectorPageAgent())
@@ -901,8 +902,7 @@ void InspectorInstrumentation::didCommitLoadImpl(InstrumentingAgents* instrument
     if (!inspectorAgent || !inspectorAgent->developerExtrasEnabled())
         return;
 
-    Frame* mainFrame = page->mainFrame();
-    if (loader->frame() == mainFrame) {
+    if (page->frameIsMainFrame(loader->frame())) {
         if (InspectorConsoleAgent* consoleAgent = instrumentingAgents->inspectorConsoleAgent())
             consoleAgent->reset();
 
@@ -921,7 +921,7 @@ void InspectorInstrumentation::didCommitLoadImpl(InstrumentingAgents* instrument
             databaseAgent->clearResources();
 #endif
         if (InspectorDOMAgent* domAgent = instrumentingAgents->inspectorDOMAgent())
-            domAgent->setDocument(mainFrame->document());
+            domAgent->setDocument(page->mainFrame().document());
 #if USE(ACCELERATED_COMPOSITING)
         if (InspectorLayerTreeAgent* layerTreeAgent = instrumentingAgents->inspectorLayerTreeAgent())
             layerTreeAgent->reset();
@@ -1332,7 +1332,7 @@ InstrumentingAgents* InspectorInstrumentation::instrumentingAgentsForPage(Page* 
 
 InstrumentingAgents* InspectorInstrumentation::instrumentingAgentsForRenderer(RenderObject* renderer)
 {
-    return instrumentingAgentsForFrame(renderer->frame());
+    return instrumentingAgentsForFrame(&renderer->frame());
 }
 
 #if ENABLE(WORKERS)

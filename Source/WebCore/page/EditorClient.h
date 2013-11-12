@@ -53,7 +53,6 @@ class KeyboardEvent;
 class Node;
 class Range;
 class SharedBuffer;
-class SpellChecker;
 class StylePropertySet;
 class TextCheckerClient;
 class VisibleSelection;
@@ -65,7 +64,6 @@ class EditorClient {
 public:
     virtual ~EditorClient() {  }
     virtual void pageDestroyed() = 0;
-    virtual void frameWillDetachPage(Frame*) = 0;
 
     virtual bool shouldDeleteRange(Range*) = 0;
     virtual bool smartInsertDeleteEnabled() = 0; 

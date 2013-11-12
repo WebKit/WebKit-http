@@ -22,11 +22,12 @@
 #define SVGTitleElement_h
 #if ENABLE(SVG)
 
-#include "SVGStyledElement.h"
+#include "SVGElement.h"
+#include "SVGNames.h"
 
 namespace WebCore {
 
-class SVGTitleElement FINAL : public SVGStyledElement {
+class SVGTitleElement FINAL : public SVGElement {
 public:
     static PassRefPtr<SVGTitleElement> create(const QualifiedName&, Document*);
 
@@ -35,10 +36,12 @@ private:
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
-    virtual bool rendererIsNeeded(const NodeRenderingContext&) { return false; }
+    virtual bool rendererIsNeeded(const RenderStyle&) { return false; }
 };
+
+template <> inline bool isElementOfType<SVGTitleElement>(const Element* element) { return element->hasTagName(SVGNames::titleTag); }
 
 } // namespace WebCore
 

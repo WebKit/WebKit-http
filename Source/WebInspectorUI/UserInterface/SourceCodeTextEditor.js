@@ -219,7 +219,7 @@ WebInspector.SourceCodeTextEditor.prototype = {
     _addBreakpointWithEditorLineInfo: function(breakpoint, lineInfo)
     {
         if (!this._breakpointMap[lineInfo.lineNumber])
-            this._breakpointMap[lineInfo.lineNumber] = {}
+            this._breakpointMap[lineInfo.lineNumber] = {};
 
         this._breakpointMap[lineInfo.lineNumber][lineInfo.columnNumber] = breakpoint;
     },
@@ -674,6 +674,109 @@ WebInspector.SourceCodeTextEditor.prototype = {
     textEditorShouldHideLineNumber: function(textEditor, lineNumber)
     {
         return lineNumber in this._invalidLineNumbers;
+    },
+
+    textEditorGutterContextMenu: function(textEditor, lineNumber, columnNumber, editorBreakpoints, event)
+    {
+        if (!this._supportsDebugging)
+            return;
+
+        event.preventDefault();
+
+        var contextMenu = new WebInspector.ContextMenu(event);
+
+        // Paused. Add Continue to Here option only if we have a script identifier for the location.
+        if (WebInspector.debuggerManager.paused) {
+            var editorLineInfo = {lineNumber:lineNumber, columnNumber:columnNumber};
+            var unformattedLineInfo = this._unformattedLineInfoForEditorLineInfo(editorLineInfo);
+            var sourceCodeLocation = this._sourceCode.createSourceCodeLocation(unformattedLineInfo.lineNumber, unformattedLineInfo.columnNumber);
+
+            if (sourceCodeLocation.sourceCode instanceof WebInspector.Script)
+                var script = sourceCodeLocation.sourceCode;
+            else if (sourceCodeLocation.sourceCode instanceof WebInspector.Resource)
+                var script = sourceCodeLocation.sourceCode.scriptForLocation(sourceCodeLocation);
+
+            if (script) {
+                function continueToLocation()
+                {
+                    WebInspector.debuggerManager.continueToLocation(script.id, sourceCodeLocation.lineNumber, sourceCodeLocation.columnNumber);
+                }
+
+                contextMenu.appendItem(WebInspector.UIString("Continue to Here"), continueToLocation);
+                contextMenu.appendSeparator();
+            }
+        }
+
+        var breakpoints = [];
+        for (var i = 0; i < editorBreakpoints.length; ++i) {
+            var lineInfo = editorBreakpoints[i];
+            var breakpoint = this._breakpointForEditorLineInfo(lineInfo);
+            console.assert(breakpoint);
+            if (breakpoint)
+                breakpoints.push(breakpoint);
+        }
+
+        // No breakpoints.
+        if (!breakpoints.length) {
+            function addBreakpoint()
+            {
+                var data = this.textEditorBreakpointAdded(this, lineNumber, columnNumber);
+                this.setBreakpointInfoForLineAndColumn(data.lineNumber, data.columnNumber, data.breakpointInfo);
+            }
+
+            contextMenu.appendItem(WebInspector.UIString("Add Breakpoint"), addBreakpoint.bind(this));
+            contextMenu.show();
+            return;
+        }
+
+        // Single breakpoint.
+        if (breakpoints.length === 1) {
+            var breakpoint = breakpoints[0];
+            function revealInSidebar()
+            {
+                WebInspector.debuggerSidebarPanel.show();
+                var treeElement = WebInspector.debuggerSidebarPanel.treeElementForRepresentedObject(breakpoint);
+                if (treeElement)
+                    treeElement.revealAndSelect();
+            }
+
+            breakpoint.appendContextMenuItems(contextMenu, event.target);
+            contextMenu.appendSeparator();
+            contextMenu.appendItem(WebInspector.UIString("Reveal in Debugger Navigation Sidebar"), revealInSidebar);
+            contextMenu.show();
+            return;
+        }
+
+        // Multiple breakpoints.
+        var shouldDisable = false;
+        for (var i = 0; i < breakpoints.length; ++i) {
+            if (!breakpoints[i].disabled) {
+                shouldDisable = true;
+                break;
+            }
+        }
+
+        function removeBreakpoints()
+        {
+            for (var i = 0; i < breakpoints.length; ++i) {
+                var breakpoint = breakpoints[i];
+                if (WebInspector.debuggerManager.isBreakpointRemovable(breakpoint))
+                    WebInspector.debuggerManager.removeBreakpoint(breakpoint);
+            }
+        }
+
+        function toggleBreakpoints()
+        {
+            for (var i = 0; i < breakpoints.length; ++i)
+                breakpoints[i].disabled = shouldDisable;
+        }
+
+        if (shouldDisable)
+            contextMenu.appendItem(WebInspector.UIString("Disable Breakpoints"), toggleBreakpoints.bind(this));
+        else
+            contextMenu.appendItem(WebInspector.UIString("Enable Breakpoints"), toggleBreakpoints.bind(this));
+        contextMenu.appendItem(WebInspector.UIString("Delete Breakpoints"), removeBreakpoints.bind(this));
+        contextMenu.show();
     },
 
     textEditorBreakpointAdded: function(textEditor, lineNumber, columnNumber)

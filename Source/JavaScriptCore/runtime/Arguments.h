@@ -65,7 +65,7 @@ private:
     void tearOffForInlineCallFrame(VM& vm, Register*, InlineCallFrame*);
 
 public:
-    static const ClassInfo s_info;
+    DECLARE_INFO;
 
     static void visitChildren(JSCell*, SlotVisitor&);
 
@@ -86,7 +86,7 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype) 
     { 
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info); 
+        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info()); 
     }
         
 protected:
@@ -97,15 +97,14 @@ protected:
 
 private:
     static void destroy(JSCell*);
-    static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
-    static bool getOwnPropertySlotByIndex(JSCell*, ExecState*, unsigned propertyName, PropertySlot&);
-    static bool getOwnPropertyDescriptor(JSObject*, ExecState*, PropertyName, PropertyDescriptor&);
+    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
+    static bool getOwnPropertySlotByIndex(JSObject*, ExecState*, unsigned propertyName, PropertySlot&);
     static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
     static void putByIndex(JSCell*, ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
     static bool deletePropertyByIndex(JSCell*, ExecState*, unsigned propertyName);
-    static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, PropertyDescriptor&, bool shouldThrow);
+    static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
     void createStrictModeCallerIfNecessary(ExecState*);
     void createStrictModeCalleeIfNecessary(ExecState*);
 
@@ -143,7 +142,7 @@ Arguments* asArguments(JSValue);
 
 inline Arguments* asArguments(JSValue value)
 {
-    ASSERT(asObject(value)->inherits(&Arguments::s_info));
+    ASSERT(asObject(value)->inherits(Arguments::info()));
     return static_cast<Arguments*>(asObject(value));
 }
 
@@ -228,7 +227,7 @@ inline WriteBarrierBase<Unknown>& Arguments::argument(size_t argument)
 inline void Arguments::finishCreation(CallFrame* callFrame)
 {
     Base::finishCreation(callFrame->vm());
-    ASSERT(inherits(&s_info));
+    ASSERT(inherits(info()));
 
     JSFunction* callee = jsCast<JSFunction*>(callFrame->callee());
     m_numArguments = callFrame->argumentCount();
@@ -257,7 +256,7 @@ inline void Arguments::finishCreation(CallFrame* callFrame)
 inline void Arguments::finishCreation(CallFrame* callFrame, InlineCallFrame* inlineCallFrame)
 {
     Base::finishCreation(callFrame->vm());
-    ASSERT(inherits(&s_info));
+    ASSERT(inherits(info()));
 
     JSFunction* callee = inlineCallFrame->calleeForCallFrame(callFrame);
     m_numArguments = inlineCallFrame->arguments.size() - 1;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,8 +29,8 @@
 
 #include "ScriptState.h"
 #include <heap/Strong.h>
+#include <runtime/ArrayBuffer.h>
 #include <runtime/JSCJSValue.h>
-#include <wtf/ArrayBuffer.h>
 #include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -43,7 +43,7 @@ namespace WebCore {
 
 class MessagePort;
 typedef Vector<RefPtr<MessagePort>, 1> MessagePortArray;
-typedef Vector<RefPtr<WTF::ArrayBuffer>, 1> ArrayBufferArray;
+typedef Vector<RefPtr<JSC::ArrayBuffer>, 1> ArrayBufferArray;
  
 enum SerializationReturnCode {
     SuccessfullyCompleted,
@@ -113,10 +113,10 @@ public:
     ~SerializedScriptValue();
 
 private:
-    typedef Vector<WTF::ArrayBufferContents> ArrayBufferContentsArray;
+    typedef Vector<JSC::ArrayBufferContents> ArrayBufferContentsArray;
     static void maybeThrowExceptionIfSerializationFailed(JSC::ExecState*, SerializationReturnCode);
     static bool serializationDidCompleteSuccessfully(SerializationReturnCode);
-    static PassOwnPtr<ArrayBufferContentsArray> transferArrayBuffers(ArrayBufferArray&, SerializationReturnCode&);
+    static PassOwnPtr<ArrayBufferContentsArray> transferArrayBuffers(JSC::ExecState*, ArrayBufferArray&, SerializationReturnCode&);
 
     SerializedScriptValue(const Vector<unsigned char>&);
     SerializedScriptValue(Vector<unsigned char>&);

@@ -452,6 +452,11 @@ String AXFooterRoleDescriptionText()
     return String::fromUTF8(_("footer"));
 }
 
+String AXSearchFieldCancelButtonText()
+{
+    return String::fromUTF8(_("cancel"));
+}
+
 String AXButtonActionVerb()
 {
     return String::fromUTF8(_("press"));
@@ -790,17 +795,22 @@ String textTrackClosedCaptionsText()
 
 String textTrackSubtitlesText()
 {
-    return String::fromUTF8(C_("Subtitles", "Menu section heading for subtitles"));
+    return String::fromUTF8(C_("Menu section heading for subtitles", "Subtitles"));
 }
 
-String textTrackOffText()
+String textTrackOffMenuItemText()
 {
-    return String::fromUTF8(C_("Off", "Menu item label for the track that represents disabling closed captions"));
+    return String::fromUTF8(C_("Menu item label for the track that represents disabling closed captions", "Off"));
+}
+
+String textTrackAutomaticMenuItemText()
+{
+    return String::fromUTF8(C_("Menu item label for the automatically choosen track", "Auto"));
 }
 
 String textTrackNoLabelText()
 {
-    return String::fromUTF8(C_("No label", "Menu item label for a closed captions track that has no other name"));
+    return String::fromUTF8(C_("Menu item label for a closed captions track that has no other name", "No label"));
 }
 #endif
 

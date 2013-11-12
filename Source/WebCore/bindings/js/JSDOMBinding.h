@@ -28,18 +28,22 @@
 #include "JSDOMGlobalObject.h"
 #include "JSDOMWrapper.h"
 #include "DOMWrapperWorld.h"
-#include "Document.h"
 #include "ScriptWrappable.h"
 #include "ScriptWrappableInlines.h"
-#include <heap/SlotVisitor.h>
+#include "WebCoreTypedArrayController.h"
 #include <heap/Weak.h>
 #include <heap/WeakInlines.h>
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
 #include <runtime/JSArray.h>
+#include <runtime/JSArrayBuffer.h>
+#include <runtime/JSDataView.h>
+#include <runtime/JSTypedArrays.h>
 #include <runtime/Lookup.h>
 #include <runtime/ObjectPrototype.h>
 #include <runtime/Operations.h>
+#include <runtime/TypedArrayInlines.h>
+#include <runtime/TypedArrays.h>
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/NullPtr.h>
@@ -54,8 +58,11 @@ namespace WebCore {
 class DOMStringList;
 
     class CachedScript;
+    class Document;
     class Frame;
+    class HTMLDocument;
     class KURL;
+    class Node;
 
     typedef int ExceptionCode;
 
@@ -65,7 +72,7 @@ class DOMStringList;
     public:
         static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
         {
-            return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), &s_info);
+            return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
         }
 
     protected:
@@ -76,29 +83,6 @@ class DOMStringList;
         }
     };
 
-    // Constructors using this base class depend on being in a Document and
-    // can never be used from a WorkerGlobalScope.
-    class DOMConstructorWithDocument : public DOMConstructorObject {
-        typedef DOMConstructorObject Base;
-    public:
-        Document* document() const
-        {
-            return toDocument(scriptExecutionContext());
-        }
-
-    protected:
-        DOMConstructorWithDocument(JSC::Structure* structure, JSDOMGlobalObject* globalObject)
-            : DOMConstructorObject(structure, globalObject)
-        {
-        }
-
-        void finishCreation(JSDOMGlobalObject* globalObject)
-        {
-            Base::finishCreation(globalObject->vm());
-            ASSERT(globalObject->scriptExecutionContext()->isDocument());
-        }
-    };
-    
     JSC::Structure* getCachedDOMStructure(JSDOMGlobalObject*, const JSC::ClassInfo*);
     JSC::Structure* cacheDOMStructure(JSDOMGlobalObject*, JSC::Structure*, const JSC::ClassInfo*);
 
@@ -112,9 +96,9 @@ class DOMStringList;
 
     template<class WrapperClass> inline JSC::Structure* getDOMStructure(JSC::ExecState* exec, JSDOMGlobalObject* globalObject)
     {
-        if (JSC::Structure* structure = getCachedDOMStructure(globalObject, &WrapperClass::s_info))
+        if (JSC::Structure* structure = getCachedDOMStructure(globalObject, WrapperClass::info()))
             return structure;
-        return cacheDOMStructure(globalObject, WrapperClass::createStructure(exec->vm(), globalObject, WrapperClass::createPrototype(exec, globalObject)), &WrapperClass::s_info);
+        return cacheDOMStructure(globalObject, WrapperClass::createStructure(exec->vm(), globalObject, WrapperClass::createPrototype(exec, globalObject)), WrapperClass::info());
     }
 
     template<class WrapperClass> inline JSC::Structure* deprecatedGetDOMStructure(JSC::ExecState* exec)
@@ -128,6 +112,16 @@ class DOMStringList;
         return JSC::jsCast<JSC::JSObject*>(asObject(getDOMStructure<WrapperClass>(exec, JSC::jsCast<JSDOMGlobalObject*>(globalObject))->storedPrototype()));
     }
 
+    inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld* world, JSC::ArrayBuffer*)
+    {
+        return static_cast<WebCoreTypedArrayController*>(world->vm()->m_typedArrayController.get())->wrapperOwner();
+    }
+    
+    inline void* wrapperContext(DOMWrapperWorld* world, JSC::ArrayBuffer*)
+    {
+        return world;
+    }
+
     inline JSDOMWrapper* getInlineCachedWrapper(DOMWrapperWorld*, void*) { return 0; }
     inline bool setInlineCachedWrapper(DOMWrapperWorld*, void*, JSDOMWrapper*, JSC::WeakHandleOwner*, void*) { return false; }
     inline bool clearInlineCachedWrapper(DOMWrapperWorld*, void*, JSDOMWrapper*) { return false; }
@@ -139,11 +133,26 @@ class DOMStringList;
         return domObject->wrapper();
     }
 
+    inline JSC::JSArrayBuffer* getInlineCachedWrapper(DOMWrapperWorld* world, JSC::ArrayBuffer* buffer)
+    {
+        if (!world->isNormal())
+            return 0;
+        return buffer->m_wrapper.get();
+    }
+
     inline bool setInlineCachedWrapper(DOMWrapperWorld* world, ScriptWrappable* domObject, JSDOMWrapper* wrapper, JSC::WeakHandleOwner* wrapperOwner, void* context)
     {
         if (!world->isNormal())
             return false;
         domObject->setWrapper(*world->vm(), wrapper, wrapperOwner, context);
+        return true;
+    }
+
+    inline bool setInlineCachedWrapper(DOMWrapperWorld* world, JSC::ArrayBuffer* domObject, JSC::JSArrayBuffer* wrapper, JSC::WeakHandleOwner* wrapperOwner, void* context)
+    {
+        if (!world->isNormal())
+            return false;
+        domObject->m_wrapper = JSC::PassWeak<JSC::JSArrayBuffer>(wrapper, wrapperOwner, context);
         return true;
     }
 
@@ -155,24 +164,32 @@ class DOMStringList;
         return true;
     }
 
-    template <typename DOMClass> inline JSDOMWrapper* getCachedWrapper(DOMWrapperWorld* world, DOMClass* domObject)
+    inline bool clearInlineCachedWrapper(DOMWrapperWorld* world, JSC::ArrayBuffer* domObject, JSC::JSArrayBuffer* wrapper)
     {
-        if (JSDOMWrapper* wrapper = getInlineCachedWrapper(world, domObject))
+        if (!world->isNormal())
+            return false;
+        weakClear(domObject->m_wrapper, wrapper);
+        return true;
+    }
+
+    template <typename DOMClass> inline JSC::JSObject* getCachedWrapper(DOMWrapperWorld* world, DOMClass* domObject)
+    {
+        if (JSC::JSObject* wrapper = getInlineCachedWrapper(world, domObject))
             return wrapper;
         return world->m_wrappers.get(domObject);
     }
 
-    template <typename DOMClass> inline void cacheWrapper(DOMWrapperWorld* world, DOMClass* domObject, JSDOMWrapper* wrapper)
+    template <typename DOMClass, typename WrapperClass> inline void cacheWrapper(DOMWrapperWorld* world, DOMClass* domObject, WrapperClass* wrapper)
     {
         JSC::WeakHandleOwner* owner = wrapperOwner(world, domObject);
         void* context = wrapperContext(world, domObject);
         if (setInlineCachedWrapper(world, domObject, wrapper, owner, context))
             return;
-        JSC::PassWeak<JSDOMWrapper> passWeak(wrapper, owner, context);
+        JSC::PassWeak<JSC::JSObject> passWeak(wrapper, owner, context);
         weakAdd(world->m_wrappers, (void*)domObject, passWeak);
     }
 
-    template <typename DOMClass> inline void uncacheWrapper(DOMWrapperWorld* world, DOMClass* domObject, JSDOMWrapper* wrapper)
+    template <typename DOMClass, typename WrapperClass> inline void uncacheWrapper(DOMWrapperWorld* world, DOMClass* domObject, WrapperClass* wrapper)
     {
         if (clearInlineCachedWrapper(world, domObject, wrapper))
             return;
@@ -195,7 +212,7 @@ class DOMStringList;
     {
         if (!domObject)
             return JSC::jsNull();
-        if (JSDOMWrapper* wrapper = getCachedWrapper(currentWorld(exec), domObject))
+        if (JSC::JSObject* wrapper = getCachedWrapper(currentWorld(exec), domObject))
             return wrapper;
         return createWrapper<WrapperClass>(exec, globalObject, domObject);
     }
@@ -218,7 +235,7 @@ class DOMStringList;
         return index >= exec->argumentCount() ? JSC::JSValue() : exec->argument(index);
     }
 
-    const JSC::HashTable* getHashTableForGlobalData(JSC::VM&, const JSC::HashTable* staticTable);
+    const JSC::HashTable& getHashTableForGlobalData(JSC::VM&, const JSC::HashTable& staticTable);
 
     void reportException(JSC::ExecState*, JSC::JSValue exception, CachedScript* = 0);
     void reportCurrentException(JSC::ExecState*);
@@ -323,6 +340,25 @@ class DOMStringList;
         return object;
     }
 
+    inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, JSC::ArrayBuffer* buffer)
+    {
+        if (!buffer)
+            return JSC::jsNull();
+        if (JSC::JSValue result = getExistingWrapper<JSC::JSArrayBuffer>(exec, buffer))
+            return result;
+        buffer->ref();
+        JSC::JSArrayBuffer* wrapper = JSC::JSArrayBuffer::create(exec->vm(), globalObject->arrayBufferStructure(), buffer);
+        cacheWrapper(currentWorld(exec), buffer, wrapper);
+        return wrapper;
+    }
+
+    inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, JSC::ArrayBufferView* view)
+    {
+        if (!view)
+            return JSC::jsNull();
+        return view->wrap(exec, globalObject);
+    }
+
     template <typename T>
     inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, PassRefPtr<T> ptr)
     {
@@ -376,6 +412,32 @@ class DOMStringList;
 
     JSC::JSValue jsArray(JSC::ExecState*, JSDOMGlobalObject*, PassRefPtr<DOMStringList>);
 
+    inline PassRefPtr<JSC::ArrayBufferView> toArrayBufferView(JSC::JSValue value)
+    {
+        JSC::JSArrayBufferView* wrapper = JSC::jsDynamicCast<JSC::JSArrayBufferView*>(value);
+        if (!wrapper)
+            return 0;
+        return wrapper->impl();
+    }
+    
+    inline PassRefPtr<JSC::Int8Array> toInt8Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Int8Adaptor>(value); }
+    inline PassRefPtr<JSC::Int16Array> toInt16Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Int16Adaptor>(value); }
+    inline PassRefPtr<JSC::Int32Array> toInt32Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Int32Adaptor>(value); }
+    inline PassRefPtr<JSC::Uint8Array> toUint8Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Uint8Adaptor>(value); }
+    inline PassRefPtr<JSC::Uint8ClampedArray> toUint8ClampedArray(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Uint8ClampedAdaptor>(value); }
+    inline PassRefPtr<JSC::Uint16Array> toUint16Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Uint16Adaptor>(value); }
+    inline PassRefPtr<JSC::Uint32Array> toUint32Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Uint32Adaptor>(value); }
+    inline PassRefPtr<JSC::Float32Array> toFloat32Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Float32Adaptor>(value); }
+    inline PassRefPtr<JSC::Float64Array> toFloat64Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Float64Adaptor>(value); }
+    
+    inline PassRefPtr<JSC::DataView> toDataView(JSC::JSValue value)
+    {
+        JSC::JSDataView* wrapper = JSC::jsDynamicCast<JSC::JSDataView*>(value);
+        if (!wrapper)
+            return 0;
+        return wrapper->typedImpl();
+    }
+
     template<class T> struct NativeValueTraits;
 
     template<>
@@ -421,7 +483,7 @@ class DOMStringList;
         JSC::JSArray* array = asArray(value);
         for (size_t i = 0; i < array->length(); ++i) {
             JSC::JSValue element = array->getIndex(exec, i);
-            if (element.inherits(&JST::s_info))
+            if (element.inherits(JST::info()))
                 result.append((*toT)(element));
             else {
                 throwVMError(exec, createTypeError(exec, "Invalid Array element type"));
@@ -490,7 +552,7 @@ class DOMStringList;
             UChar singleCharacter = (*stringImpl)[0u];
             if (singleCharacter <= JSC::maxSingleCharacterString) {
                 JSC::VM* vm = &exec->vm();
-                return vm->smallStrings.singleCharacterString(vm, static_cast<unsigned char>(singleCharacter));
+                return vm->smallStrings.singleCharacterString(static_cast<unsigned char>(singleCharacter));
             }
         }
 
@@ -514,7 +576,7 @@ class DOMStringList;
     template <class ThisImp>
     inline const JSC::HashEntry* getStaticValueSlotEntryWithoutCaching(JSC::ExecState* exec, JSC::PropertyName propertyName)
     {
-        const JSC::HashEntry* entry = ThisImp::s_info.propHashTable(exec)->entry(exec, propertyName);
+        const JSC::HashEntry* entry = ThisImp::info()->propHashTable(exec)->entry(exec, propertyName);
         if (!entry) // not found, forward to parent
             return getStaticValueSlotEntryWithoutCaching<typename ThisImp::Base>(exec, propertyName);
         return entry;

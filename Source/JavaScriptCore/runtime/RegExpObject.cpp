@@ -50,7 +50,7 @@ static JSValue regExpObjectSource(ExecState*, JSValue, PropertyName);
 
 namespace JSC {
 
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(RegExpObject);
+STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(RegExpObject);
 
 const ClassInfo RegExpObject::s_info = { "RegExp", &Base::s_info, 0, ExecState::regExpTable, CREATE_METHOD_TABLE(RegExpObject) };
 
@@ -74,13 +74,13 @@ RegExpObject::RegExpObject(JSGlobalObject* globalObject, Structure* structure, R
 void RegExpObject::finishCreation(JSGlobalObject* globalObject)
 {
     Base::finishCreation(globalObject->vm());
-    ASSERT(inherits(&s_info));
+    ASSERT(inherits(info()));
 }
 
 void RegExpObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     RegExpObject* thisObject = jsCast<RegExpObject*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
 
@@ -89,24 +89,15 @@ void RegExpObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_lastIndex);
 }
 
-bool RegExpObject::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    if (propertyName == exec->propertyNames().lastIndex) {
-        RegExpObject* regExp = asRegExpObject(cell);
-        slot.setValue(regExp, regExp->getLastIndex());
-        return true;
-    }
-    return getStaticValueSlot<RegExpObject, JSObject>(exec, ExecState::regExpTable(exec), jsCast<RegExpObject*>(cell), propertyName, slot);
-}
-
-bool RegExpObject::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
+bool RegExpObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     if (propertyName == exec->propertyNames().lastIndex) {
         RegExpObject* regExp = asRegExpObject(object);
-        descriptor.setDescriptor(regExp->getLastIndex(), regExp->m_lastIndexIsWritable ? DontDelete | DontEnum : DontDelete | DontEnum | ReadOnly);
+        unsigned attributes = regExp->m_lastIndexIsWritable ? DontDelete | DontEnum : DontDelete | DontEnum | ReadOnly;
+        slot.setValue(regExp, attributes, regExp->getLastIndex());
         return true;
     }
-    return getStaticValueDescriptor<RegExpObject, JSObject>(exec, ExecState::regExpTable(exec), jsCast<RegExpObject*>(object), propertyName, descriptor);
+    return getStaticValueSlot<RegExpObject, JSObject>(exec, ExecState::regExpTable(exec), jsCast<RegExpObject*>(object), propertyName, slot);
 }
 
 bool RegExpObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
@@ -137,7 +128,7 @@ static bool reject(ExecState* exec, bool throwException, const char* message)
     return false;
 }
 
-bool RegExpObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor, bool shouldThrow)
+bool RegExpObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool shouldThrow)
 {
     if (propertyName == exec->propertyNames().lastIndex) {
         RegExpObject* regExp = asRegExpObject(object);

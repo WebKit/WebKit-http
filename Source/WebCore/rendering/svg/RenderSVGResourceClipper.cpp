@@ -37,6 +37,7 @@
 #include "RenderObject.h"
 #include "RenderSVGResource.h"
 #include "RenderStyle.h"
+#include "RenderView.h"
 #include "SVGClipPathElement.h"
 #include "SVGElement.h"
 #include "SVGGraphicsElement.h"
@@ -45,7 +46,6 @@
 #include "SVGRenderingContext.h"
 #include "SVGResources.h"
 #include "SVGResourcesCache.h"
-#include "SVGStyledElement.h"
 #include "SVGUnitTypes.h"
 #include "SVGUseElement.h"
 
@@ -207,7 +207,6 @@ bool RenderSVGResourceClipper::applyClippingToContext(RenderObject* object, cons
 
 bool RenderSVGResourceClipper::drawContentIntoMaskImage(ClipperData* clipperData, const FloatRect& objectBoundingBox)
 {
-    ASSERT(frame());
     ASSERT(clipperData);
     ASSERT(clipperData->clipMaskImage);
 
@@ -227,16 +226,16 @@ bool RenderSVGResourceClipper::drawContentIntoMaskImage(ClipperData* clipperData
     // - masker/filter not applied when rendering the children
     // - fill is set to the initial fill paint server (solid, black)
     // - stroke is set to the initial stroke paint server (none)
-    PaintBehavior oldBehavior = frame()->view()->paintBehavior();
-    frame()->view()->setPaintBehavior(oldBehavior | PaintBehaviorRenderingSVGMask);
+    PaintBehavior oldBehavior = view().frameView().paintBehavior();
+    view().frameView().setPaintBehavior(oldBehavior | PaintBehaviorRenderingSVGMask);
 
     // Draw all clipPath children into a global mask.
     for (Node* childNode = node()->firstChild(); childNode; childNode = childNode->nextSibling()) {
         RenderObject* renderer = childNode->renderer();
-        if (!childNode->isSVGElement() || !toSVGElement(childNode)->isSVGStyledElement() || !renderer)
+        if (!childNode->isSVGElement() || !renderer)
             continue;
         if (renderer->needsLayout()) {
-            frame()->view()->setPaintBehavior(oldBehavior);
+            view().frameView().setPaintBehavior(oldBehavior);
             return false;
         }
         RenderStyle* style = renderer->style();
@@ -266,7 +265,7 @@ bool RenderSVGResourceClipper::drawContentIntoMaskImage(ClipperData* clipperData
         SVGRenderingContext::renderSubtreeToImageBuffer(clipperData->clipMaskImage.get(), isUseElement ? childNode->renderer() : renderer, maskContentTransformation);
     }
 
-    frame()->view()->setPaintBehavior(oldBehavior);
+    view().frameView().setPaintBehavior(oldBehavior);
     return true;
 }
 
@@ -275,7 +274,7 @@ void RenderSVGResourceClipper::calculateClipContentRepaintRect()
     // This is a rough heuristic to appraise the clip size and doesn't consider clip on clip.
     for (Node* childNode = node()->firstChild(); childNode; childNode = childNode->nextSibling()) {
         RenderObject* renderer = childNode->renderer();
-        if (!childNode->isSVGElement() || !toSVGElement(childNode)->isSVGStyledElement() || !renderer)
+        if (!childNode->isSVGElement() || !renderer)
             continue;
         if (!renderer->isSVGShape() && !renderer->isSVGText() && !childNode->hasTagName(SVGNames::useTag))
             continue;
@@ -305,7 +304,7 @@ bool RenderSVGResourceClipper::hitTestClipContent(const FloatRect& objectBoundin
 
     for (Node* childNode = node()->firstChild(); childNode; childNode = childNode->nextSibling()) {
         RenderObject* renderer = childNode->renderer();
-        if (!childNode->isSVGElement() || !toSVGElement(childNode)->isSVGStyledElement() || !renderer)
+        if (!childNode->isSVGElement() || !renderer)
             continue;
         if (!renderer->isSVGShape() && !renderer->isSVGText() && !childNode->hasTagName(SVGNames::useTag))
             continue;

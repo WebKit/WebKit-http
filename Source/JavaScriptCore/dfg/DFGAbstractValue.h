@@ -31,12 +31,16 @@
 #if ENABLE(DFG_JIT)
 
 #include "ArrayProfile.h"
+#include "DFGFiltrationResult.h"
 #include "DFGStructureAbstractValue.h"
 #include "JSCell.h"
 #include "SpeculatedType.h"
+#include "DumpContext.h"
 #include "StructureSet.h"
 
 namespace JSC { namespace DFG {
+
+class Graph;
 
 struct AbstractValue {
     AbstractValue()
@@ -55,13 +59,8 @@ struct AbstractValue {
         checkConsistency();
     }
     
-    bool isClear() const
-    {
-        bool result = m_type == SpecNone && !m_arrayModes && m_currentKnownStructure.isClear() && m_futurePossibleStructure.isClear();
-        if (result)
-            ASSERT(!m_value);
-        return result;
-    }
+    bool isClear() const { return m_type == SpecNone; }
+    bool operator!() const { return isClear(); }
     
     void makeTop()
     {
@@ -112,57 +111,11 @@ struct AbstractValue {
         return result;
     }
     
-    void setMostSpecific(JSValue value)
-    {
-        if (!!value && value.isCell()) {
-            Structure* structure = value.asCell()->structure();
-            m_currentKnownStructure = structure;
-            setFuturePossibleStructure(structure);
-            m_arrayModes = asArrayModes(structure->indexingType());
-        } else {
-            m_currentKnownStructure.clear();
-            m_futurePossibleStructure.clear();
-            m_arrayModes = 0;
-        }
-        
-        m_type = speculationFromValue(value);
-        m_value = value;
-        
-        checkConsistency();
-    }
+    void setMostSpecific(Graph&, JSValue);
+    void set(Graph&, JSValue);
+    void set(Graph&, Structure*);
     
-    void set(JSValue value)
-    {
-        if (!!value && value.isCell()) {
-            m_currentKnownStructure.makeTop();
-            Structure* structure = value.asCell()->structure();
-            setFuturePossibleStructure(structure);
-            m_arrayModes = asArrayModes(structure->indexingType());
-            clobberArrayModes();
-        } else {
-            m_currentKnownStructure.clear();
-            m_futurePossibleStructure.clear();
-            m_arrayModes = 0;
-        }
-        
-        m_type = speculationFromValue(value);
-        m_value = value;
-        
-        checkConsistency();
-    }
-    
-    void set(Structure* structure)
-    {
-        m_currentKnownStructure = structure;
-        setFuturePossibleStructure(structure);
-        m_arrayModes = asArrayModes(structure->indexingType());
-        m_type = speculationFromStructure(structure);
-        m_value = JSValue();
-        
-        checkConsistency();
-    }
-    
-    void set(SpeculatedType type)
+    void setType(SpeculatedType type)
     {
         if (type & SpecCell) {
             m_currentKnownStructure.makeTop();
@@ -232,70 +185,13 @@ struct AbstractValue {
         checkConsistency();
     }
     
-    void filter(const StructureSet& other)
-    {
-        // FIXME: This could be optimized for the common case of m_type not
-        // having structures, array modes, or a specific value.
-        // https://bugs.webkit.org/show_bug.cgi?id=109663
-        m_type &= other.speculationFromStructures();
-        m_arrayModes &= other.arrayModesFromStructures();
-        m_currentKnownStructure.filter(other);
-        if (m_currentKnownStructure.isClear())
-            m_futurePossibleStructure.clear();
-        else if (m_currentKnownStructure.hasSingleton())
-            filterFuturePossibleStructure(m_currentKnownStructure.singleton());
-        
-        // It's possible that prior to the above two statements we had (Foo, TOP), where
-        // Foo is a SpeculatedType that is disjoint with the passed StructureSet. In that
-        // case, we will now have (None, [someStructure]). In general, we need to make
-        // sure that new information gleaned from the SpeculatedType needs to be fed back
-        // into the information gleaned from the StructureSet.
-        m_currentKnownStructure.filter(m_type);
-        m_futurePossibleStructure.filter(m_type);
-        
-        filterArrayModesByType();
-        filterValueByType();
-        
-        checkConsistency();
-    }
+    FiltrationResult filter(Graph&, const StructureSet&);
     
-    void filterArrayModes(ArrayModes arrayModes)
-    {
-        ASSERT(arrayModes);
-        
-        m_type &= SpecCell;
-        m_arrayModes &= arrayModes;
-        
-        // I could do more fancy filtering here. But it probably won't make any difference.
-        
-        checkConsistency();
-    }
+    FiltrationResult filterArrayModes(ArrayModes arrayModes);
     
-    void filter(SpeculatedType type)
-    {
-        if (type == SpecTop)
-            return;
-        m_type &= type;
-        
-        // It's possible that prior to this filter() call we had, say, (Final, TOP), and
-        // the passed type is Array. At this point we'll have (None, TOP). The best way
-        // to ensure that the structure filtering does the right thing is to filter on
-        // the new type (None) rather than the one passed (Array).
-        m_currentKnownStructure.filter(m_type);
-        m_futurePossibleStructure.filter(m_type);
-        
-        filterArrayModesByType();
-        filterValueByType();
-        
-        checkConsistency();
-    }
+    FiltrationResult filter(SpeculatedType type);
     
-    void filterByValue(JSValue value)
-    {
-        filter(speculationFromValue(value));
-        if (m_type)
-            m_value = value;
-    }
+    FiltrationResult filterByValue(JSValue value);
     
     bool validateType(JSValue value) const
     {
@@ -349,35 +245,16 @@ struct AbstractValue {
         return 0;
     }
     
-    void checkConsistency() const
+    bool hasClobberableState() const
     {
-        if (!(m_type & SpecCell)) {
-            ASSERT(m_currentKnownStructure.isClear());
-            ASSERT(m_futurePossibleStructure.isClear());
-            ASSERT(!m_arrayModes);
-        }
-        
-        if (isClear())
-            ASSERT(!m_value);
-        
-        if (!!m_value)
-            ASSERT(mergeSpeculations(m_type, speculationFromValue(m_value)) == m_type);
-        
-        // Note that it's possible for a prediction like (Final, []). This really means that
-        // the value is bottom and that any code that uses the value is unreachable. But
-        // we don't want to get pedantic about this as it would only increase the computational
-        // complexity of the code.
+        return m_currentKnownStructure.isNeitherClearNorTop()
+            || !arrayModesAreClearOrTop(m_arrayModes);
     }
     
-    void dump(PrintStream& out) const
-    {
-        out.print(
-            "(", SpeculationDump(m_type), ", ", ArrayModesDump(m_arrayModes), ", ",
-            m_currentKnownStructure, ", ", m_futurePossibleStructure);
-        if (!!m_value)
-            out.print(", ", m_value);
-        out.print(")");
-    }
+    void checkConsistency() const;
+    
+    void dumpInContext(PrintStream&, DumpContext*) const;
+    void dump(PrintStream&) const;
     
     // A great way to think about the difference between m_currentKnownStructure and
     // m_futurePossibleStructure is to consider these four examples:
@@ -391,7 +268,7 @@ struct AbstractValue {
     //    y = x.f;
     //
     //    Where x will later have a new property added to it, 'g'. Because of the
-    //    known but not-yet-executed property addition, x's currently structure will
+    //    known but not-yet-executed property addition, x's current structure will
     //    not be watchpointable; hence we have no way of statically bounding the set
     //    of possible structures that x may have if a clobbering event happens. So,
     //    x's m_currentKnownStructure will be whatever structure we check to get
@@ -486,57 +363,13 @@ private:
         m_arrayModes = ALL_ARRAY_MODES;
     }
     
-    void setFuturePossibleStructure(Structure* structure)
-    {
-        if (structure->transitionWatchpointSetIsStillValid())
-            m_futurePossibleStructure = structure;
-        else
-            m_futurePossibleStructure.makeTop();
-    }
-    
-    void filterFuturePossibleStructure(Structure* structure)
-    {
-        if (structure->transitionWatchpointSetIsStillValid())
-            m_futurePossibleStructure.filter(StructureAbstractValue(structure));
-    }
+    void setFuturePossibleStructure(Graph&, Structure* structure);
 
-    // We could go further, and ensure that if the futurePossibleStructure contravenes
-    // the value, then we could clear both of those things. But that's unlikely to help
-    // in any realistic scenario, so we don't do it. Simpler is better.
-    void filterValueByType()
-    {
-        if (!!m_type) {
-            // The type is still non-empty. This implies that regardless of what filtering
-            // was done, we either didn't have a value to begin with, or that value is still
-            // valid.
-            ASSERT(!m_value || validateType(m_value));
-            return;
-        }
-        
-        // The type has been rendered empty. That means that the value must now be invalid,
-        // as well.
-        ASSERT(!m_value || !validateType(m_value));
-        m_value = JSValue();
-    }
+    void filterValueByType();
+    void filterArrayModesByType();
     
-    void filterArrayModesByType()
-    {
-        if (!(m_type & SpecCell))
-            m_arrayModes = 0;
-        else if (!(m_type & ~SpecArray))
-            m_arrayModes &= ALL_ARRAY_ARRAY_MODES;
-
-        // NOTE: If m_type doesn't have SpecArray set, that doesn't mean that the
-        // array modes have to be a subset of ALL_NON_ARRAY_ARRAY_MODES, since
-        // in the speculated type type-system, RegExpMatchesArry and ArrayPrototype
-        // are Otherobj (since they are not *exactly* JSArray) but in the ArrayModes
-        // type system they are arrays (since they expose the magical length
-        // property and are otherwise allocated using array allocation). Hence the
-        // following would be wrong:
-        //
-        // if (!(m_type & SpecArray))
-        //    m_arrayModes &= ALL_NON_ARRAY_ARRAY_MODES;
-    }
+    bool shouldBeClear() const;
+    FiltrationResult normalizeClarity();
 };
 
 } } // namespace JSC::DFG

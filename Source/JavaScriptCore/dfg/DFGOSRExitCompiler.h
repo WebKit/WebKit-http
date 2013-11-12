@@ -71,8 +71,6 @@ private:
         return result;
     }
     
-    void handleExitCounts(const OSRExit&);
-    
     CCallHelpers& m_jit;
     Vector<unsigned> m_poisonScratchIndices;
 };

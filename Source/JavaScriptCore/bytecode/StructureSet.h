@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +29,9 @@
 #include "ArrayProfile.h"
 #include "SpeculatedType.h"
 #include "Structure.h"
+#include "DumpContext.h"
 #include <stdio.h>
+#include <wtf/CommaPrinter.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -161,15 +163,18 @@ public:
         return true;
     }
     
-    void dump(FILE* out)
+    void dumpInContext(PrintStream& out, DumpContext* context) const
     {
-        fprintf(out, "[");
-        for (size_t i = 0; i < m_structures.size(); ++i) {
-            if (i)
-                fprintf(out, ", ");
-            fprintf(out, "%p", m_structures[i]);
-        }
-        fprintf(out, "]");
+        CommaPrinter comma;
+        out.print("[");
+        for (size_t i = 0; i < m_structures.size(); ++i)
+            out.print(comma, inContext(*m_structures[i], context));
+        out.print("]");
+    }
+    
+    void dump(PrintStream& out) const
+    {
+        dumpInContext(out, 0);
     }
     
 private:

@@ -74,6 +74,11 @@ void CodeOrigin::dump(PrintStream& out) const
     }
 }
 
+void CodeOrigin::dumpInContext(PrintStream& out, DumpContext*) const
+{
+    dump(out);
+}
+
 JSFunction* InlineCallFrame::calleeForCallFrame(ExecState* exec) const
 {
     if (!isClosureCall())
@@ -84,12 +89,13 @@ JSFunction* InlineCallFrame::calleeForCallFrame(ExecState* exec) const
 
 CodeBlockHash InlineCallFrame::hash() const
 {
-    return executable->hashFor(specializationKind());
+    return jsCast<FunctionExecutable*>(executable.get())->codeBlockFor(
+        specializationKind())->hash();
 }
 
-String InlineCallFrame::inferredName() const
+CString InlineCallFrame::inferredName() const
 {
-    return jsCast<FunctionExecutable*>(executable.get())->inferredName().string();
+    return jsCast<FunctionExecutable*>(executable.get())->inferredName().utf8();
 }
 
 CodeBlock* InlineCallFrame::baselineCodeBlock() const
@@ -102,16 +108,21 @@ void InlineCallFrame::dumpBriefFunctionInformation(PrintStream& out) const
     out.print(inferredName(), "#", hash());
 }
 
-void InlineCallFrame::dump(PrintStream& out) const
+void InlineCallFrame::dumpInContext(PrintStream& out, DumpContext* context) const
 {
     out.print(briefFunctionInformation(), ":<", RawPointer(executable.get()), ", bc#", caller.bytecodeIndex, ", ", specializationKind());
     if (callee)
-        out.print(", known callee: ", JSValue(callee.get()));
+        out.print(", known callee: ", inContext(JSValue(callee.get()), context));
     else
         out.print(", closure call");
     out.print(", numArgs+this = ", arguments.size());
     out.print(", stack >= r", stackOffset);
     out.print(">");
+}
+
+void InlineCallFrame::dump(PrintStream& out) const
+{
+    dumpInContext(out, 0);
 }
 
 } // namespace JSC

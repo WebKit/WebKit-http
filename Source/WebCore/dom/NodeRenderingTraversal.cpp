@@ -34,24 +34,10 @@ namespace WebCore {
 
 namespace NodeRenderingTraversal {
 
-void ParentDetails::didTraverseInsertionPoint(InsertionPoint* insertionPoint)
-{
-    if (!m_insertionPoint) {
-        m_insertionPoint = insertionPoint;
-        m_resetStyleInheritance  = m_resetStyleInheritance || insertionPoint->resetStyleInheritance();
-    }
-}
-
-void ParentDetails::didTraverseShadowRoot(const ShadowRoot* root)
-{
-    m_resetStyleInheritance  = m_resetStyleInheritance || root->resetStyleInheritance();
-}
-
-ContainerNode* parentSlow(const Node* node, ParentDetails* details)
+ContainerNode* parentSlow(const Node* node)
 {
     ComposedShadowTreeWalker walker(node, ComposedShadowTreeWalker::CrossUpperBoundary, ComposedShadowTreeWalker::CanStartFromShadowBoundary);
-    ContainerNode* found = toContainerNode(walker.traverseParent(walker.get(), details));
-    return details->outOfComposition() ? 0 : found;
+    return toContainerNode(walker.traverseParent(walker.get()));
 }
 
 Node* nextSiblingSlow(const Node* node)
@@ -68,7 +54,7 @@ Node* nextSiblingSlow(const Node* node)
 
     Node* parent = walker.traverseParent(node);
     if (parent && parent->isElementNode())
-        return toElement(parent)->pseudoElement(AFTER);
+        return toElement(parent)->afterPseudoElement();
 
     return 0;
 }
@@ -87,7 +73,7 @@ Node* previousSiblingSlow(const Node* node)
 
     Node* parent = walker.traverseParent(node);
     if (parent && parent->isElementNode())
-        return toElement(parent)->pseudoElement(BEFORE);
+        return toElement(parent)->beforePseudoElement();
 
     return 0;
 }

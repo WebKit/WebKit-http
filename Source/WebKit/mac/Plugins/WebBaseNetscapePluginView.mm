@@ -175,7 +175,7 @@ using namespace WebCore;
     Frame* frame = core([self webFrame]);
     if (!frame)
         return nil;
-    [request _web_setHTTPReferrer:frame->loader()->outgoingReferrer()];
+    [request _web_setHTTPReferrer:frame->loader().outgoingReferrer()];
     return request;
 }
 
@@ -293,7 +293,7 @@ using namespace WebCore;
 - (NSRect)_windowClipRect
 {
     RenderObject* renderer = _element->renderer();
-    if (!renderer || !renderer->view())
+    if (!renderer)
         return NSZeroRect;
 
     return toRenderWidget(renderer)->windowClipRect();
@@ -461,10 +461,8 @@ using namespace WebCore;
 - (BOOL)inFlatteningPaint
 {
     RenderObject* renderer = _element->renderer();
-    if (renderer && renderer->view()) {
-        if (FrameView* frameView = renderer->view()->frameView())
-            return frameView->paintBehavior() & PaintBehaviorFlattenCompositingLayers;
-    }
+    if (renderer)
+        return renderer->view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers;
 
     return NO;
 }
@@ -697,7 +695,7 @@ using namespace WebCore;
 
 - (WebFrame *)webFrame
 {
-    return kit(_element->document()->frame());
+    return kit(_element->document().frame());
 }
 
 - (WebView *)webView
@@ -842,7 +840,7 @@ using namespace WebCore;
     if (!frame)
         return CString();
 
-    Frame* targetFrame = frame->tree()->find(String::fromUTF8(target));
+    Frame* targetFrame = frame->tree().find(String::fromUTF8(target));
     if (!targetFrame)
         return CString();
     
@@ -866,15 +864,11 @@ using namespace WebCore;
 - (NSRect)actualVisibleRectInWindow
 {
     RenderObject* renderer = _element->renderer();
-    if (!renderer || !renderer->view())
-        return NSZeroRect;
-
-    FrameView* frameView = renderer->view()->frameView();
-    if (!frameView)
+    if (!renderer)
         return NSZeroRect;
 
     IntRect widgetRect = renderer->pixelSnappedAbsoluteClippedOverflowRect();
-    widgetRect = frameView->contentsToWindow(widgetRect);
+    widgetRect = renderer->view().frameView().contentsToWindow(widgetRect);
     return intersection(toRenderWidget(renderer)->windowClipRect(), widgetRect);
 }
 

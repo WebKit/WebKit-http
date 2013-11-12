@@ -87,7 +87,6 @@ void drawLayerContents(CGContextRef context, CALayer *layer, WebCore::PlatformCA
 #endif
     ThemeMac::setFocusRingClipRect(focusRingClipRect);
 
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     const float wastedSpaceThreshold = 0.75f;
     const unsigned maxRectsToPaint = 5;
 
@@ -119,11 +118,6 @@ void drawLayerContents(CGContextRef context, CALayer *layer, WebCore::PlatformCA
         layerContents->platformCALayerPaintContents(graphicsContext, enclosingIntRect(clipBounds));
     }
 
-#else
-    IntRect clip(enclosingIntRect(clipBounds));
-    layerContents->platformCALayerPaintContents(graphicsContext, clip);
-#endif
-
     ThemeMac::setFocusRingClipRect(FloatRect());
 
     [NSGraphicsContext restoreGraphicsState];
@@ -131,6 +125,8 @@ void drawLayerContents(CGContextRef context, CALayer *layer, WebCore::PlatformCA
     // Re-fetch the layer owner, since <rdar://problem/9125151> indicates that it might have been destroyed during painting.
     layerContents = platformLayer->owner();
     ASSERT(layerContents);
+
+    CGContextRestoreGState(context);
 
     // Always update the repain count so that it's accurate even if the count itself is not shown. This will be useful
     // for the Web Inspector feeding this information through the LayerTreeAgent. 
@@ -172,8 +168,6 @@ void drawLayerContents(CGContextRef context, CALayer *layer, WebCore::PlatformCA
         CGContextEndTransparencyLayer(context);
         CGContextRestoreGState(context);
     }
-
-    CGContextRestoreGState(context);
 }
 
 

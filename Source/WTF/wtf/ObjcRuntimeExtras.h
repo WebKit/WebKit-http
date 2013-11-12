@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,18 +25,25 @@
 #ifndef WTF_ObjcRuntimeExtras_h
 #define WTF_ObjcRuntimeExtras_h
 
+// FIXME: This file's name and function names refer to Objective-C as Objc with a lowercase C,
+// but it should be ObjC with an uppercase C.
+
 #include <objc/message.h>
 
-template<typename RetType, typename... ArgTypes>
-RetType wtfObjcMsgSend(id target, SEL selector, ArgTypes... args)
+#ifdef __cplusplus
+
+template<typename ReturnType, typename... ArgumentTypes>
+inline ReturnType wtfObjcMsgSend(id target, SEL selector, ArgumentTypes... arguments)
 {
-    return reinterpret_cast<RetType (*)(id, SEL, ArgTypes...)>(objc_msgSend)(target, selector, args...);
+    return reinterpret_cast<ReturnType (*)(id, SEL, ArgumentTypes...)>(objc_msgSend)(target, selector, arguments...);
 }
 
-template<typename RetType, typename... ArgTypes>
-RetType wtfCallIMP(IMP implementation, id target, SEL selector, ArgTypes... args)
+template<typename ReturnType, typename... ArgumentTypes>
+inline ReturnType wtfCallIMP(IMP implementation, id target, SEL selector, ArgumentTypes... arguments)
 {
-    return reinterpret_cast<RetType (*)(id, SEL, ArgTypes...)>(implementation)(target, selector, args...);
+    return reinterpret_cast<ReturnType (*)(id, SEL, ArgumentTypes...)>(implementation)(target, selector, arguments...);
 }
+
+#endif // __cplusplus
 
 #endif // WTF_ObjcRuntimeExtras_h

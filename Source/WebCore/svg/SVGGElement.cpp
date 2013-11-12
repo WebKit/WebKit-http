@@ -39,8 +39,8 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGGElement)
     REGISTER_PARENT_ANIMATED_PROPERTIES(SVGGraphicsElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
-SVGGElement::SVGGElement(const QualifiedName& tagName, Document* document, ConstructionType constructionType)
-    : SVGGraphicsElement(tagName, document, constructionType)
+SVGGElement::SVGGElement(const QualifiedName& tagName, Document* document)
+    : SVGGraphicsElement(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::gTag));
     registerAnimatedPropertiesForSVGGElement();
@@ -101,9 +101,9 @@ RenderObject* SVGGElement::createRenderer(RenderArena* arena, RenderStyle* style
     return new (arena) RenderSVGTransformableContainer(this);
 }
 
-bool SVGGElement::rendererIsNeeded(const NodeRenderingContext&)
+bool SVGGElement::rendererIsNeeded(const RenderStyle&)
 {
-    // Unlike SVGStyledElement::rendererIsNeeded(), we still create renderers, even if
+    // Unlike SVGElement::rendererIsNeeded(), we still create renderers, even if
     // display is set to 'none' - which is special to SVG <g> container elements.
     return parentOrShadowHostElement() && parentOrShadowHostElement()->isSVGElement();
 }

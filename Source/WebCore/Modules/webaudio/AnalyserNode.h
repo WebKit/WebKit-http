@@ -50,18 +50,18 @@ public:
 
     unsigned frequencyBinCount() const { return m_analyser.frequencyBinCount(); }
 
-    void setMinDecibels(float k, ExceptionCode&);
-    float minDecibels() const { return m_analyser.minDecibels(); }
+    void setMinDecibels(double k, ExceptionCode&);
+    double minDecibels() const { return m_analyser.minDecibels(); }
 
-    void setMaxDecibels(float k, ExceptionCode&);
-    float maxDecibels() const { return m_analyser.maxDecibels(); }
+    void setMaxDecibels(double k, ExceptionCode&);
+    double maxDecibels() const { return m_analyser.maxDecibels(); }
 
-    void setSmoothingTimeConstant(float k, ExceptionCode&);
-    float smoothingTimeConstant() const { return m_analyser.smoothingTimeConstant(); }
+    void setSmoothingTimeConstant(double k, ExceptionCode&);
+    double smoothingTimeConstant() const { return m_analyser.smoothingTimeConstant(); }
 
-    void getFloatFrequencyData(Float32Array* array) { m_analyser.getFloatFrequencyData(array); }
-    void getByteFrequencyData(Uint8Array* array) { m_analyser.getByteFrequencyData(array); }
-    void getByteTimeDomainData(Uint8Array* array) { m_analyser.getByteTimeDomainData(array); }
+    void getFloatFrequencyData(JSC::Float32Array* array) { m_analyser.getFloatFrequencyData(array); }
+    void getByteFrequencyData(JSC::Uint8Array* array) { m_analyser.getByteFrequencyData(array); }
+    void getByteTimeDomainData(JSC::Uint8Array* array) { m_analyser.getByteTimeDomainData(array); }
 
 private:
     virtual double tailTime() const OVERRIDE { return 0; }

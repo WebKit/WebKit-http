@@ -247,16 +247,6 @@ void InjectedBundlePageLoaderClient::didLayoutForFrame(WebPage* page, WebFrame* 
     m_client.didLayoutForFrame(toAPI(page), toAPI(frame), m_client.clientInfo);
 }
 
-void InjectedBundlePageLoaderClient::didNewFirstVisuallyNonEmptyLayout(WebPage* page, RefPtr<APIObject>& userData)
-{
-    if (!m_client.didNewFirstVisuallyNonEmptyLayout)
-        return;
-    
-    WKTypeRef userDataToPass = 0;
-    m_client.didNewFirstVisuallyNonEmptyLayout(toAPI(page), &userDataToPass, m_client.clientInfo);
-    userData = adoptRef(toImpl(userDataToPass));
-}
-
 void InjectedBundlePageLoaderClient::didLayout(WebPage* page, LayoutMilestones milestones, RefPtr<APIObject>& userData)
 {
     if (!m_client.didLayout)
@@ -360,6 +350,14 @@ void InjectedBundlePageLoaderClient::featuresUsedInPage(WebPage* page, const Vec
     RefPtr<ImmutableArray> featureStringObjectsArray = ImmutableArray::adopt(featureStringObjectsVector);
 
     return m_client.featuresUsedInPage(toAPI(page), toAPI(featureStringObjectsArray.get()), m_client.clientInfo);
+}
+
+void InjectedBundlePageLoaderClient::willDestroyFrame(WebPage* page, WebFrame* frame)
+{
+    if (!m_client.willDestroyFrame)
+        return;
+
+    m_client.willDestroyFrame(toAPI(page), toAPI(frame), m_client.clientInfo);
 }
 
 } // namespace WebKit

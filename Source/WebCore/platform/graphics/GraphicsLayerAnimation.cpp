@@ -216,7 +216,7 @@ static const TimingFunction* timingFunctionForAnimationValue(const AnimationValu
 GraphicsLayerAnimation::GraphicsLayerAnimation(const String& name, const KeyframeValueList& keyframes, const IntSize& boxSize, const Animation* animation, double startTime, bool listsMatch)
     : m_keyframes(keyframes)
     , m_boxSize(boxSize)
-    , m_animation(Animation::create(animation))
+    , m_animation(Animation::create(*animation))
     , m_name(name)
     , m_listsMatch(listsMatch)
     , m_startTime(startTime)
@@ -323,7 +323,7 @@ double GraphicsLayerAnimation::computeTotalRunningTime()
         return m_pauseTime;
 
     double oldLastRefreshedTime = m_lastRefreshedTime;
-    m_lastRefreshedTime = WTF::currentTime();
+    m_lastRefreshedTime = monotonicallyIncreasingTime();
     m_totalRunningTime += m_lastRefreshedTime - oldLastRefreshedTime;
     return m_totalRunningTime;
 }
@@ -338,7 +338,7 @@ void GraphicsLayerAnimation::resume()
 {
     setState(PlayingState);
     m_totalRunningTime = m_pauseTime;
-    m_lastRefreshedTime = WTF::currentTime();
+    m_lastRefreshedTime = monotonicallyIncreasingTime();
 }
 
 void GraphicsLayerAnimations::add(const GraphicsLayerAnimation& animation)

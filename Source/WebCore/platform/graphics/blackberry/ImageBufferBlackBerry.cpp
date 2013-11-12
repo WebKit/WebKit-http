@@ -179,9 +179,16 @@ ImageBuffer::ImageBuffer(const IntSize& size, float, ColorSpace, RenderingMode r
     }
 
     m_data.m_buffer = BlackBerry::Platform::Graphics::createBuffer(m_size, BlackBerry::Platform::Graphics::AlwaysBacked);
-    m_data.m_platformLayer = CanvasLayerWebKitThread::create(m_data.m_buffer, m_size);
+    BlackBerry::Platform::Graphics::Drawable* drawable = BlackBerry::Platform::Graphics::lockBufferDrawable(m_data.m_buffer);
+    if (!drawable) {
+        BlackBerry::Platform::Graphics::destroyBuffer(m_data.m_buffer);
+        m_data.m_buffer = 0;
+        return;
+    }
+
+    m_data.m_platformLayer = CanvasLayerWebKitThread::create(m_data.m_buffer, drawable, m_size);
     m_data.m_window = window;
-    m_context = adoptPtr(new GraphicsContext(lockBufferDrawable(m_data.m_buffer)));
+    m_context = adoptPtr(new GraphicsContext(drawable));
     m_context->scale(FloatSize(m_resolutionScale, m_resolutionScale));
     m_context->setIsAcceleratedContext(renderingMode == Accelerated);
     success = true;
@@ -197,8 +204,11 @@ ImageBuffer::~ImageBuffer()
             &CanvasLayerWebKitThread::clearBuffer, m_data.m_platformLayer.get()));
     }
 
-    BlackBerry::Platform::Graphics::destroyBuffer(m_data.m_buffer);
-    m_data.m_buffer = 0;
+    if (m_data.m_buffer) {
+        BlackBerry::Platform::Graphics::releaseBufferDrawable(m_data.m_buffer);
+        BlackBerry::Platform::Graphics::destroyBuffer(m_data.m_buffer);
+        m_data.m_buffer = 0;
+    }
 }
 
 GraphicsContext* ImageBuffer::context() const

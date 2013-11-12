@@ -1,3 +1,237 @@
+2013-08-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build correction.
+        Update project dependencies so that build logs on machines will include output from the
+        WebInspectorUI project.
+
+        * WebKit.vcxproj/WebKit.sln:
+
+2013-08-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix after r154917
+
+        * WebKit.vcxproj/WebKit.sln: Establish build dependency from WebInspectorUI against
+        WebKit. Remove reverse dependency.
+
+2013-08-29  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix after r154809
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Remove two no-longer-existing
+        export symbols.
+
+2013-08-28  Brent Fulgham  <bfulgham@webkit.org>
+
+        [WinCairo] Unreviewed build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add
+        missing Cairo symbols; don't export CG symbols for Cairo build.
+
+2013-08-26  Roger Fong  <roger_fong@apple.com>
+
+        AppleWin build fix following r154627.
+
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj.filters:
+
+2013-08-21  Roger Fong  <roger_fong@apple.com>
+
+        <https://bugs.webkit.org/show_bug.cgi?id=119829> IAccessibleText and IAccessibleEditableText implementation for AppleWindows port.
+
+        Reviewed by Chris Fleizach.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj:
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj.filters:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj.filters:
+
+2013-08-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Build fix after r154541.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Remove reference
+        to deleted Element::pseudoElement(PseudoID), and add exports for new
+        beforePseudoElement() and afterPseudoElement().
+
+2013-08-23  Alex Christensen  <achristensen@apple.com>
+
+        Re-separating Win32 and Win64 builds.
+        https://bugs.webkit.org/show_bug.cgi?id=120178
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit/WebKitPostBuild.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorBuildCmd.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPostBuild.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPreBuild.cmd:
+        Use PlatformArchitecture to determine correct object directory (obj32 or obj64).
+
+2013-08-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r154416.
+        http://trac.webkit.org/changeset/154416
+        https://bugs.webkit.org/show_bug.cgi?id=120147
+
+        Broke Windows builds (Requested by rniwa on #webkit).
+
+        * WebKit.vcxproj/WebKit/WebKitPostBuild.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorBuildCmd.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPostBuild.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPreBuild.cmd:
+
+2013-08-21  Alex Christensen  <achristensen@apple.com>
+
+        <https://webkit.org/b/120137> Separating Win32 and Win64 builds.
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit/WebKitPostBuild.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorBuildCmd.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPostBuild.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPreBuild.cmd:
+        Use PlatformArchitecture to determine correct object directory (obj32 or obj64).
+
+2013-08-20  Brent Fulgham  <bfulgham@apple.com>
+
+        <https://webkit.org/b/120098> [Windows] Enable the new Web Inspector
+
+        Reviewed by Brian Weinstein.
+
+        * WebKit.vcxproj/WebKit.sln: Add reference to the new WebInspectorUI
+        project so that it will be included in new distributions.
+
+2013-08-20  Alex Christensen  <achristensen@apple.com>
+
+        [Windows] Unreviewed build fix for Win64 after r154118.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-08-20  Alex Christensen  <achristensen@apple.com>
+
+        <https://webkit.org/b/120076> More work towards a Win64 build
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/Interfaces/InterfacesPreBuild.cmd:
+        Use PlatformArchitecture macro instead of bin32, lib32, and obj32.
+
+2013-08-20  Alex Christensen  <achristensen@apple.com>
+
+        Use PlatformArchitecture to distinguish between 32-bit and 64-bit builds on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=119512
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/Interfaces/InterfacesCommon.props:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters:
+        * WebKit.vcxproj/WebKit/WebKitCommon.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj.filters:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj.filters:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDCommon.props:
+        Replaced obj32, bin32, and lib32 with macros for 64-bit build.
+
+2013-08-17  Andreas Kling  <akling@apple.com>
+
+        [Windows] Unreviewed build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+            Don't export Frame::settings() as it's an inline method now.
+
+2013-08-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix after r154127.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Remove two symbols that are
+        now part of JavaScriptCore.
+
+2013-08-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Build correctsion after r154106
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add missing symbol export.
+
+2013-08-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Correct build after r154088
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Remove unused
+        (and now renamed) export symbols.
+
+2013-08-14  Alex Christensen  <achristensen@apple.com>
+
+        Unreviewed build fix for Win64 after r153943.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Added 64-bit linker symbol for frameOrientationAtIndex.
+
+2013-08-12  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] TestWebKitAPI fails to link.
+        https://bugs.webkit.org/show_bug.cgi?id=119619
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Export needed symbol.
+
+2013-08-07  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed build fix on Efl port after r153785.
+
+        * CMakeLists.txt: Added "${WEBCORE_DIR}/style" in include list.
+
+2013-08-06  Alex Christensen  <achristensen@apple.com>
+
+        Enabled WebGL on WinCairo port.
+        https://bugs.webkit.org/show_bug.cgi?id=119502
+
+        Reviewed by Benjamin Poulain.
+
+        * WebKit.vcxproj/WebKit.sln: Build ANGLE libraries.
+        * WebKit.vcxproj/WebKit/WebKitCFLite.props: Link to ANGLE libraries.
+
+2013-08-05  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: fix build after r153728.
+
+        Not reviewed.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-07-29  Alex Christensen  <achristensen@apple.com>
+
+        Separated translator into preprocessor, translator_common,
+        translator_hlsl (for libGLESv2), and translator_glsl (for ANGLEWebKitBridge).
+        These projects are still not built by default.
+        https://bugs.webkit.org/show_bug.cgi?id=119221
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.sln:
+        Added separate ANGLE translator projects.
+
+2013-07-25  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed build fix, AppleWin port.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-07-25  Alex Christensen  <achristensen@apple.com>
+
+        Made Windows build system for ANGLE.
+        https://bugs.webkit.org/show_bug.cgi?id=119103
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.sln:
+        Added ANGLEGenerated, libEGL, libGLESv2, and translator projects.
+        These projects are currently not built.
+
 2013-07-23  Tim Horton  <timothy_horton@apple.com>
 
         Unreviewed build fix after r153054.

@@ -114,6 +114,9 @@ fast/events/constructors/composition-event-constructor.html
 fast/events/constructors/wheel-event-constructor.html
 fast/events/constructors/keyboard-event-constructor.html
 fast/events/constructors/focus-event-constructor.html
+fast/events/wheelevent-basic.html
+fast/events/wheelevent-constructor.html
+fast/events/wheelevent-mousewheel-interaction.html
 
 # ENABLE(INDEXED_DATABASE) is disabled.
 storage/indexeddb
@@ -198,6 +201,9 @@ fast/xsl/xslt-xhtml-template.xml
 fast/xpath/xpath-template-element.html
 fast/xsl/xslt-processor-template.html
 
+# ENABLE(ACCELERATED_OVERFLOW_SCROLLING) is disabled.
+fast/repaint/overflow-scroll-touch-repaint.html [ Skip ]
+
 # JSC does not support setIsolatedWorldSecurityOrigin, (http://webkit.org/b/61540)
 http/tests/security/isolatedWorld/cross-origin-xhr.html
 
@@ -274,10 +280,6 @@ http/tests/inspector/compiler-source-mapping-debug.html
 # https://bugs.webkit.org/show_bug.cgi?id=79068
 inspector/styles/svg-style.xhtml
 
-# Microdata DOM API is not yet enabled.
-# https://bugs.webkit.org/show_bug.cgi?id=68610
-fast/dom/MicroData
-
 # Disable private names by default in WebCore
 # https://bugs.webkit.org/show_bug.cgi?id=87088
 fast/js/names.html
@@ -309,9 +311,6 @@ fast/css/draggable-region-parser.html
 # Text Autosizing is not enabled.
 webkit.org/b/84186 fast/text-autosizing
 
-# Dialog element is not yet enabled.
-webkit.org/b/84635 fast/dom/HTMLDialogElement
-
 # Missing test infrastructure, no gamepads available.
 webkit.org/b/92873 gamepad/gamepad-polling-access.html
 
@@ -326,6 +325,14 @@ webkit.org/b/58491 fast/css3-text/css3-text-decoration
 webkit.org/b/76173 fast/css3-text/css3-text-align-last
 webkit.org/b/99945 fast/css3-text/css3-text-justify [ Failure ]
 webkit.org/b/112755 fast/css3-text/css3-text-indent [ Failure ImageOnlyFailure ]
+
+# Backgroung spacing implementation is missing.
+webkit.org/b/120596 css3/background/background-repeat-space-border.html [ Skip ]
+webkit.org/b/120596 css3/background/background-repeat-space-content.html [ Skip ]
+webkit.org/b/120596 css3/background/background-repeat-space-padding.html [ Skip ]
+webkit.org/b/120596 css3/masking/mask-repeat-space-border.html [ Skip ]
+webkit.org/b/120596 css3/masking/mask-repeat-space-content.html [ Skip ]
+webkit.org/b/120596 css3/masking/mask-repeat-space-padding.html [ Skip ]
 
 # Web Inspector: Implement support for InspectorClient::overrideDeviceMetrics() in platforms other than Chromium
 # https://bugs.webkit.org/show_bug.cgi?id=82886
@@ -420,8 +427,6 @@ webkit.org/b/110735 fast/dom/custom [ Skip ]
 
 # For now, Web Audio API is disabled
 webaudio/
-webkit.org/b/101729 inspector-protocol/nmi-webaudio.html
-webkit.org/b/101729 inspector-protocol/nmi-webaudio-leak-test.html
 
 # [Qt] Enable WebGL by default for QtWebKit
 # https://bugs.webkit.org/show_bug.cgi?id=65998
@@ -445,14 +450,6 @@ networkinformation
 fast/images/exif-orientation.html
 fast/images/exif-orientation-css.html
 
-# This platform does not support the Page Visibility API.
-fast/events/page-visibility-iframe-delete-test.html
-fast/events/page-visibility-iframe-move-test.html
-fast/events/page-visibility-iframe-propagation-test.html
-fast/events/page-visibility-null-view.html
-fast/events/page-visibility-transition-test.html
-fast/frames/page-visibility-crash.html
-
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
 
@@ -473,6 +470,9 @@ webkit.org/b/84893 http/tests/w3c/webperf/submission/Intel/user-timing
 # Resource Timing is not enable yet, skip it.
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing
 
+# WEB_TIMING doesn't support on Qt.
+webkit.org/b/118395 http/tests/misc/webtiming-ssl.php [ Skip ]
+
 # Missing eventSender.scheduleAsynchronousKeyDown() implementation
 fast/dom/MutationObserver/inline-event-listener.html
 
@@ -484,6 +484,13 @@ editing/secure-input [ Failure ]
 
 # CSS.regionOversetChanged is not implemented.
 webkit.org/b/117833 inspector/styles/protocol-css-regions-commands.html [ Skip ]
+
+# The following tests fail because blend-modes are only partially supported.
+css3/compositing/background-blend-mode-default-value.html
+css3/compositing/background-blend-mode-different-image-formats.html
+css3/compositing/background-blend-mode-image-color.html
+css3/compositing/background-blend-mode-image-image.html
+css3/compositing/background-blend-mode-single-layer-no-blending.html
 
 # =========================================================================== #
 #       Drag and Drop Support in DRT.                                         #
@@ -628,6 +635,8 @@ http/tests/media
 http/tests/navigation/javascriptlink-goback.html
 http/tests/navigation/metaredirect-goback.html
 http/tests/navigation/timerredirect-goback.html
+
+webkit.org/b/120028 http/tests/navigation/post-frames-goback1-uncached.html [ Skip ]
 
 # Advanced credential handling
 http/tests/security/401-logout/401-logout.php
@@ -788,6 +797,9 @@ webkit.org/b/115261 editing/selection/selection-in-iframe-removed-crash.html [ S
 
 webkit.org/b/116613 editing/selection/contains-node-crash.html [ Skip ]
 
+# [Qt] New editing/selection/leak-document-with-selection-inside.html test fails on Qt bots after r153366.
+webkit.org/b/119689 editing/selection/leak-document-with-selection-inside.html [ Skip ]
+
 # ============================================================================= #
 # Failing editing/spelling tests
 # ============================================================================= #
@@ -891,6 +903,10 @@ sputnik/Unicode/Unicode_510/S7.6_A3.1.html
 sputnik/Unicode/Unicode_510/S7.6_A3.2.html
 sputnik/Unicode/Unicode_510/S7.6_A5.3_T1.html
 sputnik/Unicode/Unicode_510/S7.6_A5.3_T2.html
+
+# [Qt] REGRESSION(FTL) 2 sputnik/ test failing on x86.
+webkit.org/b/119796 sputnik/Conformance/08_Types/8.5_The_Number_Type/S8.5_A2.1.html [ Skip ]
+webkit.org/b/119796 sputnik/Conformance/08_Types/8.5_The_Number_Type/S8.5_A2.2.html [ Skip ]
 
 # =========================================================================== #
 # Fluctuating/flakey tests
@@ -1165,6 +1181,7 @@ editing/spelling/spelling-hasspellingmarker.html
 
 # textInputController.hasGrammarMarkers() is not implemented.
 editing/spelling/grammar.html
+editing/spelling/grammar-markers.html
 editing/spelling/grammar-paste.html
 
 # textInputController.setComposition() is not implemented
@@ -1236,11 +1253,6 @@ css3/filters/custom/custom-filter-transforms-animation.html
 css3/filters/custom/custom-filter-blend-modes.html
 css3/filters/custom/custom-filter-array-blending.html
 
-# The following test fail because blending is not yet implemented
-# https://bugs.webkit.org/show_bug.cgi?id=100072
-fast/canvas/canvas-blend-image.html
-fast/canvas/canvas-blend-solid.html
-
 # https://bugs.webkit.org/show_bug.cgi?id=107118
 fast/canvas/canvas-quadratic-same-endpoint.html
 
@@ -1262,6 +1274,10 @@ fast/images/support-broken-image-delegate.html
 
 # Missing testRunner.setHandlesAuthenticationChallenges() implementation
 http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url.html
+
+# TestRunner::overridePreference() does not support the 'WebKitCanvasUsesAcceleratedDrawing' preference
+fast/canvas/canvas-blend-image.html
+fast/canvas/canvas-blend-solid.html
 
 # ============================================================================= #
 # Failing SVG tests
@@ -1347,9 +1363,6 @@ svg/text/text-tselect-02-f.svg
 
 webkit.org/b/98718 svg/animations/animate-css-xml-attributeType.html [ Failure Pass ]
 
-# https://bugs.webkit.org/show_bug.cgi?id=104054
-webkit.org/b/104054 svg/custom/use-href-update-crash.svg [ Failure Pass ]
-
 # [Qt] svg/animations/animate-path-nested-transforms.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=48987
 svg/animations/animate-text-nested-transforms.html
@@ -1387,11 +1400,6 @@ webkit.org/b/112680 jquery/manipulation.html [ Skip ]
 inspector/console/console-filter-test.html
 
 # REGRESSION(r148790) Made 7 tests fail on x86 32bit
-webkit.org/b/114913 fast/canvas/canvas-arc-360-winding.html [ Skip ]
-webkit.org/b/114913 fast/canvas/canvas-fillPath-alpha-shadow.html [ Skip ]
-webkit.org/b/114913 fast/canvas/canvas-fillPath-gradient-shadow.html [ Skip ]
-webkit.org/b/114913 fast/canvas/canvas-fillPath-pattern-shadow.html [ Skip ]
-webkit.org/b/114913 fast/canvas/canvas-strokePath-alpha-shadow.html [ Skip ]
 webkit.org/b/114913 sputnik/Conformance/15_Native_Objects/15.8_Math/15.8.2/15.8.2.13_pow/S15.8.2.13_A24.html [ Skip ]
 webkit.org/b/114913 sputnik/Conformance/15_Native_Objects/15.8_Math/15.8.2/15.8.2.8_exp/S15.8.2.8_A6.html [ Skip ]
 
@@ -1924,6 +1932,13 @@ webkit.org/b/117582 fast/flexbox/clear-overflow-before-scroll-update.html [ Skip
 # [Qt] fast/repaint/fixed-right-bottom-in-page-scale.html test flaky on Debug build and caused regression on the following tests after r118238. 
 webkit.org/b/118238 [ Debug ] fast/repaint/fixed-right-bottom-in-page-scale.html [ Skip ]
 
+
+# REGRESSION (r153925): fast/media/media-query-list-07.html is failing
+webkit.org/b/119732 fast/media/media-query-list-07.html [ Skip ]
+
+# REGRESSION (r153145): fast/workers/worker-call.html fails
+webkit.org/b/119271 fast/workers/worker-call.html [ Skip ]
+
 # ============================================================================= #
 # failing security tests
 # ============================================================================= #
@@ -2275,8 +2290,10 @@ fast/multicol/overflow-into-columngap.html
 fast/overflow/line-clamp-and-columns.html
 fast/table/td-width-fifty-percent-regression.html
 fast/text/descent-clip-in-scaled-page.html
+fast/text/partial-textruns.html
 fast/sub-pixel/block-with-margin-overflow.html
 svg/custom/anchor-on-use.svg
+svg/custom/masking-clipping-hidpi.svg
 svg/animations/animateTransform-rotate-around-point.svg
 svg/animations/animateMotion-additive-1.svg
 svg/text/alt-glyph-for-surrogate-pair.svg
@@ -2423,13 +2440,104 @@ webkit.org/b/104054 fast/events/touch/touch-input-element-change-documents.html
 #       End of entries merged in from the old Skipped file                    #
 # =========================================================================== #
 
+# timeout
+fast/events/bogus-dropEffect-effectAllowed.html
+fast/forms/textfield-drag-into-disabled.html
+
+# nrwt pixel test crash
+# https://bugs.webkit.org/show_bug.cgi?id=71688
+editing/pasteboard/data-transfer-items-image-png.html
+
+# [Qt] fast/events/clear-edit-drag-state.html fails with timeout with Qt5-WK1
+# https://bugs.webkit.org/show_bug.cgi?id=76897
+fast/events/clear-edit-drag-state.html
+
+# REGRESSION (r106488): fast/events/remove-target-with-shadow-in-drag.html fails
+# fast/events/remove-target-with-shadow-in-drag.html made fast/events/resize-subframe.html timeout
+fast/events/remove-target-with-shadow-in-drag.html
+
+# [Qt] tests to be rebaselined after r113968 seem suspicious
+# https://bugs.webkit.org/show_bug.cgi?id=83785
+fast/dom/52776.html
+fast/css/font-face-remote.html
+
+# [Qt] REGRESSION: http/tests/xmlviewer/dumpAsText/mathml.xml fails with Qt5
+# https://bugs.webkit.org/show_bug.cgi?id=88169
+http/tests/xmlviewer/dumpAsText/mathml.xml
+
+# [Qt] REGRESSION(r114899): It made editing/selection/5354455-1.html fail
+webkit.org/b/102920 editing/selection/5354455-1.html [ Failure ]
+
+# [Qt] REGRESSION: 7 tests started to fail with newer Qt5
+# https://bugs.webkit.org/show_bug.cgi?id=85629
+fast/encoding/percent-escaping.html
+http/tests/security/xssAuditor/script-tag-Big5-char-twice-url-encode-16bit-unicode.html [ Failure ]
+http/tests/security/xssAuditor/script-tag-with-16bit-unicode-surrogate-pair.html [ Failure ]
+http/tests/security/xssAuditor/script-tag-with-16bit-unicode2.html [ Failure ]
+http/tests/security/xssAuditor/script-tag-with-16bit-unicode5.html [ Failure ]
+http/tests/security/xssAuditor/script-tag-with-fancy-unicode.html [ Failure ]
+http/tests/security/xssAuditor/script-tag-with-invalid-url-encoding.html [ Failure ]
+
+# [Qt] REGRESSION(r154444): xss-DENIED test results changed
+# https://bugs.webkit.org/show_bug.cgi?id=120595
+http/tests/security/aboutBlank/xss-DENIED-navigate-opener-javascript-url.html
+http/tests/security/aboutBlank/xss-DENIED-set-opener.html
+http/tests/security/dataURL/xss-DENIED-from-data-url-in-foreign-domain-window-open.html
+http/tests/security/dataURL/xss-DENIED-from-data-url-to-data-url.html
+http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-subframe-location-change.html
+http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-subframe.html
+http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-window-open.html
+http/tests/security/dataURL/xss-DENIED-to-data-url-sub-frame-2-level.html
+
+# [Qt] Failing animations tests.
+# https://bugs.webkit.org/show_bug.cgi?id=120603
+animations/cross-fade-background-image.html
+animations/cross-fade-border-image-source.html
+animations/cross-fade-list-style-image.html
+animations/cross-fade-webkit-mask-box-image.html
+animations/cross-fade-webkit-mask-image.html
+
+# [Qt] REGRESSION: 2 tests started to fail with newer Qt5
+# https://bugs.webkit.org/show_bug.cgi?id=104140
+editing/selection/triple-click-in-pre.html [ Failure ]
+plugins/navigator-plugins.html [ Failure ]
+
+# [Qt] New fast/text/line-breaks-after-ideographic-comma-or-full-stop-2.html introduced in r120624 fails on ICU platforms
+# https://bugs.webkit.org/show_bug.cgi?id=89436
+fast/text/line-breaks-after-ideographic-comma-or-full-stop-2.html
+
+# [Qt] svg/text/foreignObject-text-clipping-bug giving wrong results
+# https://bugs.webkit.org/show_bug.cgi?id=91893
+svg/text/foreignObject-text-clipping-bug.xml [ Failure ]
+
+# [Qt] svg/text/scaling-font-with-geometric-precision.html gives wrong results
+# https://bugs.webkit.org/show_bug.cgi?id=91895
+svg/text/scaling-font-with-geometric-precision.html [ Failure ]
+
+# [Qt] editing/inserting/multiple-lines-selected.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=91993
+editing/inserting/multiple-lines-selected.html
+
+# [Qt] svg/clip-path/deep-nested-clip-in-mask{,-panning}.svg failing
+# https://bugs.webkit.org/show_bug.cgi?id=92156
+svg/clip-path/deep-nested-clip-in-mask.svg
+svg/clip-path/deep-nested-clip-in-mask-panning.svg
+
+# [Qt] ietestcenter/css3/bordersbackgrounds/border-radius-style-001 & 002 giving wrong results
+# https://bugs.webkit.org/show_bug.cgi?id=91995
+ietestcenter/css3/bordersbackgrounds/border-radius-style-001.htm [ Failure ]
+ietestcenter/css3/bordersbackgrounds/border-radius-style-002.htm [ Failure ]
+
+# [Qt] ietestcenter/css3/text/textshadow-002.htm giving wrong results
+# https://bugs.webkit.org/show_bug.cgi?id=91994
+ietestcenter/css3/text/textshadow-002.htm [ Failure ]
+
 webkit.org/b/64526 [ Debug ] svg/animations/svgtransform-animation-1.html [ Crash Pass ]
 
 # Slow tests
 # FIXME: File bugs.
 Bug(_qt_slow) [ Debug ] editing/selection/empty-cell-right-click.html [ Pass Slow ]
 Bug(_qt_slow) [ Debug ] editing/selection/dump-as-markup.html [ Pass Slow ]
-Bug(_qt_slow) [ Debug ] fast/js/array-sort-modifying-tostring.html [ Pass Timeout ]
 Bug(_qt_slow) [ Debug ] fast/overflow/lots-of-sibling-inline-boxes.html [ Pass Slow ]
 Bug(_qt_slow) [ Debug ] fast/js/dfg-inline-function-dot-caller.html [ Pass Slow ]
 
@@ -2523,8 +2631,11 @@ webkit.org/b/100424 editing/selection/user-select-all-with-shift.html [ Failure 
 
 webkit.org/b/101539 editing/execCommand/switch-list-type-with-orphaned-li.html [ Failure ]
 
-webkit.org/b/100846 inspector-protocol/debugger-pause-dedicated-worker.html [ Skip ]
-webkit.org/b/100846 inspector-protocol/debugger-terminate-dedicated-worker-while-paused.html [ Skip ]
+webkit.org/b/100846 inspector-protocol/debugger/pause-dedicated-worker.html [ Skip ]
+webkit.org/b/100846 inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html [ Skip ]
+
+# New test inspector-protocol/page/archive.html added in r154828 fails on EFL, Qt, GTK
+webkit.org/b/120682 inspector-protocol/page/archive.html [ Skip ]
 
 # QT still has the CC toggle button, not the menu of tracks.
 webkit.org/b/101670 media/video-controls-captions-trackmenu.html [ Skip ]
@@ -2651,6 +2762,8 @@ webkit.org/b/114157 fast/js/dom-static-property-for-in-iteration.html [ Failure 
 webkit.org/b/114338 compositing/overlap-blending/nested-overlap-overflow.html [ Skip ]
 webkit.org/b/114338 compositing/overlap-blending/nested-non-overlap-clipping.html [ Skip ]
 
+webkit.org/b/120622 compositing/video/video-object-fit.html [ Skip ]
+
 # REGRESSION(r148378): editing/style/block-style-005.html failing
 webkit.org/b/114612 editing/style/block-style-005.html [ Skip ]
 
@@ -2678,3 +2791,6 @@ webkit.org/b/117185 fast/forms/control-clip-overflow.html [ Skip ]
 # Synthesized italics not supported
 fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]
 
+# Failing tests after r155014
+webkit.org/b/120671 editing/selection/doubleclick-japanese-text.html [ Skip ]
+webkit.org/b/120671 editing/style/make-text-writing-direction-inline-win.html [ Skip ]

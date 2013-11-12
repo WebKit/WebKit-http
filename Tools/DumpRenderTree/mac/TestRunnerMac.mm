@@ -855,7 +855,9 @@ void TestRunner::evaluateScriptInIsolatedWorld(unsigned worldID, JSObjectRef glo
 
 - (id)initWithCompletionCondition:(bool*)condition
 {
-    [super init];
+    self = [super init];
+    if (!self)
+        return nil;
     ASSERT(condition);
     m_condition = condition;
     *m_condition = false;
@@ -922,11 +924,6 @@ void TestRunner::setWebViewEditable(bool editable)
 }
 
 static NSString *SynchronousLoaderRunLoopMode = @"DumpRenderTreeSynchronousLoaderRunLoopMode";
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
-@protocol NSURLConnectionDelegate <NSObject>
-@end
-#endif
 
 @interface SynchronousLoader : NSObject <NSURLConnectionDelegate>
 {

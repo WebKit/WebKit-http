@@ -239,8 +239,7 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
     m_state = Initialized;
 
     if (Frame* frame = document->frame())
-        if (Settings* settings = frame->settings())
-            m_isEnabled = settings->xssAuditorEnabled();
+        m_isEnabled = frame->settings().xssAuditorEnabled();
 
     if (!m_isEnabled)
         return;
@@ -273,7 +272,7 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
         m_decodedURL = String();
 
     String httpBodyAsString;
-    if (DocumentLoader* documentLoader = document->frame()->loader()->documentLoader()) {
+    if (DocumentLoader* documentLoader = document->frame()->loader().documentLoader()) {
         DEFINE_STATIC_LOCAL(String, XSSProtectionHeader, (ASCIILiteral("X-XSS-Protection")));
         String headerValue = documentLoader->response().httpHeaderField(XSSProtectionHeader);
         String errorDetails;

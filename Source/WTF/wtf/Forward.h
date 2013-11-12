@@ -28,68 +28,46 @@ namespace WTF {
     template<typename T> class Function;
     template<typename T> class OwnArrayPtr;
     template<typename T> class OwnPtr;
-    template<typename T> class PassOwnArrayPtr;
     template<typename T> class PassOwnPtr;
     template<typename T> class PassRefPtr;
     template<typename T> class RefPtr;
+    template<typename T> class Ref;
     template<typename T, size_t inlineCapacity, typename OverflowHandler> class Vector;
-    
-    class ArrayBuffer;
-    class ArrayBufferView;
+
     class AtomicString;
     class AtomicStringImpl;
     class BinarySemaphore;
     class CString;
     class Decoder;
     class Encoder;
-    class Float32Array;
-    class Float64Array;
     class FunctionDispatcher;
-    class Int8Array;
-    class Int16Array;
-    class Int32Array;
     class PrintStream;
     class String;
     template <typename T> class StringBuffer;
     class StringBuilder;
     class StringImpl;
-    class Uint8Array;
-    class Uint8ClampedArray;
-    class Uint16Array;
-    class Uint32Array;
 }
 
 using WTF::Function;
 using WTF::OwnArrayPtr;
 using WTF::OwnPtr;
-using WTF::PassOwnArrayPtr;
 using WTF::PassOwnPtr;
 using WTF::PassRefPtr;
 using WTF::RefPtr;
+using WTF::Ref;
 using WTF::Vector;
 
-using WTF::ArrayBuffer;
-using WTF::ArrayBufferView;
 using WTF::AtomicString;
 using WTF::AtomicStringImpl;
 using WTF::BinarySemaphore;
 using WTF::CString;
 using WTF::Encoder;
 using WTF::Decoder;
-using WTF::Float32Array;
-using WTF::Float64Array;
 using WTF::FunctionDispatcher;
-using WTF::Int8Array;
-using WTF::Int16Array;
-using WTF::Int32Array;
 using WTF::PrintStream;
 using WTF::String;
 using WTF::StringBuffer;
 using WTF::StringBuilder;
 using WTF::StringImpl;
-using WTF::Uint8Array;
-using WTF::Uint8ClampedArray;
-using WTF::Uint16Array;
-using WTF::Uint32Array;
 
 #endif // WTF_Forward_h

@@ -55,11 +55,12 @@ public:
 
 protected:
     void ensureLayer();
+    virtual bool updateLayerIfNeeded();
 
     virtual void willBeDestroyed() OVERRIDE;
 
 private:
-    virtual bool isLayerModelObject() const OVERRIDE { return true; }
+    virtual bool isLayerModelObject() const OVERRIDE FINAL { return true; }
 
     RenderLayer* m_layer;
 

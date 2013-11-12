@@ -50,7 +50,7 @@ public:
     virtual bool canTakeFocus(WebCore::FocusDirection) OVERRIDE;
     virtual void takeFocus(WebCore::FocusDirection) OVERRIDE;
 
-    virtual void focusedNodeChanged(WebCore::Node*) OVERRIDE;
+    virtual void focusedElementChanged(WebCore::Element*) OVERRIDE;
     virtual void focusedFrameChanged(WebCore::Frame*) OVERRIDE;
 
     virtual WebCore::Page* createWindow(WebCore::Frame*, const WebCore::FrameLoadRequest&, const WebCore::WindowFeatures&, const WebCore::NavigationAction&) OVERRIDE;
@@ -128,6 +128,10 @@ public:
 
     virtual WebCore::FloatRect customHighlightRect(WebCore::Node*, const WTF::AtomicString& type, const WebCore::FloatRect& lineRect) OVERRIDE;
     virtual void paintCustomHighlight(WebCore::Node*, const WTF::AtomicString& type, const WebCore::FloatRect& boxRect, const WebCore::FloatRect& lineRect, bool behindText, bool entireLine) OVERRIDE;
+
+#if ENABLE(INPUT_TYPE_COLOR)
+    virtual PassOwnPtr<WebCore::ColorChooser> createColorChooser(WebCore::ColorChooserClient*, const WebCore::Color&) OVERRIDE;
+#endif
 
     virtual WebCore::KeyboardUIMode keyboardUIMode() OVERRIDE;
 

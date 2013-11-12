@@ -73,7 +73,7 @@ private:
 
     virtual bool recalcWillValidate() const { return false; }
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
-    virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const OVERRIDE;
+    virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
     void didElementStateChange();
@@ -81,17 +81,6 @@ private:
 
     RefPtr<MeterValueElement> m_value;
 };
-
-inline bool isHTMLMeterElement(Node* node)
-{
-    return node->hasTagName(HTMLNames::meterTag);
-}
-
-inline HTMLMeterElement* toHTMLMeterElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLMeterElement(node));
-    return static_cast<HTMLMeterElement*>(node);
-}
 
 } // namespace
 

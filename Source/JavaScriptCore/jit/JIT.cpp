@@ -35,8 +35,7 @@ JSC::MacroAssemblerX86Common::SSE2CheckState JSC::MacroAssemblerX86Common::s_sse
 #endif
 
 #include "CodeBlock.h"
-#include <wtf/CryptographicallyRandomNumber.h>
-#include "DFGNode.h" // for DFG_SUCCESS_STATS
+#include "DFGCapabilities.h"
 #include "Interpreter.h"
 #include "JITInlines.h"
 #include "JITStubCall.h"
@@ -47,6 +46,8 @@ JSC::MacroAssemblerX86Common::SSE2CheckState JSC::MacroAssemblerX86Common::s_sse
 #include "RepatchBuffer.h"
 #include "ResultType.h"
 #include "SamplingTool.h"
+#include "SlowPathCall.h"
+#include <wtf/CryptographicallyRandomNumber.h>
 
 using namespace std;
 
@@ -78,7 +79,6 @@ JIT::JIT(VM* vm, CodeBlock* codeBlock)
     , m_bytecodeOffset((unsigned)-1)
     , m_propertyAccessInstructionIndex(UINT_MAX)
     , m_byValInstructionIndex(UINT_MAX)
-    , m_globalResolveInfoIndex(UINT_MAX)
     , m_callLinkInfoIndex(UINT_MAX)
 #if USE(JSVALUE32_64)
     , m_jumpTargetIndex(0)
@@ -104,7 +104,7 @@ void JIT::emitEnterOptimizationCheck()
     if (!canBeOptimized())
         return;
 
-    Jump skipOptimize = branchAdd32(Signed, TrustedImm32(Options::executionCounterIncrementForReturn()), AbsoluteAddress(m_codeBlock->addressOfJITExecuteCounter()));
+    Jump skipOptimize = branchAdd32(Signed, TrustedImm32(Options::executionCounterIncrementForEntry()), AbsoluteAddress(m_codeBlock->addressOfJITExecuteCounter()));
     JITStubCall stubCall(this, cti_optimize);
     stubCall.addArgument(TrustedImm32(m_bytecodeOffset));
     ASSERT(!m_bytecodeOffset);
@@ -119,39 +119,33 @@ void JIT::emitEnterOptimizationCheck()
 
 #if USE(JSVALUE32_64)
 #define DEFINE_BINARY_OP(name) \
-    case name: { \
-        JITStubCall stubCall(this, cti_##name); \
-        stubCall.addArgument(currentInstruction[2].u.operand); \
-        stubCall.addArgument(currentInstruction[3].u.operand); \
-        stubCall.call(currentInstruction[1].u.operand); \
-        NEXT_OPCODE(name); \
+    case op_##name: { \
+        JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_##name); \
+        slowPathCall.call(); \
+        NEXT_OPCODE(op_##name); \
     }
 
 #define DEFINE_UNARY_OP(name) \
-    case name: { \
-        JITStubCall stubCall(this, cti_##name); \
-        stubCall.addArgument(currentInstruction[2].u.operand); \
-        stubCall.call(currentInstruction[1].u.operand); \
-        NEXT_OPCODE(name); \
+    case op_##name: { \
+        JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_##name); \
+        slowPathCall.call(); \
+        NEXT_OPCODE(op_##name); \
     }
 
 #else // USE(JSVALUE32_64)
 
 #define DEFINE_BINARY_OP(name) \
-    case name: { \
-        JITStubCall stubCall(this, cti_##name); \
-        stubCall.addArgument(currentInstruction[2].u.operand, regT2); \
-        stubCall.addArgument(currentInstruction[3].u.operand, regT2); \
-        stubCall.call(currentInstruction[1].u.operand); \
-        NEXT_OPCODE(name); \
+    case op_##name: { \
+        JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_##name); \
+        slowPathCall.call(); \
+        NEXT_OPCODE(op_##name); \
     }
 
 #define DEFINE_UNARY_OP(name) \
-    case name: { \
-        JITStubCall stubCall(this, cti_##name); \
-        stubCall.addArgument(currentInstruction[2].u.operand, regT2); \
-        stubCall.call(currentInstruction[1].u.operand); \
-        NEXT_OPCODE(name); \
+    case op_##name: { \
+        JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_##name); \
+        slowPathCall.call(); \
+        NEXT_OPCODE(op_##name); \
     }
 #endif // USE(JSVALUE32_64)
 
@@ -172,7 +166,6 @@ void JIT::privateCompileMainPass()
     Instruction* instructionsBegin = m_codeBlock->instructions().begin();
     unsigned instructionCount = m_codeBlock->instructions().size();
 
-    m_globalResolveInfoIndex = 0;
     m_callLinkInfoIndex = 0;
 
     for (m_bytecodeOffset = 0; m_bytecodeOffset < instructionCount; ) {
@@ -199,7 +192,7 @@ void JIT::privateCompileMainPass()
         
         OpcodeID opcodeID = m_interpreter->getOpcodeID(currentInstruction->u.opcode);
 
-        if (m_compilation && opcodeID != op_call_put_result) {
+        if (m_compilation) {
             add64(
                 TrustedImm32(1),
                 AbsoluteAddress(m_compilation->executionCounterFor(Profiler::OriginStack(Profiler::Origin(
@@ -207,15 +200,15 @@ void JIT::privateCompileMainPass()
         }
 
         switch (opcodeID) {
-        DEFINE_BINARY_OP(op_del_by_val)
-        DEFINE_BINARY_OP(op_in)
-        DEFINE_BINARY_OP(op_less)
-        DEFINE_BINARY_OP(op_lesseq)
-        DEFINE_BINARY_OP(op_greater)
-        DEFINE_BINARY_OP(op_greatereq)
-        DEFINE_UNARY_OP(op_is_function)
-        DEFINE_UNARY_OP(op_is_object)
-        DEFINE_UNARY_OP(op_typeof)
+        DEFINE_BINARY_OP(del_by_val)
+        DEFINE_BINARY_OP(in)
+        DEFINE_BINARY_OP(less)
+        DEFINE_BINARY_OP(lesseq)
+        DEFINE_BINARY_OP(greater)
+        DEFINE_BINARY_OP(greatereq)
+        DEFINE_UNARY_OP(is_function)
+        DEFINE_UNARY_OP(is_object)
+        DEFINE_UNARY_OP(typeof)
 
         DEFINE_OP(op_add)
         DEFINE_OP(op_bitand)
@@ -228,7 +221,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_construct)
         DEFINE_OP(op_get_callee)
         DEFINE_OP(op_create_this)
-        DEFINE_OP(op_convert_this)
+        DEFINE_OP(op_to_this)
         DEFINE_OP(op_init_lazy_reg)
         DEFINE_OP(op_create_arguments)
         DEFINE_OP(op_debug)
@@ -304,28 +297,8 @@ void JIT::privateCompileMainPass()
         case op_init_global_const_nop:
             NEXT_OPCODE(op_init_global_const_nop);
         DEFINE_OP(op_init_global_const)
-        DEFINE_OP(op_init_global_const_check)
 
-        case op_resolve_global_property:
-        case op_resolve_global_var:
-        case op_resolve_scoped_var:
-        case op_resolve_scoped_var_on_top_scope:
-        case op_resolve_scoped_var_with_top_scope_check:
-        DEFINE_OP(op_resolve)
-
-        case op_resolve_base_to_global:
-        case op_resolve_base_to_global_dynamic:
-        case op_resolve_base_to_scope:
-        case op_resolve_base_to_scope_with_top_scope_check:
-        DEFINE_OP(op_resolve_base)
-
-        case op_put_to_base_variable:
-        DEFINE_OP(op_put_to_base)
-
-        DEFINE_OP(op_resolve_with_base)
-        DEFINE_OP(op_resolve_with_this)
         DEFINE_OP(op_ret)
-        DEFINE_OP(op_call_put_result)
         DEFINE_OP(op_ret_object_or_this)
         DEFINE_OP(op_rshift)
         DEFINE_OP(op_urshift)
@@ -342,8 +315,9 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_to_number)
         DEFINE_OP(op_to_primitive)
 
-        DEFINE_OP(op_get_scoped_var)
-        DEFINE_OP(op_put_scoped_var)
+        DEFINE_OP(op_resolve_scope)
+        DEFINE_OP(op_get_from_scope)
+        DEFINE_OP(op_put_to_scope)
 
         case op_get_by_id_chain:
         case op_get_by_id_generic:
@@ -385,7 +359,6 @@ void JIT::privateCompileSlowCases()
 
     m_propertyAccessInstructionIndex = 0;
     m_byValInstructionIndex = 0;
-    m_globalResolveInfoIndex = 0;
     m_callLinkInfoIndex = 0;
     
 #if ENABLE(VALUE_PROFILER)
@@ -431,7 +404,7 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_call_eval)
         DEFINE_SLOWCASE_OP(op_call_varargs)
         DEFINE_SLOWCASE_OP(op_construct)
-        DEFINE_SLOWCASE_OP(op_convert_this)
+        DEFINE_SLOWCASE_OP(op_to_this)
         DEFINE_SLOWCASE_OP(op_create_this)
         DEFINE_SLOWCASE_OP(op_div)
         DEFINE_SLOWCASE_OP(op_eq)
@@ -472,7 +445,6 @@ void JIT::privateCompileSlowCases()
         case op_put_by_id_transition_normal_out_of_line:
         DEFINE_SLOWCASE_OP(op_put_by_id)
         DEFINE_SLOWCASE_OP(op_put_by_val)
-        DEFINE_SLOWCASE_OP(op_init_global_const_check);
         DEFINE_SLOWCASE_OP(op_rshift)
         DEFINE_SLOWCASE_OP(op_urshift)
         DEFINE_SLOWCASE_OP(op_stricteq)
@@ -480,23 +452,9 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_to_number)
         DEFINE_SLOWCASE_OP(op_to_primitive)
 
-        case op_resolve_global_property:
-        case op_resolve_global_var:
-        case op_resolve_scoped_var:
-        case op_resolve_scoped_var_on_top_scope:
-        case op_resolve_scoped_var_with_top_scope_check:
-        DEFINE_SLOWCASE_OP(op_resolve)
-
-        case op_resolve_base_to_global:
-        case op_resolve_base_to_global_dynamic:
-        case op_resolve_base_to_scope:
-        case op_resolve_base_to_scope_with_top_scope_check:
-        DEFINE_SLOWCASE_OP(op_resolve_base)
-        DEFINE_SLOWCASE_OP(op_resolve_with_base)
-        DEFINE_SLOWCASE_OP(op_resolve_with_this)
-
-        case op_put_to_base_variable:
-        DEFINE_SLOWCASE_OP(op_put_to_base)
+        DEFINE_SLOWCASE_OP(op_resolve_scope)
+        DEFINE_SLOWCASE_OP(op_get_from_scope)
+        DEFINE_SLOWCASE_OP(op_put_to_scope)
 
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -528,7 +486,7 @@ void JIT::privateCompileSlowCases()
 ALWAYS_INLINE void PropertyStubCompilationInfo::copyToStubInfo(StructureStubInfo& info, LinkBuffer &linkBuffer)
 {
     ASSERT(bytecodeIndex != std::numeric_limits<unsigned>::max());
-    info.bytecodeIndex = bytecodeIndex;
+    info.codeOrigin = CodeOrigin(bytecodeIndex);
     info.callReturnLocation = linkBuffer.locationOf(callReturnLocation);
     info.hotPathBegin = linkBuffer.locationOf(hotPathBegin);
 
@@ -562,25 +520,23 @@ ALWAYS_INLINE void PropertyStubCompilationInfo::copyToStubInfo(StructureStubInfo
     }
 }
 
-JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffort effort)
+CompilationResult JIT::privateCompile(JITCompilationEffort effort)
 {
-#if ENABLE(JIT_VERBOSE_OSR)
-    printf("Compiling JIT code!\n");
-#endif
-    
 #if ENABLE(VALUE_PROFILER)
-    DFG::CapabilityLevel level = m_codeBlock->canCompileWithDFG();
+    DFG::CapabilityLevel level = m_codeBlock->capabilityLevel();
     switch (level) {
     case DFG::CannotCompile:
         m_canBeOptimized = false;
+        m_canBeOptimizedOrInlined = false;
         m_shouldEmitProfiling = false;
         break;
-    case DFG::MayInline:
+    case DFG::CanInline:
         m_canBeOptimized = false;
         m_canBeOptimizedOrInlined = true;
         m_shouldEmitProfiling = true;
         break;
     case DFG::CanCompile:
+    case DFG::CanCompileAndInline:
         m_canBeOptimized = true;
         m_canBeOptimizedOrInlined = true;
         m_shouldEmitProfiling = true;
@@ -589,12 +545,27 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
         RELEASE_ASSERT_NOT_REACHED();
         break;
     }
+    
+    switch (m_codeBlock->codeType()) {
+    case GlobalCode:
+    case EvalCode:
+        m_codeBlock->m_shouldAlwaysBeInlined = false;
+        break;
+    case FunctionCode:
+        // We could have already set it to false because we detected an uninlineable call.
+        // Don't override that observation.
+        m_codeBlock->m_shouldAlwaysBeInlined &= canInline(level) && DFG::mightInlineFunction(m_codeBlock);
+        break;
+    }
 #endif
     
     if (Options::showDisassembly() || m_vm->m_perBytecodeProfiler)
         m_disassembler = adoptPtr(new JITDisassembler(m_codeBlock));
     if (m_vm->m_perBytecodeProfiler) {
-        m_compilation = m_vm->m_perBytecodeProfiler->newCompilation(m_codeBlock, Profiler::Baseline);
+        m_compilation = adoptRef(
+            new Profiler::Compilation(
+                m_vm->m_perBytecodeProfiler->ensureBytecodesFor(m_codeBlock),
+                Profiler::Baseline));
         m_compilation->addProfiledBytecodes(*m_vm->m_perBytecodeProfiler, m_codeBlock);
     }
     
@@ -640,7 +611,7 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
                 load32(Address(callFrameRegister, offset + OBJECT_OFFSETOF(JSValue, u.asBits.payload)), regT0);
                 load32(Address(callFrameRegister, offset + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), regT1);
 #endif
-                emitValueProfilingSite(m_codeBlock->valueProfileForArgument(argument));
+                emitValueProfilingSite(m_codeBlock->valueProfileForArgument(argument), regT4);
             }
         }
 #endif
@@ -669,6 +640,7 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
         jump(functionBody);
 
         arityCheck = label();
+        store8(TrustedImm32(0), &m_codeBlock->m_shouldAlwaysBeInlined);
         preserveReturnAddressAfterCall(regT2);
         emitPutToCallFrameHeader(regT2, JSStack::ReturnPC);
         emitPutImmediateToCallFrameHeader(m_codeBlock, JSStack::CodeBlock);
@@ -677,7 +649,11 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
         branch32(AboveOrEqual, regT1, TrustedImm32(m_codeBlock->m_numParameters)).linkTo(beginLabel, this);
 
         m_bytecodeOffset = 0;
-        JITStubCall(this, m_codeBlock->m_isConstructor ? cti_op_construct_arityCheck : cti_op_call_arityCheck).call(callFrameRegister);
+
+        JITStubCall(this, m_codeBlock->m_isConstructor ? cti_op_construct_arityCheck : cti_op_call_arityCheck).call(regT0);
+        branchTest32(Zero, regT0).linkTo(beginLabel, this);
+        emitNakedCall(m_vm->getCTIStub(arityFixup).code());
+
 #if !ASSERT_DISABLED
         m_bytecodeOffset = (unsigned)-1; // Reset this, in order to guard its use with ASSERTs.
 #endif
@@ -692,7 +668,7 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
 
     LinkBuffer patchBuffer(*m_vm, this, m_codeBlock, effort);
     if (patchBuffer.didFailToAllocate())
-        return JITCode();
+        return CompilationFailed;
 
     // Translate vPC offsets into addresses in JIT generated code, for switch tables.
     for (unsigned i = 0; i < m_switches.size(); ++i) {
@@ -779,13 +755,16 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
     }
 #endif
 
-    if (m_codeBlock->codeType() == FunctionCode && functionEntryArityCheck)
-        *functionEntryArityCheck = patchBuffer.locationOf(arityCheck);
+    MacroAssemblerCodePtr withArityCheck;
+    if (m_codeBlock->codeType() == FunctionCode)
+        withArityCheck = patchBuffer.locationOf(arityCheck);
 
     if (Options::showDisassembly())
         m_disassembler->dump(patchBuffer);
-    if (m_compilation)
+    if (m_compilation) {
         m_disassembler->reportToProfiler(m_compilation.get(), patchBuffer);
+        m_vm->m_perBytecodeProfiler->addCompilation(m_compilation);
+    }
     
     CodeRef result = patchBuffer.finalizeCodeWithoutDisassembly();
     
@@ -794,15 +773,18 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
         static_cast<double>(m_codeBlock->instructions().size()));
     
     m_codeBlock->shrinkToFit(CodeBlock::LateShrink);
+    m_codeBlock->setJITCode(
+        adoptRef(new DirectJITCode(result, JITCode::BaselineJIT)),
+        withArityCheck);
     
 #if ENABLE(JIT_VERBOSE)
     dataLogF("JIT generated code for %p at [%p, %p).\n", m_codeBlock, result.executableMemory()->start(), result.executableMemory()->end());
 #endif
     
-    return JITCode(result, JITCode::BaselineJIT);
+    return CompilationSuccessful;
 }
 
-void JIT::linkFor(JSFunction* callee, CodeBlock* callerCodeBlock, CodeBlock* calleeCodeBlock, JIT::CodePtr code, CallLinkInfo* callLinkInfo, VM* vm, CodeSpecializationKind kind)
+void JIT::linkFor(ExecState* exec, JSFunction* callee, CodeBlock* callerCodeBlock, CodeBlock* calleeCodeBlock, JIT::CodePtr code, CallLinkInfo* callLinkInfo, VM* vm, CodeSpecializationKind kind)
 {
     RepatchBuffer repatchBuffer(callerCodeBlock);
 
@@ -812,7 +794,7 @@ void JIT::linkFor(JSFunction* callee, CodeBlock* callerCodeBlock, CodeBlock* cal
     repatchBuffer.relink(callLinkInfo->hotPathOther, code);
 
     if (calleeCodeBlock)
-        calleeCodeBlock->linkIncomingCall(callLinkInfo);
+        calleeCodeBlock->linkIncomingCall(exec, callLinkInfo);
 
     // Patch the slow patch so we do not continue to try to link.
     if (kind == CodeForCall) {

@@ -29,14 +29,12 @@ WebInspector.DOMTreeContentView = function(domTree)
 
     WebInspector.ContentView.call(this, domTree);
 
-    // The navigation item for the compositing borders button.
-    this._compositingBordersButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("layer-borders", WebInspector.UIString("Show compositing borders"), WebInspector.UIString("Hide compositing borders"), "Images/LayerBorders.pdf", 16, 16);
+    this._compositingBordersButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("layer-borders", WebInspector.UIString("Show compositing borders"), WebInspector.UIString("Hide compositing borders"), "Images/LayerBorders.svg", 16, 16);
     this._compositingBordersButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleCompositingBorders, this);
     this._compositingBordersButtonNavigationItem.enabled = !!PageAgent.getCompositingBordersVisible;
 
-    // The navigation item for the shadow tree toggle button.
     WebInspector.showShadowDOMSetting.addEventListener(WebInspector.Setting.Event.Changed, this._showShadowDOMSettingChanged, this);
-    this._showsShadowDOMButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("shows-shadow-DOM", WebInspector.UIString("Show shadow DOM nodes"), WebInspector.UIString("Hide shadow DOM nodes"), "Images/ShadowDOM.pdf", 16, 16);
+    this._showsShadowDOMButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("shows-shadow-DOM", WebInspector.UIString("Show shadow DOM nodes"), WebInspector.UIString("Hide shadow DOM nodes"), "Images/ShadowDOM.svg", 16, 16);
     this._showsShadowDOMButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleShowsShadowDOMSetting, this);
     this._showShadowDOMSettingChanged();
 
@@ -146,6 +144,21 @@ WebInspector.DOMTreeContentView.prototype = {
         event.preventDefault();
 
         selectedDOMNode.copyNode();
+    },
+
+    get supportsSave()
+    {
+        return WebInspector.canArchiveMainFrame();
+    },
+
+    get saveData()
+    {
+        function saveHandler(forceSaveAs)
+        {
+            WebInspector.archiveMainFrame();
+        }
+
+        return { customSaveHandler: saveHandler };
     },
 
     get supportsSearch()

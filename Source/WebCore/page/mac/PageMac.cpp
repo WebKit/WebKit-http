@@ -43,10 +43,10 @@ void Page::addSchedulePair(PassRefPtr<SchedulePair> prpPair)
         m_scheduledRunLoopPairs = adoptPtr(new SchedulePairHashSet);
     m_scheduledRunLoopPairs->add(pair);
 
-    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree()->traverseNext()) {
-        if (DocumentLoader* documentLoader = frame->loader()->documentLoader())
+    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree().traverseNext()) {
+        if (DocumentLoader* documentLoader = frame->loader().documentLoader())
             documentLoader->schedule(pair.get());
-        if (DocumentLoader* documentLoader = frame->loader()->provisionalDocumentLoader())
+        if (DocumentLoader* documentLoader = frame->loader().provisionalDocumentLoader())
             documentLoader->schedule(pair.get());
     }
 
@@ -62,10 +62,10 @@ void Page::removeSchedulePair(PassRefPtr<SchedulePair> prpPair)
     RefPtr<SchedulePair> pair = prpPair;
     m_scheduledRunLoopPairs->remove(pair);
 
-    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree()->traverseNext()) {
-        if (DocumentLoader* documentLoader = frame->loader()->documentLoader())
+    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree().traverseNext()) {
+        if (DocumentLoader* documentLoader = frame->loader().documentLoader())
             documentLoader->unschedule(pair.get());
-        if (DocumentLoader* documentLoader = frame->loader()->provisionalDocumentLoader())
+        if (DocumentLoader* documentLoader = frame->loader().provisionalDocumentLoader())
             documentLoader->unschedule(pair.get());
     }
 }

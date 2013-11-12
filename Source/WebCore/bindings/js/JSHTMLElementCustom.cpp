@@ -30,10 +30,6 @@
 #include "HTMLFormElement.h"
 #include <runtime/JSWithScope.h>
 
-#if ENABLE(MICRODATA)
-#include "JSMicroDataItemValue.h"
-#endif
-
 namespace WebCore {
 
 using namespace JSC;
@@ -43,7 +39,7 @@ JSScope* JSHTMLElement::pushEventHandlerScope(ExecState* exec, JSScope* scope) c
     HTMLElement* element = impl();
 
     // The document is put on first, fall back to searching it only after the element and form.
-    scope = JSWithScope::create(exec, asObject(toJS(exec, globalObject(), element->ownerDocument())), scope);
+    scope = JSWithScope::create(exec, asObject(toJS(exec, globalObject(), &element->document())), scope);
 
     // The form is next, searched before the document, but after the element itself.
     if (HTMLFormElement* form = element->form())
@@ -52,21 +48,5 @@ JSScope* JSHTMLElement::pushEventHandlerScope(ExecState* exec, JSScope* scope) c
     // The element is on top, searched first.
     return JSWithScope::create(exec, asObject(toJS(exec, globalObject(), element)), scope);
 }
-
-#if ENABLE(MICRODATA)
-JSValue JSHTMLElement::itemValue(ExecState* exec) const
-{
-    HTMLElement* element = impl();
-    return toJS(exec, globalObject(), WTF::getPtr(element->itemValue()));
-}
-
-void JSHTMLElement::setItemValue(ExecState* exec, JSValue value)
-{
-    HTMLElement* imp = impl();
-    ExceptionCode ec = 0;
-    imp->setItemValue(valueToStringWithNullCheck(exec, value), ec);
-    setDOMException(exec, ec);
-}
-#endif
 
 } // namespace WebCore

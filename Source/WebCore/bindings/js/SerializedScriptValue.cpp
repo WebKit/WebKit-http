@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,43 +32,40 @@
 #include "File.h"
 #include "FileList.h"
 #include "ImageData.h"
-#include "JSArrayBuffer.h"
-#include "JSArrayBufferView.h"
 #include "JSBlob.h"
-#include "JSDataView.h"
 #include "JSDOMGlobalObject.h"
 #include "JSFile.h"
 #include "JSFileList.h"
-#include "JSFloat32Array.h"
-#include "JSFloat64Array.h"
 #include "JSImageData.h"
-#include "JSInt16Array.h"
-#include "JSInt32Array.h"
-#include "JSInt8Array.h"
 #include "JSMessagePort.h"
 #include "JSNavigator.h"
-#include "JSUint16Array.h"
-#include "JSUint32Array.h"
-#include "JSUint8Array.h"
-#include "JSUint8ClampedArray.h"
 #include "NotImplemented.h"
 #include "ScriptValue.h"
 #include "SharedBuffer.h"
+#include "WebCoreJSClientData.h"
 #include <limits>
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/APIShims.h>
+#include <runtime/ArrayBuffer.h>
 #include <runtime/BooleanObject.h>
 #include <runtime/DateInstance.h>
 #include <runtime/Error.h>
 #include <runtime/ExceptionHelpers.h>
+#include <runtime/JSArrayBuffer.h>
+#include <runtime/JSArrayBufferView.h>
+#include <runtime/JSDataView.h>
+#include <runtime/JSMap.h>
+#include <runtime/JSSet.h>
+#include <runtime/JSTypedArrays.h>
+#include <runtime/MapData.h>
 #include <runtime/ObjectConstructor.h>
 #include <runtime/Operations.h>
 #include <runtime/PropertyNameArray.h>
 #include <runtime/RegExp.h>
 #include <runtime/RegExpObject.h>
-#include <wtf/ArrayBuffer.h>
+#include <runtime/TypedArrayInlines.h>
+#include <runtime/TypedArrays.h>
 #include <wtf/HashTraits.h>
-#include <wtf/Uint8ClampedArray.h>
 #include <wtf/Vector.h>
 
 using namespace JSC;
@@ -85,7 +82,8 @@ namespace WebCore {
 static const unsigned maximumFilterRecursion = 40000;
 
 enum WalkerState { StateUnknown, ArrayStartState, ArrayStartVisitMember, ArrayEndVisitMember,
-    ObjectStartState, ObjectStartVisitMember, ObjectEndVisitMember };
+    ObjectStartState, ObjectStartVisitMember, ObjectEndVisitMember,
+    MapDataStartVisitEntry, MapDataEndVisitKey, MapDataEndVisitValue };
 
 // These can't be reordered, and any new types must be added to the end of the list
 enum SerializationTag {
@@ -117,6 +115,9 @@ enum SerializationTag {
     StringObjectTag = 26,
     EmptyStringObjectTag = 27,
     NumberObjectTag = 28,
+    SetObjectTag = 29,
+    MapObjectTag = 30,
+    NonMapPropertiesTag = 31,
     ErrorTag = 255
 };
 
@@ -164,8 +165,9 @@ static unsigned typedArrayElementSize(ArrayBufferViewSubtag tag)
  * Version 3. added the FalseObjectTag, TrueObjectTag, NumberObjectTag, StringObjectTag
  * and EmptyStringObjectTag for serialization of Boolean, Number and String objects.
  * Version 4. added support for serializing non-index properties of arrays.
+ * Version 5. added support for Map and Set types.
  */
-static const unsigned CurrentVersion = 4;
+static const unsigned CurrentVersion = 5;
 static const unsigned TerminatorTag = 0xFFFFFFFF;
 static const unsigned StringPoolTag = 0xFFFFFFFE;
 static const unsigned NonIndexPropertiesTag = 0xFFFFFFFD;
@@ -179,13 +181,19 @@ static const unsigned NonIndexPropertiesTag = 0xFFFFFFFD;
  * in the constant pool.
  *
  * SerializedValue :- <CurrentVersion:uint32_t> Value
- * Value :- Array | Object | Terminal
+ * Value :- Array | Object | Map | Set | Terminal
  *
  * Array :-
  *     ArrayTag <length:uint32_t>(<index:uint32_t><value:Value>)* TerminatorTag
  *
  * Object :-
  *     ObjectTag (<name:StringData><value:Value>)* TerminatorTag
+ *
+ * Map :- MapObjectTag MapData
+ *
+ * Set :- SetObjectTag MapData
+ *
+ * MapData :- (<key:Value><value:Value>) NonMapPropertiesTag (<name:StringData><value:Value>)* TerminatorTag
  *
  * Terminal :-
  *      UndefinedTag
@@ -267,7 +275,7 @@ protected:
 
     void throwStackOverflow()
     {
-        throwError(m_exec, createStackOverflowError(m_exec));
+        m_exec->vm().throwException(m_exec, createStackOverflowError(m_exec));
     }
 
     NO_RETURN_DUE_TO_ASSERT
@@ -402,7 +410,22 @@ private:
         if (!value.isObject())
             return false;
         JSObject* object = asObject(value);
-        return isJSArray(object) || object->inherits(&JSArray::s_info);
+        return isJSArray(object) || object->inherits(JSArray::info());
+    }
+
+    bool isMap(JSValue value)
+    {
+        if (!value.isObject())
+            return false;
+        JSObject* object = asObject(value);
+        return object->inherits(JSMap::info());
+    }
+    bool isSet(JSValue value)
+    {
+        if (!value.isObject())
+            return false;
+        JSObject* object = asObject(value);
+        return object->inherits(JSSet::info());
     }
 
     bool checkForDuplicate(JSObject* object)
@@ -451,6 +474,24 @@ private:
         unsigned length = array->length();
         write(ArrayTag);
         write(length);
+        return true;
+    }
+
+    bool startSet(JSSet* set)
+    {
+        if (!startObjectInternal(set))
+            return false;
+
+        write(SetObjectTag);
+        return true;
+    }
+
+    bool startMap(JSMap* map)
+    {
+        if (!startObjectInternal(map))
+            return false;
+
+        write(MapObjectTag);
         return true;
     }
 
@@ -518,25 +559,25 @@ private:
     bool dumpArrayBufferView(JSObject* obj, SerializationReturnCode& code)
     {
         write(ArrayBufferViewTag);
-        if (obj->inherits(&JSDataView::s_info))
+        if (obj->inherits(JSDataView::info()))
             write(DataViewTag);
-        else if (obj->inherits(&JSUint8ClampedArray::s_info))
+        else if (obj->inherits(JSUint8ClampedArray::info()))
             write(Uint8ClampedArrayTag);
-        else if (obj->inherits(&JSInt8Array::s_info))
+        else if (obj->inherits(JSInt8Array::info()))
             write(Int8ArrayTag);
-        else if (obj->inherits(&JSUint8Array::s_info))
+        else if (obj->inherits(JSUint8Array::info()))
             write(Uint8ArrayTag);
-        else if (obj->inherits(&JSInt16Array::s_info))
+        else if (obj->inherits(JSInt16Array::info()))
             write(Int16ArrayTag);
-        else if (obj->inherits(&JSUint16Array::s_info))
+        else if (obj->inherits(JSUint16Array::info()))
             write(Uint16ArrayTag);
-        else if (obj->inherits(&JSInt32Array::s_info))
+        else if (obj->inherits(JSInt32Array::info()))
             write(Int32ArrayTag);
-        else if (obj->inherits(&JSUint32Array::s_info))
+        else if (obj->inherits(JSUint32Array::info()))
             write(Uint32ArrayTag);
-        else if (obj->inherits(&JSFloat32Array::s_info))
+        else if (obj->inherits(JSFloat32Array::info()))
             write(Float32ArrayTag);
-        else if (obj->inherits(&JSFloat64Array::s_info))
+        else if (obj->inherits(JSFloat64Array::info()))
             write(Float64ArrayTag);
         else
             return false;
@@ -572,7 +613,7 @@ private:
             return true;
         }
 
-        if (value.isObject() && asObject(value)->inherits(&DateInstance::s_info)) {
+        if (value.isObject() && asObject(value)->inherits(DateInstance::info())) {
             write(DateTag);
             write(asDateInstance(value)->internalNumber());
             return true;
@@ -583,20 +624,20 @@ private:
 
         if (value.isObject()) {
             JSObject* obj = asObject(value);
-            if (obj->inherits(&BooleanObject::s_info)) {
+            if (obj->inherits(BooleanObject::info())) {
                 if (!startObjectInternal(obj)) // handle duplicates
                     return true;
                 write(asBooleanObject(value)->internalValue().toBoolean(m_exec) ? TrueObjectTag : FalseObjectTag);
                 return true;
             }
-            if (obj->inherits(&StringObject::s_info)) {
+            if (obj->inherits(StringObject::info())) {
                 if (!startObjectInternal(obj)) // handle duplicates
                     return true;
                 String str = asString(asStringObject(value)->internalValue())->value(m_exec);
                 dumpStringObject(str);
                 return true;
             }
-            if (obj->inherits(&NumberObject::s_info)) {
+            if (obj->inherits(NumberObject::info())) {
                 if (!startObjectInternal(obj)) // handle duplicates
                     return true;
                 write(NumberObjectTag);
@@ -604,12 +645,12 @@ private:
                 write(obj->internalValue().asNumber());
                 return true;
             }
-            if (obj->inherits(&JSFile::s_info)) {
+            if (obj->inherits(JSFile::info())) {
                 write(FileTag);
                 write(toFile(obj));
                 return true;
             }
-            if (obj->inherits(&JSFileList::s_info)) {
+            if (obj->inherits(JSFileList::info())) {
                 FileList* list = toFileList(obj);
                 write(FileListTag);
                 unsigned length = list->length();
@@ -618,7 +659,7 @@ private:
                     write(list->item(i));
                 return true;
             }
-            if (obj->inherits(&JSBlob::s_info)) {
+            if (obj->inherits(JSBlob::info())) {
                 write(BlobTag);
                 Blob* blob = toBlob(obj);
                 m_blobURLs.append(blob->url());
@@ -627,7 +668,7 @@ private:
                 write(blob->size());
                 return true;
             }
-            if (obj->inherits(&JSImageData::s_info)) {
+            if (obj->inherits(JSImageData::info())) {
                 ImageData* data = toImageData(obj);
                 write(ImageDataTag);
                 write(data->width());
@@ -636,7 +677,7 @@ private:
                 write(data->data()->data(), data->data()->length());
                 return true;
             }
-            if (obj->inherits(&RegExpObject::s_info)) {
+            if (obj->inherits(RegExpObject::info())) {
                 RegExpObject* regExp = asRegExpObject(obj);
                 char flags[3];
                 int flagCount = 0;
@@ -651,7 +692,7 @@ private:
                 write(String(flags, flagCount));
                 return true;
             }
-            if (obj->inherits(&JSMessagePort::s_info)) {
+            if (obj->inherits(JSMessagePort::info())) {
                 ObjectPool::iterator index = m_transferredMessagePorts.find(obj);
                 if (index != m_transferredMessagePorts.end()) {
                     write(MessagePortReferenceTag);
@@ -662,7 +703,7 @@ private:
                 code = ValidationError;
                 return true;
             }
-            if (obj->inherits(&JSArrayBuffer::s_info)) {
+            if (obj->inherits(JSArrayBuffer::info())) {
                 RefPtr<ArrayBuffer> arrayBuffer = toArrayBuffer(obj);
                 if (arrayBuffer->isNeutered()) {
                     code = ValidationError;
@@ -681,7 +722,7 @@ private:
                 write(static_cast<const uint8_t *>(arrayBuffer->data()), arrayBuffer->byteLength());
                 return true;
             }
-            if (obj->inherits(&JSArrayBufferView::s_info)) {
+            if (obj->inherits(JSArrayBufferView::info())) {
                 if (checkForDuplicate(obj))
                     return true;
                 bool success = dumpArrayBufferView(obj, code);
@@ -827,6 +868,8 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
     Vector<uint32_t, 16> lengthStack;
     Vector<PropertyNameArray, 16> propertyStack;
     Vector<JSObject*, 32> inputObjectStack;
+    Vector<MapData*, 4> mapDataStack;
+    Vector<MapData::const_iterator, 4> iteratorStack;
     Vector<WalkerState, 16> stateStack;
     WalkerState state = StateUnknown;
     JSValue inValue = in;
@@ -901,7 +944,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 // objects have been handled. If we reach this point and
                 // the input is not an Object object then we should throw
                 // a DataCloneError.
-                if (inObject->classInfo() != &JSFinalObject::s_info)
+                if (inObject->classInfo() != JSFinalObject::info())
                     return DataCloneError;
                 inputObjectStack.append(inObject);
                 indexStack.append(0);
@@ -951,6 +994,63 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 indexStack.last()++;
                 goto objectStartVisitMember;
             }
+            mapStartState: {
+                ASSERT(inValue.isObject());
+                if (inputObjectStack.size() > maximumFilterRecursion)
+                    return StackOverflowError;
+                JSMap* inMap = jsCast<JSMap*>(inValue);
+                if (!startMap(inMap))
+                    break;
+                MapData* mapData = inMap->mapData();
+                m_gcBuffer.append(mapData);
+                mapDataStack.append(mapData);
+                iteratorStack.append(mapData->begin());
+                inputObjectStack.append(inMap);
+                goto mapDataStartVisitEntry;
+            }
+            setStartState: {
+                ASSERT(inValue.isObject());
+                if (inputObjectStack.size() > maximumFilterRecursion)
+                    return StackOverflowError;
+                JSSet* inSet = jsCast<JSSet*>(inValue);
+                if (!startSet(inSet))
+                    break;
+                MapData* mapData = inSet->mapData();
+                m_gcBuffer.append(mapData);
+                mapDataStack.append(mapData);
+                iteratorStack.append(mapData->begin());
+                inputObjectStack.append(inSet);
+                goto mapDataStartVisitEntry;
+            }
+            mapDataStartVisitEntry:
+            case MapDataStartVisitEntry: {
+                MapData::const_iterator& ptr = iteratorStack.last();
+                MapData* mapData = mapDataStack.last();
+                if (ptr == mapData->end()) {
+                    iteratorStack.removeLast();
+                    mapDataStack.removeLast();
+                    JSObject* object = inputObjectStack.last();
+                    ASSERT(jsDynamicCast<JSSet*>(object) || jsDynamicCast<JSMap*>(object));
+                    propertyStack.append(PropertyNameArray(m_exec));
+                    object->methodTable()->getOwnPropertyNames(object, m_exec, propertyStack.last(), ExcludeDontEnumProperties);
+                    write(NonMapPropertiesTag);
+                    indexStack.append(0);
+                    goto objectStartVisitMember;
+                }
+                inValue = ptr.key();
+                stateStack.append(MapDataEndVisitKey);
+                goto stateUnknown;
+            }
+            case MapDataEndVisitKey: {
+                inValue = iteratorStack.last().value();
+                stateStack.append(MapDataEndVisitValue);
+                goto stateUnknown;
+            }
+            case MapDataEndVisitValue: {
+                ++iteratorStack.last();
+                goto mapDataStartVisitEntry;
+            }
+
             stateUnknown:
             case StateUnknown: {
                 SerializationReturnCode terminalCode = SuccessfullyCompleted;
@@ -962,6 +1062,10 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
 
                 if (isArray(inValue))
                     goto arrayStartState;
+                if (isMap(inValue))
+                    goto mapStartState;
+                if (isSet(inValue))
+                    goto setStartState;
                 goto objectStartState;
             }
         }
@@ -977,7 +1081,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
     return SuccessfullyCompleted;
 }
 
-typedef Vector<WTF::ArrayBufferContents> ArrayBufferContentsArray;
+typedef Vector<JSC::ArrayBufferContents> ArrayBufferContentsArray;
 
 class CloneDeserializer : CloneBase {
 public:
@@ -1056,7 +1160,7 @@ private:
                       const Vector<uint8_t>& buffer)
         : CloneBase(exec)
         , m_globalObject(globalObject)
-        , m_isDOMGlobalObject(globalObject->inherits(&JSDOMGlobalObject::s_info))
+        , m_isDOMGlobalObject(globalObject->inherits(JSDOMGlobalObject::info()))
         , m_ptr(buffer.data())
         , m_end(buffer.data() + buffer.size())
         , m_version(0xFFFFFFFF)
@@ -1072,7 +1176,7 @@ private:
 
     void throwValidationError()
     {
-        throwError(m_exec, createTypeError(m_exec, "Unable to deserialize data."));
+        m_exec->vm().throwException(m_exec, createTypeError(m_exec, "Unable to deserialize data."));
     }
 
     bool isValid() const { return m_version <= CurrentVersion; }
@@ -1307,7 +1411,7 @@ private:
         if (!read(byteLength))
             return false;
         JSObject* arrayBufferObj = asObject(readTerminal());
-        if (!arrayBufferObj || !arrayBufferObj->inherits(&JSArrayBuffer::s_info))
+        if (!arrayBufferObj || !arrayBufferObj->inherits(JSArrayBuffer::info()))
             return false;
 
         unsigned elementSize = typedArrayElementSize(arrayBufferViewSubtag);
@@ -1563,6 +1667,14 @@ private:
         }
     }
 
+    bool consumeMapDataTerminationIfPossible()
+    {
+        if (readTag() == NonMapPropertiesTag)
+            return true;
+        m_ptr--;
+        return false;
+    }
+
     JSGlobalObject* m_globalObject;
     bool m_isDOMGlobalObject;
     const uint8_t* m_ptr;
@@ -1579,6 +1691,8 @@ DeserializationResult CloneDeserializer::deserialize()
     Vector<uint32_t, 16> indexStack;
     Vector<Identifier, 16> propertyNameStack;
     Vector<JSObject*, 32> outputObjectStack;
+    Vector<JSValue, 4> keyStack;
+    Vector<MapData*, 4> mapDataStack;
     Vector<WalkerState, 16> stateStack;
     WalkerState state = StateUnknown;
     JSValue outValue;
@@ -1665,6 +1779,47 @@ DeserializationResult CloneDeserializer::deserialize()
             propertyNameStack.removeLast();
             goto objectStartVisitMember;
         }
+        mapObjectStartState: {
+            if (outputObjectStack.size() > maximumFilterRecursion)
+                return make_pair(JSValue(), StackOverflowError);
+            JSMap* map = JSMap::create(m_exec->vm(), m_globalObject->mapStructure());
+            m_gcBuffer.append(map);
+            outputObjectStack.append(map);
+            MapData* mapData = map->mapData();
+            mapDataStack.append(mapData);
+            goto mapDataStartVisitEntry;
+        }
+        setObjectStartState: {
+            if (outputObjectStack.size() > maximumFilterRecursion)
+                return make_pair(JSValue(), StackOverflowError);
+            JSSet* set = JSSet::create(m_exec->vm(), m_globalObject->setStructure());
+            m_gcBuffer.append(set);
+            outputObjectStack.append(set);
+            MapData* mapData = set->mapData();
+            mapDataStack.append(mapData);
+            goto mapDataStartVisitEntry;
+        }
+        mapDataStartVisitEntry:
+        case MapDataStartVisitEntry: {
+            if (consumeMapDataTerminationIfPossible()) {
+                mapDataStack.removeLast();
+                goto objectStartVisitMember;
+            }
+            stateStack.append(MapDataEndVisitKey);
+            goto stateUnknown;
+        }
+
+        case MapDataEndVisitKey: {
+            keyStack.append(outValue);
+            stateStack.append(MapDataEndVisitValue);
+            goto stateUnknown;
+        }
+
+        case MapDataEndVisitValue: {
+            mapDataStack.last()->set(m_exec, keyStack.last(), outValue);
+            keyStack.removeLast();
+            goto mapDataStartVisitEntry;
+        }
         stateUnknown:
         case StateUnknown:
             if (JSValue terminal = readTerminal()) {
@@ -1676,6 +1831,10 @@ DeserializationResult CloneDeserializer::deserialize()
                 goto arrayStartState;
             if (tag == ObjectTag)
                 goto objectStartState;
+            if (tag == MapObjectTag)
+                goto mapObjectStartState;
+            if (tag == SetObjectTag)
+                goto setObjectStartState;
             goto error;
         }
         if (stateStack.isEmpty())
@@ -1722,7 +1881,7 @@ SerializedScriptValue::SerializedScriptValue(Vector<uint8_t>& buffer, Vector<Str
 }
 
 PassOwnPtr<SerializedScriptValue::ArrayBufferContentsArray> SerializedScriptValue::transferArrayBuffers(
-    ArrayBufferArray& arrayBuffers, SerializationReturnCode& code)
+    ExecState* exec, ArrayBufferArray& arrayBuffers, SerializationReturnCode& code)
 {
     for (size_t i = 0; i < arrayBuffers.size(); i++) {
         if (arrayBuffers[i]->isNeutered()) {
@@ -1732,16 +1891,16 @@ PassOwnPtr<SerializedScriptValue::ArrayBufferContentsArray> SerializedScriptValu
     }
 
     OwnPtr<ArrayBufferContentsArray> contents = adoptPtr(new ArrayBufferContentsArray(arrayBuffers.size()));
+    Vector<RefPtr<DOMWrapperWorld> > worlds;
+    static_cast<WebCoreJSClientData*>(exec->vm().clientData)->getAllWorlds(worlds);
 
-    HashSet<WTF::ArrayBuffer*> visited;
-    for (size_t i = 0; i < arrayBuffers.size(); i++) {
-        Vector<RefPtr<ArrayBufferView> > neuteredViews;
-
-        if (visited.contains(arrayBuffers[i].get()))
+    HashSet<JSC::ArrayBuffer*> visited;
+    for (size_t arrayBufferIndex = 0; arrayBufferIndex < arrayBuffers.size(); arrayBufferIndex++) {
+        if (visited.contains(arrayBuffers[arrayBufferIndex].get()))
             continue;
-        visited.add(arrayBuffers[i].get());
+        visited.add(arrayBuffers[arrayBufferIndex].get());
 
-        bool result = arrayBuffers[i]->transfer(contents->at(i), neuteredViews);
+        bool result = arrayBuffers[arrayBufferIndex]->transfer(contents->at(arrayBufferIndex));
         if (!result) {
             code = ValidationError;
             return nullptr;
@@ -1762,7 +1921,7 @@ PassRefPtr<SerializedScriptValue> SerializedScriptValue::create(ExecState* exec,
     OwnPtr<ArrayBufferContentsArray> arrayBufferContentsArray;
 
     if (arrayBuffers && serializationDidCompleteSuccessfully(code))
-        arrayBufferContentsArray = transferArrayBuffers(*arrayBuffers, code);
+        arrayBufferContentsArray = transferArrayBuffers(exec, *arrayBuffers, code);
 
     if (throwExceptions == Throwing)
         maybeThrowExceptionIfSerializationFailed(exec, code);
@@ -1900,10 +2059,10 @@ void SerializedScriptValue::maybeThrowExceptionIfSerializationFailed(ExecState* 
     
     switch (code) {
     case StackOverflowError:
-        throwError(exec, createStackOverflowError(exec));
+        exec->vm().throwException(exec, createStackOverflowError(exec));
         break;
     case ValidationError:
-        throwError(exec, createTypeError(exec, "Unable to deserialize data."));
+        exec->vm().throwException(exec, createTypeError(exec, "Unable to deserialize data."));
         break;
     case DataCloneError:
         setDOMException(exec, DATA_CLONE_ERR);

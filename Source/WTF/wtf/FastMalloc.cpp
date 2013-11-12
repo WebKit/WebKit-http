@@ -87,6 +87,7 @@
 #include <pthread.h>
 #endif
 #include <string.h>
+#include <wtf/DataLog.h>
 #include <wtf/StdLibExtras.h>
 
 #if OS(DARWIN)
@@ -1363,6 +1364,11 @@ class TCMalloc_Central_FreeList {
         finder.visit(nextObject.value());
       }
     }
+
+    for (int slot = 0; slot < used_slots_; ++slot) {
+      for (HardenedSLL entry = tc_slots_[slot].head; entry; entry.setValue(reader.nextEntryInHardenedLinkedList(reinterpret_cast<void**>(entry.value()), entropy_)))
+        finder.visit(entry.value());
+    }
   }
 #endif
 
@@ -1503,7 +1509,69 @@ private:
     PageHeapAllocator<TCMalloc_ThreadCache>* m_pageHeapAllocator;
 };
 
+// This method declaration, and the constants below, are taken from Libc/gen/malloc.c.
+extern "C" void (*malloc_logger)(uint32_t typeFlags, uintptr_t zone, uintptr_t size, uintptr_t pointer, uintptr_t returnValue, uint32_t numberOfFramesToSkip);
+
 #endif
+
+class MallocHook {
+    static bool stackLoggingEnabled;
+
+#if OS(DARWIN)
+    
+    enum StackLoggingType {
+        StackLoggingTypeAlloc = 2,
+        StackLoggingTypeDealloc = 4,
+    };
+
+    static void record(uint32_t typeFlags, uintptr_t zone, uintptr_t size, void* pointer, void* returnValue, uint32_t numberOfFramesToSkip)
+    {
+        malloc_logger(typeFlags, zone, size, reinterpret_cast<uintptr_t>(pointer), reinterpret_cast<uintptr_t>(returnValue), numberOfFramesToSkip);
+    }
+
+    static NEVER_INLINE void recordAllocation(void* pointer, size_t size)
+    {
+        // StackLoggingTypeAlloc takes the newly-allocated address in the returnValue argument, the size of the allocation
+        // in the size argument and ignores all other arguments.
+        record(StackLoggingTypeAlloc, 0, size, 0, pointer, 0);
+    }
+
+    static NEVER_INLINE void recordDeallocation(void* pointer)
+    {
+        // StackLoggingTypeDealloc takes the pointer in the size argument and ignores all other arguments.
+        record(StackLoggingTypeDealloc, 0, reinterpret_cast<uintptr_t>(pointer), 0, 0, 0);
+    }
+
+#endif
+
+public:
+    static void init()
+    {
+#if OS(DARWIN)
+        // If the system allocator's malloc_logger has been set up then stack logging is enabled.
+        stackLoggingEnabled = malloc_logger;
+#endif
+    }
+
+#if OS(DARWIN)
+    static ALWAYS_INLINE void InvokeNewHook(void* pointer, size_t size)
+    {
+        if (UNLIKELY(stackLoggingEnabled))
+            recordAllocation(pointer, size);
+    }
+
+    static ALWAYS_INLINE void InvokeDeleteHook(void* pointer)
+    {
+
+        if (UNLIKELY(stackLoggingEnabled))
+            recordDeallocation(pointer);
+    }
+#else
+    static ALWAYS_INLINE void InvokeNewHook(void*, size_t) { }
+    static ALWAYS_INLINE void InvokeDeleteHook(void*) { }
+#endif
+};
+bool MallocHook::stackLoggingEnabled = false;
 
 #endif
 
@@ -3396,6 +3464,7 @@ void TCMalloc_ThreadCache::InitModule() {
     pageheap->init();
     phinited = 1;
 #if defined(WTF_CHANGES) && OS(DARWIN)
+    MallocHook::init();
     FastMallocZone::init();
 #endif
   }
@@ -4171,12 +4240,22 @@ ALWAYS_INLINE void* malloc(size_t);
 
 void* fastMalloc(size_t size)
 {
-    return malloc<true>(size);
+    void* result = malloc<true>(size);
+#if ENABLE(ALLOCATION_LOGGING)
+    dataLogF("fastMalloc allocating %lu bytes (fastMalloc): %p.\n", size, result);
+#endif
+    return result;
 }
 
 TryMallocReturnValue tryFastMalloc(size_t size)
 {
-    return malloc<false>(size);
+    TryMallocReturnValue result = malloc<false>(size);
+#if ENABLE(ALLOCATION_LOGGING)
+    void* pointer;
+    (void)result.getValue(pointer);
+    dataLogF("fastMalloc allocating %lu bytes (tryFastMalloc): %p.\n", size, pointer);
+#endif
+    return result;
 }
 
 template <bool crashOnFailure>
@@ -4201,9 +4280,7 @@ void* malloc(size_t size) {
     void* result = do_malloc(size);
 #endif
 
-#ifndef WTF_CHANGES
   MallocHook::InvokeNewHook(result, size);
-#endif
   return result;
 }
 
@@ -4211,9 +4288,11 @@ void* malloc(size_t size) {
 extern "C" 
 #endif
 void free(void* ptr) {
-#ifndef WTF_CHANGES
-  MallocHook::InvokeDeleteHook(ptr);
+#if ENABLE(ALLOCATION_LOGGING)
+    dataLogF("fastFree freeing %p.\n", ptr);
 #endif
+    
+  MallocHook::InvokeDeleteHook(ptr);
 
 #if ENABLE(WTF_MALLOC_VALIDATION)
     if (!ptr)
@@ -4240,6 +4319,9 @@ void* fastCalloc(size_t n, size_t elem_size)
 #if ENABLE(WTF_MALLOC_VALIDATION)
     fastMallocValidate(result);
 #endif
+#if ENABLE(ALLOCATION_LOGGING)
+    dataLogF("fastMalloc contiguously allocating %lu * %lu bytes (fastCalloc): %p.\n", n, elem_size, result);
+#endif
     return result;
 }
 
@@ -4248,6 +4330,9 @@ TryMallocReturnValue tryFastCalloc(size_t n, size_t elem_size)
     void* result = calloc<false>(n, elem_size);
 #if ENABLE(WTF_MALLOC_VALIDATION)
     fastMallocValidate(result);
+#endif
+#if ENABLE(ALLOCATION_LOGGING)
+    dataLogF("fastMalloc contiguously allocating %lu * %lu bytes (tryFastCalloc): %p.\n", n, elem_size, result);
 #endif
     return result;
 }
@@ -4276,9 +4361,7 @@ void* calloc(size_t n, size_t elem_size) {
     }
 #endif
 
-#ifndef WTF_CHANGES
   MallocHook::InvokeNewHook(result, totalBytes);
-#endif
   return result;
 }
 
@@ -4310,6 +4393,9 @@ void* fastRealloc(void* old_ptr, size_t new_size)
 #if ENABLE(WTF_MALLOC_VALIDATION)
     fastMallocValidate(result);
 #endif
+#if ENABLE(ALLOCATION_LOGGING)
+    dataLogF("fastMalloc reallocating %lu bytes (fastRealloc): %p -> %p.\n", new_size, old_ptr, result);
+#endif
     return result;
 }
 
@@ -4321,6 +4407,9 @@ TryMallocReturnValue tryFastRealloc(void* old_ptr, size_t new_size)
     void* result = realloc<false>(old_ptr, new_size);
 #if ENABLE(WTF_MALLOC_VALIDATION)
     fastMallocValidate(result);
+#endif
+#if ENABLE(ALLOCATION_LOGGING)
+    dataLogF("fastMalloc reallocating %lu bytes (tryFastRealloc): %p -> %p.\n", new_size, old_ptr, result);
 #endif
     return result;
 }
@@ -4334,16 +4423,12 @@ void* realloc(void* old_ptr, size_t new_size) {
     void* result = malloc<crashOnFailure>(new_size);
 #else
     void* result = do_malloc(new_size);
-#ifndef WTF_CHANGES
     MallocHook::InvokeNewHook(result, new_size);
-#endif
 #endif
     return result;
   }
   if (new_size == 0) {
-#ifndef WTF_CHANGES
     MallocHook::InvokeDeleteHook(old_ptr);
-#endif
     free(old_ptr);
     return NULL;
   }
@@ -4383,13 +4468,9 @@ void* realloc(void* old_ptr, size_t new_size) {
     if (new_ptr == NULL) {
       return NULL;
     }
-#ifndef WTF_CHANGES
     MallocHook::InvokeNewHook(new_ptr, new_size);
-#endif
     memcpy(new_ptr, old_ptr, ((old_size < new_size) ? old_size : new_size));
-#ifndef WTF_CHANGES
     MallocHook::InvokeDeleteHook(old_ptr);
-#endif
     // We could use a variant of do_free() that leverages the fact
     // that we already know the sizeclass of old_ptr.  The benefit
     // would be small, so don't bother.
@@ -4817,19 +4898,26 @@ public:
 
     void recordPendingRegions()
     {
-        if (!(m_typeMask & (MALLOC_PTR_IN_USE_RANGE_TYPE | MALLOC_PTR_REGION_RANGE_TYPE))) {
+        bool recordRegionsContainingPointers = m_typeMask & MALLOC_PTR_REGION_RANGE_TYPE;
+        bool recordAllocations = m_typeMask & MALLOC_PTR_IN_USE_RANGE_TYPE;
+
+        if (!recordRegionsContainingPointers && !recordAllocations) {
             m_coalescedSpans.clear();
             return;
         }
 
+        Vector<vm_range_t, 256> pointerRegions;
         Vector<vm_range_t, 1024> allocatedPointers;
         for (size_t i = 0; i < m_coalescedSpans.size(); ++i) {
             Span *theSpan = m_coalescedSpans[i];
-            if (theSpan->free)
-                continue;
-
             vm_address_t spanStartAddress = theSpan->start << kPageShift;
             vm_size_t spanSizeInBytes = theSpan->length * kPageSize;
+
+            if (recordRegionsContainingPointers)
+                pointerRegions.append((vm_range_t){spanStartAddress, spanSizeInBytes});
+
+            if (theSpan->free || !recordAllocations)
+                continue;
 
             if (!theSpan->sizeclass) {
                 // If it's an allocated large object span, mark it as in use
@@ -4847,7 +4935,11 @@ public:
             }
         }
 
-        (*m_recorder)(m_task, m_context, m_typeMask & (MALLOC_PTR_IN_USE_RANGE_TYPE | MALLOC_PTR_REGION_RANGE_TYPE), allocatedPointers.data(), allocatedPointers.size());
+        if (recordRegionsContainingPointers)
+            (*m_recorder)(m_task, m_context, MALLOC_PTR_REGION_RANGE_TYPE, pointerRegions.data(), pointerRegions.size());
+
+        if (recordAllocations)
+            (*m_recorder)(m_task, m_context, MALLOC_PTR_IN_USE_RANGE_TYPE, allocatedPointers.data(), allocatedPointers.size());
 
         m_coalescedSpans.clear();
     }
@@ -5006,9 +5098,7 @@ extern "C" {
 malloc_introspection_t jscore_fastmalloc_introspection = { &FastMallocZone::enumerate, &FastMallocZone::goodSize, &FastMallocZone::check, &FastMallocZone::print,
     &FastMallocZone::log, &FastMallocZone::forceLock, &FastMallocZone::forceUnlock, &FastMallocZone::statistics
     , 0 // zone_locked will not be called on the zone unless it advertises itself as version five or higher.
-#if OS(IOS) || __MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
     , 0, 0, 0, 0 // These members will not be used unless the zone advertises itself as version seven or higher.
-#endif
 
     };
 }

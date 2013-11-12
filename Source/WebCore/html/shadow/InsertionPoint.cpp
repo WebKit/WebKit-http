@@ -31,11 +31,11 @@
 #include "config.h"
 #include "InsertionPoint.h"
 
-#include "ElementShadow.h"
 #include "HTMLNames.h"
 #include "QualifiedName.h"
 #include "ShadowRoot.h"
 #include "StaticNodeList.h"
+#include "Text.h"
 
 namespace WebCore {
 
@@ -45,43 +45,47 @@ InsertionPoint::InsertionPoint(const QualifiedName& tagName, Document* document)
     : HTMLElement(tagName, document, CreateInsertionPoint)
     , m_hasDistribution(false)
 {
+    setHasCustomStyleResolveCallbacks();
 }
 
 InsertionPoint::~InsertionPoint()
 {
 }
 
-void InsertionPoint::attach(const AttachContext& context)
+void InsertionPoint::willAttachRenderers()
 {
     if (ShadowRoot* shadowRoot = containingShadowRoot())
         ContentDistributor::ensureDistribution(shadowRoot);
     for (Node* current = firstDistributed(); current; current = nextDistributedTo(current)) {
-        if (!current->attached())
-            current->attach(context);
+        if (current->attached())
+            continue;
+        if (current->isTextNode()) {
+            Style::attachTextRenderer(*toText(current));
+            continue;
+        }
+        if (current->isElementNode())
+            Style::attachRenderTree(*toElement(current));
     }
-
-    HTMLElement::attach(context);
 }
 
-void InsertionPoint::detach(const AttachContext& context)
+void InsertionPoint::willDetachRenderers()
 {
     if (ShadowRoot* shadowRoot = containingShadowRoot())
         ContentDistributor::ensureDistribution(shadowRoot);
 
-    for (Node* current = firstDistributed(); current; current = nextDistributedTo(current))
-        current->detach(context);
-
-    HTMLElement::detach(context);
+    for (Node* current = firstDistributed(); current; current = nextDistributedTo(current)) {
+        if (current->isTextNode()) {
+            Style::detachTextRenderer(*toText(current));
+            continue;
+        }
+        if (current->isElementNode())
+            Style::detachRenderTree(*toElement(current));
+    }
 }
 
 bool InsertionPoint::shouldUseFallbackElements() const
 {
     return isActive() && !hasDistribution();
-}
-
-bool InsertionPoint::isShadowBoundary() const
-{
-    return treeScope()->rootNode()->isShadowRoot() && isActive();
 }
 
 bool InsertionPoint::isActive() const
@@ -98,17 +102,16 @@ bool InsertionPoint::isActive() const
     return true;
 }
 
-bool InsertionPoint::rendererIsNeeded(const NodeRenderingContext& context)
+bool InsertionPoint::rendererIsNeeded(const RenderStyle& style)
 {
-    return !isShadowBoundary() && HTMLElement::rendererIsNeeded(context);
+    return !isActive() && HTMLElement::rendererIsNeeded(style);
 }
 
-void InsertionPoint::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void InsertionPoint::childrenChanged(const ChildChange& change)
 {
-    HTMLElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
+    HTMLElement::childrenChanged(change);
     if (ShadowRoot* root = containingShadowRoot())
-        if (ElementShadow* rootOwner = root->owner())
-            rootOwner->invalidateDistribution();
+        root->invalidateDistribution();
 }
 
 Node::InsertionNotificationRequest InsertionPoint::insertedInto(ContainerNode* insertionPoint)
@@ -116,10 +119,8 @@ Node::InsertionNotificationRequest InsertionPoint::insertedInto(ContainerNode* i
     HTMLElement::insertedInto(insertionPoint);
 
     if (ShadowRoot* root = containingShadowRoot()) {
-        if (ElementShadow* rootOwner = root->owner()) {
-            rootOwner->distributor().didShadowBoundaryChange(root->host());
-            rootOwner->distributor().invalidateInsertionPointList();
-        }
+        root->distributor().didShadowBoundaryChange(root->hostElement());
+        root->distributor().invalidateInsertionPointList();
     }
 
     return InsertionDone;
@@ -131,37 +132,15 @@ void InsertionPoint::removedFrom(ContainerNode* insertionPoint)
     if (!root)
         root = insertionPoint->containingShadowRoot();
 
-    // host can be null when removedFrom() is called from ElementShadow destructor.
-    ElementShadow* rootOwner = root ? root->owner() : 0;
-    if (rootOwner) {
-        rootOwner->invalidateDistribution();
-        rootOwner->distributor().invalidateInsertionPointList();
+    if (root && root->hostElement()) {
+        root->invalidateDistribution();
+        root->distributor().invalidateInsertionPointList();
     }
 
     // Since this insertion point is no longer visible from the shadow subtree, it need to clean itself up.
     clearDistribution();
 
     HTMLElement::removedFrom(insertionPoint);
-}
-
-void InsertionPoint::parseAttribute(const QualifiedName& name, const AtomicString& value)
-{
-    if (name == reset_style_inheritanceAttr) {
-        if (!inDocument() || !attached() || !isActive())
-            return;
-        containingShadowRoot()->host()->setNeedsStyleRecalc();
-    } else
-        HTMLElement::parseAttribute(name, value);
-}
-
-bool InsertionPoint::resetStyleInheritance() const
-{
-    return fastHasAttribute(reset_style_inheritanceAttr);
-}
-
-void InsertionPoint::setResetStyleInheritance(bool value)
-{
-    setBooleanAttribute(reset_style_inheritanceAttr, value);
 }
     
 Node* InsertionPoint::firstDistributed() const
@@ -204,12 +183,12 @@ Node* InsertionPoint::previousDistributedTo(const Node* node) const
     return 0;
 }
 
-InsertionPoint* resolveReprojection(const Node* projectedNode)
+InsertionPoint* findInsertionPointOf(const Node* projectedNode)
 {
-    if (ElementShadow* shadow = shadowOfParentForDistribution(projectedNode)) {
+    if (ShadowRoot* shadowRoot = shadowRootOfParentForDistribution(projectedNode)) {
         if (ShadowRoot* root = projectedNode->containingShadowRoot())
             ContentDistributor::ensureDistribution(root);
-        return shadow->distributor().findInsertionPointFor(projectedNode);
+        return shadowRoot->distributor().findInsertionPointFor(projectedNode);
     }
     return 0;
 }

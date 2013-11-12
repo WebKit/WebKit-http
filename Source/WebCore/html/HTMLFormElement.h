@@ -47,6 +47,7 @@ public:
     virtual ~HTMLFormElement();
 
     PassRefPtr<HTMLCollection> elements();
+    bool hasNamedElement(const AtomicString&);
     void getNamedElements(const AtomicString&, Vector<RefPtr<Node> >&);
 
     unsigned length() const;
@@ -98,9 +99,6 @@ public:
 
     bool checkValidity();
 
-    HTMLFormControlElement* elementForAlias(const AtomicString&);
-    void addElementAlias(HTMLFormControlElement*, const AtomicString& alias);
-
     CheckedRadioButtons& checkedRadioButtons() { return m_checkedRadioButtons; }
 
     const Vector<FormAssociatedElement*>& associatedElements() const { return m_associatedElements; }
@@ -108,10 +106,12 @@ public:
 
     void getTextFieldValues(StringPairVector& fieldNamesAndValues) const;
 
+    static HTMLFormElement* findClosestFormAncestor(const Element&);
+
 private:
     HTMLFormElement(const QualifiedName&, Document*);
 
-    virtual bool rendererIsNeeded(const NodeRenderingContext&);
+    virtual bool rendererIsNeeded(const RenderStyle&);
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
     virtual void finishParsingChildren() OVERRIDE;
@@ -140,10 +140,15 @@ private:
     // are any invalid controls in this form.
     bool checkInvalidControlsAndCollectUnhandled(Vector<RefPtr<FormAssociatedElement> >&);
 
-    typedef HashMap<RefPtr<AtomicStringImpl>, RefPtr<HTMLFormControlElement> > AliasMap;
+    HTMLElement* elementFromPastNamesMap(const AtomicString&) const;
+    void addToPastNamesMap(FormNamedItem*, const AtomicString& pastName);
+    void assertItemCanBeInPastNamesMap(FormNamedItem*) const;
+    void removeFromPastNamesMap(FormNamedItem*);
+
+    typedef HashMap<RefPtr<AtomicStringImpl>, FormNamedItem*> PastNamesMap;
 
     FormSubmission::Attributes m_attributes;
-    OwnPtr<AliasMap> m_elementAliases;
+    OwnPtr<PastNamesMap> m_pastNamesMap;
 
     CheckedRadioButtons m_checkedRadioButtons;
 
@@ -160,22 +165,6 @@ private:
 
     bool m_wasDemoted;
 };
-
-inline bool isHTMLFormElement(Node* node)
-{
-    return node->hasTagName(HTMLNames::formTag);
-}
-
-inline bool isHTMLFormElement(Element* element)
-{
-    return element->hasTagName(HTMLNames::formTag);
-}
-
-inline HTMLFormElement* toHTMLFormElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLFormElement(node));
-    return static_cast<HTMLFormElement*>(node);
-}
 
 } // namespace WebCore
 

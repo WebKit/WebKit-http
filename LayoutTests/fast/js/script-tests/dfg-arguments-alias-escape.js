@@ -15,6 +15,4 @@ function bar(x) {
     return result[0] * result[1][0];
 }
 
-for (var i = 0; i < 200; ++i)
-    shouldBe("bar(42)", "1764");
-
+dfgShouldBe(bar, "bar(42)", "1764");

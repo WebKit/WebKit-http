@@ -73,10 +73,10 @@ private:
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
 
-    virtual bool rendererIsNeeded(const NodeRenderingContext&);
+    virtual bool rendererIsNeeded(const RenderStyle&);
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
     virtual const AtomicString& imageSourceURL() const OVERRIDE;
@@ -101,10 +101,8 @@ private:
     virtual void derefFormAssociatedElement() { deref(); }
     virtual HTMLFormElement* virtualForm() const;
 
-#if ENABLE(MICRODATA)
-    virtual String itemValueText() const OVERRIDE;
-    virtual void setItemValueText(const String&, ExceptionCode&) OVERRIDE;
-#endif
+    virtual FormNamedItem* asFormNamedItem() OVERRIDE FINAL { return this; }
+    virtual HTMLElement* asHTMLElement() OVERRIDE FINAL { return this; }
 
     String m_classId;
     bool m_docNamedItem : 1;

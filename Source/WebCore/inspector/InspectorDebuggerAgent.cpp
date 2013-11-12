@@ -202,7 +202,7 @@ void InspectorDebuggerAgent::addMessageToConsole(MessageSource source, MessageTy
         breakProgram(InspectorFrontend::Debugger::Reason::Assert, 0);
 }
 
-static PassRefPtr<InspectorObject> buildObjectForBreakpointCookie(const String& url, int lineNumber, int columnNumber, const String& condition, bool isRegex)
+static PassRefPtr<InspectorObject> buildObjectForBreakpointCookie(const String& url, int lineNumber, int columnNumber, const String& condition, RefPtr<InspectorArray>& actions, bool isRegex, bool autoContinue)
 {
     RefPtr<InspectorObject> breakpointObject = InspectorObject::create();
     breakpointObject->setString("url", url);
@@ -210,6 +210,10 @@ static PassRefPtr<InspectorObject> buildObjectForBreakpointCookie(const String& 
     breakpointObject->setNumber("columnNumber", columnNumber);
     breakpointObject->setString("condition", condition);
     breakpointObject->setBoolean("isRegex", isRegex);
+    breakpointObject->setBoolean("autoContinue", autoContinue);
+    if (actions)
+        breakpointObject->setArray("actions", actions);
+
     return breakpointObject;
 }
 
@@ -222,7 +226,64 @@ static bool matches(const String& url, const String& pattern, bool isRegex)
     return url == pattern;
 }
 
-void InspectorDebuggerAgent::setBreakpointByUrl(ErrorString* errorString, int lineNumber, const String* const optionalURL, const String* const optionalURLRegex, const int* const optionalColumnNumber, const String* const optionalCondition, TypeBuilder::Debugger::BreakpointId* outBreakpointId, RefPtr<TypeBuilder::Array<TypeBuilder::Debugger::Location> >& locations)
+static bool breakpointActionTypeForString(const String& typeString, ScriptBreakpointActionType* output)
+{
+    if (typeString == TypeBuilder::getEnumConstantValue(TypeBuilder::Debugger::BreakpointAction::Type::Log)) {
+        *output = ScriptBreakpointActionTypeLog;
+        return true;
+    }
+    if (typeString == TypeBuilder::getEnumConstantValue(TypeBuilder::Debugger::BreakpointAction::Type::Evaluate)) {
+        *output = ScriptBreakpointActionTypeEvaluate;
+        return true;
+    }
+    if (typeString == TypeBuilder::getEnumConstantValue(TypeBuilder::Debugger::BreakpointAction::Type::Sound)) {
+        *output = ScriptBreakpointActionTypeSound;
+        return true;
+    }
+
+    return false;
+}
+
+static bool breakpointActionsFromProtocol(ErrorString* errorString, RefPtr<InspectorArray>& actions, Vector<ScriptBreakpointAction>* result)
+{
+    if (!actions)
+        return true;
+
+    unsigned actionsLength = actions->length();
+    if (!actionsLength)
+        return true;
+
+    result->reserveCapacity(actionsLength);
+    for (unsigned i = 0; i < actionsLength; ++i) {
+        RefPtr<InspectorValue> value = actions->get(i);
+        RefPtr<InspectorObject> object;
+        if (!value->asObject(&object)) {
+            *errorString = "BreakpointAction of incorrect type, expected object";
+            return false;
+        }
+
+        String typeString;
+        if (!object->getString("type", &typeString)) {
+            *errorString = "BreakpointAction had type missing";
+            return false;
+        }
+
+        ScriptBreakpointActionType type;
+        if (!breakpointActionTypeForString(typeString, &type)) {
+            *errorString = "BreakpointAction had unknown type";
+            return false;
+        }
+
+        String data;
+        object->getString("data", &data);
+
+        result->append(ScriptBreakpointAction(type, data));
+    }
+
+    return true;
+}
+
+void InspectorDebuggerAgent::setBreakpointByUrl(ErrorString* errorString, int lineNumber, const String* const optionalURL, const String* const optionalURLRegex, const int* const optionalColumnNumber, const RefPtr<InspectorObject>* options, TypeBuilder::Debugger::BreakpointId* outBreakpointId, RefPtr<TypeBuilder::Array<TypeBuilder::Debugger::Location> >& locations)
 {
     locations = Array<TypeBuilder::Debugger::Location>::create();
     if (!optionalURL == !optionalURLRegex) {
@@ -232,7 +293,6 @@ void InspectorDebuggerAgent::setBreakpointByUrl(ErrorString* errorString, int li
 
     String url = optionalURL ? *optionalURL : *optionalURLRegex;
     int columnNumber = optionalColumnNumber ? *optionalColumnNumber : 0;
-    String condition = optionalCondition ? *optionalCondition : "";
     bool isRegex = optionalURLRegex;
 
     String breakpointId = (isRegex ? "/" + url + "/" : url) + ':' + String::number(lineNumber) + ':' + String::number(columnNumber);
@@ -242,10 +302,23 @@ void InspectorDebuggerAgent::setBreakpointByUrl(ErrorString* errorString, int li
         return;
     }
 
-    breakpointsCookie->setObject(breakpointId, buildObjectForBreakpointCookie(url, lineNumber, columnNumber, condition, isRegex));
+    String condition = emptyString();
+    bool autoContinue = false;
+    RefPtr<InspectorArray> actions;
+    if (options) {
+        (*options)->getString("condition", &condition);
+        (*options)->getBoolean("autoContinue", &autoContinue);
+        actions = (*options)->getArray("actions");
+    }
+
+    Vector<ScriptBreakpointAction> breakpointActions;
+    if (!breakpointActionsFromProtocol(errorString, actions, &breakpointActions))
+        return;
+
+    breakpointsCookie->setObject(breakpointId, buildObjectForBreakpointCookie(url, lineNumber, columnNumber, condition, actions, isRegex, autoContinue));
     m_state->setObject(DebuggerAgentState::javaScriptBreakpoints, breakpointsCookie);
 
-    ScriptBreakpoint breakpoint(lineNumber, columnNumber, condition);
+    ScriptBreakpoint breakpoint(lineNumber, columnNumber, condition, breakpointActions, autoContinue);
     for (ScriptsMap::iterator it = m_scripts.begin(); it != m_scripts.end(); ++it) {
         if (!matches(it->value.url, url, isRegex))
             continue;
@@ -268,7 +341,7 @@ static bool parseLocation(ErrorString* errorString, RefPtr<InspectorObject> loca
     return true;
 }
 
-void InspectorDebuggerAgent::setBreakpoint(ErrorString* errorString, const RefPtr<InspectorObject>& location, const String* const optionalCondition, TypeBuilder::Debugger::BreakpointId* outBreakpointId, RefPtr<TypeBuilder::Debugger::Location>& actualLocation)
+void InspectorDebuggerAgent::setBreakpoint(ErrorString* errorString, const RefPtr<InspectorObject>& location, const RefPtr<InspectorObject>* options, TypeBuilder::Debugger::BreakpointId* outBreakpointId, RefPtr<TypeBuilder::Debugger::Location>& actualLocation)
 {
     String scriptId;
     int lineNumber;
@@ -277,14 +350,25 @@ void InspectorDebuggerAgent::setBreakpoint(ErrorString* errorString, const RefPt
     if (!parseLocation(errorString, location, &scriptId, &lineNumber, &columnNumber))
         return;
 
-    String condition = optionalCondition ? *optionalCondition : emptyString();
+    String condition = emptyString();
+    bool autoContinue = false;
+    RefPtr<InspectorArray> actions;
+    if (options) {
+        (*options)->getString("condition", &condition);
+        (*options)->getBoolean("autoContinue", &autoContinue);
+        actions = (*options)->getArray("actions");
+    }
+
+    Vector<ScriptBreakpointAction> breakpointActions;
+    if (!breakpointActionsFromProtocol(errorString, actions, &breakpointActions))
+        return;
 
     String breakpointId = scriptId + ':' + String::number(lineNumber) + ':' + String::number(columnNumber);
     if (m_breakpointIdToDebugServerBreakpointIds.find(breakpointId) != m_breakpointIdToDebugServerBreakpointIds.end()) {
         *errorString = "Breakpoint at specified location already exists.";
         return;
     }
-    ScriptBreakpoint breakpoint(lineNumber, columnNumber, condition);
+    ScriptBreakpoint breakpoint(lineNumber, columnNumber, condition, breakpointActions, autoContinue);
     actualLocation = resolveBreakpoint(breakpointId, scriptId, breakpoint);
     if (actualLocation)
         *outBreakpointId = breakpointId;
@@ -320,7 +404,7 @@ void InspectorDebuggerAgent::continueToLocation(ErrorString* errorString, const 
     if (!parseLocation(errorString, location, &scriptId, &lineNumber, &columnNumber))
         return;
 
-    ScriptBreakpoint breakpoint(lineNumber, columnNumber, "");
+    ScriptBreakpoint breakpoint(lineNumber, columnNumber, "", false);
     m_continueToLocationBreakpointId = scriptDebugServer().setBreakpoint(scriptId, breakpoint, &lineNumber, &columnNumber);
     resume(errorString);
 }
@@ -643,7 +727,7 @@ String InspectorDebuggerAgent::sourceMapURLForScript(const Script& script)
 
                 sourceMapHeader = resource->response().httpHeaderField(sourceMapHTTPHeaderDeprecated);
                 if (!sourceMapHeader.isEmpty())
-                    return sourceMapHeader;                
+                    return sourceMapHeader;
             }
         }
     }
@@ -685,6 +769,14 @@ void InspectorDebuggerAgent::didParseSource(const String& scriptId, const Script
         breakpointObject->getNumber("lineNumber", &breakpoint.lineNumber);
         breakpointObject->getNumber("columnNumber", &breakpoint.columnNumber);
         breakpointObject->getString("condition", &breakpoint.condition);
+        breakpointObject->getBoolean("autoContinue", &breakpoint.autoContinue);
+        ErrorString errorString;
+        RefPtr<InspectorArray> actions = breakpointObject->getArray("actions");
+        if (!breakpointActionsFromProtocol(&errorString, actions, &breakpoint.actions)) {
+            ASSERT_NOT_REACHED();
+            continue;
+        }
+
         RefPtr<TypeBuilder::Debugger::Location> location = resolveBreakpoint(it->key, scriptId, breakpoint);
         if (location)
             m_frontend->breakpointResolved(it->key, location);

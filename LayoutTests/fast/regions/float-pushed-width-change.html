@@ -2,12 +2,6 @@
 
  <style>
 
-   @font-face {
-        font-family: webkit-ahem;
-        font-style: normal;
-        src: url(../../resources/Ahem.ttf);
-    }
-
     #content {
         -webkit-flow-into: flow1;
         padding: 5px;
@@ -49,13 +43,13 @@
 </style>
 
 <p>In the example below, the green float should be at the top of the first region and on the left. It should spill into region two.
-The orange float should be on the right at the top of region two.</p>
+The orange float should be right aligned under the green float because their containing block is flown only in the first region</p>
 
 <div id="content">
     <div id="first-box">
         <div id="second-box">
-            <p><img id="float1"><img id="float2">
-            <p>This line of text should not get out of the region. This line of text should not get out of the region.</p>
+            <p><img id="float1"><img id="float2"><p/>
+            <p>This line of text should not get out of the region.</p>
 	    <p>This line of text should not get out of the region. This line of text should not get out of the region.</p>
             <p>This line of text should not get out of the region.</p>
             

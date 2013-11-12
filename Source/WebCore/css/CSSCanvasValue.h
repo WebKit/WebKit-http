@@ -38,7 +38,7 @@ public:
     static PassRefPtr<CSSCanvasValue> create(const String& name) { return adoptRef(new CSSCanvasValue(name)); }
     ~CSSCanvasValue();
 
-    String customCssText() const;
+    String customCSSText() const;
 
     PassRefPtr<Image> image(RenderObject*, const IntSize&);
     bool isFixedSize() const { return true; }
@@ -84,7 +84,7 @@ private:
     void canvasResized(HTMLCanvasElement*);
     void canvasDestroyed(HTMLCanvasElement*);
 
-    HTMLCanvasElement* element(Document*);
+    HTMLCanvasElement* element(Document&);
 
     CanvasObserverProxy m_canvasObserver;
 

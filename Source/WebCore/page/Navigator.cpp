@@ -58,15 +58,12 @@ Navigator::~Navigator()
 // sites such as nwa.com -- the library thinks Safari is Netscape 4 if we don't do this!
 static bool shouldHideFourDot(Frame* frame)
 {
-    const String* sourceURL = frame->script()->sourceURL();
+    const String* sourceURL = frame->script().sourceURL();
     if (!sourceURL)
         return false;
     if (!(sourceURL->endsWith("/dqm_script.js") || sourceURL->endsWith("/dqm_loader.js") || sourceURL->endsWith("/tdqm_loader.js")))
         return false;
-    Settings* settings = frame->settings();
-    if (!settings)
-        return false;
-    return settings->needsSiteSpecificQuirks();
+    return frame->settings().needsSiteSpecificQuirks();
 }
 
 String Navigator::appVersion() const
@@ -94,7 +91,7 @@ String Navigator::userAgent() const
     if (!m_frame->page())
         return String();
         
-    return m_frame->loader()->userAgent(m_frame->document()->url());
+    return m_frame->loader().userAgent(m_frame->document()->url());
 }
 
 DOMPluginArray* Navigator::plugins() const
@@ -116,7 +113,7 @@ bool Navigator::cookieEnabled() const
     if (!m_frame)
         return false;
 
-    if (m_frame->page() && !m_frame->page()->settings()->cookieEnabled())
+    if (m_frame->page() && !m_frame->page()->settings().cookieEnabled())
         return false;
 
     return cookiesEnabled(m_frame->document());
@@ -124,12 +121,12 @@ bool Navigator::cookieEnabled() const
 
 bool Navigator::javaEnabled() const
 {
-    if (!m_frame || !m_frame->settings())
+    if (!m_frame)
         return false;
 
-    if (!m_frame->settings()->isJavaEnabled())
+    if (!m_frame->settings().isJavaEnabled())
         return false;
-    if (m_frame->document()->securityOrigin()->isLocal() && !m_frame->settings()->isJavaEnabledForLocalFiles())
+    if (m_frame->document()->securityOrigin()->isLocal() && !m_frame->settings().isJavaEnabledForLocalFiles())
         return false;
 
     return true;

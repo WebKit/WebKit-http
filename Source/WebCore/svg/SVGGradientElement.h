@@ -26,9 +26,9 @@
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedEnumeration.h"
 #include "SVGAnimatedTransformList.h"
+#include "SVGElement.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGNames.h"
-#include "SVGStyledElement.h"
 #include "SVGURIReference.h"
 #include "SVGUnitTypes.h"
 
@@ -74,7 +74,7 @@ struct SVGPropertyTraits<SVGSpreadMethodType> {
     }
 };
 
-class SVGGradientElement : public SVGStyledElement,
+class SVGGradientElement : public SVGElement,
                            public SVGURIReference,
                            public SVGExternalResourcesRequired {
 public:
@@ -97,7 +97,7 @@ protected:
 private:
     virtual bool needsPendingResourceHandling() const { return false; }
 
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGGradientElement)
         DECLARE_ANIMATED_ENUMERATION(SpreadMethod, spreadMethod, SVGSpreadMethodType)

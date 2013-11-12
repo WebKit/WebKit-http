@@ -24,7 +24,6 @@
 #include "SVGTextPathElement.h"
 
 #include "Attribute.h"
-#include "NodeRenderingContext.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGTextPath.h"
 #include "SVGElementInstance.h"
@@ -69,8 +68,7 @@ SVGTextPathElement::~SVGTextPathElement()
 
 void SVGTextPathElement::clearResourceReferences()
 {
-    ASSERT(document());
-    document()->accessSVGExtensions()->removeAllTargetReferencesForElement(this);
+    document().accessSVGExtensions()->removeAllTargetReferencesForElement(this);
 }
 
 bool SVGTextPathElement::isSupportedAttribute(const QualifiedName& attrName)
@@ -134,23 +132,23 @@ RenderObject* SVGTextPathElement::createRenderer(RenderArena* arena, RenderStyle
     return new (arena) RenderSVGTextPath(this);
 }
 
-bool SVGTextPathElement::childShouldCreateRenderer(const NodeRenderingContext& childContext) const
+bool SVGTextPathElement::childShouldCreateRenderer(const Node* child) const
 {
-    if (childContext.node()->isTextNode()
-        || childContext.node()->hasTagName(SVGNames::aTag)
-        || childContext.node()->hasTagName(SVGNames::trefTag)
-        || childContext.node()->hasTagName(SVGNames::tspanTag))
+    if (child->isTextNode()
+        || child->hasTagName(SVGNames::aTag)
+        || child->hasTagName(SVGNames::trefTag)
+        || child->hasTagName(SVGNames::tspanTag))
         return true;
 
     return false;
 }
 
-bool SVGTextPathElement::rendererIsNeeded(const NodeRenderingContext& context)
+bool SVGTextPathElement::rendererIsNeeded(const RenderStyle& style)
 {
     if (parentNode()
         && (parentNode()->hasTagName(SVGNames::aTag)
             || parentNode()->hasTagName(SVGNames::textTag)))
-        return StyledElement::rendererIsNeeded(context);
+        return StyledElement::rendererIsNeeded(style);
 
     return false;
 }
@@ -162,20 +160,20 @@ void SVGTextPathElement::buildPendingResource()
         return;
 
     String id;
-    Element* target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
+    Element* target = SVGURIReference::targetElementFromIRIString(href(), &document(), &id);
     if (!target) {
         // Do not register as pending if we are already pending this resource.
-        if (document()->accessSVGExtensions()->isElementPendingResource(this, id))
+        if (document().accessSVGExtensions()->isElementPendingResource(this, id))
             return;
 
         if (!id.isEmpty()) {
-            document()->accessSVGExtensions()->addPendingResource(id, this);
+            document().accessSVGExtensions()->addPendingResource(id, this);
             ASSERT(hasPendingResources());
         }
     } else if (target->hasTagName(SVGNames::pathTag)) {
         // Register us with the target in the dependencies map. Any change of hrefElement
         // that leads to relayout/repainting now informs us, so we can react to it.
-        document()->accessSVGExtensions()->addElementReferencingTarget(this, toSVGElement(target));
+        document().accessSVGExtensions()->addElementReferencingTarget(this, toSVGElement(target));
     }
 }
 

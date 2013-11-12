@@ -97,7 +97,6 @@ typedef void (*WKBundlePageDidRunInsecureContentForFrameCallback)(WKBundlePageRe
 typedef void (*WKBundlePageDidDetectXSSForFrameCallback)(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo);
 typedef void (*WKBundlePageDidFirstLayoutForFrameCallback)(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo);
 typedef void (*WKBundlePageDidFirstVisuallyNonEmptyLayoutForFrameCallback)(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo);
-typedef void (*WKBundlePageDidNewFirstVisuallyNonEmptyLayoutCallback)(WKBundlePageRef page, WKTypeRef* userData, const void *clientInfo);
 typedef void (*WKBundlePageDidLayoutForFrameCallback)(WKBundlePageRef page, WKBundleFrameRef frame, const void* clientInfo);
 typedef void (*WKBundlePageDidClearWindowObjectForFrameCallback)(WKBundlePageRef page, WKBundleFrameRef frame, WKBundleScriptWorldRef world, const void *clientInfo);
 typedef void (*WKBundlePageDidCancelClientRedirectForFrameCallback)(WKBundlePageRef page, WKBundleFrameRef frame, const void *clientInfo);
@@ -113,6 +112,7 @@ typedef void (*WKBundlePageDidLayoutCallback)(WKBundlePageRef page, WKLayoutMile
 typedef void (*WKBundlePageFeaturesUsedInPageCallback)(WKBundlePageRef page, WKArrayRef featureStrings, const void *clientInfo);
 typedef void (*WKBundlePageWillLoadURLRequestCallback)(WKBundlePageRef page, WKURLRequestRef request, WKTypeRef userData, const void *clientInfo);
 typedef void (*WKBundlePageWillLoadDataRequestCallback)(WKBundlePageRef page, WKURLRequestRef request, WKDataRef data, WKStringRef MIMEType, WKStringRef encodingName, WKURLRef unreachableURL, WKTypeRef userData, const void *clientInfo);
+typedef void (*WKBundlePageWillDestroyFrame)(WKBundlePageRef page, WKBundleFrameRef frame, const void *clientInfo);
 
 struct WKBundlePageLoaderClient {
     int                                                                     version;
@@ -140,7 +140,7 @@ struct WKBundlePageLoaderClient {
 
     // Version 1.
     WKBundlePageDidLayoutForFrameCallback                                   didLayoutForFrame;
-    WKBundlePageDidNewFirstVisuallyNonEmptyLayoutCallback                   didNewFirstVisuallyNonEmptyLayout;
+    void *                                                                  didNewFirstVisuallyNonEmptyLayout_unavailable;
     WKBundlePageDidDetectXSSForFrameCallback                                didDetectXSSForFrame;
     WKBundlePageShouldGoToBackForwardListItemCallback                       shouldGoToBackForwardListItem;
     WKBundlePageGlobalObjectIsAvailableForFrameCallback                     globalObjectIsAvailableForFrame;
@@ -165,10 +165,13 @@ struct WKBundlePageLoaderClient {
     // Version 6
     WKBundlePageWillLoadURLRequestCallback                                  willLoadURLRequest;
     WKBundlePageWillLoadDataRequestCallback                                 willLoadDataRequest;
+
+    // Version 7
+    WKBundlePageWillDestroyFrame                                            willDestroyFrame;
 };
 typedef struct WKBundlePageLoaderClient WKBundlePageLoaderClient;
 
-enum { kWKBundlePageLoaderClientCurrentVersion = 6 };
+enum { kWKBundlePageLoaderClientCurrentVersion = 7 };
 
 enum {
     WKBundlePagePolicyActionPassThrough,
@@ -436,8 +439,6 @@ WK_EXPORT WKBundlePageGroupRef WKBundlePageGetPageGroup(WKBundlePageRef page);
 WK_EXPORT WKBundleFrameRef WKBundlePageGetMainFrame(WKBundlePageRef page);
 
 WK_EXPORT WKBundleBackForwardListRef WKBundlePageGetBackForwardList(WKBundlePageRef page);
-
-WK_EXPORT void WKBundlePageSetUnderlayPage(WKBundlePageRef page, WKBundlePageRef pageUnderlay);
 
 WK_EXPORT void WKBundlePageInstallPageOverlay(WKBundlePageRef page, WKBundlePageOverlayRef pageOverlay);
 WK_EXPORT void WKBundlePageUninstallPageOverlay(WKBundlePageRef page, WKBundlePageOverlayRef pageOverlay);

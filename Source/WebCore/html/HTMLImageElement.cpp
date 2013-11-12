@@ -29,12 +29,15 @@
 #include "CachedImage.h"
 #include "EventNames.h"
 #include "FrameView.h"
+#include "HTMLAnchorElement.h"
 #include "HTMLDocument.h"
 #include "HTMLFormElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
+#include "Page.h"
 #include "RenderImage.h"
 #include "ScriptEventListener.h"
+#include <wtf/NotFound.h>
 
 using namespace std;
 
@@ -49,6 +52,7 @@ HTMLImageElement::HTMLImageElement(const QualifiedName& tagName, Document* docum
     , m_compositeOperator(CompositeSourceOver)
 {
     ASSERT(hasTagName(imgTag));
+    setHasCustomStyleResolveCallbacks();
     if (form)
         form->registerImgElement(this);
 }
@@ -108,15 +112,21 @@ void HTMLImageElement::collectStyleForPresentationAttribute(const QualifiedName&
         HTMLElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
+const AtomicString& HTMLImageElement::imageSourceURL() const
+{
+    return m_bestFitImageURL.isEmpty() ? fastGetAttribute(srcAttr) : m_bestFitImageURL;
+}
+
 void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == altAttr) {
         if (renderer() && renderer()->isImage())
             toRenderImage(renderer())->updateAltText();
-    } else if (name == srcAttr)
+    } else if (name == srcAttr || name == srcsetAttr) {
+        m_bestFitImageURL = bestFitSourceForImageAttributes(document().deviceScaleFactor(), fastGetAttribute(srcAttr), fastGetAttribute(srcsetAttr));
         m_imageLoader.updateFromElementIgnoringPreviousError();
-    else if (name == usemapAttr)
-        setIsLink(!value.isNull());
+    } else if (name == usemapAttr)
+        setIsLink(!value.isNull() && !shouldProhibitLinks(this));
     else if (name == onbeforeloadAttr)
         setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, name, value));
     else if (name == compositeAttr) {
@@ -127,14 +137,14 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicStr
     } else {
         if (name == nameAttr) {
             bool willHaveName = !value.isNull();
-            if (hasName() != willHaveName && inDocument() && document()->isHTMLDocument()) {
-                HTMLDocument* document = toHTMLDocument(this->document());
+            if (hasName() != willHaveName && inDocument() && document().isHTMLDocument()) {
+                HTMLDocument* document = toHTMLDocument(&this->document());
                 const AtomicString& id = getIdAttribute();
                 if (!id.isEmpty() && id != getNameAttribute()) {
                     if (willHaveName)
-                        document->documentNamedItemMap().add(id.impl(), this);
+                        document->addDocumentNamedItem(id, this);
                     else
-                        document->documentNamedItemMap().remove(id.impl(), this);
+                        document->removeDocumentNamedItem(id, this);
                 }
             }
         }
@@ -166,41 +176,36 @@ RenderObject* HTMLImageElement::createRenderer(RenderArena* arena, RenderStyle* 
 
 bool HTMLImageElement::canStartSelection() const
 {
-    if (shadow())
+    if (shadowRoot())
         return HTMLElement::canStartSelection();
 
     return false;
 }
 
-void HTMLImageElement::attach(const AttachContext& context)
+void HTMLImageElement::didAttachRenderers()
 {
-    HTMLElement::attach(context);
+    if (!renderer() || !renderer()->isImage())
+        return;
+    if (m_imageLoader.hasPendingBeforeLoadEvent())
+        return;
+    RenderImage* renderImage = toRenderImage(renderer());
+    RenderImageResource* renderImageResource = renderImage->imageResource();
+    if (renderImageResource->hasImage())
+        return;
+    renderImageResource->setCachedImage(m_imageLoader.image());
 
-    if (renderer() && renderer()->isImage() && !m_imageLoader.hasPendingBeforeLoadEvent()) {
-        RenderImage* renderImage = toRenderImage(renderer());
-        RenderImageResource* renderImageResource = renderImage->imageResource();
-        if (renderImageResource->hasImage())
-            return;
-        renderImageResource->setCachedImage(m_imageLoader.image());
-
-        // If we have no image at all because we have no src attribute, set
-        // image height and width for the alt text instead.
-        if (!m_imageLoader.image() && !renderImageResource->cachedImage())
-            renderImage->setImageSizeForAltText();
-    }
+    // If we have no image at all because we have no src attribute, set
+    // image height and width for the alt text instead.
+    if (!m_imageLoader.image() && !renderImageResource->cachedImage())
+        renderImage->setImageSizeForAltText();
 }
 
 Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode* insertionPoint)
 {
-    if (!m_form) {
-        // m_form can be non-null if it was set in constructor.
-        for (ContainerNode* ancestor = parentNode(); ancestor; ancestor = ancestor->parentNode()) {
-            if (isHTMLFormElement(ancestor)) {
-                m_form = toHTMLFormElement(ancestor);
-                m_form->registerImgElement(this);
-                break;
-            }
-        }
+    if (!m_form) { // m_form can be non-null if it was set in constructor.
+        m_form = HTMLFormElement::findClosestFormAncestor(*this);
+        if (m_form)
+            m_form->registerImgElement(this);
     }
 
     // If we have been inserted from a renderer-less document,
@@ -234,9 +239,9 @@ int HTMLImageElement::width(bool ignorePendingStylesheets)
     }
 
     if (ignorePendingStylesheets)
-        document()->updateLayoutIgnorePendingStylesheets();
+        document().updateLayoutIgnorePendingStylesheets();
     else
-        document()->updateLayout();
+        document().updateLayout();
 
     RenderBox* box = renderBox();
     return box ? adjustForAbsoluteZoom(box->contentBoxRect().pixelSnappedWidth(), box) : 0;
@@ -257,9 +262,9 @@ int HTMLImageElement::height(bool ignorePendingStylesheets)
     }
 
     if (ignorePendingStylesheets)
-        document()->updateLayoutIgnorePendingStylesheets();
+        document().updateLayoutIgnorePendingStylesheets();
     else
-        document()->updateLayout();
+        document().updateLayout();
 
     RenderBox* box = renderBox();
     return box ? adjustForAbsoluteZoom(box->contentBoxRect().pixelSnappedHeight(), box) : 0;
@@ -308,7 +313,7 @@ void HTMLImageElement::setHeight(int value)
 
 KURL HTMLImageElement::src() const
 {
-    return document()->completeURL(getAttribute(srcAttr));
+    return document().completeURL(getAttribute(srcAttr));
 }
 
 void HTMLImageElement::setSrc(const String& value)
@@ -354,7 +359,7 @@ void HTMLImageElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) cons
 
     addSubresourceURL(urls, src());
     // FIXME: What about when the usemap attribute begins with "#"?
-    addSubresourceURL(urls, document()->completeURL(getAttribute(usemapAttr)));
+    addSubresourceURL(urls, document().completeURL(getAttribute(usemapAttr)));
 }
 
 void HTMLImageElement::didMoveToNewDocument(Document* oldDocument)
@@ -374,19 +379,7 @@ bool HTMLImageElement::isServerMap() const
     if (usemap.string()[0] == '#')
         return false;
 
-    return document()->completeURL(stripLeadingAndTrailingHTMLSpaces(usemap)).isEmpty();
+    return document().completeURL(stripLeadingAndTrailingHTMLSpaces(usemap)).isEmpty();
 }
-
-#if ENABLE(MICRODATA)
-String HTMLImageElement::itemValueText() const
-{
-    return getURLAttribute(srcAttr);
-}
-
-void HTMLImageElement::setItemValueText(const String& value, ExceptionCode&)
-{
-    setAttribute(srcAttr, value);
-}
-#endif
 
 }

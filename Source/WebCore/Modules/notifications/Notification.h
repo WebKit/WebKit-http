@@ -125,9 +125,6 @@ public:
     virtual const AtomicString& interfaceName() const;
     virtual ScriptExecutionContext* scriptExecutionContext() const { return ActiveDOMObject::scriptExecutionContext(); }
 
-    // ActiveDOMObject interface
-    virtual void contextDestroyed();
-
     void stopLoadingIcon();
 
     // Deprecated. Use functions from NotificationCenter.
@@ -151,11 +148,14 @@ private:
 
     void setBody(const String& body) { m_body = body; }
 
+    // ActiveDOMObject interface
+    virtual void contextDestroyed() OVERRIDE;
+
     // EventTarget interface
-    virtual void refEventTarget() { ref(); }
-    virtual void derefEventTarget() { deref(); }
-    virtual EventTargetData* eventTargetData();
-    virtual EventTargetData* ensureEventTargetData();
+    virtual void refEventTarget() OVERRIDE { ref(); }
+    virtual void derefEventTarget() OVERRIDE { deref(); }
+    virtual EventTargetData* eventTargetData() OVERRIDE;
+    virtual EventTargetData& ensureEventTargetData() OVERRIDE;
 
     void startLoadingIcon();
     void finishLoadingIcon();

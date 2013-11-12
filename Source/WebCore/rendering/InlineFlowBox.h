@@ -40,8 +40,8 @@ typedef HashMap<const InlineTextBox*, pair<Vector<const SimpleFontData*>, GlyphO
 
 class InlineFlowBox : public InlineBox {
 public:
-    InlineFlowBox(RenderObject* obj)
-        : InlineBox(obj)
+    InlineFlowBox(RenderObject& renderer)
+        : InlineBox(renderer)
         , m_firstChild(0)
         , m_lastChild(0)
         , m_prevLineBox(0)
@@ -61,7 +61,7 @@ public:
         // an invisible marker exists.  The side effect of having an invisible marker is that the quirks mode behavior of shrinking lines with no
         // text children must not apply.  This change also means that gaps will exist between image bullet list items.  Even when the list bullet
         // is an image, the line is still considered to be immune from the quirk.
-        m_hasTextChildren = obj->style()->display() == LIST_ITEM;
+        m_hasTextChildren = renderer.style()->display() == LIST_ITEM;
         m_hasTextDescendants = m_hasTextChildren;
     }
 
@@ -80,7 +80,7 @@ public:
     InlineBox* firstChild() const { checkConsistency(); return m_firstChild; }
     InlineBox* lastChild() const { checkConsistency(); return m_lastChild; }
 
-    virtual bool isLeaf() const FINAL { return false; }
+    virtual bool isLeaf() const OVERRIDE FINAL { return false; }
     
     InlineBox* firstLeafChild() const;
     InlineBox* lastLeafChild() const;
@@ -88,7 +88,7 @@ public:
     typedef void (*CustomInlineBoxRangeReverse)(void* userData, Vector<InlineBox*>::iterator first, Vector<InlineBox*>::iterator last);
     void collectLeafBoxesInLogicalOrder(Vector<InlineBox*>&, CustomInlineBoxRangeReverse customReverseImplementation = 0, void* userData = 0) const;
 
-    virtual void setConstructed() FINAL
+    virtual void setConstructed() OVERRIDE FINAL
     {
         InlineBox::setConstructed();
         for (InlineBox* child = firstChild(); child; child = child->nextOnLine())
@@ -96,9 +96,9 @@ public:
     }
 
     void addToLine(InlineBox* child);
-    virtual void deleteLine(RenderArena*) FINAL;
-    virtual void extractLine() FINAL;
-    virtual void attachLine() FINAL;
+    virtual void deleteLine(RenderArena*) OVERRIDE FINAL;
+    virtual void extractLine() OVERRIDE FINAL;
+    virtual void attachLine() OVERRIDE FINAL;
     virtual void adjustPosition(float dx, float dy);
 
     virtual void extractLineBoxFromRenderObject();
@@ -109,8 +109,8 @@ public:
 
     IntRect roundedFrameRect() const;
     
-    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&) FINAL;
-    virtual void paintMask(PaintInfo&, const LayoutPoint&) FINAL;
+    void paintBoxDecorations(PaintInfo&, const LayoutPoint&);
+    void paintMask(PaintInfo&, const LayoutPoint&);
     void paintFillLayers(const PaintInfo&, const Color&, const FillLayer*, const LayoutRect&, CompositeOperator = CompositeSourceOver);
     void paintFillLayer(const PaintInfo&, const Color&, const FillLayer*, const LayoutRect&, CompositeOperator = CompositeSourceOver);
     void paintBoxShadow(const PaintInfo&, RenderStyle*, ShadowStyle, const LayoutRect&);
@@ -140,13 +140,13 @@ public:
     {
         if (!includeLogicalLeftEdge())
             return 0;
-        return isHorizontal() ? renderer()->style(isFirstLineStyle())->borderLeftWidth() : renderer()->style(isFirstLineStyle())->borderTopWidth();
+        return isHorizontal() ? renderer().style(isFirstLineStyle())->borderLeftWidth() : renderer().style(isFirstLineStyle())->borderTopWidth();
     }
     int borderLogicalRight() const
     {
         if (!includeLogicalRightEdge())
             return 0;
-        return isHorizontal() ? renderer()->style(isFirstLineStyle())->borderRightWidth() : renderer()->style(isFirstLineStyle())->borderBottomWidth();
+        return isHorizontal() ? renderer().style(isFirstLineStyle())->borderRightWidth() : renderer().style(isFirstLineStyle())->borderBottomWidth();
     }
     int paddingLogicalLeft() const
     {
@@ -234,7 +234,7 @@ public:
     LayoutRect logicalLayoutOverflowRect(LayoutUnit lineTop, LayoutUnit lineBottom) const
     {
         LayoutRect result = layoutOverflowRect(lineTop, lineBottom);
-        if (!renderer()->isHorizontalWritingMode())
+        if (!renderer().isHorizontalWritingMode())
             result = result.transposedRect();
         return result;
     }
@@ -260,7 +260,7 @@ public:
     LayoutRect logicalVisualOverflowRect(LayoutUnit lineTop, LayoutUnit lineBottom) const
     {
         LayoutRect result = visualOverflowRect(lineTop, lineBottom);
-        if (!renderer()->isHorizontalWritingMode())
+        if (!renderer().isHorizontalWritingMode())
             result = result.transposedRect();
         return result;
     }
@@ -299,7 +299,7 @@ private:
 protected:
     OwnPtr<RenderOverflow> m_overflow;
 
-    virtual bool isInlineFlowBox() const FINAL { return true; }
+    virtual bool isInlineFlowBox() const OVERRIDE FINAL { return true; }
 
     InlineBox* m_firstChild;
     InlineBox* m_lastChild;

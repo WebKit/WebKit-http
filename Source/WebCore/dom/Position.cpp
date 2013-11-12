@@ -440,10 +440,10 @@ bool Position::atEditingBoundary() const
 
 Node* Position::parentEditingBoundary() const
 {
-    if (!m_anchorNode || !m_anchorNode->document())
+    if (!m_anchorNode)
         return 0;
 
-    Node* documentElement = m_anchorNode->document()->documentElement();
+    Node* documentElement = m_anchorNode->document().documentElement();
     if (!documentElement)
         return 0;
 
@@ -690,7 +690,7 @@ Position Position::upstream(EditingBoundaryCrossingRule rule) const
                     otherBox = otherBox->nextLeafChild();
                     if (!otherBox)
                         break;
-                    if (otherBox == lastTextBox || (otherBox->renderer() == textRenderer && static_cast<InlineTextBox*>(otherBox)->start() > textOffset))
+                    if (otherBox == lastTextBox || (&otherBox->renderer() == textRenderer && static_cast<InlineTextBox*>(otherBox)->start() > textOffset))
                         continuesOnNextLine = false;
                 }
 
@@ -699,7 +699,7 @@ Position Position::upstream(EditingBoundaryCrossingRule rule) const
                     otherBox = otherBox->prevLeafChild();
                     if (!otherBox)
                         break;
-                    if (otherBox == lastTextBox || (otherBox->renderer() == textRenderer && static_cast<InlineTextBox*>(otherBox)->start() > textOffset))
+                    if (otherBox == lastTextBox || (&otherBox->renderer() == textRenderer && static_cast<InlineTextBox*>(otherBox)->start() > textOffset))
                         continuesOnNextLine = false;
                 }
 
@@ -814,7 +814,7 @@ Position Position::downstream(EditingBoundaryCrossingRule rule) const
                     otherBox = otherBox->nextLeafChild();
                     if (!otherBox)
                         break;
-                    if (otherBox == lastTextBox || (otherBox->renderer() == textRenderer && static_cast<InlineTextBox*>(otherBox)->start() >= textOffset))
+                    if (otherBox == lastTextBox || (&otherBox->renderer() == textRenderer && static_cast<InlineTextBox*>(otherBox)->start() >= textOffset))
                         continuesOnNextLine = false;
                 }
 
@@ -823,7 +823,7 @@ Position Position::downstream(EditingBoundaryCrossingRule rule) const
                     otherBox = otherBox->prevLeafChild();
                     if (!otherBox)
                         break;
-                    if (otherBox == lastTextBox || (otherBox->renderer() == textRenderer && static_cast<InlineTextBox*>(otherBox)->start() >= textOffset))
+                    if (otherBox == lastTextBox || (&otherBox->renderer() == textRenderer && static_cast<InlineTextBox*>(otherBox)->start() >= textOffset))
                         continuesOnNextLine = false;
                 }
 
@@ -925,7 +925,7 @@ bool Position::isCandidate() const
     if (m_anchorNode->hasTagName(htmlTag))
         return false;
         
-    if (renderer->isBlockFlow()) {
+    if (renderer->isBlockFlowFlexBoxOrGrid()) {
         if (toRenderBlock(renderer)->logicalHeight() || m_anchorNode->hasTagName(bodyTag)) {
             if (!Position::hasRenderedNonAnonymousDescendantsWithHeight(renderer))
                 return atFirstEditingPositionForNode() && !Position::nodeIsUserSelectNone(deprecatedNode());
@@ -1185,7 +1185,7 @@ void Position::getInlineBoxAndOffset(EAffinity affinity, TextDirection primaryDi
 
     if (!renderer->isText()) {
         inlineBox = 0;
-        if (canHaveChildrenForEditing(deprecatedNode()) && renderer->isBlockFlow() && hasRenderedNonAnonymousDescendantsWithHeight(renderer)) {
+        if (canHaveChildrenForEditing(deprecatedNode()) && renderer->isBlockFlowFlexBoxOrGrid() && hasRenderedNonAnonymousDescendantsWithHeight(renderer)) {
             // Try a visually equivalent position with possibly opposite editability. This helps in case |this| is in
             // an editable block but surrounded by non-editable positions. It acts to negate the logic at the beginning
             // of RenderObject::createVisiblePosition().
@@ -1333,7 +1333,7 @@ TextDirection Position::primaryDirection() const
 {
     TextDirection primaryDirection = LTR;
     for (const RenderObject* r = m_anchorNode->renderer(); r; r = r->parent()) {
-        if (r->isBlockFlow()) {
+        if (r->isBlockFlowFlexBoxOrGrid()) {
             primaryDirection = r->style()->direction();
             break;
         }

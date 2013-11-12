@@ -65,7 +65,7 @@ inline Recompiler::~Recompiler()
 
 inline void Recompiler::operator()(JSCell* cell)
 {
-    if (!cell->inherits(&JSFunction::s_info))
+    if (!cell->inherits(JSFunction::info()))
         return;
 
     JSFunction* function = jsCast<JSFunction*>(cell);
@@ -118,6 +118,8 @@ void Debugger::recompileAllJSFunctions(VM* vm)
     ASSERT(!vm->dynamicGlobalObject);
     if (vm->dynamicGlobalObject)
         return;
+    
+    vm->prepareToDiscardCode();
 
     Recompiler recompiler(this);
     vm->heap.objectSpace().forEachLiveCell(recompiler);
@@ -128,17 +130,17 @@ JSValue evaluateInGlobalCallFrame(const String& script, JSValue& exception, JSGl
     CallFrame* globalCallFrame = globalObject->globalExec();
     VM& vm = globalObject->vm();
 
-    EvalExecutable* eval = EvalExecutable::create(globalCallFrame, vm.codeCache(), makeSource(script), false);
+    EvalExecutable* eval = EvalExecutable::create(globalCallFrame, makeSource(script), false);
     if (!eval) {
-        exception = vm.exception;
-        vm.exception = JSValue();
+        exception = vm.exception();
+        vm.clearException();
         return exception;
     }
 
     JSValue result = vm.interpreter->execute(eval, globalCallFrame, globalObject, globalCallFrame->scope());
-    if (vm.exception) {
-        exception = vm.exception;
-        vm.exception = JSValue();
+    if (vm.exception()) {
+        exception = vm.exception();
+        vm.clearException();
     }
     ASSERT(result);
     return result;

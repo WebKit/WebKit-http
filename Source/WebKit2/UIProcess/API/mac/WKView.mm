@@ -468,9 +468,6 @@ struct WKViewInterpretKeyEventsParameters {
     dispatch_async(dispatch_get_main_queue(), ^{
         _data->_didScheduleWindowAndViewFrameUpdate = NO;
 
-        if (!_data->_needsViewFrameInWindowCoordinates && !WebCore::AXObjectCache::accessibilityEnabled())
-            return;
-
         NSRect viewFrameInWindowCoordinates = NSZeroRect;
         NSPoint accessibilityPosition = NSZeroPoint;
 
@@ -2757,16 +2754,16 @@ static void drawPageBackground(CGContextRef context, WebPageProxy* page, const I
     size.scale(1.0 / _data->_page->deviceScaleFactor());
     [image setSize:size];
     
-    // The call to super could release this WKView.
+    // The call below could release this WKView.
     RetainPtr<WKView> protector(self);
     
-    [super dragImage:image
-                  at:clientPoint
-              offset:NSZeroSize
-               event:(linkDrag) ? [NSApp currentEvent] :_data->_mouseDownEvent
-          pasteboard:[NSPasteboard pasteboardWithName:NSDragPboard]
-              source:self
-           slideBack:YES];
+    [self dragImage:image
+                 at:clientPoint
+             offset:NSZeroSize
+              event:(linkDrag) ? [NSApp currentEvent] :_data->_mouseDownEvent
+         pasteboard:[NSPasteboard pasteboardWithName:NSDragPboard]
+             source:self
+          slideBack:YES];
 }
 
 static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension)
@@ -2940,10 +2937,9 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (WKFullScreenWindowController*)fullScreenWindowController
 {
-    if (!_data->_fullScreenWindowController) {
-        _data->_fullScreenWindowController = adoptNS([[WKFullScreenWindowController alloc] initWithWindow:[self createFullScreenWindow]]);
-        [_data->_fullScreenWindowController.get() setWebView:self];
-    }
+    if (!_data->_fullScreenWindowController)
+        _data->_fullScreenWindowController = adoptNS([[WKFullScreenWindowController alloc] initWithWindow:[self createFullScreenWindow] webView:self]);
+
     return _data->_fullScreenWindowController.get();
 }
 
@@ -3229,25 +3225,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (CGFloat)minimumWidthForAutoLayout
 {
-    static BOOL loggedDeprecationWarning = NO;
-
-    if (!loggedDeprecationWarning) {
-        NSLog(@"Please use minimumSizeForAutoLayout instead of minimumWidthForAutoLayout.");
-        loggedDeprecationWarning = YES;
-    }
-
     return self.minimumSizeForAutoLayout.width;
 }
 
 - (void)setMinimumWidthForAutoLayout:(CGFloat)minimumLayoutWidth
 {
-    static BOOL loggedDeprecationWarning = NO;
-
-    if (!loggedDeprecationWarning) {
-        NSLog(@"Please use setMinimumSizeForAutoLayout: instead of setMinimumWidthForAutoLayout:");
-        loggedDeprecationWarning = YES;
-    }
-
     self.minimumSizeForAutoLayout = NSMakeSize(minimumLayoutWidth, self.minimumSizeForAutoLayout.height);
 }
 
@@ -3264,6 +3246,16 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_page->setMainFrameIsScrollable(!expandsToFit);
 
     [self setShouldClipToVisibleRect:expandsToFit];
+}
+
+- (BOOL)shouldExpandToViewHeightForAutoLayout
+{
+    return _data->_page->autoSizingShouldExpandToViewHeight();
+}
+
+- (void)setShouldExpandToViewHeightForAutoLayout:(BOOL)shouldExpand
+{
+    return _data->_page->setAutoSizingShouldExpandToViewHeight(shouldExpand);
 }
 
 - (BOOL)shouldClipToVisibleRect
@@ -3320,7 +3312,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_shouldDeferViewInWindowChanges = NO;
 
     if (_data->_viewInWindowChangeWasDeferred) {
-        _data->_page->viewStateDidChange(WebPageProxy::ViewIsInWindow);
+        _data->_page->viewInWindowStateDidChange();
         _data->_viewInWindowChangeWasDeferred = NO;
     }
 }
@@ -3335,7 +3327,12 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     PageClient* pageClient = _data->_pageClient.get();
     bool hasPendingViewInWindowChange = _data->_viewInWindowChangeWasDeferred && _data->_page->isInWindow() != pageClient->isViewInWindow();
 
-    [self endDeferringViewInWindowChanges];
+    _data->_shouldDeferViewInWindowChanges = NO;
+
+    if (_data->_viewInWindowChangeWasDeferred) {
+        _data->_page->viewInWindowStateDidChange(hasPendingViewInWindowChange ? WebPageProxy::WantsReplyOrNot::DoesWantReply : WebPageProxy::WantsReplyOrNot::DoesNotWantReply);
+        _data->_viewInWindowChangeWasDeferred = NO;
+    }
 
     if (hasPendingViewInWindowChange)
         _data->_page->waitForDidUpdateInWindowState();

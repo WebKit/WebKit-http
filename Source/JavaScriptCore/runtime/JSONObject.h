@@ -45,10 +45,10 @@ namespace JSC {
         
         static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
         {
-            return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info);
+            return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
         }
         
-        static const ClassInfo s_info;
+        DECLARE_INFO;
 
     protected:
         void finishCreation(JSGlobalObject*);
@@ -56,11 +56,11 @@ namespace JSC {
 
     private:
         JSONObject(JSGlobalObject*, Structure*);
-        static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
-        static bool getOwnPropertyDescriptor(JSObject*, ExecState*, PropertyName, PropertyDescriptor&);
+        static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
 
     };
 
+    JS_EXPORT_PRIVATE JSValue JSONParse(ExecState*, const String&);
     String JSONStringify(ExecState*, JSValue, unsigned indent);
 
 } // namespace JSC

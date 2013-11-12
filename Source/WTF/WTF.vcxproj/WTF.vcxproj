@@ -51,10 +51,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\wtf\ArrayBuffer.cpp" />
-    <ClCompile Include="..\wtf\ArrayBufferView.cpp" />
     <ClCompile Include="..\wtf\Assertions.cpp" />
     <ClCompile Include="..\wtf\BitVector.cpp" />
+    <ClCompile Include="..\wtf\CompilationThread.cpp" />
+    <ClCompile Include="..\wtf\Compression.cpp" />
     <ClCompile Include="..\wtf\CryptographicallyRandomNumber.cpp" />
     <ClCompile Include="..\wtf\CurrentTime.cpp" />
     <ClCompile Include="..\wtf\DataLog.cpp" />
@@ -91,6 +91,7 @@
     <ClCompile Include="..\wtf\RandomNumber.cpp" />
     <ClCompile Include="..\wtf\RefCountedLeakCounter.cpp" />
     <ClCompile Include="..\wtf\SHA1.cpp" />
+    <ClCompile Include="..\wtf\SixCharacterHash.cpp" />
     <ClCompile Include="..\wtf\SizeLimits.cpp" />
     <ClCompile Include="..\wtf\StackBounds.cpp" />
     <ClCompile Include="..\wtf\StringPrintStream.cpp" />
@@ -117,10 +118,9 @@
     <ClCompile Include="..\wtf\SchedulePairCF.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\wtf\CompilationThread.h" />
     <ClInclude Include="..\WTF\config.h" />
     <ClInclude Include="..\wtf\Alignment.h" />
-    <ClInclude Include="..\wtf\ArrayBuffer.h" />
-    <ClInclude Include="..\wtf\ArrayBufferView.h" />
     <ClInclude Include="..\wtf\ASCIICType.h" />
     <ClInclude Include="..\wtf\Assertions.h" />
     <ClInclude Include="..\wtf\Atomics.h" />
@@ -136,12 +136,14 @@
     <ClInclude Include="..\wtf\CheckedArithmetic.h" />
     <ClInclude Include="..\wtf\CheckedBoolean.h" />
     <ClInclude Include="..\wtf\Compiler.h" />
+    <ClInclude Include="..\wtf\Compression.h" />
     <ClInclude Include="..\wtf\CryptographicallyRandomNumber.h" />
     <ClInclude Include="..\wtf\CurrentTime.h" />
     <ClInclude Include="..\wtf\DataLog.h" />
     <ClInclude Include="..\wtf\DateMath.h" />
     <ClInclude Include="..\wtf\DecimalNumber.h" />
     <ClInclude Include="..\wtf\Decoder.h" />
+    <ClInclude Include="..\wtf\DeferrableRefCounted.h" />
     <ClInclude Include="..\wtf\Deque.h" />
     <ClInclude Include="..\wtf\DisallowCType.h" />
     <ClInclude Include="..\wtf\DoublyLinkedList.h" />
@@ -159,14 +161,12 @@
     <ClInclude Include="..\wtf\DynamicAnnotations.h" />
     <ClInclude Include="..\wtf\Encoder.h" />
     <ClInclude Include="..\wtf\EnumClass.h" />
-    <ClInclude Include="..\wtf\FastAllocBase.h" />
     <ClInclude Include="..\wtf\FastBitVector.h" />
     <ClInclude Include="..\wtf\FastMalloc.h" />
     <ClInclude Include="..\wtf\FeatureDefines.h" />
     <ClInclude Include="..\wtf\FilePrintStream.h" />
     <ClInclude Include="..\wtf\FixedArray.h" />
-    <ClInclude Include="..\wtf\Float32Array.h" />
-    <ClInclude Include="..\wtf\Float64Array.h" />
+    <ClInclude Include="..\wtf\FlipBytes.h" />
     <ClInclude Include="..\wtf\Forward.h" />
     <ClInclude Include="..\wtf\FunctionDispatcher.h" />
     <ClInclude Include="..\wtf\Functional.h" />
@@ -180,12 +180,10 @@
     <ClInclude Include="..\wtf\HashTable.h" />
     <ClInclude Include="..\wtf\HashTraits.h" />
     <ClInclude Include="..\wtf\HexNumber.h" />
-    <ClInclude Include="..\wtf\Int16Array.h" />
-    <ClInclude Include="..\wtf\Int32Array.h" />
-    <ClInclude Include="..\wtf\Int8Array.h" />
     <ClInclude Include="..\wtf\ListHashSet.h" />
     <ClInclude Include="..\wtf\Locker.h" />
     <ClInclude Include="..\wtf\MainThread.h" />
+    <ClInclude Include="..\wtf\MallocPtr.h" />
     <ClInclude Include="..\wtf\MathExtras.h" />
     <ClInclude Include="..\wtf\MD5.h" />
     <ClInclude Include="..\wtf\MediaTime.h" />
@@ -211,7 +209,6 @@
     <ClInclude Include="..\wtf\ParallelJobsGeneric.h" />
     <ClInclude Include="..\wtf\ParallelJobsLibdispatch.h" />
     <ClInclude Include="..\wtf\ParallelJobsOpenMP.h" />
-    <ClInclude Include="..\wtf\PassOwnArrayPtr.h" />
     <ClInclude Include="..\wtf\PassOwnPtr.h" />
     <ClInclude Include="..\wtf\PassRefPtr.h" />
     <ClInclude Include="..\wtf\PassTraits.h" />
@@ -233,6 +230,7 @@
     <ClInclude Include="..\wtf\SentinelLinkedList.h" />
     <ClInclude Include="..\wtf\SHA1.h" />
     <ClInclude Include="..\wtf\SinglyLinkedList.h" />
+    <ClInclude Include="..\wtf\SixCharacterHash.h" />
     <ClInclude Include="..\wtf\StackBounds.h" />
     <ClInclude Include="..\wtf\StaticConstructors.h" />
     <ClInclude Include="..\wtf\StdLibExtras.h" />
@@ -266,9 +264,6 @@
     <ClInclude Include="..\wtf\threadspecific.h" />
     <ClInclude Include="..\wtf\threads\BinarySemaphore.h" />
     <ClInclude Include="..\wtf\TypeTraits.h" />
-    <ClInclude Include="..\wtf\Uint16Array.h" />
-    <ClInclude Include="..\wtf\Uint32Array.h" />
-    <ClInclude Include="..\wtf\Uint8Array.h" />
     <ClInclude Include="..\wtf\unicode\CharacterNames.h" />
     <ClInclude Include="..\wtf\unicode\Collator.h" />
     <ClInclude Include="..\wtf\unicode\icu\UnicodeIcu.h" />

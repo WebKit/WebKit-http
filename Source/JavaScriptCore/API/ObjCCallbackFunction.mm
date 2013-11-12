@@ -28,6 +28,7 @@
 
 #if JSC_OBJC_API_ENABLED
 
+#import "APICallbackFunction.h"
 #import "APICast.h"
 #import "APIShims.h"
 #import "Error.h"
@@ -406,8 +407,6 @@ public:
 
     ~ObjCCallbackFunctionImpl()
     {
-        if (m_type != CallbackInstanceMethod)
-            [[m_invocation.get() target] release];
         [m_instanceClass release];
     }
 
@@ -469,7 +468,8 @@ static JSValueRef objCCallbackFunctionCallAsFunction(JSContextRef callerContext,
 const JSC::ClassInfo ObjCCallbackFunction::s_info = { "CallbackFunction", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(ObjCCallbackFunction) };
 
 ObjCCallbackFunction::ObjCCallbackFunction(JSC::JSGlobalObject* globalObject, JSObjectCallAsFunctionCallback callback, PassOwnPtr<ObjCCallbackFunctionImpl> impl)
-    : Base(globalObject, globalObject->objcCallbackFunctionStructure(), callback)
+    : Base(globalObject, globalObject->objcCallbackFunctionStructure())
+    , m_callback(callback)
     , m_impl(impl)
 {
 }
@@ -484,6 +484,12 @@ ObjCCallbackFunction* ObjCCallbackFunction::create(JSC::ExecState* exec, JSC::JS
 void ObjCCallbackFunction::destroy(JSCell* cell)
 {
     static_cast<ObjCCallbackFunction*>(cell)->ObjCCallbackFunction::~ObjCCallbackFunction();
+}
+
+CallType ObjCCallbackFunction::getCallData(JSCell*, CallData& callData)
+{
+    callData.native.function = APICallbackFunction::call<ObjCCallbackFunction>;
+    return CallTypeHost;
 }
 
 JSValueRef ObjCCallbackFunctionImpl::call(JSContext *context, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
@@ -601,13 +607,16 @@ JSObjectRef objCCallbackFunctionForBlock(JSContext *context, id target)
         return 0;
     const char* signature = _Block_signature(target);
     NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:[NSMethodSignature signatureWithObjCTypes:signature]];
-    [invocation setTarget:[target copy]];
+    [invocation retainArguments];
+    id targetCopy = [target copy];
+    [invocation setTarget:targetCopy];
+    [targetCopy release];
     return objCCallbackFunctionForInvocation(context, invocation, CallbackBlock, nil, signature);
 }
 
 id tryUnwrapBlock(JSObjectRef object)
 {
-    if (!toJS(object)->inherits(&JSC::ObjCCallbackFunction::s_info))
+    if (!toJS(object)->inherits(JSC::ObjCCallbackFunction::info()))
         return nil;
     return static_cast<JSC::ObjCCallbackFunction*>(toJS(object))->impl()->wrappedBlock();
 }

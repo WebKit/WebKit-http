@@ -132,8 +132,8 @@ public:
     String filenameExtension() const;
 
     bool isSizeAvailable();
-    IntSize size(RespectImageOrientationEnum = DoNotRespectImageOrientation) const;
-    IntSize frameSizeAtIndex(size_t, RespectImageOrientationEnum = DoNotRespectImageOrientation) const;
+    IntSize size(ImageOrientationDescription = ImageOrientationDescription()) const;
+    IntSize frameSizeAtIndex(size_t, ImageOrientationDescription = ImageOrientationDescription()) const;
 
     bool getHotSpot(IntPoint&) const;
 
@@ -147,9 +147,9 @@ public:
     // see comments on clear() above.
     PassNativeImagePtr createFrameAtIndex(size_t);
 
-    float frameDurationAtIndex(size_t) const;
-    bool frameHasAlphaAtIndex(size_t) const; // Whether or not the frame actually used any alpha.
-    bool frameIsCompleteAtIndex(size_t) const; // Whether or not the frame is completely decoded.
+    float frameDurationAtIndex(size_t);
+    bool frameHasAlphaAtIndex(size_t); // Whether or not the frame actually used any alpha.
+    bool frameIsCompleteAtIndex(size_t); // Whether or not the frame is completely decoded.
     ImageOrientation orientationAtIndex(size_t) const; // EXIF image orientation
 
     // Return the number of bytes in the decoded frame. If the frame is not yet

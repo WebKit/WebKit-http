@@ -1,3 +1,911 @@
+2013-09-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Range::ownerDocument should return Document&
+        https://bugs.webkit.org/show_bug.cgi?id=120908
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebPDFView.mm:
+        (isFrameInRange):
+
+2013-09-05  Andreas Kling  <akling@apple.com>
+
+        ScrollView::children() should return a reference.
+        <https://webkit.org/b/120795>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebView.mm:
+        (-[WebView _addScrollerDashboardRegionsForFrameView:dashboardRegions:]):
+
+2013-09-04  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/120707> Make WebKit's localizable strings mechanism usable under ARC
+
+        WebKit's localizable strings mechanism is also used outside of WebKit so it needs to work
+        both with and without ARC.
+
+        Reviewed by Anders Carlsson.
+
+        * Misc/WebLocalizableStrings.h: Mark the bundle member as unretained. This matches how the
+        member is used within WebLocalizableStrings.mm.
+
+2013-09-02  Darin Adler  <darin@apple.com>
+
+        [Mac] No need for HardAutorelease, which is same as CFBridgingRelease
+        https://bugs.webkit.org/show_bug.cgi?id=120569
+
+        Reviewed by Andy Estes.
+
+        * Misc/WebNSFileManagerExtras.mm:
+        (-[NSFileManager _webkit_startupVolumeName]): Removed some unneeded locals.
+        Got rid of the pointless ref/leakRef/HardAutorelease dance, and replaced it
+        with a [[x copy] autorelease].
+
+        * Misc/WebNSURLExtras.mm:
+        (-[NSURL _web_URLWithLowercasedScheme]): Use CFBridgingRelease, and got rid
+        of unneeded type casts.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (+[WebBasePluginPackage preferredLocalizationName]): Use CFBridgingRelease.
+        * WebView/WebPDFRepresentation.mm:
+        (-[WebPDFRepresentation convertPostScriptDataSourceToPDF:]): Ditto.
+
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]): Use CFBridgingRelease and got rid of unneeded
+        type cast.
+
+2013-08-30  Antti Koivisto  <antti@apple.com>
+
+        Remove code behind ENABLE(DIALOG_ELEMENT)
+        https://bugs.webkit.org/show_bug.cgi?id=120467
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-08-29  Sam Weinig  <sam@webkit.org>
+
+        Add ENABLE gaurds for Promises
+        https://bugs.webkit.org/show_bug.cgi?id=120488
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-08-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Download Web Archive of Inspected Page
+        https://bugs.webkit.org/show_bug.cgi?id=119774
+
+        Reviewed by Timothy Hatcher.
+
+        Update to support InspectorFrontendHost.save's new base64Encoded
+        parameter. It means the incoming content is binary data, not a string.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::save):
+
+2013-08-28  Chris Curtis  <chris_curtis@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=119548
+        Refactoring Exception throws.
+
+        Reviewed by Geoffrey Garen.
+        
+        Moved setting an exception into the vm, These functions changed to use the new functionality.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::moveGlobalExceptionToExecState):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::invokeMethod):
+
+2013-08-27  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * Plugins/Hosted/ProxyInstance.h:
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::methodNamed):
+        (WebKit::ProxyInstance::fieldNamed):
+
+2013-08-23  Andy Estes  <aestes@apple.com>
+
+        Fix issues found by the Clang Static Analyzer
+        https://bugs.webkit.org/show_bug.cgi?id=120230
+
+        Reviewed by Darin Adler.
+
+        * Misc/WebNSFileManagerExtras.mm:
+        (-[NSFileManager _webkit_startupVolumeName]): Used HardAutorelease()
+        instead of WebCFAutorelease().
+        * Misc/WebNSObjectExtras.h: Removed definition of WebCFAutorelease().
+        * Misc/WebNSURLExtras.mm:
+        (-[NSURL _web_URLWithLowercasedScheme]): Used HardAutorelease()
+        instead of WebCFAutorelease().
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView createPluginLayer]): Stop leaking
+        CGColors (CALayer retains its backgroundColor property despite the
+        property attributes claiming otherwise).
+        * Plugins/WebBasePluginPackage.mm:
+        (+[WebBasePluginPackage preferredLocalizationName]): Used
+        HardAutorelease() instead of WebCFAutorelease().
+        * WebView/WebDeviceOrientationProviderMock.mm:
+        (-[WebDeviceOrientationProviderMockInternal lastOrientation]): Stop
+        leaking WebDeviceOrientations.
+        * WebView/WebPDFRepresentation.mm:
+        (-[WebPDFRepresentation convertPostScriptDataSourceToPDF:]): Used
+        HardAutorelease() instead of WebCFAutorelease().
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]): Ditto.
+        (-[WebView _removeObjectForIdentifier:]): Ditto.
+
+2013-08-26  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] can-read-in-dragstart-event.html and can-read-in-copy-and-cut-events.html fail
+        https://bugs.webkit.org/show_bug.cgi?id=113094
+
+        Reviewed by Darin Adler.
+
+        Return new pasteboard change count from all functions that change it.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::copy):
+        (WebPlatformStrategies::changeCount):
+        (WebPlatformStrategies::addTypes):
+        (WebPlatformStrategies::setTypes):
+        (WebPlatformStrategies::setBufferForType):
+        (WebPlatformStrategies::setPathnamesForType):
+        (WebPlatformStrategies::setStringForType):
+
+2013-08-26  Andreas Kling  <akling@apple.com>
+
+        Unreviewed build fix.
+
+        * WebView/WebFrame.mm:
+        (+[WebFrame _createMainFrameWithPage:frameName:frameView:]):
+
+2013-08-26  Andreas Kling  <akling@apple.com>
+
+        WebCore: Let Page create the main Frame.
+        <https://webkit.org/b/119964>
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        (WebFrameLoaderClient::setWebFrame):
+
+            Make it possible to construct a WebFrameLoaderClient with a null WebFrame*.
+            A WebFrame* is later hooked up with a call to setWebFrame().
+
+        * WebView/WebFrame.mm:
+        (+[WebFrame _createMainFrameWithPage:frameName:frameView:]):
+
+            Customized this method to wrap the Page::mainFrame() instead of creating a
+            new Frame.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+            Add a WebFrameLoaderClient to the PageClients passed to Page().
+
+2013-08-25  Darin Adler  <darin@apple.com>
+
+        Frame should not have a documentTypeString member function
+        https://bugs.webkit.org/show_bug.cgi?id=120262
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebFrame.mm: Removed _stringWithDocumentTypeStringAndMarkupString:
+        internal method, which was not used anywhere in WebKit. Internal methods are
+        only for use within WebKit, as opposed to public and private methods that can
+        be used outside.
+        * WebView/WebFrameInternal.h: Ditto.
+
+2013-08-24  Darin Adler  <darin@apple.com>
+
+        Frame::tree should return a reference instead of a pointer
+        https://bugs.webkit.org/show_bug.cgi?id=120259
+
+        Reviewed by Andreas Kling.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::performRequest):
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView resolvedURLStringForURL:target:]):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView loadPluginRequest:]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (applyAppleDictionaryApplicationQuirkNonInlinePart):
+        (WebFrameLoaderClient::prepareForDataSourceReplacement):
+        (WebFrameLoaderClient::createFrame):
+        * WebView/WebFrame.mm:
+        (+[WebFrame _createFrameWithPage:frameName:frameView:ownerElement:]):
+        (-[WebFrame _updateBackgroundAndUpdatesWhileOffscreen]):
+        (-[WebFrame _unmarkAllBadGrammar]):
+        (-[WebFrame _unmarkAllMisspellings]):
+        (-[WebFrame _atMostOneFrameHasSelection]):
+        (-[WebFrame _findFrameWithSelection]):
+        (-[WebFrame _drawRect:contentsOnly:]):
+        (-[WebFrame _isDescendantOfFrame:]):
+        (-[WebFrame _recursive_resumeNullEventsForAllNetscapePlugins]):
+        (-[WebFrame _recursive_pauseNullEventsForAllNetscapePlugins]):
+        (-[WebFrame name]):
+        (-[WebFrame findFrameNamed:]):
+        (-[WebFrame parentFrame]):
+        (-[WebFrame childFrames]):
+        * WebView/WebView.mm:
+        (-[WebView _attachScriptDebuggerToAllFrames]):
+        (-[WebView _detachScriptDebuggerFromAllFrames]):
+        (-[WebView _clearMainFrameName]):
+        (-[WebView _isUsingAcceleratedCompositing]):
+        (-[WebView _isSoftwareRenderable]):
+        (-[WebView setHostWindow:]):
+        (incrementFrame):
+        Use tree(). instead of tree()->.
+
+2013-08-23  Beth Dakin  <bdakin@apple.com>
+
+        REGRESSION (r132545): Some PDFs generated by WebKit are blank when viewed in 
+        Adobe Reader
+        https://bugs.webkit.org/show_bug.cgi?id=120240
+        -and corresponding-
+        <rdar://problem/14634453>
+
+        Reviewed by Anders Carlsson.
+
+        Hook up new WebSystemInterface API to find out if the current context is the PDF 
+        context.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2013-08-20  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/120029> Document::markers() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        Document::m_markers is never NULL so return a reference from Document::markers(). Also mark
+        m_markers as const and initialize it in member initialization.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _unmarkAllBadGrammar]):
+        (-[WebFrame _unmarkAllMisspellings]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView unmarkAllTextMatches]):
+        (-[WebHTMLView rectsForTextMatches]):
+
+2013-08-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        <https://webkit.org/b/120049> Delete code for Snow Leopard
+
+        Reviewed by Benjamin Poulain.
+
+        * DefaultDelegates/WebDefaultContextMenuDelegate.mm:
+        (-[WebDefaultUIDelegate menuItemWithTag:target:representedObject:]):
+        (-[WebDefaultUIDelegate webView:contextMenuItemsForElement:defaultMenuItems:]):
+        * Misc/WebNSControlExtras.m:
+        (-[NSControl sizeToFitAndAdjustWindowHeight]):
+        * Misc/WebNSFileManagerExtras.mm:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::shouldEraseMarkersAfterChangeSelection):
+        (WebEditorClient::getGuessesForWord):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidLayout):
+        (WebFrameLoaderClient::provisionalLoadStarted):
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        * WebKitPrefix.h:
+        * WebView/WebDynamicScrollBarsView.mm:
+        (-[WebDynamicScrollBarsView scrollWheel:]):
+        * WebView/WebFullScreenController.mm:
+        (convertRectToScreen):
+        (-[WebFullScreenController finishedEnterFullScreenAnimation:]):
+        (-[WebFullScreenController exitFullScreen]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _pasteWithPasteboard:allowPlainText:]):
+        (-[WebHTMLView removeMouseMovedObserver]):
+        (-[WebHTMLView windowDidBecomeKey:]):
+        (-[WebHTMLView windowDidResignKey:]):
+        * WebView/WebView.mm:
+        (-[WebView _deviceScaleFactor]):
+
+2013-08-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        <https://webkit.org/b/120051> Remove the Mail thread workaround
+
+        Reviewed by Sam Weinig.
+
+        Remove the workaround for a very old version of Mail added in r39455.
+
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithMainResource:subresources:subframeArchives:]):
+        (-[WebArchive mainResource]):
+        (-[WebArchive subresources]):
+        (-[WebArchive subframeArchives]):
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView initWithFrame:]):
+        * WebView/WebResource.mm:
+        (-[WebResource data]):
+        (-[WebResource URL]):
+        (-[WebResource MIMEType]):
+        (-[WebResource textEncodingName]):
+        (-[WebResource frameName]):
+        (-[WebResource _ignoreWhenUnarchiving]):
+        (-[WebResource _initWithData:URL:MIMEType:textEncodingName:frameName:response:copyData:]):
+        (-[WebResource _suggestedFilename]):
+        (-[WebResource _response]):
+        (-[WebResource _stringValue]):
+
+2013-08-19  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/119918> Frame::selection() should return a reference
+
+        Reviewed by Darin Adler.
+
+        m_selection is never NULL so return a reference from Frame::selection(). Also removed some
+        unnecessary null checks and assert diff ts exposed as a result.
+
+        * Plugins/WebPluginController.mm:
+        * WebView/WebFrame.mm:
+        (-[WebFrame _hasSelection]):
+        (-[WebFrame _rangeByAlteringCurrentSelection:FrameSelection::direction:granularity:]):
+        (-[WebFrame _selectionGranularity]):
+        (-[WebFrame _convertToNSRange:]):
+        (-[WebFrame _convertToDOMRange:]):
+        (-[WebFrame _insertParagraphSeparatorInQuotedContent]):
+        (-[WebFrame _typingStyle]):
+        (-[WebFrame _selectedNSRange]):
+        (-[WebFrame _selectNSRange:]):
+        (-[WebFrame _replaceSelectionWithFragment:selectReplacement:smartReplace:matchStyle:]):
+        (-[WebFrame _replaceSelectionWithText:selectReplacement:smartReplace:]):
+        * WebView/WebHTMLRepresentation.mm:
+        (-[WebHTMLRepresentation currentForm]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView readSelectionFromPasteboard:]):
+        (-[WebHTMLView _selectedRange]):
+        (-[WebHTMLView _hasSelection]):
+        (-[WebHTMLView _hasSelectionOrInsertionPoint]):
+        (-[WebHTMLView _hasInsertionPoint]):
+        (-[WebHTMLView _isEditable]):
+        (-[WebHTMLView jumpToSelection:]):
+        (-[WebHTMLView validateUserInterfaceItemWithoutDelegate:]):
+        (-[WebHTMLView maintainsInactiveSelection]):
+        (isTextInput):
+        (isInPasswordField):
+        (-[WebHTMLView centerSelectionInVisibleArea:]):
+        (-[WebHTMLView _canSmartCopyOrDelete]):
+        (-[WebHTMLView _lookUpInDictionaryFromMenu:]):
+        (-[WebHTMLView _updateSelectionForInputManager]):
+        (-[WebHTMLView selectionRect]):
+        (-[WebHTMLView selectionTextRects]):
+        (-[WebHTMLView selectionImageRect]):
+        (-[WebHTMLView selectAll]):
+        (-[WebHTMLView deselectAll]):
+        (-[WebHTMLView selectedAttributedString]):
+        * WebView/WebTextCompletionController.mm:
+        (-[WebTextCompletionController doCompletion]):
+        * WebView/WebView.mm:
+        (-[WebView setSelectedDOMRange:affinity:]):
+        (-[WebView selectedDOMRange]):
+        (-[WebView selectionAffinity]):
+        (-[WebView setEditable:]):
+        (-[WebView _selectionIsCaret]):
+        (-[WebView _selectionIsAll]):
+
+2013-08-17  Darin Adler  <darin@apple.com>
+
+        <https://webkit.org/b/119941> Make Page::dragController return a reference
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView _setDocumentView:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView draggingSourceOperationMaskForLocal:]):
+        (-[WebHTMLView namesOfPromisedFilesDroppedAtDestination:]):
+        * WebView/WebView.mm:
+        (-[WebView _setInitiatedDrag:]):
+        (-[WebView draggingEntered:]):
+        (-[WebView draggingUpdated:]):
+        (-[WebView draggingExited:]):
+        (-[WebView performDragOperation:]):
+        (-[WebView moveDragCaretToPoint:]):
+        (-[WebView removeDragCaret]):
+        Updated call sites.
+
+2013-08-16  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/119852> Frame::scriptController() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        m_script is never NULL so we can just return a reference. Also remove some pointless null
+        checks as a result of doing this.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::cleanup):
+        (WebKit::NetscapePluginInstanceProxy::getWindowNPObject):
+        (WebKit::NetscapePluginInstanceProxy::getPluginElementNPObject):
+        (WebKit::NetscapePluginInstanceProxy::evaluate):
+        (WebKit::NetscapePluginInstanceProxy::invoke):
+        (WebKit::NetscapePluginInstanceProxy::invokeDefault):
+        (WebKit::NetscapePluginInstanceProxy::construct):
+        (WebKit::NetscapePluginInstanceProxy::getProperty):
+        (WebKit::NetscapePluginInstanceProxy::setProperty):
+        (WebKit::NetscapePluginInstanceProxy::removeProperty):
+        (WebKit::NetscapePluginInstanceProxy::hasProperty):
+        (WebKit::NetscapePluginInstanceProxy::hasMethod):
+        (WebKit::NetscapePluginInstanceProxy::enumerate):
+        (WebKit::NetscapePluginInstanceProxy::demarshalValueFromArray):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView getVariable:value:]):
+        (-[WebNetscapePluginView _destroyPlugin]):
+        * Plugins/WebPluginController.mm:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::save):
+        (WebInspectorFrontendClient::append):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _attachScriptDebugger]):
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:forceUserGesture:]):
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:withGlobalObject:inScriptWorld:]):
+        (-[WebFrame _globalContextForScriptWorld:]):
+        (-[WebFrame jsWrapperForNode:inScriptWorld:]):
+        (-[WebFrame windowObject]):
+        (-[WebFrame globalContext]):
+        (-[WebFrame javaScriptContext]):
+        * WebView/WebScriptDebugger.mm:
+        (WebScriptDebugger::initGlobalCallFrame):
+        (WebScriptDebugger::callEvent):
+        * WebView/WebView.mm:
+        (-[WebView windowScriptObject]):
+        (-[WebView aeDescByEvaluatingJavaScriptFromString:]):
+
+2013-08-15  Anders Carlsson  <andersca@apple.com>
+
+        <https://webkit.org/b/119859> Frame::loader() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::HostedNetscapePluginStream):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::performRequest):
+        (WebKit::NetscapePluginInstanceProxy::loadRequest):
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView pluginView:receivedResponse:]):
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView requestWithURLCString:]):
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::WebNetscapePluginStream):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView loadStream]):
+        (-[WebNetscapePluginView pluginView:receivedResponse:]):
+        (-[WebNetscapePluginView loadPluginRequest:]):
+        (-[WebNetscapePluginView loadRequest:inTarget:withNotifyData:sendNotification:]):
+        * Plugins/WebPluginController.mm:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad):
+        (WebFrameLoaderClient::dispatchDidStartProvisionalLoad):
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+        (WebFrameLoaderClient::updateGlobalHistory):
+        (WebFrameLoaderClient::updateGlobalHistoryRedirectLinks):
+        (WebFrameLoaderClient::restoreViewState):
+        (WebFrameLoaderClient::transitionToCommittedForNewPage):
+        (WebFrameLoaderClient::createFrame):
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::blockedError):
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::getPluginInfo):
+        * WebView/WebFrame.mm:
+        (kit):
+        (-[WebFrame _dataSource]):
+        (-[WebFrame _canProvideDocumentSource]):
+        (-[WebFrame _commitData:]):
+        (-[WebFrame _firstLayoutDone]):
+        (-[WebFrame _loadType]):
+        (-[WebFrame _cacheabilityDictionary]):
+        (-[WebFrame _clearOpener]):
+        (-[WebFrame provisionalDataSource]):
+        (-[WebFrame dataSource]):
+        (-[WebFrame loadRequest:]):
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+        (-[WebFrame loadArchive:]):
+        (-[WebFrame stopLoading]):
+        (-[WebFrame reload]):
+        (-[WebFrame reloadFromOrigin]):
+        * WebView/WebHTMLRepresentation.mm:
+        (-[WebHTMLRepresentation receivedData:withDataSource:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView validateUserInterfaceItemWithoutDelegate:]):
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+        * WebView/WebRenderLayer.mm:
+        (-[WebRenderLayer initWithWebFrame:]):
+        * WebView/WebRenderNode.mm:
+        (-[WebRenderNode _initWithCoreFrame:]):
+        * WebView/WebView.mm:
+        (-[WebView _close]):
+        (-[WebView _loadBackForwardListFromOtherView:]):
+        (-[WebView _cachedResponseForURL:]):
+        (-[WebView setCustomTextEncodingName:]):
+        (-[WebView shouldClose]):
+
+2013-08-15  Anders Carlsson  <andersca@apple.com>
+
+        <https://webkit.org/b/119854> REGRESSION (r153379): Serious drawing issues with WebViews
+        <rdar://problem/14698870>
+
+        Reviewed by Simon Fraser.
+
+        Don't set aside subviews if they have already been set aside.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inGraphicsContext:CGContext:topView:shouldChangeFontReferenceColor:]):
+
+2013-08-15  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Remove "legacy" media UI
+        https://bugs.webkit.org/show_bug.cgi?id=119752
+
+        Reviewed by Jer Noble.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Remove MediaControllerThemeAvailable.
+
+2013-08-14  Tim Horton  <timothy_horton@apple.com>
+
+        Remotely hosted plugins don’t work in window-server-hosted WebKit1 views
+        https://bugs.webkit.org/show_bug.cgi?id=119709
+        <rdar://problem/14717572>
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/Hosted/NetscapePluginHostManager.h:
+        Add hostLayersInWindowServer argument to instantiatePlugin.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::instantiatePlugin):
+        Add hostLayersInWindowServer argument to instantiatePlugin, and pass it through to WebKitPluginHost.
+
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WKPCLayerHostingModeChanged):
+        Forward the notification that the plugin host changed its layer hosting mode
+        to the instance proxy.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::setShouldHostLayersInWindowServer):
+        Ask the plugin host to re-host its layers when the layer hosting mode changes.
+
+        (WebKit::NetscapePluginInstanceProxy::layerHostingModeChanged):
+        Inform the WebHostedNetscapePluginView of the new layer hosting mode
+        when it changes. Also, store the new CAContext ID.
+
+        * Plugins/Hosted/WebHostedNetscapePluginView.h:
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView windowHostsLayersInWindowServer]):
+        Determine whether the WebView's current window uses window-server hosting for its layers.
+
+        (-[WebHostedNetscapePluginView createPlugin]):
+        Drive-by spelling fix.
+        Factor _pluginLayer initialization out into createPluginLayer.
+        Instantiate the plugin with the appropriate layer hosting mode.
+
+        (-[WebHostedNetscapePluginView createPluginLayer]):
+
+        (-[WebHostedNetscapePluginView setHostsLayersInWindowServer:]):
+        Create a new _pluginLayer if the layer hosting mode changes.
+        Attach the new _pluginLayer to our parent layer.
+
+        (-[WebHostedNetscapePluginView updateAndSetWindow]):
+        Inform the NetscapePluginInstanceProxy if the layer hosting mode changes,
+        so it can inform the plugin host. We will asynchronously receive a reply
+        with the new hosting mode and renderContextID and switch to the new CAContext,
+        in setHostsLayersInWindowServer:.
+
+        * Plugins/Hosted/WebKitPluginClient.defs:
+        * Plugins/Hosted/WebKitPluginHost.defs:
+
+2013-08-14  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r153877): Plugin scanning slows creation of WebViews
+        https://bugs.webkit.org/show_bug.cgi?id=119665
+        <rdar://problem/14716549>
+
+        Reviewed by Darin Adler.
+
+        * Plugins/WebPluginDatabase.h:
+        * Plugins/WebPluginDatabase.mm:
+        (+[WebPluginDatabase sharedDatabaseIfExists]): Added.
+
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::refreshPlugins):
+        Only refresh the plugin database if it's already been loaded.
+
+2013-08-14  Jer Noble  <jer.noble@apple.com>
+
+        Revert r154019; causes >50 tests to fail on WebKit1 bots.
+
+        * Plugins/Hosted/NetscapePluginHostManager.h:
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::instantiatePlugin):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        * Plugins/Hosted/WebHostedNetscapePluginView.h:
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView setAttributeKeys:andValues:]):
+        (-[WebHostedNetscapePluginView createPlugin]):
+        (-[WebHostedNetscapePluginView updateAndSetWindow]):
+        * Plugins/Hosted/WebKitPluginClient.defs:
+        * Plugins/Hosted/WebKitPluginHost.defs:
+
+2013-08-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Foo::s_info should be Foo::info(), so that you can change how the s_info is actually linked
+        https://bugs.webkit.org/show_bug.cgi?id=119770
+
+        Reviewed by Mark Hahnenberg.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::getObjectID):
+        (WebKit::NetscapePluginInstanceProxy::retainLocalObject):
+        (WebKit::NetscapePluginInstanceProxy::releaseLocalObject):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyRuntimeMethod::finishCreation):
+        (WebKit::ProxyInstance::invokeMethod):
+        * Plugins/Hosted/ProxyRuntimeObject.h:
+        (WebKit::ProxyRuntimeObject::createStructure):
+        * WebView/WebView.mm:
+        (aeDescFromJSValue):
+
+2013-08-13  Anders Carlsson  <andersca@apple.com>
+
+        <https://webkit.org/b/119777> Get rid of two gotos
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView mouseDown:]):
+        (-[WebHTMLView namesOfPromisedFilesDroppedAtDestination:]):
+
+2013-08-13  Tim Horton  <timothy_horton@apple.com>
+
+        Remotely hosted plugins don’t work in window-server-hosted WebKit1 views
+        https://bugs.webkit.org/show_bug.cgi?id=119709
+        <rdar://problem/14717572>
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/Hosted/NetscapePluginHostManager.h:
+        Add hostLayersInWindowServer argument to instantiatePlugin.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::instantiatePlugin):
+        Add hostLayersInWindowServer argument to instantiatePlugin, and pass it through to WebKitPluginHost.
+
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WKPCLayerHostingModeChanged):
+        Forward the notification that the plugin host changed its layer hosting mode
+        to the instance proxy.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::setShouldHostLayersInWindowServer):
+        Ask the plugin host to re-host its layers when the layer hosting mode changes.
+
+        (WebKit::NetscapePluginInstanceProxy::layerHostingModeChanged):
+        Inform the WebHostedNetscapePluginView of the new layer hosting mode
+        when it changes. Also, store the new CAContext ID.
+
+        * Plugins/Hosted/WebHostedNetscapePluginView.h:
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView windowHostsLayersInWindowServer]):
+        Determine whether the WebView's current window uses window-server hosting for its layers.
+
+        (-[WebHostedNetscapePluginView createPlugin]):
+        Drive-by spelling fix.
+        Factor _pluginLayer initialization out into createPluginLayer.
+        Instantiate the plugin with the appropriate layer hosting mode.
+
+        (-[WebHostedNetscapePluginView createPluginLayer]):
+
+        (-[WebHostedNetscapePluginView setHostsLayersInWindowServer:]):
+        Create a new _pluginLayer if the layer hosting mode changes.
+        Attach the new _pluginLayer to our parent layer.
+
+        (-[WebHostedNetscapePluginView updateAndSetWindow]):
+        Inform the NetscapePluginInstanceProxy if the layer hosting mode changes,
+        so it can inform the plugin host. We will asynchronously receive a reply
+        with the new hosting mode and renderContextID and switch to the new CAContext,
+        in setHostsLayersInWindowServer:.
+
+        * Plugins/Hosted/WebKitPluginClient.defs:
+        * Plugins/Hosted/WebKitPluginHost.defs:
+
+2013-08-08  Tim Horton  <timothy_horton@apple.com>
+
+        navigator.plugins has plugins in it when plugins are disabled
+        https://bugs.webkit.org/show_bug.cgi?id=119607
+        <rdar://problem/14678030>
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::getPluginInfo):
+        If plugins are disabled for the given page, give WebCore an empty list of
+        plugins. If WebKit1 had any application plugins, we'd return just them
+        instead.
+
+2013-08-06  Stephanie Lewis  <slewis@apple.com>
+
+        Update Order Files for Safari
+        <rdar://problem/14517392>
+
+        Unreviewed.
+
+        * WebKit.order:
+
+2013-08-04  Sam Weinig  <sam@webkit.org>
+
+        Remove support for HTML5 MicroData
+        https://bugs.webkit.org/show_bug.cgi?id=119480
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-07-23  David Farler  <dfarler@apple.com>
+
+        Provide optional OTHER_CFLAGS, OTHER_CPPFLAGS, OTHER_LDFLAGS additions for building with ASAN
+        https://bugs.webkit.org/show_bug.cgi?id=117762
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/DebugRelease.xcconfig:
+        Add ASAN_OTHER_CFLAGS, CPLUSPLUSFLAGS, LDFLAGS.
+        * Configurations/WebKit.xcconfig:
+        Add ASAN_OTHER_LDFLAGS.
+
+2013-07-26  Mark Rowe  <mrowe@apple.com>
+
+        Logging should be configurable using human-readable channel names rather than crazy bitmasks
+        <http://webkit.org/b/119031>
+
+        Implement shared logic for initializing logging channels based on human-readable channel names in WTF,
+        and rework the WebCore, WebKit and WebKit2 logging initialization on top of it.
+
+        Logging channels may now be enabled by providing a comma-separated list of channel names, with the special
+        "all" name enabling all channels. Channel names prefixed with a leading "-" will result in the named channel
+        being disabled. For instance, specifying "all,-history,-loading" will result in all logging channels except
+        for history and loading being enabled.
+
+        For OS X developers, this also changes the name of the user defaults used to enable logging. This is done to allow
+        the old user defaults to remain set for those people that need to switch between version of WebKit before and
+        after this change. Where the old user default keys were WebCoreLogLevel, WebKitLogLevel and WebKit2LogLevel,
+        the new user default keys are WebCoreLogging, WebKitLogging and WebKit2Logging.
+
+        For GTK developers, this changes the separator used in the WEBKIT_DEBUG environment variable to a comma for
+        consistency with the other platforms and to enable more code sharing.
+
+        While doing this work I've also taken the opportunity to eliminate the need to touch multiple files when
+        adding a new logging channel. Now only the header in the relevant project needs to be updated.
+
+        Reviewed by Sam Weinig.
+
+        * Misc/WebKitLogging.h: Declare a WEBKIT_LOG_CHANNELS macro that can be used to apply a preprocessor macro
+        across the set of all logging channels. Use this macro to declare the logging channels.
+        * Misc/WebKitLogging.m: Use WEBKIT_LOG_CHANNELS to define all of the channels. Pass the channels and the
+        preference value to the new WTF function that handles the initialization.
+        * WebView/WebPreferenceKeysPrivate.h: Remove a key that does not need to be here.
+        * WebView/WebView.mm: Switch from WebCore's InitializeLogging.h to Logging.h.
+
+2013-08-01  Ruth Fong  <ruth_fong@apple.com>
+
+        [Forms: color] <input type='color'> popover color well implementation
+        <rdar://problem/14411008> and https://bugs.webkit.org/show_bug.cgi?id=119356
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig: Added and enabled INPUT_TYPE_COLOR_POPOVER.
+
+2013-07-31  Tim Horton  <timothy_horton@apple.com>
+
+        Remove didFinishLoad order quirk
+        https://bugs.webkit.org/show_bug.cgi?id=119354
+        <rdar://problem/11510686>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Misc/WebKitVersionChecks.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        Don't set the now-removed preference.
+
+2013-07-31  Kwang Yul Seo  <skyul@company100.net>
+
+        Use emptyString instead of String("")
+        https://bugs.webkit.org/show_bug.cgi?id=119335
+
+        Reviewed by Darin Adler.
+
+        Use emptyString() instead of String("") because it is better style and
+        faster. This is a followup to r116908, removing all occurrences of
+        String("") from WebKit.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::userAgent):
+
+2013-07-31  Ruth Fong  <ruth_fong@apple.com>
+
+        <input type=color> Mac UI behaviour
+        <rdar://problem/10269922> and https://bugs.webkit.org/show_bug.cgi?id=61276
+
+        Reviewed by Brady Eidson.
+
+        * Configurations/FeatureDefines.xcconfig: Enabled INPUT_TYPE_COLOR.
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::createColorPicker): Added stub implementation.
+
+2013-07-26  Dean Jackson  <dino@apple.com>
+
+        Allow new transitions to run even when controller is suspended
+        https://bugs.webkit.org/show_bug.cgi?id=119171
+        <rdar://problem/14511404>
+
+        Reviewed by Simon Fraser.
+
+        Expose a new SPI on WebView that triggers the (buggy) old behaviour
+        for animations, such that any newly created animations will start even
+        when the document is supposedly suspended. It turns out that client content was
+        unknowingly relying on this behaviour - e.g. suspending a view, loading a
+        bunch of new content, bringing the view on screen and then unsuspending. In this
+        situation, we were not running CSS transitions, because the page was suspended.
+        However, JS was still triggering them, and content was expecting a transitionEnd event.
+
+        * WebView/WebView.mm:
+        (-[WebView allowsNewCSSAnimationsWhileSuspended]): Calls into AnimationController.
+        (-[WebView setAllowsNewCSSAnimationsWhileSuspended:]): Ditto.
+        * WebView/WebViewPrivate.h: New methods listed above.
+
+2013-07-26  Anders Carlsson  <andersca@apple.com>
+
+        Add another method that we need to set aside subviews for
+        https://bugs.webkit.org/show_bug.cgi?id=119157
+        <rdar://problem/14554723>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inContext:topView:]):
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inGraphicsContext:CGContext:topView:shouldChangeFontReferenceColor:]):
+
+2013-07-25  Andreas Kling  <akling@apple.com>
+
+        ChromeClient::focusedNodeChanged() should be focusedElementChanged().
+        <http://webkit.org/b/119110>
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::focusedElementChanged):
+
+2013-05-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Rolled back in r149527 with crash fixed.
+
+        Reviewed by Oliver Hunt.
+
+            Rationalized 'this' value conversion
+            https://bugs.webkit.org/show_bug.cgi?id=115542
+
 2013-07-17  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r152701, r152703, r152739, r152754,

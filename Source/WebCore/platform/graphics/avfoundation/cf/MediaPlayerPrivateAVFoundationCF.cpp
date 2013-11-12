@@ -36,7 +36,11 @@
 #include "FloatConversion.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
+#if HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
 #include "InbandTextTrackPrivateAVCF.h"
+#else
+#include "InbandTextTrackPrivateLegacyAVCF.h"
+#endif
 #include "KURL.h"
 #include "Logging.h"
 #include "PlatformCALayer.h"
@@ -44,7 +48,9 @@
 #include "TimeRanges.h"
 
 #include <AVFoundationCF/AVCFPlayerItem.h>
+#if HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
 #include <AVFoundationCF/AVCFPlayerItemLegibleOutput.h>
+#endif
 #include <AVFoundationCF/AVCFPlayerLayer.h>
 #include <AVFoundationCF/AVFoundationCF.h>
 #include <CoreMedia/CoreMedia.h>
@@ -60,7 +66,11 @@
 #include "CoreMediaSoftLinking.h"
 
 // We don't bother softlinking against libdispatch since it's already been loaded by AAS.
+#ifdef DEBUG_ALL
+#pragma comment(lib, "libdispatch_debug.lib")
+#else
 #pragma comment(lib, "libdispatch.lib")
+#endif
 
 using namespace std;
 
@@ -98,6 +108,7 @@ public:
     void beginLoadingMetadata();
     
     void seekToTime(float);
+    void updateVideoLayerGravity();
 
     void setCurrentTrack(InbandTextTrackPrivateAVF*);
     InbandTextTrackPrivateAVF* currentTrack() const { return m_currentTrack; }
@@ -204,7 +215,9 @@ static CFArrayRef createMetadataKeyNames()
         AVCFAssetPropertyPreferredRate,
         AVCFAssetPropertyPlayable,
         AVCFAssetPropertyTracks,
-        AVCFAssetPropertyAvailableMediaCharacteristicsWithMediaSelectionOptions
+#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
+        AVCFAssetPropertyAvailableMediaCharacteristicsWithMediaSelectionOptions,
+#endif
     };
     
     return CFArrayCreate(0, (const void**)keyNames, sizeof(keyNames) / sizeof(keyNames[0]), &kCFTypeArrayCallBacks);
@@ -322,6 +335,14 @@ void MediaPlayerPrivateAVFoundationCF::cancelLoad()
 
     setIgnoreLoadStateChanges(false);
     setDelayCallbacks(false);
+}
+
+void MediaPlayerPrivateAVFoundationCF::updateVideoLayerGravity()
+{
+    ASSERT(supportsAcceleratedRendering());
+
+    if (m_avfWrapper)
+        m_avfWrapper->updateVideoLayerGravity();
 }
 
 bool MediaPlayerPrivateAVFoundationCF::hasLayerRenderer() const
@@ -472,6 +493,8 @@ void MediaPlayerPrivateAVFoundationCF::platformSetVisible(bool isVisible)
     // whether we're affected by the same issue.
     setDelayCallbacks(true);
     m_avfWrapper->setVideoLayerHidden(!isVisible);    
+    if (!isVisible)
+        tearDownVideoRendering();
     setDelayCallbacks(false);
 }
 
@@ -839,6 +862,8 @@ void MediaPlayerPrivateAVFoundationCF::tracksChanged()
     if (!avAsset(m_avfWrapper))
         return;
 
+    setDelayCharacteristicsChangedNotification(true);
+
     bool haveCCTrack = false;
     bool hasCaptions = false;
 
@@ -912,8 +937,10 @@ void MediaPlayerPrivateAVFoundationCF::tracksChanged()
 
     sizeChanged();
 
-    if (!primaryAudioTrackLanguage.isNull() && primaryAudioTrackLanguage != languageOfPrimaryAudioTrack())
-        player()->characteristicChanged();
+    if (primaryAudioTrackLanguage != languageOfPrimaryAudioTrack())
+        characteristicsChanged();
+
+    setDelayCharacteristicsChangedNotification(false);
 }
 
 void MediaPlayerPrivateAVFoundationCF::sizeChanged()
@@ -946,10 +973,23 @@ void MediaPlayerPrivateAVFoundationCF::sizeChanged()
     setNaturalSize(IntSize(naturalSize));
 }
 
+bool MediaPlayerPrivateAVFoundationCF::requiresImmediateCompositing() const
+{
+    // The AVFoundationCF player needs to have the root compositor available at construction time
+    // so it can attach to the rendering device. Otherwise it falls back to CPU-only mode.
+    //
+    // It would be nice if AVCFPlayer had some way to switch to hardware-accelerated mode
+    // when asked, then we could follow AVFoundation's model and switch to compositing
+    // mode when beginning to play media.
+    return true;
+}
+
 #if !HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
 void MediaPlayerPrivateAVFoundationCF::processLegacyClosedCaptionsTracks()
 {
+#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
     AVCFPlayerItemSelectMediaOptionInMediaSelectionGroup(avPlayerItem(m_avfWrapper), 0, safeMediaSelectionGroupForLegibleMedia(m_avfWrapper));
+#endif
 
     Vector<RefPtr<InbandTextTrackPrivateAVF> > removedTextTracks = m_textTracks;
     RetainPtr<CFArrayRef> tracks = adoptCF(AVCFPlayerItemCopyTracks(avPlayerItem(m_avfWrapper)));
@@ -1093,6 +1133,12 @@ String MediaPlayerPrivateAVFoundationCF::languageOfPrimaryAudioTrack() const
     AVCFAssetTrackRef track = (AVCFAssetTrackRef)CFArrayGetValueAtIndex(tracks.get(), 0);
     RetainPtr<CFStringRef> language = adoptCF(AVCFAssetTrackCopyExtendedLanguageTag(track));
 
+    // If the language code is stored as a QuickTime 5-bit packed code there aren't enough bits for a full
+    // RFC 4646 language tag so extendedLanguageTag returns null. In this case languageCode will return the
+    // ISO 639-2/T language code so check it.
+    if (!language)
+        language = adoptCF(AVCFAssetTrackCopyLanguageCode(track));
+
     // Some legacy tracks have "und" as a language, treat that the same as no language at all.
     if (language && CFStringCompare(language.get(), CFSTR("und"), kCFCompareCaseInsensitive) != kCFCompareEqualTo) {
         m_languageOfPrimaryAudioTrack = language.get();
@@ -1215,9 +1261,11 @@ void AVFWrapper::disconnectAndDeleteAVFWrapper(void* context)
         CFNotificationCenterRemoveObserver(center, avfWrapper->callbackContext(), AVCFPlayerItemTracksChangedNotification, avfWrapper->avPlayerItem());
         CFNotificationCenterRemoveObserver(center, avfWrapper->callbackContext(), AVCFPlayerItemSeekableTimeRangesChangedNotification, avfWrapper->avPlayerItem());
         CFNotificationCenterRemoveObserver(center, avfWrapper->callbackContext(), AVCFPlayerItemLoadedTimeRangesChangedNotification, avfWrapper->avPlayerItem());
+        CFNotificationCenterRemoveObserver(center, avfWrapper->callbackContext(), AVCFPlayerItemPresentationSizeChangedNotification, avfWrapper->avPlayerItem());
         CFNotificationCenterRemoveObserver(center, avfWrapper->callbackContext(), AVCFPlayerItemIsPlaybackLikelyToKeepUpChangedNotification, avfWrapper->avPlayerItem());
         CFNotificationCenterRemoveObserver(center, avfWrapper->callbackContext(), AVCFPlayerItemIsPlaybackBufferEmptyChangedNotification, avfWrapper->avPlayerItem());
         CFNotificationCenterRemoveObserver(center, avfWrapper->callbackContext(), AVCFPlayerItemIsPlaybackBufferFullChangedNotification, avfWrapper->avPlayerItem());
+        CFNotificationCenterRemoveObserver(center, avfWrapper->callbackContext(), AVCFPlayerItemDurationChangedNotification, avfWrapper->avPlayerItem());
         CFNotificationCenterRemoveObserver(center, avfWrapper->callbackContext(), CACFContextNeedsFlushNotification(), 0);
     }
 
@@ -1227,6 +1275,10 @@ void AVFWrapper::disconnectAndDeleteAVFWrapper(void* context)
 
         CFNotificationCenterRemoveObserver(CFNotificationCenterGetLocalCenter(), avfWrapper->callbackContext(), AVCFPlayerRateChangedNotification, avfWrapper->avPlayer());
     }
+
+#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP) && HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
+    AVCFPlayerItemRemoveOutput(avfWrapper->avPlayerItem(), avfWrapper->legibleOutput());
+#endif
 
     delete avfWrapper;
 }
@@ -1271,13 +1323,6 @@ void AVFWrapper::createPlayer(IDirect3DDevice9* d3dDevice)
     if (m_d3dDevice && AVCFPlayerSetDirect3DDevicePtr())
         AVCFPlayerSetDirect3DDevicePtr()(playerRef, m_d3dDevice.get());
 
-#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP) && HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
-    // Because of a bug in AVFoundationCF, we have to wait until the player is created before we can add the legible output:
-    // Once <rdar://problem/14390466> this is fixed, we can remove the following two lines.
-    ::Sleep(1000); // FIXME: This is being fixed as part of <rdar://problem/14390466>
-    AVCFPlayerItemAddOutput(avPlayerItem(), legibleOutput());
-#endif
-
     CFNotificationCenterRef center = CFNotificationCenterGetLocalCenter();
     ASSERT(center);
 
@@ -1305,11 +1350,12 @@ void AVFWrapper::createPlayerItem()
     CFNotificationCenterAddObserver(center, callbackContext(), notificationCallback, AVCFPlayerItemTracksChangedNotification, itemRef, CFNotificationSuspensionBehaviorDeliverImmediately);
     CFNotificationCenterAddObserver(center, callbackContext(), notificationCallback, AVCFPlayerItemSeekableTimeRangesChangedNotification, itemRef, CFNotificationSuspensionBehaviorDeliverImmediately);
     CFNotificationCenterAddObserver(center, callbackContext(), notificationCallback, AVCFPlayerItemLoadedTimeRangesChangedNotification, itemRef, CFNotificationSuspensionBehaviorDeliverImmediately);
+    CFNotificationCenterAddObserver(center, callbackContext(), notificationCallback, AVCFPlayerItemPresentationSizeChangedNotification, itemRef, CFNotificationSuspensionBehaviorDeliverImmediately);
     CFNotificationCenterAddObserver(center, callbackContext(), notificationCallback, AVCFPlayerItemIsPlaybackLikelyToKeepUpChangedNotification, itemRef, CFNotificationSuspensionBehaviorDeliverImmediately);
     CFNotificationCenterAddObserver(center, callbackContext(), notificationCallback, AVCFPlayerItemIsPlaybackBufferEmptyChangedNotification, itemRef, CFNotificationSuspensionBehaviorDeliverImmediately);
     CFNotificationCenterAddObserver(center, callbackContext(), notificationCallback, AVCFPlayerItemIsPlaybackBufferFullChangedNotification, itemRef, CFNotificationSuspensionBehaviorDeliverImmediately);
     CFNotificationCenterAddObserver(center, callbackContext(), notificationCallback, AVCFPlayerItemDurationChangedNotification, itemRef, CFNotificationSuspensionBehaviorDeliverImmediately);
-    // FIXME: Are there other legible output things we need to register for? asset, hasEnabledAudio?
+    // FIXME: Are there other legible output things we need to register for? asset and hasEnabledAudio are not exposed by AVCF
 
     CFNotificationCenterAddObserver(center, callbackContext(), notificationCallback, CACFContextNeedsFlushNotification(), 0, CFNotificationSuspensionBehaviorDeliverImmediately);
 
@@ -1328,9 +1374,7 @@ void AVFWrapper::createPlayerItem()
     AVCFPlayerItemLegibleOutputSetCallbacks(m_legibleOutput.get(), &callbackInfo, dispatch_get_main_queue());
     AVCFPlayerItemLegibleOutputSetAdvanceIntervalForCallbackInvocation(m_legibleOutput.get(), legibleOutputAdvanceInterval);
     AVCFPlayerItemLegibleOutputSetTextStylingResolution(m_legibleOutput.get(), AVCFPlayerItemLegibleOutputTextStylingResolutionSourceAndRulesOnly);
-    // We cannot add the Legible Output to the player item until the player is constructed. <rdar://problem/14390466>
-    // Once this is fixed, we can uncomment the following line.
-    // AVCFPlayerItemAddOutput(m_avPlayerItem.get(), m_legibleOutput.get());
+    AVCFPlayerItemAddOutput(m_avPlayerItem.get(), m_legibleOutput.get());
 #endif
 }
 
@@ -1460,6 +1504,7 @@ void AVFWrapper::seekToTime(float time)
         kCMTimeZero, kCMTimeZero, &seekCompletedCallback, callbackContext());
 }
 
+#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP) && HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
 struct LegibleOutputData {
     RetainPtr<CFArrayRef> m_attributedStrings;
     double m_time;
@@ -1512,6 +1557,7 @@ void AVFWrapper::legibleOutputCallback(void* context, AVCFPlayerItemLegibleOutpu
 
     dispatch_async_f(dispatch_get_main_queue(), legibleOutputData.leakPtr(), processCue);
 }
+#endif
 
 void AVFWrapper::setAsset(AVCFURLAssetRef asset)
 {
@@ -1539,12 +1585,12 @@ PlatformLayer* AVFWrapper::platformLayer()
     if (!m_videoLayerWrapper)
         return 0;
 
-    CACFLayerRef layerRef = AVCFPlayerLayerCopyCACFLayer(m_avCFVideoLayer.get());
-    m_caVideoLayer = adoptCF(layerRef);
+    m_caVideoLayer = adoptCF(AVCFPlayerLayerCopyCACFLayer(m_avCFVideoLayer.get()));
 
     CACFLayerInsertSublayer(m_videoLayerWrapper->platformLayer(), m_caVideoLayer.get(), 0);
     m_videoLayerWrapper->setAnchorPoint(FloatPoint3D());
     m_videoLayerWrapper->setNeedsLayout();
+    updateVideoLayerGravity();
 
     return m_videoLayerWrapper->platformLayer();
 }
@@ -1611,21 +1657,21 @@ RetainPtr<CGImageRef> AVFWrapper::createImageForTimeInRect(float time, const Int
         return 0;
 
 #if !LOG_DISABLED
-    double start = WTF::currentTime();
+    double start = monotonicallyIncreasingTime();
 #endif
 
     AVCFAssetImageGeneratorSetMaximumSize(m_imageGenerator.get(), CGSize(rect.size()));
     CGImageRef image = AVCFAssetImageGeneratorCopyCGImageAtTime(m_imageGenerator.get(), CMTimeMakeWithSeconds(time, 600), 0, 0);
 
 #if !LOG_DISABLED
-    double duration = WTF::currentTime() - start;
+    double duration = monotonicallyIncreasingTime() - start;
     LOG(Media, "AVFWrapper::createImageForTimeInRect(%p) - creating image took %.4f", this, narrowPrecisionToFloat(duration));
 #endif
 
     return image;
 }
 
-#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP) && HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
+#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
 AVCFMediaSelectionGroupRef AVFWrapper::safeMediaSelectionGroupForLegibleMedia() const
 {
     if (!avAsset())
@@ -1638,6 +1684,12 @@ AVCFMediaSelectionGroupRef AVFWrapper::safeMediaSelectionGroupForLegibleMedia() 
 }
 #endif
 
+void AVFWrapper::updateVideoLayerGravity()
+{
+    // We should call AVCFPlayerLayerSetVideoGravity() here, but it is not yet implemented.
+    // FIXME: <rdar://problem/14884340>
+}
+
 void LayerClient::platformCALayerLayoutSublayersOfLayer(PlatformCALayer* wrapperLayer)
 {
     ASSERT(m_parent);
@@ -1649,6 +1701,8 @@ void LayerClient::platformCALayerLayoutSublayersOfLayer(PlatformCALayer* wrapper
 
     CACFLayerSetPosition(m_parent->caVideoLayer(), position);
     CACFLayerSetBounds(m_parent->caVideoLayer(), bounds);
+
+    AVCFPlayerLayerSetFrame(m_parent->videoLayer(), CGRectMake(0, 0, bounds.size.width, bounds.size.height));
 }
 
 } // namespace WebCore

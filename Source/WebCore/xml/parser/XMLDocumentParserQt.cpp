@@ -107,7 +107,6 @@ XMLDocumentParser::XMLDocumentParser(Document* document, FrameView* frameView)
     , m_parserPaused(false)
     , m_requestingScript(false)
     , m_finishCalled(false)
-    , m_xmlErrors(document)
     , m_pendingScript(0)
     , m_scriptStartPosition(TextPosition::belowRangePosition())
     , m_parsingFragment(false)
@@ -128,7 +127,6 @@ XMLDocumentParser::XMLDocumentParser(DocumentFragment* fragment, Element* parent
     , m_parserPaused(false)
     , m_requestingScript(false)
     , m_finishCalled(false)
-    , m_xmlErrors(fragment->document())
     , m_pendingScript(0)
     , m_scriptStartPosition(TextPosition::belowRangePosition())
     , m_parsingFragment(true)
@@ -154,11 +152,11 @@ XMLDocumentParser::XMLDocumentParser(DocumentFragment* fragment, Element* parent
         element->synchronizeAllAttributes();
         if (const ElementData* attrs = element->elementData()) {
             for (unsigned i = 0; i < attrs->length(); i++) {
-                const Attribute* attr = attrs->attributeItem(i);
-                if (attr->localName() == "xmlns")
-                    m_defaultNamespaceURI = attr->value();
-                else if (attr->prefix() == "xmlns")
-                    namespaces.append(QXmlStreamNamespaceDeclaration(attr->localName(), attr->value()));
+                const Attribute& attr = attrs->attributeAt(i);
+                if (attr.localName() == "xmlns")
+                    m_defaultNamespaceURI = attr.value();
+                else if (attr.prefix() == "xmlns")
+                    namespaces.append(QXmlStreamNamespaceDeclaration(attr.localName(), attr.value()));
             }
         }
     }
@@ -212,22 +210,6 @@ void XMLDocumentParser::initializeParserContext(const CString&)
 
 void XMLDocumentParser::doEnd()
 {
-#if ENABLE(XSLT)
-    if (m_sawXSLTransform) {
-        document()->setTransformSource(adoptPtr(new TransformSource(m_originalSourceForTransform.toString())));
-        document()->setParsing(false); // Make the doc think it's done, so it will apply xsl sheets.
-        document()->styleResolverChanged(RecalcStyleImmediately);
-
-        // styleResolverChanged() call can detach the parser and null out its document.
-        // In that case, we just bail out.
-        if (isDetached())
-            return;
-
-        document()->setParsing(true);
-        DocumentParser::stopParsing();
-    }
-#endif
-
     if (m_stream.error() == QXmlStreamReader::PrematureEndOfDocumentError
         || (m_wroteText && !m_sawFirstElement && !m_sawXSLTransform && !m_sawError))
         handleError(XMLErrors::fatal, qPrintable(m_stream.errorString()), textPosition());
@@ -499,13 +481,13 @@ void XMLDocumentParser::parseStartElement()
 
     pushCurrentNode(newElement.get());
     if (m_view && !newElement->attached())
-        newElement->attach();
+        Style::attachRenderTree(newElement.get());
 
     if (newElement->hasTagName(HTMLNames::htmlTag))
         static_cast<HTMLHtmlElement*>(newElement.get())->insertedByParser();
 
     if (isFirstElement && document()->frame())
-        document()->frame()->loader()->dispatchDocumentElementAvailable();
+        document()->frame()->loader().dispatchDocumentElementAvailable();
 }
 
 void XMLDocumentParser::parseEndElement()
@@ -586,18 +568,11 @@ void XMLDocumentParser::parseProcessingInstruction()
     pi->setCreatedByParser(true);
 
     m_currentNode->parserAppendChild(pi.get());
-    if (m_view && !pi->attached())
-        pi->attach();
 
     pi->finishParsingChildren();
 
     if (pi->isCSS())
         m_sawCSS = true;
-#if ENABLE(XSLT)
-    m_sawXSLTransform = !m_sawFirstElement && pi->isXSL();
-    if (m_sawXSLTransform && !document()->transformSourceDocument())
-        stopParsing();
-#endif
 }
 
 void XMLDocumentParser::parseCdata()
@@ -608,7 +583,7 @@ void XMLDocumentParser::parseCdata()
 
     m_currentNode->parserAppendChild(newNode.get());
     if (m_view && !newNode->attached())
-        newNode->attach();
+        Style::attachTextRenderer(*newNode);
 }
 
 void XMLDocumentParser::parseComment()
@@ -618,8 +593,6 @@ void XMLDocumentParser::parseComment()
     RefPtr<Comment> newNode = Comment::create(document(), m_stream.text());
 
     m_currentNode->parserAppendChild(newNode.get());
-    if (m_view && !newNode->attached())
-        newNode->attach();
 }
 
 void XMLDocumentParser::endDocument()

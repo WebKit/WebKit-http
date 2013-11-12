@@ -54,14 +54,11 @@ void SVGInlineFlowBox::paint(PaintInfo& paintInfo, const LayoutPoint&, LayoutUni
     ASSERT(paintInfo.phase == PaintPhaseForeground || paintInfo.phase == PaintPhaseSelection);
     ASSERT(!paintInfo.context->paintingDisabled());
 
-    RenderObject* boxRenderer = renderer();
-    ASSERT(boxRenderer);
-
-    SVGRenderingContext renderingContext(boxRenderer, paintInfo, SVGRenderingContext::SaveGraphicsContext);
+    SVGRenderingContext renderingContext(&renderer(), paintInfo, SVGRenderingContext::SaveGraphicsContext);
     if (renderingContext.isRenderingPrepared()) {
         for (InlineBox* child = firstChild(); child; child = child->nextOnLine()) {
             if (child->isSVGInlineTextBox())
-                computeTextMatchMarkerRectForRenderer(toRenderSVGInlineText(toSVGInlineTextBox(child)->textRenderer()));
+                computeTextMatchMarkerRectForRenderer(&toRenderSVGInlineText(toSVGInlineTextBox(child)->textRenderer()));
 
             child->paint(paintInfo, LayoutPoint(), 0, 0);
         }
@@ -91,8 +88,7 @@ void SVGInlineFlowBox::computeTextMatchMarkerRectForRenderer(RenderSVGInlineText
     ASSERT(style);
 
     AffineTransform fragmentTransform;
-    Document* document = textRenderer->document();
-    Vector<DocumentMarker*> markers = document->markers()->markersFor(textRenderer->node());
+    Vector<DocumentMarker*> markers = textRenderer->document().markers().markersFor(textRenderer->node());
 
     Vector<DocumentMarker*>::iterator markerEnd = markers.end();
     for (Vector<DocumentMarker*>::iterator markerIt = markers.begin(); markerIt != markerEnd; ++markerIt) {

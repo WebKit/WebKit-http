@@ -37,12 +37,12 @@
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessPlatformStrategies.h"
 #include "NetworkProcessProxyMessages.h"
+#include "NetworkResourceLoader.h"
 #include "RemoteNetworkingContext.h"
-#include "SchedulableLoader.h"
 #include "StatisticsData.h"
 #include "WebContextMessages.h"
 #include "WebCookieManager.h"
-#include <WebCore/InitializeLogging.h>
+#include <WebCore/Logging.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RunLoop.h>
 #include <wtf/text/CString.h>
@@ -160,6 +160,9 @@ void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParame
 
     if (parameters.privateBrowsingEnabled)
         RemoteNetworkingContext::ensurePrivateBrowsingSession();
+
+    if (parameters.shouldUseTestingNetworkSession)
+        NetworkStorageSession::switchToNewTestingSession();
 
     NetworkProcessSupplementMap::const_iterator it = m_supplements.begin();
     NetworkProcessSupplementMap::const_iterator end = m_supplements.end();

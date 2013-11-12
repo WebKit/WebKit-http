@@ -38,27 +38,6 @@
 
 namespace JSC { namespace LLInt {
 
-static void fixupPCforExceptionIfNeeded(ExecState* exec)
-{
-    CodeBlock* codeBlock = exec->codeBlock();
-    ASSERT(!!codeBlock);
-    Instruction* pc = exec->currentVPC();
-    exec->setCurrentVPC(codeBlock->adjustPCIfAtCallSite(pc));
-}
-
-void interpreterThrowInCaller(ExecState* exec, ReturnAddressPtr pc)
-{
-    VM* vm = &exec->vm();
-    NativeCallFrameTracer tracer(vm, exec);
-#if LLINT_SLOW_PATH_TRACING
-    dataLog("Throwing exception ", vm->exception, ".\n");
-#endif
-    fixupPCforExceptionIfNeeded(exec);
-    genericThrow(
-        vm, exec, vm->exception,
-        exec->codeBlock()->bytecodeOffset(exec, pc));
-}
-
 Instruction* returnToThrowForThrownException(ExecState* exec)
 {
     UNUSED_PARAM(exec);
@@ -69,15 +48,14 @@ static void doThrow(ExecState* exec, Instruction* pc)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    fixupPCforExceptionIfNeeded(exec);
-    genericThrow(vm, exec, vm->exception, pc - exec->codeBlock()->instructions().begin());
+    genericUnwind(vm, exec, vm->exception(), pc - exec->codeBlock()->instructions().begin());
 }
 
 Instruction* returnToThrow(ExecState* exec, Instruction* pc)
 {
 #if LLINT_SLOW_PATH_TRACING
     VM* vm = &exec->vm();
-    dataLog("Throwing exception ", vm->exception, " (returnToThrow).\n");
+    dataLog("Throwing exception ", vm->exception(), " (returnToThrow).\n");
 #endif
     doThrow(exec, pc);
     return LLInt::exceptionInstructions();
@@ -87,7 +65,7 @@ void* callToThrow(ExecState* exec, Instruction* pc)
 {
 #if LLINT_SLOW_PATH_TRACING
     VM* vm = &exec->vm();
-    dataLog("Throwing exception ", vm->exception, " (callToThrow).\n");
+    dataLog("Throwing exception ", vm->exception(), " (callToThrow).\n");
 #endif
     doThrow(exec, pc);
     return LLInt::getCodePtr(llint_throw_during_call_trampoline);

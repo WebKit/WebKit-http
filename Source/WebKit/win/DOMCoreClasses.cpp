@@ -484,7 +484,7 @@ IDOMNode* DOMNode::createInstance(WebCore::Node* n)
         break;
         case WebCore::Node::DOCUMENT_NODE:
         {
-            IDOMDocument* newDocument = DOMDocument::createInstance(n->document());
+            IDOMDocument* newDocument = DOMDocument::createInstance(&n->document());
             if (newDocument) {
                 hr = newDocument->QueryInterface(IID_IDOMNode, (void**)&domNode);
                 newDocument->Release();
@@ -1216,7 +1216,7 @@ HRESULT STDMETHODCALLTYPE DOMElement::isFocused(
     if (!m_element)
         return E_FAIL;
 
-    if (m_element->document()->focusedElement() == m_element)
+    if (m_element->document().focusedElement() == m_element)
         *result = TRUE;
     else
         *result = FALSE;
@@ -1275,7 +1275,7 @@ HRESULT STDMETHODCALLTYPE DOMElement::renderedImage(HBITMAP* image)
 
     ASSERT(m_element);
 
-    Frame* frame = m_element->document()->frame();
+    Frame* frame = m_element->document().frame();
     if (!frame)
         return E_FAIL;
 

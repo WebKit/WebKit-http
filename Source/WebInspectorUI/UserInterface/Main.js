@@ -24,7 +24,9 @@
  */
 
 WebInspector.Notification = {
-    GlobalModifierKeysDidChange: "global-modifiers-did-change"
+    GlobalModifierKeysDidChange: "global-modifiers-did-change",
+    PageArchiveStarted: "page-archive-started",
+    PageArchiveEnded: "page-archive-ended"
 };
 
 WebInspector.loaded = function()
@@ -38,6 +40,8 @@ WebInspector.loaded = function()
     // Register observers for events from the InspectorBackend.
     InspectorBackend.registerInspectorDispatcher(new WebInspector.InspectorObserver);
     InspectorBackend.registerPageDispatcher(new WebInspector.PageObserver);
+    if (InspectorBackend.registerCanvasDispatcher)
+        InspectorBackend.registerCanvasDispatcher(new WebInspector.CanvasObserver);
     InspectorBackend.registerConsoleDispatcher(new WebInspector.ConsoleObserver);
     InspectorBackend.registerNetworkDispatcher(new WebInspector.NetworkObserver);
     InspectorBackend.registerDOMDispatcher(new WebInspector.DOMObserver);
@@ -69,6 +73,7 @@ WebInspector.loaded = function()
     this.cssStyleManager = new WebInspector.CSSStyleManager;
     this.logManager = new WebInspector.LogManager;
     this.issueManager = new WebInspector.IssueManager;
+    this.runtimeManager = new WebInspector.RuntimeManager;
     this.applicationCacheManager = new WebInspector.ApplicationCacheManager;
     this.timelineManager = new WebInspector.TimelineManager;
     this.profileManager = new WebInspector.ProfileManager;
@@ -79,10 +84,6 @@ WebInspector.loaded = function()
 
     // Enable the Console Agent after creating the singleton managers.
     ConsoleAgent.enable();
-
-    // Enable the RuntimeAgent to receive notification of execution contexts.
-    if (RuntimeAgent.enable)
-        RuntimeAgent.enable();
 
     // Register for events.
     this.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.Paused, this._debuggerDidPause, this);
@@ -186,10 +187,10 @@ WebInspector.contentLoaded = function()
     this._redoKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Command | WebInspector.KeyboardShortcut.Modifier.Shift, "Z", this._redoKeyboardShortcut.bind(this));
     this._undoKeyboardShortcut.implicitlyPreventsDefault = this._redoKeyboardShortcut.implicitlyPreventsDefault = false;
 
-    this.undockButtonNavigationItem = new WebInspector.ToggleControlToolbarItem("undock", WebInspector.UIString("Detach into separate window"), "", "Images/Undock.pdf", "", 16, 14);
+    this.undockButtonNavigationItem = new WebInspector.ToggleControlToolbarItem("undock", WebInspector.UIString("Detach into separate window"), "", "Images/Undock.svg", "", 16, 14);
     this.undockButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._undock, this);
 
-    this.closeButtonNavigationItem = new WebInspector.ControlToolbarItem("dock-close", WebInspector.UIString("Close"), "Images/Close.pdf", 16, 14);
+    this.closeButtonNavigationItem = new WebInspector.ControlToolbarItem("dock-close", WebInspector.UIString("Close"), "Images/Close.svg", 16, 14);
     this.closeButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this.close, this);
 
     this.toolbar.addToolbarItem(this.closeButtonNavigationItem, WebInspector.Toolbar.Section.Control);
@@ -211,7 +212,7 @@ WebInspector.contentLoaded = function()
     const consoleKeyboardShortcut = "\u2325\u2318C"; // Option-Command-C
     var toolTip = WebInspector.UIString("Show console (%s)").format(consoleKeyboardShortcut);
     var activatedToolTip = WebInspector.UIString("Hide console");
-    this._consoleToolbarButton = new WebInspector.ActivateButtonToolbarItem("console", toolTip, activatedToolTip, WebInspector.UIString("Console"), "Images/NavigationItemLog.pdf");
+    this._consoleToolbarButton = new WebInspector.ActivateButtonToolbarItem("console", toolTip, activatedToolTip, WebInspector.UIString("Console"), "Images/NavigationItemLog.svg");
     this._consoleToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this.toggleConsoleView, this);
     this.toolbar.addToolbarItem(this._consoleToolbarButton, WebInspector.Toolbar.Section.Center);
 
@@ -220,7 +221,7 @@ WebInspector.contentLoaded = function()
     // The toolbar button for node inspection.
     var toolTip = WebInspector.UIString("Enable point to inspect mode (%s)").format(WebInspector._inspectModeKeyboardShortcut.displayName);
     var activatedToolTip = WebInspector.UIString("Disable point to inspect mode (%s)").format(WebInspector._inspectModeKeyboardShortcut.displayName);
-    this._inspectModeToolbarButton = new WebInspector.ActivateButtonToolbarItem("inspect", toolTip, activatedToolTip, WebInspector.UIString("Inspect"), "Images/Crosshair.pdf");
+    this._inspectModeToolbarButton = new WebInspector.ActivateButtonToolbarItem("inspect", toolTip, activatedToolTip, WebInspector.UIString("Inspect"), "Images/Crosshair.svg");
     this._inspectModeToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleInspectMode, this);
     this.toolbar.addToolbarItem(this._inspectModeToolbarButton, WebInspector.Toolbar.Section.Center);
 
@@ -655,6 +656,9 @@ WebInspector.toggleConsoleView = function()
 
 WebInspector.UIString = function(string, vararg)
 {
+    if (WebInspector.dontLocalizeUserInterface)
+        return string;
+
     if (window.localizedStrings && string in window.localizedStrings)
         return window.localizedStrings[string];
 
@@ -818,7 +822,7 @@ WebInspector._updateDockNavigationItems = function()
     this.undockButtonNavigationItem.hidden = !docked;
 
     if (docked) {
-        this.undockButtonNavigationItem.alternateImage = this._dockSide === "bottom" ? "Images/DockRight.pdf" : "Images/DockBottom.pdf";
+        this.undockButtonNavigationItem.alternateImage = this._dockSide === "bottom" ? "Images/DockRight.svg" : "Images/DockBottom.svg";
         this.undockButtonNavigationItem.alternateToolTip = this._dockSide === "bottom" ? WebInspector.UIString("Dock to right of window") : WebInspector.UIString("Dock to bottom of window");
     }
 
@@ -1362,11 +1366,11 @@ WebInspector._generateDisclosureTriangleImages = function()
     specifications["selected"] = {fillColor: [255, 255, 255, 0.8]};
     specifications["selected-active"] = {fillColor: [255, 255, 255, 1]};
 
-    generateColoredImagesForCSS("Images/DisclosureTriangleSmallOpen.pdf", specifications, 13, 13, "disclosure-triangle-small-open-");
-    generateColoredImagesForCSS("Images/DisclosureTriangleSmallClosed.pdf", specifications, 13, 13, "disclosure-triangle-small-closed-");
+    generateColoredImagesForCSS("Images/DisclosureTriangleSmallOpen.svg", specifications, 13, 13, "disclosure-triangle-small-open-");
+    generateColoredImagesForCSS("Images/DisclosureTriangleSmallClosed.svg", specifications, 13, 13, "disclosure-triangle-small-closed-");
 
-    generateColoredImagesForCSS("Images/DisclosureTriangleTinyOpen.pdf", specifications, 8, 8, "disclosure-triangle-tiny-open-");
-    generateColoredImagesForCSS("Images/DisclosureTriangleTinyClosed.pdf", specifications, 8, 8, "disclosure-triangle-tiny-closed-");
+    generateColoredImagesForCSS("Images/DisclosureTriangleTinyOpen.svg", specifications, 8, 8, "disclosure-triangle-tiny-open-");
+    generateColoredImagesForCSS("Images/DisclosureTriangleTinyClosed.svg", specifications, 8, 8, "disclosure-triangle-tiny-closed-");
 }
 
 WebInspector.elementDragStart = function(element, dividerDrag, elementDragEnd, event, cursor, eventTarget)
@@ -1441,7 +1445,7 @@ WebInspector.createGoToArrowButton = function()
         specifications["go-to-arrow-selected"] = {fillColor: [255, 255, 255, 0.8]};
         specifications["go-to-arrow-selected-active"] = {fillColor: [255, 255, 255, 1]};
 
-        generateColoredImagesForCSS("Images/GoToArrow.pdf", specifications, 10, 10);
+        generateColoredImagesForCSS("Images/GoToArrow.svg", specifications, 10, 10);
     }
 
     function stopPropagation(event)
@@ -1709,4 +1713,30 @@ WebInspector.revertDomChanges = function(domChanges)
             break;
         }
     }
+}
+
+WebInspector.archiveMainFrame = function()
+{
+    this.notifications.dispatchEventToListeners(WebInspector.Notification.PageArchiveStarted, event);
+
+    setTimeout(function() {
+        PageAgent.archive(function(error, data) {
+            this.notifications.dispatchEventToListeners(WebInspector.Notification.PageArchiveEnded, event);
+            if (error)
+                return;
+
+            var mainFrame = WebInspector.frameResourceManager.mainFrame;
+            var archiveName = mainFrame.mainResource.urlComponents.host || mainFrame.mainResource.displayName || "Archive";
+            var url = "web-inspector:///" + encodeURI(archiveName) + ".webarchive";
+            InspectorFrontendHost.save(url, data, true, true);
+        }.bind(this));
+    }.bind(this), 3000);
+}
+
+WebInspector.canArchiveMainFrame = function()
+{
+    if (!PageAgent.archive)
+        return false;
+
+    return WebInspector.Resource.Type.fromMIMEType(WebInspector.frameResourceManager.mainFrame.mainResource.mimeType) === WebInspector.Resource.Type.Document;
 }

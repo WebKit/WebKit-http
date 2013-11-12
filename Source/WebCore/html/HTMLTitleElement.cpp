@@ -28,6 +28,8 @@
 #include "RenderStyle.h"
 #include "StyleInheritedData.h"
 #include "Text.h"
+#include "TextNodeTraversal.h"
+#include <wtf/Ref.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -49,7 +51,7 @@ Node::InsertionNotificationRequest HTMLTitleElement::insertedInto(ContainerNode*
 {
     HTMLElement::insertedInto(insertionPoint);
     if (inDocument() && !isInShadowTree())
-        document()->setTitleElement(m_title, this);
+        document().setTitleElement(m_title, this);
     return InsertionDone;
 }
 
@@ -57,31 +59,24 @@ void HTMLTitleElement::removedFrom(ContainerNode* insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
     if (insertionPoint->inDocument() && !insertionPoint->isInShadowTree())
-        document()->removeTitle(this);
+        document().removeTitle(this);
 }
 
-void HTMLTitleElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void HTMLTitleElement::childrenChanged(const ChildChange& change)
 {
-    HTMLElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
+    HTMLElement::childrenChanged(change);
     m_title = textWithDirection();
     if (inDocument()) {
         if (!isInShadowTree())
-            document()->setTitleElement(m_title, this);
+            document().setTitleElement(m_title, this);
         else
-            document()->removeTitle(this);
+            document().removeTitle(this);
     }
 }
 
 String HTMLTitleElement::text() const
 {
-    StringBuilder result;
-
-    for (Node *n = firstChild(); n; n = n->nextSibling()) {
-        if (n->isTextNode())
-            result.append(toText(n)->data());
-    }
-
-    return result.toString();
+    return TextNodeTraversal::contentsAsString(this);
 }
 
 StringWithDirection HTMLTitleElement::textWithDirection()
@@ -96,7 +91,7 @@ StringWithDirection HTMLTitleElement::textWithDirection()
 
 void HTMLTitleElement::setText(const String &value)
 {
-    RefPtr<Node> protectFromMutationEvents(this);
+    Ref<HTMLTitleElement> protectFromMutationEvents(*this);
 
     int numChildren = childNodeCount();
     
@@ -111,7 +106,7 @@ void HTMLTitleElement::setText(const String &value)
         if (numChildren > 0)
             removeChildren();
 
-        appendChild(document()->createTextNode(valueCopy.impl()), IGNORE_EXCEPTION);
+        appendChild(document().createTextNode(valueCopy.impl()), IGNORE_EXCEPTION);
     }
 }
 

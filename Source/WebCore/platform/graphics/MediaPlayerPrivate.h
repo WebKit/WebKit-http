@@ -62,6 +62,7 @@ public:
     virtual bool supportsFullscreen() const { return false; }
     virtual bool supportsSave() const { return false; }
     virtual bool supportsScanning() const { return false; }
+    virtual bool requiresImmediateCompositing() const { return false; }
 
     virtual IntSize naturalSize() const = 0;
 
@@ -148,6 +149,9 @@ public:
     // called when the rendering system flips the into or out of accelerated rendering mode.
     virtual void acceleratedRenderingStateChanged() { }
 #endif
+
+    virtual bool shouldMaintainAspectRatio() const { return true; }
+    virtual void setShouldMaintainAspectRatio(bool) { }
 
     virtual bool hasSingleSecurityOrigin() const { return false; }
 

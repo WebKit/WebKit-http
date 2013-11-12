@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -70,6 +70,11 @@ namespace JSC {
             return loc->value.ctiOffset;
         }
 #endif
+        
+        void clear()
+        {
+            offsetTable.clear();
+        }
     };
 
     struct SimpleJumpTable {
@@ -96,6 +101,14 @@ namespace JSC {
             return ctiDefault;
         }
 #endif
+        
+        void clear()
+        {
+            branchOffsets.clear();
+#if ENABLE(JIT)
+            ctiOffsets.clear();
+#endif
+        }
     };
 
 } // namespace JSC

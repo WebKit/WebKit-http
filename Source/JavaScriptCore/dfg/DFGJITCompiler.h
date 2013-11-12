@@ -28,12 +28,14 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "CallFrameInlines.h"
 #include "CodeBlock.h"
 #include "DFGCCallHelpers.h"
 #include "DFGDisassembler.h"
 #include "DFGFPRInfo.h"
 #include "DFGGPRInfo.h"
 #include "DFGGraph.h"
+#include "DFGJITCode.h"
 #include "DFGOSRExitCompilationInfo.h"
 #include "DFGRegisterBank.h"
 #include "DFGRegisterSet.h"
@@ -233,6 +235,28 @@ struct PropertyAccessRecord {
     RegisterMode m_registerMode;
 };
 
+struct InRecord {
+    InRecord(
+        CodeOrigin codeOrigin, MacroAssembler::PatchableJump jump,
+        SlowPathGenerator* slowPathGenerator, int8_t baseGPR, int8_t resultGPR,
+        const RegisterSet& usedRegisters)
+        : m_codeOrigin(codeOrigin)
+        , m_jump(jump)
+        , m_slowPathGenerator(slowPathGenerator)
+        , m_baseGPR(baseGPR)
+        , m_resultGPR(resultGPR)
+        , m_usedRegisters(usedRegisters)
+    {
+    }
+    
+    CodeOrigin m_codeOrigin;
+    MacroAssembler::PatchableJump m_jump;
+    SlowPathGenerator* m_slowPathGenerator;
+    int8_t m_baseGPR;
+    int8_t m_resultGPR;
+    RegisterSet m_usedRegisters;
+};
+
 // === JITCompiler ===
 //
 // DFG::JITCompiler is responsible for generating JIT code from the dataflow graph.
@@ -244,12 +268,25 @@ struct PropertyAccessRecord {
 class JITCompiler : public CCallHelpers {
 public:
     JITCompiler(Graph& dfg);
+    ~JITCompiler();
     
-    bool compile(JITCode& entry);
-    bool compileFunction(JITCode& entry, MacroAssemblerCodePtr& entryWithArityCheck);
+    void compile();
+    void compileFunction();
+    
+    void link();
+    void linkFunction();
 
     // Accessors for properties.
     Graph& graph() { return m_graph; }
+    
+    void addLazily(Watchpoint* watchpoint, WatchpointSet* set)
+    {
+        m_graph.watchpoints().addLazily(watchpoint, set);
+    }
+    void addLazily(Watchpoint* watchpoint, InlineWatchpointSet& set)
+    {
+        m_graph.watchpoints().addLazily(watchpoint, set);
+    }
     
     // Methods to set labels for the disassembler.
     void setStartOfCode()
@@ -259,11 +296,11 @@ public:
         m_disassembler->setStartOfCode(labelIgnoringWatchpoints());
     }
     
-    void setForBlock(BlockIndex blockIndex)
+    void setForBlockIndex(BlockIndex blockIndex)
     {
         if (LIKELY(!m_disassembler))
             return;
-        m_disassembler->setForBlock(blockIndex, labelIgnoringWatchpoints());
+        m_disassembler->setForBlockIndex(blockIndex, labelIgnoringWatchpoints());
     }
     
     void setForNode(Node* node)
@@ -299,7 +336,8 @@ public:
     void beginCall(CodeOrigin codeOrigin, CallBeginToken& token)
     {
         unsigned index = m_exceptionChecks.size();
-        store32(TrustedImm32(index), tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+        unsigned locationBits = CallFrame::Location::encodeAsCodeOriginIndex(index);
+        store32(TrustedImm32(locationBits), tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
         token.set(codeOrigin, index);
     }
 
@@ -360,6 +398,11 @@ public:
     {
         m_propertyAccesses.append(record);
     }
+    
+    void addIn(const InRecord& record)
+    {
+        m_ins.append(record);
+    }
 
     void addJSCall(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo::CallType callType, GPRReg callee, CodeOrigin codeOrigin)
     {
@@ -368,18 +411,13 @@ public:
     
     void addWeakReference(JSCell* target)
     {
-        m_codeBlock->appendWeakReference(target);
+        m_graph.m_plan.weakReferences.addLazily(target);
     }
     
     void addWeakReferences(const StructureSet& structureSet)
     {
         for (unsigned i = structureSet.size(); i--;)
             addWeakReference(structureSet[i]);
-    }
-    
-    void addWeakReferenceTransition(JSCell* codeOrigin, JSCell* from, JSCell* to)
-    {
-        m_codeBlock->appendWeakReferenceTransition(codeOrigin, from, to);
     }
     
     template<typename T>
@@ -397,7 +435,7 @@ public:
         if (!basicBlock.cfaHasVisited)
             return;
         
-        OSREntryData* entry = codeBlock()->appendDFGOSREntryData(basicBlock.bytecodeBegin, linkBuffer.offsetOf(blockHead));
+        OSREntryData* entry = m_jitCode->appendOSREntryData(basicBlock.bytecodeBegin, linkBuffer.offsetOf(blockHead));
         
         entry->m_expectedValues = basicBlock.valuesAtHead;
         
@@ -422,29 +460,38 @@ public:
         UNUSED_PARAM(linkBuffer);
 #endif
     }
+    
+    PassRefPtr<JITCode> jitCode() { return m_jitCode; }
+    
+    Vector<Label>& blockHeads() { return m_blockHeads; }
 
 private:
     friend class OSRExitJumpPlaceholder;
     
     // Internal implementation to compile.
     void compileEntry();
-    void compileBody(SpeculativeJIT&);
+    void compileBody();
     void link(LinkBuffer&);
-
+    
     void exitSpeculativeWithOSR(const OSRExit&, SpeculationRecovery*);
     void compileExceptionHandlers();
     void linkOSRExits();
+    void disassemble(LinkBuffer&);
     
     // The dataflow graph currently being generated.
     Graph& m_graph;
 
     OwnPtr<Disassembler> m_disassembler;
     
+    RefPtr<JITCode> m_jitCode;
+    
     // Vector of calls out from JIT code, including exception handler information.
     // Count of the number of CallRecords with exception handlers.
     Vector<CallLinkRecord> m_calls;
     Vector<CallExceptionRecord> m_exceptionChecks;
     
+    Vector<Label> m_blockHeads;
+
     struct JSCallRecord {
         JSCallRecord(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo::CallType callType, GPRReg callee, CodeOrigin codeOrigin)
             : m_fastCall(fastCall)
@@ -465,10 +512,17 @@ private:
     };
     
     Vector<PropertyAccessRecord, 4> m_propertyAccesses;
+    Vector<InRecord, 4> m_ins;
     Vector<JSCallRecord, 4> m_jsCalls;
     Vector<OSRExitCompilationInfo> m_exitCompilationInfo;
     Vector<Vector<Label> > m_exitSiteLabels;
     unsigned m_currentCodeOriginIndex;
+    
+    Call m_callStackCheck;
+    Call m_callArityCheck;
+    Call m_callArityFixup;
+    Label m_arityCheck;
+    OwnPtr<SpeculativeJIT> m_speculative;
 };
 
 } } // namespace JSC::DFG

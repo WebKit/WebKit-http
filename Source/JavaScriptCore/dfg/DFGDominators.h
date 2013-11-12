@@ -30,6 +30,8 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGAnalysis.h"
+#include "DFGBasicBlock.h"
 #include "DFGCommon.h"
 #include <wtf/FastBitVector.h>
 
@@ -37,24 +39,12 @@ namespace JSC { namespace DFG {
 
 class Graph;
 
-class Dominators {
+class Dominators : public Analysis<Dominators> {
 public:
     Dominators();
     ~Dominators();
     
     void compute(Graph& graph);
-    void invalidate()
-    {
-        m_valid = false;
-    }
-    void computeIfNecessary(Graph& graph)
-    {
-        if (m_valid)
-            return;
-        compute(graph);
-    }
-    
-    bool isValid() const { return m_valid; }
     
     bool dominates(BlockIndex from, BlockIndex to) const
     {
@@ -62,12 +52,18 @@ public:
         return m_results[to].get(from);
     }
     
+    bool dominates(BasicBlock* from, BasicBlock* to) const
+    {
+        return dominates(from->index, to->index);
+    }
+    
+    void dump(Graph& graph, PrintStream&) const;
+    
 private:
     bool iterateForBlock(Graph& graph, BlockIndex);
     
-    Vector<FastBitVector> m_results;
+    Vector<FastBitVector> m_results; // For each block, the bitvector of blocks that dominate it.
     FastBitVector m_scratch;
-    bool m_valid;
 };
 
 } } // namespace JSC::DFG

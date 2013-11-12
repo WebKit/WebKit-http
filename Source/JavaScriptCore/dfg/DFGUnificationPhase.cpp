@@ -48,8 +48,8 @@ public:
         ASSERT(m_graph.m_unificationState == LocallyUnified);
         
         // Ensure that all Phi functions are unified.
-        for (BlockIndex blockIndex = m_graph.m_blocks.size(); blockIndex--;) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             ASSERT(block->isReachable);
@@ -72,6 +72,7 @@ public:
             data->find()->predict(data->nonUnifiedPrediction());
             data->find()->mergeIsCaptured(data->isCaptured());
             data->find()->mergeStructureCheckHoistingFailed(data->structureCheckHoistingFailed());
+            data->find()->mergeCheckArrayHoistingFailed(data->checkArrayHoistingFailed());
             data->find()->mergeShouldNeverUnbox(data->shouldNeverUnbox());
             data->find()->mergeIsLoadedFrom(data->isLoadedFrom());
         }

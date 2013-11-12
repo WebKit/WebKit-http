@@ -8,27 +8,112 @@ ROWSPAN="2"	3,2	3,3	3,4
 4,2	4,3	4,4
 ----------------------
 { 0, 0 }
-toolkit:WebKitEfl
+AXRole: AXCell
+AXParent: AXTable
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 246.000000, 78.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: Cell A<\n>COLSPAN="2"<\n>ROWSPAN="2"
+AXFocusable: 0
+AXFocused: 0
+AXSelectable: 1
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: aria-sort:AXUnknownSortDirection, toolkit:WebKitEfl
 {0, 2}, {0, 2}
 
 ----------------------
 { 1, 1 }
-toolkit:WebKitEfl
+AXRole: AXCell
+AXParent: AXTable
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 246.000000, 78.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: Cell A<\n>COLSPAN="2"<\n>ROWSPAN="2"
+AXFocusable: 0
+AXFocused: 0
+AXSelectable: 1
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: aria-sort:AXUnknownSortDirection, toolkit:WebKitEfl
 {0, 2}, {0, 2}
 
 ----------------------
 { 3, 0 }
-toolkit:WebKitEfl
+AXRole: AXCell
+AXParent: AXTable
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 124.000000, 60.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: Cell C<\n>ROWSPAN="2"
+AXFocusable: 0
+AXFocused: 0
+AXSelectable: 1
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: aria-sort:AXUnknownSortDirection, toolkit:WebKitEfl
 {2, 2}, {0, 1}
 
 ----------------------
 { 2, 0 }
-toolkit:WebKitEfl
+AXRole: AXCell
+AXParent: AXTable
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 124.000000, 60.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: Cell C<\n>ROWSPAN="2"
+AXFocusable: 0
+AXFocused: 0
+AXSelectable: 1
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: aria-sort:AXUnknownSortDirection, toolkit:WebKitEfl
 {2, 2}, {0, 1}
 
 ----------------------
 { 2, 3 }
-toolkit:WebKitEfl
+AXRole: AXCell
+AXParent: AXTable
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 124.000000, 30.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: 3,4
+AXFocusable: 0
+AXFocused: 0
+AXSelectable: 1
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: aria-sort:AXUnknownSortDirection, toolkit:WebKitEfl
 {2, 1}, {3, 1}
 
 ----------------------

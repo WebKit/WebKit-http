@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #ifndef ArrayProfile_h
 #define ArrayProfile_h
 
+#include "ConcurrentJITLock.h"
 #include "JSArray.h"
 #include "Structure.h"
 #include <wtf/HashMap.h>
@@ -79,6 +80,11 @@ inline bool mergeArrayModes(ArrayModes& left, ArrayModes right)
     return true;
 }
 
+inline bool arrayModesAreClearOrTop(ArrayModes modes)
+{
+    return !modes || modes == ALL_ARRAY_MODES;
+}
+
 // Checks if proven is a subset of expected.
 inline bool arrayModesAlreadyChecked(ArrayModes proven, ArrayModes expected)
 {
@@ -130,11 +136,11 @@ public:
     ArrayProfile()
         : m_bytecodeOffset(std::numeric_limits<unsigned>::max())
         , m_lastSeenStructure(0)
-        , m_expectedStructure(0)
         , m_mayStoreToHole(false)
         , m_outOfBounds(false)
         , m_mayInterceptIndexedAccesses(false)
         , m_usesOriginalArrayStructures(true)
+        , m_didPerformFirstRunPruning(false)
         , m_observedArrayModes(0)
     {
     }
@@ -142,11 +148,11 @@ public:
     ArrayProfile(unsigned bytecodeOffset)
         : m_bytecodeOffset(bytecodeOffset)
         , m_lastSeenStructure(0)
-        , m_expectedStructure(0)
         , m_mayStoreToHole(false)
         , m_outOfBounds(false)
         , m_mayInterceptIndexedAccesses(false)
         , m_usesOriginalArrayStructures(true)
+        , m_didPerformFirstRunPruning(false)
         , m_observedArrayModes(0)
     {
     }
@@ -163,32 +169,18 @@ public:
         m_lastSeenStructure = structure;
     }
     
-    void computeUpdatedPrediction(CodeBlock*, OperationInProgress = NoOperation);
+    void computeUpdatedPrediction(const ConcurrentJITLocker&, CodeBlock*);
     
-    Structure* expectedStructure() const
-    {
-        if (structureIsPolymorphic())
-            return 0;
-        return m_expectedStructure;
-    }
-    bool structureIsPolymorphic() const
-    {
-        return m_expectedStructure == polymorphicStructure();
-    }
-    bool hasDefiniteStructure() const
-    {
-        return !structureIsPolymorphic() && m_expectedStructure;
-    }
-    ArrayModes observedArrayModes() const { return m_observedArrayModes; }
-    ArrayModes updatedObservedArrayModes() const; // Computes the observed array modes without updating the profile.
-    bool mayInterceptIndexedAccesses() const { return m_mayInterceptIndexedAccesses; }
+    ArrayModes observedArrayModes(const ConcurrentJITLocker&) const { return m_observedArrayModes; }
+    bool mayInterceptIndexedAccesses(const ConcurrentJITLocker&) const { return m_mayInterceptIndexedAccesses; }
     
-    bool mayStoreToHole() const { return m_mayStoreToHole; }
-    bool outOfBounds() const { return m_outOfBounds; }
+    bool mayStoreToHole(const ConcurrentJITLocker&) const { return m_mayStoreToHole; }
+    bool outOfBounds(const ConcurrentJITLocker&) const { return m_outOfBounds; }
     
-    bool usesOriginalArrayStructures() const { return m_usesOriginalArrayStructures; }
+    bool usesOriginalArrayStructures(const ConcurrentJITLocker&) const { return m_usesOriginalArrayStructures; }
     
-    CString briefDescription(CodeBlock*);
+    CString briefDescription(const ConcurrentJITLocker&, CodeBlock*);
+    CString briefDescriptionWithoutUpdating(const ConcurrentJITLocker&);
     
 private:
     friend class LLIntOffsetsExtractor;
@@ -197,11 +189,11 @@ private:
     
     unsigned m_bytecodeOffset;
     Structure* m_lastSeenStructure;
-    Structure* m_expectedStructure;
     bool m_mayStoreToHole; // This flag may become overloaded to indicate other special cases that were encountered during array access, as it depends on indexing type. Since we currently have basically just one indexing type (two variants of ArrayStorage), this flag for now just means exactly what its name implies.
     bool m_outOfBounds;
-    bool m_mayInterceptIndexedAccesses;
-    bool m_usesOriginalArrayStructures;
+    bool m_mayInterceptIndexedAccesses : 1;
+    bool m_usesOriginalArrayStructures : 1;
+    bool m_didPerformFirstRunPruning : 1;
     ArrayModes m_observedArrayModes;
 };
 

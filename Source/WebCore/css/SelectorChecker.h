@@ -29,7 +29,7 @@
 #define SelectorChecker_h
 
 #include "CSSSelector.h"
-#include "InspectorInstrumentation.h"
+#include "Element.h"
 #include "SpaceSplitString.h"
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
@@ -47,8 +47,9 @@ public:
     enum Match { SelectorMatches, SelectorFailsLocally, SelectorFailsAllSiblings, SelectorFailsCompletely };
     enum VisitedMatchType { VisitedMatchDisabled, VisitedMatchEnabled };
     enum Mode { ResolvingStyle = 0, CollectingRules, QueryingRules, SharingRules };
-    explicit SelectorChecker(Document*, Mode);
     enum BehaviorAtBoundary { DoesNotCrossBoundary, CrossesBoundary, StaysWithinTreeScope };
+
+    SelectorChecker(Document&, Mode);
 
     struct SelectorCheckingContext {
         // Initial selector constructor
@@ -91,7 +92,7 @@ public:
     static bool tagMatches(const Element*, const QualifiedName&);
     static bool isCommonPseudoClassSelector(const CSSSelector*);
     static bool matchesFocusPseudoClass(const Element*);
-    static bool checkExactAttribute(const Element*, const QualifiedName& selectorAttributeName, const AtomicStringImpl* value);
+    static bool checkExactAttribute(const Element*, const CSSSelector*, const QualifiedName& selectorAttributeName, const AtomicStringImpl* value);
 
     enum LinkMatchMask { MatchLink = 1, MatchVisited = 2, MatchAll = MatchLink | MatchVisited };
     static unsigned determineLinkMatchType(const CSSSelector*);
@@ -128,14 +129,15 @@ inline bool SelectorChecker::tagMatches(const Element* element, const QualifiedN
     return namespaceURI == starAtom || namespaceURI == element->namespaceURI();
 }
 
-inline bool SelectorChecker::checkExactAttribute(const Element* element, const QualifiedName& selectorAttributeName, const AtomicStringImpl* value)
+inline bool SelectorChecker::checkExactAttribute(const Element* element, const CSSSelector* selector, const QualifiedName& selectorAttributeName, const AtomicStringImpl* value)
 {
     if (!element->hasAttributesWithoutUpdate())
         return false;
+    const AtomicString& localName = element->isHTMLElement() ? selector->attributeCanonicalLocalName() : selectorAttributeName.localName();
     unsigned size = element->attributeCount();
     for (unsigned i = 0; i < size; ++i) {
-        const Attribute* attribute = element->attributeItem(i);
-        if (attribute->matches(selectorAttributeName) && (!value || attribute->value().impl() == value))
+        const Attribute& attribute = element->attributeAt(i);
+        if (attribute.matches(selectorAttributeName.prefix(), localName, selectorAttributeName.namespaceURI()) && (!value || attribute.value().impl() == value))
             return true;
     }
     return false;

@@ -45,9 +45,8 @@ namespace JSC {
         }
         static StringObject* create(ExecState*, JSGlobalObject*, JSString*);
 
-        static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
-        static bool getOwnPropertySlotByIndex(JSCell*, ExecState*, unsigned propertyName, PropertySlot&);
-        static bool getOwnPropertyDescriptor(JSObject*, ExecState*, PropertyName, PropertyDescriptor&);
+        static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
+        static bool getOwnPropertySlotByIndex(JSObject*, ExecState*, unsigned propertyName, PropertySlot&);
 
         static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
         static void putByIndex(JSCell*, ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
@@ -55,15 +54,15 @@ namespace JSC {
         static bool deleteProperty(JSCell*, ExecState*, PropertyName);
         static bool deletePropertyByIndex(JSCell*, ExecState*, unsigned propertyName);
         static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
-        static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, PropertyDescriptor&, bool shouldThrow);
+        static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
 
-        static const JS_EXPORTDATA ClassInfo s_info;
+        DECLARE_EXPORT_INFO;
 
         JSString* internalValue() const { return asString(JSWrapperObject::internalValue());}
 
         static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
         {
-            return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info);
+            return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
         }
 
     protected:
@@ -76,7 +75,7 @@ namespace JSC {
 
     inline StringObject* asStringObject(JSValue value)
     {
-        ASSERT(asObject(value)->inherits(&StringObject::s_info));
+        ASSERT(asObject(value)->inherits(StringObject::info()));
         return static_cast<StringObject*>(asObject(value));
     }
 

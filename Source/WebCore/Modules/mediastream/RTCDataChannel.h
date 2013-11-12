@@ -32,6 +32,11 @@
 #include "Timer.h"
 #include <wtf/RefCounted.h>
 
+namespace JSC {
+class ArrayBuffer;
+class ArrayBufferView;
+}
+
 namespace WebCore {
 
 class Blob;
@@ -53,8 +58,8 @@ public:
     void setBinaryType(const String&, ExceptionCode&);
 
     void send(const String&, ExceptionCode&);
-    void send(PassRefPtr<ArrayBuffer>, ExceptionCode&);
-    void send(PassRefPtr<ArrayBufferView>, ExceptionCode&);
+    void send(PassRefPtr<JSC::ArrayBuffer>, ExceptionCode&);
+    void send(PassRefPtr<JSC::ArrayBufferView>, ExceptionCode&);
     void send(PassRefPtr<Blob>, ExceptionCode&);
 
     void close();
@@ -80,10 +85,10 @@ private:
     void scheduledEventTimerFired(Timer<RTCDataChannel>*);
 
     // EventTarget
-    virtual EventTargetData* eventTargetData();
-    virtual EventTargetData* ensureEventTargetData();
-    virtual void refEventTarget() { ref(); }
-    virtual void derefEventTarget() { deref(); }
+    virtual EventTargetData* eventTargetData() OVERRIDE;
+    virtual EventTargetData& ensureEventTargetData() OVERRIDE;
+    virtual void refEventTarget() OVERRIDE { ref(); }
+    virtual void derefEventTarget() OVERRIDE { deref(); }
     EventTargetData m_eventTargetData;
     ScriptExecutionContext* m_scriptExecutionContext;
 

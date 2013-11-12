@@ -42,6 +42,7 @@
 #include "UnitBezier.h"
 #include <algorithm>
 #include <wtf/CurrentTime.h>
+#include <wtf/Ref.h>
 
 using namespace std;
 
@@ -92,7 +93,7 @@ AnimationBase::AnimationBase(const Animation* transition, RenderObject* renderer
 
 void AnimationBase::setNeedsStyleRecalc(Node* node)
 {
-    ASSERT(!node || (node->document() && !node->document()->inPageCache()));
+    ASSERT(!node || !node->document().inPageCache());
     if (node)
         node->setNeedsStyleRecalc(SyntheticStyleChange);
 }
@@ -453,8 +454,8 @@ void AnimationBase::fireAnimationEventsIfNeeded()
     // during an animation callback that might get called. Since the owner is a CompositeAnimation
     // and it ref counts this object, we will keep a ref to that instead. That way the AnimationBase
     // can still access the resources of its CompositeAnimation as needed.
-    RefPtr<AnimationBase> protector(this);
-    RefPtr<CompositeAnimation> compProtector(m_compAnim);
+    Ref<AnimationBase> protect(*this);
+    Ref<CompositeAnimation> protectCompositeAnimation(*m_compAnim);
     
     // Check for start timeout
     if (m_animState == AnimationStateStartWaitTimer) {
@@ -650,7 +651,7 @@ void AnimationBase::freezeAtTime(double t)
         // If we haven't started yet, make it as if we started.
         LOG(Animations, "%p AnimationState %s -> StartWaitResponse", this, nameForState(m_animState));
         m_animState = AnimationStateStartWaitResponse;
-        onAnimationStartResponse(currentTime());
+        onAnimationStartResponse(monotonicallyIncreasingTime());
     }
 
     ASSERT(m_startTime);        // if m_startTime is zero, we haven't started yet, so we'll get a bad pause time.

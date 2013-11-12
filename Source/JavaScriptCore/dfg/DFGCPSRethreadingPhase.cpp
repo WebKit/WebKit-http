@@ -49,6 +49,7 @@ public:
         
         clearIsLoadedFrom();
         freeUnnecessaryNodes();
+        m_graph.clearReplacements();
         canonicalizeLocalsInBlocks();
         propagatePhis<LocalOperand>();
         propagatePhis<ArgumentOperand>();
@@ -69,8 +70,8 @@ private:
     {
         SamplingRegion samplingRegion("DFG CPS Rethreading: freeUnnecessaryNodes");
         
-        for (BlockIndex blockIndex = m_graph.m_blocks.size(); blockIndex--;) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             ASSERT(block->isReachable);
@@ -99,12 +100,9 @@ private:
                         break;
                     }
                     break;
-                case Nop:
-                    continue;
                 default:
                     break;
                 }
-                node->replacement = 0; // Reset the replacement since the next phase will use it.
                 block->at(toIndex++) = node;
             }
             block->resize(toIndex);
@@ -200,12 +198,12 @@ private:
             
             if (otherNode->op() == GetLocal) {
                 // Replace all references to this GetLocal with otherNode.
-                node->replacement = otherNode;
+                node->misc.replacement = otherNode;
                 return;
             }
             
             ASSERT(otherNode->op() == SetLocal);
-            node->replacement = otherNode->child1().node();
+            node->misc.replacement = otherNode->child1().node();
             return;
         }
         
@@ -329,12 +327,14 @@ private:
             // SetArgument may only appear in the root block.
             //
             // Tail variable: the last thing that happened to the variable in the block.
-            // It may be a Flush, PhantomLocal, GetLocal, SetLocal, or SetArgument.
+            // It may be a Flush, PhantomLocal, GetLocal, SetLocal, SetArgument, or Phi.
             // SetArgument may only appear in the root block. Note that if there ever
             // was a GetLocal to the variable, and it was followed by PhantomLocals and
             // Flushes but not SetLocals, then the tail variable will be the GetLocal.
             // This reflects the fact that you only care that the tail variable is a
-            // Flush or PhantomLocal if nothing else interesting happened.
+            // Flush or PhantomLocal if nothing else interesting happened. Likewise, if
+            // there ever was a SetLocal and it was followed by Flushes, then the tail
+            // variable will be a SetLocal and not those subsequent Flushes.
             //
             // Child of GetLocal: the operation that the GetLocal keeps alive. For
             // uncaptured locals, it may be a Phi from the current block. For arguments,
@@ -387,8 +387,8 @@ private:
     {
         SamplingRegion samplingRegion("DFG CPS Rethreading: canonicalizeLocalsInBlocks");
         
-        for (m_blockIndex = m_graph.m_blocks.size(); m_blockIndex--;) {
-            m_block = m_graph.m_blocks[m_blockIndex].get();
+        for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
+            m_block = m_graph.block(blockIndex);
             canonicalizeLocalsInBlock();
         }
     }
@@ -402,20 +402,19 @@ private:
         
         // Ensure that attempts to use this fail instantly.
         m_block = 0;
-        m_blockIndex = NoBlock;
         
         while (!phiStack.isEmpty()) {
             PhiStackEntry entry = phiStack.last();
             phiStack.removeLast();
             
             BasicBlock* block = entry.m_block;
-            PredecessorList& predecessors = block->m_predecessors;
+            PredecessorList& predecessors = block->predecessors;
             Node* currentPhi = entry.m_phi;
             VariableAccessData* variable = currentPhi->variableAccessData();
             size_t index = entry.m_index;
             
             for (size_t i = predecessors.size(); i--;) {
-                BasicBlock* predecessorBlock = m_graph.m_blocks[predecessors[i]].get();
+                BasicBlock* predecessorBlock = predecessors[i];
                 
                 Node* variableInPrevious = predecessorBlock->variablesAtTail.atFor<operandKind>(index);
                 if (!variableInPrevious) {
@@ -481,7 +480,6 @@ private:
         return m_localPhiStack;
     }
     
-    BlockIndex m_blockIndex;
     BasicBlock* m_block;
     Vector<PhiStackEntry, 128> m_argumentPhiStack;
     Vector<PhiStackEntry, 128> m_localPhiStack;

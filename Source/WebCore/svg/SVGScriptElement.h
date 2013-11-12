@@ -26,7 +26,6 @@
 #include "SVGAnimatedString.h"
 #include "SVGElement.h"
 #include "SVGExternalResourcesRequired.h"
-#include "SVGNames.h"
 #include "SVGURIReference.h"
 #include "ScriptElement.h"
 
@@ -48,7 +47,7 @@ private:
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
     virtual void svgAttributeChanged(const QualifiedName&);
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
@@ -71,6 +70,7 @@ private:
     virtual void dispatchLoadEvent() { SVGExternalResourcesRequired::dispatchLoadEvent(this); }
 
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren();
+    virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE { return false; }
 
     // SVGExternalResourcesRequired
     virtual void setHaveFiredLoadEvent(bool haveFiredLoadEvent) { ScriptElement::setHaveFiredLoadEvent(haveFiredLoadEvent); }
@@ -86,17 +86,6 @@ private:
     String m_type;
     Timer<SVGElement> m_svgLoadEventTimer;
 };
-
-inline bool isSVGScriptElement(Node* node)
-{
-    return node->hasTagName(SVGNames::scriptTag);
-}
-
-inline SVGScriptElement* toSVGScriptElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(SVGNames::scriptTag));
-    return static_cast<SVGScriptElement*>(node);
-}
 
 } // namespace WebCore
 

@@ -28,6 +28,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGGraph.h"
 #include "DFGNodeAllocator.h"
 
 namespace JSC { namespace DFG {
@@ -37,18 +38,57 @@ unsigned Node::index() const
     return NodeAllocator::allocatorOf(this)->indexOf(this);
 }
 
+bool Node::hasVariableAccessData(Graph& graph)
+{
+    switch (op()) {
+    case Phi:
+        return graph.m_form != SSA;
+    case GetLocal:
+    case GetArgument:
+    case SetLocal:
+    case MovHint:
+    case MovHintAndCheck:
+    case ZombieHint:
+    case SetArgument:
+    case Flush:
+    case PhantomLocal:
+        return true;
+    default:
+        return false;
+    }
+}
+
 } } // namespace JSC::DFG
 
 namespace WTF {
 
-void printInternal(PrintStream& out, JSC::DFG::Node* node)
+using namespace JSC;
+using namespace JSC::DFG;
+
+void printInternal(PrintStream& out, SwitchKind kind)
+{
+    switch (kind) {
+    case SwitchImm:
+        out.print("SwitchImm");
+        return;
+    case SwitchChar:
+        out.print("SwitchChar");
+        return;
+    case SwitchString:
+        out.print("SwitchString");
+        return;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+void printInternal(PrintStream& out, Node* node)
 {
     if (!node) {
         out.print("-");
         return;
     }
     out.print("@", node->index());
-    out.print(JSC::AbbreviatedSpeculationDump(node->prediction()));
+    out.print(AbbreviatedSpeculationDump(node->prediction()));
 }
 
 } // namespace WTF

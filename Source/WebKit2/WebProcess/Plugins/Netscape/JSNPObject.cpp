@@ -67,7 +67,7 @@ JSNPObject::JSNPObject(JSGlobalObject* globalObject, Structure* structure, NPRun
 void JSNPObject::finishCreation(JSGlobalObject* globalObject)
 {
     Base::finishCreation(globalObject->vm());
-    ASSERT(inherits(&s_info));
+    ASSERT(inherits(info()));
 
     // We should never have an NPJSObject inside a JSNPObject.
     ASSERT(!NPJSObject::isNPJSObject(m_npObject));
@@ -89,7 +89,7 @@ void JSNPObject::destroy(JSCell* cell)
 void JSNPObject::invalidate()
 {
     ASSERT(m_npObject);
-    ASSERT_GC_OBJECT_INHERITS(this, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(this, info());
 
     releaseNPObject(m_npObject);
     m_npObject = 0;
@@ -106,7 +106,7 @@ NPObject* JSNPObject::leakNPObject()
 
 JSValue JSNPObject::callMethod(ExecState* exec, NPIdentifier methodName)
 {
-    ASSERT_GC_OBJECT_INHERITS(this, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(this, info());
     if (!m_npObject)
         return throwInvalidAccessError(exec);
 
@@ -137,7 +137,7 @@ JSValue JSNPObject::callMethod(ExecState* exec, NPIdentifier methodName)
         releaseNPVariantValue(&arguments[i]);
 
     if (!returnValue)
-        throwError(exec, createError(exec, "Error calling method on NPObject."));
+        exec->vm().throwException(exec, createError(exec, "Error calling method on NPObject."));
 
     JSValue propertyValue = m_objectMap->convertNPVariantToJSValue(exec, globalObject(), result);
     releaseNPVariantValue(&result);
@@ -146,7 +146,7 @@ JSValue JSNPObject::callMethod(ExecState* exec, NPIdentifier methodName)
 
 JSC::JSValue JSNPObject::callObject(JSC::ExecState* exec)
 {
-    ASSERT_GC_OBJECT_INHERITS(this, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(this, info());
     if (!m_npObject)
         return throwInvalidAccessError(exec);
 
@@ -177,7 +177,7 @@ JSC::JSValue JSNPObject::callObject(JSC::ExecState* exec)
         releaseNPVariantValue(&arguments[i]);
 
     if (!returnValue)
-        throwError(exec, createError(exec, "Error calling method on NPObject."));
+        exec->vm().throwException(exec, createError(exec, "Error calling method on NPObject."));
 
     JSValue propertyValue = m_objectMap->convertNPVariantToJSValue(exec, globalObject(), result);
     releaseNPVariantValue(&result);
@@ -186,7 +186,7 @@ JSC::JSValue JSNPObject::callObject(JSC::ExecState* exec)
 
 JSValue JSNPObject::callConstructor(ExecState* exec)
 {
-    ASSERT_GC_OBJECT_INHERITS(this, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(this, info());
     if (!m_npObject)
         return throwInvalidAccessError(exec);
 
@@ -213,7 +213,7 @@ JSValue JSNPObject::callConstructor(ExecState* exec)
     }
 
     if (!returnValue)
-        throwError(exec, createError(exec, "Error calling method on NPObject."));
+        exec->vm().throwException(exec, createError(exec, "Error calling method on NPObject."));
     
     JSValue value = m_objectMap->convertNPVariantToJSValue(exec, globalObject(), result);
     releaseNPVariantValue(&result);
@@ -223,7 +223,7 @@ JSValue JSNPObject::callConstructor(ExecState* exec)
 static EncodedJSValue JSC_HOST_CALL callNPJSObject(ExecState* exec)
 {
     JSObject* object = exec->callee();
-    ASSERT(object->inherits(&JSNPObject::s_info));
+    ASSERT(object->inherits(JSNPObject::info()));
 
     return JSValue::encode(static_cast<JSNPObject*>(object)->callObject(exec));
 }
@@ -231,7 +231,7 @@ static EncodedJSValue JSC_HOST_CALL callNPJSObject(ExecState* exec)
 JSC::CallType JSNPObject::getCallData(JSC::JSCell* cell, JSC::CallData& callData)
 {
     JSNPObject* thisObject = JSC::jsCast<JSNPObject*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     if (!thisObject->m_npObject || !thisObject->m_npObject->_class->invokeDefault)
         return CallTypeNone;
 
@@ -242,7 +242,7 @@ JSC::CallType JSNPObject::getCallData(JSC::JSCell* cell, JSC::CallData& callData
 static EncodedJSValue JSC_HOST_CALL constructWithConstructor(ExecState* exec)
 {
     JSObject* constructor = exec->callee();
-    ASSERT(constructor->inherits(&JSNPObject::s_info));
+    ASSERT(constructor->inherits(JSNPObject::info()));
 
     return JSValue::encode(static_cast<JSNPObject*>(constructor)->callConstructor(exec));
 }
@@ -250,7 +250,7 @@ static EncodedJSValue JSC_HOST_CALL constructWithConstructor(ExecState* exec)
 ConstructType JSNPObject::getConstructData(JSCell* cell, ConstructData& constructData)
 {
     JSNPObject* thisObject = JSC::jsCast<JSNPObject*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     if (!thisObject->m_npObject || !thisObject->m_npObject->_class->construct)
         return ConstructTypeNone;
 
@@ -258,10 +258,10 @@ ConstructType JSNPObject::getConstructData(JSCell* cell, ConstructData& construc
     return ConstructTypeHost;
 }
 
-bool JSNPObject::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+bool JSNPObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
-    JSNPObject* thisObject = JSC::jsCast<JSNPObject*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    JSNPObject* thisObject = JSC::jsCast<JSNPObject*>(object);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     if (!thisObject->m_npObject) {
         throwInvalidAccessError(exec);
         return false;
@@ -276,58 +276,23 @@ bool JSNPObject::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName 
 
     // First, check if the NPObject has a property with this name.
     if (thisObject->m_npObject->_class->hasProperty && thisObject->m_npObject->_class->hasProperty(thisObject->m_npObject, npIdentifier)) {
-        slot.setCustom(thisObject, thisObject->propertyGetter);
+        slot.setCustom(thisObject, DontDelete, thisObject->propertyGetter);
         return true;
     }
 
     // Second, check if the NPObject has a method with this name.
     if (thisObject->m_npObject->_class->hasMethod && thisObject->m_npObject->_class->hasMethod(thisObject->m_npObject, npIdentifier)) {
-        slot.setCustom(thisObject, thisObject->methodGetter);
+        slot.setCustom(thisObject, DontDelete | ReadOnly, thisObject->methodGetter);
         return true;
     }
     
-    return false;
-}
-
-bool JSNPObject::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
-{
-    JSNPObject* thisObject = jsCast<JSNPObject*>(object);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
-    if (!thisObject->m_npObject) {
-        throwInvalidAccessError(exec);
-        return false;
-    }
-
-    NPIdentifier npIdentifier = npIdentifierFromIdentifier(propertyName);
-
-    // Calling NPClass::invoke will call into plug-in code, and there's no telling what the plug-in can do.
-    // (including destroying the plug-in). Because of this, we make sure to keep the plug-in alive until 
-    // the call has finished.
-    NPRuntimeObjectMap::PluginProtector protector(thisObject->m_objectMap);
-
-    // First, check if the NPObject has a property with this name.
-    if (thisObject->m_npObject->_class->hasProperty && thisObject->m_npObject->_class->hasProperty(thisObject->m_npObject, npIdentifier)) {
-        PropertySlot slot;
-        slot.setCustom(thisObject, propertyGetter);
-        descriptor.setDescriptor(slot.getValue(exec, propertyName), DontDelete);
-        return true;
-    }
-
-    // Second, check if the NPObject has a method with this name.
-    if (thisObject->m_npObject->_class->hasMethod && thisObject->m_npObject->_class->hasMethod(thisObject->m_npObject, npIdentifier)) {
-        PropertySlot slot;
-        slot.setCustom(thisObject, methodGetter);
-        descriptor.setDescriptor(slot.getValue(exec, propertyName), DontDelete | ReadOnly);
-        return true;
-    }
-
     return false;
 }
 
 void JSNPObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot&)
 {
     JSNPObject* thisObject = JSC::jsCast<JSNPObject*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     if (!thisObject->m_npObject) {
         throwInvalidAccessError(exec);
         return;
@@ -375,7 +340,7 @@ bool JSNPObject::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned p
 
 bool JSNPObject::deleteProperty(ExecState* exec, NPIdentifier propertyName)
 {
-    ASSERT_GC_OBJECT_INHERITS(this, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(this, info());
     if (!m_npObject) {
         throwInvalidAccessError(exec);
         return false;
@@ -407,7 +372,7 @@ bool JSNPObject::deleteProperty(ExecState* exec, NPIdentifier propertyName)
 void JSNPObject::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNameArray, EnumerationMode)
 {
     JSNPObject* thisObject = jsCast<JSNPObject*>(object);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     if (!thisObject->m_npObject) {
         throwInvalidAccessError(exec);
         return;
@@ -455,7 +420,7 @@ void JSNPObject::getOwnPropertyNames(JSObject* object, ExecState* exec, Property
 JSValue JSNPObject::propertyGetter(ExecState* exec, JSValue slotBase, PropertyName propertyName)
 {
     JSNPObject* thisObj = static_cast<JSNPObject*>(asObject(slotBase));
-    ASSERT_GC_OBJECT_INHERITS(thisObj, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObj, info());
     
     if (!thisObj->m_npObject)
         return throwInvalidAccessError(exec);
@@ -491,7 +456,7 @@ JSValue JSNPObject::propertyGetter(ExecState* exec, JSValue slotBase, PropertyNa
 JSValue JSNPObject::methodGetter(ExecState* exec, JSValue slotBase, PropertyName propertyName)
 {
     JSNPObject* thisObj = static_cast<JSNPObject*>(asObject(slotBase));
-    ASSERT_GC_OBJECT_INHERITS(thisObj, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObj, info());
     
     if (!thisObj->m_npObject)
         return throwInvalidAccessError(exec);
@@ -502,7 +467,7 @@ JSValue JSNPObject::methodGetter(ExecState* exec, JSValue slotBase, PropertyName
 
 JSObject* JSNPObject::throwInvalidAccessError(ExecState* exec)
 {
-    return throwError(exec, createReferenceError(exec, "Trying to access object from destroyed plug-in."));
+    return exec->vm().throwException(exec, createReferenceError(exec, "Trying to access object from destroyed plug-in."));
 }
 
 } // namespace WebKit

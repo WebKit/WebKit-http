@@ -27,7 +27,7 @@
 
 #include "AdjustViewSizeOrNot.h"
 #include "Color.h"
-#include "Frame.h"
+#include "LayoutMilestones.h"
 #include "LayoutRect.h"
 #include "Pagination.h"
 #include "PaintPhase.h"
@@ -42,7 +42,9 @@ class AXObjectCache;
 class Element;
 class Event;
 class FloatSize;
+class Frame;
 class FrameActionScheduler;
+class HTMLFrameOwnerElement;
 class KURL;
 class Node;
 class Page;
@@ -52,6 +54,7 @@ class RenderLayer;
 class RenderObject;
 class RenderScrollbarPart;
 class RenderStyle;
+class RenderView;
 
 Pagination::Mode paginationModeForRenderStyle(RenderStyle*);
 
@@ -62,8 +65,8 @@ public:
     friend class RenderView;
     friend class Internals;
 
-    static PassRefPtr<FrameView> create(Frame*);
-    static PassRefPtr<FrameView> create(Frame*, const IntSize& initialSize);
+    static PassRefPtr<FrameView> create(Frame&);
+    static PassRefPtr<FrameView> create(Frame&, const IntSize& initialSize);
 
     virtual ~FrameView();
 
@@ -76,13 +79,12 @@ public:
     virtual bool scheduleAnimation();
 #endif
 
-    Frame* frame() const { return m_frame.get(); }
-    void clearFrame();
+    Frame& frame() const { return *m_frame; }
 
-    RenderView* renderView() const { return m_frame ? m_frame->contentRenderer() : 0; }
+    RenderView* renderView() const;
 
-    int mapFromLayoutToCSSUnits(LayoutUnit);
-    LayoutUnit mapFromCSSToLayoutUnits(int);
+    int mapFromLayoutToCSSUnits(LayoutUnit) const;
+    LayoutUnit mapFromCSSToLayoutUnits(int) const;
 
     LayoutUnit marginWidth() const { return m_margins.width(); } // -1 means default
     LayoutUnit marginHeight() const { return m_margins.height(); } // -1 means default
@@ -102,7 +104,7 @@ public:
     bool didFirstLayout() const;
     void layoutTimerFired(Timer<FrameView>*);
     void scheduleRelayout();
-    void scheduleRelayoutOfSubtree(RenderObject*);
+    void scheduleRelayoutOfSubtree(RenderObject&);
     void unscheduleRelayout();
     bool layoutPending() const;
     bool isInLayout() const { return m_inLayout; }
@@ -115,7 +117,7 @@ public:
     void setNeedsLayout();
     void setViewportConstrainedObjectsNeedLayout();
 
-    bool needsFullRepaint() const { return m_doFullRepaint; }
+    bool needsFullRepaint() const { return m_needsFullRepaint; }
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     void serviceScriptedAnimations(double monotonicAnimationStartTime);
@@ -277,9 +279,9 @@ public:
     void setLastPaintTime(double lastPaintTime) { m_lastPaintTime = lastPaintTime; }
     void setNodeToDraw(Node*);
 
-    enum SelectionInSnaphot { IncludeSelection, ExcludeSelection };
+    enum SelectionInSnapshot { IncludeSelection, ExcludeSelection };
     enum CoordinateSpaceForSnapshot { DocumentCoordinates, ViewCoordinates };
-    void paintContentsForSnapshot(GraphicsContext*, const IntRect& imageRect, SelectionInSnaphot shouldPaintSelection, CoordinateSpaceForSnapshot);
+    void paintContentsForSnapshot(GraphicsContext*, const IntRect& imageRect, SelectionInSnapshot shouldPaintSelection, CoordinateSpaceForSnapshot);
 
     virtual void paintOverhangAreas(GraphicsContext*, const IntRect& horizontalOverhangArea, const IntRect& verticalOverhangArea, const IntRect& dirtyRect);
     virtual void paintScrollCorner(GraphicsContext*, const IntRect& cornerRect);
@@ -298,6 +300,8 @@ public:
     void updateIsVisuallyNonEmpty();
     bool isVisuallyNonEmpty() const { return m_isVisuallyNonEmpty; }
     void enableAutoSizeMode(bool enable, const IntSize& minSize, const IntSize& maxSize);
+    void setAutoSizeFixedMinimumHeight(int fixedMinimumHeight);
+    IntSize autoSizingIntrinsicContentSize() const { return m_autoSizeContentSize; }
 
     void forceLayout(bool allowSubtree = false);
     void forceLayoutForPagination(const FloatSize& pageSize, const FloatSize& originalPageSize, float maximumShrinkFactor, AdjustViewSizeOrNot);
@@ -447,12 +451,14 @@ protected:
     virtual bool isFlippedDocument() const;
 
 private:
-    explicit FrameView(Frame*);
+    explicit FrameView(Frame&);
 
     void reset();
     void init();
 
     virtual bool isFrameView() const OVERRIDE { return true; }
+
+    bool isMainFrameView() const;
 
     friend class RenderWidget;
     bool useSlowRepaints(bool considerOverlap = true) const;
@@ -476,6 +482,7 @@ private:
     virtual void repaintContentRectangle(const IntRect&, bool immediate);
     virtual void contentsResized() OVERRIDE;
     virtual void visibleContentsResized();
+    virtual void fixedLayoutSizeChanged() OVERRIDE;
 
     virtual void delegatesScrollingDidChange();
 
@@ -533,6 +540,8 @@ private:
     FrameView* parentFrameView() const;
 
     bool doLayoutWithFrameFlattening(bool allowSubtree);
+    bool frameFlatteningEnabled() const;
+    bool isFrameFlatteningValidForThisFrame() const;
 
     bool qualifiesAsVisuallyNonEmpty() const;
 
@@ -547,11 +556,11 @@ private:
     
     typedef HashSet<RenderObject*> RenderObjectSet;
     OwnPtr<RenderObjectSet> m_widgetUpdateSet;
-    RefPtr<Frame> m_frame;
+    const RefPtr<Frame> m_frame;
 
     OwnPtr<RenderObjectSet> m_slowRepaintObjects;
 
-    bool m_doFullRepaint;
+    bool m_needsFullRepaint;
     
     bool m_canHaveScrollbars;
     bool m_cannotBlitToWindow;
@@ -636,6 +645,10 @@ private:
     IntSize m_minAutoSize;
     // The upper bound on the size when autosizing.
     IntSize m_maxAutoSize;
+    // The fixed height to resize the view to after autosizing is complete.
+    int m_autoSizeFixedMinimumHeight;
+    // The intrinsic content size decided by autosizing.
+    IntSize m_autoSizeContentSize;
 
     OwnPtr<ScrollableAreaSet> m_scrollableAreas;
     OwnPtr<ViewportConstrainedObjectSet> m_viewportConstrainedObjects;
@@ -685,16 +698,6 @@ inline void FrameView::incrementVisuallyNonEmptyPixelCount(const IntSize& size)
     if (m_visuallyNonEmptyPixelCount <= visualPixelThreshold)
         return;
     updateIsVisuallyNonEmpty();
-}
-
-inline int FrameView::mapFromLayoutToCSSUnits(LayoutUnit value)
-{
-    return value / (m_frame->pageZoomFactor() * m_frame->frameScaleFactor());
-}
-
-inline LayoutUnit FrameView::mapFromCSSToLayoutUnits(int value)
-{
-    return value * m_frame->pageZoomFactor() * m_frame->frameScaleFactor();
 }
 
 inline FrameView* toFrameView(Widget* widget)

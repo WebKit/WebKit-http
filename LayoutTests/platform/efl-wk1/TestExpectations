@@ -171,11 +171,10 @@ webkit.org/b/112016 accessibility/textarea-selected-text-range.html [ Failure ]
 webkit.org/b/112017 accessibility/textbox-role-reports-selection.html [ Failure ]
 webkit.org/b/112018 accessibility/th-as-title-ui.html [ Failure ]
 webkit.org/b/112019 accessibility/title-ui-element-correctness.html [ Failure ]
-webkit.org/b/112020 accessibility/transformed-element.html [ Failure ]
-webkit.org/b/112021 accessibility/visible-elements.html [ Failure ]
+webkit.org/b/112020 accessibility/transformed-element.html [ Failure Crash ]
+webkit.org/b/112021 accessibility/visible-elements.html [ Failure Crash ]
 
 accessibility/aria-checkbox-sends-notification.html [ Skip ]
-accessibility/color-well.html [ Skip ]
 accessibility/deleting-iframe-destroys-axcache.html [ Skip ]
 accessibility/img-fallsback-to-title.html [ Skip ]
 accessibility/internal-link-anchors2.html [ Skip ]
@@ -352,6 +351,7 @@ webkit.org/b/98523 fast/images/repaint-subrect-grid.html [ Failure ]
 
 # DRT needs a setting for setShouldRespectImageOrientation
 webkit.org/b/101210 fast/images/exif-orientation.html [ Failure ]
+webkit.org/b/101210 fast/images/exif-orientation-composited.html [ Failure ]
 
 # ESC key does not cancel context menu in EFL port
 Bug(EFL) editing/selection/5354455-1.html [ Failure ]
@@ -501,3 +501,6 @@ webkit.org/b/87226 printing/media-queries-print.html [ Failure ]
 webkit.org/b/87226 printing/setPrinting.html [ Failure ]
 webkit.org/b/87226 printing/simultaneous-position-float-change.html [ Failure ]
 webkit.org/b/87226 printing/width-overflow.html [ Failure ]
+
+# Failing tests after r155014
+webkit.org/b/120671 editing/selection/doubleclick-japanese-text.html [ Failure ]

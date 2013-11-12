@@ -83,9 +83,12 @@ void ApplicationCacheHost::maybeLoadMainResource(ResourceRequest& request, Subst
         if (m_mainResourceApplicationCache) {
             // Get the resource from the application cache. By definition, cacheForMainRequest() returns a cache that contains the resource.
             ApplicationCacheResource* resource = m_mainResourceApplicationCache->resourceForRequest(request);
-            substituteData = SubstituteData(resource->data(), 
+            substituteData = SubstituteData(resource->data(),
                                             resource->response().mimeType(),
-                                            resource->response().textEncodingName(), KURL());
+                                            resource->response().textEncodingName(),
+                                            KURL(),
+                                            KURL(),
+                                            SubstituteData::ShouldRevealToSessionHistory);
         }
     }
 }
@@ -207,7 +210,7 @@ bool ApplicationCacheHost::maybeLoadSynchronously(ResourceRequest& request, Reso
             response = resource->response();
             data.append(resource->data()->data(), resource->data()->size());
         } else {
-            error = documentLoader()->frameLoader()->client()->cannotShowURLError(request);
+            error = documentLoader()->frameLoader()->client().cannotShowURLError(request);
         }
         return true;
     }
@@ -474,8 +477,7 @@ void ApplicationCacheHost::abort()
 
 bool ApplicationCacheHost::isApplicationCacheEnabled()
 {
-    return m_documentLoader->frame() && m_documentLoader->frame()->settings()
-           && m_documentLoader->frame()->settings()->offlineWebApplicationCacheEnabled();
+    return m_documentLoader->frame() && m_documentLoader->frame()->settings().offlineWebApplicationCacheEnabled();
 }
 
 }  // namespace WebCore

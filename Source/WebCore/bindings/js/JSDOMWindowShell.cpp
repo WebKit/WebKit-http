@@ -52,7 +52,7 @@ JSDOMWindowShell::JSDOMWindowShell(Structure* structure, DOMWrapperWorld* world)
 void JSDOMWindowShell::finishCreation(VM& vm, PassRefPtr<DOMWindow> window)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(&s_info));
+    ASSERT(inherits(info()));
     setWindow(window);
 }
 
@@ -105,14 +105,14 @@ JSValue toJS(ExecState* exec, Frame* frame)
 {
     if (!frame)
         return jsNull();
-    return frame->script()->windowShell(currentWorld(exec));
+    return frame->script().windowShell(currentWorld(exec));
 }
 
 JSDOMWindowShell* toJSDOMWindowShell(Frame* frame, DOMWrapperWorld* isolatedWorld)
 {
     if (!frame)
         return 0;
-    return frame->script()->windowShell(isolatedWorld);
+    return frame->script().windowShell(isolatedWorld);
 }
 
 } // namespace WebCore

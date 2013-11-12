@@ -24,6 +24,7 @@
 #include "HTMLCollection.h"
 
 #include "ClassNodeList.h"
+#include "ElementTraversal.h"
 #include "HTMLDocument.h"
 #include "HTMLElement.h"
 #include "HTMLNameCollection.h"
@@ -32,12 +33,6 @@
 #include "HTMLOptionElement.h"
 #include "NodeList.h"
 #include "NodeRareData.h"
-#include "NodeTraversal.h"
-
-#if ENABLE(MICRODATA)
-#include "HTMLPropertiesCollection.h"
-#include "PropertyNodeList.h"
-#endif
 
 namespace WebCore {
 
@@ -61,9 +56,6 @@ static bool shouldOnlyIncludeDirectChildren(CollectionType type)
     case SelectedOptions:
     case DataListOptions:
     case WindowNamedItems:
-#if ENABLE(MICRODATA)
-    case ItemProperties:
-#endif
     case FormControls:
         return false;
     case NodeChildren:
@@ -78,8 +70,6 @@ static bool shouldOnlyIncludeDirectChildren(CollectionType type)
     case HTMLTagNodeListType:
     case RadioNodeListType:
     case LabelsNodeListType:
-    case MicroDataItemListType:
-    case PropertyNodeListType:
         break;
     }
     ASSERT_NOT_REACHED();
@@ -99,9 +89,6 @@ static NodeListRootType rootTypeFromCollectionType(CollectionType type)
     case DocAll:
     case WindowNamedItems:
     case DocumentNamedItems:
-#if ENABLE(MICRODATA)
-    case ItemProperties:
-#endif
     case FormControls:
         return NodeListIsRootedAtDocument;
     case NodeChildren:
@@ -121,8 +108,6 @@ static NodeListRootType rootTypeFromCollectionType(CollectionType type)
     case HTMLTagNodeListType:
     case RadioNodeListType:
     case LabelsNodeListType:
-    case MicroDataItemListType:
-    case PropertyNodeListType:
         break;
     }
     ASSERT_NOT_REACHED();
@@ -158,10 +143,6 @@ static NodeListInvalidationType invalidationTypeExcludingIdAndNameAttributes(Col
         return InvalidateOnIdNameAttrChange;
     case DocumentNamedItems:
         return InvalidateOnIdNameAttrChange;
-#if ENABLE(MICRODATA)
-    case ItemProperties:
-        return InvalidateOnItemAttrChange;
-#endif
     case FormControls:
         return InvalidateForFormControls;
     case ChildNodeListType:
@@ -171,8 +152,6 @@ static NodeListInvalidationType invalidationTypeExcludingIdAndNameAttributes(Col
     case HTMLTagNodeListType:
     case RadioNodeListType:
     case LabelsNodeListType:
-    case MicroDataItemListType:
-    case PropertyNodeListType:
         break;
     }
     ASSERT_NOT_REACHED();
@@ -203,7 +182,7 @@ inline bool isMatchingElement(const NodeListType*, Element*);
 template <> inline bool isMatchingElement(const HTMLCollection* htmlCollection, Element* element)
 {
     CollectionType type = htmlCollection->type();
-    if (!element->isHTMLElement() && !(type == DocAll || type == NodeChildren))
+    if (!element->isHTMLElement() && !(type == DocAll || type == NodeChildren || type == WindowNamedItems))
         return false;
 
     switch (type) {
@@ -247,10 +226,6 @@ template <> inline bool isMatchingElement(const HTMLCollection* htmlCollection, 
         return static_cast<const DocumentNameCollection*>(htmlCollection)->nodeMatches(element);
     case WindowNamedItems:
         return static_cast<const WindowNameCollection*>(htmlCollection)->nodeMatches(element);
-#if ENABLE(MICRODATA)
-    case ItemProperties:
-        return element->fastHasAttribute(itempropAttr);
-#endif
     case FormControls:
     case TableRows:
     case ChildNodeListType:
@@ -260,8 +235,6 @@ template <> inline bool isMatchingElement(const HTMLCollection* htmlCollection, 
     case HTMLTagNodeListType:
     case RadioNodeListType:
     case LabelsNodeListType:
-    case MicroDataItemListType:
-    case PropertyNodeListType:
         ASSERT_NOT_REACHED();
     }
     return false;
@@ -445,13 +418,6 @@ Node* LiveNodeListBase::item(unsigned offset) const
     if (isLengthCacheValid() && cachedLength() <= offset)
         return 0;
 
-#if ENABLE(MICRODATA)
-    if (type() == ItemProperties)
-        static_cast<const HTMLPropertiesCollection*>(this)->updateRefElements();
-    else if (type() == PropertyNodeListType)
-        static_cast<const PropertyNodeList*>(this)->updateRefElements();
-#endif
-
     ContainerNode* root = rootContainerNode();
     if (!root) {
         // FIMXE: In someTextNode.childNodes case the root is Text. We shouldn't even make a LiveNodeList for that.
@@ -548,14 +514,14 @@ inline Element* firstMatchingChildElement(const HTMLCollection* nodeList, Contai
 {
     Element* element = ElementTraversal::firstWithin(root);
     while (element && !isMatchingElement(nodeList, element))
-        element = ElementTraversal::nextSkippingChildren(element, root);
+        element = ElementTraversal::nextSibling(element);
     return element;
 }
 
-inline Element* nextMatchingChildElement(const HTMLCollection* nodeList, Element* current, ContainerNode* root)
+inline Element* nextMatchingSiblingElement(const HTMLCollection* nodeList, Element* current)
 {
     do {
-        current = ElementTraversal::nextSkippingChildren(current, root);
+        current = ElementTraversal::nextSibling(current);
     } while (current && !isMatchingElement(nodeList, current));
     return current;
 }
@@ -576,7 +542,7 @@ inline Element* HTMLCollection::traverseNextElement(unsigned& offsetInArray, Ele
         return virtualItemAfter(offsetInArray, previous);
     ASSERT(!offsetInArray);
     if (shouldOnlyIncludeDirectChildren())
-        return nextMatchingChildElement(this, previous, root);
+        return nextMatchingSiblingElement(this, previous);
     return nextMatchingElement(this, previous, root);
 }
 
@@ -592,7 +558,7 @@ inline Element* HTMLCollection::traverseForwardToOffset(unsigned offset, Element
         return 0;
     }
     if (shouldOnlyIncludeDirectChildren()) {
-        while ((currentElement = nextMatchingChildElement(this, currentElement, root))) {
+        while ((currentElement = nextMatchingSiblingElement(this, currentElement))) {
             if (++currentOffset == offset)
                 return currentElement;
         }
@@ -661,15 +627,14 @@ void HTMLCollection::updateNameCache() const
 
     unsigned arrayOffset = 0;
     for (Element* element = traverseFirstElement(arrayOffset, root); element; element = traverseNextElement(arrayOffset, element, root)) {
+        const AtomicString& idAttrVal = element->getIdAttribute();
+        if (!idAttrVal.isEmpty())
+            appendIdCache(idAttrVal, element);
         if (!element->isHTMLElement())
             continue;
-        HTMLElement* htmlElement = toHTMLElement(element);
-        const AtomicString& idAttrVal = htmlElement->getIdAttribute();
-        const AtomicString& nameAttrVal = htmlElement->getNameAttribute();
-        if (!idAttrVal.isEmpty())
-            appendIdCache(idAttrVal, htmlElement);
-        if (!nameAttrVal.isEmpty() && idAttrVal != nameAttrVal && (type() != DocAll || nameShouldBeVisibleInDocumentAll(htmlElement)))
-            appendNameCache(nameAttrVal, htmlElement);
+        const AtomicString& nameAttrVal = element->getNameAttribute();
+        if (!nameAttrVal.isEmpty() && idAttrVal != nameAttrVal && (type() != DocAll || nameShouldBeVisibleInDocumentAll(toHTMLElement(element))))
+            appendNameCache(nameAttrVal, element);
     }
 
     setHasNameCache();

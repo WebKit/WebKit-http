@@ -157,8 +157,6 @@
 
     NodeList getElementsByName([Default=Undefined] optional DOMString elementName);
 
-    [Conditional=MICRODATA] NodeList getItems([TreatNullAs=NullString, TreatUndefinedAs=NullString, Default=Undefined] optional DOMString typeNames);
-
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
              [Custom] attribute Location location;
 #endif
@@ -276,6 +274,7 @@
     [NotEnumerable] attribute EventListener onscroll;
     [NotEnumerable] attribute EventListener onselect;
     [NotEnumerable] attribute EventListener onsubmit;
+    [NotEnumerable] attribute EventListener onwheel;
 
     // [NotEnumerable] attribute EventListener oncanplay;
     // [NotEnumerable] attribute EventListener oncanplaythrough;

@@ -75,7 +75,6 @@ class ParsedStyleSheet {
 public:
     ParsedStyleSheet();
 
-    WebCore::CSSStyleSheet* cssStyleSheet() const { return m_parserOutput; }
     const String& text() const { ASSERT(m_hasText); return m_text; }
     void setText(const String& text);
     bool hasText() const { return m_hasText; }
@@ -86,16 +85,13 @@ public:
 
 private:
 
-    // StyleSheet constructed while parsing m_text.
-    WebCore::CSSStyleSheet* m_parserOutput;
     String m_text;
     bool m_hasText;
     OwnPtr<RuleSourceDataList> m_sourceData;
 };
 
 ParsedStyleSheet::ParsedStyleSheet()
-    : m_parserOutput(0)
-    , m_hasText(false)
+    : m_hasText(false)
 {
 }
 
@@ -369,9 +365,6 @@ bool InspectorStyle::setPropertyText(unsigned index, const String& propertyText,
         return false;
     }
 
-    Vector<InspectorStyleProperty> allProperties;
-    populateAllProperties(&allProperties);
-
     if (propertyText.stripWhiteSpace().length()) {
         RefPtr<MutableStylePropertySet> tempMutableStyle = MutableStylePropertySet::create();
         RefPtr<CSSRuleSourceData> sourceData = CSSRuleSourceData::create(CSSRuleSourceData::STYLE_RULE);
@@ -405,6 +398,9 @@ bool InspectorStyle::setPropertyText(unsigned index, const String& propertyText,
         ec = NOT_FOUND_ERR;
         return false;
     }
+
+    Vector<InspectorStyleProperty> allProperties;
+    populateAllProperties(&allProperties);
 
     InspectorStyleTextEditor editor(&allProperties, &m_disabledProperties, text, newLineAndWhitespaceDelimiters());
     if (overwrite) {
@@ -480,7 +476,6 @@ bool InspectorStyle::getText(String* result) const
 
 bool InspectorStyle::populateAllProperties(Vector<InspectorStyleProperty>* result) const
 {
-    HashSet<String> foundShorthands;
     HashSet<String> sourcePropertyNames;
     unsigned disabledIndex = 0;
     unsigned disabledLength = m_disabledProperties.size();
@@ -1356,7 +1351,7 @@ void InspectorStyleSheet::revalidateStyle(CSSStyleDeclaration* pageStyle)
     for (unsigned i = 0, size = m_flatRules.size(); i < size; ++i) {
         CSSStyleRule* parsedRule = m_flatRules.at(i).get();
         if (parsedRule->style() == pageStyle) {
-            if (parsedRule->styleRule()->properties()->asText() != pageStyle->cssText()) {
+            if (parsedRule->styleRule()->properties().asText() != pageStyle->cssText()) {
                 // Clear the disabled properties for the invalid style here.
                 m_inspectorStyles.remove(pageStyle);
 
@@ -1397,7 +1392,7 @@ bool InspectorStyleSheet::inlineStyleSheetText(String* result) const
         return false;
 
     Node* ownerNode = m_pageStyleSheet->ownerNode();
-    if (!ownerNode || ownerNode->nodeType() != Node::ELEMENT_NODE)
+    if (!ownerNode || !ownerNode->isElementNode())
         return false;
     Element* ownerElement = toElement(ownerNode);
 
@@ -1484,7 +1479,7 @@ bool InspectorStyleSheetForInlineStyle::setStyleText(CSSStyleDeclaration* style,
     ASSERT_UNUSED(style, style == inlineStyle());
 
     {
-        InspectorCSSAgent::InlineStyleOverrideScope overrideScope(m_element->ownerDocument());
+        InspectorCSSAgent::InlineStyleOverrideScope overrideScope(&m_element->document());
         m_element->setAttribute("style", text, ec);
     }
 
@@ -1501,7 +1496,7 @@ PassOwnPtr<Vector<size_t> > InspectorStyleSheetForInlineStyle::lineEndings() con
 
 Document* InspectorStyleSheetForInlineStyle::ownerDocument() const
 {
-    return m_element->document();
+    return &m_element->document();
 }
 
 bool InspectorStyleSheetForInlineStyle::ensureParsedDataReady()
@@ -1553,7 +1548,7 @@ bool InspectorStyleSheetForInlineStyle::getStyleAttributeRanges(CSSRuleSourceDat
     }
 
     RefPtr<MutableStylePropertySet> tempDeclaration = MutableStylePropertySet::create();
-    createCSSParser(m_element->document())->parseDeclaration(tempDeclaration.get(), m_styleText, result, m_element->document()->elementSheet()->contents());
+    createCSSParser(&m_element->document())->parseDeclaration(tempDeclaration.get(), m_styleText, result, m_element->document().elementSheet().contents());
     return true;
 }
 

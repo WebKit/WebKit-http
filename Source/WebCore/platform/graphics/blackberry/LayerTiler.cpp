@@ -62,6 +62,7 @@ public:
     bool tileNeedsRender(const TileIndex& index) const { return m_tilesNeedingRender.contains(index); }
     void markTileAsRendered(const TileIndex& index) { m_tilesNeedingRender.remove(index); m_tilesRendered.add(index); }
     void swapTilesNeedingRender(HashSet<TileIndex>& tilesNeedingRender) { m_tilesNeedingRender.swap(tilesNeedingRender); }
+    void clearTilesRendered() { m_tilesRendered.clear(); }
 
     void merge(LayerVisibility* visibility)
     {
@@ -152,17 +153,19 @@ void LayerTiler::updateTextureContentsIfNeeded(double scale)
 {
     updateTileSize();
 
-    LayerVisibility* frontVisibility = takeFrontVisibility();
-    if (frontVisibility) {
-        // If we're dirty, start fresh. Otherwise, keep track of tiles rendered so far, to avoid re-rendering the same content.
-        if (!m_contentsDirty)
-            frontVisibility->merge(m_backVisibility);
+    // If we're dirty, start fresh. Otherwise, we keep track of tiles rendered so far by merging
+    // them into the new visibility object further down, to avoid re-rendering the same content.
+    if (m_contentsDirty && m_backVisibility)
+        m_backVisibility->clearTilesRendered();
+
+    // Swap in the new visibility object and merge old visibility object into it.
+    if (LayerVisibility* frontVisibility = takeFrontVisibility()) {
+        frontVisibility->merge(m_backVisibility);
         delete m_backVisibility;
         m_backVisibility = frontVisibility;
     }
-    bool needsRender = m_backVisibility && m_backVisibility->needsRender();
 
-    // Check if update is needed
+    bool needsRender = m_backVisibility && m_backVisibility->needsRender();
     if (!m_contentsDirty && !needsRender)
         return;
 
@@ -171,8 +174,7 @@ void LayerTiler::updateTextureContentsIfNeeded(double scale)
         printf("Layer 0x%p local visible rect %s\n", m_layer, BlackBerry::Platform::FloatRect(m_backVisibility->visibleRect()).toString().c_str());
 #endif
 
-    // There's no point in drawing contents at a higher resolution for scale
-    // invariant layers.
+    // There's no point in drawing contents at a higher resolution for scale invariant layers.
     if (m_layer->sizeIsScaleInvariant())
         scale = 1;
 
@@ -222,7 +224,6 @@ void LayerTiler::updateTextureContentsIfNeeded(double scale)
         dirtyRect = IntRect(IntPoint::zero(), requiredTextureSize);
     }
 
-    IntRect previousTextureRect(IntPoint::zero(), m_pendingTextureSize);
     if (m_pendingTextureSize != requiredTextureSize) {
         m_pendingTextureSize = requiredTextureSize;
         addTextureJob(TextureJob::resizeContents(m_pendingTextureSize));
@@ -253,7 +254,7 @@ void LayerTiler::updateTextureContentsIfNeeded(double scale)
         first = last = TileIndex(0, 0);
     } else {
         first = indexOfTile(flooredIntPoint(visibleRect.minXMinYCorner()));
-        last = indexOfTile(ceiledIntPoint(visibleRect.maxXMaxYCorner()));
+        last = indexOfTile(ceiledIntPoint(visibleRect.maxXMaxYCorner()) + IntPoint(-1, -1)); // The origin should be the top left of the bottom right pixel.
     }
     for (unsigned i = first.i(); i <= last.i(); ++i) {
         for (unsigned j = first.j(); j <= last.j(); ++j) {
@@ -347,6 +348,12 @@ void LayerTiler::commitPendingTextureUploads(LayerCompositingThread*)
     m_pendingTextureJobs.clear();
 }
 
+void LayerTiler::discardFrontVisibility()
+{
+    delete m_frontVisibility;
+    m_frontVisibility = 0;
+}
+
 LayerVisibility* LayerTiler::swapFrontVisibility(LayerVisibility* visibility)
 {
     return reinterpret_cast<LayerVisibility*>(_smp_xchg(reinterpret_cast<unsigned*>(&m_frontVisibility), reinterpret_cast<unsigned>(visibility)));
@@ -405,13 +412,13 @@ void LayerTiler::processTextureJob(const TextureJob& job, TileJobsMap& tileJobsM
     if (job.m_type == TextureJob::ResizeContents) {
         IntSize pendingTextureSize = job.m_dirtyRect.size();
         if (pendingTextureSize.width() < m_requiredTextureSize.width() || pendingTextureSize.height() < m_requiredTextureSize.height())
-            pruneTextures();
+            pruneTextures(pendingTextureSize);
 
         m_requiredTextureSize = pendingTextureSize;
         return;
     } else if (job.m_type == TextureJob::DirtyContents) {
         TileIndex first = indexOfTile(job.m_dirtyRect.minXMinYCorner());
-        TileIndex last = indexOfTile(job.m_dirtyRect.maxXMaxYCorner());
+        TileIndex last = indexOfTile(job.m_dirtyRect.maxXMaxYCorner() + IntPoint(-1, -1)); // The origin should be the top left of the bottom right pixel.
         for (TileMap::iterator it = m_tiles.begin(); it != m_tiles.end(); ++it) {
             TileIndex index = (*it).key;
             if (index.i() >= first.i() && index.j() >= first.j() && index.i() <= last.i() && index.j() <= last.j())
@@ -632,7 +639,7 @@ void LayerTiler::deleteTextures(LayerCompositingThread*)
     m_requiredTextureSize = IntSize();
 }
 
-void LayerTiler::pruneTextures()
+void LayerTiler::pruneTextures(const IntSize& pendingTextureSize)
 {
     // Prune tiles that are no longer needed.
     Vector<TileIndex> tilesToDelete;
@@ -640,7 +647,7 @@ void LayerTiler::pruneTextures()
         TileIndex index = (*it).key;
 
         IntPoint origin = originOfTile(index);
-        if (origin.x() >= m_requiredTextureSize.width() || origin.y() >= m_requiredTextureSize.height())
+        if (origin.x() >= pendingTextureSize.width() || origin.y() >= pendingTextureSize.height())
             tilesToDelete.append(index);
     }
 
@@ -671,6 +678,12 @@ void LayerTiler::setNeedsBacking(bool needsBacking)
 
     m_needsBacking = needsBacking;
     updateTileSize();
+}
+
+void LayerTiler::discardBackVisibility()
+{
+    delete m_backVisibility;
+    m_backVisibility = 0;
 }
 
 void LayerTiler::scheduleCommit()

@@ -34,6 +34,7 @@ VPATH = \
     $(WebCore)/Modules/indexeddb \
     $(WebCore)/Modules/indieui \
     $(WebCore)/Modules/mediasource \
+    $(WebCore)/Modules/mediastream \
     $(WebCore)/Modules/notifications \
     $(WebCore)/Modules/quota \
     $(WebCore)/Modules/speech \
@@ -115,6 +116,28 @@ BINDING_IDLS = \
     $(WebCore)/Modules/mediasource/MediaSource.idl \
     $(WebCore)/Modules/mediasource/SourceBuffer.idl \
     $(WebCore)/Modules/mediasource/SourceBufferList.idl \
+    $(WebCore)/Modules/mediastream/LocalMediaStream.idl \
+    $(WebCore)/Modules/mediastream/MediaStream.idl \
+    $(WebCore)/Modules/mediastream/MediaStreamEvent.idl \
+    $(WebCore)/Modules/mediastream/MediaStreamTrack.idl \
+    $(WebCore)/Modules/mediastream/MediaStreamTrackEvent.idl \
+    $(WebCore)/Modules/mediastream/NavigatorMediaStream.idl \
+    $(WebCore)/Modules/mediastream/NavigatorUserMediaError.idl \
+    $(WebCore)/Modules/mediastream/NavigatorUserMediaErrorCallback.idl \
+    $(WebCore)/Modules/mediastream/NavigatorUserMediaSuccessCallback.idl \
+    $(WebCore)/Modules/mediastream/RTCDTMFSender.idl \
+    $(WebCore)/Modules/mediastream/RTCDTMFToneChangeEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCDataChannel.idl \
+    $(WebCore)/Modules/mediastream/RTCDataChannelEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCErrorCallback.idl \
+    $(WebCore)/Modules/mediastream/RTCIceCandidate.idl \
+    $(WebCore)/Modules/mediastream/RTCIceCandidateEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCPeerConnection.idl \
+    $(WebCore)/Modules/mediastream/RTCSessionDescription.idl \
+    $(WebCore)/Modules/mediastream/RTCSessionDescriptionCallback.idl \
+    $(WebCore)/Modules/mediastream/RTCStatsCallback.idl \
+    $(WebCore)/Modules/mediastream/RTCStatsReport.idl \
+    $(WebCore)/Modules/mediastream/RTCStatsResponse.idl \
     $(WebCore)/Modules/notifications/DOMWindowNotifications.idl \
     $(WebCore)/Modules/notifications/Notification.idl \
     $(WebCore)/Modules/notifications/NotificationCenter.idl \
@@ -152,6 +175,7 @@ BINDING_IDLS = \
     $(WebCore)/Modules/webaudio/DynamicsCompressorNode.idl \
     $(WebCore)/Modules/webaudio/ScriptProcessorNode.idl \
     $(WebCore)/Modules/webaudio/MediaElementAudioSourceNode.idl \
+    $(WebCore)/Modules/webaudio/MediaStreamAudioDestinationNode.idl \
     $(WebCore)/Modules/webaudio/MediaStreamAudioSourceNode.idl \
     $(WebCore)/Modules/webaudio/OscillatorNode.idl \
     $(WebCore)/Modules/webaudio/OfflineAudioContext.idl \
@@ -269,7 +293,6 @@ BINDING_IDLS = \
     $(WebCore)/dom/ProcessingInstruction.idl \
     $(WebCore)/dom/ProgressEvent.idl \
     $(WebCore)/dom/ProgressEvent.idl \
-    $(WebCore)/dom/PropertyNodeList.idl \
     $(WebCore)/dom/Range.idl \
     $(WebCore)/dom/RangeException.idl \
     $(WebCore)/dom/RequestAnimationFrameCallback.idl \
@@ -313,7 +336,6 @@ BINDING_IDLS = \
     $(WebCore)/html/HTMLDListElement.idl \
     $(WebCore)/html/HTMLDataListElement.idl \
     $(WebCore)/html/HTMLDetailsElement.idl \
-    $(WebCore)/html/HTMLDialogElement.idl \
     $(WebCore)/html/HTMLDirectoryElement.idl \
     $(WebCore)/html/HTMLDivElement.idl \
     $(WebCore)/html/HTMLDocument.idl \
@@ -354,7 +376,6 @@ BINDING_IDLS = \
     $(WebCore)/html/HTMLParamElement.idl \
     $(WebCore)/html/HTMLPreElement.idl \
     $(WebCore)/html/HTMLProgressElement.idl \
-    $(WebCore)/html/HTMLPropertiesCollection.idl \
     $(WebCore)/html/HTMLQuoteElement.idl \
     $(WebCore)/html/HTMLScriptElement.idl \
     $(WebCore)/html/HTMLSelectElement.idl \
@@ -379,37 +400,24 @@ BINDING_IDLS = \
     $(WebCore)/html/MediaError.idl \
     $(WebCore)/html/MediaKeyError.idl \
     $(WebCore)/html/MediaKeyEvent.idl \
-    $(WebCore)/html/MicroDataItemValue.idl \
     $(WebCore)/html/RadioNodeList.idl \
     $(WebCore)/html/TextMetrics.idl \
     $(WebCore)/html/TimeRanges.idl \
     $(WebCore)/html/ValidityState.idl \
     $(WebCore)/html/VoidCallback.idl \
-    $(WebCore)/html/canvas/ArrayBuffer.idl \
-    $(WebCore)/html/canvas/ArrayBufferView.idl \
     $(WebCore)/html/canvas/CanvasGradient.idl \
     $(WebCore)/html/canvas/CanvasPattern.idl \
     $(WebCore)/html/canvas/CanvasProxy.idl \
     $(WebCore)/html/canvas/CanvasRenderingContext.idl \
     $(WebCore)/html/canvas/CanvasRenderingContext2D.idl \
-    $(WebCore)/html/canvas/DataView.idl \
     $(WebCore)/html/canvas/DOMPath.idl \
     $(WebCore)/html/canvas/EXTDrawBuffers.idl \
     $(WebCore)/html/canvas/EXTTextureFilterAnisotropic.idl \
-    $(WebCore)/html/canvas/Float32Array.idl \
-    $(WebCore)/html/canvas/Float64Array.idl \
-    $(WebCore)/html/canvas/Int16Array.idl \
-    $(WebCore)/html/canvas/Int32Array.idl \
-    $(WebCore)/html/canvas/Int8Array.idl \
     $(WebCore)/html/canvas/OESElementIndexUint.idl \
     $(WebCore)/html/canvas/OESStandardDerivatives.idl \
     $(WebCore)/html/canvas/OESTextureFloat.idl \
     $(WebCore)/html/canvas/OESTextureHalfFloat.idl \
     $(WebCore)/html/canvas/OESVertexArrayObject.idl \
-    $(WebCore)/html/canvas/Uint16Array.idl \
-    $(WebCore)/html/canvas/Uint32Array.idl \
-    $(WebCore)/html/canvas/Uint8Array.idl \
-    $(WebCore)/html/canvas/Uint8ClampedArray.idl \
     $(WebCore)/html/canvas/WebGLActiveInfo.idl \
     $(WebCore)/html/canvas/WebGLBuffer.idl \
     $(WebCore)/html/canvas/WebGLCompressedTextureATC.idl \
@@ -602,7 +610,6 @@ BINDING_IDLS = \
     $(WebCore)/svg/SVGStopElement.idl \
     $(WebCore)/svg/SVGStringList.idl \
     $(WebCore)/svg/SVGStyleElement.idl \
-    $(WebCore)/svg/SVGStyledElement.idl \
     $(WebCore)/svg/SVGSwitchElement.idl \
     $(WebCore)/svg/SVGSymbolElement.idl \
     $(WebCore)/svg/SVGTRefElement.idl \
@@ -654,7 +661,7 @@ BINDING_IDLS = \
 
 DOM_CLASSES=$(basename $(notdir $(BINDING_IDLS)))
 
-JS_DOM_HEADERS=$(filter-out JSMediaQueryListListener.h JSEventListener.h, $(DOM_CLASSES:%=JS%.h))
+JS_DOM_HEADERS=$(filter-out JSEventListener.h, $(DOM_CLASSES:%=JS%.h))
 
 WEB_DOM_HEADERS :=
 
@@ -706,7 +713,7 @@ ifneq ($(SDKROOT),)
 	SDK_FLAGS=-isysroot $(SDKROOT)
 endif
 
-ifeq ($(shell $(CC) -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++11 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
     ENABLE_ORIENTATION_EVENTS = 1
 endif
 
@@ -864,10 +871,6 @@ ifeq ($(findstring ENABLE_METER_ELEMENT,$(FEATURE_DEFINES)), ENABLE_METER_ELEMEN
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_METER_ELEMENT=1
 endif
 
-ifeq ($(findstring ENABLE_MICRODATA,$(FEATURE_DEFINES)), ENABLE_MICRODATA)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_MICRODATA=1
-endif
-
 ifeq ($(findstring ENABLE_PROGRESS_ELEMENT,$(FEATURE_DEFINES)), ENABLE_PROGRESS_ELEMENT)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_PROGRESS_ELEMENT=1
 endif
@@ -886,6 +889,10 @@ endif
 
 ifeq ($(findstring ENABLE_ENCRYPTED_MEDIA,$(FEATURE_DEFINES)), ENABLE_ENCRYPTED_MEDIA)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_ENCRYPTED_MEDIA=1
+endif
+
+ifeq ($(findstring ENABLE_MEDIA_STREAM,$(FEATURE_DEFINES)), ENABLE_MEDIA_STREAM)
+    HTML_FLAGS := $(HTML_FLAGS) ENABLE_MEDIA_STREAM=1
 endif
 
 ifdef HTML_FLAGS
@@ -1041,7 +1048,7 @@ all : InspectorFrontend.h
 INSPECTOR_GENERATOR_SCRIPTS = inspector/CodeGeneratorInspector.py
 
 InspectorFrontend.h : Inspector.json $(INSPECTOR_GENERATOR_SCRIPTS)
-	python $(WebCore)/inspector/CodeGeneratorInspector.py $(WebCore)/inspector/Inspector.json --output_h_dir . --output_cpp_dir .
+	python $(WebCore)/inspector/CodeGeneratorInspector.py $(WebCore)/inspector/Inspector.json --output_h_dir . --output_cpp_dir . --output_js_dir .
 
 all : InspectorOverlayPage.h
 

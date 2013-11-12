@@ -130,7 +130,7 @@ void MediaControlEmbeddedPanelElement::startDrag(const LayoutPoint& eventLocatio
 
     m_lastDragEventLocation = eventLocation;
 
-    frame->eventHandler()->setCapturingMouseEventsNode(this);
+    frame->eventHandler().setCapturingMouseEventsNode(this);
 
     m_isBeingDragged = true;
 }
@@ -157,7 +157,7 @@ void MediaControlEmbeddedPanelElement::endDrag()
     if (!frame)
         return;
 
-    frame->eventHandler()->setCapturingMouseEventsNode(0);
+    frame->eventHandler().setCapturingMouseEventsNode(0);
 }
 
 void MediaControlEmbeddedPanelElement::startTimer()
@@ -931,7 +931,7 @@ void MediaControlsBlackBerry::reset()
         m_muteButton->hide();
 
     if (m_volumeSlider)
-        m_volumeSlider->setVolume(m_mediaController->volume());
+        setSliderVolume();
 
     if (m_toggleClosedCaptionsButton) {
         if (m_mediaController->hasClosedCaptions())

@@ -92,7 +92,7 @@ public:
     }
 
     CanvasRenderingContext* getContext(const String&, CanvasContextAttributes* attributes = 0);
-    bool supportsContext(const String&, CanvasContextAttributes* = 0);
+    bool probablySupportsContext(const String&, CanvasContextAttributes* = 0);
     static bool is2dType(const String&);
 #if ENABLE(WEBGL)
     static bool is3dType(const String&);
@@ -147,7 +147,7 @@ private:
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
+    virtual void willAttachRenderers() OVERRIDE;
     virtual bool areAuthorShadowsAllowed() const OVERRIDE;
 
     virtual bool canContainRangeEndPoint() const OVERRIDE;
@@ -187,6 +187,9 @@ private:
     mutable RefPtr<Image> m_presentedImage;
     mutable RefPtr<Image> m_copiedImage; // FIXME: This is temporary for platforms that have to copy the image buffer to render (and for CSSCanvasValue).
 };
+
+// This will catch anyone doing an unnecessary cast.
+void toHTMLCanvasElement(const HTMLCanvasElement*);
 
 } //namespace
 

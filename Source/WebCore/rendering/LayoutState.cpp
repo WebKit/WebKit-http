@@ -51,7 +51,7 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
     bool fixed = renderer->isOutOfFlowPositioned() && renderer->style()->position() == FixedPosition;
     if (fixed) {
         // FIXME: This doesn't work correctly with transforms.
-        FloatPoint fixedOffset = renderer->view()->localToAbsolute(FloatPoint(), IsFixed);
+        FloatPoint fixedOffset = renderer->view().localToAbsolute(FloatPoint(), IsFixed);
         m_paintOffset = LayoutSize(fixedOffset.x(), fixedOffset.y()) + offset;
     } else
         m_paintOffset = prev->m_paintOffset + offset;
@@ -73,7 +73,7 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
         m_clipRect = prev->m_clipRect;
 
     if (renderer->hasOverflowClip()) {
-        LayoutRect clipRect(toPoint(m_paintOffset) + renderer->view()->layoutDelta(), renderer->cachedSizeForOverflowClip());
+        LayoutRect clipRect(toPoint(m_paintOffset) + renderer->view().layoutDelta(), renderer->cachedSizeForOverflowClip());
         if (m_clipped)
             m_clipRect.intersect(clipRect);
         else {
@@ -131,7 +131,7 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
         computeLineGridPaginationOrigin(renderer);
 
     // If we have a new grid to track, then add it to our set.
-    if (renderer->style()->lineGrid() != RenderStyle::initialLineGrid() && renderer->isBlockFlow())
+    if (renderer->style()->lineGrid() != RenderStyle::initialLineGrid() && renderer->isBlockFlowFlexBoxOrGrid())
         establishLineGrid(toRenderBlock(renderer));
 
     // FIXME: <http://bugs.webkit.org/show_bug.cgi?id=13443> Apply control clip if present.

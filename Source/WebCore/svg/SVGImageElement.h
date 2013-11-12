@@ -28,7 +28,6 @@
 #include "SVGExternalResourcesRequired.h"
 #include "SVGGraphicsElement.h"
 #include "SVGImageLoader.h"
-#include "SVGNames.h"
 #include "SVGURIReference.h"
 
 namespace WebCore {
@@ -51,7 +50,7 @@ private:
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&);
 
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
+    virtual void didAttachRenderers() OVERRIDE;
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
 
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
@@ -76,17 +75,6 @@ private:
 
     SVGImageLoader m_imageLoader;
 };
-
-inline bool isSVGImageElement(const Node* node)
-{
-    return node->hasTagName(SVGNames::imageTag);
-}
-
-inline SVGImageElement* toSVGImageElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isSVGImageElement(node));
-    return static_cast<SVGImageElement*>(node);
-}
 
 } // namespace WebCore
 

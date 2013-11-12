@@ -51,6 +51,7 @@ inline HTMLVideoElement::HTMLVideoElement(const QualifiedName& tagName, Document
     : HTMLMediaElement(tagName, document, createdByParser)
 {
     ASSERT(hasTagName(videoTag));
+    setHasCustomStyleResolveCallbacks();
     if (document->settings())
         m_defaultPosterURL = document->settings()->defaultVideoPosterURL();
 }
@@ -62,9 +63,9 @@ PassRefPtr<HTMLVideoElement> HTMLVideoElement::create(const QualifiedName& tagNa
     return videoElement.release();
 }
 
-bool HTMLVideoElement::rendererIsNeeded(const NodeRenderingContext& context) 
+bool HTMLVideoElement::rendererIsNeeded(const RenderStyle& style) 
 {
-    return HTMLElement::rendererIsNeeded(context); 
+    return HTMLElement::rendererIsNeeded(style); 
 }
 
 #if !ENABLE(PLUGIN_PROXY_FOR_VIDEO)
@@ -74,9 +75,9 @@ RenderObject* HTMLVideoElement::createRenderer(RenderArena* arena, RenderStyle*)
 }
 #endif
 
-void HTMLVideoElement::attach(const AttachContext& context)
+void HTMLVideoElement::didAttachRenderers()
 {
-    HTMLMediaElement::attach(context);
+    HTMLMediaElement::didAttachRenderers();
 
 #if !ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     updateDisplayState();
@@ -129,7 +130,7 @@ void HTMLVideoElement::parseAttribute(const QualifiedName& name, const AtomicStr
 
 bool HTMLVideoElement::supportsFullscreen() const
 {
-    Page* page = document() ? document()->page() : 0;
+    Page* page = document().page();
     if (!page) 
         return false;
 
@@ -139,14 +140,14 @@ bool HTMLVideoElement::supportsFullscreen() const
 #if ENABLE(FULLSCREEN_API)
     // If the full screen API is enabled and is supported for the current element
     // do not require that the player has a video track to enter full screen.
-    if (page->chrome().client()->supportsFullScreenForElement(this, false))
+    if (page->chrome().client().supportsFullScreenForElement(this, false))
         return true;
 #endif
 
     if (!player()->hasVideo())
         return false;
 
-    return page->chrome().client()->supportsFullscreenForNode(this);
+    return page->chrome().client().supportsFullscreenForNode(this);
 }
 
 unsigned HTMLVideoElement::videoWidth() const
@@ -212,9 +213,8 @@ void HTMLVideoElement::setDisplayMode(DisplayMode mode)
     if (player() && player()->canLoadPoster()) {
         bool canLoad = true;
         if (!poster.isEmpty()) {
-            Frame* frame = document()->frame();
-            FrameLoader* loader = frame ? frame->loader() : 0;
-            canLoad = loader && loader->willLoadMediaElementURL(poster);
+            if (Frame* frame = document().frame())
+                canLoad = frame->loader().willLoadMediaElementURL(poster);
         }
         if (canLoad)
             player()->setPoster(poster);
@@ -320,7 +320,7 @@ KURL HTMLVideoElement::posterImageURL() const
     String url = stripLeadingAndTrailingHTMLSpaces(imageSourceURL());
     if (url.isEmpty())
         return KURL();
-    return document()->completeURL(url);
+    return document().completeURL(url);
 }
 
 }

@@ -28,7 +28,6 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGAbstractState.h"
 #include "DFGBasicBlock.h"
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
@@ -123,12 +122,9 @@ public:
         bool changed = false;
         
         // Record which arguments are known to escape no matter what.
-        for (unsigned i = codeBlock()->inlineCallFrames().size(); i--;) {
-            InlineCallFrame* inlineCallFrame = &codeBlock()->inlineCallFrames()[i];
-            if (m_graph.m_executablesWhoseArgumentsEscaped.contains(
-                    m_graph.executableFor(inlineCallFrame)))
-                m_createsArguments.add(inlineCallFrame);
-        }
+        for (unsigned i = codeBlock()->inlineCallFrames().size(); i--;)
+            pruneObviousArgumentCreations(&codeBlock()->inlineCallFrames()[i]);
+        pruneObviousArgumentCreations(0); // the machine call frame.
         
         // Create data for variable access datas that we will want to analyze.
         for (unsigned i = m_graph.m_variableAccessData.size(); i--;) {
@@ -142,8 +138,8 @@ public:
         
         // Figure out which variables are live, using a conservative approximation of
         // liveness.
-        for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             for (unsigned indexInBlock = 0; indexInBlock < block->size(); ++indexInBlock) {
@@ -164,8 +160,8 @@ public:
         // used only for GetByVal and GetArrayLength accesses. At the same time,
         // identify uses of CreateArguments that are not consistent with the arguments
         // being aliased only to variables that satisfy these constraints.
-        for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             for (unsigned indexInBlock = 0; indexInBlock < block->size(); ++indexInBlock) {
@@ -328,9 +324,7 @@ public:
                     break;
                     
                 case CheckStructure:
-                case ForwardCheckStructure:
                 case StructureTransitionWatchpoint:
-                case ForwardStructureTransitionWatchpoint:
                 case CheckArray:
                     // We don't care about these because if we get uses of the relevant
                     // variable then we can safely get rid of these, too. This of course
@@ -351,8 +345,8 @@ public:
         // the arguments as requiring creation. This is a property of SetLocals to
         // variables that are neither the correct arguments register nor are marked as
         // being arguments-aliased.
-        for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             for (unsigned indexInBlock = 0; indexInBlock < block->size(); ++indexInBlock) {
@@ -427,8 +421,8 @@ public:
         
         InsertionSet insertionSet(m_graph);
         
-        for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             for (unsigned indexInBlock = 0; indexInBlock < block->size(); indexInBlock++) {
@@ -517,9 +511,7 @@ public:
                 }
                     
                 case CheckStructure:
-                case ForwardCheckStructure:
                 case StructureTransitionWatchpoint:
-                case ForwardStructureTransitionWatchpoint:
                 case CheckArray: {
                     // We can just get rid of this node, if it references a phantom argument.
                     if (!isOKToOptimize(node->child1().node()))
@@ -646,9 +638,8 @@ public:
                     if (m_createsArguments.contains(node->codeOrigin.inlineCallFrame))
                         continue;
                     
-                    node->setOpAndDefaultFlags(Nop);
-                    m_graph.clearAndDerefChild1(node);
-                    m_graph.clearAndDerefChild2(node);
+                    node->setOpAndDefaultFlags(Phantom);
+                    node->children.reset();
                     break;
                 }
                     
@@ -659,8 +650,8 @@ public:
             insertionSet.execute(block);
         }
         
-        for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             for (unsigned indexInBlock = 0; indexInBlock < block->size(); ++indexInBlock) {
@@ -700,6 +691,14 @@ private:
             NullableHashTraits<VariableAccessData*> > m_argumentsAliasing;
     HashSet<VariableAccessData*> m_isLive;
 
+    void pruneObviousArgumentCreations(InlineCallFrame* inlineCallFrame)
+    {
+        ScriptExecutable* executable = m_graph.executableFor(inlineCallFrame);
+        if (m_graph.m_executablesWhoseArgumentsEscaped.contains(executable)
+            || executable->isStrictMode())
+            m_createsArguments.add(inlineCallFrame);
+    }
+    
     void observeBadArgumentsUse(Node* node)
     {
         if (!node)

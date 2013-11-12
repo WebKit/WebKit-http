@@ -32,6 +32,7 @@
 #include "DOMWindow.h"
 #include "Document.h"
 #include "Element.h"
+#include "ElementIterator.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -42,7 +43,6 @@
 #include "HTMLNames.h"
 #include "HitTestResult.h"
 #include "IdTargetObserverRegistry.h"
-#include "NodeTraversal.h"
 #include "Page.h"
 #include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
@@ -237,7 +237,7 @@ HTMLMapElement* TreeScope::getImageMap(const String& url) const
         return 0;
     size_t hashPos = url.find('#');
     String name = (hashPos == notFound ? url : url.substring(hashPos + 1)).impl();
-    if (rootNode()->document()->isHTMLDocument())
+    if (rootNode()->document().isHTMLDocument())
         return toHTMLMapElement(m_imageMapsByName->getElementByLowercasedMapName(AtomicString(name.lower()).impl(), this));
     return toHTMLMapElement(m_imageMapsByName->getElementByMapName(AtomicString(name).impl(), this));
 }
@@ -270,7 +270,7 @@ Node* nodeFromPoint(Document* document, int x, int y, LayoutPoint* localPoint)
 
 Element* TreeScope::elementFromPoint(int x, int y) const
 {
-    Node* node = nodeFromPoint(rootNode()->document(), x, y);
+    Node* node = nodeFromPoint(&rootNode()->document(), x, y);
     while (node && !node->isElementNode())
         node = node->parentNode();
     if (node)
@@ -298,13 +298,12 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
     if (!m_labelsByForAttribute) {
         // Populate the map on first access.
         m_labelsByForAttribute = adoptPtr(new DocumentOrderedMap);
-        for (Element* element = ElementTraversal::firstWithin(rootNode()); element; element = ElementTraversal::next(element)) {
-            if (isHTMLLabelElement(element)) {
-                HTMLLabelElement* label = toHTMLLabelElement(element);
-                const AtomicString& forValue = label->fastGetAttribute(forAttr);
-                if (!forValue.isEmpty())
-                    addLabel(forValue, label);
-            }
+
+        auto labelDescendants = descendantsOfType<HTMLLabelElement>(rootNode());
+        for (auto label = labelDescendants.begin(), end = labelDescendants.end(); label != end; ++label) {
+            const AtomicString& forValue = label->fastGetAttribute(forAttr);
+            if (!forValue.isEmpty())
+                addLabel(forValue, &*label);
         }
     }
 
@@ -313,7 +312,7 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
 
 DOMSelection* TreeScope::getSelection() const
 {
-    if (!rootNode()->document()->frame())
+    if (!rootNode()->document().frame())
         return 0;
 
     if (m_selection)
@@ -329,10 +328,10 @@ DOMSelection* TreeScope::getSelection() const
     }
 #endif
 
-    if (this != rootNode()->document())
-        return rootNode()->document()->getSelection();
+    if (this != &rootNode()->document())
+        return rootNode()->document().getSelection();
 
-    m_selection = DOMSelection::create(rootNode()->document());
+    m_selection = DOMSelection::create(&rootNode()->document());
     return m_selection.get();
 }
 
@@ -342,18 +341,16 @@ Element* TreeScope::findAnchor(const String& name)
         return 0;
     if (Element* element = getElementById(name))
         return element;
-    for (Element* element = ElementTraversal::firstWithin(rootNode()); element; element = ElementTraversal::next(element)) {
-        if (isHTMLAnchorElement(element)) {
-            HTMLAnchorElement* anchor = toHTMLAnchorElement(element);
-            if (rootNode()->document()->inQuirksMode()) {
-                // Quirks mode, case insensitive comparison of names.
-                if (equalIgnoringCase(anchor->name(), name))
-                    return anchor;
-            } else {
-                // Strict mode, names need to match exactly.
-                if (anchor->name() == name)
-                    return anchor;
-            }
+    auto anchorDescendants = descendantsOfType<HTMLAnchorElement>(rootNode());
+    for (auto anchor = anchorDescendants.begin(), end = anchorDescendants.end(); anchor != end; ++anchor) {
+        if (rootNode()->document().inQuirksMode()) {
+            // Quirks mode, case insensitive comparison of names.
+            if (equalIgnoringCase(anchor->name(), name))
+                return &*anchor;
+        } else {
+            // Strict mode, names need to match exactly.
+            if (anchor->name() == name)
+                return &*anchor;
         }
     }
     return 0;
@@ -362,11 +359,6 @@ Element* TreeScope::findAnchor(const String& name)
 bool TreeScope::applyAuthorStyles() const
 {
     return true;
-}
-
-bool TreeScope::resetStyleInheritance() const
-{
-    return false;
 }
 
 void TreeScope::adoptIfNeeded(Node* node)
@@ -382,8 +374,8 @@ void TreeScope::adoptIfNeeded(Node* node)
 
 static Element* focusedFrameOwnerElement(Frame* focusedFrame, Frame* currentFrame)
 {
-    for (; focusedFrame; focusedFrame = focusedFrame->tree()->parent()) {
-        if (focusedFrame->tree()->parent() == currentFrame)
+    for (; focusedFrame; focusedFrame = focusedFrame->tree().parent()) {
+        if (focusedFrame->tree().parent() == currentFrame)
             return focusedFrame->ownerElement();
     }
     return 0;
@@ -391,16 +383,16 @@ static Element* focusedFrameOwnerElement(Frame* focusedFrame, Frame* currentFram
 
 Element* TreeScope::focusedElement()
 {
-    Document* document = rootNode()->document();
-    Element* element = document->focusedElement();
+    Document& document = rootNode()->document();
+    Element* element = document.focusedElement();
 
-    if (!element && document->page())
-        element = focusedFrameOwnerElement(document->page()->focusController()->focusedFrame(), document->frame());
+    if (!element && document.page())
+        element = focusedFrameOwnerElement(document.page()->focusController().focusedFrame(), document.frame());
     if (!element)
         return 0;
     TreeScope* treeScope = element->treeScope();
-    while (treeScope != this && treeScope != document) {
-        element = toShadowRoot(treeScope->rootNode())->host();
+    while (treeScope != this && treeScope != &document) {
+        element = toShadowRoot(treeScope->rootNode())->hostElement();
         treeScope = element->treeScope();
     }
     if (this != treeScope)

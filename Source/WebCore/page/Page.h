@@ -36,6 +36,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -68,6 +69,7 @@ class DragController;
 class EditorClient;
 class FocusController;
 class Frame;
+class FrameLoaderClient;
 class FrameSelection;
 class HaltablePlugin;
 class HistoryItem;
@@ -136,6 +138,7 @@ public:
         PlugInClient* plugInClient;
         RefPtr<BackForwardList> backForwardClient;
         ValidationMessageClient* validationMessageClient;
+        FrameLoaderClient* loaderClientForMainFrame;
     };
 
     explicit Page(PageClients&);
@@ -150,7 +153,7 @@ public:
     ViewportArguments viewportArguments() const;
 
     static void refreshPlugins(bool reload);
-    PluginData* pluginData() const;
+    PluginData& pluginData() const;
 
     void setCanStartMedia(bool);
     bool canStartMedia() const { return m_canStartMedia; }
@@ -158,8 +161,8 @@ public:
     EditorClient* editorClient() const { return m_editorClient; }
     PlugInClient* plugInClient() const { return m_plugInClient; }
 
-    void setMainFrame(PassRefPtr<Frame>);
-    Frame* mainFrame() const { return m_mainFrame.get(); }
+    Frame& mainFrame() const { return *m_mainFrame; }
+    bool frameIsMainFrame(const Frame* frame) { return frame == m_mainFrame.get(); }
 
     bool openedByDOM() const;
     void setOpenedByDOM();
@@ -185,13 +188,13 @@ public:
     int subframeCount() const { checkSubframeCountConsistency(); return m_subframeCount; }
 
     Chrome& chrome() const { return *m_chrome; }
-    DragCaretController* dragCaretController() const { return m_dragCaretController.get(); }
+    DragCaretController& dragCaretController() const { return *m_dragCaretController; }
 #if ENABLE(DRAG_SUPPORT)
-    DragController* dragController() const { return m_dragController.get(); }
+    DragController& dragController() const { return *m_dragController; }
 #endif
-    FocusController* focusController() const { return m_focusController.get(); }
+    FocusController& focusController() const { return *m_focusController; }
 #if ENABLE(CONTEXT_MENUS)
-    ContextMenuController* contextMenuController() const { return m_contextMenuController.get(); }
+    ContextMenuController& contextMenuController() const { return *m_contextMenuController; }
 #endif
 #if ENABLE(INSPECTOR)
     InspectorController* inspectorController() const { return m_inspectorController.get(); }
@@ -207,8 +210,8 @@ public:
     String mainThreadScrollingReasonsAsText();
     PassRefPtr<ClientRectList> nonFastScrollableRects(const Frame*);
 
-    Settings* settings() const { return m_settings.get(); }
-    ProgressTracker* progress() const { return m_progress.get(); }
+    Settings& settings() const { return *m_settings; }
+    ProgressTracker& progress() const { return *m_progress; }
     BackForwardController* backForward() const { return m_backForwardController.get(); }
 
     FeatureObserver* featureObserver() { return &m_featureObserver; }
@@ -393,7 +396,7 @@ public:
     PageThrottler* pageThrottler() { return m_pageThrottler.get(); }
     PassOwnPtr<PageActivityAssertionToken> createActivityToken();
 
-    PageConsole* console() { return m_console.get(); }
+    PageConsole& console() { return *m_console; }
 
 #if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     void hiddenPageDOMTimerThrottlingStateChanged();
@@ -409,6 +412,8 @@ public:
     void incrementFrameHandlingBeforeUnloadEventCount();
     void decrementFrameHandlingBeforeUnloadEventCount();
     bool isAnyFrameHandlingBeforeUnloadEvent();
+    void setLastSpatialNavigationCandidateCount(unsigned count) { m_lastSpatialNavigationCandidatesCount = count; }
+    unsigned lastSpatialNavigationCandidateCount() const { return m_lastSpatialNavigationCandidatesCount; }
 
 private:
     void initGroup();
@@ -432,20 +437,20 @@ private:
     void setTimerAlignmentInterval(double);
     double timerAlignmentInterval() const;
 
-    void collectPluginViews(Vector<RefPtr<PluginViewBase>, 32>& pluginViewBases);
+    Vector<Ref<PluginViewBase>> pluginViews();
 
     void throttleTimers();
     void unthrottleTimers();
 
     const OwnPtr<Chrome> m_chrome;
-    OwnPtr<DragCaretController> m_dragCaretController;
+    const OwnPtr<DragCaretController> m_dragCaretController;
 
 #if ENABLE(DRAG_SUPPORT)
-    OwnPtr<DragController> m_dragController;
+    const OwnPtr<DragController> m_dragController;
 #endif
-    OwnPtr<FocusController> m_focusController;
+    const OwnPtr<FocusController> m_focusController;
 #if ENABLE(CONTEXT_MENUS)
-    OwnPtr<ContextMenuController> m_contextMenuController;
+    const OwnPtr<ContextMenuController> m_contextMenuController;
 #endif
 #if ENABLE(INSPECTOR)
     OwnPtr<InspectorController> m_inspectorController;
@@ -455,11 +460,11 @@ private:
 #endif
     RefPtr<ScrollingCoordinator> m_scrollingCoordinator;
 
-    OwnPtr<Settings> m_settings;
-    OwnPtr<ProgressTracker> m_progress;
+    const RefPtr<Settings> m_settings;
+    const OwnPtr<ProgressTracker> m_progress;
 
     OwnPtr<BackForwardController> m_backForwardController;
-    RefPtr<Frame> m_mainFrame;
+    const RefPtr<Frame> m_mainFrame;
 
     mutable RefPtr<PluginData> m_pluginData;
 
@@ -480,7 +485,6 @@ private:
     unsigned m_defersLoadingCallCount;
 
     bool m_inLowQualityInterpolationMode;
-    bool m_cookieEnabled;
     bool m_areMemoryCacheClientCallsEnabled;
     float m_mediaVolume;
 
@@ -542,11 +546,12 @@ private:
     bool m_scriptedAnimationsSuspended;
     OwnPtr<PageThrottler> m_pageThrottler;
 
-    OwnPtr<PageConsole> m_console;
+    const OwnPtr<PageConsole> m_console;
 
     HashSet<String> m_seenPlugins;
     HashSet<String> m_seenMediaEngines;
-    
+
+    unsigned m_lastSpatialNavigationCandidatesCount;
     unsigned m_framesHandlingBeforeUnloadEvent;
 };
 

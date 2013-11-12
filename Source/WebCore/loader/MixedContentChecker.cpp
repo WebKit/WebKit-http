@@ -48,9 +48,9 @@ MixedContentChecker::MixedContentChecker(Frame* frame)
 {
 }
 
-FrameLoaderClient* MixedContentChecker::client() const
+FrameLoaderClient& MixedContentChecker::client() const
 {
-    return m_frame->loader()->client();
+    return m_frame->loader().client();
 }
 
 // static
@@ -68,12 +68,11 @@ bool MixedContentChecker::canDisplayInsecureContent(SecurityOrigin* securityOrig
     if (!isMixedContent(securityOrigin, url))
         return true;
 
-    Settings* settings = m_frame->settings();
-    bool allowed = client()->allowDisplayingInsecureContent(settings && settings->allowDisplayOfInsecureContent(), securityOrigin, url);
+    bool allowed = client().allowDisplayingInsecureContent(m_frame->settings().allowDisplayOfInsecureContent(), securityOrigin, url);
     logWarning(allowed, "displayed", url);
 
     if (allowed)
-        client()->didDisplayInsecureContent();
+        client().didDisplayInsecureContent();
 
     return allowed;
 }
@@ -83,12 +82,11 @@ bool MixedContentChecker::canRunInsecureContent(SecurityOrigin* securityOrigin, 
     if (!isMixedContent(securityOrigin, url))
         return true;
 
-    Settings* settings = m_frame->settings();
-    bool allowed = client()->allowRunningInsecureContent(settings && settings->allowRunningOfInsecureContent(), securityOrigin, url);
+    bool allowed = client().allowRunningInsecureContent(m_frame->settings().allowRunningOfInsecureContent(), securityOrigin, url);
     logWarning(allowed, "ran", url);
 
     if (allowed)
-        client()->didRunInsecureContent(securityOrigin, url);
+        client().didRunInsecureContent(securityOrigin, url);
 
     return allowed;
 }

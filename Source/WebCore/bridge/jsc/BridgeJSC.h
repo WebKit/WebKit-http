@@ -105,7 +105,6 @@ public:
     virtual ~Instance();
 
     virtual bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&) { return false; }
-    virtual bool getOwnPropertyDescriptor(JSObject*, ExecState*, PropertyName, PropertyDescriptor&) { return false; }
     virtual void put(JSObject*, ExecState*, PropertyName, JSValue, PutPropertySlot&) { }
 
 protected:
@@ -134,9 +133,6 @@ protected:
 };
 
 const char* signatureForParameters(const ArgList&);
-
-typedef HashMap<RefPtr<StringImpl>, Method*> MethodMap;
-typedef HashMap<RefPtr<StringImpl>, Field*> FieldMap;
 
 } // namespace Bindings
 

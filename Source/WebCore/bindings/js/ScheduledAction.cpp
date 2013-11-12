@@ -32,6 +32,7 @@
 #include "JSDOMBinding.h"
 #include "JSDOMWindow.h"
 #include "JSMainThreadExecState.h"
+#include "JSMainThreadExecStateInstrumentation.h"
 #include "ScriptController.h"
 #include "ScriptExecutionContext.h"
 #include "ScriptSourceCode.h"
@@ -125,13 +126,13 @@ void ScheduledAction::execute(Document* document)
         return;
 
     RefPtr<Frame> frame = window->impl()->frame();
-    if (!frame || !frame->script()->canExecuteScripts(AboutToExecuteScript))
+    if (!frame || !frame->script().canExecuteScripts(AboutToExecuteScript))
         return;
 
     if (m_function)
         executeFunctionInContext(window, window->shell(), document);
     else
-        frame->script()->executeScriptInWorld(m_isolatedWorld.get(), m_code);
+        frame->script().executeScriptInWorld(m_isolatedWorld.get(), m_code);
 }
 
 #if ENABLE(WORKERS)

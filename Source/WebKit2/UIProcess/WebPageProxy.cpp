@@ -306,6 +306,7 @@ WebPageProxy::WebPageProxy(PageClient* pageClient, PassRefPtr<WebProcessProxy> p
     , m_renderTreeSize(0)
     , m_shouldSendEventsSynchronously(false)
     , m_suppressVisibilityUpdates(false)
+    , m_autoSizingShouldExpandToViewHeight(false)
     , m_mediaVolume(1)
     , m_mayStartMediaWhenInWindow(true)
     , m_waitingForDidUpdateInWindowState(false)
@@ -375,7 +376,7 @@ WebProcessProxy* WebPageProxy::process() const
 
 PlatformProcessIdentifier WebPageProxy::processIdentifier() const
 {
-    if (!isValid())
+    if (m_isClosed)
         return 0;
 
     return m_process->processIdentifier();
@@ -420,8 +421,6 @@ void WebPageProxy::initializeLoaderClient(const WKPageLoaderClient* loadClient)
         milestones |= WebCore::DidFirstLayout;
     if (loadClient->didFirstVisuallyNonEmptyLayoutForFrame)
         milestones |= WebCore::DidFirstVisuallyNonEmptyLayout;
-    if (loadClient->didNewFirstVisuallyNonEmptyLayout)
-        milestones |= WebCore::DidHitRelevantRepaintedObjectsAreaThreshold;
 
     if (milestones)
         m_process->send(Messages::WebPage::ListenForLayoutMilestones(milestones), m_pageID);
@@ -579,11 +578,6 @@ void WebPageProxy::close()
     if (m_colorPicker) {
         m_colorPicker->invalidate();
         m_colorPicker = nullptr;
-    }
-
-    if (m_colorPickerResultListener) {
-        m_colorPickerResultListener->invalidate();
-        m_colorPickerResultListener = nullptr;
     }
 #endif
 
@@ -1009,6 +1003,10 @@ void WebPageProxy::viewWillStartLiveResize()
 {
     if (!isValid())
         return;
+#if ENABLE(INPUT_TYPE_COLOR_POPOVER)
+    if (m_colorPicker)
+        endColorPicker();
+#endif
     m_process->send(Messages::WebPage::ViewWillStartLiveResize(), m_pageID);
 }
 
@@ -1037,6 +1035,33 @@ bool WebPageProxy::canScrollView()
 void WebPageProxy::scrollView(const IntRect& scrollRect, const IntSize& scrollOffset)
 {
     m_pageClient->scrollView(scrollRect, scrollOffset);
+}
+
+void WebPageProxy::viewInWindowStateDidChange(WantsReplyOrNot wantsReply)
+{
+    if (!isValid())
+        return;
+
+    bool isInWindow = m_pageClient->isViewInWindow();
+    if (m_isInWindow != isInWindow) {
+        m_isInWindow = isInWindow;
+        m_process->send(Messages::WebPage::SetIsInWindow(isInWindow, wantsReply == WantsReplyOrNot::DoesWantReply), m_pageID);
+    }
+
+    if (isInWindow) {
+        LayerHostingMode layerHostingMode = m_pageClient->viewLayerHostingMode();
+        if (m_layerHostingMode != layerHostingMode) {
+            m_layerHostingMode = layerHostingMode;
+            m_drawingArea->layerHostingModeDidChange();
+        }
+    }
+#if ENABLE(INPUT_TYPE_COLOR_POPOVER)
+    else {
+        // When leaving the current page, close the popover color well.
+        if (m_colorPicker)
+            endColorPicker();
+    }
+#endif
 }
 
 void WebPageProxy::viewStateDidChange(ViewStateFlags flags)
@@ -1071,21 +1096,8 @@ void WebPageProxy::viewStateDidChange(ViewStateFlags flags)
         }
     }
 
-    if (flags & ViewIsInWindow) {
-        bool isInWindow = m_pageClient->isViewInWindow();
-        if (m_isInWindow != isInWindow) {
-            m_isInWindow = isInWindow;
-            m_process->send(Messages::WebPage::SetIsInWindow(isInWindow), m_pageID);
-        }
-
-        if (isInWindow) {
-            LayerHostingMode layerHostingMode = m_pageClient->viewLayerHostingMode();
-            if (m_layerHostingMode != layerHostingMode) {
-                m_layerHostingMode = layerHostingMode;
-                m_drawingArea->layerHostingModeDidChange();
-            }
-        }
-    }
+    if (flags & ViewIsInWindow)
+        viewInWindowStateDidChange();
 
 #if ENABLE(PAGE_VISIBILITY_API)
     PageVisibilityState visibilityState = PageVisibilityStateHidden;
@@ -1431,6 +1443,7 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
 #else
     UNUSED_PARAM(frameURLString);
     UNUSED_PARAM(pageURLString);
+    UNUSED_PARAM(unavailabilityDescription);
 #endif
 
     PluginProcessSandboxPolicy pluginProcessSandboxPolicy = PluginProcessSandboxPolicyNormal;
@@ -2383,16 +2396,6 @@ void WebPageProxy::didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, Core
     m_loaderClient.didFirstVisuallyNonEmptyLayoutForFrame(this, frame, userData.get());
 }
 
-void WebPageProxy::didNewFirstVisuallyNonEmptyLayout(CoreIPC::MessageDecoder& decoder)
-{
-    RefPtr<APIObject> userData;
-    WebContextUserMessageDecoder messageDecoder(userData, m_process.get());
-    if (!decoder.decode(messageDecoder))
-        return;
-
-    m_loaderClient.didNewFirstVisuallyNonEmptyLayout(this, userData.get());
-}
-
 void WebPageProxy::didLayout(uint32_t layoutMilestones, CoreIPC::MessageDecoder& decoder)
 {
     RefPtr<APIObject> userData;
@@ -2918,38 +2921,30 @@ void WebPageProxy::needTouchEvents(bool needTouchEvents)
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
-void WebPageProxy::showColorChooser(const WebCore::Color& initialColor, const IntRect& elementRect)
+void WebPageProxy::showColorPicker(const WebCore::Color& initialColor, const IntRect& elementRect)
 {
-    ASSERT(!m_colorPicker);
-
-    if (m_colorPickerResultListener) {
-        m_colorPickerResultListener->invalidate();
-        m_colorPickerResultListener = nullptr;
-    }
-
-    m_colorPickerResultListener = WebColorPickerResultListenerProxy::create(this);
-    m_colorPicker = WebColorPicker::create(this);
-
-    if (m_uiClient.showColorPicker(this, initialColor.serialized(), m_colorPickerResultListener.get()))
-        return;
-
-    m_colorPicker = m_pageClient->createColorPicker(this, initialColor, elementRect);
+#if ENABLE(INPUT_TYPE_COLOR_POPOVER)
+    // A new popover color well needs to be created (and the previous one destroyed) for
+    // each activation of a color element.
+    m_colorPicker = 0;
+#endif
     if (!m_colorPicker)
-        didEndColorChooser();
+        m_colorPicker = m_pageClient->createColorPicker(this, initialColor, elementRect);
+    m_colorPicker->showColorPicker(initialColor);
 }
 
-void WebPageProxy::setColorChooserColor(const WebCore::Color& color)
+void WebPageProxy::setColorPickerColor(const WebCore::Color& color)
 {
     ASSERT(m_colorPicker);
 
     m_colorPicker->setSelectedColor(color);
 }
 
-void WebPageProxy::endColorChooser()
+void WebPageProxy::endColorPicker()
 {
     ASSERT(m_colorPicker);
 
-    m_colorPicker->endChooser();
+    m_colorPicker->endPicker();
 }
 
 void WebPageProxy::didChooseColor(const WebCore::Color& color)
@@ -2960,7 +2955,7 @@ void WebPageProxy::didChooseColor(const WebCore::Color& color)
     m_process->send(Messages::WebPage::DidChooseColor(color), m_pageID);
 }
 
-void WebPageProxy::didEndColorChooser()
+void WebPageProxy::didEndColorPicker()
 {
     if (!isValid())
         return;
@@ -2970,12 +2965,7 @@ void WebPageProxy::didEndColorChooser()
         m_colorPicker = nullptr;
     }
 
-    m_process->send(Messages::WebPage::DidEndColorChooser(), m_pageID);
-
-    m_colorPickerResultListener->invalidate();
-    m_colorPickerResultListener = nullptr;
-
-    m_uiClient.hideColorPicker(this);
+    m_process->send(Messages::WebPage::DidEndColorPicker(), m_pageID);
 }
 #endif
 
@@ -3840,11 +3830,6 @@ void WebPageProxy::resetStateAfterProcessExited()
         m_colorPicker->invalidate();
         m_colorPicker = nullptr;
     }
-
-    if (m_colorPickerResultListener) {
-        m_colorPickerResultListener->invalidate();
-        m_colorPickerResultListener = nullptr;
-    }
 #endif
 
 #if ENABLE(GEOLOCATION)
@@ -3955,6 +3940,7 @@ WebPageCreationParameters WebPageProxy::creationParameters() const
     parameters.mediaVolume = m_mediaVolume;
     parameters.mayStartMediaWhenInWindow = m_mayStartMediaWhenInWindow;
     parameters.minimumLayoutSize = m_minimumLayoutSize;
+    parameters.autoSizingShouldExpandToViewHeight = m_autoSizingShouldExpandToViewHeight;
     parameters.scrollPinningBehavior = m_scrollPinningBehavior;
 
 #if PLATFORM(MAC)
@@ -4174,7 +4160,11 @@ void WebPageProxy::didBlockInsecurePluginVersion(const String& mimeType, const S
     PluginModuleInfo plugin = m_process->context()->pluginInfoStore().findPlugin(newMimeType, KURL(KURL(), pluginURLString));
     pluginInformation = createPluginInformationDictionary(plugin, frameURLString, mimeType, pageURLString, String(), String(), replacementObscured);
 #else
+    UNUSED_PARAM(mimeType);
     UNUSED_PARAM(pluginURLString);
+    UNUSED_PARAM(frameURLString);
+    UNUSED_PARAM(pageURLString);
+    UNUSED_PARAM(replacementObscured);
 #endif
 
     m_loaderClient.didBlockInsecurePluginVersion(this, pluginInformation.get());
@@ -4347,6 +4337,19 @@ void WebPageProxy::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
     if (m_minimumLayoutSize.width() <= 0)
         intrinsicContentSizeDidChange(IntSize(-1, -1));
 #endif
+}
+
+void WebPageProxy::setAutoSizingShouldExpandToViewHeight(bool shouldExpand)
+{
+    if (m_autoSizingShouldExpandToViewHeight == shouldExpand)
+        return;
+
+    m_autoSizingShouldExpandToViewHeight = shouldExpand;
+
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetAutoSizingShouldExpandToViewHeight(shouldExpand), m_pageID, 0);
 }
 
 #if PLATFORM(MAC)

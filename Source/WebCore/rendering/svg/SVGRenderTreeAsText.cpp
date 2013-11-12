@@ -59,6 +59,7 @@
 #include "RenderSVGText.h"
 #include "RenderTreeAsText.h"
 #include "SVGCircleElement.h"
+#include "SVGElement.h"
 #include "SVGEllipseElement.h"
 #include "SVGInlineTextBox.h"
 #include "SVGLineElement.h"
@@ -73,7 +74,6 @@
 #include "SVGRectElement.h"
 #include "SVGRootInlineBox.h"
 #include "SVGStopElement.h"
-#include "SVGStyledElement.h"
 
 #include <math.h>
 
@@ -340,7 +340,7 @@ static TextStream& operator<<(TextStream& ts, const RenderSVGShape& shape)
     SVGLengthContext lengthContext(svgElement);
 
     if (svgElement->hasTagName(SVGNames::rectTag)) {
-        SVGRectElement* element = static_cast<SVGRectElement*>(svgElement);
+        SVGRectElement* element = toSVGRectElement(svgElement);
         writeNameValuePair(ts, "x", element->x().value(lengthContext));
         writeNameValuePair(ts, "y", element->y().value(lengthContext));
         writeNameValuePair(ts, "width", element->width().value(lengthContext));
@@ -402,11 +402,8 @@ static inline void writeSVGInlineTextBox(TextStream& ts, SVGInlineTextBox* textB
     if (fragments.isEmpty())
         return;
 
-    RenderSVGInlineText* textRenderer = toRenderSVGInlineText(textBox->textRenderer());
-    ASSERT(textRenderer);
-
-    const SVGRenderStyle* svgStyle = textRenderer->style()->svgStyle();
-    String text = textBox->textRenderer()->text();
+    const SVGRenderStyle* svgStyle = textBox->textRenderer().style()->svgStyle();
+    String text = textBox->textRenderer().text();
 
     unsigned fragmentsSize = fragments.size();
     for (unsigned i = 0; i < fragmentsSize; ++i) {
@@ -538,7 +535,7 @@ void writeSVGResourceContainer(TextStream& ts, const RenderObject& object, int i
         // Dump final results that are used for rendering. No use in asking SVGPatternElement for its patternUnits(), as it may
         // link to other patterns using xlink:href, we need to build the full inheritance chain, aka. collectPatternProperties()
         PatternAttributes attributes;
-        static_cast<SVGPatternElement*>(pattern->node())->collectPatternAttributes(attributes);
+        toSVGPatternElement(pattern->node())->collectPatternAttributes(attributes);
 
         writeNameValuePair(ts, "patternUnits", attributes.patternUnits());
         writeNameValuePair(ts, "patternContentUnits", attributes.patternContentUnits());
@@ -552,7 +549,7 @@ void writeSVGResourceContainer(TextStream& ts, const RenderObject& object, int i
 
         // Dump final results that are used for rendering. No use in asking SVGGradientElement for its gradientUnits(), as it may
         // link to other gradients using xlink:href, we need to build the full inheritance chain, aka. collectGradientProperties()
-        SVGLinearGradientElement* linearGradientElement = static_cast<SVGLinearGradientElement*>(gradient->node());
+        SVGLinearGradientElement* linearGradientElement = toSVGLinearGradientElement(gradient->node());
 
         LinearGradientAttributes attributes;
         linearGradientElement->collectGradientAttributes(attributes);
@@ -564,10 +561,8 @@ void writeSVGResourceContainer(TextStream& ts, const RenderObject& object, int i
 
         // Dump final results that are used for rendering. No use in asking SVGGradientElement for its gradientUnits(), as it may
         // link to other gradients using xlink:href, we need to build the full inheritance chain, aka. collectGradientProperties()
-        SVGRadialGradientElement* radialGradientElement = static_cast<SVGRadialGradientElement*>(gradient->node());
-
         RadialGradientAttributes attributes;
-        radialGradientElement->collectGradientAttributes(attributes);
+        toSVGRadialGradientElement(gradient->node())->collectGradientAttributes(attributes);
         writeCommonGradientProperties(ts, attributes.spreadMethod(), attributes.gradientTransform(), attributes.gradientUnits());
 
         FloatPoint focalPoint = gradient->focalPoint(attributes);
@@ -636,7 +631,7 @@ void writeSVGGradientStop(TextStream& ts, const RenderSVGGradientStop& stop, int
 {
     writeStandardPrefix(ts, stop, indent);
 
-    SVGStopElement* stopElement = static_cast<SVGStopElement*>(stop.node());
+    SVGStopElement* stopElement = toSVGStopElement(toSVGElement(stop.node()));
     ASSERT(stopElement);
 
     RenderStyle* style = stop.style();
@@ -655,7 +650,7 @@ void writeResources(TextStream& ts, const RenderObject& object, int indent)
     // For now leave the DRT output as is, but later on we should change this so cycles are properly ignored in the DRT output.
     RenderObject& renderer = const_cast<RenderObject&>(object);
     if (!svgStyle->maskerResource().isEmpty()) {
-        if (RenderSVGResourceMasker* masker = getRenderSVGResourceById<RenderSVGResourceMasker>(object.document(), svgStyle->maskerResource())) {
+        if (RenderSVGResourceMasker* masker = getRenderSVGResourceById<RenderSVGResourceMasker>(&object.document(), svgStyle->maskerResource())) {
             writeIndent(ts, indent);
             ts << " ";
             writeNameAndQuotedValue(ts, "masker", svgStyle->maskerResource());
@@ -665,7 +660,7 @@ void writeResources(TextStream& ts, const RenderObject& object, int indent)
         }
     }
     if (!svgStyle->clipperResource().isEmpty()) {
-        if (RenderSVGResourceClipper* clipper = getRenderSVGResourceById<RenderSVGResourceClipper>(object.document(), svgStyle->clipperResource())) {
+        if (RenderSVGResourceClipper* clipper = getRenderSVGResourceById<RenderSVGResourceClipper>(&object.document(), svgStyle->clipperResource())) {
             writeIndent(ts, indent);
             ts << " ";
             writeNameAndQuotedValue(ts, "clipPath", svgStyle->clipperResource());
@@ -676,7 +671,7 @@ void writeResources(TextStream& ts, const RenderObject& object, int indent)
     }
 #if ENABLE(FILTERS)
     if (!svgStyle->filterResource().isEmpty()) {
-        if (RenderSVGResourceFilter* filter = getRenderSVGResourceById<RenderSVGResourceFilter>(object.document(), svgStyle->filterResource())) {
+        if (RenderSVGResourceFilter* filter = getRenderSVGResourceById<RenderSVGResourceFilter>(&object.document(), svgStyle->filterResource())) {
             writeIndent(ts, indent);
             ts << " ";
             writeNameAndQuotedValue(ts, "filter", svgStyle->filterResource());

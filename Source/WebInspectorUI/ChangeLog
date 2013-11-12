@@ -1,3 +1,1050 @@
+2013-09-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Download Archive button incorrectly styled when disabled and tree element is not-selected
+        https://bugs.webkit.org/show_bug.cgi?id=120866
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/TreeElementStatusButton.css:
+        (.item > .status > .status-button.disabled > svg *):
+
+2013-09-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Lint JavaScript and CSS for minor issues
+        https://bugs.webkit.org/show_bug.cgi?id=120884
+
+        Reviewed by Timothy Hatcher.
+
+        JS, caught a bunch of missing semicolons but at least one possible
+        issue with duplicate object literal keys in CSSKeywordCompletions.
+
+        CSS, cause some duplicate properties, an invalid property value,
+        and some "0px" => "0" cleanup.
+
+2013-09-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Breakpoint Action JS Editor has line wrapping issues with long no-space lines
+        https://bugs.webkit.org/show_bug.cgi?id=120822
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/BreakpointActionView.css:
+        (.breakpoint-action-eval-editor > .CodeMirror):
+        (.breakpoint-action-eval-editor > .CodeMirror-scroll):
+
+2013-09-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Edit Breakpoint popover sometimes appears misplaced in top left
+        https://bugs.webkit.org/show_bug.cgi?id=120804
+
+        Reviewed by Timothy Hatcher.
+
+        Grab the bounding rect immediately, instead of grabbing it from the element
+        after the user has selected the "Edit Breakpoint" context menu item. When
+        the popover was misplaced it was when using an element had been removed or
+        replaced in the DOM, and caused a bogus bounding client rect.
+
+        * UserInterface/Breakpoint.js:
+        (WebInspector.Breakpoint.prototype.editBreakpoint):
+        (WebInspector.Breakpoint.prototype._showEditBreakpointPopover):
+
+2013-09-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove harmless assert, triggered hitting breakpoint in auto prettyprinted code on reload
+        https://bugs.webkit.org/show_bug.cgi?id=120332
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/TextEditor.js:
+
+2013-09-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Breakpoint Actions
+        https://bugs.webkit.org/show_bug.cgi?id=120576
+
+        Reviewed by Timothy Hatcher.
+
+        Give the CodeMirror editor for JavaScript Breakpoint Actions JS Runtime
+        completions (like window, document, etc.).
+
+        The logic was inside of JavaScriptLogViewController but was already
+        entirely independent. Factor it out into its own class and plug it into
+        CodeMirrorCompletionController as a "CompletionsProvider".
+
+        Because the class hooks into a global event to reset some state, make
+        it a singleton, so new instances are not leaked.
+
+        * UserInterface/Main.html:
+        * UserInterface/Main.js:
+        (WebInspector.loaded):
+        * UserInterface/RuntimeManager.js: Added.
+        (WebInspector.RuntimeManager):
+        (WebInspector.RuntimeManager.prototype.evalCallback):
+        (WebInspector.RuntimeManager.prototype.evaluateInInspectedWindow):
+        Move eval in window to new RuntimeManager. A slightly cleaner place to this
+        since it is used both by the console and JS completions provider.
+
+        * UserInterface/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController):
+        (WebInspector.CodeMirrorCompletionController.prototype.setExtendedCompletionProvider):
+        (WebInspector.CodeMirrorCompletionController.prototype._completeAtCurrentPosition):
+        Allow a completions provider plugin to completions controller. If one
+        is available, this supercedes the delegate extend completions path.
+
+        * UserInterface/BreakpointActionView.js:
+        * UserInterface/ConsolePrompt.js:
+        (WebInspector.ConsolePrompt):
+        Use the new JS completions provider to get runtime JS completions.
+        NOTE: ConsolePrompt still needs the delegate path for SQL completions.
+
+        * UserInterface/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController):
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptTextCommitted):
+        * UserInterface/JavaScriptRuntimeCompletionProvider.js: Added.
+        (WebInspector.JavaScriptRuntimeCompletionProvider):
+        (get WebInspector.JavaScriptRuntimeCompletionProvider.prototype.):
+        (get WebInspector.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded):
+        Move the JS completions code to a new class. No changes needed.
+
+2013-09-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Breakpoint Actions
+        https://bugs.webkit.org/show_bug.cgi?id=120576
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Breakpoint.js:
+        (WebInspector.Breakpoint):
+        (WebInspector.Breakpoint.prototype.get actions):
+        (WebInspector.Breakpoint.prototype.get options):
+        (WebInspector.Breakpoint.prototype.get info):
+        (WebInspector.Breakpoint.prototype._serializableActions):
+        Saving, restoring, and serialization.
+
+        (WebInspector.Breakpoint.prototype.createAction):
+        (WebInspector.Breakpoint.prototype.recreateAction):
+        (WebInspector.Breakpoint.prototype.removeAction):
+        (WebInspector.Breakpoint.prototype.breakpointActionDidChange):
+        Modifying _actions ivar.
+
+        (WebInspector.Breakpoint.prototype._editBreakpointPopoverContentElement):
+        (WebInspector.Breakpoint.prototype._popoverActionsCreateAddActionButton):
+        (WebInspector.Breakpoint.prototype._popoverActionsAddActionButtonClicked):
+        (WebInspector.Breakpoint.prototype._popoverActionsInsertBreakpointActionView):
+        (WebInspector.Breakpoint.prototype.breakpointActionViewAppendActionView):
+        (WebInspector.Breakpoint.prototype.breakpointActionViewRemoveActionView):
+        (WebInspector.Breakpoint.prototype.breakpointActionViewResized):
+        Popover UI containing breakpoint action views and converting to and from
+        having no actions.
+
+        (WebInspector.Breakpoint.prototype.willDismissPopover):
+        Cleanup some ivars when the popover dismisses.
+
+        * UserInterface/Breakpoint.css:
+        (.popover .edit-breakpoint-popover-content.wide):
+        Wider setting when there are actions in the popover.
+
+        (.popover .edit-breakpoint-popover-content > table > tr > th):
+        Keep the title labels at the top of their section.
+
+        * UserInterface/BreakpointAction.js:
+        (WebInspector.BreakpointAction):
+        (WebInspector.BreakpointAction.prototype.get breakpoint):
+        (WebInspector.BreakpointAction.prototype.get type):
+        (WebInspector.BreakpointAction.prototype.get data):
+        (WebInspector.BreakpointAction.prototype.set data):
+        (WebInspector.BreakpointAction.prototype.get info):
+        Very basic BreakpointAction class. Notifies Breakpoint on data changes.
+        Type changes are not allowed, instead just create a new BreakpointAction.
+
+        * UserInterface/BreakpointActionView.css: Added.
+        (.breakpoint-action-block-header):
+        (.breakpoint-action-remove-button):
+        (.breakpoint-action-remove-button:active):
+        (.breakpoint-action-append-button):
+        (.breakpoint-action-block-body):
+        (.breakpoint-action-block-body > input):
+        (.breakpoint-action-eval-editor):
+        (.breakpoint-action-eval-editor > .CodeMirror):
+        (.breakpoint-action-eval-editor > .CodeMirror-scroll):
+        * UserInterface/BreakpointActionView.js: Added.
+        (WebInspector.BreakpointActionView):
+        (WebInspector.BreakpointActionView.displayStringForType):
+        (WebInspector.BreakpointActionView.prototype.get action):
+        (WebInspector.BreakpointActionView.prototype.get element):
+        (WebInspector.BreakpointActionView.prototype._pickerChanged):
+        (WebInspector.BreakpointActionView.prototype._appendActionButtonClicked):
+        (WebInspector.BreakpointActionView.prototype._removeActionButtonClicked):
+        (WebInspector.BreakpointActionView.prototype._updateBody.switch.break):
+        (WebInspector.BreakpointActionView.prototype._logInputChanged):
+        (WebInspector.BreakpointActionView.prototype._codeMirrorBlurred):
+        (WebInspector.BreakpointActionView.prototype._codeMirrorViewportChanged):
+        UI and form controls for individual breakpoint actions. The view
+        wraps a single BreakpointAction, and for any actions that could affect
+        other views the delegate is notified.
+
+        * UserInterface/DebuggerManager.js:
+        (WebInspector.DebuggerManager):
+        (WebInspector.DebuggerManager.prototype._debuggerBreakpointActionType):
+        When sending to the backend, make sure to send protocol enums.
+
+        * UserInterface/Popover.js:
+        (WebInspector.Popover.prototype.update):
+        Update the popover when content changes.
+
+        * UserInterface/Images/BreakpointActionAdd.svg: Added.
+        * UserInterface/Images/BreakpointActionRemove.svg: Added.
+        * UserInterface/InspectorBackendCommands.js:
+        * UserInterface/Main.html:
+        * Localizations/en.lproj/localizedStrings.js:
+        Misc. New strings, images, includes.
+
+2013-09-03  Antoine Quint  <graouts@apple.com>
+
+        Web Inspector: exceptions triggered from console evaluation do not pause the debugger
+        https://bugs.webkit.org/show_bug.cgi?id=120460
+
+        We used to preclude any debugging from errors stemming from code evaluated in the console
+        as we would always set the doNotPauseOnExceptionsAndMuteConsole parameter to "false" when
+        calling JavaScriptLogViewController._evaluateInInspectedWindow(). However, it is desirable
+        to allow debugging code ran from the console.
+
+        We now allow debugging in such a scenario and we filter out call frames coming from the
+        Web Inspector injected script as well as the call frame for the console prompt such that
+        we only pause in the debugger in case the exception is in code under the console prompt
+        and not the console code prompt itself.
+
+        Additionally, to prevent stepping out to call frames we may have filtered out, we disable
+        the "step out" button in cases where there are no further frames in the frontend to go out to.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.debuggerDidPause):
+        Filter out call frames that have a URL coming from Web Inspector injected script by looking
+        for a URL starting with the "__WebInspector" prefix. If we determine that there are no call
+        frames left after filtering, we resume code evaluation such that we only pause in the debugger
+        when the exception is in code evluated under the console prompt.
+
+        * UserInterface/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerDidPause):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerActiveCallFrameDidChange):
+        Monitor any change to the active call frame such that we may tie the state of the
+        "step out" button to the availability of a call frame to step out to in the filtered
+        list set on the DebuggerManager.
+
+        * UserInterface/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptTextCommitted):
+        Set the doNotPauseOnExceptionsAndMuteConsole to "false" when calling _evaluateInInspectedWindow()
+        in order to allow pausing on exceptions coming from code evalued in the console. Also, explicitly
+        set a sourceURL for the script to evaluate such that we may identify its origin when filtering
+        call frames stemming from inspector code.
+
+        * UserInterface/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._scriptWasAdded):
+        Filter out any script resource starting with the Web Inspector-specific "__WebInspector" prefix
+        so that injected script does not show up.
+
+2013-08-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Correct windows build. Get rid of unnecessary pre-build step. We don't build anything
+        in this project, just copy some files into the WebKit resource folder. This was fooling the
+        build system into thinking something failed, resulting in a build error.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj: Remove reference to WebInspectorUIPreBuild.cmd
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+        * WebInspectorUI.vcxproj/WebInspectorUIPreBuild.cmd: Removed.
+
+2013-08-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Build correction after dependency change.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj: Remove circular dependency on
+        WebKit, and control this at the solution level. The prior change broke external
+        builders.
+
+2013-08-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build gardening.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj: Adjust build dependencies so
+        that WebInspectorUI 'builds' after WebKit so that the expected resource directory
+        structure is always in place.
+
+2013-08-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Breakpoints should have Automatically Continue Option
+        https://bugs.webkit.org/show_bug.cgi?id=120187
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Breakpoint.css:
+        (#edit-breakpoint-popoover-auto-continue):
+        Misc. changes for UI.
+
+        * UserInterface/Breakpoint.js:
+        (WebInspector.Breakpoint):
+        (WebInspector.Breakpoint.prototype.get autoContinue):
+        (WebInspector.Breakpoint.prototype.set autoContinue):
+        (WebInspector.Breakpoint.prototype.get options):
+        (WebInspector.Breakpoint.prototype.get info):
+        General maintenance of the autoContinue state.
+
+        (WebInspector.Breakpoint.prototype._popoverToggleEnabledCheckboxChanged):
+        (WebInspector.Breakpoint.prototype._popoverToggleAutoContinueCheckboxChanged):
+        (WebInspector.Breakpoint.prototype._editBreakpointPopoverContentElement):
+        Edit Breakpoint UI for setting autoContinue state.
+
+        * UserInterface/InspectorBackend.js:
+        (InspectorBackendClass.prototype.registerCommand):
+        (InspectorBackendClass.prototype._supports):
+        Extension to check if a BackendCommands method supports a particular param.
+
+        * UserInterface/DebuggerManager.js:
+        (WebInspector.DebuggerManager):
+        (WebInspector.DebuggerManager.prototype._setBreakpoint):
+        * UserInterface/InspectorBackendCommands.js:
+        Change to backend agent calls for the new protocol API.
+
+2013-08-29  Timothy Hatcher  <timothy@apple.com>
+
+        Make incrementing and decrementing numbers by 0.1 require the control key, and not near zero numbers.
+
+        https://bugs.webkit.org/show_bug.cgi?id=120492
+        <rdar://problem/13738935> Incrementing and decrementing numbers near zero is annoying compared to earlier releases
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/CodeMirrorAdditions.js:
+        (alterNumber): Remove near zero check.
+
+2013-08-29  Timothy Hatcher  <timothy@apple.com>
+
+        Only modify numbers if they are identified by CodeMirror as a number.
+
+        https://bugs.webkit.org/show_bug.cgi?id=120484
+
+        <rdar://problem/13877085> REGRESSION: Alt-up and Alt-down don't work when cursor is in unit
+        <rdar://problem/13058697> PARITY: Option-Up arrow in "translate3d" should not modify number to make" translate4d"
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/CodeMirrorAdditions.js:
+        (CodeMirror.prototype.alterNumberInRange): Correctly preserve the selection, even if it differs from
+        the range passed in.
+        (alterNumber): Find number tokens and pass those to alterNumberInRange.
+        (alterNumber.findNumberToken): Added. Helper.
+
+2013-08-29  Timothy Hatcher  <timothy@apple.com>
+
+        Make incrementing and decrementing numbers by 0.1 require the control key, and not near zero numbers.
+
+        https://bugs.webkit.org/show_bug.cgi?id=120492
+        <rdar://problem/13738935> Incrementing and decrementing numbers near zero is annoying compared to earlier releases
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/CodeMirrorAdditions.js:
+        (alterNumber): Remove near zero check.
+
+2013-08-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Download Web Archive of Inspected Page
+        https://bugs.webkit.org/show_bug.cgi?id=119774
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/ContentBrowser.js:
+        (WebInspector.ContentBrowser.prototype._saveDataToFile):
+        Allow a custom save handler which will do all the work.
+
+        * UserInterface/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView):
+        (WebInspector.DOMTreeContentView.prototype.get supportsSave):
+        (WebInspector.DOMTreeContentView.prototype.get saveData.saveHandler):
+        (WebInspector.DOMTreeContentView.prototype.get saveData):
+        Allow Save keyboard shortcut to download an archive viewing the DOM Tree.
+
+        * UserInterface/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.prototype._updateStatus):
+        * UserInterface/FrameTreeElement.js:
+        (WebInspector.FrameTreeElement):
+        (WebInspector.FrameTreeElement.prototype.updateStatusForMainFrame):
+        (WebInspector.FrameTreeElement.prototype._mainResourceDidChange):
+        (WebInspector.FrameTreeElement.prototype._shouldGroupIntoFolders):
+        (WebInspector.FrameTreeElement.prototype._reloadPageClicked):
+        (WebInspector.FrameTreeElement.prototype._downloadButtonClicked):
+        (WebInspector.FrameTreeElement.prototype._updateDownloadButton):
+        (WebInspector.FrameTreeElement.prototype._pageArchiveStarted):
+        (WebInspector.FrameTreeElement.prototype._pageArchiveEnded):
+        Move handling of main frame TreeElement buttons to FrameTreeElement.
+        Add a Download button, and enable/disable it appropriately.
+
+        * UserInterface/ResourceTreeElement.css:
+        * UserInterface/TreeElementStatusButton.css: Copied from Source/WebInspectorUI/UserInterface/ResourceTreeElement.css.
+        (.item > .status > .status-button):
+        (.item > .status > .status-button > svg *):
+        (.item.selected > .status > .status-button > svg *):
+        (.item.selected > .status > .status-button:active > svg *):
+        (.item > .status > .status-button.disabled > svg *):
+        (.item.selected > .status > .status-button.disabled > svg *):
+        * UserInterface/TreeElementStatusButton.js: Added.
+        (WebInspector.TreeElementStatusButton):
+        (WebInspector.TreeElementStatusButton.prototype.get element):
+        (WebInspector.TreeElementStatusButton.prototype.get hidden):
+        (WebInspector.TreeElementStatusButton.prototype.set hidden):
+        (WebInspector.TreeElementStatusButton.prototype.get enabled):
+        (WebInspector.TreeElementStatusButton.prototype.set enabled):
+        (WebInspector.TreeElementStatusButton.prototype._clicked):
+        Make buttons in the TreeElement status a generic class to share styling
+        and handling of the buttons. New "disabled" state with even more
+        transparent is used when the page is downloading.
+
+        * UserInterface/Main.html:
+        * UserInterface/Main.js:
+        (WebInspector.archiveMainFrame):
+        (WebInspector.canArchiveMainFrame):
+        Generic API for archiving the page and determining if you can archive it.
+
+        * UserInterface/InspectorBackendCommands.js:
+        * UserInterface/InspectorFrontendHostStub.js:
+        (.WebInspector.InspectorFrontendHostStub.prototype.save):
+        * UserInterface/Images/DownloadArrow.svg: Added.
+        * Localizations/en.lproj/localizedStrings.js:
+        Misc. updates and new files.
+
+2013-08-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Give reload icon an :active state and allow CSS to style some SVG images
+        https://bugs.webkit.org/show_bug.cgi?id=120384
+
+        Reviewed by Timothy Hatcher.
+
+        The Reload icon is duplicated just to provide different fill colors.
+        Convert from using <img> to an <svg> document for this image, and style
+        it with CSS. This also makes it trivial to add an :active state.
+
+        * UserInterface/ImageUtilities.js:
+        (.invokeCallbackWithDocument):
+        (.imageLoad):
+        (.imageError):
+        (wrappedSVGDocument):
+        Helpers for downloading and in memory caching SVG images.
+
+        * UserInterface/Images/Reload.svg:
+        * UserInterface/Images/ReloadSelected.svg: Removed.
+        Updated Reload image better matches the original design (slightly
+        larger). And the duplicate image can be removed.
+
+        * UserInterface/ResourceTreeElement.css:
+        (.item.resource > .status > .reload-button):
+        (.item.resource > .status > .reload-button > svg *):
+        (.item.resource.selected > .status > .reload-button > svg *):
+        (.item.resource.selected > .status > .reload-button:active > svg *):
+        Different styles, including a new :active style.
+
+        * UserInterface/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.prototype._updateStatusWithMainFrameButtons):
+        (WebInspector.ResourceTreeElement.prototype._updateStatus):
+        Handle updating the main frame's state asynchronously since loading the SVG
+        image document is asynchronous.
+
+2013-08-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Debugger should have Continue to Here Context Menu
+        https://bugs.webkit.org/show_bug.cgi?id=120189
+
+        Reviewed by Timothy Hatcher.
+
+        When paused in the debugger and presenting a Context Menu in the
+        gutter, include a "Continue to Here" option. This requires a
+        script/line/column location combination.
+
+        * UserInterface/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.continueToLocation):
+        * UserInterface/Resource.js:
+        (WebInspector.Resource.prototype.scriptForLocation):
+        * UserInterface/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.continueToLocation):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu):
+
+2013-08-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: We should regenerate InspectorBackendCommands.js for Legacy Inspector.json versions
+        https://bugs.webkit.org/show_bug.cgi?id=120242
+
+        Reviewed by Timothy Hatcher.
+
+        - Include the iOS 6.0 Inspector.json which maps to Legacy/6.0/InspectorBackendCommands.js.
+        - Provide a helper script to regenerate the backend commands file for trunk and Versions.
+        - Regenerated file now includes enums and other minor changes.
+
+        * Scripts/update-InspectorBackendCommands.rb: Added.
+        * UserInterface/InspectorBackendCommands.js:
+        * UserInterface/Legacy/6.0/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-6.0.json: Added.
+
+2013-08-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Breakpoints in the editors gutter should have a contextmenu
+        https://bugs.webkit.org/show_bug.cgi?id=120169
+
+        Reviewed by Timothy Hatcher.
+
+        Updated CodeMirror now has a gutterContextMenu event. Use that to give
+        breakpoint related context menus. Add, Edit, Enable/Disable, Delete, and
+        Reveal in Debugger Navigation Sidebar.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        "Add Breakpoint", and "Reveal in Debugger Navigation Sidebar".
+
+        * UserInterface/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu.addBreakpoint):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu.revealInSidebar):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu.removeBreakpoints):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu.toggleBreakpoints):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu):
+        Show a context menu when clicking on the gutter for 0 breakpoints,
+        1 breakpoint, or >1 breakpoints. The only tricky handler is addBreakpoint,
+        since that must update the TextEditor for the new breakpoint info.
+
+        * UserInterface/TextEditor.js:
+        (WebInspector.TextEditor):
+        (WebInspector.TextEditor.prototype._gutterContextMenu):
+        Send to delegate if the delegate implements textEditorGutterContextMenu.
+
+2013-08-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix js minification of updated CodeMirror
+        https://bugs.webkit.org/show_bug.cgi?id=120231
+
+        Reviewed by Andy Estes.
+
+        Workaround a jsmin issue with "return //.test();" lines when
+        minifying JavaScript in production builds.
+
+        * Scripts/copy-user-interface-resources.sh:
+        * UserInterface/External/CodeMirror/codemirror.js:
+        (window.CodeMirror):
+
+2013-08-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        <https://webkit.org/b/120165> Web Inspector: Update CodeMirror to 3.16.1
+
+        Reviewed by Andy Estes.
+
+        * Tools/PrettyPrinting/codemirror.css:
+        * Tools/PrettyPrinting/codemirror.js:
+        * Tools/PrettyPrinting/css.js:
+        * Tools/PrettyPrinting/javascript.js:
+        * UserInterface/External/CodeMirror/codemirror.css:
+        * UserInterface/External/CodeMirror/codemirror.js:
+        * UserInterface/External/CodeMirror/css.js:
+        * UserInterface/External/CodeMirror/javascript.js:
+        * UserInterface/External/CodeMirror/xml.js:
+
+2013-08-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Clean up project file after %PlatformArchitecture% change landed.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj: Remove hard-coded settings covered
+        by our configuration files.
+        * WebInspectorUI.vcxproj/WebInspectorUIPostBuild.cmd: Use the %PlatformArchitecture%
+        macro to support 32- and 64-bit builds.
+
+2013-08-20  Brent Fulgham  <bfulgham@apple.com>
+
+        <http://webkit.org/b/120098> [Windows] Enable the New Web Inspector
+
+        Reviewed by Brian Weinstein.
+
+        Add a new project to copy files to the appropriate spots in the
+        Windows port.
+
+        * WebInspectorUI.vcxproj: Added.
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj: Added.
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters: Added.
+        * WebInspectorUI.vcxproj/WebInspectorUIPostBuild.cmd: Added.
+        * WebInspectorUI.vcxproj/WebInspectorUIPreBuild.cmd: Added.
+
+2013-08-19  James Craig  <james@cookiecrook.com>
+
+        <https://webkit.org/b/118106> Web Inspector: AX: Add additional contextual labels for Error/Warnings/Logs that will be spoken for screen readers
+
+        Reviewed by Joseph Pecoraro.
+
+        Changed general console "Output" string to more specific "Error", "Warning", etc for accessibility.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/ConsoleCommandResult.js:
+        * UserInterface/ConsoleMessageImpl.js:
+
+2013-08-16  James Craig  <james@cookiecrook.com>
+
+        <https://webkit.org/b/118105> Web Inspector: AX: Add support for ARIA tablists/tabs to inspector tabs
+
+        Reviewed by Joseph Pecoraro.
+
+        Updating accessibility roles and attributes for single-select toolbar item sets.
+
+        * UserInterface/ActivateButtonNavigationItem.js:
+        (WebInspector.ActivateButtonNavigationItem):
+        (WebInspector.ActivateButtonNavigationItem.prototype.set activated):
+        * UserInterface/ActivateButtonToolbarItem.js:
+        (WebInspector.ActivateButtonToolbarItem):
+        * UserInterface/ButtonToolbarItem.js:
+        (WebInspector.ButtonToolbarItem):
+        * UserInterface/SidebarPanel.js:
+        (WebInspector.SidebarPanel):
+        * UserInterface/Toolbar.js:
+        (WebInspector.Toolbar):
+
+2013-08-13  Dean Jackson  <dino@apple.com>
+
+        <https://webkit.org/b/119778> Add Canvas protocol observer
+
+        Reviewed by Joseph Pecoraro.
+
+        In preparation for listening to backend events about canvas profiling,
+        add a canvas observer.
+
+        * UserInterface/CanvasObserver.js: New empty CanvasObserver object.
+        (WebInspector.CanvasObserver):
+        (WebInspector.CanvasObserver.prototype.contextCreated):
+        (WebInspector.CanvasObserver.prototype.traceLogsRemoved):
+        * UserInterface/Main.html:
+        * UserInterface/Main.js:
+        (WebInspector.loaded):
+
+2013-08-11  Dean Jackson  <dino@apple.com>
+
+        Update localizedStrings - I think I checked in an unmerged version
+        in the previous commit.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2013-08-11  Dean Jackson  <dino@apple.com>
+
+        Bootstrap canvas profiler
+        https://bugs.webkit.org/show_bug.cgi?id=119652
+        <rdar://problem/14703665>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add enough to get an empty Canvas profile recording
+        and displayed.
+
+        * Localizations/en.lproj/localizedStrings.js: Add canvas strings.
+        * UserInterface/CanvasProfileObject.js: Added. Mostly copied from CSS Selector Profiles.
+        * UserInterface/CanvasProfileType.js: Added. Ditto.
+        * UserInterface/CanvasDataGridNode.js: Added. Ditto.
+        * UserInterface/CanvasProfileView.js: Added. Ditto.
+        * UserInterface/ContentView.js:
+        (WebInspector.ContentView): Add support for the new View type.
+        (WebInspector.ContentView.isViewable):
+        * UserInterface/InstrumentSidebarPanel.js:
+        (WebInspector.InstrumentSidebarPanel): Add support for canvas profiles.
+        (WebInspector.InstrumentSidebarPanel.prototype._recordProfileGlyphMousedOver):
+        (WebInspector.InstrumentSidebarPanel.prototype._recordProfileGlyphMousedDown):
+        (WebInspector.InstrumentSidebarPanel.prototype._recordProfileGlyphClicked):
+        (WebInspector.InstrumentSidebarPanel.prototype._profileTypeWasSelected):
+        (WebInspector.InstrumentSidebarPanel.prototype._profilesCleared):
+        * UserInterface/Main.html: Load the new files.
+        * UserInterface/ProfileManager.js: New methods and support for canvas profiles.
+        (WebInspector.ProfileManager):
+        (WebInspector.ProfileManager.prototype.initialize):
+        (WebInspector.ProfileManager.prototype.isProfilingCanvas):
+        (WebInspector.ProfileManager.prototype.startProfilingCanvas):
+        (WebInspector.ProfileManager.prototype.stopProfilingCanvas):
+        (WebInspector.ProfileManager.prototype._checkForInterruptions):
+        (WebInspector.ProfileManager.prototype._attemptToResumeProfiling):
+
+2013-08-07  Timothy Hatcher  <timothy@apple.com>
+
+        Switch the generated images off of PDFs and onto SVGs now that bug 119492 is fixed.
+
+        https://bugs.webkit.org/show_bug.cgi?id=118677
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/ApplicationCacheDetailsSidebarPanel.js:
+        (WebInspector.ApplicationCacheDetailsSidebarPanel):
+        * UserInterface/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        * UserInterface/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        * UserInterface/ContentBrowser.js:
+        (WebInspector.ContentBrowser):
+        * UserInterface/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel):
+        * UserInterface/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView):
+        * UserInterface/DataGrid.js:
+        (WebInspector.DataGrid.prototype._generateSortIndicatorImagesIfNeeded):
+        * UserInterface/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        * UserInterface/DetailsSection.js:
+        (WebInspector.DetailsSection.prototype._generateDisclosureTrianglesIfNeeded):
+        * UserInterface/FindBanner.js:
+        (WebInspector.FindBanner.prototype._generateButtonsGlyphsIfNeeded):
+        * UserInterface/Images/BackArrow.pdf: Removed.
+        * UserInterface/Images/BottomUpTree.pdf: Removed.
+        * UserInterface/Images/Breakpoints.pdf: Removed.
+        * UserInterface/Images/Close.pdf: Removed.
+        * UserInterface/Images/Crosshair.pdf: Removed.
+        * UserInterface/Images/DisclosureTriangleSmallClosed.pdf: Removed.
+        * UserInterface/Images/DisclosureTriangleSmallOpen.pdf: Removed.
+        * UserInterface/Images/DisclosureTriangleTinyClosed.pdf: Removed.
+        * UserInterface/Images/DisclosureTriangleTinyOpen.pdf: Removed.
+        * UserInterface/Images/DockBottom.pdf: Removed.
+        * UserInterface/Images/DockRight.pdf: Removed.
+        * UserInterface/Images/ForwardArrow.pdf: Removed.
+        * UserInterface/Images/GoToArrow.pdf: Removed.
+        * UserInterface/Images/LayerBorders.pdf: Removed.
+        * UserInterface/Images/LessColumns.pdf: Removed.
+        * UserInterface/Images/Locked.pdf: Removed.
+        * UserInterface/Images/MoreColumns.pdf: Removed.
+        * UserInterface/Images/NavigationItemAngleBrackets.pdf: Removed.
+        * UserInterface/Images/NavigationItemBrushAndRuler.pdf: Removed.
+        * UserInterface/Images/NavigationItemBug.pdf: Removed.
+        * UserInterface/Images/NavigationItemCurleyBraces.pdf: Removed.
+        * UserInterface/Images/NavigationItemFile.pdf: Removed.
+        * UserInterface/Images/NavigationItemLayers.pdf: Removed.
+        * UserInterface/Images/NavigationItemLog.pdf: Removed.
+        * UserInterface/Images/NavigationItemMagnifyingGlass.pdf: Removed.
+        * UserInterface/Images/NavigationItemStopwatch.pdf: Removed.
+        * UserInterface/Images/NavigationItemStorage.pdf: Removed.
+        * UserInterface/Images/NavigationItemTrash.pdf: Removed.
+        * UserInterface/Images/NavigationItemVariable.pdf: Removed.
+        * UserInterface/Images/Pause.pdf: Removed.
+        * UserInterface/Images/Percent.pdf: Removed.
+        * UserInterface/Images/Plus.pdf: Removed.
+        * UserInterface/Images/Resume.pdf: Removed.
+        * UserInterface/Images/ShadowDOM.pdf: Removed.
+        * UserInterface/Images/SortIndicatorDownArrow.pdf: Removed.
+        * UserInterface/Images/SortIndicatorUpArrow.pdf: Removed.
+        * UserInterface/Images/SplitToggleDown.pdf: Removed.
+        * UserInterface/Images/SplitToggleUp.pdf: Removed.
+        * UserInterface/Images/StepInto.pdf: Removed.
+        * UserInterface/Images/StepOut.pdf: Removed.
+        * UserInterface/Images/StepOver.pdf: Removed.
+        * UserInterface/Images/Undock.pdf: Removed.
+        * UserInterface/InstrumentSidebarPanel.js:
+        (WebInspector.InstrumentSidebarPanel):
+        * UserInterface/JavaScriptProfileView.js:
+        (WebInspector.JavaScriptProfileView):
+        * UserInterface/LayerTreeSidebarPanel.js:
+        (WebInspector.LayerTreeSidebarPanel):
+        * UserInterface/LogContentView.js:
+        (WebInspector.LogContentView):
+        * UserInterface/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._updateDockNavigationItems):
+        (WebInspector._generateDisclosureTriangleImages):
+        * UserInterface/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._generateDisclosureTrianglesIfNeeded):
+        * UserInterface/ProfileView.js:
+        (WebInspector.ProfileView):
+        * UserInterface/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel):
+        * UserInterface/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        * UserInterface/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel):
+        * UserInterface/ScriptContentView.js:
+        (WebInspector.ScriptContentView):
+        * UserInterface/TextContentView.js:
+        (WebInspector.TextContentView):
+        * UserInterface/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView):
+        * UserInterface/TimelinesContentView.js:
+
+2013-08-08  Dean Jackson  <dino@apple.com>
+
+        Remove use of prefixed transition event
+        https://bugs.webkit.org/show_bug.cgi?id=119598
+
+        Reviewed by Joseph Pecoraro.
+
+        "webkitTransitionEnd" -> "transitionend".
+
+        * UserInterface/Popover.js:
+        (WebInspector.Popover):
+        (WebInspector.Popover.prototype.handleEvent):
+
+2013-08-08  Dean Jackson  <dino@apple.com>
+
+        Unprefix use of transitions in Web Inspector code
+        https://bugs.webkit.org/show_bug.cgi?id=119588
+
+        Reviewed by Tim Hatcher.
+
+        Replace "-webkit-transition" with "transition".
+
+        * UserInterface/CSSCompletions.js:
+        (WebInspector.CSSCompletions.requestCSSNameCompletions.collectPropertyNameForCodeMirror):
+        * UserInterface/FindBanner.css:
+        (.find-banner):
+        (.find-banner.showing):
+        (.supports-find-banner.no-find-banner-transition):
+        (.supports-find-banner):
+        (.supports-find-banner.showing-find-banner):
+        * UserInterface/NetworkTimeline.css:
+        (.network-graph-side:hover .network-graph-label):
+        * UserInterface/Popover.css:
+        (.popover.fade-out):
+
+2013-08-08  Vivek Galatage  <vivek.vg@samsung.com>
+
+        Web Inspector: Use granular DOMStorage modification events to avoid complete DataGrid update.
+        https://bugs.webkit.org/show_bug.cgi?id=119541
+
+        Reviewed by Joseph Pecoraro.
+
+        InspectorDOMStorageAgent sends more granular events about the storage modifications.
+        Using these would avoid the complete rebuilding of the DataGrid.
+
+        * UserInterface/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView.prototype.itemsCleared):
+        (WebInspector.DOMStorageContentView.prototype.itemRemoved):
+        (WebInspector.DOMStorageContentView.prototype.itemAdded):
+        (WebInspector.DOMStorageContentView.prototype.itemUpdated):
+        * UserInterface/DOMStorageObserver.js:
+        (WebInspector.DOMStorageObserver.prototype.domStorageItemsCleared):
+        (WebInspector.DOMStorageObserver.prototype.domStorageItemRemoved):
+        (WebInspector.DOMStorageObserver.prototype.domStorageItemAdded):
+        (WebInspector.DOMStorageObserver.prototype.domStorageItemUpdated):
+        * UserInterface/StorageManager.js:
+        (WebInspector.StorageManager.prototype.domStorageItemsCleared):
+        (WebInspector.StorageManager.prototype.domStorageItemRemoved):
+        (WebInspector.StorageManager.prototype.domStorageItemAdded):
+        (WebInspector.StorageManager.prototype.domStorageItemUpdated):
+
+2013-08-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove stale code in ResourceContentView
+        https://bugs.webkit.org/show_bug.cgi?id=119527
+
+        The handling of Resource Type changes moved to ResourceClusterContentView,
+        this removeEventListener is stale and doesn't do anything anymore.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype.closed):
+
+2013-08-06  Timothy Hatcher  <timothy@apple.com>
+
+        Convert all Web Inspector PDFs to SVGs.
+
+        Some PDFs need to stay around until bug 119492 is fixed. But the SVGs are there for when they are needed.
+        Updated some of the existing SVGs to be consistent with the format of the new SVGs.
+
+        https://bugs.webkit.org/show_bug.cgi?id=118677
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * UserInterface/BreakpointIcons.css:
+        * UserInterface/BreakpointTreeElement.css:
+        * UserInterface/CallFrameIcons.css:
+        * UserInterface/DatabaseContentView.css:
+        * UserInterface/FilterBar.css:
+        * UserInterface/HierarchicalPathComponent.css:
+        * UserInterface/Images/BackArrow.svg: Added.
+        * UserInterface/Images/BottomUpTree.svg: Added.
+        * UserInterface/Images/BreakpointButton.pdf: Removed.
+        * UserInterface/Images/BreakpointButton.svg: Added.
+        * UserInterface/Images/BreakpointInactiveButton.pdf: Removed.
+        * UserInterface/Images/BreakpointInactiveButton.svg: Added.
+        * UserInterface/Images/Breakpoints.svg: Added.
+        * UserInterface/Images/Close.svg: Added.
+        * UserInterface/Images/Crosshair.svg: Added.
+        * UserInterface/Images/DOMCharacterData.pdf: Removed.
+        * UserInterface/Images/DOMCharacterData.svg: Added.
+        * UserInterface/Images/DOMComment.pdf: Removed.
+        * UserInterface/Images/DOMComment.svg: Added.
+        * UserInterface/Images/DOMDocument.pdf: Removed.
+        * UserInterface/Images/DOMDocument.svg: Added.
+        * UserInterface/Images/DOMDocumentType.pdf: Removed.
+        * UserInterface/Images/DOMDocumentType.svg: Added.
+        * UserInterface/Images/DOMElement.pdf: Removed.
+        * UserInterface/Images/DOMElement.svg: Added.
+        * UserInterface/Images/DOMNode.pdf: Removed.
+        * UserInterface/Images/DOMNode.svg: Added.
+        * UserInterface/Images/DOMTextNode.pdf: Removed.
+        * UserInterface/Images/DOMTextNode.svg: Added.
+        * UserInterface/Images/DOMTree.pdf: Removed.
+        * UserInterface/Images/DOMTree.svg: Added.
+        * UserInterface/Images/DisclosureTriangleSmallClosed.svg: Added.
+        * UserInterface/Images/DisclosureTriangleSmallOpen.svg: Added.
+        * UserInterface/Images/DisclosureTriangleTinyClosed.svg: Added.
+        * UserInterface/Images/DisclosureTriangleTinyOpen.svg: Added.
+        * UserInterface/Images/DockBottom.svg: Added.
+        * UserInterface/Images/DockRight.svg: Added.
+        * UserInterface/Images/Error.pdf: Removed.
+        * UserInterface/Images/Error.svg: Added.
+        * UserInterface/Images/ErrorSmall.pdf: Removed.
+        * UserInterface/Images/Errors.svg:
+        * UserInterface/Images/ErrorsEnabled.svg:
+        * UserInterface/Images/EventListener.pdf: Removed.
+        * UserInterface/Images/EventListener.svg: Added.
+        * UserInterface/Images/Exception.pdf: Removed.
+        * UserInterface/Images/Exception.svg: Added.
+        * UserInterface/Images/FilterFieldGlyph.pdf: Removed.
+        * UserInterface/Images/FilterFieldGlyph.svg: Added.
+        * UserInterface/Images/ForwardArrow.svg: Added.
+        * UserInterface/Images/Function.pdf: Removed.
+        * UserInterface/Images/Function.svg: Added.
+        * UserInterface/Images/GoToArrow.svg: Added.
+        * UserInterface/Images/HierarchicalNavigationItemChevron.pdf: Removed.
+        * UserInterface/Images/HierarchicalNavigationItemChevron.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner1.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner1.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner10.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner10.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner11.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner11.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner12.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner12.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner2.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner2.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner3.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner3.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner4.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner4.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner5.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner5.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner6.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner6.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner7.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner7.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner8.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner8.svg: Added.
+        * UserInterface/Images/IndeterminateProgressSpinner9.pdf: Removed.
+        * UserInterface/Images/IndeterminateProgressSpinner9.svg: Added.
+        * UserInterface/Images/Issues.svg:
+        * UserInterface/Images/IssuesEnabled.svg:
+        * UserInterface/Images/LayerBorders.svg: Added.
+        * UserInterface/Images/LessColumns.svg: Added.
+        * UserInterface/Images/Locked.svg: Added.
+        * UserInterface/Images/Logs.svg:
+        * UserInterface/Images/Memory.svg:
+        * UserInterface/Images/MoreColumns.svg: Added.
+        * UserInterface/Images/Native.pdf: Removed.
+        * UserInterface/Images/Native.svg: Added.
+        * UserInterface/Images/NavigationItemAngleBrackets.svg: Added.
+        * UserInterface/Images/NavigationItemBrushAndRuler.svg: Added.
+        * UserInterface/Images/NavigationItemBug.svg: Added.
+        * UserInterface/Images/NavigationItemCurleyBraces.svg: Added.
+        * UserInterface/Images/NavigationItemFile.svg: Added.
+        * UserInterface/Images/NavigationItemLayers.svg: Added.
+        * UserInterface/Images/NavigationItemLog.svg: Added.
+        * UserInterface/Images/NavigationItemMagnifyingGlass.svg: Added.
+        * UserInterface/Images/NavigationItemStopwatch.svg: Added.
+        * UserInterface/Images/NavigationItemStorage.svg: Added.
+        * UserInterface/Images/NavigationItemTrash.svg: Added.
+        * UserInterface/Images/NavigationItemVariable.svg: Added.
+        * UserInterface/Images/NetworkBarLabelCalloutLeft.pdf: Removed.
+        * UserInterface/Images/NetworkBarLabelCalloutLeft.svg: Added.
+        * UserInterface/Images/NetworkBarLabelCalloutRight.pdf: Removed.
+        * UserInterface/Images/NetworkBarLabelCalloutRight.svg: Added.
+        * UserInterface/Images/NetworkBarLabelCalloutWhiteLeft.pdf: Removed.
+        * UserInterface/Images/NetworkBarLabelCalloutWhiteLeft.svg: Added.
+        * UserInterface/Images/NetworkBarLabelCalloutWhiteRight.pdf: Removed.
+        * UserInterface/Images/NetworkBarLabelCalloutWhiteRight.svg: Added.
+        * UserInterface/Images/Pause.svg: Added.
+        * UserInterface/Images/Percent.svg: Added.
+        * UserInterface/Images/Plus.svg: Added.
+        * UserInterface/Images/PseudoElement.pdf: Removed.
+        * UserInterface/Images/PseudoElement.svg: Added.
+        * UserInterface/Images/Reflection.pdf: Removed.
+        * UserInterface/Images/Reflection.svg: Added.
+        * UserInterface/Images/Reload.svg:
+        * UserInterface/Images/ReloadSelected.svg:
+        * UserInterface/Images/Request.pdf: Removed.
+        * UserInterface/Images/Request.svg: Added.
+        * UserInterface/Images/Resources.svg:
+        * UserInterface/Images/Response.pdf: Removed.
+        * UserInterface/Images/Response.svg: Added.
+        * UserInterface/Images/ResultLine.pdf: Removed.
+        * UserInterface/Images/ResultLine.svg: Added.
+        * UserInterface/Images/Resume.svg: Added.
+        * UserInterface/Images/ShadowDOM.svg: Added.
+        * UserInterface/Images/SortIndicatorDownArrow.svg: Added.
+        * UserInterface/Images/SortIndicatorUpArrow.svg: Added.
+        * UserInterface/Images/SourceCode.pdf: Removed.
+        * UserInterface/Images/SourceCode.svg: Added.
+        * UserInterface/Images/SplitToggleDown.svg: Added.
+        * UserInterface/Images/SplitToggleUp.svg: Added.
+        * UserInterface/Images/StepInto.svg: Added.
+        * UserInterface/Images/StepOut.svg: Added.
+        * UserInterface/Images/StepOver.svg: Added.
+        * UserInterface/Images/StyleRuleAuthor.pdf: Removed.
+        * UserInterface/Images/StyleRuleAuthor.svg: Added.
+        * UserInterface/Images/StyleRuleInherited.pdf: Removed.
+        * UserInterface/Images/StyleRuleInherited.svg: Added.
+        * UserInterface/Images/StyleRuleInheritedElement.pdf: Removed.
+        * UserInterface/Images/StyleRuleInheritedElement.svg: Added.
+        * UserInterface/Images/StyleRuleInspector.pdf: Removed.
+        * UserInterface/Images/StyleRuleInspector.svg: Added.
+        * UserInterface/Images/StyleRuleUser.pdf: Removed.
+        * UserInterface/Images/StyleRuleUser.svg: Added.
+        * UserInterface/Images/StyleRuleUserAgent.pdf: Removed.
+        * UserInterface/Images/StyleRuleUserAgent.svg: Added.
+        * UserInterface/Images/Time.svg:
+        * UserInterface/Images/Undock.svg: Added.
+        * UserInterface/Images/UpDownArrows.svg:
+        * UserInterface/Images/UserInputPrompt.pdf: Removed.
+        * UserInterface/Images/UserInputPrompt.svg: Added.
+        * UserInterface/Images/UserInputPromptPrevious.pdf: Removed.
+        * UserInterface/Images/UserInputPromptPrevious.svg: Added.
+        * UserInterface/Images/UserInputPromptPreviousSelected.pdf: Removed.
+        * UserInterface/Images/UserInputPromptPreviousSelected.svg: Added.
+        * UserInterface/Images/UserInputResult.pdf: Removed.
+        * UserInterface/Images/UserInputResult.svg: Added.
+        * UserInterface/Images/UserInputResultSelected.pdf: Removed.
+        * UserInterface/Images/UserInputResultSelected.svg: Added.
+        * UserInterface/Images/Warning.pdf: Removed.
+        * UserInterface/Images/Warning.svg: Added.
+        * UserInterface/Images/WarningSmall.pdf: Removed.
+        * UserInterface/Images/Weight.svg:
+        * UserInterface/IndeterminateProgressSpinner.css:
+        * UserInterface/LayerTreeSidebarPanel.css:
+        * UserInterface/LogContentView.css:
+        * UserInterface/Main.css:
+        * UserInterface/NetworkTimeline.css:
+        * UserInterface/PathComponentIcons.css:
+        * UserInterface/QuickConsole.css:
+        * UserInterface/RulesStyleDetailsPanel.css:
+        * UserInterface/SearchIcons.css:
+        * UserInterface/StyleRuleIcons.css:
+
+2013-07-23  David Farler  <dfarler@apple.com>
+
+        Provide optional OTHER_CFLAGS, OTHER_CPPFLAGS, OTHER_LDFLAGS additions for building with ASAN
+        https://bugs.webkit.org/show_bug.cgi?id=117762
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/DebugRelease.xcconfig:
+        Add ASAN_OTHER_CFLAGS, CPLUSPLUSFLAGS, LDFLAGS.
+
+2013-07-30  Roland Takács  <rtakacs@inf.u-szeged.hu>
+
+        Web Inspector: doesn't use localized user interface at remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=119252
+
+        Reviewed by Timothy Hatcher.
+
+        Added a flag in order to not use localizedStrings in remote inspector.
+
+        * UserInterface/InspectorFrontendHostStub.js:
+        * UserInterface/LoadLocalizedStrings.js:
+        * UserInterface/Main.js:
+        (WebInspector.UIString):
+
 2013-07-24  Antoine Quint  <graouts@apple.com>
 
         Web Inspector: control+clicking on a numeric token should not show the context menu

@@ -112,21 +112,21 @@ Node* highestEditableRoot(const Position& position, EditableType editableType)
     Node* node = position.deprecatedNode();
     if (!node)
         return 0;
-        
-    Node* highestRoot = editableRootForPosition(position, editableType);
-    if (!highestRoot)
+
+    Node* highestEditableRoot = editableRootForPosition(position, editableType);
+    if (!highestEditableRoot)
         return 0;
-    
-    node = highestRoot;
-    while (node) {
-        if (node->rendererIsEditable(editableType))
-            highestRoot = node;
-        if (node->hasTagName(bodyTag))
-            break;
+
+    node = highestEditableRoot;
+    while (!node->hasTagName(bodyTag)) {
         node = node->parentNode();
+        if (!node)
+            break;
+        if (node->rendererIsEditable(editableType))
+            highestEditableRoot = node;
     }
-    
-    return highestRoot;
+
+    return highestEditableRoot;
 }
 
 Node* lowestEditableAncestor(Node* node)
@@ -152,7 +152,7 @@ bool isEditablePosition(const Position& p, EditableType editableType, EUpdateSty
     if (!node)
         return false;
     if (updateStyle == UpdateStyle)
-        node->document()->updateLayoutIgnorePendingStylesheets();
+        node->document().updateLayoutIgnorePendingStylesheets();
     else
         ASSERT(updateStyle == DoNotUpdateStyle);
 
@@ -571,7 +571,7 @@ PassRefPtr<Range> extendRangeToWrappingNodes(PassRefPtr<Range> range, const Rang
         return range;
 
     // Create new range with the highest editable node contained within the range
-    RefPtr<Range> extendedRange = Range::create(range->ownerDocument());
+    RefPtr<Range> extendedRange = Range::create(&range->ownerDocument());
     extendedRange->selectNode(highestNode, IGNORE_EXCEPTION);
     return extendedRange.release();
 }
@@ -1146,17 +1146,25 @@ int indexForVisiblePosition(const VisiblePosition& visiblePosition, RefPtr<Conta
         return 0;
 
     Position p(visiblePosition.deepEquivalent());
-    Document* document = p.anchorNode()->document();
+    Document& document = p.anchorNode()->document();
     ShadowRoot* shadowRoot = p.anchorNode()->containingShadowRoot();
 
     if (shadowRoot)
         scope = shadowRoot;
     else
-        scope = document->documentElement();
+        scope = document.documentElement();
 
-    RefPtr<Range> range = Range::create(document, firstPositionInNode(scope.get()), p.parentAnchoredEquivalent());
+    RefPtr<Range> range = Range::create(&document, firstPositionInNode(scope.get()), p.parentAnchoredEquivalent());
 
     return TextIterator::rangeLength(range.get(), true);
+}
+
+// FIXME: Merge these two functions.
+int indexForVisiblePosition(Node* node, const VisiblePosition& visiblePosition, bool forSelectionPreservation)
+{
+    ASSERT(node);
+    RefPtr<Range> range = Range::create(&node->document(), firstPositionInNode(node), visiblePosition.deepEquivalent().parentAnchoredEquivalent());
+    return TextIterator::rangeLength(range.get(), forSelectionPreservation);
 }
 
 VisiblePosition visiblePositionForIndex(int index, ContainerNode* scope)
@@ -1167,6 +1175,20 @@ VisiblePosition visiblePositionForIndex(int index, ContainerNode* scope)
     if (!range)
         return VisiblePosition();
     return VisiblePosition(range->startPosition());
+}
+
+VisiblePosition visiblePositionForIndexUsingCharacterIterator(Node* node, int index)
+{
+    ASSERT(node);
+    if (index <= 0)
+        return VisiblePosition(firstPositionInOrBeforeNode(node), DOWNSTREAM);
+
+    RefPtr<Range> range = Range::create(&node->document());
+    range->selectNodeContents(node, IGNORE_EXCEPTION);
+    CharacterIterator it(range.get());
+    it.advance(index - 1);
+
+    return VisiblePosition(Position(it.range()->endContainer(), it.range()->endOffset(), Position::PositionIsOffsetInAnchor), UPSTREAM);
 }
 
 // Determines whether two positions are visibly next to each other (first then second)
@@ -1268,7 +1290,7 @@ bool isBlockFlowElement(const Node* node)
     if (!node->isElementNode())
         return false;
     RenderObject* renderer = node->renderer();
-    return renderer && renderer->isBlockFlow();
+    return renderer && renderer->isBlockFlowFlexBoxOrGrid();
 }
 
 Element* deprecatedEnclosingBlockFlowElement(Node* node)

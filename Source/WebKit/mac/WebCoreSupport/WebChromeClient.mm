@@ -54,6 +54,7 @@
 #import "WebViewInternal.h"
 #import <Foundation/Foundation.h>
 #import <WebCore/BlockExceptions.h>
+#import <WebCore/ColorChooser.h>
 #import <WebCore/Console.h>
 #import <WebCore/ContextMenu.h>
 #import <WebCore/ContextMenuController.h>
@@ -196,18 +197,18 @@ void WebChromeClient::takeFocus(FocusDirection direction)
     }
 }
 
-void WebChromeClient::focusedNodeChanged(Node* node)
+void WebChromeClient::focusedElementChanged(Element* element)
 {
-    if (!node)
+    if (!element)
         return;
-    if (!isHTMLInputElement(node))
+    if (!isHTMLInputElement(element))
         return;
 
-    HTMLInputElement* inputElement = toHTMLInputElement(node);
+    HTMLInputElement* inputElement = toHTMLInputElement(element);
     if (!inputElement->isText())
         return;
 
-    CallFormDelegate(m_webView, @selector(didFocusTextField:inFrame:), kit(inputElement), kit(inputElement->document()->frame()));
+    CallFormDelegate(m_webView, @selector(didFocusTextField:inFrame:), kit(inputElement), kit(inputElement->document().frame()));
 }
 
 void WebChromeClient::focusedFrameChanged(Frame*)
@@ -692,7 +693,7 @@ FloatRect WebChromeClient::customHighlightRect(Node* node, const AtomicString& t
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
-    NSView *documentView = [[kit(node->document()->frame()) frameView] documentView];
+    NSView *documentView = [[kit(node->document().frame()) frameView] documentView];
     if (![documentView isKindOfClass:[WebHTMLView class]])
         return NSZeroRect;
 
@@ -710,7 +711,7 @@ void WebChromeClient::paintCustomHighlight(Node* node, const AtomicString& type,
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
-    NSView *documentView = [[kit(node->document()->frame()) frameView] documentView];
+    NSView *documentView = [[kit(node->document().frame()) frameView] documentView];
     if (![documentView isKindOfClass:[WebHTMLView class]])
         return;
 
@@ -720,6 +721,15 @@ void WebChromeClient::paintCustomHighlight(Node* node, const AtomicString& type,
 
     END_BLOCK_OBJC_EXCEPTIONS;
 }
+
+#if ENABLE(INPUT_TYPE_COLOR)
+PassOwnPtr<ColorChooser> WebChromeClient::createColorChooser(ColorChooserClient* client, const Color& initialColor)
+{
+    // FIXME: Implement <input type='color'> for WK1 (Bug 119094).
+    ASSERT_NOT_REACHED();
+    return nullptr;
+}
+#endif
 
 void WebChromeClient::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
 {

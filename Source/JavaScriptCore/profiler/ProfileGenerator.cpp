@@ -27,14 +27,15 @@
 #include "ProfileGenerator.h"
 
 #include "CallFrame.h"
+#include "CallFrameInlines.h"
 #include "CodeBlock.h"
 #include "JSGlobalObject.h"
 #include "JSStringRef.h"
 #include "JSFunction.h"
-#include "Interpreter.h"
 #include "LegacyProfiler.h"
 #include "Operations.h"
 #include "Profile.h"
+#include "StackVisitor.h"
 #include "Tracing.h"
 
 namespace JSC {
@@ -56,16 +57,53 @@ ProfileGenerator::ProfileGenerator(ExecState* exec, const String& title, unsigne
         addParentForConsoleStart(exec);
 }
 
+class AddParentForConsoleStartFunctor {
+public:
+    AddParentForConsoleStartFunctor(ExecState* exec, RefPtr<ProfileNode>& head, RefPtr<ProfileNode>& currentNode)
+        : m_exec(exec)
+        , m_hasSkippedFirstFrame(false)
+        , m_foundParent(false)
+        , m_head(head)
+        , m_currentNode(currentNode)
+    {
+    }
+
+    bool foundParent() const { return m_foundParent; }
+
+    StackVisitor::Status operator()(StackVisitor& visitor)
+    {
+        if (!m_hasSkippedFirstFrame) {
+            m_hasSkippedFirstFrame = true;
+            return StackVisitor::Continue;
+        }
+
+        unsigned line = 0;
+        unsigned unusedColumn = 0;
+        visitor->computeLineAndColumn(line, unusedColumn);
+        m_currentNode = ProfileNode::create(m_exec, LegacyProfiler::createCallIdentifier(m_exec, visitor->callee(), visitor->sourceURL(), line), m_head.get(), m_head.get());
+        m_head->insertNode(m_currentNode.get());
+
+        m_foundParent = true;
+        return StackVisitor::Done;
+    }
+
+private:
+    ExecState* m_exec;
+    bool m_hasSkippedFirstFrame;
+    bool m_foundParent; 
+    RefPtr<ProfileNode>& m_head;
+    RefPtr<ProfileNode>& m_currentNode;
+};
+
 void ProfileGenerator::addParentForConsoleStart(ExecState* exec)
 {
-    int lineNumber;
-    intptr_t sourceID;
-    String sourceURL;
-    JSValue function;
+    AddParentForConsoleStartFunctor functor(exec, m_head, m_currentNode);
+    exec->iterate(functor);
 
-    exec->interpreter()->retrieveLastCaller(exec, lineNumber, sourceID, sourceURL, function);
-    m_currentNode = ProfileNode::create(exec, LegacyProfiler::createCallIdentifier(exec, function ? function.toThisObject(exec) : 0, sourceURL, lineNumber), m_head.get(), m_head.get());
-    m_head->insertNode(m_currentNode.get());
+    if (!functor.foundParent()) {
+        m_currentNode = ProfileNode::create(exec, LegacyProfiler::createCallIdentifier(exec, JSValue(), String(), 0), m_head.get(), m_head.get());
+        m_head->insertNode(m_currentNode.get());
+    }
 }
 
 const String& ProfileGenerator::title() const

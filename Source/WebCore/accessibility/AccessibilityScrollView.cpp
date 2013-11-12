@@ -86,6 +86,24 @@ Widget* AccessibilityScrollView::widgetForAttachmentView() const
     return m_scrollView;
 }
     
+bool AccessibilityScrollView::canSetFocusAttribute() const
+{
+    AccessibilityObject* webArea = webAreaObject();
+    return webArea && webArea->canSetFocusAttribute();
+}
+    
+bool AccessibilityScrollView::isFocused() const
+{
+    AccessibilityObject* webArea = webAreaObject();
+    return webArea && webArea->isFocused();
+}
+    
+void AccessibilityScrollView::setFocused(bool focused)
+{
+    if (AccessibilityObject* webArea = webAreaObject())
+        webArea->setFocused(focused);
+}
+
 void AccessibilityScrollView::updateChildrenIfNecessary()
 {
     if (m_childrenDirty)
@@ -170,7 +188,7 @@ AccessibilityObject* AccessibilityScrollView::webAreaObject() const
     if (!m_scrollView || !m_scrollView->isFrameView())
         return 0;
     
-    Document* doc = toFrameView(m_scrollView)->frame()->document();
+    Document* doc = toFrameView(m_scrollView)->frame().document();
     if (!doc || !doc->renderer())
         return 0;
 
@@ -212,7 +230,7 @@ AccessibilityObject* AccessibilityScrollView::parentObject() const
     if (!m_scrollView || !m_scrollView->isFrameView())
         return 0;
     
-    HTMLFrameOwnerElement* owner = toFrameView(m_scrollView)->frame()->ownerElement();
+    HTMLFrameOwnerElement* owner = toFrameView(m_scrollView)->frame().ownerElement();
     if (owner && owner->renderer())
         return axObjectCache()->getOrCreate(owner);
 
@@ -224,7 +242,7 @@ AccessibilityObject* AccessibilityScrollView::parentObjectIfExists() const
     if (!m_scrollView || !m_scrollView->isFrameView())
         return 0;
     
-    HTMLFrameOwnerElement* owner = toFrameView(m_scrollView)->frame()->ownerElement();
+    HTMLFrameOwnerElement* owner = toFrameView(m_scrollView)->frame().ownerElement();
     if (owner && owner->renderer())
         return axObjectCache()->get(owner);
     

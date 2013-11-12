@@ -60,7 +60,6 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import <JavaScriptCore/HeapStatistics.h>
 #import <JavaScriptCore/Options.h>
-#import <WebCore/FoundationExtras.h>
 #import <WebKit/DOMElement.h>
 #import <WebKit/DOMExtensions.h>
 #import <WebKit/DOMRange.h>
@@ -615,7 +614,6 @@ static void resetDefaultsToConsistentValues()
     [defaults setBool:YES forKey:WebKitFullScreenEnabledPreferenceKey];
     [defaults setBool:YES forKey:@"UseWebKitWebInspector"];
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     [defaults setObject:[NSDictionary dictionaryWithObjectsAndKeys:
         @"notational", @"notationl",
         @"message", @"mesage",
@@ -623,7 +621,6 @@ static void resetDefaultsToConsistentValues()
         @"welcome", @"wellcome",
         @"hello\nworld", @"hellolfworld",
         nil] forKey:@"NSTestCorrectionDictionary"];
-#endif
 
     // Scrollbars are drawn either using AppKit (which uses NSUserDefaults) or using HIToolbox (which uses CFPreferences / kCFPreferencesAnyApplication / kCFPreferencesCurrentUser / kCFPreferencesAnyHost)
     [defaults setObject:@"DoubleMax" forKey:@"AppleScrollBarVariant"];
@@ -703,7 +700,7 @@ static void resetDefaultsToConsistentValues()
     // So, turn it off for now, but we might want to turn it back on some day.
     [preferences setUsesPageCache:NO];
     [preferences setAcceleratedCompositingEnabled:YES];
-#if USE(CA) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#if USE(CA)
     [preferences setCanvasUsesAcceleratedDrawing:YES];
     [preferences setAcceleratedDrawingEnabled:NO];
 #endif
@@ -1198,11 +1195,11 @@ void dump()
             resultMimeType = @"application/pdf";
         } else if (gTestRunner->dumpDOMAsWebArchive()) {
             WebArchive *webArchive = [[mainFrame DOMDocument] webArchive];
-            resultString = HardAutorelease(createXMLStringFromWebArchiveData((CFDataRef)[webArchive data]));
+            resultString = CFBridgingRelease(createXMLStringFromWebArchiveData((CFDataRef)[webArchive data]));
             resultMimeType = @"application/x-webarchive";
         } else if (gTestRunner->dumpSourceAsWebArchive()) {
             WebArchive *webArchive = [[mainFrame dataSource] webArchive];
-            resultString = HardAutorelease(createXMLStringFromWebArchiveData((CFDataRef)[webArchive data]));
+            resultString = CFBridgingRelease(createXMLStringFromWebArchiveData((CFDataRef)[webArchive data]));
             resultMimeType = @"application/x-webarchive";
         } else
             resultString = [mainFrame renderTreeAsExternalRepresentationForPrinting:gTestRunner->isPrinting()];
@@ -1250,6 +1247,7 @@ void dump()
     fflush(stderr);
 
     done = YES;
+    CFRunLoopStop(CFRunLoopGetMain());
 }
 
 static bool shouldLogFrameLoadDelegates(const char* pathOrURL)
@@ -1405,7 +1403,7 @@ static void runTest(const string& inputLine)
 
     while (!done) {
         pool = [[NSAutoreleasePool alloc] init];
-        [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantPast]]; 
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 10, false);
         [pool release];
     }
 
@@ -1441,8 +1439,9 @@ static void runTest(const string& inputLine)
 
     resetWebViewToConsistentStateBeforeTesting();
 
-    [mainFrame loadHTMLString:@"<html></html>" baseURL:[NSURL URLWithString:@"about:blank"]];
-    [mainFrame stopLoading];
+    // Loading an empty request synchronously replaces the document with a blank one, which is necessary
+    // to stop timers, WebSockets and other activity that could otherwise spill output into next test's results.
+    [mainFrame loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@""]]];
 
     [pool release];
 

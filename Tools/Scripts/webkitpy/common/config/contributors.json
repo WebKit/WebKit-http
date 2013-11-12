@@ -71,6 +71,16 @@
             "ajwong@chromium.org"
          ]
       },
+      "Alberto Garcia" : {
+         "emails" : [
+            "berto@igalia.com",
+            "agarcia@igalia.com"
+         ],
+         "nicks" : [
+            "bertogg",
+            "berto"
+         ]
+      },
       "Alec Flett" : {
          "emails" : [
             "alecflett@chromium.org",
@@ -83,6 +93,7 @@
       "Alex Christensen" : {
          "emails" : [
             "achristensen@apple.com",
+            "achristensen@webkit.org",
             "alex.christensen@flexsim.com"
          ],
          "expertise" : "Win64",
@@ -261,14 +272,6 @@
             "piman"
          ]
       },
-      "Antoine Quint" : {
-         "emails" : [
-            "graouts@apple.com"
-         ],
-         "nicks" : [
-            "graouts"
-         ]
-      },
       "Anton D'Auria" : {
          "emails" : [
             "adauria@apple.com"
@@ -380,6 +383,15 @@
             "otte"
          ]
       },
+      "Bem Jones-Bey" : {
+         "emails" : [
+            "bjonesbe@adobe.com"
+         ],
+         "expertise" : "CSS Shapes, Floats",
+         "nicks" : [
+            "bemjb"
+         ]
+      },
       "Bill Budge" : {
          "emails" : [
             "bbudge@chromium.org",
@@ -446,6 +458,17 @@
             "caryclark"
          ]
       },
+      "ChangSeok Oh" : {
+         "emails" : [
+            "changseok.oh@collabora.com",
+            "changseok.oh@collabora.co.uk",
+            "kevin.cs.oh@gmail.com"
+         ],
+         "expertise" : "The WebKitGTK+ port, H/W acceleration",
+         "nicks" : [
+            "changseok"
+         ]
+      },
       "Charles Reis" : {
          "emails" : [
             "creis@chromium.org"
@@ -509,6 +532,15 @@
          ],
          "nicks" : [
             "collinjackson"
+         ]
+      },
+      "Cosmin Truta" : {
+         "emails" : [
+            "ctruta@gmail.com",
+            "ctruta@blackberry.com"
+         ],
+         "nicks" : [
+            "ctruta"
          ]
       },
       "Cris Neckar" : {
@@ -981,6 +1013,15 @@
             "jkjiang"
          ]
       },
+      "Jaehun Lim" : {
+         "emails" : [
+            "ljaehun.lim@samsung.com"
+         ],
+         "expertise" : "The EFLWebKit port",
+         "nicks" : [
+            "jaehun"
+         ]
+      },
       "Jakob Petsovits" : {
          "emails" : [
             "jpetsovits@blackberry.com",
@@ -1113,6 +1154,16 @@
       "Jia Pu" : {
          "emails" : [
             "jpu@apple.com"
+         ]
+      },
+      "Jinwoo Song" : {
+         "emails" : [
+            "jinwoo7.song@samsung.com",
+            "fantaros77@gmail.com"
+         ],
+         "expertise" : "The EFLWebKit port",
+         "nicks" : [
+            "jinwoo"
          ]
       },
       "Joanmarie Diggs" : {
@@ -1511,16 +1562,6 @@
       "Marcus Voltis Bulach" : {
          "emails" : [
             "bulach@chromium.org"
-         ]
-      },
-      "Mario Sanchez Prada" : {
-         "emails" : [
-            "mario@webkit.org",
-            "mario.prada@samsung.com"
-         ],
-         "expertise" : "WebKitGTK+, a11y, Epiphany/WebKit Contributor",
-         "nicks" : [
-            "msanchez"
          ]
       },
       "Mark Lam" : {
@@ -1963,6 +2004,16 @@
             "rolandsteiner@chromium.org"
          ]
       },
+      "Ruth Fong" : {
+         "emails" : [
+            "ruth_fong@apple.com",
+            "ruthiecftg@gmail.com"
+         ],
+         "nicks" : [
+            "ruthfong",
+            "ruth_fong"
+         ]
+      },
       "Ryuan Choi" : {
          "emails" : [
             "ryuan.choi@samsung.com",
@@ -2002,6 +2053,16 @@
          "expertise" : "The Chromium Port",
          "nicks" : [
             "sky"
+         ]
+      },
+      "Seokju Kwon" : {
+         "emails" : [
+            "seokju@webkit.org",
+            "seokju.kwon@gmail.com",
+            "seokju.kwon@samsung.com"
+         ],
+         "nicks" : [
+            "seokju"
          ]
       },
       "Sergio Villar Senin" : {
@@ -2268,6 +2329,15 @@
             "wms"
          ]
       },
+      "Xabier Rodriguez-Calvar" : {
+         "emails" : [
+            "calvaris@igalia.com",
+            "xrcalvar@igalia.com"
+         ],
+         "nicks" : [
+            "calvaris"
+         ]
+      },
       "Xianzhu Wang" : {
          "emails" : [
             "wangxianzhu@chromium.org",
@@ -2511,14 +2581,6 @@
             "abalazs"
          ]
       },
-      "Bem Jones-Bey" : {
-         "emails" : [
-            "bjonesbe@adobe.com"
-         ],
-         "nicks" : [
-            "bemjb"
-         ]
-      },
       "Brian Salomon" : {
          "emails" : [
             "bsalomon@google.com"
@@ -2616,6 +2678,14 @@
       "Forms Bugs" : {
          "emails" : [
             "forms-bugs@chromium.org"
+         ]
+      },
+      "Gabor Abraham" : {
+         "emails" : [
+            "abrhm@inf.u-szeged.hu"
+         ],
+         "nicks" : [
+            "abrhm"
          ]
       },
       "Gabor Ballabas" : {
@@ -2782,6 +2852,14 @@
       "Min Qin" : {
          "emails" : [
             "qinmin@chromium.org"
+         ]
+      },
+      "Myles Maxfield" : {
+         "emails" : [
+            "mmaxfield@apple.com"
+         ],
+         "nicks" : [
+            "litherum"
          ]
       },
       "Nandor Huszka" : {
@@ -3122,6 +3200,14 @@
             "tonikitoo"
          ]
       },
+      "Antoine Quint" : {
+         "emails" : [
+            "graouts@apple.com"
+         ],
+         "nicks" : [
+            "graouts"
+         ]
+      },
       "Antti Koivisto" : {
          "emails" : [
             "koivisto@iki.fi",
@@ -3275,6 +3361,7 @@
       "Christophe Dumez" : {
          "emails" : [
             "dchris@gmail.com",
+            "ch.dumez@sta.samsung.com",
             "ch.dumez@sisa.samsung.com",
             "christophe.dumez@intel.com"
          ],
@@ -3800,6 +3887,16 @@
          "expertise" : "JavaScript/ECMAScript, Performance, Security, Basic types and data structures, FastMalloc, DOM Bindings for JavaScript, Core DOM, HTML DOM, JavaScript DOM Bindings, WebKit API (Mac, Win), HTML Editing, Networking, Tools, New Features / Standards Support, General (probably a good backup on most topics even if not specifically an expert)",
          "nicks" : [
             "othermaciej"
+         ]
+      },
+      "Mario Sanchez Prada" : {
+         "emails" : [
+            "mario@webkit.org",
+            "mario.prada@samsung.com"
+         ],
+         "expertise" : "WebKitGTK+, Accessibility, WebKit2, Epiphany/WebKit Contributor",
+         "nicks" : [
+            "msanchez"
          ]
       },
       "Mark Hahnenberg" : {

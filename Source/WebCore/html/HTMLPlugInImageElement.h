@@ -109,8 +109,8 @@ protected:
     KURL m_loadedUrl;
 
     static void updateWidgetCallback(Node*, unsigned = 0);
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
-    virtual void detach(const AttachContext& = AttachContext()) OVERRIDE;
+    virtual void didAttachRenderers() OVERRIDE;
+    virtual void willDetachRenderers() OVERRIDE;
 
     bool allowedToLoadFrameURL(const String& url);
     bool wouldLoadAsNetscapePlugin(const String& url, const String& serviceType);
@@ -126,7 +126,7 @@ protected:
 
 private:
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
-    virtual bool willRecalcStyle(StyleChange) OVERRIDE;
+    virtual bool willRecalcStyle(Style::Change) OVERRIDE;
 
     void didAddUserAgentShadowRoot(ShadowRoot*) OVERRIDE;
 

@@ -71,7 +71,6 @@ public:
 
     // ActiveDOMObject interface
     virtual bool hasPendingActivity() const OVERRIDE;
-    virtual void stop() OVERRIDE;
 
     using RefCounted<MediaSource>::ref;
     using RefCounted<MediaSource>::deref;
@@ -79,8 +78,11 @@ public:
 private:
     explicit MediaSource(ScriptExecutionContext*);
 
+    // ActiveDOMObject interface
+    virtual void stop() OVERRIDE;
+
     virtual EventTargetData* eventTargetData() OVERRIDE;
-    virtual EventTargetData* ensureEventTargetData() OVERRIDE;
+    virtual EventTargetData& ensureEventTargetData() OVERRIDE;
 
     virtual void refEventTarget() OVERRIDE { ref(); }
     virtual void derefEventTarget() OVERRIDE { deref(); }

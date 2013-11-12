@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #include "ArrayProfile.h"
 
 #include "CodeBlock.h"
+#include <wtf/CommaPrinter.h>
 #include <wtf/StringExtras.h>
 #include <wtf/StringPrintStream.h>
 
@@ -35,7 +36,7 @@ namespace JSC {
 void dumpArrayModes(PrintStream& out, ArrayModes arrayModes)
 {
     if (!arrayModes) {
-        out.print("0:<empty>");
+        out.print("<empty>");
         return;
     }
     
@@ -44,84 +45,63 @@ void dumpArrayModes(PrintStream& out, ArrayModes arrayModes)
         return;
     }
     
-    out.print(arrayModes, ":");
-    
+    CommaPrinter comma("|");
     if (arrayModes & asArrayModes(NonArray))
-        out.print("NonArray");
+        out.print(comma, "NonArray");
     if (arrayModes & asArrayModes(NonArrayWithInt32))
-        out.print("NonArrayWithInt32");
+        out.print(comma, "NonArrayWithInt32");
     if (arrayModes & asArrayModes(NonArrayWithDouble))
-        out.print("NonArrayWithDouble");
+        out.print(comma, "NonArrayWithDouble");
     if (arrayModes & asArrayModes(NonArrayWithContiguous))
-        out.print("NonArrayWithContiguous");
+        out.print(comma, "NonArrayWithContiguous");
     if (arrayModes & asArrayModes(NonArrayWithArrayStorage))
-        out.print("NonArrayWithArrayStorage");
+        out.print(comma, "NonArrayWithArrayStorage");
     if (arrayModes & asArrayModes(NonArrayWithSlowPutArrayStorage))
-        out.print("NonArrayWithSlowPutArrayStorage");
+        out.print(comma, "NonArrayWithSlowPutArrayStorage");
     if (arrayModes & asArrayModes(ArrayClass))
-        out.print("ArrayClass");
+        out.print(comma, "ArrayClass");
     if (arrayModes & asArrayModes(ArrayWithUndecided))
-        out.print("ArrayWithUndecided");
+        out.print(comma, "ArrayWithUndecided");
     if (arrayModes & asArrayModes(ArrayWithInt32))
-        out.print("ArrayWithInt32");
+        out.print(comma, "ArrayWithInt32");
     if (arrayModes & asArrayModes(ArrayWithDouble))
-        out.print("ArrayWithDouble");
+        out.print(comma, "ArrayWithDouble");
     if (arrayModes & asArrayModes(ArrayWithContiguous))
-        out.print("ArrayWithContiguous");
+        out.print(comma, "ArrayWithContiguous");
     if (arrayModes & asArrayModes(ArrayWithArrayStorage))
-        out.print("ArrayWithArrayStorage");
+        out.print(comma, "ArrayWithArrayStorage");
     if (arrayModes & asArrayModes(ArrayWithSlowPutArrayStorage))
-        out.print("ArrayWithSlowPutArrayStorage");
+        out.print(comma, "ArrayWithSlowPutArrayStorage");
 }
 
-ArrayModes ArrayProfile::updatedObservedArrayModes() const
+void ArrayProfile::computeUpdatedPrediction(const ConcurrentJITLocker&, CodeBlock* codeBlock)
 {
-    if (m_lastSeenStructure)
-        return m_observedArrayModes | arrayModeFromStructure(m_lastSeenStructure);
-    return m_observedArrayModes;
+    if (!m_lastSeenStructure)
+        return;
+    
+    m_observedArrayModes |= arrayModeFromStructure(m_lastSeenStructure);
+    
+    if (!m_didPerformFirstRunPruning
+        && hasTwoOrMoreBitsSet(m_observedArrayModes)) {
+        m_observedArrayModes = arrayModeFromStructure(m_lastSeenStructure);
+        m_didPerformFirstRunPruning = true;
+    }
+    
+    m_mayInterceptIndexedAccesses |=
+        m_lastSeenStructure->typeInfo().interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero();
+    if (!codeBlock->globalObject()->isOriginalArrayStructure(m_lastSeenStructure))
+        m_usesOriginalArrayStructures = false;
+    m_lastSeenStructure = 0;
 }
 
-void ArrayProfile::computeUpdatedPrediction(CodeBlock* codeBlock, OperationInProgress operation)
+CString ArrayProfile::briefDescription(const ConcurrentJITLocker& locker, CodeBlock* codeBlock)
 {
-    const bool verbose = false;
-    
-    if (m_lastSeenStructure) {
-        m_observedArrayModes |= arrayModeFromStructure(m_lastSeenStructure);
-        m_mayInterceptIndexedAccesses |=
-            m_lastSeenStructure->typeInfo().interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero();
-        if (!codeBlock->globalObject()->isOriginalArrayStructure(m_lastSeenStructure))
-            m_usesOriginalArrayStructures = false;
-        if (!structureIsPolymorphic()) {
-            if (!m_expectedStructure)
-                m_expectedStructure = m_lastSeenStructure;
-            else if (m_expectedStructure != m_lastSeenStructure) {
-                if (verbose)
-                    dataLog(*codeBlock, " bc#", m_bytecodeOffset, ": making structure polymorphic because ", RawPointer(m_expectedStructure), " (", m_expectedStructure->classInfo()->className, ") != ", RawPointer(m_lastSeenStructure), " (", m_lastSeenStructure->classInfo()->className, ")\n");
-                m_expectedStructure = polymorphicStructure();
-            }
-        }
-        m_lastSeenStructure = 0;
-    }
-    
-    if (hasTwoOrMoreBitsSet(m_observedArrayModes)) {
-        if (verbose)
-            dataLog(*codeBlock, " bc#", m_bytecodeOffset, ": making structure polymorphic because two or more bits are set in m_observedArrayModes\n");
-        m_expectedStructure = polymorphicStructure();
-    }
-    
-    if (operation == Collection
-        && expectedStructure()
-        && !Heap::isMarked(m_expectedStructure)) {
-        if (verbose)
-            dataLog(*codeBlock, " bc#", m_bytecodeOffset, ": making structure during GC\n");
-        m_expectedStructure = polymorphicStructure();
-    }
+    computeUpdatedPrediction(locker, codeBlock);
+    return briefDescriptionWithoutUpdating(locker);
 }
 
-CString ArrayProfile::briefDescription(CodeBlock* codeBlock)
+CString ArrayProfile::briefDescriptionWithoutUpdating(const ConcurrentJITLocker&)
 {
-    computeUpdatedPrediction(codeBlock);
-    
     StringPrintStream out;
     
     bool hasPrinted = false;
@@ -130,18 +110,6 @@ CString ArrayProfile::briefDescription(CodeBlock* codeBlock)
         if (hasPrinted)
             out.print(", ");
         out.print(ArrayModesDump(m_observedArrayModes));
-        hasPrinted = true;
-    }
-    
-    if (structureIsPolymorphic()) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print("struct = TOP");
-        hasPrinted = true;
-    } else if (m_expectedStructure) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print("struct = ", RawPointer(m_expectedStructure));
         hasPrinted = true;
     }
     

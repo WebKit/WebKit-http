@@ -38,8 +38,6 @@
 #include "FrameLoader.h"
 #include "HTMLDocument.h"
 #include "InspectorInstrumentation.h"
-#include "JSArrayBuffer.h"
-#include "JSArrayBufferView.h"
 #include "JSBlob.h"
 #include "JSDOMFormData.h"
 #include "JSDOMWindowCustom.h"
@@ -47,9 +45,12 @@
 #include "JSEvent.h"
 #include "JSEventListener.h"
 #include "XMLHttpRequest.h"
+#include <interpreter/StackVisitor.h>
+#include <runtime/ArrayBuffer.h>
 #include <runtime/Error.h>
-#include <interpreter/Interpreter.h>
-#include <wtf/ArrayBuffer.h>
+#include <runtime/JSArrayBuffer.h>
+#include <runtime/JSArrayBufferView.h>
+#include <runtime/JSONObject.h>
 
 using namespace JSC;
 
@@ -58,7 +59,7 @@ namespace WebCore {
 void JSXMLHttpRequest::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSXMLHttpRequest* thisObject = jsCast<JSXMLHttpRequest*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
@@ -75,6 +76,9 @@ void JSXMLHttpRequest::visitChildren(JSCell* cell, SlotVisitor& visitor)
     if (Blob* responseBlob = thisObject->m_impl->optionalResponseBlob())
         visitor.addOpaqueRoot(responseBlob);
 
+    if (thisObject->m_response)
+        visitor.append(&thisObject->m_response);
+
     thisObject->m_impl->visitJSEventListeners(visitor);
 }
 
@@ -82,7 +86,7 @@ void JSXMLHttpRequest::visitChildren(JSCell* cell, SlotVisitor& visitor)
 JSValue JSXMLHttpRequest::open(ExecState* exec)
 {
     if (exec->argumentCount() < 2)
-        return throwError(exec, createNotEnoughArgumentsError(exec));
+        return exec->vm().throwException(exec, createNotEnoughArgumentsError(exec));
 
     const KURL& url = impl()->scriptExecutionContext()->completeURL(exec->argument(1).toString(exec)->value(exec));
     String method = exec->argument(0).toString(exec)->value(exec);
@@ -108,6 +112,38 @@ JSValue JSXMLHttpRequest::open(ExecState* exec)
     return jsUndefined();
 }
 
+class SendFunctor {
+public:
+    SendFunctor()
+        : m_hasSkippedFirstFrame(false)
+        , m_line(0)
+    {
+    }
+
+    unsigned line() const { return m_line; }
+    String url() const { return m_url; }
+
+    StackVisitor::Status operator()(StackVisitor& visitor)
+    {
+        if (!m_hasSkippedFirstFrame) {
+            m_hasSkippedFirstFrame = true;
+            return StackVisitor::Continue;
+        }
+
+        unsigned line = 0;
+        unsigned unusedColumn = 0;
+        visitor->computeLineAndColumn(line, unusedColumn);
+        m_line = line;
+        m_url = visitor->sourceURL();
+        return StackVisitor::Done;
+    }
+
+private:
+    bool m_hasSkippedFirstFrame;
+    unsigned m_line;
+    String m_url;
+};
+
 JSValue JSXMLHttpRequest::send(ExecState* exec)
 {
     InspectorInstrumentation::willSendXMLHttpRequest(impl()->scriptExecutionContext(), impl()->url());
@@ -119,28 +155,25 @@ JSValue JSXMLHttpRequest::send(ExecState* exec)
         JSValue val = exec->argument(0);
         if (val.isUndefinedOrNull())
             impl()->send(ec);
-        else if (val.inherits(&JSDocument::s_info))
+        else if (val.inherits(JSDocument::info()))
             impl()->send(toDocument(val), ec);
-        else if (val.inherits(&JSBlob::s_info))
+        else if (val.inherits(JSBlob::info()))
             impl()->send(toBlob(val), ec);
-        else if (val.inherits(&JSDOMFormData::s_info))
+        else if (val.inherits(JSDOMFormData::info()))
             impl()->send(toDOMFormData(val), ec);
-        else if (val.inherits(&JSArrayBuffer::s_info))
+        else if (val.inherits(JSArrayBuffer::info()))
             impl()->send(toArrayBuffer(val), ec);
-        else if (val.inherits(&JSArrayBufferView::s_info))
-            impl()->send(toArrayBufferView(val), ec);
-        else
+        else if (val.inherits(JSArrayBufferView::info())) {
+            RefPtr<ArrayBufferView> view = toArrayBufferView(val);
+            impl()->send(view.get(), ec);
+        } else
             impl()->send(val.toString(exec)->value(exec), ec);
     }
 
-    int signedLineNumber;
-    intptr_t sourceID;
-    String sourceURL;
-    JSValue function;
-    exec->interpreter()->retrieveLastCaller(exec, signedLineNumber, sourceID, sourceURL, function);
-    impl()->setLastSendLineNumber(signedLineNumber >= 0 ? signedLineNumber : 0);
-    impl()->setLastSendURL(sourceURL);
-
+    SendFunctor functor;
+    exec->iterate(functor);
+    impl()->setLastSendLineNumber(functor.line());
+    impl()->setLastSendURL(functor.url());
     setDOMException(exec, ec);
     return jsUndefined();
 }
@@ -163,6 +196,26 @@ JSValue JSXMLHttpRequest::response(ExecState* exec) const
     case XMLHttpRequest::ResponseTypeText:
         return responseText(exec);
 
+    case XMLHttpRequest::ResponseTypeJSON:
+        {
+            // FIXME: Use CachedAttribute for other types as well.
+            if (m_response && impl()->responseCacheIsValid())
+                return m_response.get();
+
+            if (!impl()->doneWithoutErrors())
+                return jsNull();
+
+            JSValue value = JSONParse(exec, impl()->responseTextIgnoringResponseType());
+            if (!value)
+                value = jsNull();
+            JSXMLHttpRequest* jsRequest = const_cast<JSXMLHttpRequest*>(this);
+            jsRequest->m_response.set(exec->vm(), jsRequest, value);
+
+            impl()->didCacheResponseJSON();
+
+            return value;
+        }
+
     case XMLHttpRequest::ResponseTypeDocument:
         {
             ExceptionCode ec = 0;
@@ -175,26 +228,10 @@ JSValue JSXMLHttpRequest::response(ExecState* exec) const
         }
 
     case XMLHttpRequest::ResponseTypeBlob:
-        {
-            ExceptionCode ec = 0;
-            Blob* blob = impl()->responseBlob(ec);
-            if (ec) {
-                setDOMException(exec, ec);
-                return jsUndefined();
-            }
-            return toJS(exec, globalObject(), blob);
-        }
+        return toJS(exec, globalObject(), impl()->responseBlob());
 
     case XMLHttpRequest::ResponseTypeArrayBuffer:
-        {
-            ExceptionCode ec = 0;
-            ArrayBuffer* arrayBuffer = impl()->responseArrayBuffer(ec);
-            if (ec) {
-                setDOMException(exec, ec);
-                return jsUndefined();
-            }
-            return toJS(exec, globalObject(), arrayBuffer);
-        }
+        return toJS(exec, globalObject(), impl()->responseArrayBuffer());
     }
 
     return jsUndefined();

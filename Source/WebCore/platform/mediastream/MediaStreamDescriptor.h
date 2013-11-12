@@ -44,6 +44,7 @@ class MediaStreamDescriptorClient {
 public:
     virtual ~MediaStreamDescriptorClient() { }
 
+    virtual void trackEnded() = 0;
     virtual void streamEnded() = 0;
     virtual void addRemoteTrack(MediaStreamComponent*) = 0;
     virtual void removeRemoteTrack(MediaStreamComponent*) = 0;
@@ -109,9 +110,6 @@ private:
 
         for (size_t i = 0; i < videoSources.size(); i++)
             m_videoComponents.append(MediaStreamComponent::create(this, videoSources[i]));
-
-        if (!audioSources.size() && !videoSources.size())
-            m_ended = true;
     }
 
     MediaStreamDescriptor(const String& id, const MediaStreamComponentVector& audioComponents, const MediaStreamComponentVector& videoComponents)

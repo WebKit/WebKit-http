@@ -40,6 +40,7 @@
 #include "HTMLTableSectionElement.h"
 #include "RenderTable.h"
 #include "StylePropertySet.h"
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
@@ -127,7 +128,7 @@ PassRefPtr<HTMLElement> HTMLTableElement::createTHead()
 {
     if (HTMLTableSectionElement* existingHead = tHead())
         return existingHead;
-    RefPtr<HTMLTableSectionElement> head = HTMLTableSectionElement::create(theadTag, document());
+    RefPtr<HTMLTableSectionElement> head = HTMLTableSectionElement::create(theadTag, &document());
     setTHead(head, IGNORE_EXCEPTION);
     return head.release();
 }
@@ -141,7 +142,7 @@ PassRefPtr<HTMLElement> HTMLTableElement::createTFoot()
 {
     if (HTMLTableSectionElement* existingFoot = tFoot())
         return existingFoot;
-    RefPtr<HTMLTableSectionElement> foot = HTMLTableSectionElement::create(tfootTag, document());
+    RefPtr<HTMLTableSectionElement> foot = HTMLTableSectionElement::create(tfootTag, &document());
     setTFoot(foot, IGNORE_EXCEPTION);
     return foot.release();
 }
@@ -153,7 +154,7 @@ void HTMLTableElement::deleteTFoot()
 
 PassRefPtr<HTMLElement> HTMLTableElement::createTBody()
 {
-    RefPtr<HTMLTableSectionElement> body = HTMLTableSectionElement::create(tbodyTag, document());
+    RefPtr<HTMLTableSectionElement> body = HTMLTableSectionElement::create(tbodyTag, &document());
     Node* referenceElement = lastBody() ? lastBody()->nextSibling() : 0;
     insertBefore(body, referenceElement, ASSERT_NO_EXCEPTION);
     return body.release();
@@ -163,7 +164,7 @@ PassRefPtr<HTMLElement> HTMLTableElement::createCaption()
 {
     if (HTMLTableCaptionElement* existingCaption = caption())
         return existingCaption;
-    RefPtr<HTMLTableCaptionElement> caption = HTMLTableCaptionElement::create(captionTag, document());
+    RefPtr<HTMLTableCaptionElement> caption = HTMLTableCaptionElement::create(captionTag, &document());
     setCaption(caption, IGNORE_EXCEPTION);
     return caption.release();
 }
@@ -189,7 +190,7 @@ PassRefPtr<HTMLElement> HTMLTableElement::insertRow(int index, ExceptionCode& ec
         return 0;
     }
 
-    RefPtr<Node> protectFromMutationEvents(this);
+    Ref<HTMLTableElement> protectFromMutationEvents(*this);
 
     RefPtr<HTMLTableRowElement> lastRow = 0;
     RefPtr<HTMLTableRowElement> row = 0;
@@ -215,15 +216,15 @@ PassRefPtr<HTMLElement> HTMLTableElement::insertRow(int index, ExceptionCode& ec
     else {
         parent = lastBody();
         if (!parent) {
-            RefPtr<HTMLTableSectionElement> newBody = HTMLTableSectionElement::create(tbodyTag, document());
-            RefPtr<HTMLTableRowElement> newRow = HTMLTableRowElement::create(document());
+            RefPtr<HTMLTableSectionElement> newBody = HTMLTableSectionElement::create(tbodyTag, &document());
+            RefPtr<HTMLTableRowElement> newRow = HTMLTableRowElement::create(&document());
             newBody->appendChild(newRow, ec);
             appendChild(newBody.release(), ec);
             return newRow.release();
         }
     }
 
-    RefPtr<HTMLTableRowElement> newRow = HTMLTableRowElement::create(document());
+    RefPtr<HTMLTableRowElement> newRow = HTMLTableRowElement::create(&document());
     parent->insertBefore(newRow, row.get(), ec);
     return newRow.release();
 }
@@ -314,7 +315,7 @@ void HTMLTableElement::collectStyleForPresentationAttribute(const QualifiedName&
     else if (name == backgroundAttr) {
         String url = stripLeadingAndTrailingHTMLSpaces(value);
         if (!url.isEmpty())
-            style->setProperty(CSSProperty(CSSPropertyBackgroundImage, CSSImageValue::create(document()->completeURL(url).string())));
+            style->setProperty(CSSProperty(CSSPropertyBackgroundImage, CSSImageValue::create(document().completeURL(url).string())));
     } else if (name == valignAttr) {
         if (!value.isEmpty())
             addPropertyToPresentationAttributeStyle(style, CSSPropertyVerticalAlign, value);
@@ -573,7 +574,7 @@ void HTMLTableElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) cons
 {
     HTMLElement::addSubresourceAttributeURLs(urls);
 
-    addSubresourceURL(urls, document()->completeURL(getAttribute(backgroundAttr)));
+    addSubresourceURL(urls, document().completeURL(getAttribute(backgroundAttr)));
 }
 
 }

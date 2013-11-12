@@ -35,17 +35,13 @@ namespace WebCore {
 
     class ScheduledAction;
 
-    class DOMTimer : public SuspendableTimer {
+    class DOMTimer FINAL : public SuspendableTimer {
     public:
         virtual ~DOMTimer();
         // Creates a new timer owned by specified ScriptExecutionContext, starts it
         // and returns its Id.
         static int install(ScriptExecutionContext*, PassOwnPtr<ScheduledAction>, int timeout, bool singleShot);
         static void removeById(ScriptExecutionContext*, int timeoutId);
-
-        // ActiveDOMObject
-        virtual void contextDestroyed();
-        virtual void stop();
 
         // Adjust to a change in the ScriptExecutionContext's minimum timer interval.
         // This allows the minimum allowable interval time to be changed in response
@@ -54,12 +50,18 @@ namespace WebCore {
 
     private:
         DOMTimer(ScriptExecutionContext*, PassOwnPtr<ScheduledAction>, int interval, bool singleShot);
-        virtual void fired();
+        virtual void fired() OVERRIDE;
+
+        // ActiveDOMObject
+        virtual void contextDestroyed() OVERRIDE;
+
+        // SuspendableTimer
+        virtual void didStop() OVERRIDE;
 
         double intervalClampedToMinimum(int timeout, double minimumTimerInterval) const;
 
         // Retuns timer fire time rounded to the next multiple of timer alignment interval.
-        virtual double alignedFireTime(double) const;
+        virtual double alignedFireTime(double) const OVERRIDE;
 
         int m_timeoutId;
         int m_nestingLevel;

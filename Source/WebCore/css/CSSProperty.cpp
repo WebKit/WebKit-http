@@ -40,6 +40,16 @@ struct SameSizeAsCSSProperty {
 
 COMPILE_ASSERT(sizeof(CSSProperty) == sizeof(SameSizeAsCSSProperty), CSSProperty_should_stay_small);
 
+CSSPropertyID StylePropertyMetadata::shorthandID() const
+{
+    if (!m_isSetFromShorthand)
+        return CSSPropertyInvalid;
+
+    const Vector<const StylePropertyShorthand*> shorthands = matchingShorthandsForLonghand(static_cast<CSSPropertyID>(m_propertyID));
+    ASSERT(shorthands.size() && m_indexInShorthandsVector >= 0 && m_indexInShorthandsVector < shorthands.size());
+    return shorthands.at(m_indexInShorthandsVector)->id();
+}
+
 void CSSProperty::wrapValueInCommaSeparatedList()
 {
     RefPtr<CSSValue> value = m_value.release();
@@ -167,7 +177,7 @@ static CSSPropertyID resolveToPhysicalProperty(WritingMode writingMode, LogicalE
 static const StylePropertyShorthand& borderDirections()
 {
     static const CSSPropertyID properties[4] = { CSSPropertyBorderTop, CSSPropertyBorderRight, CSSPropertyBorderBottom, CSSPropertyBorderLeft };
-    DEFINE_STATIC_LOCAL(StylePropertyShorthand, borderDirections, (properties, WTF_ARRAY_LENGTH(properties)));
+    DEFINE_STATIC_LOCAL(StylePropertyShorthand, borderDirections, (CSSPropertyBorder, properties, WTF_ARRAY_LENGTH(properties)));
     return borderDirections;
 }
 
@@ -287,7 +297,6 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertySpeak:
     case CSSPropertyTabSize:
     case CSSPropertyTextAlign:
-    case CSSPropertyTextDecoration:
     case CSSPropertyTextIndent:
     case CSSPropertyTextRendering:
     case CSSPropertyTextShadow:
@@ -329,7 +338,6 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitRubyPosition:
     case CSSPropertyWebkitTextCombine:
 #if ENABLE(CSS3_TEXT)
-    case CSSPropertyWebkitTextDecorationLine:
     case CSSPropertyWebkitTextAlignLast:
     case CSSPropertyWebkitTextJustify:
     case CSSPropertyWebkitTextUnderlinePosition:
@@ -454,6 +462,7 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyMaxWidth:
     case CSSPropertyMinHeight:
     case CSSPropertyMinWidth:
+    case CSSPropertyObjectFit:
     case CSSPropertyOpacity:
     case CSSPropertyOutline:
     case CSSPropertyOutlineColor:
@@ -478,6 +487,7 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertySize:
     case CSSPropertySrc:
     case CSSPropertyTableLayout:
+    case CSSPropertyTextDecoration:
     case CSSPropertyTextLineThrough:
     case CSSPropertyTextLineThroughColor:
     case CSSPropertyTextLineThroughMode:
@@ -589,12 +599,12 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitGridAutoColumns:
     case CSSPropertyWebkitGridAutoFlow:
     case CSSPropertyWebkitGridAutoRows:
+    case CSSPropertyWebkitGridColumnEnd:
+    case CSSPropertyWebkitGridColumnStart:
     case CSSPropertyWebkitGridDefinitionColumns:
     case CSSPropertyWebkitGridDefinitionRows:
-    case CSSPropertyWebkitGridStart:
-    case CSSPropertyWebkitGridEnd:
-    case CSSPropertyWebkitGridBefore:
-    case CSSPropertyWebkitGridAfter:
+    case CSSPropertyWebkitGridRowEnd:
+    case CSSPropertyWebkitGridRowStart:
     case CSSPropertyWebkitGridColumn:
     case CSSPropertyWebkitGridRow:
     case CSSPropertyWebkitLineClamp:
@@ -633,6 +643,7 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitMaskRepeatX:
     case CSSPropertyWebkitMaskRepeatY:
     case CSSPropertyWebkitMaskSize:
+    case CSSPropertyWebkitMaskSourceType:
     case CSSPropertyWebkitMaxLogicalWidth:
     case CSSPropertyWebkitMaxLogicalHeight:
     case CSSPropertyWebkitMinLogicalWidth:
@@ -646,6 +657,8 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitPerspectiveOriginX:
     case CSSPropertyWebkitPerspectiveOriginY:
 #if ENABLE(CSS3_TEXT)
+    case CSSPropertyWebkitTextDecoration:
+    case CSSPropertyWebkitTextDecorationLine:
     case CSSPropertyWebkitTextDecorationStyle:
     case CSSPropertyWebkitTextDecorationColor:
 #endif // CSS3_TEXT

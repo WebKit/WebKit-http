@@ -178,7 +178,7 @@ static void applyAppleDictionaryApplicationQuirkNonInlinePart(WebFrameLoaderClie
     Frame* frame = core(client->webFrame());
     if (!frame)
         return;
-    if (frame->tree()->parent())
+    if (frame->tree().parent())
         return;
     Document* document = frame->document();
     if (!document)
@@ -514,7 +514,7 @@ void WebFrameLoaderClient::dispatchDidHandleOnloadEvents()
 
 void WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad()
 {
-    m_webFrame->_private->provisionalURL = core(m_webFrame.get())->loader()->provisionalDocumentLoader()->url().string();
+    m_webFrame->_private->provisionalURL = core(m_webFrame.get())->loader().provisionalDocumentLoader()->url().string();
 
     WebView *webView = getWebView(m_webFrame.get());
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
@@ -600,7 +600,7 @@ void WebFrameLoaderClient::dispatchDidReceiveIcon()
 void WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
 {
     ASSERT(!m_webFrame->_private->provisionalURL);
-    m_webFrame->_private->provisionalURL = core(m_webFrame.get())->loader()->provisionalDocumentLoader()->url().string();
+    m_webFrame->_private->provisionalURL = core(m_webFrame.get())->loader().provisionalDocumentLoader()->url().string();
 
     WebView *webView = getWebView(m_webFrame.get());
     [webView _didStartProvisionalLoadForFrame:m_webFrame.get()];
@@ -708,10 +708,8 @@ void WebFrameLoaderClient::dispatchDidLayout(LayoutMilestones milestones)
         WebDynamicScrollBarsView *scrollView = [m_webFrame->_private->webFrameView _scrollView];
         if ([getWebView(m_webFrame.get()) drawsBackground])
             [scrollView setDrawsBackground:YES];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         [scrollView setVerticalScrollElasticity:NSScrollElasticityAutomatic];
         [scrollView setHorizontalScrollElasticity:NSScrollElasticityAutomatic];
-#endif
     }
 
     if (milestones & DidFirstVisuallyNonEmptyLayout) {
@@ -817,7 +815,7 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(FramePolicyFunction function, 
 {
     id <WebFormDelegate> formDelegate = [getWebView(m_webFrame.get()) _formDelegate];
     if (!formDelegate) {
-        (core(m_webFrame.get())->loader()->policyChecker()->*function)(PolicyUse);
+        (core(m_webFrame.get())->loader().policyChecker()->*function)(PolicyUse);
         return;
     }
 
@@ -905,7 +903,7 @@ static inline NSString *nilOrNSString(const String& string)
 void WebFrameLoaderClient::updateGlobalHistory()
 {
     WebView* view = getWebView(m_webFrame.get());
-    DocumentLoader* loader = core(m_webFrame.get())->loader()->documentLoader();
+    DocumentLoader* loader = core(m_webFrame.get())->loader().documentLoader();
 
     if ([view historyDelegate]) {
         WebHistoryDelegateImplementationCache* implementations = WebViewGetHistoryDelegateImplementations(view);
@@ -936,7 +934,7 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
     WebView* view = getWebView(m_webFrame.get());
     WebHistoryDelegateImplementationCache* implementations = [view historyDelegate] ? WebViewGetHistoryDelegateImplementations(view) : 0;
     
-    DocumentLoader* loader = core(m_webFrame.get())->loader()->documentLoader();
+    DocumentLoader* loader = core(m_webFrame.get())->loader().documentLoader();
     ASSERT(loader->unreachableURL().isEmpty());
 
     if (!loader->clientRedirectSourceForHistory().isNull()) {
@@ -978,7 +976,7 @@ void WebFrameLoaderClient::updateGlobalHistoryItemForPage()
     HistoryItem* historyItem = 0;
 
     if (Page* page = core(m_webFrame.get())->page()) {
-        if (!page->settings()->privateBrowsingEnabled())
+        if (!page->settings().privateBrowsingEnabled())
             historyItem = page->backForward()->currentItem();
     }
 
@@ -1067,7 +1065,7 @@ bool WebFrameLoaderClient::canHandleRequest(const ResourceRequest& request) cons
 {
     Frame* frame = core(m_webFrame.get());
     Page* page = frame->page();
-    BOOL forMainFrame = page && page->mainFrame() == frame;
+    BOOL forMainFrame = page && page->frameIsMainFrame(frame);
     return [WebView _canHandleRequest:request.nsURLRequest(UpdateHTTPBody) forMainFrame:forMainFrame];
 }
 
@@ -1115,7 +1113,7 @@ void WebFrameLoaderClient::saveViewStateToItem(HistoryItem* item)
 
 void WebFrameLoaderClient::restoreViewState()
 {
-    HistoryItem* currentItem = core(m_webFrame.get())->loader()->history()->currentItem();
+    HistoryItem* currentItem = core(m_webFrame.get())->loader().history().currentItem();
     ASSERT(currentItem);
 
     // FIXME: As the ASSERT attests, it seems we should always have a currentItem here.
@@ -1148,10 +1146,8 @@ void WebFrameLoaderClient::provisionalLoadStarted()
 
     WebDynamicScrollBarsView *scrollView = [m_webFrame->_private->webFrameView _scrollView];
     [scrollView setDrawsBackground:NO];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     [scrollView setVerticalScrollElasticity:NSScrollElasticityNone];
     [scrollView setHorizontalScrollElasticity:NSScrollElasticityNone];
-#endif
 }
 
 void WebFrameLoaderClient::didFinishLoad()
@@ -1162,7 +1158,7 @@ void WebFrameLoaderClient::didFinishLoad()
 void WebFrameLoaderClient::prepareForDataSourceReplacement()
 {
     if (![m_webFrame.get() _dataSource]) {
-        ASSERT(!core(m_webFrame.get())->tree()->childCount());
+        ASSERT(!core(m_webFrame.get())->tree().childCount());
         return;
     }
     
@@ -1247,7 +1243,7 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     WebDataSource *dataSource = [m_webFrame.get() _dataSource];
 
     bool willProduceHTMLView = [m_webFrame->_private->webFrameView _viewClassForMIMEType:[dataSource _responseMIMEType]] == [WebHTMLView class];
-    bool canSkipCreation = core(m_webFrame.get())->loader()->stateMachine()->committingFirstRealLoad() && willProduceHTMLView;
+    bool canSkipCreation = core(m_webFrame.get())->loader().stateMachine()->committingFirstRealLoad() && willProduceHTMLView;
     if (canSkipCreation) {
         [[m_webFrame->_private->webFrameView documentView] setDataSource:dataSource];
         return;
@@ -1269,11 +1265,11 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     // If we own the view, delete the old one - otherwise the render m_frame will take care of deleting the view.
     Frame* coreFrame = core(m_webFrame.get());
     Page* page = coreFrame->page();
-    bool isMainFrame = coreFrame == page->mainFrame();
+    bool isMainFrame = page->frameIsMainFrame(coreFrame);
     if (isMainFrame && coreFrame->view())
         coreFrame->view()->setParentVisible(false);
     coreFrame->setView(0);
-    RefPtr<FrameView> coreView = FrameView::create(coreFrame);
+    RefPtr<FrameView> coreView = FrameView::create(*coreFrame);
     coreFrame->setView(coreView);
 
     [m_webFrame.get() _updateBackgroundAndUpdatesWhileOffscreen];
@@ -1297,8 +1293,8 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
         
     // If the document view implicitly became first responder, make sure to set the focused frame properly.
     if ([[documentView window] firstResponder] == documentView) {
-        page->focusController()->setFocusedFrame(coreFrame);
-        page->focusController()->setFocused(true);
+        page->focusController().setFocusedFrame(coreFrame);
+        page->focusController().setFocused(true);
     }
 }
 
@@ -1334,7 +1330,7 @@ String WebFrameLoaderClient::userAgent(const KURL& url)
     // Most other call sites are tolerant of nil because of Objective-C behavior, but this one
     // is not because the return value of _userAgentForURL is a const KURL&.
     if (!webView)
-        return String("");
+        return emptyString();
 
     return [webView _userAgentString];
 }
@@ -1372,7 +1368,7 @@ NSDictionary *WebFrameLoaderClient::actionDictionary(const NavigationAction& act
 
     if (const MouseEvent* mouseEvent = findMouseEvent(event)) {
         WebElementDictionary *element = [[WebElementDictionary alloc]
-            initWithHitTestResult:core(m_webFrame.get())->eventHandler()->hitTestResultAtPoint(mouseEvent->absoluteLocation())];
+            initWithHitTestResult:core(m_webFrame.get())->eventHandler().hitTestResultAtPoint(mouseEvent->absoluteLocation())];
         [result setObject:element forKey:WebActionElementKey];
         [element release];
 
@@ -1414,10 +1410,10 @@ PassRefPtr<Frame> WebFrameLoaderClient::createFrame(const KURL& url, const Strin
     if (!result->page())
         return 0;
  
-    core(m_webFrame.get())->loader()->loadURLIntoChildFrame(url, referrer, result.get());
+    core(m_webFrame.get())->loader().loadURLIntoChildFrame(url, referrer, result.get());
 
     // The frame's onload handler may have removed it from the document.
-    if (!result->tree()->parent())
+    if (!result->tree().parent())
         return 0;
 
     return result.release();
@@ -1600,7 +1596,7 @@ public:
         if (!frame)
             return;
         
-        NSEvent* currentNSEvent = frame->eventHandler()->currentNSEvent();
+        NSEvent* currentNSEvent = frame->eventHandler().currentNSEvent();
         if (event->type() == eventNames().mousemoveEvent)
             [(WebBaseNetscapePluginView *)platformWidget() handleMouseMoved:currentNSEvent];
         else if (event->type() == eventNames().mouseoverEvent)
@@ -1668,7 +1664,7 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLP
     // plug-in.
     Frame* frame = core(m_webFrame.get());
     NSMutableArray *attributeKeys = kit(paramNames);
-    if (frame && frame->settings()->needsSiteSpecificQuirks() && equalIgnoringCase(mimeType, "application/x-snkp")) {
+    if (frame && frame->settings().needsSiteSpecificQuirks() && equalIgnoringCase(mimeType, "application/x-snkp")) {
         for (NSUInteger i = 0; i < [attributeKeys count]; ++i)
             [attributeKeys replaceObjectAtIndex:i withObject:[[attributeKeys objectAtIndex:i] lowercaseString]];
     }
@@ -1961,21 +1957,21 @@ void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* 
         return;
 
     Frame *frame = core(m_webFrame.get());
-    ScriptController *script = frame->script();
+    ScriptController& script = frame->script();
 
 #if JSC_OBJC_API_ENABLED
     if (implementations->didCreateJavaScriptContextForFrameFunc) {
         CallFrameLoadDelegate(implementations->didCreateJavaScriptContextForFrameFunc, webView, @selector(webView:didCreateJavaScriptContext:forFrame:),
-            script->javaScriptContext(), m_webFrame.get());
+            script.javaScriptContext(), m_webFrame.get());
     } else if (implementations->didClearWindowObjectForFrameFunc) {
 #else
     if (implementations->didClearWindowObjectForFrameFunc) {
 #endif
         CallFrameLoadDelegate(implementations->didClearWindowObjectForFrameFunc, webView, @selector(webView:didClearWindowObject:forFrame:),
-            script->windowScriptObject(), m_webFrame.get());
+            script.windowScriptObject(), m_webFrame.get());
     } else if (implementations->windowScriptObjectAvailableFunc) {
         CallFrameLoadDelegate(implementations->windowScriptObjectAvailableFunc, webView, @selector(webView:windowScriptObjectAvailable:),
-            script->windowScriptObject());
+            script.windowScriptObject());
     }
 
     if ([webView scriptDebugDelegate]) {
@@ -2048,7 +2044,7 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
     _policyFunction = nullptr;
 
     ASSERT(policyFunction);
-    (frame->loader()->policyChecker()->*policyFunction)(action);
+    (frame->loader().policyChecker()->*policyFunction)(action);
 }
 
 - (void)ignore

@@ -93,6 +93,7 @@
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SmartReplace.h>
 #import <WebCore/StylePropertySet.h>
+#import <WebCore/SubframeLoader.h>
 #import <WebCore/TextIterator.h>
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/VisibleUnits.h>
@@ -228,11 +229,11 @@ WebFrame *kit(Frame* frame)
     if (!frame)
         return nil;
 
-    FrameLoaderClient* frameLoaderClient = frame->loader()->client();
-    if (frameLoaderClient->isEmptyFrameLoaderClient())
+    FrameLoaderClient& frameLoaderClient = frame->loader().client();
+    if (frameLoaderClient.isEmptyFrameLoaderClient())
         return nil;
 
-    return static_cast<WebFrameLoaderClient*>(frameLoaderClient)->webFrame();
+    return static_cast<WebFrameLoaderClient&>(frameLoaderClient).webFrame();
 }
 
 Page* core(WebView *webView)
@@ -245,11 +246,10 @@ WebView *kit(Page* page)
     if (!page)
         return nil;
 
-    ChromeClient* chromeClient = page->chrome().client();
-    if (chromeClient->isEmptyChromeClient())
+    if (page->chrome().client().isEmptyChromeClient())
         return nil;
 
-    return static_cast<WebChromeClient*>(chromeClient)->webView();
+    return static_cast<WebChromeClient&>(page->chrome().client()).webView();
 }
 
 WebView *getWebView(WebFrame *webFrame)
@@ -269,10 +269,10 @@ WebView *getWebView(WebFrame *webFrame)
     [frame release];
     frame->_private->coreFrame = coreFrame.get();
 
-    coreFrame->tree()->setName(name);
+    coreFrame->tree().setName(name);
     if (ownerElement) {
-        ASSERT(ownerElement->document()->frame());
-        ownerElement->document()->frame()->tree()->appendChild(coreFrame.get());
+        ASSERT(ownerElement->document().frame());
+        ownerElement->document().frame()->tree().appendChild(coreFrame.get());
     }
 
     coreFrame->init();
@@ -284,12 +284,22 @@ WebView *getWebView(WebFrame *webFrame)
 
 + (void)_createMainFrameWithPage:(Page*)page frameName:(const String&)name frameView:(WebFrameView *)frameView
 {
-    [self _createFrameWithPage:page frameName:name frameView:frameView ownerElement:0];
+    WebView *webView = kit(page);
+
+    WebFrame *frame = [[self alloc] _initWithWebFrameView:frameView webView:webView];
+    frame->_private->coreFrame = &page->mainFrame();
+    static_cast<WebFrameLoaderClient&>(page->mainFrame().loader().client()).setWebFrame(frame);
+    [frame release];
+
+    page->mainFrame().tree().setName(name);
+    page->mainFrame().init();
+
+    [webView _setZoomMultiplier:[webView _realZoomMultiplier] isTextOnly:[webView _realZoomMultiplierIsTextOnly]];
 }
 
 + (PassRefPtr<WebCore::Frame>)_createSubframeWithOwnerElement:(HTMLFrameOwnerElement*)ownerElement frameName:(const String&)name frameView:(WebFrameView *)frameView
 {
-    return [self _createFrameWithPage:ownerElement->document()->frame()->page() frameName:name frameView:frameView ownerElement:ownerElement];
+    return [self _createFrameWithPage:ownerElement->document().frame()->page() frameName:name frameView:frameView ownerElement:ownerElement];
 }
 
 - (BOOL)_isIncludedInWebKitStatistics
@@ -299,15 +309,15 @@ WebView *getWebView(WebFrame *webFrame)
 
 - (void)_attachScriptDebugger
 {
-    ScriptController* scriptController = _private->coreFrame->script();
+    ScriptController& scriptController = _private->coreFrame->script();
 
     // Calling ScriptController::globalObject() would create a window shell, and dispatch corresponding callbacks, which may be premature
     // if the script debugger is attached before a document is created.  These calls use the debuggerWorld(), we will need to pass a world
     // to be able to debug isolated worlds.
-    if (!scriptController->existingWindowShell(debuggerWorld()))
+    if (!scriptController.existingWindowShell(debuggerWorld()))
         return;
 
-    JSGlobalObject* globalObject = scriptController->globalObject(debuggerWorld());
+    JSGlobalObject* globalObject = scriptController.globalObject(debuggerWorld());
     if (!globalObject)
         return;
 
@@ -363,7 +373,7 @@ WebView *getWebView(WebFrame *webFrame)
     NSColor *backgroundColor = [webView backgroundColor];
 
     Frame* coreFrame = _private->coreFrame;
-    for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame)) {
+    for (Frame* frame = coreFrame; frame; frame = frame->tree().traverseNext(coreFrame)) {
         // Don't call setDrawsBackground:YES here because it may be NO because of a load
         // in progress; WebFrameLoaderClient keeps it set to NO during the load process.
         WebFrame *webFrame = kit(frame);
@@ -392,18 +402,18 @@ WebView *getWebView(WebFrame *webFrame)
 - (void)_unmarkAllBadGrammar
 {
     Frame* coreFrame = _private->coreFrame;
-    for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame)) {
+    for (Frame* frame = coreFrame; frame; frame = frame->tree().traverseNext(coreFrame)) {
         if (Document* document = frame->document())
-            document->markers()->removeMarkers(DocumentMarker::Grammar);
+            document->markers().removeMarkers(DocumentMarker::Grammar);
     }
 }
 
 - (void)_unmarkAllMisspellings
 {
     Frame* coreFrame = _private->coreFrame;
-    for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame)) {
+    for (Frame* frame = coreFrame; frame; frame = frame->tree().traverseNext(coreFrame)) {
         if (Document* document = frame->document())
-            document->markers()->removeMarkers(DocumentMarker::Spelling);
+            document->markers().removeMarkers(DocumentMarker::Spelling);
     }
 }
 
@@ -414,7 +424,7 @@ WebView *getWebView(WebFrame *webFrame)
     // optimization for common case to avoid creating potentially large selection string
     if ([documentView isKindOfClass:[WebHTMLView class]])
         if (Frame* coreFrame = _private->coreFrame)
-            return coreFrame->selection()->isRange();
+            return coreFrame->selection().isRange();
 
     if ([documentView conformsToProtocol:@protocol(WebDocumentText)])
         return [[documentView selectedString] length] > 0;
@@ -435,7 +445,7 @@ WebView *getWebView(WebFrame *webFrame)
     // FIXME: 4186050 is one known case that makes this debug check fail.
     BOOL found = NO;
     Frame* coreFrame = _private->coreFrame;
-    for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame))
+    for (Frame* frame = coreFrame; frame; frame = frame->tree().traverseNext(coreFrame))
         if ([kit(frame) _hasSelection]) {
             if (found)
                 return NO;
@@ -448,7 +458,7 @@ WebView *getWebView(WebFrame *webFrame)
 - (WebFrame *)_findFrameWithSelection
 {
     Frame* coreFrame = _private->coreFrame;
-    for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame)) {
+    for (Frame* frame = coreFrame; frame; frame = frame->tree().traverseNext(coreFrame)) {
         WebFrame *webFrame = kit(frame);
         if ([webFrame _hasSelection])
             return webFrame;
@@ -476,12 +486,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 - (WebDataSource *)_dataSource
 {
-    return dataSource(_private->coreFrame->loader()->documentLoader());
-}
-
-- (NSString *)_stringWithDocumentTypeStringAndMarkupString:(NSString *)markupString
-{
-    return String(_private->coreFrame->documentTypeString() + String(markupString));
+    return dataSource(_private->coreFrame->loader().documentLoader());
 }
 
 - (NSArray *)_nodesFromList:(Vector<Node*> *)nodesVector
@@ -491,17 +496,6 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     for (size_t i = 0; i < size; ++i)
         [nodes addObject:kit((*nodesVector)[i])];
     return nodes;
-}
-
-- (NSString *)_markupStringFromRange:(DOMRange *)range nodes:(NSArray **)nodes
-{
-    // FIXME: This is always "for interchange". Is that right? See the previous method.
-    Vector<Node*> nodeList;
-    NSString *markupString = createMarkup(core(range), nodes ? &nodeList : 0, AnnotateForInterchange);
-    if (nodes)
-        *nodes = [self _nodesFromList:&nodeList];
-
-    return [self _stringWithDocumentTypeStringAndMarkupString:markupString];
 }
 
 - (NSString *)_selectedString
@@ -542,7 +536,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     FrameView* view = _private->coreFrame->view();
     
     bool shouldFlatten = false;
-    if (Frame* parentFrame = _private->coreFrame->tree()->parent()) {
+    if (Frame* parentFrame = _private->coreFrame->tree().parent()) {
         // For subframes, we need to inherit the paint behavior from our parent
         FrameView* parentView = parentFrame ? parentFrame->view() : 0;
         if (parentView)
@@ -591,7 +585,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     ASSERT(_private->coreFrame->document());
     RetainPtr<WebFrame> protect(self); // Executing arbitrary JavaScript can destroy the frame.
     
-    JSC::JSValue result = _private->coreFrame->script()->executeScript(string, forceUserGesture).jsValue();
+    JSC::JSValue result = _private->coreFrame->script().executeScript(string, forceUserGesture).jsValue();
 
     if (!_private->coreFrame) // In case the script removed our frame from the page.
         return @"";
@@ -602,7 +596,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     if (!result || (!result.isBoolean() && !result.isString() && !result.isNumber()))
         return @"";
 
-    JSC::ExecState* exec = _private->coreFrame->script()->globalObject(mainThreadNormalWorld())->globalExec();
+    JSC::ExecState* exec = _private->coreFrame->script().globalObject(mainThreadNormalWorld())->globalExec();
     JSC::JSLockHolder lock(exec);
     return result.toWTFString(exec);
 }
@@ -634,18 +628,18 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 - (DOMRange *)_rangeByAlteringCurrentSelection:(FrameSelection::EAlteration)alteration direction:(SelectionDirection)direction granularity:(TextGranularity)granularity
 {
-    if (_private->coreFrame->selection()->isNone())
+    if (_private->coreFrame->selection().isNone())
         return nil;
 
     FrameSelection selection;
-    selection.setSelection(_private->coreFrame->selection()->selection());
+    selection.setSelection(_private->coreFrame->selection().selection());
     selection.modify(alteration, direction, granularity);
     return kit(selection.toNormalizedRange().get());
 }
 
 - (TextGranularity)_selectionGranularity
 {
-    return _private->coreFrame->selection()->granularity();
+    return _private->coreFrame->selection().granularity();
 }
 
 - (NSRange)_convertToNSRange:(Range *)range
@@ -655,7 +649,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
     size_t location;
     size_t length;
-    if (!TextIterator::getLocationAndLengthFromRange(_private->coreFrame->selection()->rootEditableElementOrDocumentElement(), range, location, length))
+    if (!TextIterator::getLocationAndLengthFromRange(_private->coreFrame->selection().rootEditableElementOrDocumentElement(), range, location, length))
         return NSMakeRange(NSNotFound, 0);
 
     return NSMakeRange(location, length);
@@ -674,7 +668,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     // directly in the document DOM, so serialization is problematic. Our solution is
     // to use the root editable element of the selection start as the positional base.
     // That fits with AppKit's idea of an input context.
-    return TextIterator::rangeFromLocationAndLength(_private->coreFrame->selection()->rootEditableElementOrDocumentElement(), nsrange.location, nsrange.length);
+    return TextIterator::rangeFromLocationAndLength(_private->coreFrame->selection().rootEditableElementOrDocumentElement(), nsrange.location, nsrange.length);
 }
 
 - (DOMRange *)_convertNSRangeToDOMRange:(NSRange)nsrange
@@ -702,7 +696,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     if (startContainer == nil || endContainer == nil)
         return nil;
 
-    ASSERT(startContainer->document() == endContainer->document());
+    ASSERT(&startContainer->document() == &endContainer->document());
     
     _private->coreFrame->document()->updateLayoutIgnorePendingStylesheets();
 
@@ -756,7 +750,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 - (void)_insertParagraphSeparatorInQuotedContent
 {
-    if (_private->coreFrame->selection()->isNone())
+    if (_private->coreFrame->selection().isNone())
         return;
 
     _private->coreFrame->editor().insertParagraphSeparatorInQuotedContent();
@@ -777,7 +771,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 {
     if (!_private->coreFrame)
         return nil;
-    RefPtr<MutableStylePropertySet> typingStyle = _private->coreFrame->selection()->copyTypingStyle();
+    RefPtr<MutableStylePropertySet> typingStyle = _private->coreFrame->selection().copyTypingStyle();
     if (!typingStyle)
         return nil;
     return kit(typingStyle->ensureCSSStyleDeclaration());
@@ -802,7 +796,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     // FIXME: These are fake modifier keys here, but they should be real ones instead.
     PlatformMouseEvent event(IntPoint(windowLoc), globalPoint(windowLoc, [view->platformWidget() window]),
         LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime());
-    _private->coreFrame->eventHandler()->dragSourceEndedAt(event, (DragOperation)operation);
+    _private->coreFrame->eventHandler().dragSourceEndedAt(event, (DragOperation)operation);
 }
 #endif
 
@@ -810,11 +804,11 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 {
     Frame* frame = _private->coreFrame;
     String mimeType = frame->document()->loader()->writer()->mimeType();
-    PluginData* pluginData = frame->page() ? frame->page()->pluginData() : 0;
+    PluginData* pluginData = frame->page() ? &frame->page()->pluginData() : 0;
 
     if (WebCore::DOMImplementation::isTextMIMEType(mimeType)
         || Image::supportsType(mimeType)
-        || (pluginData && pluginData->supportsMimeType(mimeType, PluginData::AllPlugins) && frame->loader()->subframeLoader()->allowPlugins(NotAboutToInstantiatePlugin))
+        || (pluginData && pluginData->supportsMimeType(mimeType, PluginData::AllPlugins) && frame->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
         || (pluginData && pluginData->supportsMimeType(mimeType, PluginData::OnlyApplicationPlugins)))
         return NO;
 
@@ -834,7 +828,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     Document* document = _private->coreFrame->document();
     document->setShouldCreateRenderers(_private->shouldCreateRenderers);
 
-    _private->coreFrame->loader()->documentLoader()->commitData((const char *)[data bytes], [data length]);
+    _private->coreFrame->loader().documentLoader()->commitData((const char *)[data bytes], [data length]);
 }
 
 @end
@@ -845,7 +839,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 - (BOOL)_isDescendantOfFrame:(WebFrame *)ancestor
 {
     Frame* coreFrame = _private->coreFrame;
-    return coreFrame && coreFrame->tree()->isDescendantOf(core(ancestor));
+    return coreFrame && coreFrame->tree().isDescendantOf(core(ancestor));
 }
 
 - (void)_setShouldCreateRenderers:(BOOL)shouldCreateRenderers
@@ -878,7 +872,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 - (BOOL)_firstLayoutDone
 {
-    return _private->coreFrame->loader()->stateMachine()->firstLayoutDone();
+    return _private->coreFrame->loader().stateMachine()->firstLayoutDone();
 }
 
 - (BOOL)_isVisuallyNonEmpty
@@ -890,19 +884,19 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 - (WebFrameLoadType)_loadType
 {
-    return (WebFrameLoadType)_private->coreFrame->loader()->loadType();
+    return (WebFrameLoadType)_private->coreFrame->loader().loadType();
 }
 
 - (NSRange)_selectedNSRange
 {
-    return [self _convertToNSRange:_private->coreFrame->selection()->toNormalizedRange().get()];
+    return [self _convertToNSRange:_private->coreFrame->selection().toNormalizedRange().get()];
 }
 
 - (void)_selectNSRange:(NSRange)range
 {
     RefPtr<Range> domRange = [self _convertToDOMRange:range];
     if (domRange)
-        _private->coreFrame->selection()->setSelection(VisibleSelection(domRange.get(), SEL_DEFAULT_AFFINITY));
+        _private->coreFrame->selection().setSelection(VisibleSelection(domRange.get(), SEL_DEFAULT_AFFINITY));
 }
 
 - (BOOL)_isDisplayingStandaloneImage
@@ -920,7 +914,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 - (void)_recursive_resumeNullEventsForAllNetscapePlugins
 {
     Frame* coreFrame = core(self);
-    for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame)) {
+    for (Frame* frame = coreFrame; frame; frame = frame->tree().traverseNext(coreFrame)) {
         NSView <WebDocumentView> *documentView = [[kit(frame) frameView] documentView];
         if ([documentView isKindOfClass:[WebHTMLView class]])
             [(WebHTMLView *)documentView _resumeNullEventsForAllNetscapePlugins];
@@ -930,7 +924,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 - (void)_recursive_pauseNullEventsForAllNetscapePlugins
 {
     Frame* coreFrame = core(self);
-    for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame)) {
+    for (Frame* frame = coreFrame; frame; frame = frame->tree().traverseNext(coreFrame)) {
         NSView <WebDocumentView> *documentView = [[kit(frame) frameView] documentView];
         if ([documentView isKindOfClass:[WebHTMLView class]])
             [(WebHTMLView *)documentView _pauseNullEventsForAllNetscapePlugins];
@@ -940,14 +934,14 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 - (void)_replaceSelectionWithFragment:(DOMDocumentFragment *)fragment selectReplacement:(BOOL)selectReplacement smartReplace:(BOOL)smartReplace matchStyle:(BOOL)matchStyle
 {
-    if (_private->coreFrame->selection()->isNone() || !fragment)
+    if (_private->coreFrame->selection().isNone() || !fragment)
         return;
     _private->coreFrame->editor().replaceSelectionWithFragment(core(fragment), selectReplacement, smartReplace, matchStyle);
 }
 
 - (void)_replaceSelectionWithText:(NSString *)text selectReplacement:(BOOL)selectReplacement smartReplace:(BOOL)smartReplace
 {   
-    DOMDocumentFragment* fragment = kit(createFragmentFromText(_private->coreFrame->selection()->toNormalizedRange().get(), text).get());
+    DOMDocumentFragment* fragment = kit(createFragmentFromText(_private->coreFrame->selection().toNormalizedRange().get(), text).get());
     [self _replaceSelectionWithFragment:fragment selectReplacement:selectReplacement smartReplace:smartReplace matchStyle:YES];
 }
 
@@ -1019,12 +1013,12 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 {
     NSMutableDictionary *result = [NSMutableDictionary dictionary];
     
-    FrameLoader* frameLoader = _private->coreFrame->loader();
-    DocumentLoader* documentLoader = frameLoader->documentLoader();
+    FrameLoader& frameLoader = _private->coreFrame->loader();
+    DocumentLoader* documentLoader = frameLoader.documentLoader();
     if (documentLoader && !documentLoader->mainDocumentError().isNull())
         [result setObject:(NSError *)documentLoader->mainDocumentError() forKey:WebFrameMainDocumentError];
         
-    if (frameLoader->subframeLoader()->containsPlugins())
+    if (frameLoader.subframeLoader().containsPlugins())
         [result setObject:[NSNumber numberWithBool:YES] forKey:WebFrameHasPlugins];
     
     if (DOMWindow* domWindow = _private->coreFrame->document()->domWindow()) {
@@ -1059,7 +1053,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         return @"";
 
     // Start off with some guess at a frame and a global object, we'll try to do better...!
-    JSDOMWindow* anyWorldGlobalObject = _private->coreFrame->script()->globalObject(mainThreadNormalWorld());
+    JSDOMWindow* anyWorldGlobalObject = _private->coreFrame->script().globalObject(mainThreadNormalWorld());
 
     // The global object is probably a shell object? - if so, we know how to use this!
     JSC::JSObject* globalObjectObj = toJS(globalObjectRef);
@@ -1071,7 +1065,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     ASSERT(frame->document());
     RetainPtr<WebFrame> webFrame(kit(frame)); // Running arbitrary JavaScript can destroy the frame.
 
-    JSC::JSValue result = frame->script()->executeScriptInWorld(core(world), string, true).jsValue();
+    JSC::JSValue result = frame->script().executeScriptInWorld(core(world), string, true).jsValue();
 
     if (!webFrame->_private->coreFrame) // In case the script removed our frame from the page.
         return @"";
@@ -1095,7 +1089,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     DOMWrapperWorld* coreWorld = core(world);
     if (!coreWorld)
         return 0;
-    return toGlobalRef(coreFrame->script()->globalObject(coreWorld)->globalExec());
+    return toGlobalRef(coreFrame->script().globalObject(coreWorld)->globalExec());
 }
 
 #if JSC_OBJC_API_ENABLED
@@ -1181,7 +1175,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 {
     Frame* coreFrame = _private->coreFrame;
     if (coreFrame)
-        coreFrame->loader()->setOpener(0);
+        coreFrame->loader().setOpener(0);
 }
 
 // Used by pagination code called from AppKit when a standalone web page is printed.
@@ -1201,7 +1195,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     if (!_private->coreFrame->view()->documentView())
         return [NSArray array];
 
-    RenderView* root = toRenderView(_private->coreFrame->document()->renderer());
+    RenderView* root = _private->coreFrame->document()->renderView();
     if (!root)
         return [NSArray array];
 
@@ -1226,7 +1220,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     if (!coreFrame)
         return 0;
 
-    JSDOMWindow* globalObject = coreFrame->script()->globalObject(core(world));
+    JSDOMWindow* globalObject = coreFrame->script().globalObject(core(world));
     JSC::ExecState* exec = globalObject->globalExec();
 
     JSC::JSLockHolder lock(exec);
@@ -1238,7 +1232,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return nil;
-    return [[[WebElementDictionary alloc] initWithHitTestResult:coreFrame->eventHandler()->hitTestResultAtPoint(IntPoint(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent)] autorelease];
+    return [[[WebElementDictionary alloc] initWithHitTestResult:coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent)] autorelease];
 }
 
 - (NSURL *)_unreachableURL
@@ -1284,7 +1278,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return nil;
-    return coreFrame->tree()->uniqueName();
+    return coreFrame->tree().uniqueName();
 }
 
 - (WebFrameView *)frameView
@@ -1340,13 +1334,13 @@ static bool needsMicrosoftMessengerDOMDocumentWorkaround()
 - (WebDataSource *)provisionalDataSource
 {
     Frame* coreFrame = _private->coreFrame;
-    return coreFrame ? dataSource(coreFrame->loader()->provisionalDocumentLoader()) : nil;
+    return coreFrame ? dataSource(coreFrame->loader().provisionalDocumentLoader()) : nil;
 }
 
 - (WebDataSource *)dataSource
 {
     Frame* coreFrame = _private->coreFrame;
-    return coreFrame && coreFrame->loader()->frameHasLoaded() ? [self _dataSource] : nil;
+    return coreFrame && coreFrame->loader().frameHasLoaded() ? [self _dataSource] : nil;
 }
 
 - (void)loadRequest:(NSURLRequest *)request
@@ -1365,7 +1359,7 @@ static bool needsMicrosoftMessengerDOMDocumentWorkaround()
     if (!resourceRequest.url().isValid() && !resourceRequest.url().isEmpty())
         resourceRequest.setURL([NSURL URLWithString:[@"file:" stringByAppendingString:[[request URL] absoluteString]]]);
 
-    coreFrame->loader()->load(FrameLoadRequest(coreFrame, resourceRequest));
+    coreFrame->loader().load(FrameLoadRequest(coreFrame, resourceRequest));
 }
 
 static NSURL *createUniqueWebDataURL()
@@ -1396,7 +1390,7 @@ static NSURL *createUniqueWebDataURL()
 
     SubstituteData substituteData(WebCore::SharedBuffer::wrapNSData(data), MIMEType, encodingName, [unreachableURL absoluteURL], responseURL);
 
-    _private->coreFrame->loader()->load(FrameLoadRequest(_private->coreFrame, request, substituteData));
+    _private->coreFrame->loader().load(FrameLoadRequest(_private->coreFrame, request, substituteData));
 }
 
 
@@ -1432,27 +1426,27 @@ static NSURL *createUniqueWebDataURL()
 - (void)loadArchive:(WebArchive *)archive
 {
     if (LegacyWebArchive* coreArchive = [archive _coreLegacyWebArchive])
-        _private->coreFrame->loader()->loadArchive(coreArchive);
+        _private->coreFrame->loader().loadArchive(coreArchive);
 }
 
 - (void)stopLoading
 {
     if (!_private->coreFrame)
         return;
-    _private->coreFrame->loader()->stopForUserCancel();
+    _private->coreFrame->loader().stopForUserCancel();
 }
 
 - (void)reload
 {
     if (!WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_RELOAD_FROM_ORIGIN) && applicationIsSafari())
-        _private->coreFrame->loader()->reload(GetCurrentKeyModifiers() & shiftKey);
+        _private->coreFrame->loader().reload(GetCurrentKeyModifiers() & shiftKey);
     else
-        _private->coreFrame->loader()->reload(false);
+        _private->coreFrame->loader().reload(false);
 }
 
 - (void)reloadFromOrigin
 {
-    _private->coreFrame->loader()->reload(true);
+    _private->coreFrame->loader().reload(true);
 }
 
 - (WebFrame *)findFrameNamed:(NSString *)name
@@ -1460,7 +1454,7 @@ static NSURL *createUniqueWebDataURL()
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return nil;
-    return kit(coreFrame->tree()->find(name));
+    return kit(coreFrame->tree().find(name));
 }
 
 - (WebFrame *)parentFrame
@@ -1468,7 +1462,7 @@ static NSURL *createUniqueWebDataURL()
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return nil;
-    return [[kit(coreFrame->tree()->parent()) retain] autorelease];
+    return [[kit(coreFrame->tree().parent()) retain] autorelease];
 }
 
 - (NSArray *)childFrames
@@ -1476,8 +1470,8 @@ static NSURL *createUniqueWebDataURL()
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return [NSArray array];
-    NSMutableArray *children = [NSMutableArray arrayWithCapacity:coreFrame->tree()->childCount()];
-    for (Frame* child = coreFrame->tree()->firstChild(); child; child = child->tree()->nextSibling())
+    NSMutableArray *children = [NSMutableArray arrayWithCapacity:coreFrame->tree().childCount()];
+    for (Frame* child = coreFrame->tree().firstChild(); child; child = child->tree().nextSibling())
         [children addObject:kit(child)];
     return children;
 }
@@ -1487,7 +1481,7 @@ static NSURL *createUniqueWebDataURL()
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return 0;
-    return coreFrame->script()->windowScriptObject();
+    return coreFrame->script().windowScriptObject();
 }
 
 - (JSGlobalContextRef)globalContext
@@ -1495,7 +1489,7 @@ static NSURL *createUniqueWebDataURL()
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return 0;
-    return toGlobalRef(coreFrame->script()->globalObject(mainThreadNormalWorld())->globalExec());
+    return toGlobalRef(coreFrame->script().globalObject(mainThreadNormalWorld())->globalExec());
 }
 
 #if JSC_OBJC_API_ENABLED
@@ -1504,7 +1498,7 @@ static NSURL *createUniqueWebDataURL()
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return 0;
-    return coreFrame->script()->javaScriptContext();
+    return coreFrame->script().javaScriptContext();
 }
 #endif
 

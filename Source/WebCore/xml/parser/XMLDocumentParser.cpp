@@ -50,6 +50,7 @@
 #include "TextResourceDecoder.h"
 #include "TreeDepthLimit.h"
 #include "XMLErrors.h"
+#include <wtf/Ref.h>
 #include <wtf/StringExtras.h>
 #include <wtf/Threading.h>
 #include <wtf/Vector.h>
@@ -133,7 +134,9 @@ void XMLDocumentParser::append(PassRefPtr<StringImpl> inputSource)
 
 void XMLDocumentParser::handleError(XMLErrors::ErrorType type, const char* m, TextPosition position)
 {
-    m_xmlErrors.handleError(type, m, position);
+    if (!m_xmlErrors)
+        m_xmlErrors = adoptPtr(new XMLErrors(document()));
+    m_xmlErrors->handleError(type, m, position);
     if (type != XMLErrors::warning)
         m_sawError = true;
     if (type == XMLErrors::fatal)
@@ -146,7 +149,7 @@ void XMLDocumentParser::enterText()
     ASSERT(m_bufferedText.size() == 0);
 #endif
     ASSERT(!m_leafTextNode);
-    m_leafTextNode = Text::create(m_currentNode->document(), "");
+    m_leafTextNode = Text::create(&m_currentNode->document(), "");
     m_currentNode->parserAppendChild(m_leafTextNode.get());
 }
 
@@ -172,9 +175,8 @@ void XMLDocumentParser::exitText()
     m_bufferedText.swap(empty);
 #endif
 
-    if (m_view && m_leafTextNode->parentNode() && m_leafTextNode->parentNode()->attached()
-        && !m_leafTextNode->attached())
-        m_leafTextNode->attach();
+    if (m_view && m_leafTextNode->parentNode() && m_leafTextNode->parentNode()->attached() && !m_leafTextNode->attached())
+        Style::attachTextRenderer(*m_leafTextNode);
 
     m_leafTextNode = 0;
 }
@@ -234,8 +236,8 @@ void XMLDocumentParser::insertErrorMessageBlock()
     if (m_parsingFragment)
         return;
 #endif
-
-    m_xmlErrors.insertErrorMessageBlock();
+    ASSERT(m_xmlErrors);
+    m_xmlErrors->insertErrorMessageBlock();
 }
 
 void XMLDocumentParser::notifyFinished(CachedResource* unusedResource)
@@ -257,7 +259,7 @@ void XMLDocumentParser::notifyFinished(CachedResource* unusedResource)
     ASSERT(scriptElement);
 
     // JavaScript can detach this parser, make sure it's kept alive even if detached.
-    RefPtr<XMLDocumentParser> protect(this);
+    Ref<XMLDocumentParser> protect(*this);
     
     if (errorOccurred)
         scriptElement->dispatchErrorEvent();
@@ -294,7 +296,7 @@ bool XMLDocumentParser::parseDocumentFragment(const String& chunk, DocumentFragm
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/the-xhtml-syntax.html#xml-fragment-parsing-algorithm
     // For now we have a hack for script/style innerHTML support:
     if (contextElement && (contextElement->hasLocalName(HTMLNames::scriptTag) || contextElement->hasLocalName(HTMLNames::styleTag))) {
-        fragment->parserAppendChild(fragment->document()->createTextNode(chunk));
+        fragment->parserAppendChild(fragment->document().createTextNode(chunk));
         return true;
     }
 

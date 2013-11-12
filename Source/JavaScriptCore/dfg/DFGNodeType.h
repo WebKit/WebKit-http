@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,7 +49,7 @@ namespace JSC { namespace DFG {
     macro(Identity, NodeResultJS) \
     \
     /* Nodes for handling functions (both as call and as construct). */\
-    macro(ConvertThis, NodeResultJS) \
+    macro(ToThis, NodeResultJS) \
     macro(CreateThis, NodeResultJS) /* Note this is not MustGenerate since we're returning it anyway. */ \
     macro(GetCallee, NodeResultJS) \
     macro(SetCallee, NodeMustGenerate) \
@@ -62,11 +62,27 @@ namespace JSC { namespace DFG {
     macro(MovHintAndCheck, NodeMustGenerate | NodeExitsForward) \
     macro(MovHint, NodeDoesNotExit) \
     macro(ZombieHint, NodeDoesNotExit) \
+    macro(GetArgument, NodeResultJS | NodeMustGenerate) \
     macro(Phantom, NodeMustGenerate) \
-    macro(Nop, NodeDoesNotExit) \
+    macro(Upsilon, NodeDoesNotExit | NodeRelevantToOSR) \
     macro(Phi, NodeDoesNotExit | NodeRelevantToOSR) \
     macro(Flush, NodeMustGenerate | NodeDoesNotExit) \
     macro(PhantomLocal, NodeMustGenerate | NodeDoesNotExit) \
+    \
+    /* Hint that this is where bytecode thinks is a good place to OSR. Note that this */\
+    /* will exist even in inlined loops. This has no execution semantics but it must */\
+    /* survive all DCE. We treat this as being a can-exit because tier-up to FTL may */\
+    /* want all state. */\
+    macro(LoopHint, NodeMustGenerate) \
+    \
+    /* Special node for OSR entry into the FTL. Indicates that we're loading a local */\
+    /* variable from the scratch buffer. */\
+    macro(ExtractOSREntryLocal, NodeResultJS) \
+    \
+    /* Tier-up checks from the DFG to the FTL. */\
+    macro(CheckTierUpInLoop, NodeMustGenerate) \
+    macro(CheckTierUpAndOSREnter, NodeMustGenerate) \
+    macro(CheckTierUpAtReturn, NodeMustGenerate) \
     \
     /* Get the value of a local variable, without linking into the VariableAccessData */\
     /* network. This is only valid for variable accesses whose predictions originated */\
@@ -96,7 +112,6 @@ namespace JSC { namespace DFG {
     /* Used to cast known integers to doubles, so as to separate the double form */\
     /* of the value from the integer form. */\
     macro(Int32ToDouble, NodeResultNumber) \
-    macro(ForwardInt32ToDouble, NodeResultNumber | NodeExitsForward) \
     /* Used to speculate that a double value is actually an integer. */\
     macro(DoubleAsInt32, NodeResultInt32 | NodeExitsForward) \
     \
@@ -130,7 +145,6 @@ namespace JSC { namespace DFG {
     macro(PutByIdDirect, NodeMustGenerate | NodeClobbersWorld) \
     macro(CheckStructure, NodeMustGenerate) \
     macro(CheckExecutable, NodeMustGenerate) \
-    macro(ForwardCheckStructure, NodeMustGenerate | NodeExitsForward) \
     /* Transition watchpoints are a contract between the party setting the watchpoint */\
     /* and the runtime system, where the party promises that the child object once had */\
     /* the structure being watched, and the runtime system in turn promises that the */\
@@ -143,7 +157,6 @@ namespace JSC { namespace DFG {
     /* the object's structure does not need to be rechecked due to side-effecting */\
     /* (clobbering) operations. */\
     macro(StructureTransitionWatchpoint, NodeMustGenerate) \
-    macro(ForwardStructureTransitionWatchpoint, NodeMustGenerate | NodeExitsForward) \
     macro(PutStructure, NodeMustGenerate) \
     macro(PhantomPutStructure, NodeMustGenerate | NodeDoesNotExit) \
     macro(AllocatePropertyStorage, NodeMustGenerate | NodeDoesNotExit | NodeResultStorage) \
@@ -156,18 +169,19 @@ namespace JSC { namespace DFG {
     macro(GetByOffset, NodeResultJS) \
     macro(PutByOffset, NodeMustGenerate) \
     macro(GetArrayLength, NodeResultInt32) \
+    macro(GetTypedArrayByteOffset, NodeResultInt32) \
     macro(GetScope, NodeResultJS) \
     macro(GetMyScope, NodeResultJS) \
     macro(SetMyScope, NodeMustGenerate) \
     macro(SkipTopScope, NodeResultJS) \
     macro(SkipScope, NodeResultJS) \
-    macro(GetScopeRegisters, NodeResultStorage) \
-    macro(GetScopedVar, NodeResultJS) \
-    macro(PutScopedVar, NodeMustGenerate) \
+    macro(GetClosureRegisters, NodeResultStorage) \
+    macro(GetClosureVar, NodeResultJS) \
+    macro(PutClosureVar, NodeMustGenerate) \
     macro(GetGlobalVar, NodeResultJS) \
     macro(PutGlobalVar, NodeMustGenerate) \
     macro(GlobalVarWatchpoint, NodeMustGenerate) \
-    macro(PutGlobalVarCheck, NodeMustGenerate) \
+    macro(VarInjectionWatchpoint, NodeMustGenerate) \
     macro(CheckFunction, NodeMustGenerate) \
     macro(AllocationProfileWatchpoint, NodeMustGenerate) \
     \
@@ -203,13 +217,8 @@ namespace JSC { namespace DFG {
     macro(NewArray, NodeResultJS | NodeHasVarArgs) \
     macro(NewArrayWithSize, NodeResultJS) \
     macro(NewArrayBuffer, NodeResultJS) \
+    macro(NewTypedArray, NodeResultJS | NodeClobbersWorld | NodeMustGenerate) \
     macro(NewRegexp, NodeResultJS) \
-    \
-    /* Resolve nodes. */\
-    macro(Resolve, NodeResultJS | NodeMustGenerate | NodeClobbersWorld) \
-    macro(ResolveBase, NodeResultJS | NodeMustGenerate | NodeClobbersWorld) \
-    macro(ResolveBaseStrictPut, NodeResultJS | NodeMustGenerate | NodeClobbersWorld) \
-    macro(ResolveGlobal, NodeResultJS | NodeMustGenerate | NodeClobbersWorld) \
     \
     /* Nodes for misc operations. */\
     macro(Breakpoint, NodeMustGenerate | NodeClobbersWorld) \
@@ -227,6 +236,7 @@ namespace JSC { namespace DFG {
     macro(ToString, NodeResultJS | NodeMustGenerate | NodeMightClobber) \
     macro(NewStringObject, NodeResultJS) \
     macro(MakeRope, NodeResultJS) \
+    macro(In, NodeResultBoolean | NodeMustGenerate | NodeClobbersWorld) \
     \
     /* Nodes used for activations. Activation support works by having it anchored at */\
     /* epilgoues via TearOffActivation, and all CreateActivation nodes kept alive by */\
@@ -250,14 +260,16 @@ namespace JSC { namespace DFG {
     macro(NewFunction, NodeResultJS) \
     macro(NewFunctionExpression, NodeResultJS) \
     \
-    /* Block terminals. */\
-    macro(Jump, NodeMustGenerate) \
-    macro(Branch, NodeMustGenerate) \
-    macro(Return, NodeMustGenerate) \
+    /* These aren't terminals but always exit */ \
     macro(Throw, NodeMustGenerate) \
     macro(ThrowReferenceError, NodeMustGenerate) \
     \
-    macro(GarbageValue, NodeResultJS | NodeClobbersWorld) \
+    /* Block terminals. */\
+    macro(Jump, NodeMustGenerate) \
+    macro(Branch, NodeMustGenerate) \
+    macro(Switch, NodeMustGenerate) \
+    macro(Return, NodeMustGenerate) \
+    macro(Unreachable, NodeMustGenerate) \
     \
     /* Count execution. */\
     macro(CountExecution, NodeMustGenerate) \
@@ -290,6 +302,24 @@ inline NodeFlags defaultFlags(NodeType op)
     default:
         RELEASE_ASSERT_NOT_REACHED();
         return 0;
+    }
+}
+
+inline bool needsOSRBackwardRewiring(NodeType op)
+{
+    return op == UInt32ToNumber;
+}
+
+inline bool needsOSRForwardRewiring(NodeType op)
+{
+    switch (op) {
+    case Int32ToDouble:
+    case ValueToInt32:
+    case UInt32ToNumber:
+    case DoubleAsInt32:
+        return true;
+    default:
+        return false;
     }
 }
 

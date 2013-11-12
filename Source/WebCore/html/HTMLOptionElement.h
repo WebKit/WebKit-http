@@ -70,23 +70,23 @@ private:
     HTMLOptionElement(const QualifiedName&, Document*);
 
     virtual bool isFocusable() const OVERRIDE;
-    virtual bool rendererIsNeeded(const NodeRenderingContext&) { return false; }
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
-    virtual void detach(const AttachContext& = AttachContext()) OVERRIDE;
+    virtual bool rendererIsNeeded(const RenderStyle&) { return false; }
+    virtual void didAttachRenderers() OVERRIDE;
+    virtual void willDetachRenderers() OVERRIDE;
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void accessKeyAction(bool);
 
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
     // <option> never has a renderer so we manually manage a cached style.
     void updateNonRenderStyle();
     virtual RenderStyle* nonRendererStyle() const OVERRIDE;
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
 
-    void didRecalcStyle(StyleChange) OVERRIDE;
+    void didRecalcStyle(Style::Change) OVERRIDE;
 
     String collectOptionInnerText() const;
 
@@ -94,22 +94,6 @@ private:
     bool m_isSelected;
     RefPtr<RenderStyle> m_style;
 };
-
-inline bool isHTMLOptionElement(Node* node)
-{
-    return node->hasTagName(HTMLNames::optionTag);
-}
-
-inline bool isHTMLOptionElement(Element* element)
-{
-    return element->hasTagName(HTMLNames::optionTag);
-}
-
-inline HTMLOptionElement* toHTMLOptionElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLOptionElement(node));
-    return static_cast<HTMLOptionElement*>(node);
-}
 
 } // namespace
 

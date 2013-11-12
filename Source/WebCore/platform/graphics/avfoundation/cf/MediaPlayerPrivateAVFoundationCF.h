@@ -85,6 +85,7 @@ private:
     virtual float platformMaxTimeLoaded() const;
     virtual void beginLoadingMetadata();
     virtual void sizeChanged();
+    virtual bool requiresImmediateCompositing() const OVERRIDE;
 
     virtual bool hasAvailableVideoFrame() const;
 
@@ -96,6 +97,8 @@ private:
 
     virtual bool hasContextRenderer() const;
     virtual bool hasLayerRenderer() const;
+
+    virtual void updateVideoLayerGravity() OVERRIDE;
 
     virtual void contentsNeedsDisplay();
 

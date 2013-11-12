@@ -44,7 +44,6 @@
 #include "DocumentMarkerController.h"
 #include "Editor.h"
 #include "Element.h"
-#include "ElementShadow.h"
 #include "EventHandler.h"
 #include "ExceptionCode.h"
 #include "FormController.h"
@@ -73,7 +72,6 @@
 #include "MallocStatistics.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
-#include "NodeRenderingContext.h"
 #include "Page.h"
 #include "PrintContext.h"
 #include "PseudoElement.h"
@@ -148,6 +146,11 @@
 
 #if ENABLE(VIBRATION)
 #include "Vibration.h"
+#endif
+
+#if PLATFORM(QT)
+#include "NetworkingContext.h"
+#include <QNetworkAccessManager>
 #endif
 
 namespace WebCore {
@@ -231,14 +234,6 @@ static bool markerTypesFrom(const String& markerType, DocumentMarker::MarkerType
     return true;
 }
 
-static SpellChecker* spellchecker(Document* document)
-{
-    if (!document || !document->frame())
-        return 0;
-
-    return document->frame()->editor().spellChecker();
-}
-
 const char* Internals::internalsId = "internals";
 
 PassRefPtr<Internals> Internals::create(Document* document)
@@ -258,7 +253,7 @@ void Internals::resetToConsistentState(Page* page)
     page->setPagination(Pagination());
 
 #if USE(ACCELERATED_COMPOSITING)
-    FrameView* mainFrameView = page->mainFrame()->view();
+    FrameView* mainFrameView = page->mainFrame().view();
     if (mainFrameView) {
         mainFrameView->setHeaderHeight(0);
         mainFrameView->setFooterHeight(0);
@@ -275,10 +270,17 @@ void Internals::resetToConsistentState(Page* page)
     page->group().captionPreferences()->setCaptionsStyleSheetOverride(emptyString());
     page->group().captionPreferences()->setTestingMode(false);
 #endif
-    if (!page->mainFrame()->editor().isContinuousSpellCheckingEnabled())
-        page->mainFrame()->editor().toggleContinuousSpellChecking();
-    if (page->mainFrame()->editor().isOverwriteModeEnabled())
-        page->mainFrame()->editor().toggleOverwriteModeEnabled();
+    if (!page->mainFrame().editor().isContinuousSpellCheckingEnabled())
+        page->mainFrame().editor().toggleContinuousSpellChecking();
+    if (page->mainFrame().editor().isOverwriteModeEnabled())
+        page->mainFrame().editor().toggleOverwriteModeEnabled();
+
+#if PLATFORM(QT)
+    if (NetworkingContext* context = page->mainFrame().loader().networkingContext()) {
+        if (QNetworkAccessManager* qnam = context->networkAccessManager())
+            qnam->clearAccessCache();
+    }
+#endif
 }
 
 Internals::Internals(Document* document)
@@ -393,12 +395,19 @@ Node* Internals::parentTreeScope(Node* node, ExceptionCode& ec)
     return parentTreeScope ? parentTreeScope->rootNode() : 0;
 }
 
+unsigned Internals::lastSpatialNavigationCandidateCount(ExceptionCode& ec) const
+{
+    if (!contextDocument() || !contextDocument()->page()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    return contextDocument()->page()->lastSpatialNavigationCandidateCount();
+}
+
 unsigned Internals::numberOfActiveAnimations() const
 {
-    Frame* contextFrame = frame();
-    if (AnimationController* controller = contextFrame->animation())
-        return controller->numberOfActiveAnimations(contextFrame->document());
-    return 0;
+    return frame()->animation().numberOfActiveAnimations(frame()->document());
 }
 
 bool Internals::animationsAreSuspended(Document* document, ExceptionCode& ec) const
@@ -408,11 +417,7 @@ bool Internals::animationsAreSuspended(Document* document, ExceptionCode& ec) co
         return false;
     }
 
-    AnimationController* controller = document->frame()->animation();
-    if (!controller)
-        return false;
-
-    return controller->isSuspended();
+    return document->frame()->animation().isSuspended();
 }
 
 void Internals::suspendAnimations(Document* document, ExceptionCode& ec) const
@@ -422,11 +427,7 @@ void Internals::suspendAnimations(Document* document, ExceptionCode& ec) const
         return;
     }
 
-    AnimationController* controller = document->frame()->animation();
-    if (!controller)
-        return;
-
-    controller->suspendAnimations();
+    document->frame()->animation().suspendAnimations();
 }
 
 void Internals::resumeAnimations(Document* document, ExceptionCode& ec) const
@@ -436,11 +437,7 @@ void Internals::resumeAnimations(Document* document, ExceptionCode& ec) const
         return;
     }
 
-    AnimationController* controller = document->frame()->animation();
-    if (!controller)
-        return;
-
-    controller->resumeAnimations();
+    document->frame()->animation().resumeAnimations();
 }
 
 bool Internals::pauseAnimationAtTimeOnElement(const String& animationName, double pauseTime, Element* element, ExceptionCode& ec)
@@ -449,8 +446,7 @@ bool Internals::pauseAnimationAtTimeOnElement(const String& animationName, doubl
         ec = INVALID_ACCESS_ERR;
         return false;
     }
-    AnimationController* controller = frame()->animation();
-    return controller->pauseAnimationAtTime(element->renderer(), AtomicString(animationName), pauseTime);
+    return frame()->animation().pauseAnimationAtTime(element->renderer(), AtomicString(animationName), pauseTime);
 }
 
 bool Internals::pauseAnimationAtTimeOnPseudoElement(const String& animationName, double pauseTime, Element* element, const String& pseudoId, ExceptionCode& ec)
@@ -465,13 +461,13 @@ bool Internals::pauseAnimationAtTimeOnPseudoElement(const String& animationName,
         return false;
     }
 
-    PseudoElement* pseudoElement = element->pseudoElement(pseudoId == "before" ? BEFORE : AFTER);
+    PseudoElement* pseudoElement = pseudoId == "before" ? element->beforePseudoElement() : element->afterPseudoElement();
     if (!pseudoElement) {
         ec = INVALID_ACCESS_ERR;
         return false;
     }
 
-    return frame()->animation()->pauseAnimationAtTime(pseudoElement->renderer(), AtomicString(animationName), pauseTime);
+    return frame()->animation().pauseAnimationAtTime(pseudoElement->renderer(), AtomicString(animationName), pauseTime);
 }
 
 bool Internals::pauseTransitionAtTimeOnElement(const String& propertyName, double pauseTime, Element* element, ExceptionCode& ec)
@@ -480,8 +476,7 @@ bool Internals::pauseTransitionAtTimeOnElement(const String& propertyName, doubl
         ec = INVALID_ACCESS_ERR;
         return false;
     }
-    AnimationController* controller = frame()->animation();
-    return controller->pauseTransitionAtTime(element->renderer(), propertyName, pauseTime);
+    return frame()->animation().pauseTransitionAtTime(element->renderer(), propertyName, pauseTime);
 }
 
 bool Internals::pauseTransitionAtTimeOnPseudoElement(const String& property, double pauseTime, Element* element, const String& pseudoId, ExceptionCode& ec)
@@ -496,13 +491,13 @@ bool Internals::pauseTransitionAtTimeOnPseudoElement(const String& property, dou
         return false;
     }
 
-    PseudoElement* pseudoElement = element->pseudoElement(pseudoId == "before" ? BEFORE : AFTER);
+    PseudoElement* pseudoElement = pseudoId == "before" ? element->beforePseudoElement() : element->afterPseudoElement();
     if (!pseudoElement) {
         ec = INVALID_ACCESS_ERR;
         return false;
     }
 
-    return frame()->animation()->pauseTransitionAtTime(pseudoElement->renderer(), property, pauseTime);
+    return frame()->animation().pauseTransitionAtTime(pseudoElement->renderer(), property, pauseTime);
 }
 
 bool Internals::attached(Node* node, ExceptionCode& ec)
@@ -617,8 +612,8 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::ensureShadowRoot(Eleme
         return 0;
     }
 
-    if (ElementShadow* shadow = host->shadow())
-        return shadow->shadowRoot();
+    if (ShadowRoot* shadowRoot = host->shadowRoot())
+        return shadowRoot;
 
     return host->createShadowRoot(ec).get();
 }
@@ -638,9 +633,7 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::shadowRoot(Element* ho
         ec = INVALID_ACCESS_ERR;
         return 0;
     }
-    if (ElementShadow* shadow = host->shadow())
-        return shadow->shadowRoot();
-    return 0;
+    return host->shadowRoot();
 }
 
 String Internals::shadowRootType(const Node* root, ExceptionCode& ec) const
@@ -661,14 +654,10 @@ String Internals::shadowRootType(const Node* root, ExceptionCode& ec) const
     }
 }
 
-Element* Internals::includerFor(Node* node, ExceptionCode& ec)
+Element* Internals::includerFor(Node*, ExceptionCode& ec)
 {
-    if (!node) {
-        ec = INVALID_ACCESS_ERR;
-        return 0;
-    }
-
-    return NodeRenderingContext(node).insertionPoint();
+    ec = INVALID_ACCESS_ERR;
+    return 0;
 }
 
 String Internals::shadowPseudoId(Element* element, ExceptionCode& ec)
@@ -715,12 +704,12 @@ void Internals::selectColorInColorChooser(Element* element, const String& colorV
 
 Vector<String> Internals::formControlStateOfPreviousHistoryItem(ExceptionCode& ec)
 {
-    HistoryItem* mainItem = frame()->loader()->history()->previousItem();
+    HistoryItem* mainItem = frame()->loader().history().previousItem();
     if (!mainItem) {
         ec = INVALID_ACCESS_ERR;
         return Vector<String>();
     }
-    String uniqueName = frame()->tree()->uniqueName();
+    String uniqueName = frame()->tree().uniqueName();
     if (mainItem->target() != uniqueName && !mainItem->childItemWithTarget(uniqueName)) {
         ec = INVALID_ACCESS_ERR;
         return Vector<String>();
@@ -730,12 +719,12 @@ Vector<String> Internals::formControlStateOfPreviousHistoryItem(ExceptionCode& e
 
 void Internals::setFormControlStateOfPreviousHistoryItem(const Vector<String>& state, ExceptionCode& ec)
 {
-    HistoryItem* mainItem = frame()->loader()->history()->previousItem();
+    HistoryItem* mainItem = frame()->loader().history().previousItem();
     if (!mainItem) {
         ec = INVALID_ACCESS_ERR;
         return;
     }
-    String uniqueName = frame()->tree()->uniqueName();
+    String uniqueName = frame()->tree().uniqueName();
     if (mainItem->target() == uniqueName)
         mainItem->setDocumentState(state);
     else if (HistoryItem* subItem = mainItem->childItemWithTarget(uniqueName))
@@ -761,12 +750,12 @@ void Internals::enableMockSpeechSynthesizer()
 PassRefPtr<ClientRect> Internals::absoluteCaretBounds(ExceptionCode& ec)
 {
     Document* document = contextDocument();
-    if (!document || !document->frame() || !document->frame()->selection()) {
+    if (!document || !document->frame()) {
         ec = INVALID_ACCESS_ERR;
         return ClientRect::create();
     }
 
-    return ClientRect::create(document->frame()->selection()->absoluteCaretBounds());
+    return ClientRect::create(document->frame()->selection().absoluteCaretBounds());
 }
 
 PassRefPtr<ClientRect> Internals::boundingBox(Element* element, ExceptionCode& ec)
@@ -776,7 +765,7 @@ PassRefPtr<ClientRect> Internals::boundingBox(Element* element, ExceptionCode& e
         return ClientRect::create();
     }
 
-    element->document()->updateLayoutIgnorePendingStylesheets();
+    element->document().updateLayoutIgnorePendingStylesheets();
     RenderObject* renderer = element->renderer();
     if (!renderer)
         return ClientRect::create();
@@ -814,7 +803,7 @@ unsigned Internals::markerCountForNode(Node* node, const String& markerType, Exc
         return 0;
     }
 
-    return node->document()->markers()->markersFor(node, markerTypes).size();
+    return node->document().markers().markersFor(node, markerTypes).size();
 }
 
 DocumentMarker* Internals::markerAt(Node* node, const String& markerType, unsigned index, ExceptionCode& ec)
@@ -830,7 +819,7 @@ DocumentMarker* Internals::markerAt(Node* node, const String& markerType, unsign
         return 0;
     }
 
-    Vector<DocumentMarker*> markers = node->document()->markers()->markersFor(node, markerTypes);
+    Vector<DocumentMarker*> markers = node->document().markers().markersFor(node, markerTypes);
     if (markers.size() <= index)
         return 0;
     return markers[index];
@@ -841,7 +830,7 @@ PassRefPtr<Range> Internals::markerRangeForNode(Node* node, const String& marker
     DocumentMarker* marker = markerAt(node, markerType, index, ec);
     if (!marker)
         return 0;
-    return Range::create(node->document(), node, marker->startOffset(), node, marker->endOffset());
+    return Range::create(&node->document(), node, marker->startOffset(), node, marker->endOffset());
 }
 
 String Internals::markerDescriptionForNode(Node* node, const String& markerType, unsigned index, ExceptionCode& ec)
@@ -854,8 +843,8 @@ String Internals::markerDescriptionForNode(Node* node, const String& markerType,
 
 void Internals::addTextMatchMarker(const Range* range, bool isActive)
 {
-    range->ownerDocument()->updateLayoutIgnorePendingStylesheets();
-    range->ownerDocument()->markers()->addTextMatchMarker(range, isActive);
+    range->ownerDocument().updateLayoutIgnorePendingStylesheets();
+    range->ownerDocument().markers().addTextMatchMarker(range, isActive);
 }
 
 void Internals::setScrollViewPosition(Document* document, long x, long y, ExceptionCode& ec)
@@ -1015,11 +1004,11 @@ void Internals::setAutofilled(Element* element, bool enabled, ExceptionCode& ec)
 
 void Internals::scrollElementToRect(Element* element, long x, long y, long w, long h, ExceptionCode& ec)
 {
-    if (!element || !element->document() || !element->document()->view()) {
+    if (!element || !element->document().view()) {
         ec = INVALID_ACCESS_ERR;
         return;
     }
-    FrameView* frameView = element->document()->view();
+    FrameView* frameView = element->document().view();
     frameView->scrollElementToRect(element, IntRect(x, y, w, h));
 }
 
@@ -1083,7 +1072,7 @@ String Internals::rangeAsText(const Range* range, ExceptionCode& ec)
 void Internals::setDelegatesScrolling(bool enabled, Document* document, ExceptionCode& ec)
 {
     // Delegate scrolling is valid only on mainframe's view.
-    if (!document || !document->view() || !document->page() || document->page()->mainFrame() != document->frame()) {
+    if (!document || !document->view() || !document->page() || &document->page()->mainFrame() != document->frame()) {
         ec = INVALID_ACCESS_ERR;
         return;
     }
@@ -1105,7 +1094,7 @@ PassRefPtr<WebKitPoint> Internals::touchPositionAdjustedToBestClickableNode(long
     Node* targetNode;
     IntPoint adjustedPoint;
 
-    bool foundNode = document->frame()->eventHandler()->bestClickableNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    bool foundNode = document->frame()->eventHandler().bestClickableNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
     if (foundNode)
         return WebKitPoint::create(adjustedPoint.x(), adjustedPoint.y());
 
@@ -1124,7 +1113,7 @@ Node* Internals::touchNodeAdjustedToBestClickableNode(long x, long y, long width
 
     Node* targetNode;
     IntPoint adjustedPoint;
-    document->frame()->eventHandler()->bestClickableNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    document->frame()->eventHandler().bestClickableNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
     return targetNode;
 }
 
@@ -1141,7 +1130,7 @@ PassRefPtr<WebKitPoint> Internals::touchPositionAdjustedToBestContextMenuNode(lo
     Node* targetNode = 0;
     IntPoint adjustedPoint;
 
-    bool foundNode = document->frame()->eventHandler()->bestContextMenuNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    bool foundNode = document->frame()->eventHandler().bestContextMenuNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
     if (foundNode)
         return WebKitPoint::create(adjustedPoint.x(), adjustedPoint.y());
 
@@ -1160,7 +1149,7 @@ Node* Internals::touchNodeAdjustedToBestContextMenuNode(long x, long y, long wid
 
     Node* targetNode = 0;
     IntPoint adjustedPoint;
-    document->frame()->eventHandler()->bestContextMenuNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    document->frame()->eventHandler().bestContextMenuNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
     return targetNode;
 }
 
@@ -1176,7 +1165,7 @@ PassRefPtr<ClientRect> Internals::bestZoomableAreaForTouchPoint(long x, long y, 
 
     Node* targetNode;
     IntRect zoomableArea;
-    bool foundNode = document->frame()->eventHandler()->bestZoomableAreaForTouchPoint(point, radius, zoomableArea, targetNode);
+    bool foundNode = document->frame()->eventHandler().bestZoomableAreaForTouchPoint(point, radius, zoomableArea, targetNode);
     if (foundNode)
         return ClientRect::create(zoomableArea);
 
@@ -1187,26 +1176,22 @@ PassRefPtr<ClientRect> Internals::bestZoomableAreaForTouchPoint(long x, long y, 
 
 int Internals::lastSpellCheckRequestSequence(Document* document, ExceptionCode& ec)
 {
-    SpellChecker* checker = spellchecker(document);
-
-    if (!checker) {
+    if (!document || !document->frame()) {
         ec = INVALID_ACCESS_ERR;
         return -1;
     }
 
-    return checker->lastRequestSequence();
+    return document->frame()->editor().spellChecker().lastRequestSequence();
 }
 
 int Internals::lastSpellCheckProcessedSequence(Document* document, ExceptionCode& ec)
 {
-    SpellChecker* checker = spellchecker(document);
-
-    if (!checker) {
+    if (!document || !document->frame()) {
         ec = INVALID_ACCESS_ERR;
         return -1;
     }
 
-    return checker->lastProcessedSequence();
+    return document->frame()->editor().spellChecker().lastProcessedSequence();
 }
 
 Vector<String> Internals::userPreferredLanguages() const
@@ -1522,7 +1507,7 @@ PassRefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
     Page* page = contextDocument()->frame()->page();
     ASSERT(page);
 
-    DOMWindow* window = page->mainFrame()->document()->domWindow();
+    DOMWindow* window = page->mainFrame().document()->domWindow();
     ASSERT(window);
 
     m_frontendWindow = window->open(url, "", "", window, window);
@@ -1593,7 +1578,7 @@ unsigned Internals::numberOfScrollableAreas(Document* document, ExceptionCode&)
     if (frame->view()->scrollableAreas())
         count += frame->view()->scrollableAreas()->size();
 
-    for (Frame* child = frame->tree()->firstChild(); child; child = child->tree()->nextSibling()) {
+    for (Frame* child = frame->tree().firstChild(); child; child = child->tree().nextSibling()) {
         if (child->view() && child->view()->scrollableAreas())
             count += child->view()->scrollableAreas()->size();
     }
@@ -1632,6 +1617,8 @@ String Internals::layerTreeAsText(Document* document, unsigned flags, ExceptionC
         layerTreeFlags |= LayerTreeFlagsIncludeRepaintRects;
     if (flags & LAYER_TREE_INCLUDES_PAINTING_PHASES)
         layerTreeFlags |= LayerTreeFlagsIncludePaintingPhases;
+    if (flags & LAYER_TREE_INCLUDES_CONTENT_LAYERS)
+        layerTreeFlags |= LayerTreeFlagsIncludeContentLayers;
 
     return document->frame()->layerTreeAsText(layerTreeFlags);
 }
@@ -1876,8 +1863,8 @@ PassRefPtr<MemoryInfo> Internals::memoryInfo() const
 
 Vector<String> Internals::getReferencedFilePaths() const
 {
-    frame()->loader()->history()->saveDocumentAndScrollState();
-    return FormController::getReferencedFilePaths(frame()->loader()->history()->currentItem()->documentState());
+    frame()->loader().history().saveDocumentAndScrollState();
+    return FormController::getReferencedFilePaths(frame()->loader().history().currentItem()->documentState());
 }
 
 void Internals::startTrackingRepaints(Document* document, ExceptionCode& ec)
@@ -1964,7 +1951,7 @@ String Internals::getCurrentCursorInfo(Document* document, ExceptionCode& ec)
         return String();
     }
 
-    Cursor cursor = document->frame()->eventHandler()->currentMouseCursor();
+    Cursor cursor = document->frame()->eventHandler().currentMouseCursor();
 
 #if USE(LAZY_NATIVE_CURSOR)
     StringBuilder result;
@@ -2014,13 +2001,13 @@ void Internals::setUsesOverlayScrollbars(bool enabled)
 
 void Internals::forceReload(bool endToEnd)
 {
-    frame()->loader()->reload(endToEnd);
+    frame()->loader().reload(endToEnd);
 }
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 void Internals::initializeMockCDM()
 {
-    CDM::registerCDMFactory(MockCDM::create, MockCDM::supportsKeySytem);
+    CDM::registerCDMFactory(MockCDM::create, MockCDM::supportsKeySystem, MockCDM::supportsKeySystemAndMimeType);
 }
 #endif
 
@@ -2158,12 +2145,12 @@ double Internals::closestTimeToTimeRanges(double time, TimeRanges* ranges)
 PassRefPtr<ClientRect> Internals::selectionBounds(ExceptionCode& ec)
 {
     Document* document = contextDocument();
-    if (!document || !document->frame() || !document->frame()->selection()) {
+    if (!document || !document->frame()) {
         ec = INVALID_ACCESS_ERR;
         return ClientRect::create();
     }
 
-    return ClientRect::create(document->frame()->selection()->bounds());
+    return ClientRect::create(document->frame()->selection().bounds());
 }
 
 #if ENABLE(VIBRATION)

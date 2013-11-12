@@ -25,6 +25,7 @@
 #ifndef RenderTableCell_h
 #define RenderTableCell_h
 
+#include "RenderBlockFlow.h"
 #include "RenderTableRow.h"
 #include "RenderTableSection.h"
 
@@ -35,7 +36,7 @@ static const unsigned maxColumnIndex = 0x1FFFFFFE; // 536,870,910
 
 enum IncludeBorderColorOrNot { DoNotIncludeBorderColor, IncludeBorderColor };
 
-class RenderTableCell : public RenderBlock {
+class RenderTableCell FINAL : public RenderBlockFlow {
 public:
     explicit RenderTableCell(Element*);
     
@@ -94,10 +95,10 @@ public:
     {
         // FIXME: This function does too much work, and is very hot during table layout!
         int adjustedLogicalHeight = pixelSnappedLogicalHeight() - (intrinsicPaddingBefore() + intrinsicPaddingAfter());
-        int styleLogicalHeight = valueForLength(style()->logicalHeight(), 0, view());
+        int styleLogicalHeight = valueForLength(style()->logicalHeight(), 0, &view());
         // In strict mode, box-sizing: content-box do the right thing and actually add in the border and padding.
         // Call computedCSSPadding* directly to avoid including implicitPadding.
-        if (!document()->inQuirksMode() && style()->boxSizing() != BORDER_BOX)
+        if (!document().inQuirksMode() && style()->boxSizing() != BORDER_BOX)
             styleLogicalHeight += (computedCSSPaddingBefore() + computedCSSPaddingAfter()).floor() + borderBefore() + borderAfter();
         return max(styleLogicalHeight, adjustedLogicalHeight);
     }
@@ -121,6 +122,8 @@ public:
 
     virtual void paint(PaintInfo&, const LayoutPoint&);
 
+    bool alignLeftRightBorderPaintRect(int& leftXOffset, int& rightXOffset);
+    bool alignTopBottomBorderPaintRect(int& topYOffset, int& bottomYOffset);
     void paintCollapsedBorders(PaintInfo&, const LayoutPoint&);
     void paintBackgroundsBehindCell(PaintInfo&, const LayoutPoint&, RenderObject* backgroundObject);
 
@@ -263,6 +266,11 @@ private:
     CollapsedBorderValue computeCollapsedEndBorder(IncludeBorderColorOrNot = IncludeBorderColor) const;
     CollapsedBorderValue computeCollapsedBeforeBorder(IncludeBorderColorOrNot = IncludeBorderColor) const;
     CollapsedBorderValue computeCollapsedAfterBorder(IncludeBorderColorOrNot = IncludeBorderColor) const;
+
+    RenderTableCell* cellAtLeft(const RenderStyle*) const;
+    RenderTableCell* cellAtRight(const RenderStyle*) const;
+    RenderTableCell* cellAtTop(const RenderStyle*) const;
+    RenderTableCell* cellAtBottom(const RenderStyle*) const;
 
     Length logicalWidthFromColumns(RenderTableCol* firstColForThisCell, Length widthFromStyle) const;
 

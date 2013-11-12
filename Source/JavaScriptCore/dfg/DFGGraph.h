@@ -36,8 +36,10 @@
 #include "DFGBasicBlock.h"
 #include "DFGDominators.h"
 #include "DFGLongLivedState.h"
+#include "DFGNaturalLoops.h"
 #include "DFGNode.h"
 #include "DFGNodeAllocator.h"
+#include "DFGPlan.h"
 #include "DFGVariadicFunction.h"
 #include "JSStack.h"
 #include "MethodOfGettingAValueProfile.h"
@@ -54,25 +56,8 @@ class ExecState;
 namespace DFG {
 
 struct StorageAccessData {
-    size_t offset;
+    PropertyOffset offset;
     unsigned identifierNumber;
-};
-
-struct ResolveGlobalData {
-    unsigned identifierNumber;
-    ResolveOperations* resolveOperations;
-    PutToBaseOperation* putToBaseOperation;
-    unsigned resolvePropertyIndex;
-};
-
-struct ResolveOperationData {
-    unsigned identifierNumber;
-    ResolveOperations* resolveOperations;
-    PutToBaseOperation* putToBaseOperation;
-};
-
-struct PutToBaseOperationData {
-    PutToBaseOperation* putToBaseOperation;
 };
 
 enum AddSpeculationMode {
@@ -81,7 +66,6 @@ enum AddSpeculationMode {
     SpeculateInteger
 };
 
-
 //
 // === Graph ===
 //
@@ -89,7 +73,7 @@ enum AddSpeculationMode {
 // Nodes that are 'dead' remain in the vector with refCount 0.
 class Graph {
 public:
-    Graph(VM&, CodeBlock*, unsigned osrEntryBytecodeIndex, const Operands<JSValue>& mustHandleValues);
+    Graph(VM&, Plan&, LongLivedState&);
     ~Graph();
     
     void changeChild(Edge& edge, Node* newNode)
@@ -116,16 +100,6 @@ public:
         changeEdge(edge, newEdge);
     }
     
-    void clearAndDerefChild(Node* node, unsigned index)
-    {
-        if (!node->children.child(index))
-            return;
-        node->children.setChild(index, Edge());
-    }
-    void clearAndDerefChild1(Node* node) { clearAndDerefChild(node, 0); }
-    void clearAndDerefChild2(Node* node) { clearAndDerefChild(node, 1); }
-    void clearAndDerefChild3(Node* node) { clearAndDerefChild(node, 2); }
-    
     void performSubstitution(Node* node)
     {
         if (node->flags() & NodeHasVarArgs) {
@@ -145,7 +119,7 @@ public:
             return;
         
         // Check if there is any replacement.
-        Node* replacement = child->replacement;
+        Node* replacement = child->misc.replacement;
         if (!replacement)
             return;
         
@@ -153,7 +127,7 @@ public:
         
         // There is definitely a replacement. Assert that the replacement does not
         // have a replacement.
-        ASSERT(!child->replacement);
+        ASSERT(!child->misc.replacement);
     }
     
 #define DFG_DEFINE_ADD_NODE(templatePre, templatePost, typeParams, valueParamsComma, valueParams, valueArgs) \
@@ -173,29 +147,43 @@ public:
         if (node->op() == GetLocal)
             dethread();
         else
-            ASSERT(!node->hasVariableAccessData());
+            ASSERT(!node->hasVariableAccessData(*this));
         node->convertToConstant(constantNumber);
+    }
+    
+    unsigned constantRegisterForConstant(JSValue value)
+    {
+        unsigned constantRegister;
+        if (!m_codeBlock->findConstant(value, constantRegister)) {
+            constantRegister = m_codeBlock->addConstantLazily();
+            initializeLazyWriteBarrierForConstant(
+                m_plan.writeBarriers,
+                m_codeBlock->constants()[constantRegister],
+                m_codeBlock,
+                constantRegister,
+                m_codeBlock->ownerExecutable(),
+                value);
+        }
+        return constantRegister;
     }
     
     void convertToConstant(Node* node, JSValue value)
     {
-        convertToConstant(node, m_codeBlock->addOrFindConstant(value));
+        convertToConstant(node, constantRegisterForConstant(value));
     }
 
     // CodeBlock is optional, but may allow additional information to be dumped (e.g. Identifier names).
-    void dump(PrintStream& = WTF::dataFile());
+    void dump(PrintStream& = WTF::dataFile(), DumpContext* = 0);
     enum PhiNodeDumpMode { DumpLivePhisOnly, DumpAllPhis };
-    void dumpBlockHeader(PrintStream&, const char* prefix, BlockIndex, PhiNodeDumpMode);
+    void dumpBlockHeader(PrintStream&, const char* prefix, BasicBlock*, PhiNodeDumpMode, DumpContext* context);
     void dump(PrintStream&, Edge);
-    void dump(PrintStream&, const char* prefix, Node*);
+    void dump(PrintStream&, const char* prefix, Node*, DumpContext* = 0);
     static int amountOfNodeWhiteSpace(Node*);
     static void printNodeWhiteSpace(PrintStream&, Node*);
 
     // Dump the code origin of the given node as a diff from the code origin of the
     // preceding node. Returns true if anything was printed.
-    bool dumpCodeOrigin(PrintStream&, const char* prefix, Node* previousNode, Node* currentNode);
-
-    BlockIndex blockIndexForBytecodeOffset(Vector<BlockIndex>& blocks, unsigned bytecodeBegin);
+    bool dumpCodeOrigin(PrintStream&, const char* prefix, Node* previousNode, Node* currentNode, DumpContext* context);
 
     SpeculatedType getJSConstantSpeculation(Node* node)
     {
@@ -304,7 +292,7 @@ public:
         if (!value.isCell() || !value)
             return false;
         JSCell* cell = value.asCell();
-        if (!cell->inherits(&InternalFunction::s_info))
+        if (!cell->inherits(InternalFunction::info()))
             return false;
         return true;
     }
@@ -355,10 +343,10 @@ public:
     JSObject* globalThisObjectFor(CodeOrigin codeOrigin)
     {
         JSGlobalObject* object = globalObjectFor(codeOrigin);
-        return object->methodTable()->toThisObject(object, 0);
+        return jsCast<JSObject*>(object->methodTable()->toThis(object, object->globalExec(), NotStrictMode));
     }
     
-    ExecutableBase* executableFor(InlineCallFrame* inlineCallFrame)
+    ScriptExecutable* executableFor(InlineCallFrame* inlineCallFrame)
     {
         if (!inlineCallFrame)
             return m_codeBlock->ownerExecutable();
@@ -366,7 +354,7 @@ public:
         return inlineCallFrame->executable.get();
     }
     
-    ExecutableBase* executableFor(const CodeOrigin& codeOrigin)
+    ScriptExecutable* executableFor(const CodeOrigin& codeOrigin)
     {
         return executableFor(codeOrigin.inlineCallFrame);
     }
@@ -374,6 +362,12 @@ public:
     CodeBlock* baselineCodeBlockFor(const CodeOrigin& codeOrigin)
     {
         return baselineCodeBlockForOriginAndBaselineCodeBlock(codeOrigin, m_profiledBlock);
+    }
+    
+    bool masqueradesAsUndefinedWatchpointIsStillValid(const CodeOrigin& codeOrigin)
+    {
+        return m_plan.watchpoints.isStillValid(
+            globalObjectFor(codeOrigin)->masqueradesAsUndefinedWatchpoint());
     }
     
     bool hasGlobalExitSite(const CodeOrigin& codeOrigin, ExitKind exitKind)
@@ -428,7 +422,12 @@ public:
         
         CodeBlock* profiledBlock = baselineCodeBlockFor(node->codeOrigin);
         
-        if (node->hasLocal()) {
+        if (node->op() == GetArgument)
+            return profiledBlock->valueProfileForArgument(operandToArgument(node->local()));
+        
+        if (node->hasLocal(*this)) {
+            if (m_form == SSA)
+                return 0;
             if (!operandIsArgument(node->local()))
                 return 0;
             int argument = operandToArgument(node->local());
@@ -438,7 +437,7 @@ public:
         }
         
         if (node->hasHeapPrediction())
-            return profiledBlock->valueProfileForBytecodeOffset(node->codeOrigin.bytecodeIndexForValueProfile());
+            return profiledBlock->valueProfileForBytecodeOffset(node->codeOrigin.bytecodeIndex);
         
         return 0;
     }
@@ -470,18 +469,29 @@ public:
         return m_codeBlock->usesArguments();
     }
     
-    unsigned numSuccessors(BasicBlock* block)
+    BlockIndex numBlocks() const { return m_blocks.size(); }
+    BasicBlock* block(BlockIndex blockIndex) const { return m_blocks[blockIndex].get(); }
+    BasicBlock* lastBlock() const { return block(numBlocks() - 1); }
+
+    void appendBlock(PassRefPtr<BasicBlock> basicBlock)
     {
-        return block->last()->numSuccessors();
+        basicBlock->index = m_blocks.size();
+        m_blocks.append(basicBlock);
     }
-    BlockIndex successor(BasicBlock* block, unsigned index)
+    
+    void killBlock(BlockIndex blockIndex)
     {
-        return block->last()->successor(index);
+        m_blocks[blockIndex].clear();
     }
-    BlockIndex successorForCondition(BasicBlock* block, bool condition)
+    
+    void killBlock(BasicBlock* basicBlock)
     {
-        return block->last()->successorForCondition(condition);
+        killBlock(basicBlock->index);
     }
+    
+    void killBlockAndItsContents(BasicBlock*);
+    
+    void killUnreachableBlocks();
     
     bool isPredictedNumerical(Node* node)
     {
@@ -507,7 +517,7 @@ public:
         case Array::SlowPutArrayStorage:
             return !node->arrayMode().mayStoreToHole();
         case Array::String:
-            return node->op() == GetByVal;
+            return node->op() == GetByVal && node->arrayMode().isInBounds();
 #if USE(JSVALUE32_64)
         case Array::Arguments:
             if (node->op() == GetByVal)
@@ -657,68 +667,46 @@ public:
     // any GetLocals in the basic block.
     // FIXME: it may be appropriate, in the future, to generalize this to handle GetLocals
     // introduced anywhere in the basic block.
-    void substituteGetLocal(BasicBlock& block, unsigned startIndexInBlock, VariableAccessData* variableAccessData, Node* newGetLocal)
-    {
-        if (variableAccessData->isCaptured()) {
-            // Let CSE worry about this one.
-            return;
-        }
-        for (unsigned indexInBlock = startIndexInBlock; indexInBlock < block.size(); ++indexInBlock) {
-            Node* node = block[indexInBlock];
-            bool shouldContinue = true;
-            switch (node->op()) {
-            case SetLocal: {
-                if (node->local() == variableAccessData->local())
-                    shouldContinue = false;
-                break;
-            }
-                
-            case GetLocal: {
-                if (node->variableAccessData() != variableAccessData)
-                    continue;
-                substitute(block, indexInBlock, node, newGetLocal);
-                Node* oldTailNode = block.variablesAtTail.operand(variableAccessData->local());
-                if (oldTailNode == node)
-                    block.variablesAtTail.operand(variableAccessData->local()) = newGetLocal;
-                shouldContinue = false;
-                break;
-            }
-                
-            default:
-                break;
-            }
-            if (!shouldContinue)
-                break;
-        }
-    }
+    void substituteGetLocal(BasicBlock& block, unsigned startIndexInBlock, VariableAccessData* variableAccessData, Node* newGetLocal);
+    
+    void invalidateCFG();
+    
+    void clearReplacements();
+    void initializeNodeOwners();
+    
+    void getBlocksInDepthFirstOrder(Vector<BasicBlock*>& result);
+    
+    Profiler::Compilation* compilation() { return m_plan.compilation.get(); }
+    
+    DesiredIdentifiers& identifiers() { return m_plan.identifiers; }
+    DesiredWatchpoints& watchpoints() { return m_plan.watchpoints; }
+    DesiredStructureChains& chains() { return m_plan.chains; }
     
     VM& m_vm;
+    Plan& m_plan;
     CodeBlock* m_codeBlock;
-    RefPtr<Profiler::Compilation> m_compilation;
     CodeBlock* m_profiledBlock;
     
     NodeAllocator& m_allocator;
 
-    Vector< OwnPtr<BasicBlock> , 8> m_blocks;
+    Vector< RefPtr<BasicBlock> , 8> m_blocks;
     Vector<Edge, 16> m_varArgChildren;
     Vector<StorageAccessData> m_storageAccessData;
-    Vector<ResolveGlobalData> m_resolveGlobalData;
-    Vector<ResolveOperationData> m_resolveOperationsData;
-    Vector<PutToBaseOperationData> m_putToBaseOperationData;
     Vector<Node*, 8> m_arguments;
     SegmentedVector<VariableAccessData, 16> m_variableAccessData;
     SegmentedVector<ArgumentPosition, 8> m_argumentPositions;
     SegmentedVector<StructureSet, 16> m_structureSet;
     SegmentedVector<StructureTransitionData, 8> m_structureTransitionData;
     SegmentedVector<NewArrayBufferData, 4> m_newArrayBufferData;
+    SegmentedVector<SwitchData, 4> m_switchData;
     bool m_hasArguments;
     HashSet<ExecutableBase*> m_executablesWhoseArgumentsEscaped;
     BitVector m_preservedVars;
+    BitVector m_lazyVars;
     Dominators m_dominators;
+    NaturalLoops m_naturalLoops;
     unsigned m_localVars;
     unsigned m_parameterSlots;
-    unsigned m_osrEntryBytecodeIndex;
-    Operands<JSValue> m_mustHandleValues;
     
     OptimizationFixpointState m_fixpointState;
     GraphForm m_form;
@@ -726,7 +714,8 @@ public:
     RefCountState m_refCountState;
 private:
     
-    void handleSuccessor(Vector<BlockIndex, 16>& worklist, BlockIndex blockIndex, BlockIndex successorIndex);
+    void handleSuccessor(Vector<BasicBlock*, 16>& worklist, BasicBlock*, BasicBlock* successor);
+    void addForDepthFirstSort(Vector<BasicBlock*>& result, Vector<BasicBlock*, 16>& worklist, HashSet<BasicBlock*>& seen, BasicBlock*);
     
     AddSpeculationMode addImmediateShouldSpeculateInteger(Node* add, bool variableShouldSpeculateInteger, Node* immediate)
     {
@@ -774,27 +763,6 @@ private:
         return mul->canSpeculateInteger();
     }
 };
-
-class GetBytecodeBeginForBlock {
-public:
-    GetBytecodeBeginForBlock(Graph& graph)
-        : m_graph(graph)
-    {
-    }
-    
-    unsigned operator()(BlockIndex* blockIndex) const
-    {
-        return m_graph.m_blocks[*blockIndex]->bytecodeBegin;
-    }
-
-private:
-    Graph& m_graph;
-};
-
-inline BlockIndex Graph::blockIndexForBytecodeOffset(Vector<BlockIndex>& linkingTargets, unsigned bytecodeBegin)
-{
-    return *binarySearch<BlockIndex, unsigned>(linkingTargets, linkingTargets.size(), bytecodeBegin, GetBytecodeBeginForBlock(*this));
-}
 
 #define DFG_NODE_DO_TO_CHILDREN(graph, node, thingToDo) do {            \
         Node* _node = (node);                                           \

@@ -38,12 +38,13 @@
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceContainer.h"
 #include "RenderView.h"
+#include "SVGElement.h"
+#include "SVGImage.h"
 #include "SVGLength.h"
 #include "SVGRenderingContext.h"
 #include "SVGResources.h"
 #include "SVGResourcesCache.h"
 #include "SVGSVGElement.h"
-#include "SVGStyledElement.h"
 #include "SVGViewSpec.h"
 #include "TransformState.h"
 #include <wtf/StackStats.h>
@@ -56,7 +57,7 @@ using namespace std;
 
 namespace WebCore {
 
-RenderSVGRoot::RenderSVGRoot(SVGStyledElement* node)
+RenderSVGRoot::RenderSVGRoot(SVGElement* node)
     : RenderReplaced(node)
     , m_objectBoundingBoxValid(false)
     , m_isLayoutSizeChanged(false)
@@ -124,20 +125,7 @@ bool RenderSVGRoot::isEmbeddedThroughSVGImage() const
 {
     if (!node())
         return false;
-
-    Frame* frame = node()->document()->frame();
-    if (!frame)
-        return false;
-
-    // Test whether we're embedded through an img.
-    if (!frame->page())
-        return false;
-
-    ChromeClient* chromeClient = frame->page()->chrome().client();
-    if (!chromeClient || !chromeClient->isSVGImageChromeClient())
-        return false;
-
-    return true;
+    return isInSVGImage(toSVGSVGElement(node()));
 }
 
 bool RenderSVGRoot::isEmbeddedThroughFrameContainingSVGDocument() const
@@ -145,15 +133,11 @@ bool RenderSVGRoot::isEmbeddedThroughFrameContainingSVGDocument() const
     if (!node())
         return false;
 
-    Frame* frame = node()->document()->frame();
-    if (!frame)
-        return false;
-
     // If our frame has an owner renderer, we're embedded through eg. object/embed/iframe,
     // but we only negotiate if we're in an SVG document.
-    if (!frame->ownerRenderer())
+    if (!frame().ownerRenderer())
         return false;
-    return frame->document()->isSVGDocument();
+    return frame().document()->isSVGDocument();
 }
 
 static inline LayoutUnit resolveLengthAttributeForSVG(const Length& length, float scale, float maxSize, RenderView* renderView)
@@ -174,11 +158,11 @@ LayoutUnit RenderSVGRoot::computeReplacedLogicalWidth(ShouldComputePreferred sho
         return RenderReplaced::computeReplacedLogicalWidth(shouldComputePreferred);
 
     if (svg->widthAttributeEstablishesViewport())
-        return resolveLengthAttributeForSVG(svg->intrinsicWidth(SVGSVGElement::IgnoreCSSProperties), style()->effectiveZoom(), containingBlock()->availableLogicalWidth(), view());
+        return resolveLengthAttributeForSVG(svg->intrinsicWidth(SVGSVGElement::IgnoreCSSProperties), style()->effectiveZoom(), containingBlock()->availableLogicalWidth(), &view());
 
     // SVG embedded through object/embed/iframe.
     if (isEmbeddedThroughFrameContainingSVGDocument())
-        return document()->frame()->ownerRenderer()->availableLogicalWidth();
+        return frame().ownerRenderer()->availableLogicalWidth();
 
     // SVG embedded via SVGImage (background-image/border-image/etc) / Inline SVG.
     return RenderReplaced::computeReplacedLogicalWidth(shouldComputePreferred);
@@ -208,12 +192,12 @@ LayoutUnit RenderSVGRoot::computeReplacedLogicalHeight() const
         } else
             RenderBlock::removePercentHeightDescendant(const_cast<RenderSVGRoot*>(this));
 
-        return resolveLengthAttributeForSVG(height, style()->effectiveZoom(), containingBlock()->availableLogicalHeight(IncludeMarginBorderPadding), view());
+        return resolveLengthAttributeForSVG(height, style()->effectiveZoom(), containingBlock()->availableLogicalHeight(IncludeMarginBorderPadding), &view());
     }
 
     // SVG embedded through object/embed/iframe.
     if (isEmbeddedThroughFrameContainingSVGDocument())
-        return document()->frame()->ownerRenderer()->availableLogicalHeight(IncludeMarginBorderPadding);
+        return frame().ownerRenderer()->availableLogicalHeight(IncludeMarginBorderPadding);
 
     // SVG embedded via SVGImage (background-image/border-image/etc) / Inline SVG.
     return RenderReplaced::computeReplacedLogicalHeight();
@@ -227,7 +211,7 @@ void RenderSVGRoot::layout()
     m_resourcesNeedingToInvalidateClients.clear();
 
     // Arbitrary affine transforms are incompatible with LayoutState.
-    LayoutStateDisabler layoutStateDisabler(view());
+    LayoutStateDisabler layoutStateDisabler(&view());
 
     bool needsLayout = selfNeedsLayout();
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout() && needsLayout);
@@ -283,9 +267,7 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
     if (svg->hasEmptyViewBox())
         return;
 
-    Page* page = 0;
-    if (Frame* frame = this->frame())
-        page = frame->page();
+    Page* page = frame().page();
 
     // Don't paint if we don't have kids, except if we have filters we should paint those.
     if (!firstChild()) {

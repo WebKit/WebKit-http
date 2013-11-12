@@ -40,9 +40,6 @@ struct Instruction;
 
 namespace LLInt {
 
-// Throw the currently active exception in the context of the caller's call frame.
-void interpreterThrowInCaller(ExecState* callerFrame, ReturnAddressPtr);
-
 // Tells you where to jump to if you want to return-to-throw, after you've already
 // set up all information needed to throw the exception.
 Instruction* returnToThrowForThrownException(ExecState*);

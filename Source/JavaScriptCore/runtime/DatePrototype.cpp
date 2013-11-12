@@ -341,7 +341,7 @@ static JSCell* formatLocaleDate(ExecState* exec, DateInstance* dateObject, doubl
 static EncodedJSValue formateDateInstance(ExecState* exec, DateTimeFormat format, bool asUTCVariant)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue);
@@ -509,19 +509,14 @@ DatePrototype::DatePrototype(ExecState* exec, Structure* structure)
 void DatePrototype::finishCreation(ExecState* exec, JSGlobalObject*)
 {
     Base::finishCreation(exec->vm());
-    ASSERT(inherits(&s_info));
+    ASSERT(inherits(info()));
 
     // The constructor will be added later, after DateConstructor has been built.
 }
 
-bool DatePrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+bool DatePrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
-    return getStaticFunctionSlot<JSObject>(exec, ExecState::dateTable(exec), jsCast<DatePrototype*>(cell), propertyName, slot);
-}
-
-bool DatePrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
-{
-    return getStaticFunctionDescriptor<JSObject>(exec, ExecState::dateTable(exec), jsCast<DatePrototype*>(object), propertyName, descriptor);
+    return getStaticFunctionSlot<JSObject>(exec, ExecState::dateTable(exec), jsCast<DatePrototype*>(object), propertyName, slot);
 }
 
 // Functions
@@ -541,7 +536,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToUTCString(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncToISOString(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
     
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -587,7 +582,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToTimeString(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleString(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -597,7 +592,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleString(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleDateString(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -607,7 +602,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleDateString(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleTimeString(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -617,7 +612,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleTimeString(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetTime(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     return JSValue::encode(asDateInstance(thisValue)->internalValue());
@@ -626,7 +621,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetTime(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetFullYear(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -640,7 +635,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetFullYear(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCFullYear(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -660,7 +655,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToGMTString(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMonth(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -674,7 +669,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMonth(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMonth(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -688,7 +683,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMonth(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetDate(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -702,7 +697,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetDate(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCDate(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -716,7 +711,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCDate(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetDay(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -730,7 +725,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetDay(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCDay(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -744,7 +739,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCDay(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetHours(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -758,7 +753,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetHours(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCHours(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -772,7 +767,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCHours(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMinutes(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -786,7 +781,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMinutes(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMinutes(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -800,7 +795,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMinutes(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetSeconds(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -814,7 +809,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetSeconds(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCSeconds(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -828,7 +823,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCSeconds(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMilliSeconds(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -844,7 +839,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMilliSeconds(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMilliseconds(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -860,7 +855,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMilliseconds(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetTimezoneOffset(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -874,7 +869,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetTimezoneOffset(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncSetTime(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -888,7 +883,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncSetTime(ExecState* exec)
 static EncodedJSValue setNewValueFromTimeArgs(ExecState* exec, int numArgsToUse, bool inputIsUTC)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue);
@@ -925,7 +920,7 @@ static EncodedJSValue setNewValueFromTimeArgs(ExecState* exec, int numArgsToUse,
 static EncodedJSValue setNewValueFromDateArgs(ExecState* exec, int numArgsToUse, bool inputIsUTC)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue);
@@ -1049,7 +1044,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncSetUTCFullYear(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncSetYear(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue);
@@ -1090,7 +1085,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncSetYear(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetYear(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&DateInstance::s_info))
+    if (!thisValue.inherits(DateInstance::info()))
         return throwVMTypeError(exec);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -1106,7 +1101,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetYear(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL dateProtoFuncToJSON(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    JSObject* object = thisValue.toThisObject(exec);
+    JSObject* object = jsCast<JSObject*>(thisValue.toThis(exec, NotStrictMode));
     if (exec->hadException())
         return JSValue::encode(jsNull());
     

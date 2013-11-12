@@ -1,7 +1,6 @@
-<!DOCTYPE html>
 <html>
 <head>
-<script src="../js/resources/js-test-pre.js"></script>
+<script src="../../resources/js-test-pre.js"></script>
 <script src="../js/resources/image-preload-helper.js"></script>
 <style type="text/css">
 </style>
@@ -9,7 +8,7 @@
 <body>
 <p id="description"></p>
 <p><a href=https://bugs.webkit.org/show_bug.cgi?id=100550>Bug 100550</a></p>
-<svg xmlns="http://www.w3.org/2000/svg" 
+<svg xmlns="http://www.w3.org/2000/svg"
      xmlns:xlink="http://www.w3.org/1999/xlink" width="0" height="0">
   <defs>
     <cursor id="greenbox" xlink:href="resources/greenbox.png" x="0" y="0"/>
@@ -45,7 +44,7 @@
 <script>
 
 var testContainer = document.getElementById('test-container');
-    
+
 function runTests() {
     // Can't do anything useful here without eventSender
     if (window.eventSender) {
@@ -68,7 +67,7 @@ function runTests() {
         // This text is redundant with the test output - hide it
         testContainer.style.display = 'none';
     }
-    
+
     finishJSTest();
 }
 
@@ -89,6 +88,6 @@ if (window.testRunner) {
 preloadImagesFromStyle(testContainer, 9, runTests, /(#greenbox|_FAIL)/);
 
 </script>
-<script src="../../fast/js/resources/js-test-post.js"></script>
+<script src="../../resources/js-test-post.js"></script>
 </body>
 </html>

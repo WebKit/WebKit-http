@@ -61,6 +61,7 @@ HTMLPlugInElement::HTMLPlugInElement(const QualifiedName& tagName, Document* doc
     , m_isCapturingMouseEvents(false)
     , m_displayState(Playing)
 {
+    setHasCustomStyleResolveCallbacks();
 }
 
 HTMLPlugInElement::~HTMLPlugInElement()
@@ -93,13 +94,13 @@ bool HTMLPlugInElement::willRespondToMouseClickEvents()
     return true;
 }
 
-void HTMLPlugInElement::detach(const AttachContext& context)
+void HTMLPlugInElement::willDetachRenderers()
 {
     m_instance.clear();
 
     if (m_isCapturingMouseEvents) {
-        if (Frame* frame = document()->frame())
-            frame->eventHandler()->setCapturingMouseEventsNode(0);
+        if (Frame* frame = document().frame())
+            frame->eventHandler().setCapturingMouseEventsNode(0);
         m_isCapturingMouseEvents = false;
     }
 
@@ -109,8 +110,6 @@ void HTMLPlugInElement::detach(const AttachContext& context)
         m_NPObject = 0;
     }
 #endif
-
-    HTMLFrameOwnerElement::detach(context);
 }
 
 void HTMLPlugInElement::resetInstance()
@@ -120,7 +119,7 @@ void HTMLPlugInElement::resetInstance()
 
 PassRefPtr<JSC::Bindings::Instance> HTMLPlugInElement::getInstance()
 {
-    Frame* frame = document()->frame();
+    Frame* frame = document().frame();
     if (!frame)
         return 0;
 
@@ -130,7 +129,7 @@ PassRefPtr<JSC::Bindings::Instance> HTMLPlugInElement::getInstance()
         return m_instance;
 
     if (Widget* widget = pluginWidget())
-        m_instance = frame->script()->createScriptInstanceForWidget(widget);
+        m_instance = frame->script().createScriptInstanceForWidget(widget);
 
     return m_instance;
 }
@@ -229,7 +228,7 @@ void HTMLPlugInElement::defaultEventHandler(Event* event)
 bool HTMLPlugInElement::isKeyboardFocusable(KeyboardEvent* event) const
 {
     UNUSED_PARAM(event);
-    if (!document()->page())
+    if (!document().page())
         return false;
 
     const PluginViewBase* plugin = pluginWidget() && pluginWidget()->isPluginViewBase() ? static_cast<const PluginViewBase*>(pluginWidget()) : 0;
@@ -258,9 +257,9 @@ bool HTMLPlugInElement::supportsFocus() const
 
 NPObject* HTMLPlugInElement::getNPObject()
 {
-    ASSERT(document()->frame());
+    ASSERT(document().frame());
     if (!m_NPObject)
-        m_NPObject = document()->frame()->script()->createScriptObjectForPluginElement(this);
+        m_NPObject = document().frame()->script().createScriptObjectForPluginElement(this);
     return m_NPObject;
 }
 

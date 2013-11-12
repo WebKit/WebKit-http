@@ -39,7 +39,7 @@ class Element;
 class Node;
 class Range;
 
-typedef HashMap<AtomicStringImpl*, AtomicStringImpl*> Namespaces;
+typedef HashMap<AtomicString, AtomicStringImpl*> Namespaces;
 
 enum EntityMask {
     EntityAmp = 0x0001,
@@ -88,7 +88,7 @@ protected:
     void appendNodeValue(StringBuilder&, const Node*, const Range*, EntityMask);
     bool shouldAddNamespaceElement(const Element*);
     bool shouldAddNamespaceAttribute(const Attribute&, Namespaces&);
-    void appendNamespace(StringBuilder&, const AtomicString& prefix, const AtomicString& namespaceURI, Namespaces&);
+    void appendNamespace(StringBuilder&, const AtomicString& prefix, const AtomicString& namespaceURI, Namespaces&, bool allowEmptyDefaultNS = false);
     EntityMask entityMaskForText(Text*) const;
     virtual void appendText(StringBuilder&, Text*);
     void appendXMLDeclaration(StringBuilder&, const Document*);
@@ -112,10 +112,12 @@ private:
     void appendQuotedURLAttributeValue(StringBuilder&, const Element*, const Attribute&);
     void serializeNodesWithNamespaces(Node* targetNode, Node* nodeToSkip, EChildrenOnly, const Namespaces*, Vector<QualifiedName>* tagNamesToSkip);
     bool inXMLFragmentSerialization() const { return m_fragmentSerialization == XMLFragmentSerialization; }
+    void generateUniquePrefix(QualifiedName&, const Namespaces&);
 
     StringBuilder m_markup;
     const EAbsoluteURLs m_resolveURLsMethod;
     EFragmentSerialization m_fragmentSerialization;
+    unsigned m_prefixLevel;
 };
 
 }

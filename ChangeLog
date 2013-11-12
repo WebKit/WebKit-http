@@ -1,3 +1,425 @@
+2013-09-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        REGRESSION(r155143): Build failures on GTK port with Clang and libstdc++ < 4.8.1
+        https://bugs.webkit.org/show_bug.cgi?id=120896
+
+        Reviewed by Anders Carlsson.
+
+        The GTK port currently only permits using the libstdc++ standard library when compiling with
+        Clang. After r155143, build failures are occurring when using Clang and libstdc++ that predates
+        the 4.8.0 release due to the use of std::is_trivially_destructible that isn't available in
+        libstdc++ < 4.8.0.
+
+        To not add additional special casing, the GTK port should move onto requiring libstdc++ >= 4.8.1
+        when compiling with the Clang compiler. Version 4.8.1 was chosen since it's C++11 feature-complete.
+        This strict requirement is possible as compiling the GTK port with the Clang compiler is not really
+        widespread, so we can afford to adjust the required dependencies to match other ports' progression
+        instead of modifying the code.
+
+        * Source/autotools/CheckSystemAndBasicDependencies.m4: If the detected compiler is Clang, also check
+        that the libstdc++ standard library is used by testing for the __GLIBCXX__ macro that should be defined
+        to the value lesser than the '20130531', the date stamp used by the 4.8.1 release of libstdc++. Since
+        possible future releases of the 4.6 or 4.7 series of libstdc++ will also match this check due to a newer
+        date stamp contained in __GLIBCXX__, the std::is_trivially_destructible struct is also used so the
+        compilation will fail if the libstdc++ that's used is older than allowed (and therefor does not support
+        the feature). If the check fails, a fatal error is thrown, describing the requirement. Everything carries
+        on as normal otherwise.
+
+2013-09-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Bump the required Clang version to 3.2
+        https://bugs.webkit.org/show_bug.cgi?id=112537
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/autotools/CheckSystemAndBasicDependencies.m4: Require the Clang 3.2 stack
+        when the Clang compiler is specified.
+
+2013-09-05  Brendan Long  <b.long@cablelabs.com>
+
+        [Qt] DefaultFullScreenVideoHandler and PlatformVideoWindow are included in the build when they are disabled
+        https://bugs.webkit.org/show_bug.cgi?id=117206
+
+        Reviewed by Philippe Normand.
+
+        * Source/widgetsapi.pri: Don't include DefaultFullScreenVideoHandler when it's disabled.
+
+2013-09-05  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [CMAKE] Add c++0x into CXX_FLAGS as a default
+        https://bugs.webkit.org/show_bug.cgi?id=120812
+
+        Unreviewed build fix for EFL ports.
+
+        * Source/cmake/OptionsCommon.cmake: Moved c++0x option here from WebKitHelpers.
+        * Source/cmake/WebKitHelpers.cmake:
+
+2013-09-04  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt] Use correct library paths for prefix builds on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=120635
+
+        Reviewed by Tor Arne Vestbø.
+
+        Due to a change of scope of the qmake force_independent configuration
+        flag, the library paths in QtWebKit builds on the Mac are set to the
+        QtWebKit build directory even for production builds.
+
+        This patch sets the correct library paths for prefixed production builds
+        while keeping the scope of the force_independent flag for non-production
+        builds.
+
+        * Source/api.pri:
+        * Source/widgetsapi.pri:
+
+2013-09-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Add support for the Wayland build target
+        https://bugs.webkit.org/show_bug.cgi?id=120627
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add support for building the GTK port with Wayland as the target. The Wayland target can be the sole target
+        that's enabled, or it can be enabled in parallel with the X11 target.
+
+        Each of those two targets, when enabled, checks for the corresponding GTK+ windowing dependency being present.
+        In the case of only the Wayland target being enabled, the accelerated compositing feature is disabled at
+        build-time as the feature is not yet supported under the Wayland display protocol. X11-based plugin support is
+        also disabled under that configuration, even if the WebKitPluginProcess is still built but is left non-operational.
+        GLX support is also disabled if not building the X11 target.
+
+        The Wayland target can be enabled through using the --with-target configuration option that now accepts two
+        additional values:
+        - 'wayland' - only enables the Wayland target,
+        - 'x11,wayland' - enables the X11 and Wayland targets that are to be built in parallel.
+
+        This makes it possible to build the GTK port of WebKit with the Wayland target, relying solely on the GTK+
+        dependency that only has the Wayland backend enabled, and removes linking against any X11-related library.
+        Note that at the moment there seem to be other dependencies that still link to X11-related libraries.
+        Complete functionality is not yet guaranteed, but is of course the goal.
+
+        * Source/autotools/FindDependencies.m4: Store the version of the basic GTK+ dependency that was found.
+        This is later used to check that the GTK+ X11 and GTK+ Wayland dependencies are of the same version. The
+        X11-specific dependencies are grouped into one section (apart from the XComposite and XDamage dependencies),
+        also checking for the GTK+ X11 dependency. If the X11 target is not enabled, the GLX dependency is disabled.
+        Additionally check for the GTK+ Wayland dependency if the Wayland target is enabled.
+        We only check for the presence and correct version of the GTK+ X11 and Wayland dependencies, if necessary.
+        Check for the XComposite and XDamage dependencies if the X11 target is enabled (in addition to the OpenGL
+        headers being present).
+        In case of the Wayland target being enabled while the X11 target is not, disable the accelerated compositing
+        feature as there's no support yet for it under the Wayland display protocol.
+        * Source/autotools/PrintBuildConfiguration.m4: The build configuration should now print out 'GDK targets'.
+        * Source/autotools/ReadCommandLineArguments.m4: The --with-target option can now take two additional values,
+        'wayland' and 'x11,wayland'. The first one enables only the Wayland target, while the second one enables both
+        X11 and Wayland targets. This makes it possible to build the GTK port with both X11 and Wayland display protocols
+        supported in the same build.
+        We must now check the outcoming with_target variable to see if the special case of building one or both of the
+        possible parallel targets was chosen. We define with_x11_target and with_wayland_target variables if the
+        with_target value applies to that case.
+        * Source/autotools/SetupAutoconfHeader.m4: Do not define the XP_UNIX macro on builds that enable the Wayland-only
+        target. It should still be defined if we're building both X11 and Wayland targets in parallel.
+        * Source/autotools/SetupAutomake.m4: Define TARGET_X11 and TARGET_WAYLAND Automake conditionals if the new
+        with_x11_target or with_wayland_target variables were set, respectively. Additionall, define the TARGET_X11_OR_WAYLAND
+        Automake conditional if we're building either of the two targets.
+
+2013-09-03  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Fix detection of x86_64 platform with MSVC
+        https://bugs.webkit.org/show_bug.cgi?id=116662
+
+        Reviewed by Gyuyoung Kim.
+
+        Use ${MSVC_CXX_ARCHITECTURE_ID} instead of ${CMAKE_SYSTEM_PROCESSOR}, since
+        the later one just resolves to the host processor on Windows.
+
+        * CMakeLists.txt:
+
+2013-08-29  Sam Weinig  <sam@webkit.org>
+
+        Add ENABLE guards for Promises
+        https://bugs.webkit.org/show_bug.cgi?id=120488
+
+        Reviewed by Andreas Kling.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2013-08-28  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Enable maintainer mode configure switch
+        https://bugs.webkit.org/show_bug.cgi?id=120424
+
+        Reviewed by Martin Robinson.
+
+        The maintainer mode feature is used by ostree and other automated builders to ensure no autotools
+        regeneration will happen for a regular tarball build; ostree builders, for instance, are very
+        conservative with toolchain upgrades, and are still using aclocal 1.12. WebKit's latest tarball
+        (2.1.90) for some reason tries to regenerate build files, and the build fails because it can't find
+        the version of aclocal that was used for generating the tarball (1.13).
+
+        * configure.ac: enable maintainer mode feature.
+
+2013-08-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Add support for building JSC with FTL JIT enabled
+        https://bugs.webkit.org/show_bug.cgi?id=120270
+
+        Reviewed by Filip Pizlo.
+
+        * Source/autotools/FindDependencies.m4: Disable FTL JIT if the JIT itself is disabled or if the C++ compiler
+        being used is not Clang. Check for llvm-config and use it to properly test for the LLVM >= 3.4 dependency.
+        * Source/autotools/PrintBuildConfiguration.m4: Print out the status of the FTL JIT support.
+        * Source/autotools/ReadCommandLineArguments.m4: Add a configuration flag for enabling the feature, defaulting
+        to 'no' used as the default value for now. This should switch to 'auto' at some point in future.
+        * Source/autotools/SetupAutoconfHeader.m4: Define ENABLE_FTL_JIT to a specific value if possible.
+        Also define HAVE_LLVM to 1 if the LLVM dependency was satisfied.
+
+2013-08-28  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Unreviewed trivial build adjustment
+
+        * Source/sync.profile: Don't depend on qtjsbackend anymore. It's not needed in Qt 5.2
+        anymore (but this section of sync.profile is only used by the CI system, so no impact
+        anywhere else)
+
+2013-08-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ build after r154541.
+
+        * Source/autotools/symbols.filter: Export symbols required by
+        libWebCoreInternal.
+
+2013-08-15  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK build fix after r154106.
+
+        * Source/autotools/symbols.filter: Export the proper Element::shadowRoot() symbol.
+
+2013-08-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Typed arrays should be rewritten
+        https://bugs.webkit.org/show_bug.cgi?id=119064
+
+        Reviewed by Oliver Hunt.
+
+        Automake work courtesy of Zan Dobersek <zdobersek@igalia.com>.
+
+        * Source/autotools/symbols.filter:
+
+2013-08-14  Tim Horton  <timothy_horton@apple.com>
+
+        Un-inline dataLog dumpers for IntSize and IntPoint
+        https://bugs.webkit.org/show_bug.cgi?id=119697
+
+        Reviewed by Sam Weinig.
+
+        Avoid regressing build performance by moving IntSize::dump and IntPoint::dump elsewhere.
+
+        * Source/autotools/symbols.filter:
+
+2013-08-14  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Add support for building TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=116987
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/OptionsGTK.cmake: Turn on the API tests in the settings.
+
+2013-08-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Autotools] Unicode's CFLAGS enforce -D_FORTIFY_SOURCE=2, -D_REENTRANT=1, causing faulty Clang builds
+        https://bugs.webkit.org/show_bug.cgi?id=119685
+
+        Reviewed by Gustavo Noronha Silva.
+
+        icu-config includes '-D_FORTIFY_SOURCE=2 -D_REENTRANT=1' when printing out C preprocessor flags that are used
+        as the C compiler flags to avoid other unwanted compiler options. This causes problems when building optimized
+        builds with Clang because of a bug in that compiler:
+        http://llvm.org/bugs/show_bug.cgi?id=16821
+
+        To avoid that, the C preprocessor search flags, as printed by `icu-config --cppflags-searchpath` are now used
+        the Unicode dependency's C compiler flags, avoiding unconditionally specifying the two macros.
+
+        To adjust for that, the `-pthread` flag is added to the global CFLAGS and CXXFLAGS variables, ensuring
+        the _REENTRANT define is set to 1 and declaring the flag globally instead of relying on Glib dependency's
+        C compiler flags to do so for us. -D_FORTIFY_SOURCE=2 is only added to the CFLAGS and CXXFLAGS variables if
+        the compiler in use is gcc or g++, preventing the Clang builds to malfunction.
+
+        * Source/autotools/FindDependencies.m4:
+        * Source/autotools/SetupCompilerFlags.m4:
+
+2013-08-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Autotools] Don't compare $CC, $CXX to exact compiler names
+        https://bugs.webkit.org/show_bug.cgi?id=119683
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Instead of comparing $CC and $CXX to exact compiler names (like 'gcc', 'clang++' etc.),
+        use the compiler version checks to also specify the broader compiler collection of which
+        the used compiler is a member of. This avoids failures in some border-line cases where
+        the user would still use either a GCC or a Clang compiler but provide it through a symbolic
+        link that was specified via the CC/CXX environment variables.
+
+        * Source/autotools/CheckSystemAndBasicDependencies.m4: Store the detected C/C++ compiler collection
+        in c_compiler/cxx_compiler. Throw an error if no supported compiler was found.
+        * Source/autotools/SetupCompilerFlags.m4: Test for a specific compiler by checking against
+        c_compiler/cxx_compiler rather than CC/CXX values.
+
+2013-08-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Autotools] Adjust the help string for the configure's --enable-optimizations flag
+        https://bugs.webkit.org/show_bug.cgi?id=119682
+
+        Reviewed by Martin Robinson.
+
+        * Source/autotools/ReadCommandLineArguments.m4: Remove the 'GCC only' part of the help
+        string for the --enable-optimizations flag. This is not true and can lead to confusion
+        since the optimizations can be applied when compiling with Clang as well.
+
+2013-08-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and Versions.m4 for 2.1.4 release.
+
+        * Source/autotools/Versions.m4: Update version numbers.
+
+2013-08-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Automake] Clean up OpenGL graphics configuration sections
+        https://bugs.webkit.org/show_bug.cgi?id=119554
+
+        Reviewed by Martin Robinson.
+
+        Clean up sections in the Automake configuration process that are configuring the OpenGL graphics
+        features and dependencies. Remove unnecessary variable assignments, merge similar code paths,
+        clarify a couple of comments and error messages and fix a few whitespace problems.
+
+        * Source/autotools/FindDependencies.m4:
+        * Source/autotools/ReadCommandLineArguments.m4:
+        * Source/autotools/SetupAutomake.m4:
+
+2013-08-04  Sam Weinig  <sam@webkit.org>
+
+        Remove support for HTML5 MicroData
+        https://bugs.webkit.org/show_bug.cgi?id=119480
+
+        Reviewed by Anders Carlsson.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+        * Source/cmake/OptionsBlackBerry.cmake:
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2013-08-06  Simon Pena  <simon.pena@samsung.com>
+
+        Build fix for GTK 32-bit after r153736
+
+        * Source/autotools/symbols.filter: expose WebCore::SerializedScriptValue::create.
+
+2013-08-06  Simon Pena  <simon.pena@samsung.com>
+
+        Build fix for GTK after r153736
+
+        * Source/autotools/symbols.filter: expose missing symbols
+        WebCore::SerializedScriptValue::create and WebCore::toJS to Internals.
+
+2013-08-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Automake] Define ENABLE_JIT through the Autoconf header
+        https://bugs.webkit.org/show_bug.cgi?id=119445
+
+        Reviewed by Martin Robinson.
+
+        Instead of defining the ENABLE_JIT value through JSC_CPPFLAGS, the feature define is
+        set to be either enabled or disabled through the Autoconf header, based on the value
+        passed through the configuration flag. The 'auto' value is used as default, meaning
+        that the feature is enabled or disabled in the Platform.h header based on the platform
+        configuration (OS, architecture etc.).
+
+        * Source/autotools/FindDependencies.m4: Remove the JSC_CPPFLAGS definition.
+        * Source/autotools/ReadCommandLineArguments.m4: Change the default value to 'auto' instead
+        of 'autodetect', as used by other configuration options that take a similar approach to enabling
+        a specific feature.
+        * Source/autotools/SetupAutoconfHeader.m4: Set a strict value for the ENABLE_JIT define through
+        the Autoconf header if the feature was specifically enabled or disabled.
+
+2013-08-04  Zalan Bujtas  <zalan@apple.com>
+
+        Background doesn't fully repaint when body has margins.
+        https://bugs.webkit.org/show_bug.cgi?id=119033
+
+        Reviewed by Simon Fraser.
+
+        Ensure that background-color changes do not leave unpainted areas when
+        body has margins.
+
+        Both <body> and <html> background-color get propagated up to the viewport.
+        If <body> has background-color attribute set, while <html> doesn't, the color is
+        applied not only on the <body> but on both the <html> and the viewport. However,
+        it's not enough to mark the RenderView dirty because with tiles backing on,
+        there could be areas outside of the viewport that need repaint. By marking
+        the RenderView's graphics layer dirty instead, we ensure that all the related
+        tiles get marked dirty too and the new background color covers all areas.
+
+        Manual test added. When forcing top-level composition on (even with embedded iframe to
+        make sure we don't do paintsIntoWindow rendering), the test case execution changes so much,
+        that the repaint rects don't reflect the functionality difference anymore.
+
+        Reviewed by Simon Fraser.
+
+        * ManualTests/compositing/background-color-change-on-body-with-margin.html: Added.
+
+2013-07-30  Ádám Kallai  <kadam@inf.u-szeged.hu>
+
+        [Qt] Workaround to make syncqt run and generate forwarding headers in SVN repositories too.
+        https://bugs.webkit.org/show_bug.cgi?id=118725.
+
+        Reviewed by Tor Arne Vestbø.
+
+        * .qmake.conf:
+
+2013-07-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and Versions.m4 for 2.1.4 release.
+
+        * Source/autotools/Versions.m4: Bump version numbers.
+
+2013-07-27  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Bump required version of EFL to 1.7
+        https://bugs.webkit.org/show_bug.cgi?id=119144
+
+        Reviewed by Christophe Dumez.
+
+        We have supported 1.6 for Tizen build since r137203.
+        But Tizen now supports 1.7+ after Tizen released 2.0.
+
+        * Source/cmake/OptionsEfl.cmake:
+        Bumped EFL to 1.7 and removed promotion.
+
+2013-07-25  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Unreviewed EFL build fix after r153315.
+
+        Use -std=gnu++0x instead of -std=c++0x as we rely on GNU extensions such as
+        typeof().
+
+        * Source/cmake/WebKitHelpers.cmake:
+
+2013-07-25  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [CMAKE] Enforce c++0x for cmake based ports
+        https://bugs.webkit.org/show_bug.cgi?id=119081
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/WebKitHelpers.cmake:
+        Enforce c++0x for all cmake based ports to fix build break.
+
 2013-07-24  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [EFL][CMAKE] Fix wrong syntax about option commands

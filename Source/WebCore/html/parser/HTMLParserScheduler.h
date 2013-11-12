@@ -70,15 +70,15 @@ public:
     void checkForYieldBeforeToken(PumpSession& session)
     {
         if (session.processedTokens > m_parserChunkSize || session.didSeeScript) {
-            // currentTime() can be expensive.  By delaying, we avoided calling
-            // currentTime() when constructing non-yielding PumpSessions.
+            // monotonicallyIncreasingTime() can be expensive. By delaying, we avoided calling
+            // monotonicallyIncreasingTime() when constructing non-yielding PumpSessions.
             if (!session.startTime)
-                session.startTime = currentTime();
+                session.startTime = monotonicallyIncreasingTime();
 
             session.processedTokens = 0;
             session.didSeeScript = false;
 
-            double elapsedTime = currentTime() - session.startTime;
+            double elapsedTime = monotonicallyIncreasingTime() - session.startTime;
             if (elapsedTime > m_parserTimeLimit)
                 session.needsYield = true;
         }
@@ -103,6 +103,9 @@ private:
     int m_parserChunkSize;
     Timer<HTMLParserScheduler> m_continueNextChunkTimer;
     bool m_isSuspendedWithActiveTimer;
+#if !ASSERT_DISABLED
+    bool m_suspended;
+#endif
 };
 
 }

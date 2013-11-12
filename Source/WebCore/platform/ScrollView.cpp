@@ -221,7 +221,7 @@ void ScrollView::setDelegatesScrolling(bool delegatesScrolling)
 IntSize ScrollView::unscaledVisibleContentSize(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
     if (platformWidget())
-        return platformVisibleContentRect(scrollbarInclusion == IncludeScrollbars).size();
+        return platformVisibleContentSize(scrollbarInclusion == IncludeScrollbars);
 
     if (!m_fixedVisibleContentRect.isEmpty())
         return m_fixedVisibleContentRect.size();
@@ -270,9 +270,8 @@ void ScrollView::setFixedLayoutSize(const IntSize& newSize)
     if (fixedLayoutSize() == newSize)
         return;
     m_fixedLayoutSize = newSize;
-    updateScrollbars(scrollOffset());
     if (m_useFixedLayout)
-        contentsResized();
+        fixedLayoutSizeChanged();
 }
 
 bool ScrollView::useFixedLayout() const
@@ -285,6 +284,12 @@ void ScrollView::setUseFixedLayout(bool enable)
     if (useFixedLayout() == enable)
         return;
     m_useFixedLayout = enable;
+    if (!m_fixedLayoutSize.isEmpty())
+        fixedLayoutSizeChanged();
+}
+
+void ScrollView::fixedLayoutSizeChanged()
+{
     updateScrollbars(scrollOffset());
     contentsResized();
 }
@@ -1410,6 +1415,11 @@ bool ScrollView::platformCanBlitOnScroll() const
 IntRect ScrollView::platformVisibleContentRect(bool) const
 {
     return IntRect();
+}
+
+IntSize ScrollView::platformVisibleContentSize(bool) const
+{
+    return IntSize();
 }
 
 void ScrollView::platformSetContentsSize()

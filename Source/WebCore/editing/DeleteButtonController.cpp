@@ -176,7 +176,7 @@ void DeleteButtonController::respondToChangedSelection(const VisibleSelection& o
         return;
 
     HTMLElement* oldElement = enclosingDeletableElement(oldSelection);
-    HTMLElement* newElement = enclosingDeletableElement(m_frame->selection()->selection());
+    HTMLElement* newElement = enclosingDeletableElement(m_frame->selection().selection());
     if (oldElement == newElement)
         return;
 
@@ -203,7 +203,7 @@ void DeleteButtonController::deviceScaleFactorChanged()
 
 void DeleteButtonController::createDeletionUI()
 {
-    RefPtr<HTMLDivElement> container = HTMLDivElement::create(m_target->document());
+    RefPtr<HTMLDivElement> container = HTMLDivElement::create(&m_target->document());
     container->setIdAttribute(containerElementIdentifier);
 
     container->setInlineStyleProperty(CSSPropertyWebkitUserDrag, CSSValueNone);
@@ -212,12 +212,12 @@ void DeleteButtonController::createDeletionUI()
     container->setInlineStyleProperty(CSSPropertyVisibility, CSSValueHidden);
     container->setInlineStyleProperty(CSSPropertyPosition, CSSValueAbsolute);
     container->setInlineStyleProperty(CSSPropertyCursor, CSSValueDefault);
-    container->setInlineStyleProperty(CSSPropertyTop, "0");
-    container->setInlineStyleProperty(CSSPropertyRight, "0");
-    container->setInlineStyleProperty(CSSPropertyBottom, "0");
-    container->setInlineStyleProperty(CSSPropertyLeft, "0");
+    container->setInlineStyleProperty(CSSPropertyTop, 0, CSSPrimitiveValue::CSS_PX);
+    container->setInlineStyleProperty(CSSPropertyRight, 0, CSSPrimitiveValue::CSS_PX);
+    container->setInlineStyleProperty(CSSPropertyBottom, 0, CSSPrimitiveValue::CSS_PX);
+    container->setInlineStyleProperty(CSSPropertyLeft, 0, CSSPrimitiveValue::CSS_PX);
 
-    RefPtr<HTMLDivElement> outline = HTMLDivElement::create(m_target->document());
+    RefPtr<HTMLDivElement> outline = HTMLDivElement::create(&m_target->document());
     outline->setIdAttribute(outlineElementIdentifier);
 
     const int borderWidth = 4;
@@ -225,12 +225,14 @@ void DeleteButtonController::createDeletionUI()
 
     outline->setInlineStyleProperty(CSSPropertyPosition, CSSValueAbsolute);
     outline->setInlineStyleProperty(CSSPropertyZIndex, String::number(-1000000));
-    outline->setInlineStyleProperty(CSSPropertyTop, String::number(-borderWidth - m_target->renderBox()->borderTop()) + "px");
-    outline->setInlineStyleProperty(CSSPropertyRight, String::number(-borderWidth - m_target->renderBox()->borderRight()) + "px");
-    outline->setInlineStyleProperty(CSSPropertyBottom, String::number(-borderWidth - m_target->renderBox()->borderBottom()) + "px");
-    outline->setInlineStyleProperty(CSSPropertyLeft, String::number(-borderWidth - m_target->renderBox()->borderLeft()) + "px");
-    outline->setInlineStyleProperty(CSSPropertyBorder, String::number(borderWidth) + "px solid rgba(0, 0, 0, 0.6)");
-    outline->setInlineStyleProperty(CSSPropertyWebkitBorderRadius, String::number(borderRadius) + "px");
+    outline->setInlineStyleProperty(CSSPropertyTop, -borderWidth - m_target->renderBox()->borderTop(), CSSPrimitiveValue::CSS_PX);
+    outline->setInlineStyleProperty(CSSPropertyRight, -borderWidth - m_target->renderBox()->borderRight(), CSSPrimitiveValue::CSS_PX);
+    outline->setInlineStyleProperty(CSSPropertyBottom, -borderWidth - m_target->renderBox()->borderBottom(), CSSPrimitiveValue::CSS_PX);
+    outline->setInlineStyleProperty(CSSPropertyLeft, -borderWidth - m_target->renderBox()->borderLeft(), CSSPrimitiveValue::CSS_PX);
+    outline->setInlineStyleProperty(CSSPropertyBorderWidth, borderWidth, CSSPrimitiveValue::CSS_PX);
+    outline->setInlineStyleProperty(CSSPropertyBorderStyle, CSSValueSolid);
+    outline->setInlineStyleProperty(CSSPropertyBorderColor, "rgba(0, 0, 0, 0.6)");
+    outline->setInlineStyleProperty(CSSPropertyBorderRadius, borderRadius, CSSPrimitiveValue::CSS_PX);
     outline->setInlineStyleProperty(CSSPropertyVisibility, CSSValueVisible);
 
     ExceptionCode ec = 0;
@@ -239,7 +241,7 @@ void DeleteButtonController::createDeletionUI()
     if (ec)
         return;
 
-    RefPtr<DeleteButton> button = DeleteButton::create(m_target->document());
+    RefPtr<DeleteButton> button = DeleteButton::create(&m_target->document());
     button->setIdAttribute(buttonElementIdentifier);
 
     const int buttonWidth = 30;
@@ -248,10 +250,10 @@ void DeleteButtonController::createDeletionUI()
 
     button->setInlineStyleProperty(CSSPropertyPosition, CSSValueAbsolute);
     button->setInlineStyleProperty(CSSPropertyZIndex, String::number(1000000));
-    button->setInlineStyleProperty(CSSPropertyTop, String::number((-buttonHeight / 2) - m_target->renderBox()->borderTop() - (borderWidth / 2) + buttonBottomShadowOffset) + "px");
-    button->setInlineStyleProperty(CSSPropertyLeft, String::number((-buttonWidth / 2) - m_target->renderBox()->borderLeft() - (borderWidth / 2)) + "px");
-    button->setInlineStyleProperty(CSSPropertyWidth, String::number(buttonWidth) + "px");
-    button->setInlineStyleProperty(CSSPropertyHeight, String::number(buttonHeight) + "px");
+    button->setInlineStyleProperty(CSSPropertyTop, (-buttonHeight / 2) - m_target->renderBox()->borderTop() - (borderWidth / 2) + buttonBottomShadowOffset, CSSPrimitiveValue::CSS_PX);
+    button->setInlineStyleProperty(CSSPropertyLeft, (-buttonWidth / 2) - m_target->renderBox()->borderLeft() - (borderWidth / 2), CSSPrimitiveValue::CSS_PX);
+    button->setInlineStyleProperty(CSSPropertyWidth, buttonWidth, CSSPrimitiveValue::CSS_PX);
+    button->setInlineStyleProperty(CSSPropertyHeight, buttonHeight, CSSPrimitiveValue::CSS_PX);
     button->setInlineStyleProperty(CSSPropertyVisibility, CSSValueVisible);
 
     float deviceScaleFactor = WebCore::deviceScaleFactor(m_frame);
@@ -314,7 +316,7 @@ void DeleteButtonController::show(HTMLElement* element)
     }
 
     if (m_target->renderer()->style()->hasAutoZIndex()) {
-        m_target->setInlineStyleProperty(CSSPropertyZIndex, "0");
+        m_target->setInlineStyleProperty(CSSPropertyZIndex, String::number(0));
         m_wasAutoZIndex = true;
     }
 }
@@ -348,7 +350,7 @@ void DeleteButtonController::enable()
         // because whether something is editable depends on style, so we need
         // to recalculate style before calling enclosingDeletableElement.
         m_frame->document()->updateStyleIfNeeded();
-        show(enclosingDeletableElement(m_frame->selection()->selection()));
+        show(enclosingDeletableElement(m_frame->selection().selection()));
     }
 }
 
@@ -361,13 +363,13 @@ void DeleteButtonController::disable()
 
 class RemoveTargetCommand : public CompositeEditCommand {
 public:
-    static PassRefPtr<RemoveTargetCommand> create(Document* document, PassRefPtr<Node> target)
+    static PassRefPtr<RemoveTargetCommand> create(Document& document, PassRefPtr<Node> target)
     {
         return adoptRef(new RemoveTargetCommand(document, target));
     }
 
 private:
-    RemoveTargetCommand(Document* document, PassRefPtr<Node> target)
+    RemoveTargetCommand(Document& document, PassRefPtr<Node> target)
         : CompositeEditCommand(document)
         , m_target(target)
     { }
@@ -392,8 +394,9 @@ void DeleteButtonController::deleteTarget()
     // within the target, we unconditionally update the selection to be
     // a caret where the target had been.
     Position pos = positionInParentBeforeNode(m_target.get());
-    applyCommand(RemoveTargetCommand::create(m_frame->document(), m_target));
-    m_frame->selection()->setSelection(VisiblePosition(pos));
+    ASSERT(m_frame->document());
+    applyCommand(RemoveTargetCommand::create(*m_frame->document(), m_target));
+    m_frame->selection().setSelection(VisiblePosition(pos));
 }
 #endif
 

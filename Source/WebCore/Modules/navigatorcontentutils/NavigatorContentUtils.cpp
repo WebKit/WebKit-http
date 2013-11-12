@@ -45,10 +45,13 @@ static void initProtocolHandlerWhitelist()
     protocolWhitelist = new HashSet<String>;
 #if !PLATFORM(BLACKBERRY)
     static const char* protocols[] = {
-        "irc",
+        "bitcoin",
         "geo",
-        "mailto",
+        "im",
+        "irc",
+        "ircs",
         "magnet",
+        "mailto",
         "mms",
         "news",
         "nntp",
@@ -59,7 +62,8 @@ static void initProtocolHandlerWhitelist()
         "tel",
         "urn",
         "webcal",
-        "xmpp"
+        "wtai",
+        "xmpp",
     };
     for (size_t i = 0; i < WTF_ARRAY_LENGTH(protocols); ++i)
         protocolWhitelist->add(protocols[i]);
@@ -103,7 +107,8 @@ static bool isProtocolWhitelisted(const String& scheme)
 static bool verifyProtocolHandlerScheme(const String& scheme, ExceptionCode& ec)
 {
     if (scheme.startsWith("web+")) {
-        if (isValidProtocol(scheme))
+        // The specification requires that the length of scheme is at least five characteres (including 'web+' prefix).
+        if (scheme.length() >= 5 && isValidProtocol(scheme))
             return true;
         ec = SECURITY_ERR;
         return false;

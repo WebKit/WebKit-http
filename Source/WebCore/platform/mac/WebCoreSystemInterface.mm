@@ -28,9 +28,7 @@
 #import <Foundation/Foundation.h>
 
 void (*wkAdvanceDefaultButtonPulseAnimation)(NSButtonCell *);
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 void (*wkCALayerEnumerateRectsBeingDrawnWithBlock)(CALayer *, CGContextRef context, void (^block)(CGRect rect));
-#endif
 BOOL (*wkCGContextGetShouldSmoothFonts)(CGContextRef);
 void (*wkCGContextResetClip)(CGContextRef);
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
@@ -50,16 +48,15 @@ void (*wkDrawFocusRing)(CGContextRef, CGColorRef, int radius);
 NSFont* (*wkGetFontInLanguageForRange)(NSFont*, NSString*, NSRange);
 NSFont* (*wkGetFontInLanguageForCharacter)(NSFont*, UniChar);
 BOOL (*wkGetGlyphTransformedAdvances)(CGFontRef, NSFont*, CGAffineTransform*, ATSGlyphRef*, CGSize* advance);
-void (*wkDrawMediaSliderTrack)(int themeStyle, CGContextRef context, CGRect rect, float timeLoaded, float currentTime, 
+void (*wkDrawMediaSliderTrack)(CGContextRef context, CGRect rect, float timeLoaded, float currentTime,
     float duration, unsigned state);
-BOOL (*wkHitTestMediaUIPart)(int part, int themeStyle, CGRect bounds, CGPoint point);
-void (*wkDrawMediaUIPart)(int part, int themeStyle, CGContextRef context, CGRect rect, unsigned state);
-void (*wkMeasureMediaUIPart)(int part, int themeStyle, CGRect *bounds, CGSize *naturalSize);
+BOOL (*wkHitTestMediaUIPart)(int part, CGRect bounds, CGPoint point);
+void (*wkDrawMediaUIPart)(int part, CGContextRef context, CGRect rect, unsigned state);
+void (*wkMeasureMediaUIPart)(int part, CGRect *bounds, CGSize *naturalSize);
 NSView *(*wkCreateMediaUIBackgroundView)(void);
 NSControl *(*wkCreateMediaUIControl)(int);
 void (*wkWindowSetAlpha)(NSWindow *, float);
 void (*wkWindowSetScaledFrame)(NSWindow *, NSRect, NSRect);
-BOOL (*wkMediaControllerThemeAvailable)(int themeStyle);
 NSString* (*wkGetPreferredExtensionForMIMEType)(NSString*);
 CFStringRef (*wkSignedPublicKeyAndChallengeString)(unsigned keySize, CFStringRef challenge, CFStringRef keyDescription);
 NSArray* (*wkGetExtensionsForMIMEType)(NSString*);
@@ -95,6 +92,7 @@ void (*wkSetDragImage)(NSImage*, NSPoint offset);
 void (*wkSetBaseCTM)(CGContextRef, CGAffineTransform);
 void (*wkSetPatternPhaseInUserSpace)(CGContextRef, CGPoint point);
 CGAffineTransform (*wkGetUserToBaseCTM)(CGContextRef);
+bool (*wkCGContextIsPDFContext)(CGContextRef);
 void (*wkSetUpFontCache)();
 void (*wkSignalCFReadStreamEnd)(CFReadStreamRef stream);
 void (*wkSignalCFReadStreamHasBytes)(CFReadStreamRef stream);
@@ -131,12 +129,7 @@ void (*wkSetRequestStorageSession)(CFURLStorageSessionRef, CFMutableURLRequestRe
 void (*wkGetGlyphsForCharacters)(CGFontRef, const UniChar[], CGGlyph[], size_t);
 bool (*wkGetVerticalGlyphsForCharacters)(CTFontRef, const UniChar[], CGGlyph[], size_t);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 void* wkGetHyphenationLocationBeforeIndex;
-#else
-CFIndex (*wkGetHyphenationLocationBeforeIndex)(CFStringRef string, CFIndex index);
-int (*wkGetNSEventMomentumPhase)(NSEvent *);
-#endif
 
 CTLineRef (*wkCreateCTLineWithUniCharProvider)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*);
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
@@ -145,7 +138,6 @@ bool (*wkCTFontTransformGlyphs)(CTFontRef font, CGGlyph glyphs[], CGSize advance
 
 CGSize (*wkCTRunGetInitialAdvance)(CTRunRef);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 CTTypesetterRef (*wkCreateCTTypesetterWithUniCharProviderAndOptions)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*, CFDictionaryRef options);
 
 CGContextRef (*wkIOSurfaceContextCreate)(IOSurfaceRef surface, unsigned width, unsigned height, CGColorSpaceRef colorSpace);
@@ -161,8 +153,6 @@ void (*wkSetCrashReportApplicationSpecificInformation)(CFStringRef);
 NSURL *(*wkAVAssetResolvedURL)(AVAsset*);
 
 NSCursor *(*wkCursor)(const char*);
-
-#endif
 
 #if PLATFORM(MAC)
 NSArray *(*wkSpeechSynthesisGetVoiceIdentifiers)(void);
@@ -200,9 +190,7 @@ void (*wkSetMetadataURL)(NSString *urlString, NSString *referrer, NSString *path
 
 void(*wkDestroyRenderingResources)(void);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 dispatch_source_t (*wkCreateVMPressureDispatchOnMainQueue)(void);
-#endif
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 dispatch_source_t (*wkCreateMemoryStatusPressureCriticalDispatchOnMainQueue)(void);
@@ -212,13 +200,9 @@ dispatch_source_t (*wkCreateMemoryStatusPressureCriticalDispatchOnMainQueue)(voi
 bool (*wkExecutableWasLinkedOnOrBeforeLion)(void);
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 void (*wkCGPathAddRoundedRect)(CGMutablePathRef path, const CGAffineTransform* matrix, CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight);
-#endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 void (*wkCFURLRequestAllowAllPostCaching)(CFURLRequestRef);
-#endif
 
 #if USE(CONTENT_FILTERING)
 BOOL (*wkFilterIsManagedSession)(void);

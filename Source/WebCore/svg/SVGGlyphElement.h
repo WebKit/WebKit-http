@@ -23,14 +23,14 @@
 #define SVGGlyphElement_h
 
 #if ENABLE(SVG_FONTS)
+#include "SVGElement.h"
 #include "SVGGlyph.h"
-#include "SVGStyledElement.h"
 
 namespace WebCore {
 
 class SVGFontData;
 
-class SVGGlyphElement FINAL : public SVGStyledElement {
+class SVGGlyphElement FINAL : public SVGElement {
 public:
     static PassRefPtr<SVGGlyphElement> create(const QualifiedName&, Document*);
 
@@ -52,7 +52,7 @@ private:
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
 
-    virtual bool rendererIsNeeded(const NodeRenderingContext&) { return false; }
+    virtual bool rendererIsNeeded(const RenderStyle&) { return false; }
 
     void invalidateGlyphCache();
 };

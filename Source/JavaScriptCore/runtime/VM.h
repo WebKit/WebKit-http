@@ -47,7 +47,7 @@
 #include "SmallStrings.h"
 #include "Strong.h"
 #include "ThunkGenerators.h"
-#include "TypedArrayDescriptor.h"
+#include "TypedArrayController.h"
 #include "Watchdog.h"
 #include "WeakRandom.h"
 #include <wtf/BumpPointerAllocator.h>
@@ -96,6 +96,7 @@ namespace JSC {
 #if ENABLE(DFG_JIT)
     namespace DFG {
     class LongLivedState;
+    class Worklist;
     }
 #endif // ENABLE(DFG_JIT)
 
@@ -192,6 +193,10 @@ namespace JSC {
         JS_EXPORT_PRIVATE ~VM();
 
         void makeUsableFromMultipleThreads() { heap.machineThreads().makeUsableFromMultipleThreads(); }
+        
+#if ENABLE(DFG_JIT)
+        DFG::Worklist* ensureWorklist();
+#endif // ENABLE(DFG_JIT)
 
     private:
         RefPtr<JSLock> m_apiLock;
@@ -208,7 +213,8 @@ namespace JSC {
         Heap heap;
         
 #if ENABLE(DFG_JIT)
-        OwnPtr<DFG::LongLivedState> m_dfgState;
+        OwnPtr<DFG::LongLivedState> dfgState;
+        RefPtr<DFG::Worklist> worklist;
 #endif // ENABLE(DFG_JIT)
 
         VMType vmType;
@@ -216,24 +222,29 @@ namespace JSC {
         ExecState* topCallFrame;
         Watchdog watchdog;
 
-        const HashTable* arrayConstructorTable;
-        const HashTable* arrayPrototypeTable;
-        const HashTable* booleanPrototypeTable;
-        const HashTable* dateTable;
-        const HashTable* dateConstructorTable;
-        const HashTable* errorPrototypeTable;
-        const HashTable* globalObjectTable;
-        const HashTable* jsonTable;
-        const HashTable* mathTable;
-        const HashTable* numberConstructorTable;
-        const HashTable* numberPrototypeTable;
-        const HashTable* objectConstructorTable;
-        const HashTable* privateNamePrototypeTable;
-        const HashTable* regExpTable;
-        const HashTable* regExpConstructorTable;
-        const HashTable* regExpPrototypeTable;
-        const HashTable* stringConstructorTable;
-        
+        const OwnPtr<const HashTable> arrayConstructorTable;
+        const OwnPtr<const HashTable> arrayPrototypeTable;
+        const OwnPtr<const HashTable> booleanPrototypeTable;
+        const OwnPtr<const HashTable> dataViewTable;
+        const OwnPtr<const HashTable> dateTable;
+        const OwnPtr<const HashTable> dateConstructorTable;
+        const OwnPtr<const HashTable> errorPrototypeTable;
+        const OwnPtr<const HashTable> globalObjectTable;
+        const OwnPtr<const HashTable> jsonTable;
+        const OwnPtr<const HashTable> numberConstructorTable;
+        const OwnPtr<const HashTable> numberPrototypeTable;
+        const OwnPtr<const HashTable> objectConstructorTable;
+        const OwnPtr<const HashTable> privateNamePrototypeTable;
+        const OwnPtr<const HashTable> regExpTable;
+        const OwnPtr<const HashTable> regExpConstructorTable;
+        const OwnPtr<const HashTable> regExpPrototypeTable;
+        const OwnPtr<const HashTable> stringConstructorTable;
+#if ENABLE(PROMISES)
+        const OwnPtr<const HashTable> promisePrototypeTable;
+        const OwnPtr<const HashTable> promiseConstructorTable;
+        const OwnPtr<const HashTable> promiseResolverPrototypeTable;
+#endif
+
         Strong<Structure> structureStructure;
         Strong<Structure> structureRareDataStructure;
         Strong<Structure> debuggerActivationStructure;
@@ -267,17 +278,6 @@ namespace JSC {
         NumericStrings numericStrings;
         DateInstanceCache dateInstanceCache;
         WTF::SimpleStats machineCodeBytesPerBytecodeWordForBaselineJIT;
-        Vector<CodeBlock*> codeBlocksBeingCompiled;
-        void startedCompiling(CodeBlock* codeBlock)
-        {
-            codeBlocksBeingCompiled.append(codeBlock);
-        }
-
-        void finishedCompiling(CodeBlock* codeBlock)
-        {
-            ASSERT_UNUSED(codeBlock, codeBlock == codeBlocksBeingCompiled.last());
-            codeBlocksBeingCompiled.removeLast();
-        }
 
         void setInDefineOwnProperty(bool inDefineOwnProperty)
         {
@@ -328,10 +328,22 @@ namespace JSC {
 #endif
         NativeExecutable* getHostFunction(NativeFunction, NativeFunction constructor);
 
-        JSValue exception;
+        static ptrdiff_t exceptionOffset()
+        {
+            return OBJECT_OFFSETOF(VM, m_exception);
+        }
+        
+        JS_EXPORT_PRIVATE void clearException();
         JS_EXPORT_PRIVATE void clearExceptionStack();
-        RefCountedArray<StackFrame>& exceptionStack() { return m_exceptionStack; }
+        void getExceptionInfo(JSValue& exception, RefCountedArray<StackFrame>& exceptionStack);
+        void setExceptionInfo(JSValue& exception, RefCountedArray<StackFrame>& exceptionStack);
+        JSValue exception() const { return m_exception; }
+        JSValue* addressOfException() { return &m_exception; }
+        const RefCountedArray<StackFrame>& exceptionStack() const { return m_exceptionStack; }
 
+        JS_EXPORT_PRIVATE JSValue throwException(ExecState*, JSValue);
+        JS_EXPORT_PRIVATE JSObject* throwException(ExecState*, JSObject*);
+        
         const ClassInfo* const jsArrayClassInfo;
         const ClassInfo* const jsFinalObjectClassInfo;
 
@@ -380,6 +392,7 @@ namespace JSC {
 
         LegacyProfiler* m_enabledProfiler;
         OwnPtr<Profiler::Database> m_perBytecodeProfiler;
+        RefPtr<TypedArrayController> m_typedArrayController;
         RegExpCache* m_regExpCache;
         BumpPointerAllocator m_regExpAllocator;
 
@@ -388,9 +401,7 @@ namespace JSC {
         RTTraceList* m_rtTraceList;
 #endif
 
-#ifndef NDEBUG
         ThreadIdentifier exclusiveThread;
-#endif
 
         CachedTranscendentalFunction<std::sin> cachedSin;
 
@@ -420,62 +431,21 @@ namespace JSC {
         bool haveEnoughNewStringsToHashCons() { return m_newStringsSinceLastHashCons > s_minNumberOfNewStringsToHashCons; }
         void resetNewStringsSinceLastHashCons() { m_newStringsSinceLastHashCons = 0; }
 
-#define registerTypedArrayFunction(type, capitalizedType) \
-        void registerTypedArrayDescriptor(const capitalizedType##Array*, const TypedArrayDescriptor& descriptor) \
-        { \
-            ASSERT(!m_##type##ArrayDescriptor.m_classInfo || m_##type##ArrayDescriptor.m_classInfo == descriptor.m_classInfo); \
-            m_##type##ArrayDescriptor = descriptor; \
-            ASSERT(m_##type##ArrayDescriptor.m_classInfo); \
-        } \
-        const TypedArrayDescriptor& type##ArrayDescriptor() const { ASSERT(m_##type##ArrayDescriptor.m_classInfo); return m_##type##ArrayDescriptor; }
-
-        registerTypedArrayFunction(int8, Int8);
-        registerTypedArrayFunction(int16, Int16);
-        registerTypedArrayFunction(int32, Int32);
-        registerTypedArrayFunction(uint8, Uint8);
-        registerTypedArrayFunction(uint8Clamped, Uint8Clamped);
-        registerTypedArrayFunction(uint16, Uint16);
-        registerTypedArrayFunction(uint32, Uint32);
-        registerTypedArrayFunction(float32, Float32);
-        registerTypedArrayFunction(float64, Float64);
-#undef registerTypedArrayFunction
-        
-        const TypedArrayDescriptor* typedArrayDescriptor(TypedArrayType type) const
+        bool currentThreadIsHoldingAPILock() const
         {
-            switch (type) {
-            case TypedArrayNone:
-                return 0;
-            case TypedArrayInt8:
-                return &int8ArrayDescriptor();
-            case TypedArrayInt16:
-                return &int16ArrayDescriptor();
-            case TypedArrayInt32:
-                return &int32ArrayDescriptor();
-            case TypedArrayUint8:
-                return &uint8ArrayDescriptor();
-            case TypedArrayUint8Clamped:
-                return &uint8ClampedArrayDescriptor();
-            case TypedArrayUint16:
-                return &uint16ArrayDescriptor();
-            case TypedArrayUint32:
-                return &uint32ArrayDescriptor();
-            case TypedArrayFloat32:
-                return &float32ArrayDescriptor();
-            case TypedArrayFloat64:
-                return &float64ArrayDescriptor();
-            default:
-                CRASH();
-                return 0;
-            }
+            return m_apiLock->currentThreadIsHoldingLock() || exclusiveThread == currentThread();
         }
 
         JSLock& apiLock() { return *m_apiLock; }
         CodeCache* codeCache() { return m_codeCache.get(); }
 
+        void prepareToDiscardCode();
+        
         JS_EXPORT_PRIVATE void discardAllCode();
 
     private:
         friend class LLIntOffsetsExtractor;
+        friend class ClearExceptionScope;
         
         VM(VMType, HeapType);
         static VM*& sharedInstanceInternal();
@@ -492,19 +462,10 @@ namespace JSC {
 #if ENABLE(GC_VALIDATION)
         const ClassInfo* m_initializingObjectClass;
 #endif
+        JSValue m_exception;
         bool m_inDefineOwnProperty;
-        RefPtr<CodeCache> m_codeCache;
+        OwnPtr<CodeCache> m_codeCache;
         RefCountedArray<StackFrame> m_exceptionStack;
-
-        TypedArrayDescriptor m_int8ArrayDescriptor;
-        TypedArrayDescriptor m_int16ArrayDescriptor;
-        TypedArrayDescriptor m_int32ArrayDescriptor;
-        TypedArrayDescriptor m_uint8ArrayDescriptor;
-        TypedArrayDescriptor m_uint8ClampedArrayDescriptor;
-        TypedArrayDescriptor m_uint16ArrayDescriptor;
-        TypedArrayDescriptor m_uint32ArrayDescriptor;
-        TypedArrayDescriptor m_float32ArrayDescriptor;
-        TypedArrayDescriptor m_float64ArrayDescriptor;
     };
 
 #if ENABLE(GC_VALIDATION)

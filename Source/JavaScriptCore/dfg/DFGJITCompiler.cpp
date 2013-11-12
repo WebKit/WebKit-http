@@ -29,6 +29,9 @@
 #if ENABLE(DFG_JIT)
 
 #include "CodeBlock.h"
+#include "DFGFailedFinalizer.h"
+#include "DFGJITCode.h"
+#include "DFGJITFinalizer.h"
 #include "DFGOSRExitCompiler.h"
 #include "DFGOperations.h"
 #include "DFGRegisterBank.h"
@@ -44,37 +47,43 @@ namespace JSC { namespace DFG {
 JITCompiler::JITCompiler(Graph& dfg)
     : CCallHelpers(&dfg.m_vm, dfg.m_codeBlock)
     , m_graph(dfg)
+    , m_jitCode(adoptRef(new JITCode()))
+    , m_blockHeads(dfg.numBlocks())
     , m_currentCodeOriginIndex(0)
 {
     if (shouldShowDisassembly() || m_graph.m_vm.m_perBytecodeProfiler)
         m_disassembler = adoptPtr(new Disassembler(dfg));
 }
 
+JITCompiler::~JITCompiler()
+{
+}
+
 void JITCompiler::linkOSRExits()
 {
-    ASSERT(codeBlock()->numberOfOSRExits() == m_exitCompilationInfo.size());
-    if (m_graph.m_compilation) {
-        for (unsigned i = 0; i < codeBlock()->numberOfOSRExits(); ++i) {
-            OSRExit& exit = codeBlock()->osrExit(i);
+    ASSERT(m_jitCode->osrExit.size() == m_exitCompilationInfo.size());
+    if (m_graph.compilation()) {
+        for (unsigned i = 0; i < m_jitCode->osrExit.size(); ++i) {
+            OSRExit& exit = m_jitCode->osrExit[i];
             Vector<Label> labels;
             if (exit.m_watchpointIndex == std::numeric_limits<unsigned>::max()) {
                 OSRExitCompilationInfo& info = m_exitCompilationInfo[i];
                 for (unsigned j = 0; j < info.m_failureJumps.jumps().size(); ++j)
                     labels.append(info.m_failureJumps.jumps()[j].label());
             } else
-                labels.append(codeBlock()->watchpoint(exit.m_watchpointIndex).sourceLabel());
+                labels.append(m_jitCode->watchpoints[exit.m_watchpointIndex].sourceLabel());
             m_exitSiteLabels.append(labels);
         }
     }
     
-    for (unsigned i = 0; i < codeBlock()->numberOfOSRExits(); ++i) {
-        OSRExit& exit = codeBlock()->osrExit(i);
+    for (unsigned i = 0; i < m_jitCode->osrExit.size(); ++i) {
+        OSRExit& exit = m_jitCode->osrExit[i];
         JumpList& failureJumps = m_exitCompilationInfo[i].m_failureJumps;
         ASSERT(failureJumps.empty() == (exit.m_watchpointIndex != std::numeric_limits<unsigned>::max()));
         if (exit.m_watchpointIndex == std::numeric_limits<unsigned>::max())
             failureJumps.link(this);
         else
-            codeBlock()->watchpoint(exit.m_watchpointIndex).setDestination(label());
+            m_jitCode->watchpoints[exit.m_watchpointIndex].setDestination(label());
         jitAssertHasValidCallFrame();
         store32(TrustedImm32(i), &vm()->osrExitIndex);
         exit.setPatchableCodeOffset(patchableJump());
@@ -95,7 +104,7 @@ void JITCompiler::compileEntry()
     emitPutImmediateToCallFrameHeader(m_codeBlock, JSStack::CodeBlock);
 }
 
-void JITCompiler::compileBody(SpeculativeJIT& speculative)
+void JITCompiler::compileBody()
 {
     // We generate the speculative code path, followed by OSR exit code to return
     // to the old JIT code if speculations fail.
@@ -105,7 +114,7 @@ void JITCompiler::compileBody(SpeculativeJIT& speculative)
     breakpoint();
 #endif
     
-    bool compiledSpeculative = speculative.compile();
+    bool compiledSpeculative = m_speculative->compile();
     ASSERT_UNUSED(compiledSpeculative, compiledSpeculative);
 }
 
@@ -148,6 +157,62 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
     dataLogF("JIT code for %p start at [%p, %p). Size = %zu.\n", m_codeBlock, linkBuffer.debugAddress(), static_cast<char*>(linkBuffer.debugAddress()) + linkBuffer.debugSize(), linkBuffer.debugSize());
 #endif
 
+    BitVector usedJumpTables;
+    for (unsigned i = m_graph.m_switchData.size(); i--;) {
+        SwitchData& data = m_graph.m_switchData[i];
+        if (!data.didUseJumpTable)
+            continue;
+        
+        if (data.kind == SwitchString)
+            continue;
+        
+        RELEASE_ASSERT(data.kind == SwitchImm || data.kind == SwitchChar);
+        
+        usedJumpTables.set(data.switchTableIndex);
+        SimpleJumpTable& table = m_codeBlock->switchJumpTable(data.switchTableIndex);
+        table.ctiDefault = linkBuffer.locationOf(m_blockHeads[data.fallThrough->index]);
+        table.ctiOffsets.grow(table.branchOffsets.size());
+        for (unsigned j = table.ctiOffsets.size(); j--;)
+            table.ctiOffsets[j] = table.ctiDefault;
+        for (unsigned j = data.cases.size(); j--;) {
+            SwitchCase& myCase = data.cases[j];
+            table.ctiOffsets[myCase.value.switchLookupValue() - table.min] =
+                linkBuffer.locationOf(m_blockHeads[myCase.target->index]);
+        }
+    }
+    
+    for (unsigned i = m_codeBlock->numberOfSwitchJumpTables(); i--;) {
+        if (usedJumpTables.get(i))
+            continue;
+        
+        m_codeBlock->switchJumpTable(i).clear();
+    }
+
+    // NOTE: we cannot clear string switch tables because (1) we're running concurrently
+    // and we cannot deref StringImpl's and (2) it would be weird to deref those
+    // StringImpl's since we refer to them.
+    for (unsigned i = m_graph.m_switchData.size(); i--;) {
+        SwitchData& data = m_graph.m_switchData[i];
+        if (!data.didUseJumpTable)
+            continue;
+        
+        if (data.kind != SwitchString)
+            continue;
+        
+        StringJumpTable& table = m_codeBlock->stringSwitchJumpTable(data.switchTableIndex);
+        table.ctiDefault = linkBuffer.locationOf(m_blockHeads[data.fallThrough->index]);
+        StringJumpTable::StringOffsetTable::iterator iter;
+        StringJumpTable::StringOffsetTable::iterator end = table.offsetTable.end();
+        for (iter = table.offsetTable.begin(); iter != end; ++iter)
+            iter->value.ctiOffset = table.ctiDefault;
+        for (unsigned j = data.cases.size(); j--;) {
+            SwitchCase& myCase = data.cases[j];
+            iter = table.offsetTable.find(myCase.value.stringImpl());
+            RELEASE_ASSERT(iter != end);
+            iter->value.ctiOffset = linkBuffer.locationOf(m_blockHeads[myCase.target->index]);
+        }
+    }
+
     // Link all calls out from the JIT code to their respective functions.
     for (unsigned i = 0; i < m_calls.size(); ++i)
         linkBuffer.link(m_calls[i].m_call, m_calls[i].m_function);
@@ -162,17 +227,15 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
         m_codeBlock->callReturnIndexVector().append(CallReturnOffsetToBytecodeOffset(returnAddressOffset, exceptionInfo));
     }
 
-    Vector<CodeOriginAtCallReturnOffset, 0, UnsafeVectorOverflow>& codeOrigins = m_codeBlock->codeOrigins();
+    Vector<CodeOrigin, 0, UnsafeVectorOverflow>& codeOrigins = m_codeBlock->codeOrigins();
     codeOrigins.resize(m_exceptionChecks.size());
     
     for (unsigned i = 0; i < m_exceptionChecks.size(); ++i) {
         CallExceptionRecord& record = m_exceptionChecks[i];
-        unsigned returnAddressOffset = linkBuffer.returnAddressOffset(m_exceptionChecks[i].m_call);
-        codeOrigins[i].codeOrigin = record.m_codeOrigin;
-        codeOrigins[i].callReturnOffset = returnAddressOffset;
+        codeOrigins[i] = record.m_codeOrigin;
     }
     
-    m_codeBlock->setNumberOfStructureStubInfos(m_propertyAccesses.size());
+    m_codeBlock->setNumberOfStructureStubInfos(m_propertyAccesses.size() + m_ins.size());
     for (unsigned i = 0; i < m_propertyAccesses.size(); ++i) {
         StructureStubInfo& info = m_codeBlock->structureStubInfo(i);
         CodeLocationCall callReturnLocation = linkBuffer.locationOf(m_propertyAccesses[i].m_slowPathGenerator->call());
@@ -199,6 +262,20 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
         m_propertyAccesses[i].m_usedRegisters.copyInfo(info.patch.dfg.usedRegisters);
         info.patch.dfg.registersFlushed = m_propertyAccesses[i].m_registerMode == PropertyAccessRecord::RegistersFlushed;
     }
+    for (unsigned i = 0; i < m_ins.size(); ++i) {
+        StructureStubInfo& info = m_codeBlock->structureStubInfo(m_propertyAccesses.size() + i);
+        CodeLocationLabel jump = linkBuffer.locationOf(m_ins[i].m_jump);
+        CodeLocationCall callReturnLocation = linkBuffer.locationOf(m_ins[i].m_slowPathGenerator->call());
+        info.codeOrigin = m_ins[i].m_codeOrigin;
+        info.hotPathBegin = jump;
+        info.callReturnLocation = callReturnLocation;
+        info.patch.dfg.deltaCallToSlowCase = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_ins[i].m_slowPathGenerator->label()));
+        info.patch.dfg.baseGPR = m_ins[i].m_baseGPR;
+        info.patch.dfg.valueGPR = m_ins[i].m_resultGPR;
+        m_ins[i].m_usedRegisters.copyInfo(info.patch.dfg.usedRegisters);
+        info.patch.dfg.registersFlushed = false;
+    }
+    m_codeBlock->sortStructureStubInfos();
     
     m_codeBlock->setNumberOfCallLinkInfos(m_jsCalls.size());
     for (unsigned i = 0; i < m_jsCalls.size(); ++i) {
@@ -215,68 +292,72 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
     
     MacroAssemblerCodeRef osrExitThunk = vm()->getCTIStub(osrExitGenerationThunkGenerator);
     CodeLocationLabel target = CodeLocationLabel(osrExitThunk.code());
-    for (unsigned i = 0; i < codeBlock()->numberOfOSRExits(); ++i) {
-        OSRExit& exit = codeBlock()->osrExit(i);
+    for (unsigned i = 0; i < m_jitCode->osrExit.size(); ++i) {
+        OSRExit& exit = m_jitCode->osrExit[i];
         linkBuffer.link(exit.getPatchableCodeOffsetAsJump(), target);
         exit.correctJump(linkBuffer);
         if (exit.m_watchpointIndex != std::numeric_limits<unsigned>::max())
-            codeBlock()->watchpoint(exit.m_watchpointIndex).correctLabels(linkBuffer);
+            m_jitCode->watchpoints[exit.m_watchpointIndex].correctLabels(linkBuffer);
     }
     
-    if (m_graph.m_compilation) {
-        ASSERT(m_exitSiteLabels.size() == codeBlock()->numberOfOSRExits());
+    if (m_graph.compilation()) {
+        ASSERT(m_exitSiteLabels.size() == m_jitCode->osrExit.size());
         for (unsigned i = 0; i < m_exitSiteLabels.size(); ++i) {
             Vector<Label>& labels = m_exitSiteLabels[i];
             Vector<const void*> addresses;
             for (unsigned j = 0; j < labels.size(); ++j)
                 addresses.append(linkBuffer.locationOf(labels[j]).executableAddress());
-            m_graph.m_compilation->addOSRExitSite(addresses);
+            m_graph.compilation()->addOSRExitSite(addresses);
         }
     } else
         ASSERT(!m_exitSiteLabels.size());
     
-    codeBlock()->saveCompilation(m_graph.m_compilation);
+    m_jitCode->common.compilation = m_graph.compilation();
+    
 }
 
-bool JITCompiler::compile(JITCode& entry)
+void JITCompiler::compile()
 {
     SamplingRegion samplingRegion("DFG Backend");
 
     setStartOfCode();
     compileEntry();
-    SpeculativeJIT speculative(*this);
-    compileBody(speculative);
+    m_speculative = adoptPtr(new SpeculativeJIT(*this));
+    compileBody();
     setEndOfMainPath();
 
     // Generate slow path code.
-    speculative.runSlowPathGenerators();
+    m_speculative->runSlowPathGenerators();
     
     compileExceptionHandlers();
     linkOSRExits();
     
     // Create OSR entry trampolines if necessary.
-    speculative.createOSREntries();
+    m_speculative->createOSREntries();
     setEndOfCode();
-
-    LinkBuffer linkBuffer(*m_vm, this, m_codeBlock, JITCompilationCanFail);
-    if (linkBuffer.didFailToAllocate())
-        return false;
-    link(linkBuffer);
-    speculative.linkOSREntries(linkBuffer);
-    codeBlock()->shrinkToFit(CodeBlock::LateShrink);
-
-    if (shouldShowDisassembly())
-        m_disassembler->dump(linkBuffer);
-    if (m_graph.m_compilation)
-        m_disassembler->reportToProfiler(m_graph.m_compilation.get(), linkBuffer);
-
-    entry = JITCode(
-        linkBuffer.finalizeCodeWithoutDisassembly(),
-        JITCode::DFGJIT);
-    return true;
 }
 
-bool JITCompiler::compileFunction(JITCode& entry, MacroAssemblerCodePtr& entryWithArityCheck)
+void JITCompiler::link()
+{
+    OwnPtr<LinkBuffer> linkBuffer = adoptPtr(new LinkBuffer(*m_vm, this, m_codeBlock, JITCompilationCanFail));
+    if (linkBuffer->didFailToAllocate()) {
+        m_graph.m_plan.finalizer = adoptPtr(new FailedFinalizer(m_graph.m_plan));
+        return;
+    }
+    
+    link(*linkBuffer);
+    m_speculative->linkOSREntries(*linkBuffer);
+    
+    m_jitCode->shrinkToFit();
+    codeBlock()->shrinkToFit(CodeBlock::LateShrink);
+
+    disassemble(*linkBuffer);
+    
+    m_graph.m_plan.finalizer = adoptPtr(new JITFinalizer(
+        m_graph.m_plan, m_jitCode.release(), linkBuffer.release()));
+}
+
+void JITCompiler::compileFunction()
 {
     SamplingRegion samplingRegion("DFG Backend");
     
@@ -297,8 +378,8 @@ bool JITCompiler::compileFunction(JITCode& entry, MacroAssemblerCodePtr& entryWi
 
 
     // === Function body code generation ===
-    SpeculativeJIT speculative(*this);
-    compileBody(speculative);
+    m_speculative = adoptPtr(new SpeculativeJIT(*this));
+    compileBody();
     setEndOfMainPath();
 
     // === Function footer code generation ===
@@ -315,8 +396,8 @@ bool JITCompiler::compileFunction(JITCode& entry, MacroAssemblerCodePtr& entryWi
 
     CallBeginToken token;
     beginCall(CodeOrigin(0), token);
-    Call callStackCheck = call();
-    notifyCall(callStackCheck, CodeOrigin(0), token);
+    m_callStackCheck = call();
+    notifyCall(m_callStackCheck, CodeOrigin(0), token);
     jump(fromStackCheck);
     
     // The fast entry point into a function does not check the correct number of arguments
@@ -324,7 +405,7 @@ bool JITCompiler::compileFunction(JITCode& entry, MacroAssemblerCodePtr& entryWi
     // determine the correct number of arguments have been passed, or have already checked).
     // In cases where an arity check is necessary, we enter here.
     // FIXME: change this from a cti call to a DFG style operation (normal C calling conventions).
-    Label arityCheck = label();
+    m_arityCheck = label();
     compileEntry();
 
     load32(AssemblyHelpers::payloadFor((VirtualRegister)JSStack::ArgumentCount), GPRInfo::regT1);
@@ -332,43 +413,57 @@ bool JITCompiler::compileFunction(JITCode& entry, MacroAssemblerCodePtr& entryWi
     move(stackPointerRegister, GPRInfo::argumentGPR0);
     poke(GPRInfo::callFrameRegister, OBJECT_OFFSETOF(struct JITStackFrame, callFrame) / sizeof(void*));
     beginCall(CodeOrigin(0), token);
-    Call callArityCheck = call();
-    notifyCall(callArityCheck, CodeOrigin(0), token);
-    move(GPRInfo::regT0, GPRInfo::callFrameRegister);
+    m_callArityCheck = call();
+    notifyCall(m_callArityCheck, CodeOrigin(0), token);
+    branchTest32(Zero, GPRInfo::regT0).linkTo(fromArityCheck, this);
+    beginCall(CodeOrigin(0), token);
+    m_callArityFixup = call();
+    notifyCall(m_callArityFixup, CodeOrigin(0), token);
     jump(fromArityCheck);
     
     // Generate slow path code.
-    speculative.runSlowPathGenerators();
+    m_speculative->runSlowPathGenerators();
     
     compileExceptionHandlers();
     linkOSRExits();
     
     // Create OSR entry trampolines if necessary.
-    speculative.createOSREntries();
+    m_speculative->createOSREntries();
     setEndOfCode();
+}
 
+void JITCompiler::linkFunction()
+{
     // === Link ===
-    LinkBuffer linkBuffer(*m_vm, this, m_codeBlock, JITCompilationCanFail);
-    if (linkBuffer.didFailToAllocate())
-        return false;
-    link(linkBuffer);
-    speculative.linkOSREntries(linkBuffer);
+    OwnPtr<LinkBuffer> linkBuffer = adoptPtr(new LinkBuffer(*m_vm, this, m_codeBlock, JITCompilationCanFail));
+    if (linkBuffer->didFailToAllocate()) {
+        m_graph.m_plan.finalizer = adoptPtr(new FailedFinalizer(m_graph.m_plan));
+        return;
+    }
+    link(*linkBuffer);
+    m_speculative->linkOSREntries(*linkBuffer);
+    
+    m_jitCode->shrinkToFit();
     codeBlock()->shrinkToFit(CodeBlock::LateShrink);
     
     // FIXME: switch the stack check & arity check over to DFGOpertaion style calls, not JIT stubs.
-    linkBuffer.link(callStackCheck, cti_stack_check);
-    linkBuffer.link(callArityCheck, m_codeBlock->m_isConstructor ? cti_op_construct_arityCheck : cti_op_call_arityCheck);
+    linkBuffer->link(m_callStackCheck, cti_stack_check);
+    linkBuffer->link(m_callArityCheck, m_codeBlock->m_isConstructor ? cti_op_construct_arityCheck : cti_op_call_arityCheck);
+    linkBuffer->link(m_callArityFixup, FunctionPtr((m_vm->getCTIStub(arityFixup)).code().executableAddress()));
     
+    disassemble(*linkBuffer);
+    
+    m_graph.m_plan.finalizer = adoptPtr(new JITFinalizer(
+        m_graph.m_plan, m_jitCode.release(), linkBuffer.release(), m_arityCheck));
+}
+
+void JITCompiler::disassemble(LinkBuffer& linkBuffer)
+{
     if (shouldShowDisassembly())
         m_disassembler->dump(linkBuffer);
-    if (m_graph.m_compilation)
-        m_disassembler->reportToProfiler(m_graph.m_compilation.get(), linkBuffer);
-
-    entryWithArityCheck = linkBuffer.locationOf(arityCheck);
-    entry = JITCode(
-        linkBuffer.finalizeCodeWithoutDisassembly(),
-        JITCode::DFGJIT);
-    return true;
+    
+    if (m_graph.m_plan.compilation)
+        m_disassembler->reportToProfiler(m_graph.m_plan.compilation.get(), linkBuffer);
 }
 
 } } // namespace JSC::DFG

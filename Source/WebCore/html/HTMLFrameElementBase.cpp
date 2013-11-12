@@ -39,6 +39,7 @@
 #include "ScriptController.h"
 #include "ScriptEventListener.h"
 #include "Settings.h"
+#include "SubframeLoader.h"
 
 namespace WebCore {
 
@@ -51,6 +52,7 @@ HTMLFrameElementBase::HTMLFrameElementBase(const QualifiedName& tagName, Documen
     , m_marginHeight(-1)
     , m_viewSource(false)
 {
+    setHasCustomStyleResolveCallbacks();
 }
 
 bool HTMLFrameElementBase::isURLAllowed() const
@@ -58,7 +60,7 @@ bool HTMLFrameElementBase::isURLAllowed() const
     if (m_URL.isEmpty())
         return true;
 
-    const KURL& completeURL = document()->completeURL(m_URL);
+    const KURL& completeURL = document().completeURL(m_URL);
 
     if (protocolIsJavaScript(completeURL)) { 
         Document* contentDoc = this->contentDocument();
@@ -66,7 +68,7 @@ bool HTMLFrameElementBase::isURLAllowed() const
             return false;
     }
 
-    Frame* parentFrame = document()->frame();
+    Frame* parentFrame = document().frame();
     if (parentFrame)
         return parentFrame->isURLAllowed(completeURL);
 
@@ -81,11 +83,11 @@ void HTMLFrameElementBase::openURL(bool lockHistory, bool lockBackForwardList)
     if (m_URL.isEmpty())
         m_URL = blankURL().string();
 
-    Frame* parentFrame = document()->frame();
+    Frame* parentFrame = document().frame();
     if (!parentFrame)
         return;
 
-    parentFrame->loader()->subframeLoader()->requestFrame(this, m_URL, m_frameName, lockHistory, lockBackForwardList);
+    parentFrame->loader().subframeLoader().requestFrame(this, m_URL, m_frameName, lockHistory, lockBackForwardList);
     if (contentFrame())
         contentFrame()->setInViewSourceMode(viewSourceMode());
 }
@@ -114,7 +116,7 @@ void HTMLFrameElementBase::parseAttribute(const QualifiedName& name, const Atomi
     } else if (name == scrollingAttr) {
         // Auto and yes both simply mean "allow scrolling." No means "don't allow scrolling."
         if (equalIgnoringCase(value, "auto") || equalIgnoringCase(value, "yes"))
-            m_scrolling = document()->frameElementsShouldIgnoreScrolling() ? ScrollbarAlwaysOff : ScrollbarAuto;
+            m_scrolling = document().frameElementsShouldIgnoreScrolling() ? ScrollbarAlwaysOff : ScrollbarAuto;
         else if (equalIgnoringCase(value, "no"))
             m_scrolling = ScrollbarAlwaysOff;
         // FIXME: If we are already attached, this has no effect.
@@ -155,7 +157,7 @@ void HTMLFrameElementBase::didNotifySubtreeInsertions(ContainerNode*)
         return;
 
     // DocumentFragments don't kick of any loads.
-    if (!document()->frame())
+    if (!document().frame())
         return;
 
     if (!SubframeLoadingDisabler::canLoadFrame(this))
@@ -172,10 +174,8 @@ void HTMLFrameElementBase::didNotifySubtreeInsertions(ContainerNode*)
     setNameAndOpenURL();
 }
 
-void HTMLFrameElementBase::attach(const AttachContext& context)
+void HTMLFrameElementBase::didAttachRenderers()
 {
-    HTMLFrameOwnerElement::attach(context);
-
     if (RenderPart* part = renderPart()) {
         if (Frame* frame = contentFrame())
             part->setWidget(frame->view());
@@ -186,12 +186,12 @@ KURL HTMLFrameElementBase::location() const
 {
     if (fastHasAttribute(srcdocAttr))
         return KURL(ParsedURLString, "about:srcdoc");
-    return document()->completeURL(getAttribute(srcAttr));
+    return document().completeURL(getAttribute(srcAttr));
 }
 
 void HTMLFrameElementBase::setLocation(const String& str)
 {
-    Settings* settings = document()->settings();
+    Settings* settings = document().settings();
     if (settings && settings->needsAcrobatFrameReloadingQuirk() && m_URL == str)
         return;
 
@@ -209,11 +209,11 @@ bool HTMLFrameElementBase::supportsFocus() const
 void HTMLFrameElementBase::setFocus(bool received)
 {
     HTMLFrameOwnerElement::setFocus(received);
-    if (Page* page = document()->page()) {
+    if (Page* page = document().page()) {
         if (received)
-            page->focusController()->setFocusedFrame(contentFrame());
-        else if (page->focusController()->focusedFrame() == contentFrame()) // Focus may have already been given to another frame, don't take it away.
-            page->focusController()->setFocusedFrame(0);
+            page->focusController().setFocusedFrame(contentFrame());
+        else if (page->focusController().focusedFrame() == contentFrame()) // Focus may have already been given to another frame, don't take it away.
+            page->focusController().setFocusedFrame(0);
     }
 }
 
@@ -229,7 +229,7 @@ bool HTMLFrameElementBase::isHTMLContentAttribute(const Attribute& attribute) co
 
 int HTMLFrameElementBase::width()
 {
-    document()->updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIgnorePendingStylesheets();
     if (!renderBox())
         return 0;
     return renderBox()->width();
@@ -237,7 +237,7 @@ int HTMLFrameElementBase::width()
 
 int HTMLFrameElementBase::height()
 {
-    document()->updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIgnorePendingStylesheets();
     if (!renderBox())
         return 0;
     return renderBox()->height();

@@ -36,6 +36,7 @@
 #include "CSSSelectorList.h"
 #include "CSSValueKeywords.h"
 #include "HTMLElement.h"
+#include "InspectorInstrumentation.h"
 #include "RenderRegion.h"
 #include "SVGElement.h"
 #include "SelectorCheckerFastPath.h"
@@ -46,20 +47,20 @@
 
 namespace WebCore {
 
-static StylePropertySet* leftToRightDeclaration()
+static const StylePropertySet& leftToRightDeclaration()
 {
-    DEFINE_STATIC_LOCAL(RefPtr<MutableStylePropertySet>, leftToRightDecl, (MutableStylePropertySet::create()));
+    static MutableStylePropertySet* leftToRightDecl = MutableStylePropertySet::create().leakRef();
     if (leftToRightDecl->isEmpty())
         leftToRightDecl->setProperty(CSSPropertyDirection, CSSValueLtr);
-    return leftToRightDecl.get();
+    return *leftToRightDecl;
 }
 
-static StylePropertySet* rightToLeftDeclaration()
+static const StylePropertySet& rightToLeftDeclaration()
 {
-    DEFINE_STATIC_LOCAL(RefPtr<MutableStylePropertySet>, rightToLeftDecl, (MutableStylePropertySet::create()));
+    static MutableStylePropertySet* rightToLeftDecl = MutableStylePropertySet::create().leakRef();
     if (rightToLeftDecl->isEmpty())
         rightToLeftDecl->setProperty(CSSPropertyDirection, CSSValueRtl);
-    return rightToLeftDecl.get();
+    return *rightToLeftDecl;
 }
 
 StyleResolver::MatchResult& ElementRuleCollector::matchedResult()
@@ -95,7 +96,7 @@ inline void ElementRuleCollector::addElementStyleProperties(const StylePropertyS
     m_result.ranges.lastAuthorRule = m_result.matchedProperties.size();
     if (m_result.ranges.firstAuthorRule == -1)
         m_result.ranges.firstAuthorRule = m_result.ranges.lastAuthorRule;
-    m_result.addMatchedProperties(propertySet);
+    m_result.addMatchedProperties(*propertySet);
     if (!isCacheable)
         m_result.isCacheable = false;
 }
@@ -154,8 +155,7 @@ void ElementRuleCollector::collectMatchingRules(const MatchRequest& matchRequest
     TreeScope* treeScope = element->treeScope();
     if (!MatchingUARulesScope::isMatchingUARules()
         && !treeScope->applyAuthorStyles()
-        && (!matchRequest.scope || matchRequest.scope->treeScope() != treeScope)
-        && m_behaviorAtBoundary == SelectorChecker::DoesNotCrossBoundary)
+        && (!matchRequest.scope || matchRequest.scope->treeScope() != treeScope))
         return;
 
     // We need to collect the rules for id, class, tag, and everything else into a buffer and
@@ -180,11 +180,11 @@ void ElementRuleCollector::collectMatchingRulesForRegion(const MatchRequest& mat
     if (!m_regionForStyling)
         return;
 
-    unsigned size = matchRequest.ruleSet->m_regionSelectorsAndRuleSets.size();
+    unsigned size = matchRequest.ruleSet->regionSelectorsAndRuleSets().size();
     for (unsigned i = 0; i < size; ++i) {
-        const CSSSelector* regionSelector = matchRequest.ruleSet->m_regionSelectorsAndRuleSets.at(i).selector;
-        if (checkRegionSelector(regionSelector, toElement(m_regionForStyling->node()))) {
-            RuleSet* regionRules = matchRequest.ruleSet->m_regionSelectorsAndRuleSets.at(i).ruleSet.get();
+        const CSSSelector* regionSelector = matchRequest.ruleSet->regionSelectorsAndRuleSets().at(i).selector;
+        if (checkRegionSelector(regionSelector, m_regionForStyling->generatingElement())) {
+            RuleSet* regionRules = matchRequest.ruleSet->regionSelectorsAndRuleSets().at(i).ruleSet.get();
             ASSERT(regionRules);
             collectMatchingRules(MatchRequest(regionRules, matchRequest.includeEmptyRules, matchRequest.scope), ruleRange);
         }
@@ -324,11 +324,11 @@ void ElementRuleCollector::matchUARules()
     matchUARules(userAgentStyleSheet);
 
     // In quirks mode, we match rules from the quirks user agent sheet.
-    if (document()->inQuirksMode())
+    if (document().inQuirksMode())
         matchUARules(CSSDefaultStyleSheets::defaultQuirksStyle);
 
     // If document uses view source styles (in view source mode or in xml viewer mode), then we match rules from the view source style sheet.
-    if (document()->isViewSource())
+    if (document().isViewSource())
         matchUARules(CSSDefaultStyleSheets::viewSourceStyle());
 }
 
@@ -374,7 +374,6 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData, const Co
     context.pseudoId = m_pseudoStyleRequest.pseudoId;
     context.scrollbar = m_pseudoStyleRequest.scrollbar;
     context.scrollbarPart = m_pseudoStyleRequest.scrollbarPart;
-    context.behaviorAtBoundary = m_behaviorAtBoundary;
     SelectorChecker::Match match = selectorChecker.match(context, dynamicPseudo);
     if (match != SelectorChecker::SelectorMatches)
         return false;
@@ -400,21 +399,20 @@ void ElementRuleCollector::doCollectMatchingRulesForList(const Vector<RuleData>*
 
     const StyleResolver::State& state = m_state;
 
-    unsigned size = rules->size();
-    for (unsigned i = 0; i < size; ++i) {
-        const RuleData& ruleData = rules->at(i);
+    for (unsigned i = 0, size = rules->size(); i < size; ++i) {
+        const RuleData& ruleData = rules->data()[i];
         if (m_canUseFastReject && m_selectorFilter.fastRejectSelector<RuleData::maximumIdentifierCount>(ruleData.descendantSelectorIdentifierHashes()))
             continue;
 
         StyleRule* rule = ruleData.rule();
         InspectorInstrumentationCookie cookie;
         if (hasInspectorFrontends)
-            cookie = InspectorInstrumentation::willMatchRule(document(), rule, m_inspectorCSSOMWrappers, document()->styleSheetCollection());
+            cookie = InspectorInstrumentation::willMatchRule(&document(), rule, m_inspectorCSSOMWrappers, document().styleSheetCollection());
         PseudoId dynamicPseudo = NOPSEUDO;
         if (ruleMatches(ruleData, matchRequest.scope, dynamicPseudo)) {
             // If the rule has no properties to apply, then ignore it in the non-debug mode.
-            const StylePropertySet* properties = rule->properties();
-            if (!properties || (properties->isEmpty() && !matchRequest.includeEmptyRules)) {
+            const StylePropertySet& properties = rule->properties();
+            if (properties.isEmpty() && !matchRequest.includeEmptyRules) {
                 if (hasInspectorFrontends)
                     InspectorInstrumentation::didMatchRule(cookie, false);
                 continue;

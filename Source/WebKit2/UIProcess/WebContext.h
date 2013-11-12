@@ -229,6 +229,8 @@ public:
     void setDiskCacheDirectory(const String& dir) { m_overrideDiskCacheDirectory = dir; }
     void setCookieStorageDirectory(const String& dir) { m_overrideCookieStorageDirectory = dir; }
 
+    void useTestingNetworkSession();
+
     void allowSpecificHTTPSCertificateForHost(const WebCertificateInfo*, const String& host);
 
     WebProcessProxy* ensureSharedWebProcess();
@@ -321,16 +323,16 @@ private:
     void getPasteboardPathnamesForType(const String& pasteboardName, const String& pasteboardType, Vector<String>& pathnames);
     void getPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, String&);
     void getPasteboardBufferForType(const String& pasteboardName, const String& pasteboardType, SharedMemory::Handle&, uint64_t& size);
-    void pasteboardCopy(const String& fromPasteboard, const String& toPasteboard);
+    void pasteboardCopy(const String& fromPasteboard, const String& toPasteboard, uint64_t& newChangeCount);
     void getPasteboardChangeCount(const String& pasteboardName, uint64_t& changeCount);
     void getPasteboardUniqueName(String& pasteboardName);
     void getPasteboardColor(const String& pasteboardName, WebCore::Color&);
     void getPasteboardURL(const String& pasteboardName, WTF::String&);
-    void addPasteboardTypes(const String& pasteboardName, const Vector<String>& pasteboardTypes);
-    void setPasteboardTypes(const String& pasteboardName, const Vector<String>& pasteboardTypes);
-    void setPasteboardPathnamesForType(const String& pasteboardName, const String& pasteboardType, const Vector<String>& pathnames);
-    void setPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, const String&);
-    void setPasteboardBufferForType(const String& pasteboardName, const String& pasteboardType, const SharedMemory::Handle&, uint64_t size);
+    void addPasteboardTypes(const String& pasteboardName, const Vector<String>& pasteboardTypes, uint64_t& newChangeCount);
+    void setPasteboardTypes(const String& pasteboardName, const Vector<String>& pasteboardTypes, uint64_t& newChangeCount);
+    void setPasteboardPathnamesForType(const String& pasteboardName, const String& pasteboardType, const Vector<String>& pathnames, uint64_t& newChangeCount);
+    void setPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, const String&, uint64_t& newChangeCount);
+    void setPasteboardBufferForType(const String& pasteboardName, const String& pasteboardType, const SharedMemory::Handle&, uint64_t size, uint64_t& newChangeCount);
 #endif
 
 #if !PLATFORM(MAC)
@@ -464,6 +466,8 @@ private:
     String m_overrideLocalStorageDirectory;
     String m_overrideDiskCacheDirectory;
     String m_overrideCookieStorageDirectory;
+
+    bool m_shouldUseTestingNetworkSession;
 
     bool m_processTerminationEnabled;
 

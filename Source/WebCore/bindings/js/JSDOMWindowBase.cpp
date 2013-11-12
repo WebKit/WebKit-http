@@ -29,6 +29,7 @@
 #include "DOMWindow.h"
 #include "Frame.h"
 #include "InspectorController.h"
+#include "JSDOMGlobalObjectTask.h"
 #include "JSDOMWindowCustom.h"
 #include "JSNode.h"
 #include "Logging.h"
@@ -50,7 +51,7 @@ static bool shouldAllowAccessFrom(const JSGlobalObject* thisObject, ExecState* e
 
 const ClassInfo JSDOMWindowBase::s_info = { "Window", &JSDOMGlobalObject::s_info, 0, 0, CREATE_METHOD_TABLE(JSDOMWindowBase) };
 
-const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &shouldAllowAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled };
+const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &shouldAllowAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled, &queueTaskToEventLoop };
 
 JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, PassRefPtr<DOMWindow> window, JSDOMWindowShell* shell)
     : JSDOMGlobalObject(vm, structure, shell->world(), &s_globalObjectMethodTable)
@@ -62,7 +63,7 @@ JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, PassRefPtr<DOMWin
 void JSDOMWindowBase::finishCreation(VM& vm, JSDOMWindowShell* shell)
 {
     Base::finishCreation(vm, shell);
-    ASSERT(inherits(&s_info));
+    ASSERT(inherits(info()));
 
     GlobalPropertyInfo staticGlobals[] = {
         GlobalPropertyInfo(vm.propertyNames->document, jsNull(), DontDelete | ReadOnly),
@@ -160,10 +161,13 @@ bool JSDOMWindowBase::javaScriptExperimentsEnabled(const JSGlobalObject* object)
     Frame* frame = thisObject->impl()->frame();
     if (!frame)
         return false;
-    Settings* settings = frame->settings();
-    if (!settings)
-        return false;
-    return settings->javaScriptExperimentsEnabled();
+    return frame->settings().javaScriptExperimentsEnabled();
+}
+
+void JSDOMWindowBase::queueTaskToEventLoop(const JSGlobalObject* object, GlobalObjectMethodTable::QueueTaskToEventLoopCallbackFunctionPtr functionPtr, PassRefPtr<TaskContext> taskContext)
+{
+    const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
+    thisObject->scriptExecutionContext()->postTask(JSGlobalObjectTask::create((JSDOMWindowBase*)thisObject, functionPtr, taskContext));
 }
 
 void JSDOMWindowBase::willRemoveFromWindowShell()
@@ -184,9 +188,7 @@ VM* JSDOMWindowBase::commonVM()
     if (!vm) {
         ScriptController::initializeThreading();
         vm = VM::createLeaked(LargeHeap).leakRef();
-#ifndef NDEBUG
         vm->exclusiveThread = currentThread();
-#endif
         initNormalWorldClientData(vm);
     }
 
@@ -207,14 +209,14 @@ JSValue toJS(ExecState* exec, DOMWindow* domWindow)
     Frame* frame = domWindow->frame();
     if (!frame)
         return jsNull();
-    return frame->script()->windowShell(currentWorld(exec));
+    return frame->script().windowShell(currentWorld(exec));
 }
 
 JSDOMWindow* toJSDOMWindow(Frame* frame, DOMWrapperWorld* world)
 {
     if (!frame)
         return 0;
-    return frame->script()->windowShell(world)->window();
+    return frame->script().windowShell(world)->window();
 }
 
 JSDOMWindow* toJSDOMWindow(JSValue value)
@@ -222,9 +224,9 @@ JSDOMWindow* toJSDOMWindow(JSValue value)
     if (!value.isObject())
         return 0;
     const ClassInfo* classInfo = asObject(value)->classInfo();
-    if (classInfo == &JSDOMWindow::s_info)
+    if (classInfo == JSDOMWindow::info())
         return jsCast<JSDOMWindow*>(asObject(value));
-    if (classInfo == &JSDOMWindowShell::s_info)
+    if (classInfo == JSDOMWindowShell::info())
         return jsCast<JSDOMWindowShell*>(asObject(value))->window();
     return 0;
 }

@@ -37,7 +37,7 @@ using namespace std;
 namespace WebCore {
 
 RenderTextControl::RenderTextControl(Element* element)
-    : RenderBlock(element)
+    : RenderBlockFlow(element)
 {
     ASSERT(isHTMLTextFormControlElement(element));
 }
@@ -123,17 +123,6 @@ void RenderTextControl::updateFromElement()
     Element* innerText = innerTextElement();
     if (innerText && innerText->renderer())
         updateUserModifyProperty(node(), innerText->renderer()->style());
-}
-
-VisiblePosition RenderTextControl::visiblePositionForIndex(int index) const
-{
-    if (index <= 0)
-        return VisiblePosition(firstPositionInNode(innerTextElement()), DOWNSTREAM);
-    RefPtr<Range> range = Range::create(document());
-    range->selectNodeContents(innerTextElement(), ASSERT_NO_EXCEPTION);
-    CharacterIterator it(range.get());
-    it.advance(index - 1);
-    return VisiblePosition(it.range()->endPosition(), UPSTREAM);
 }
 
 int RenderTextControl::scrollbarThickness() const

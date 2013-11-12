@@ -39,12 +39,18 @@ WebColorPicker::~WebColorPicker()
 {
 }
 
-void WebColorPicker::endChooser()
+void WebColorPicker::invalidate()
+{
+    endPicker();
+    m_client = 0;
+}
+
+void WebColorPicker::endPicker()
 {
     if (!m_client)
         return;
 
-    m_client->didEndColorChooser();
+    m_client->didEndColorPicker();
 }
 
 void WebColorPicker::setSelectedColor(const WebCore::Color& color)
@@ -53,6 +59,12 @@ void WebColorPicker::setSelectedColor(const WebCore::Color& color)
         return;
 
     m_client->didChooseColor(color);
+}
+
+void WebColorPicker::showColorPicker(const WebCore::Color&)
+{
+    ASSERT_NOT_REACHED();
+    return;
 }
 
 } // namespace WebKit

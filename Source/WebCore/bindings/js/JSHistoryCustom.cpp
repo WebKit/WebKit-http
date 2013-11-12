@@ -65,76 +65,32 @@ bool JSHistory::getOwnPropertySlotDelegate(ExecState* exec, PropertyName propert
         return false;
 
     // Check for the few functions that we allow, even when called cross-domain.
-    const HashEntry* entry = JSHistoryPrototype::s_info.propHashTable(exec)->entry(exec, propertyName);
+    // Make these read-only / non-configurable to prevent writes via defineProperty.
+    const HashEntry* entry = JSHistoryPrototype::info()->propHashTable(exec)->entry(exec, propertyName);
     if (entry) {
         // Allow access to back(), forward() and go() from any frame.
         if (entry->attributes() & JSC::Function) {
             if (entry->function() == jsHistoryPrototypeFunctionBack) {
-                slot.setCustom(this, nonCachingStaticBackFunctionGetter);
+                slot.setCustom(this, ReadOnly | DontDelete | DontEnum, nonCachingStaticBackFunctionGetter);
                 return true;
             } else if (entry->function() == jsHistoryPrototypeFunctionForward) {
-                slot.setCustom(this, nonCachingStaticForwardFunctionGetter);
+                slot.setCustom(this, ReadOnly | DontDelete | DontEnum, nonCachingStaticForwardFunctionGetter);
                 return true;
             } else if (entry->function() == jsHistoryPrototypeFunctionGo) {
-                slot.setCustom(this, nonCachingStaticGoFunctionGetter);
+                slot.setCustom(this, ReadOnly | DontDelete | DontEnum, nonCachingStaticGoFunctionGetter);
                 return true;
             }
         }
     } else {
         // Allow access to toString() cross-domain, but always Object.toString.
         if (propertyName == exec->propertyNames().toString) {
-            slot.setCustom(this, objectToStringFunctionGetter);
+            slot.setCustom(this, ReadOnly | DontDelete | DontEnum, objectToStringFunctionGetter);
             return true;
         }
     }
 
     printErrorMessageForFrame(impl()->frame(), message);
     slot.setUndefined();
-    return true;
-}
-
-bool JSHistory::getOwnPropertyDescriptorDelegate(ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
-{
-    if (!impl()->frame()) {
-        descriptor.setUndefined();
-        return true;
-    }
-
-    // Throw out all cross domain access
-    if (!shouldAllowAccessToFrame(exec, impl()->frame()))
-        return true;
-
-    // Check for the few functions that we allow, even when called cross-domain.
-    const HashEntry* entry = JSHistoryPrototype::s_info.propHashTable(exec)->entry(exec, propertyName);
-    if (entry) {
-        PropertySlot slot;
-        // Allow access to back(), forward() and go() from any frame.
-        if (entry->attributes() & JSC::Function) {
-            if (entry->function() == jsHistoryPrototypeFunctionBack) {
-                slot.setCustom(this, nonCachingStaticBackFunctionGetter);
-                descriptor.setDescriptor(slot.getValue(exec, propertyName), entry->attributes());
-                return true;
-            } else if (entry->function() == jsHistoryPrototypeFunctionForward) {
-                slot.setCustom(this, nonCachingStaticForwardFunctionGetter);
-                descriptor.setDescriptor(slot.getValue(exec, propertyName), entry->attributes());
-                return true;
-            } else if (entry->function() == jsHistoryPrototypeFunctionGo) {
-                slot.setCustom(this, nonCachingStaticGoFunctionGetter);
-                descriptor.setDescriptor(slot.getValue(exec, propertyName), entry->attributes());
-                return true;
-            }
-        }
-    } else {
-        // Allow access to toString() cross-domain, but always Object.toString.
-        if (propertyName == exec->propertyNames().toString) {
-            PropertySlot slot;
-            slot.setCustom(this, objectToStringFunctionGetter);
-            descriptor.setDescriptor(slot.getValue(exec, propertyName), entry->attributes());
-            return true;
-        }
-    }
-
-    descriptor.setUndefined();
     return true;
 }
 

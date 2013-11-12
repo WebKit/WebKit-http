@@ -42,6 +42,10 @@
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
+namespace JSC {
+class ArrayBuffer;
+}
+
 namespace WebCore {
 
 class Blob;
@@ -73,12 +77,8 @@ public:
     ReadyState readyState() const { return m_state; }
     PassRefPtr<FileError> error() { return m_error; }
     FileReaderLoader::ReadType readType() const { return m_readType; }
-    PassRefPtr<ArrayBuffer> arrayBufferResult() const;
+    PassRefPtr<JSC::ArrayBuffer> arrayBufferResult() const;
     String stringResult();
-
-    // ActiveDOMObject
-    virtual bool canSuspend() const;
-    virtual void stop();
 
     // EventTarget
     virtual const AtomicString& interfaceName() const;
@@ -103,11 +103,15 @@ public:
 private:
     FileReader(ScriptExecutionContext*);
 
+    // ActiveDOMObject
+    virtual bool canSuspend() const OVERRIDE;
+    virtual void stop() OVERRIDE;
+
     // EventTarget
-    virtual void refEventTarget() { ref(); }
-    virtual void derefEventTarget() { deref(); }
-    virtual EventTargetData* eventTargetData() { return &m_eventTargetData; }
-    virtual EventTargetData* ensureEventTargetData() { return &m_eventTargetData; }
+    virtual void refEventTarget() OVERRIDE { ref(); }
+    virtual void derefEventTarget() OVERRIDE { deref(); }
+    virtual EventTargetData* eventTargetData() OVERRIDE { return &m_eventTargetData; }
+    virtual EventTargetData& ensureEventTargetData() OVERRIDE { return m_eventTargetData; }
 
     void terminate();
     void readInternal(Blob*, FileReaderLoader::ReadType, ExceptionCode&);

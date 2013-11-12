@@ -76,8 +76,7 @@ void RenderSnapshottedPlugIn::layout()
     if (newSize == oldSize)
         return;
 
-    if (document()->view())
-        document()->view()->addWidgetToUpdate(this);
+    view().frameView().addWidgetToUpdate(this);
 }
 
 void RenderSnapshottedPlugIn::updateSnapshot(PassRefPtr<Image> image)
@@ -139,7 +138,12 @@ void RenderSnapshottedPlugIn::paintSnapshot(PaintInfo& paintInfo, const LayoutPo
         return;
 
     bool useLowQualityScaling = shouldPaintAtLowQuality(context, image, image, alignedRect.size());
-    context->drawImage(image, style()->colorSpace(), alignedRect, CompositeSourceOver, shouldRespectImageOrientation(), useLowQualityScaling);
+
+    ImageOrientationDescription orientationDescription;
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+    orientationDescription.setImageOrientationEnum(style()->imageOrientation());
+#endif
+    context->drawImage(image, style()->colorSpace(), alignedRect, CompositeSourceOver, orientationDescription, useLowQualityScaling);
 }
 
 CursorDirective RenderSnapshottedPlugIn::getCursor(const LayoutPoint& point, Cursor& overrideCursor) const

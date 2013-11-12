@@ -163,7 +163,7 @@ private:
 #if USE(WEBAUDIO_GSTREAMER)
     GstFFTF32* m_fft;
     GstFFTF32* m_inverseFft;
-    GstFFTF32Complex* m_complexData;
+    OwnArrayPtr<GstFFTF32Complex> m_complexData;
     AudioFloatArray m_realData;
     AudioFloatArray m_imagData;
 #endif // USE(WEBAUDIO_GSTREAMER)

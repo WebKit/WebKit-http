@@ -30,7 +30,6 @@
 #include "HTMLSelectElement.h"
 #include "RenderMenuList.h"
 #include "NodeRenderStyle.h"
-#include "NodeRenderingContext.h"
 #include "StyleResolver.h"
 #include <wtf/StdLibExtras.h>
 
@@ -42,7 +41,7 @@ inline HTMLOptGroupElement::HTMLOptGroupElement(const QualifiedName& tagName, Do
     : HTMLElement(tagName, document)
 {
     ASSERT(hasTagName(optgroupTag));
-    setHasCustomStyleCallbacks();
+    setHasCustomStyleResolveCallbacks();
 }
 
 PassRefPtr<HTMLOptGroupElement> HTMLOptGroupElement::create(const QualifiedName& tagName, Document* document)
@@ -67,10 +66,10 @@ const AtomicString& HTMLOptGroupElement::formControlType() const
     return optgroup;
 }
 
-void HTMLOptGroupElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void HTMLOptGroupElement::childrenChanged(const ChildChange& change)
 {
     recalcSelectOptions();
-    HTMLElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
+    HTMLElement::childrenChanged(change);
 }
 
 void HTMLOptGroupElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -91,9 +90,8 @@ void HTMLOptGroupElement::recalcSelectOptions()
         toHTMLSelectElement(select)->setRecalcListItems();
 }
 
-void HTMLOptGroupElement::attach(const AttachContext& context)
+void HTMLOptGroupElement::didAttachRenderers()
 {
-    HTMLElement::attach(context);
     // If after attaching nothing called styleForRenderer() on this node we
     // manually cache the value. This happens if our parent doesn't have a
     // renderer like <optgroup> or if it doesn't allow children like <select>.
@@ -101,15 +99,14 @@ void HTMLOptGroupElement::attach(const AttachContext& context)
         updateNonRenderStyle();
 }
 
-void HTMLOptGroupElement::detach(const AttachContext& context)
+void HTMLOptGroupElement::willDetachRenderers()
 {
     m_style.clear();
-    HTMLElement::detach(context);
 }
 
 void HTMLOptGroupElement::updateNonRenderStyle()
 {
-    m_style = document()->ensureStyleResolver()->styleForElement(this);
+    m_style = document().ensureStyleResolver().styleForElement(this);
 }
 
 RenderStyle* HTMLOptGroupElement::nonRendererStyle() const
@@ -127,7 +124,7 @@ PassRefPtr<RenderStyle> HTMLOptGroupElement::customStyleForRenderer()
 
 String HTMLOptGroupElement::groupLabelText() const
 {
-    String itemText = document()->displayStringModifiedByEncoding(getAttribute(labelAttr));
+    String itemText = document().displayStringModifiedByEncoding(getAttribute(labelAttr));
     
     // In WinIE, leading and trailing whitespace is ignored in options and optgroups. We match this behavior.
     itemText = itemText.stripWhiteSpace();

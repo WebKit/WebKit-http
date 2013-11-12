@@ -74,7 +74,7 @@ BASE_TARGET = $$TARGET
 load(qt_module)
 
 # Make sure the install_name of the QtWebKit library point to webkit
-force_independent:macx {
+!production_build:force_independent:macx {
     # We do our own absolute path so that we can trick qmake into
     # using the webkit build path instead of the Qt install path.
     CONFIG -= absolute_library_soname
@@ -110,7 +110,6 @@ SOURCES += \
     $$PWD/WebKit/qt/WidgetSupport/QtFallbackWebPopup.cpp \
     $$PWD/WebKit/qt/WidgetSupport/QtWebComboBox.cpp \
     $$PWD/WebKit/qt/WidgetSupport/QWebUndoCommand.cpp \
-    $$PWD/WebKit/qt/WidgetSupport/DefaultFullScreenVideoHandler.cpp \
     $$PWD/WebKit/qt/WidgetSupport/InitWebKitQt.cpp \
     $$PWD/WebKit/qt/WidgetSupport/InspectorClientWebPage.cpp \
     $$PWD/WebKit/qt/WidgetSupport/PageClientQt.cpp \
@@ -130,7 +129,6 @@ HEADERS += \
     $$PWD/WebKit/qt/Api/qwebkitplatformplugin.h \
     $$PWD/WebKit/qt/WidgetSupport/InitWebKitQt.h \
     $$PWD/WebKit/qt/WidgetSupport/InspectorClientWebPage.h \
-    $$PWD/WebKit/qt/WidgetSupport/DefaultFullScreenVideoHandler.h \
     $$PWD/WebKit/qt/WidgetSupport/QtFallbackWebPopup.h \
     $$PWD/WebKit/qt/WidgetSupport/QtWebComboBox.h \
     $$PWD/WebKit/qt/WidgetSupport/QWebUndoCommand.h \
@@ -155,3 +153,7 @@ enable?(VIDEO) {
     }
 }
 
+use?(QT_MULTIMEDIA) {
+    SOURCES += $$PWD/WebKit/qt/WidgetSupport/DefaultFullScreenVideoHandler.cpp
+    HEADERS += $$PWD/WebKit/qt/WidgetSupport/DefaultFullScreenVideoHandler.h
+}

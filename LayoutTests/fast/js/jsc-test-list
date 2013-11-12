@@ -71,6 +71,7 @@ fast/js/debugger
 fast/js/declaration-in-block
 fast/js/delete-getters-setters
 fast/js/delete-then-put
+fast/js/dfg-activation-register-overwritten-in-throw
 fast/js/dfg-abs-backwards-propagation
 fast/js/dfg-add-not-number
 fast/js/dfg-allocation-profile-watch-point-exit
@@ -86,6 +87,7 @@ fast/js/dfg-arguments-osr-exit
 fast/js/dfg-arguments-osr-exit-multiple-blocks
 fast/js/dfg-arguments-osr-exit-multiple-blocks-before-exit
 fast/js/dfg-arguments-out-of-bounds
+fast/js/dfg-arguments-strict-mode
 fast/js/dfg-arguments-unexpected-escape
 fast/js/dfg-arith-add-overflow-check-elimination-predicted-but-not-proven-int
 fast/js/dfg-arith-add-overflow-check-elimination-tower-of-large-numbers
@@ -101,6 +103,8 @@ fast/js/dfg-arrayify-when-prevent-extensions
 fast/js/dfg-bool-to-int32-reuse
 fast/js/dfg-branch-logical-not-peephole-around-osr-exit
 fast/js/dfg-branch-not-fail
+fast/js/dfg-call-function-hit-watchpoint
+fast/js/dfg-call-method-hit-watchpoint
 fast/js/dfg-captured-var-get-local
 fast/js/dfg-cfa-merge-with-dead-use-at-tail
 fast/js/dfg-cfa-prove-put-by-id-simple-when-storing-to-specialized-function
@@ -112,6 +116,10 @@ fast/js/dfg-cfg-simplify-redundant-dead-get-local
 fast/js/dfg-check-function-change-structure
 fast/js/dfg-check-structure-elimination-for-non-cell
 fast/js/dfg-check-two-structures
+fast/js/dfg-compare-final-object-to-final-object-or-other-when-both-proven-final-object
+fast/js/dfg-compare-final-object-to-final-object-or-other-when-proven-final-object
+fast/js/dfg-constant-fold-logical-not-branch
+fast/js/dfg-constant-fold-misprediction
 fast/js/dfg-constant-fold-first-local-read-after-block-merge
 fast/js/dfg-constant-fold-uncaptured-variable-that-is-later-captured
 fast/js/dfg-convert-this-dom-window
@@ -142,6 +150,10 @@ fast/js/dfg-float32array
 fast/js/dfg-float64array
 fast/js/dfg-flush-get-local
 fast/js/dfg-force-exit-then-sparse-conditional-constant-prop-in-loop
+fast/js/dfg-get-closure-var-put-closure-var-interference
+fast/js/dfg-get-by-id-unset-then-proto
+fast/js/dfg-get-by-id-unset-then-proto-less-warmup
+fast/js/dfg-get-by-id-unset-then-proto-more-warmup
 fast/js/dfg-get-by-val-clobber
 fast/js/dfg-get-by-val-getter-cse
 fast/js/dfg-getter
@@ -190,9 +202,13 @@ fast/js/dfg-mul-big-integer-with-small-integer
 fast/js/dfg-mul-big-integer-with-small-integer-and-bitor
 fast/js/dfg-mul-big-integer-with-small-integer-and-detect-overflow
 fast/js/dfg-mul-big-integers
+fast/js/dfg-mod-by-zero-and-then-or-zero-interesting-reg-alloc
+fast/js/dfg-mod-by-neg1-and-then-or-zero-interesting-reg-alloc
+fast/js/dfg-mod-neg2tothe31-by-one-and-then-or-zero-with-interesting-reg-alloc
 fast/js/dfg-multi-basic-block-structure-clobber
 fast/js/dfg-multiply
 fast/js/dfg-negative-array-index
+fast/js/dfg-new-array-double-const-then-int-const
 fast/js/dfg-obvious-constant-cfa
 fast/js/dfg-osr-entry-hoisted-clobbered-structure-check
 fast/js/dfg-other-branch
@@ -209,7 +225,12 @@ fast/js/dfg-resolve-global-polymorphic-non-dictionary
 fast/js/dfg-resolve-global-specific-dictionary
 fast/js/dfg-side-effect-assignment-osr-exit
 fast/js/dfg-sqrt-backwards-propagation
+fast/js/dfg-string-out-of-bounds-check-structure
+fast/js/dfg-string-out-of-bounds-cse
+fast/js/dfg-string-out-of-bounds-negative-check-structure
+fast/js/dfg-string-out-of-bounds-negative-proto-value
 fast/js/dfg-string-stricteq
+fast/js/dfg-switch-imm-negative
 fast/js/dfg-tear-off-arguments-not-activation
 fast/js/dfg-tear-off-function-dot-arguments
 fast/js/dfg-to-string-bad-toString
@@ -331,7 +352,6 @@ fast/js/numeric-escapes-in-string-literals
 fast/js/object-bad-time
 fast/js/Object-create
 fast/js/Object-defineProperties
-fast/js/Object-defineProperty
 fast/js/Object-getOwnPropertyNames
 fast/js/Object-keys
 fast/js/object-literal-direct-put
@@ -423,6 +443,11 @@ fast/js/toString-prefix-postfix-preserve-parens
 fast/js/toString-recursion
 fast/js/try-catch-try-try-catch-try-finally-return-catch-finally
 fast/js/try-try-return-finally-finally
+fast/js/typed-array-copy
+fast/js/typedarray-set-destination-smaller-than-source
+fast/js/typedarray-set-overlapping-elements-of-same-size
+fast/js/typedarray-set-same-type-memmove
+fast/js/typedarray-set-source-smaller-than-destination
 fast/js/typeof-codegen-crash
 fast/js/typeof-constant-string
 fast/js/unexpected-constant-crash

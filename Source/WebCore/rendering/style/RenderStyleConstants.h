@@ -163,6 +163,9 @@ enum EFillSizeType { Contain, Cover, SizeLength, SizeNone };
 // CSS3 Background Position
 enum BackgroundEdgeOrigin { TopEdge, RightEdge, BottomEdge, LeftEdge };
 
+// CSS3 Mask Source Types
+enum EMaskSourceType { MaskAlpha, MaskLuminance };
+
 // CSS3 Marquee Properties
 
 enum EMarqueeBehavior { MNONE, MSCROLL, MSLIDE, MALTERNATE };
@@ -204,6 +207,11 @@ enum EUserDrag {
 
 enum EUserSelect {
     SELECT_NONE, SELECT_TEXT, SELECT_ALL
+};
+
+// CSS3 Image Values
+enum ObjectFit {
+    ObjectFitFill, ObjectFitContain, ObjectFitCover, ObjectFitNone, ObjectFitScaleDown
 };
 
 // Word Break Values. Matches WinIE, rather than CSS3

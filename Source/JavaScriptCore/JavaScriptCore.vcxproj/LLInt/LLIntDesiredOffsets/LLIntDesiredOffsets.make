@@ -1,9 +1,9 @@
 all:
     touch "%ConfigurationBuildDir%\buildfailed"
-    bash build-LLIntDesiredOffsets.sh "%ConfigurationBuildDir%" "$(WEBKIT_LIBRARIES)"
+    bash build-LLIntDesiredOffsets.sh "%ConfigurationBuildDir%" "$(WEBKIT_LIBRARIES)" "%PlatformArchitecture%"
 
     -del "%ConfigurationBuildDir%\buildfailed"
 
 clean:
     -del "%ConfigurationBuildDir%\buildfailed"
-    -del /s /q "%ConfigurationBuildDir%\obj32\JavaScriptCore\DerivedSources\LLIntDesiredOffsets.h"
+    -del /s /q "%ConfigurationBuildDir%\obj%PlatformArchitecture%\JavaScriptCore\DerivedSources\LLIntDesiredOffsets.h"

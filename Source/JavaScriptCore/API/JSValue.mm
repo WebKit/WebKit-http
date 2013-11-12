@@ -39,6 +39,7 @@
 #import "JSCJSValue.h"
 #import <wtf/HashMap.h>
 #import <wtf/HashSet.h>
+#import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/Vector.h>
 #import <wtf/TCSpinLock.h>
 #import <wtf/text/WTFString.h>
@@ -555,13 +556,13 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
 inline bool isDate(JSObjectRef object, JSGlobalContextRef context)
 {
     JSC::APIEntryShim entryShim(toJS(context));
-    return toJS(object)->inherits(&JSC::DateInstance::s_info);
+    return toJS(object)->inherits(JSC::DateInstance::info());
 }
 
 inline bool isArray(JSObjectRef object, JSGlobalContextRef context)
 {
     JSC::APIEntryShim entryShim(toJS(context));
-    return toJS(object)->inherits(&JSC::JSArray::s_info);
+    return toJS(object)->inherits(JSC::JSArray::info());
 }
 
 @implementation JSValue(Internal)
@@ -745,7 +746,7 @@ id valueToString(JSGlobalContextRef context, JSValueRef value, JSValueRef* excep
         return nil;
     }
 
-    NSString *stringNS = [(NSString *)JSStringCopyCFString(kCFAllocatorDefault, jsstring) autorelease];
+    NSString *stringNS = CFBridgingRelease(JSStringCopyCFString(kCFAllocatorDefault, jsstring));
     JSStringRelease(jsstring);
     return stringNS;
 }

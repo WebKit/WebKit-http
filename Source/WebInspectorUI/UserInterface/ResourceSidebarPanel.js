@@ -24,7 +24,7 @@
  */
 
 WebInspector.ResourceSidebarPanel = function() {
-    WebInspector.NavigationSidebarPanel.call(this, "resource", WebInspector.UIString("Resources"), "Images/NavigationItemStorage.pdf", "1", true, false, true);
+    WebInspector.NavigationSidebarPanel.call(this, "resource", WebInspector.UIString("Resources"), "Images/NavigationItemStorage.svg", "1", true, false, true);
 
     var searchElement = document.createElement("div");
     searchElement.classList.add("search-bar");
@@ -679,6 +679,10 @@ WebInspector.ResourceSidebarPanel.prototype = {
         // We don't add scripts without URLs here. Those scripts can quickly clutter the interface and
         // are usually more transient. They will get added if/when they need to be shown in a content view.
         if (!script.url)
+            return;
+
+        // Exclude inspector scripts.
+        if (script.url.indexOf("__WebInspector") === 0)
             return;
 
         // If the script URL matches a resource we can assume it is part of that resource and does not need added.

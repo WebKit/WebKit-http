@@ -282,6 +282,7 @@ extern NSString *NSTextInputReplacementRangeAttributeName;
 - (void)_recursiveDisplayRectIfNeededIgnoringOpacity:(NSRect)rect isVisibleRect:(BOOL)isVisibleRect rectIsVisibleRectForView:(NSView *)visibleView topView:(BOOL)topView;
 - (void)_recursiveDisplayAllDirtyWithLockFocus:(BOOL)needsLockFocus visRect:(NSRect)visRect;
 - (void)_recursive:(BOOL)recurse displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)context topView:(BOOL)topView;
+- (void)_recursive:(BOOL)recurseX displayRectIgnoringOpacity:(NSRect)displayRect inGraphicsContext:(NSGraphicsContext *)graphicsContext CGContext:(CGContextRef)ctx topView:(BOOL)isTopView shouldChangeFontReferenceColor:(BOOL)shouldChangeFontReferenceColor;
 - (NSRect)_dirtyRect;
 - (void)_setDrawsOwnDescendants:(BOOL)drawsOwnDescendants;
 - (BOOL)_drawnByAncestor;
@@ -859,26 +860,11 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 
     DOMRange *range = [self _selectedRange];
     Frame* coreFrame = core([self _frame]);
-    
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+
     DOMDocumentFragment *fragment = [self _documentFragmentFromPasteboard:pasteboard inContext:range allowPlainText:allowPlainText];
     if (fragment && [self _shouldInsertFragment:fragment replacingDOMRange:range givenAction:WebViewInsertActionPasted])
         coreFrame->editor().pasteAsFragment(core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
-#else
-    // Mail is ignoring the frament passed to the delegate and creates a new one.
-    // We want to avoid creating the fragment twice.
-    if (applicationIsAppleMail()) {
-        if ([self _shouldInsertFragment:nil replacingDOMRange:range givenAction:WebViewInsertActionPasted]) {
-            DOMDocumentFragment *fragment = [self _documentFragmentFromPasteboard:pasteboard inContext:range allowPlainText:allowPlainText];
-            if (fragment)
-                coreFrame->editor().pasteAsFragment(core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
-        }        
-    } else {
-        DOMDocumentFragment *fragment = [self _documentFragmentFromPasteboard:pasteboard inContext:range allowPlainText:allowPlainText];
-        if (fragment && [self _shouldInsertFragment:fragment replacingDOMRange:range givenAction:WebViewInsertActionPasted])
-            coreFrame->editor().pasteAsFragment(core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
-    }
-#endif
+
     [webView _setInsertionPasteboard:nil];
     [webView release];
 }
@@ -902,7 +888,7 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
     Frame* coreFrame = core([self _frame]); 
     if (!coreFrame) 
         return NO; 
-    if (coreFrame->selection()->isContentRichlyEditable()) 
+    if (coreFrame->selection().isContentRichlyEditable())
         [self _pasteWithPasteboard:pasteboard allowPlainText:YES]; 
     else 
         [self _pasteAsPlainTextWithPasteboard:pasteboard]; 
@@ -976,7 +962,7 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 - (DOMRange *)_selectedRange
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame ? kit(coreFrame->selection()->toNormalizedRange().get()) : nil;
+    return coreFrame ? kit(coreFrame->selection().toNormalizedRange().get()) : nil;
 }
 
 - (BOOL)_shouldDeleteRange:(DOMRange *)range
@@ -1357,10 +1343,25 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 // Don't let AppKit even draw subviews. We take care of that.
 - (void)_recursive:(BOOL)recurse displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)context topView:(BOOL)topView
 {
-
     [self _setAsideSubviews];
     [super _recursive:recurse displayRectIgnoringOpacity:displayRect inContext:context topView:topView];
     [self _restoreSubviews];
+}
+
+// Don't let AppKit even draw subviews. We take care of that.
+- (void)_recursive:(BOOL)recurseX displayRectIgnoringOpacity:(NSRect)displayRect inGraphicsContext:(NSGraphicsContext *)graphicsContext CGContext:(CGContextRef)ctx topView:(BOOL)isTopView shouldChangeFontReferenceColor:(BOOL)shouldChangeFontReferenceColor
+{
+    BOOL didSetAsideSubviews = NO;
+
+    if (!_private->subviewsSetAside) {
+        [self _setAsideSubviews];
+        didSetAsideSubviews = YES;
+    }
+    
+    [super _recursive:recurseX displayRectIgnoringOpacity:displayRect inGraphicsContext:graphicsContext CGContext:ctx topView:isTopView shouldChangeFontReferenceColor:shouldChangeFontReferenceColor];
+
+    if (didSetAsideSubviews)
+        [self _restoreSubviews];
 }
 
 - (BOOL)_insideAnotherHTMLView
@@ -1612,7 +1613,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
             context:[[NSApp currentEvent] context]
             eventNumber:0 clickCount:0 pressure:0];
         if (Frame* lastHitCoreFrame = core([lastHitView _frame]))
-            lastHitCoreFrame->eventHandler()->mouseMoved(event);
+            lastHitCoreFrame->eventHandler().mouseMoved(event);
     }
 
     lastHitView = view;
@@ -1625,9 +1626,9 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
             // If it is one of those cases where the page is not active and the mouse is not pressed, then we can
             // fire a much more restricted and efficient scrollbars-only version of the event.
             if ([[self window] isKeyWindow] || mouseEventIsPartOfClickOrDrag(event))
-                coreFrame->eventHandler()->mouseMoved(event);
+                coreFrame->eventHandler().mouseMoved(event);
             else
-                coreFrame->eventHandler()->passMouseMovedEventToScrollbars(event);
+                coreFrame->eventHandler().passMouseMovedEventToScrollbars(event);
         }
 
         [view release];
@@ -1774,25 +1775,25 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
 - (BOOL)_hasSelection
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->selection()->isRange();
+    return coreFrame && coreFrame->selection().isRange();
 }
 
 - (BOOL)_hasSelectionOrInsertionPoint
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->selection()->isCaretOrRange();
+    return coreFrame && coreFrame->selection().isCaretOrRange();
 }
 
 - (BOOL)_hasInsertionPoint
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->selection()->isCaret();
+    return coreFrame && coreFrame->selection().isCaret();
 }
 
 - (BOOL)_isEditable
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->selection()->isContentEditable();
+    return coreFrame && coreFrame->selection().isContentEditable();
 }
 
 - (BOOL)_transparentBackground
@@ -2535,7 +2536,7 @@ WEBCORE_COMMAND(yankAndSelect)
     COMMAND_PROLOGUE
 
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->selection()->revealSelection(ScrollAlignment::alignCenterAlways);
+        coreFrame->selection().revealSelection(ScrollAlignment::alignCenterAlways);
 }
 
 - (BOOL)validateUserInterfaceItemWithoutDelegate:(id <NSValidatedUserInterfaceItem>)item
@@ -2551,7 +2552,7 @@ WEBCORE_COMMAND(yankAndSelect)
             return NO;
         if (doc->isImageDocument()) {            
             if (action == @selector(copy:))
-                return frame->loader()->isComplete();
+                return frame->loader().isComplete();
             return NO;
         }
     }
@@ -2644,7 +2645,7 @@ WEBCORE_COMMAND(yankAndSelect)
     
     if (action == @selector(pasteAsRichText:))
         return frame && (frame->editor().canDHTMLPaste()
-            || (frame->editor().canPaste() && frame->selection()->isContentRichlyEditable()));
+            || (frame->editor().canPaste() && frame->selection().isContentRichlyEditable()));
     
     if (action == @selector(performFindPanelAction:))
         return NO;
@@ -2782,7 +2783,7 @@ WEBCORE_COMMAND(yankAndSelect)
         return YES;
 
     Frame* coreFrame = core([self _frame]);
-    bool selectionIsEditable = coreFrame && coreFrame->selection()->isContentEditable();
+    bool selectionIsEditable = coreFrame && coreFrame->selection().isContentEditable();
     bool nextResponderIsInWebView = [nextResponder isKindOfClass:[NSView class]]
         && [nextResponder isDescendantOf:[[[self _webView] mainFrame] frameView]];
 
@@ -2816,11 +2817,9 @@ WEBCORE_COMMAND(yankAndSelect)
         return;
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     // Legacy scrollbars require tracking the mouse at all times.
     if (WKRecommendedScrollerStyle() == NSScrollerStyleLegacy)
         return;
-#endif
 
     [[self _webView] _mouseDidMoveOverElement:nil modifierFlags:0];
     [self _removeMouseMovedObserverUnconditionally];
@@ -3051,7 +3050,7 @@ WEBCORE_COMMAND(yankAndSelect)
     [super rightMouseUp:event];
 
     if (Frame* coreframe = core([self _frame]))
-        coreframe->eventHandler()->mouseUp(event);
+        coreframe->eventHandler().mouseUp(event);
 }
 
 static void setMenuItemTarget(NSMenuItem* menuItem)
@@ -3095,9 +3094,9 @@ static void setMenuTargets(NSMenu* menu)
 
     // Match behavior of other browsers by sending a mousedown event for right clicks.
     _private->handlingMouseDownEvent = YES;
-    page->contextMenuController()->clearContextMenu();
-    coreFrame->eventHandler()->mouseDown(event);
-    BOOL handledEvent = coreFrame->eventHandler()->sendContextMenuEvent(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome().platformPageClient()));
+    page->contextMenuController().clearContextMenu();
+    coreFrame->eventHandler().mouseDown(event);
+    BOOL handledEvent = coreFrame->eventHandler().sendContextMenuEvent(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome().platformPageClient()));
     _private->handlingMouseDownEvent = NO;
 
     if (!handledEvent)
@@ -3108,7 +3107,7 @@ static void setMenuTargets(NSMenu* menu)
     if (!page)
         return nil;
 
-    ContextMenu* coreMenu = page->contextMenuController()->contextMenu();
+    ContextMenu* coreMenu = page->contextMenuController().contextMenu();
     if (!coreMenu)
         return nil;
 
@@ -3125,7 +3124,7 @@ static void setMenuTargets(NSMenu* menu)
         [menu addItem:[menuItems objectAtIndex:i]];
     setMenuTargets(menu);
     
-    [[WebMenuTarget sharedMenuTarget] setMenuController:page->contextMenuController()];
+    [[WebMenuTarget sharedMenuTarget] setMenuController:&page->contextMenuController()];
     
     return menu;
 }
@@ -3364,13 +3363,11 @@ static void setMenuTargets(NSMenu* menu)
         return;
     }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (_private->trackingAreaForNonKeyWindow) {
         [self removeTrackingArea:_private->trackingAreaForNonKeyWindow];
         [_private->trackingAreaForNonKeyWindow release];
         _private->trackingAreaForNonKeyWindow = nil;
     }
-#endif
 
     NSWindow *keyWindow = [notification object];
 
@@ -3397,7 +3394,6 @@ static void setMenuTargets(NSMenu* menu)
         [_private->completionController endRevertingChange:NO moveLeft:NO];
     }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (WKRecommendedScrollerStyle() == NSScrollerStyleLegacy) {
         // Legacy style scrollbars have design details that rely on tracking the mouse all the time.
         // It's easiest to do this with a tracking area, which we will remove when the window is key
@@ -3408,7 +3404,6 @@ static void setMenuTargets(NSMenu* menu)
                                                     userInfo:nil];
         [self addTrackingArea:_private->trackingAreaForNonKeyWindow];
     }
-#endif
 }
 
 - (void)windowWillOrderOnScreen:(NSNotification *)notification
@@ -3454,7 +3449,7 @@ static void setMenuTargets(NSMenu* menu)
     [[event retain] autorelease];
 
     Frame* frame = core([self _frame]);
-    if (!frame || !frame->eventHandler()->wheelEvent(event))
+    if (!frame || !frame->eventHandler().wheelEvent(event))
         [super scrollWheel:event];
 }
 
@@ -3488,12 +3483,12 @@ static void setMenuTargets(NSMenu* menu)
     if (hitHTMLView) {
         bool result = false;
         if (Frame* coreFrame = core([hitHTMLView _frame])) {
-            coreFrame->eventHandler()->setActivationEventNumber([event eventNumber]);
+            coreFrame->eventHandler().setActivationEventNumber([event eventNumber]);
             [hitHTMLView _setMouseDownEvent:event];
             if ([hitHTMLView _isSelectionEvent:event]) {
 #if ENABLE(DRAG_SUPPORT)
                 if (Page* page = coreFrame->page())
-                    result = coreFrame->eventHandler()->eventMayStartDrag(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome().platformPageClient()));
+                    result = coreFrame->eventHandler().eventMayStartDrag(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome().platformPageClient()));
 #endif
             } else if ([hitHTMLView _isScrollBarEvent:event])
                 result = true;
@@ -3520,7 +3515,7 @@ static void setMenuTargets(NSMenu* menu)
 #if ENABLE(DRAG_SUPPORT)
             if (Frame* coreFrame = core([hitHTMLView _frame])) {
                 if (Page* page = coreFrame->page())
-                    result = coreFrame->eventHandler()->eventMayStartDrag(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome().platformPageClient()));
+                    result = coreFrame->eventHandler().eventMayStartDrag(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome().platformPageClient()));
             }
 #endif
             [hitHTMLView _setMouseDownEvent:nil];
@@ -3547,23 +3542,22 @@ static void setMenuTargets(NSMenu* menu)
     [self _setMouseDownEvent:event];
 
     NSInputManager *currentInputManager = [NSInputManager currentInputManager];
-    if ([currentInputManager wantsToHandleMouseEvents] && [currentInputManager handleMouseEvent:event])
-        goto done;
 
-    [_private->completionController endRevertingChange:NO moveLeft:NO];
+    if (![currentInputManager wantsToHandleMouseEvents] || ![currentInputManager handleMouseEvent:event]) {
+        [_private->completionController endRevertingChange:NO moveLeft:NO];
 
-    // If the web page handles the context menu event and menuForEvent: returns nil, we'll get control click events here.
-    // We don't want to pass them along to KHTML a second time.
-    if (!([event modifierFlags] & NSControlKeyMask)) {
-        _private->ignoringMouseDraggedEvents = NO;
+        // If the web page handles the context menu event and menuForEvent: returns nil, we'll get control click events here.
+        // We don't want to pass them along to KHTML a second time.
+        if (!([event modifierFlags] & NSControlKeyMask)) {
+            _private->ignoringMouseDraggedEvents = NO;
 
-        // Let WebCore get a chance to deal with the event. This will call back to us
-        // to start the autoscroll timer if appropriate.
-        if (Frame* coreframe = core([self _frame]))
-            coreframe->eventHandler()->mouseDown(event);
+            // Let WebCore get a chance to deal with the event. This will call back to us
+            // to start the autoscroll timer if appropriate.
+            if (Frame* coreframe = core([self _frame]))
+                coreframe->eventHandler().mouseDown(event);
+        }
     }
 
-done:
     _private->handlingMouseDownEvent = NO;
 }
 
@@ -3596,7 +3590,7 @@ done:
     if (!_private->ignoringMouseDraggedEvents) {
         if (Frame* frame = core([self _frame])) {
             if (Page* page = frame->page())
-                page->mainFrame()->eventHandler()->mouseDragged(event);
+                page->mainFrame().eventHandler().mouseDragged(event);
         }
     }
 
@@ -3611,7 +3605,7 @@ done:
     if (!page)
         return NSDragOperationNone;
 
-    return (NSDragOperation)page->dragController()->sourceDragOperation();
+    return (NSDragOperation)page->dragController().sourceDragOperation();
 }
 
 - (void)draggedImage:(NSImage *)anImage endedAt:(NSPoint)aPoint operation:(NSDragOperation)operation
@@ -3622,9 +3616,8 @@ done:
     NSPoint windowMouseLoc = windowImageLoc;
     
     if (Page* page = core([self _webView])) {
-        DragController* dragController = page->dragController();
-        windowMouseLoc = NSMakePoint(windowImageLoc.x + dragController->dragOffset().x(), windowImageLoc.y + dragController->dragOffset().y());
-        dragController->dragEnded();
+        windowMouseLoc = NSMakePoint(windowImageLoc.x + page->dragController().dragOffset().x(), windowImageLoc.y + page->dragController().dragOffset().y());
+        page->dragController().dragEnded();
     }
     
     [[self _frame] _dragSourceEndedAt:windowMouseLoc operation:operation];
@@ -3658,23 +3651,18 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
     NSURL *draggingImageURL = nil;
     
     if (WebCore::CachedImage* tiffResource = [self promisedDragTIFFDataSource]) {
-        
-        ResourceBuffer *buffer = static_cast<CachedResource*>(tiffResource)->resourceBuffer();
-        if (!buffer)
-            goto noPromisedData;
-        
-        NSData *data = buffer->createNSData();
-        NSURLResponse *response = tiffResource->response().nsURLResponse();
-        draggingImageURL = [response URL];
-        wrapper = [[[NSFileWrapper alloc] initRegularFileWithContents:data] autorelease];
-        NSString* filename = [response suggestedFilename];
-        NSString* trueExtension(tiffResource->image()->filenameExtension());
-        if (!matchesExtensionOrEquivalent(filename, trueExtension))
-            filename = [[filename stringByAppendingString:@"."] stringByAppendingString:trueExtension];
-        [wrapper setPreferredFilename:filename];
+        if (ResourceBuffer *buffer = static_cast<CachedResource*>(tiffResource)->resourceBuffer()) {
+            NSData *data = buffer->createNSData();
+            NSURLResponse *response = tiffResource->response().nsURLResponse();
+            draggingImageURL = [response URL];
+            wrapper = [[[NSFileWrapper alloc] initRegularFileWithContents:data] autorelease];
+            NSString* filename = [response suggestedFilename];
+            NSString* trueExtension(tiffResource->image()->filenameExtension());
+            if (!matchesExtensionOrEquivalent(filename, trueExtension))
+                filename = [[filename stringByAppendingString:@"."] stringByAppendingString:trueExtension];
+            [wrapper setPreferredFilename:filename];
+        }
     }
-    
-noPromisedData:
     
     if (!wrapper) {
         ASSERT(![self _webView] || [self _isTopHTMLView]);
@@ -3686,7 +3674,7 @@ noPromisedData:
         if (!page) 
             return nil; 
         
-        const KURL& imageURL = page->dragController()->draggingImageURL();
+        const KURL& imageURL = page->dragController().draggingImageURL();
         ASSERT(!imageURL.isEmpty());
         draggingImageURL = imageURL;
 
@@ -3729,7 +3717,7 @@ noPromisedData:
     [self _stopAutoscrollTimer];
     if (Frame* frame = core([self _frame])) {
         if (Page* page = frame->page())
-            page->mainFrame()->eventHandler()->mouseUp(event);
+            page->mainFrame().eventHandler().mouseUp(event);
     }
     [self _updateMouseoverWithFakeEvent];
 
@@ -3752,12 +3740,12 @@ noPromisedData:
 // API when an editable region is not currently focused.
 static BOOL isTextInput(Frame* coreFrame)
 {
-    return coreFrame && !coreFrame->selection()->isNone() && coreFrame->selection()->isContentEditable();
+    return coreFrame && !coreFrame->selection().isNone() && coreFrame->selection().isContentEditable();
 }
 
 static BOOL isInPasswordField(Frame* coreFrame)
 {
-    return coreFrame && coreFrame->selection()->isInPasswordField();
+    return coreFrame && coreFrame->selection().isInPasswordField();
 }
 
 static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
@@ -3809,16 +3797,16 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
         return YES;
 
     if (![[self _webView] _isPerformingProgrammaticFocus])
-        page->focusController()->setFocusedFrame(frame);
+        page->focusController().setFocusedFrame(frame);
 
-    page->focusController()->setFocused(true);
+    page->focusController().setFocused(true);
 
     if (direction == NSDirectSelection)
         return YES;
 
     if (Document* document = frame->document())
         document->setFocusedElement(0);
-    page->focusController()->setInitialFocus(direction == NSSelectingNext ? FocusDirectionForward : FocusDirectionBackward,
+    page->focusController().setInitialFocus(direction == NSSelectingNext ? FocusDirectionForward : FocusDirectionBackward,
                                              currentKeyboardEvent(frame).get());
     return YES;
 }
@@ -3848,7 +3836,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
         bool nextResponderIsInWebView = [nextResponder isKindOfClass:[NSView class]]
             && [nextResponder isDescendantOf:[[[self _webView] mainFrame] frameView]];
         if (!nextResponderIsInWebView)
-            page->focusController()->setFocused(false);
+            page->focusController().setFocused(false);
     }
     return resign;
 }
@@ -4125,7 +4113,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
     BOOL completionPopupWasOpen = _private->completionController && [_private->completionController popupWindowIsOpen];
     Frame* coreFrame = core([self _frame]);
-    if (!eventWasSentToWebCore && coreFrame && coreFrame->eventHandler()->keyEvent(event)) {
+    if (!eventWasSentToWebCore && coreFrame && coreFrame->eventHandler().keyEvent(event)) {
         // WebCore processed a key event, bail on any preexisting complete: UI
         if (completionPopupWasOpen)
             [_private->completionController endRevertingChange:YES moveLeft:NO];
@@ -4152,7 +4140,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     RetainPtr<WebHTMLView> selfProtector = self;
     Frame* coreFrame = core([self _frame]);
     if (coreFrame && !eventWasSentToWebCore)
-        coreFrame->eventHandler()->keyEvent(event);
+        coreFrame->eventHandler().keyEvent(event);
     else
         [super keyUp:event];
 }
@@ -4171,7 +4159,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
     // Don't make an event from the num lock and function keys.
     if (coreFrame && keyCode != 0 && keyCode != 10 && keyCode != 63) {
-        coreFrame->eventHandler()->keyEvent(PlatformEventFactory::createPlatformKeyboardEvent(event));
+        coreFrame->eventHandler().keyEvent(PlatformEventFactory::createPlatformKeyboardEvent(event));
         return;
     }
         
@@ -4223,7 +4211,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     COMMAND_PROLOGUE
 
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->selection()->revealSelection(ScrollAlignment::alignCenterAlways);
+        coreFrame->selection().revealSelection(ScrollAlignment::alignCenterAlways);
 }
 
 - (NSData *)_selectionStartFontAttributesAsRTF
@@ -4411,7 +4399,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     // Pressing Esc results in a fake event being sent - don't pass it to WebCore.
     if (!eventWasSentToWebCore && event == [NSApp currentEvent] && self == [[self window] firstResponder])
         if (Frame* frame = core([self _frame]))
-            ret = frame->eventHandler()->keyEvent(event);
+            ret = frame->eventHandler().keyEvent(event);
 
     if (!ret)
         ret = [self _handleStyleKeyEquivalent:event] || [super performKeyEquivalent:event];
@@ -5049,7 +5037,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
     if (![[self _webView] smartInsertDeleteEnabled])
         return NO;
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->selection()->granularity() == WordGranularity;
+    return coreFrame && coreFrame->selection().granularity() == WordGranularity;
 }
 
 - (NSEvent *)_mouseDownEvent
@@ -5224,7 +5212,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
     if (!coreFrame)
         return;
 
-    NSRect rect = coreFrame->selection()->bounds();
+    NSRect rect = coreFrame->selection().bounds();
 
     NSDictionary *attributes = [attrString fontAttributesInRange:NSMakeRange(0,1)];
     NSFont *font = [attributes objectForKey:NSFontAttributeName];
@@ -5267,7 +5255,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
 
 - (BOOL)_interpretKeyEvent:(KeyboardEvent*)event savingCommands:(BOOL)savingCommands
 {
-    ASSERT(core([self _frame]) == event->target()->toNode()->document()->frame());
+    ASSERT(core([self _frame]) == event->target()->toNode()->document().frame());
     ASSERT(!savingCommands || event->keypressCommands().isEmpty()); // Save commands once for each event.
 
     WebHTMLViewInterpretKeyEventsParameters parameters;
@@ -5886,7 +5874,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         _private->exposeInputContext = exposeInputContext;
         // Let AppKit cache a potentially changed input context.
         // WebCore routinely sets the selection to None when editing, and IMs become unhappy when an input context suddenly turns nil, see bug 26009.
-        if (!coreFrame->selection()->isNone())
+        if (!coreFrame->selection().isNone())
             [NSApp updateWindows];
     }
 
@@ -5913,7 +5901,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 {
     if (![self _hasSelection])
         return NSZeroRect;
-    return core([self _frame])->selection()->bounds();
+    return core([self _frame])->selection().bounds();
 }
 
 - (NSArray *)selectionTextRects
@@ -5923,7 +5911,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
     Vector<FloatRect> list;
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->selection()->getClippedVisibleTextRectangles(list);
+        coreFrame->selection().getClippedVisibleTextRectangles(list);
 
     size_t size = list.size();
 
@@ -5951,7 +5939,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 {
     if (![self _hasSelection])
         return NSZeroRect;
-    return core([self _frame])->selection()->bounds();
+    return core([self _frame])->selection().bounds();
 }
 
 - (NSArray *)pasteboardTypesForSelection
@@ -5974,7 +5962,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 {
     Frame* coreFrame = core([self _frame]);
     if (coreFrame)
-        coreFrame->selection()->selectAll();
+        coreFrame->selection().selectAll();
 }
 
 - (void)deselectAll
@@ -5982,7 +5970,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     Frame* coreFrame = core([self _frame]);
     if (!coreFrame)
         return;
-    coreFrame->selection()->clear();
+    coreFrame->selection().clear();
 }
 
 - (NSString *)string
@@ -6026,7 +6014,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     if (!attributedString) {
         Frame* coreFrame = core([self _frame]);
         if (coreFrame) {
-            RefPtr<Range> range = coreFrame->selection()->selection().toNormalizedRange();
+            RefPtr<Range> range = coreFrame->selection().selection().toNormalizedRange();
             attributedString = [WebHTMLConverter editingAttributedStringFromRange:range.get()];
         }
     }
@@ -6059,7 +6047,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         return nil;
     HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active
         | (allow ? 0 : HitTestRequest::DisallowShadowContent);
-    return [[[WebElementDictionary alloc] initWithHitTestResult:coreFrame->eventHandler()->hitTestResultAtPoint(IntPoint(point), hitType)] autorelease];
+    return [[[WebElementDictionary alloc] initWithHitTestResult:coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point), hitType)] autorelease];
 }
 
 - (NSUInteger)countMatchesForText:(NSString *)string inDOMRange:(DOMRange *)range options:(WebFindOptions)options limit:(NSUInteger)limit markMatches:(BOOL)markMatches
@@ -6093,7 +6081,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     Document* document = coreFrame->document();
     if (!document)
         return;
-    document->markers()->removeMarkers(DocumentMarker::TextMatch);
+    document->markers().removeMarkers(DocumentMarker::TextMatch);
 }
 
 - (NSArray *)rectsForTextMatches
@@ -6105,7 +6093,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     if (!document)
         return [NSArray array];
 
-    Vector<IntRect> rects = document->markers()->renderedRectsForMarkers(DocumentMarker::TextMatch);
+    Vector<IntRect> rects = document->markers().renderedRectsForMarkers(DocumentMarker::TextMatch);
     unsigned count = rects.size();
     NSMutableArray *result = [NSMutableArray arrayWithCapacity:count];
     for (unsigned index = 0; index < count; ++index)

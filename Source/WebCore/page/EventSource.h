@@ -78,15 +78,13 @@ public:
     virtual const AtomicString& interfaceName() const;
     virtual ScriptExecutionContext* scriptExecutionContext() const;
 
-    virtual void stop();
-
 private:
     EventSource(ScriptExecutionContext*, const KURL&, const Dictionary&);
 
-    virtual void refEventTarget() { ref(); }
-    virtual void derefEventTarget() { deref(); }
-    virtual EventTargetData* eventTargetData();
-    virtual EventTargetData* ensureEventTargetData();
+    virtual void refEventTarget() OVERRIDE { ref(); }
+    virtual void derefEventTarget() OVERRIDE { deref(); }
+    virtual EventTargetData* eventTargetData() OVERRIDE;
+    virtual EventTargetData& ensureEventTargetData() OVERRIDE;
 
     virtual void didReceiveResponse(unsigned long, const ResourceResponse&);
     virtual void didReceiveData(const char*, int);
@@ -94,6 +92,8 @@ private:
     virtual void didFail(const ResourceError&);
     virtual void didFailAccessControlCheck(const ResourceError&);
     virtual void didFailRedirectCheck();
+
+    virtual void stop() OVERRIDE;
 
     void connect();
     void networkRequestEnded();

@@ -38,12 +38,14 @@
 #include "CursorList.h"
 #include "Document.h"
 #include "Element.h"
+#include "Frame.h"
 #include "Pair.h"
 #include "Rect.h"
 #include "RenderObject.h"
 #include "RenderStyle.h"
 #include "RenderView.h"
 #include "Settings.h"
+#include "StyleFontSizeFunctions.h"
 #include "StyleResolver.h"
 #include <wtf/StdLibExtras.h>
 
@@ -327,8 +329,8 @@ public:
     {
         ApplyPropertyDefault<TextDirection, getterFunction, TextDirection, setterFunction, TextDirection, initialFunction>::applyValue(propertyID, styleResolver, value);
         Element* element = styleResolver->element();
-        if (element && styleResolver->element() == element->document()->documentElement())
-            element->document()->setDirectionSetOnDocumentElement(true);
+        if (element && styleResolver->element() == element->document().documentElement())
+            element->document().setDirectionSetOnDocumentElement(true);
     }
 
     static PropertyHandler createHandler()
@@ -678,7 +680,7 @@ public:
         
         // We need to adjust the size to account for the generic family change from monospace to non-monospace.
         if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize())
-            styleResolver->setFontSize(fontDescription, styleResolver->fontSizeForKeyword(styleResolver->document(), CSSValueXxSmall + fontDescription.keywordSize() - 1, false));
+            styleResolver->setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueXxSmall + fontDescription.keywordSize() - 1, false, styleResolver->document()));
         fontDescription.setGenericFamily(initialDesc.genericFamily());
         if (!initialDesc.firstFamily().isEmpty())
             fontDescription.setFamilies(initialDesc.families());
@@ -706,7 +708,7 @@ public:
             AtomicString face;
             if (contentValue->isString())
                 face = contentValue->getStringValue();
-            else if (Settings* settings = styleResolver->document()->settings()) {
+            else if (Settings* settings = styleResolver->document().settings()) {
                 switch (contentValue->getValueID()) {
                 case CSSValueWebkitBody:
                     face = settings->standardFontFamily();
@@ -752,7 +754,7 @@ public:
         fontDescription.adoptFamilies(families);
 
         if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize() != oldFamilyUsedFixedDefaultSize)
-            styleResolver->setFontSize(fontDescription, styleResolver->fontSizeForKeyword(styleResolver->document(), CSSValueXxSmall + fontDescription.keywordSize() - 1, !oldFamilyUsedFixedDefaultSize));
+            styleResolver->setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueXxSmall + fontDescription.keywordSize() - 1, !oldFamilyUsedFixedDefaultSize, styleResolver->document()));
 
         styleResolver->setFontDescription(fontDescription);
     }
@@ -796,7 +798,7 @@ public:
     static void applyInitialValue(CSSPropertyID, StyleResolver* styleResolver)
     {
         FontDescription fontDescription = styleResolver->style()->fontDescription();
-        float size = styleResolver->fontSizeForKeyword(styleResolver->document(), CSSValueMedium, fontDescription.useFixedDefaultSize());
+        float size = Style::fontSizeForKeyword(CSSValueMedium, fontDescription.useFixedDefaultSize(), styleResolver->document());
 
         if (size < 0)
             return;
@@ -836,7 +838,7 @@ public:
             case CSSValueXLarge:
             case CSSValueXxLarge:
             case CSSValueWebkitXxxLarge:
-                size = styleResolver->fontSizeForKeyword(styleResolver->document(), ident, fontDescription.useFixedDefaultSize());
+                size = Style::fontSizeForKeyword(ident, fontDescription.useFixedDefaultSize(), styleResolver->document());
                 fontDescription.setKeywordSize(ident - CSSValueXxSmall + 1);
                 break;
             case CSSValueLarger:
@@ -860,7 +862,7 @@ public:
             else if (primitiveValue->isCalculatedPercentageWithLength())
                 size = primitiveValue->cssCalcValue()->toCalcValue(styleResolver->parentStyle(), styleResolver->rootElementStyle())->evaluate(parentSize);
             else if (primitiveValue->isViewportPercentageLength())
-                size = valueForLength(primitiveValue->viewportPercentageLength(), 0, styleResolver->document()->renderView());
+                size = valueForLength(primitiveValue->viewportPercentageLength(), 0, styleResolver->document().renderView());
             else
                 return;
         }
@@ -1220,6 +1222,7 @@ public:
             return;
 
         CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
+        ASSERT(primitiveValue->isValueID());
 
         if (primitiveValue->getValueID() != CSSValueWebkitMatchParent)
             styleResolver->style()->setTextAlign(*primitiveValue);
@@ -1388,7 +1391,7 @@ public:
             lineHeight = RenderStyle::initialLineHeight();
         else if (primitiveValue->isLength()) {
             double multiplier = styleResolver->style()->effectiveZoom();
-            if (Frame* frame = styleResolver->document()->frame())
+            if (Frame* frame = styleResolver->document().frame())
                 multiplier *= frame->textZoomFactor();
             lineHeight = primitiveValue->computeLength<Length>(styleResolver->style(), styleResolver->rootElementStyle(), multiplier);
         } else if (primitiveValue->isPercentage()) {
@@ -1633,12 +1636,12 @@ template <typename T,
           const AnimationList* (RenderStyle::*immutableAnimationGetterFunction)() const>
 class ApplyPropertyAnimation {
 public:
-    static void setValue(Animation* animation, T value) { (animation->*setterFunction)(value); }
-    static T value(const Animation* animation) { return (animation->*getterFunction)(); }
-    static bool test(const Animation* animation) { return (animation->*testFunction)(); }
-    static void clear(Animation* animation) { (animation->*clearFunction)(); }
+    static void setValue(Animation& animation, T value) { (animation.*setterFunction)(value); }
+    static T value(const Animation& animation) { return (animation.*getterFunction)(); }
+    static bool test(const Animation& animation) { return (animation.*testFunction)(); }
+    static void clear(Animation& animation) { (animation.*clearFunction)(); }
     static T initial() { return (*initialFunction)(); }
-    static void map(StyleResolver* styleResolver, Animation* animation, CSSValue* value) { (styleResolver->styleMap()->*mapFunction)(animation, value); }
+    static void map(StyleResolver* styleResolver, Animation& animation, CSSValue* value) { (styleResolver->styleMap()->*mapFunction)(&animation, value); }
     static AnimationList* accessAnimations(RenderStyle* style) { return (style->*animationGetterFunction)(); }
     static const AnimationList* animations(RenderStyle* style) { return (style->*immutableAnimationGetterFunction)(); }
 
@@ -1651,7 +1654,7 @@ public:
             if (list->size() <= i)
                 list->append(Animation::create());
             setValue(list->animation(i), value(parentList->animation(i)));
-            list->animation(i)->setAnimationMode(parentList->animation(i)->animationMode());
+            list->animation(i).setAnimationMode(parentList->animation(i).animationMode());
         }
 
         /* Reset any remaining animations to not have the property set. */
@@ -1666,7 +1669,7 @@ public:
             list->append(Animation::create());
         setValue(list->animation(0), initial());
         if (propertyID == CSSPropertyWebkitTransitionProperty)
-            list->animation(0)->setAnimationMode(Animation::AnimateAll);
+            list->animation(0).setAnimationMode(Animation::AnimateAll);
         for (size_t i = 1; i < list->size(); ++i)
             clear(list->animation(i));
     }
@@ -1735,7 +1738,7 @@ public:
         case 0:
             return;
         case CSSValueAuto:
-            if (Settings* settings = styleResolver->document()->settings())
+            if (Settings* settings = styleResolver->document().settings())
                 r = settings->textAreasAreResizable() ? RESIZE_BOTH : RESIZE_NONE;
             break;
         default:
@@ -1924,7 +1927,7 @@ public:
 #if ENABLE(SVG)
             else if (primitiveValue->primitiveType() == CSSPrimitiveValue::CSS_URI) {
                 String cssURLValue = primitiveValue->getStringValue();
-                KURL url = styleResolver->document()->completeURL(cssURLValue);
+                KURL url = styleResolver->document().completeURL(cssURLValue);
                 // FIXME: It doesn't work with forward or external SVG references (see https://bugs.webkit.org/show_bug.cgi?id=90405)
                 setValue(styleResolver->style(), ReferenceClipPathOperation::create(cssURLValue, url.fragmentIdentifier()));
             }
@@ -2164,6 +2167,7 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
     setPropertyHandler(CSSPropertyMaxWidth, ApplyPropertyLength<&RenderStyle::maxWidth, &RenderStyle::setMaxWidth, &RenderStyle::initialMaxSize, AutoEnabled, LegacyIntrinsicEnabled, IntrinsicEnabled, NoneEnabled, UndefinedEnabled>::createHandler());
     setPropertyHandler(CSSPropertyMinHeight, ApplyPropertyLength<&RenderStyle::minHeight, &RenderStyle::setMinHeight, &RenderStyle::initialMinSize, AutoEnabled, LegacyIntrinsicEnabled, IntrinsicDisabled>::createHandler());
     setPropertyHandler(CSSPropertyMinWidth, ApplyPropertyLength<&RenderStyle::minWidth, &RenderStyle::setMinWidth, &RenderStyle::initialMinSize, AutoEnabled, LegacyIntrinsicEnabled, IntrinsicEnabled>::createHandler());
+    setPropertyHandler(CSSPropertyObjectFit, ApplyPropertyDefault<ObjectFit, &RenderStyle::objectFit, ObjectFit, &RenderStyle::setObjectFit, ObjectFit, &RenderStyle::initialObjectFit>::createHandler());
     setPropertyHandler(CSSPropertyOpacity, ApplyPropertyDefault<float, &RenderStyle::opacity, float, &RenderStyle::setOpacity, float, &RenderStyle::initialOpacity>::createHandler());
     setPropertyHandler(CSSPropertyOrphans, ApplyPropertyAuto<short, &RenderStyle::orphans, &RenderStyle::setOrphans, &RenderStyle::hasAutoOrphans, &RenderStyle::setHasAutoOrphans>::createHandler());
     setPropertyHandler(CSSPropertyOutlineColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::outlineColor, &RenderStyle::setOutlineColor, &RenderStyle::setVisitedLinkOutlineColor, &RenderStyle::color>::createHandler());
@@ -2309,6 +2313,7 @@ DeprecatedStyleBuilder::DeprecatedStyleBuilder()
     setPropertyHandler(CSSPropertyWebkitMaskRepeatX, ApplyPropertyFillLayer<EFillRepeat, CSSPropertyWebkitMaskRepeatX, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isRepeatXSet, &FillLayer::repeatX, &FillLayer::setRepeatX, &FillLayer::clearRepeatX, &FillLayer::initialFillRepeatX, &CSSToStyleMap::mapFillRepeatX>::createHandler());
     setPropertyHandler(CSSPropertyWebkitMaskRepeatY, ApplyPropertyFillLayer<EFillRepeat, CSSPropertyWebkitMaskRepeatY, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isRepeatYSet, &FillLayer::repeatY, &FillLayer::setRepeatY, &FillLayer::clearRepeatY, &FillLayer::initialFillRepeatY, &CSSToStyleMap::mapFillRepeatY>::createHandler());
     setPropertyHandler(CSSPropertyWebkitMaskSize, ApplyPropertyFillLayer<FillSize, CSSPropertyWebkitMaskSize, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isSizeSet, &FillLayer::size, &FillLayer::setSize, &FillLayer::clearSize, &FillLayer::initialFillSize, &CSSToStyleMap::mapFillSize>::createHandler());
+    setPropertyHandler(CSSPropertyWebkitMaskSourceType, ApplyPropertyFillLayer<EMaskSourceType, CSSPropertyWebkitMaskSourceType, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isMaskSourceTypeSet, &FillLayer::maskSourceType, &FillLayer::setMaskSourceType, &FillLayer::clearMaskSourceType, &FillLayer::initialMaskSourceType, &CSSToStyleMap::mapFillMaskSourceType>::createHandler());
     setPropertyHandler(CSSPropertyWebkitNbspMode, ApplyPropertyDefault<ENBSPMode, &RenderStyle::nbspMode, ENBSPMode, &RenderStyle::setNBSPMode, ENBSPMode, &RenderStyle::initialNBSPMode>::createHandler());
     setPropertyHandler(CSSPropertyWebkitPerspectiveOrigin, ApplyPropertyExpanding<SuppressValue, CSSPropertyWebkitPerspectiveOriginX, CSSPropertyWebkitPerspectiveOriginY>::createHandler());
     setPropertyHandler(CSSPropertyWebkitPerspectiveOriginX, ApplyPropertyLength<&RenderStyle::perspectiveOriginX, &RenderStyle::setPerspectiveOriginX, &RenderStyle::initialPerspectiveOriginX>::createHandler());

@@ -24,6 +24,7 @@
 ;*/
 
 EXTERN cti_vm_throw : near
+EXTERN cti_vm_handle_exception : near
 PUBLIC ctiTrampoline
 PUBLIC ctiVMThrowTrampoline
 PUBLIC ctiOpThrowNotCaught
@@ -68,6 +69,18 @@ ctiVMThrowTrampoline PROC
     int 3
 ctiVMThrowTrampoline ENDP
 
+ctiVMHandleException PROC
+	sub rsp, 16
+    mov rcx, rsp
+	mov rdx, r13
+	call cti_vm_handle_exception
+    ; When cti_vm_handle_exception returns, rax points to the memory we allocated on stack
+	; It contains the callFrame and handler address
+	pop rax		; callFrame
+	pop rdx		; handler
+    jmp rdx
+ctiVMHandleException ENDP
+ 
 ctiOpThrowNotCaught PROC
     add rsp, 58h
     pop rbx

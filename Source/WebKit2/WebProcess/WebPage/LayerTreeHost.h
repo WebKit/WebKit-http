@@ -78,7 +78,6 @@ public:
     virtual void didUninstallPageOverlay(PageOverlay*) = 0;
     virtual void setPageOverlayNeedsDisplay(PageOverlay*, const WebCore::IntRect&) = 0;
     virtual void setPageOverlayOpacity(PageOverlay*, float) { }
-    virtual bool pageOverlayShouldApplyFadeWhenPainting() const { return true; }
 
     virtual void pauseRendering() { }
     virtual void resumeRendering() { }
@@ -102,18 +101,12 @@ protected:
     explicit LayerTreeHost(WebPage*);
 
     WebPage* m_webPage;
-
-#if USE(COORDINATED_GRAPHICS)
-    bool m_waitingForUIProcess;
-#endif
 };
 
-#if !USE(COORDINATED_GRAPHICS)
 inline bool LayerTreeHost::supportsAcceleratedCompositing()
 {
     return true;
 }
-#endif
 
 } // namespace WebKit
 

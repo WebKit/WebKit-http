@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,10 @@
 #include <stdint.h>
 #include <wtf/Assertions.h>
 #include <wtf/Vector.h>
+
+#if USE(MASM_PROBE)
+#include <xmmintrin.h>
+#endif
 
 namespace JSC {
 
@@ -71,6 +75,52 @@ namespace X86Registers {
         xmm6,
         xmm7,
     } XMMRegisterID;
+
+#if USE(MASM_PROBE)
+    #define FOR_EACH_CPU_REGISTER(V) \
+        FOR_EACH_CPU_GPREGISTER(V) \
+        FOR_EACH_CPU_SPECIAL_REGISTER(V) \
+        FOR_EACH_CPU_FPREGISTER(V)
+
+    #define FOR_EACH_CPU_GPREGISTER(V) \
+        V(void*, eax) \
+        V(void*, ebx) \
+        V(void*, ecx) \
+        V(void*, edx) \
+        V(void*, esi) \
+        V(void*, edi) \
+        V(void*, ebp) \
+        V(void*, esp) \
+        FOR_EACH_X86_64_CPU_GPREGISTER(V)
+
+    #define FOR_EACH_CPU_SPECIAL_REGISTER(V) \
+        V(void*, eip) \
+        V(void*, eflags) \
+
+    #define FOR_EACH_CPU_FPREGISTER(V) \
+        V(__m128, xmm0) \
+        V(__m128, xmm1) \
+        V(__m128, xmm2) \
+        V(__m128, xmm3) \
+        V(__m128, xmm4) \
+        V(__m128, xmm5) \
+        V(__m128, xmm6) \
+        V(__m128, xmm7)
+
+#if CPU(X86)
+    #define FOR_EACH_X86_64_CPU_GPREGISTER(V) // Nothing to add.
+#elif CPU(X86_64)
+    #define FOR_EACH_X86_64_CPU_GPREGISTER(V) \
+        V(void*, r8) \
+        V(void*, r9) \
+        V(void*, r10) \
+        V(void*, r11) \
+        V(void*, r12) \
+        V(void*, r13) \
+        V(void*, r14) \
+        V(void*, r15)
+#endif // CPU(X86_64)
+#endif // USE(MASM_PROBE)
 }
 
 class X86Assembler {
@@ -449,6 +499,30 @@ public:
         }
     }
 #endif
+
+    void dec_r(RegisterID dst)
+    {
+        m_formatter.oneByteOp(OP_GROUP5_Ev, GROUP1_OP_OR, dst);
+    }
+
+#if CPU(X86_64)
+    void decq_r(RegisterID dst)
+    {
+        m_formatter.oneByteOp64(OP_GROUP5_Ev, GROUP1_OP_OR, dst);
+    }
+#endif // CPU(X86_64)
+
+    void inc_r(RegisterID dst)
+    {
+        m_formatter.oneByteOp(OP_GROUP5_Ev, GROUP1_OP_ADD, dst);
+    }
+
+#if CPU(X86_64)
+    void incq_r(RegisterID dst)
+    {
+        m_formatter.oneByteOp64(OP_GROUP5_Ev, GROUP1_OP_ADD, dst);
+    }
+#endif // CPU(X86_64)
 
     void negl_r(RegisterID dst)
     {

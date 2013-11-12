@@ -26,7 +26,6 @@
 #include "HTMLFormControlElement.h"
 
 #include "Attribute.h"
-#include "ElementShadow.h"
 #include "Event.h"
 #include "EventHandler.h"
 #include "EventNames.h"
@@ -42,6 +41,7 @@
 #include "ScriptEventListener.h"
 #include "ValidationMessage.h"
 #include "ValidityState.h"
+#include <wtf/Ref.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -63,8 +63,8 @@ HTMLFormControlElement::HTMLFormControlElement(const QualifiedName& tagName, Doc
     , m_wasChangedSinceLastFormControlChangeEvent(false)
     , m_hasAutofocused(false)
 {
-    setForm(form ? form : findFormAncestor());
-    setHasCustomStyleCallbacks();
+    setForm(form ? form : HTMLFormElement::findClosestFormAncestor(*this));
+    setHasCustomStyleResolveCallbacks();
 }
 
 HTMLFormControlElement::~HTMLFormControlElement()
@@ -127,7 +127,7 @@ void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const Ato
 {
     if (name == formAttr) {
         formAttributeChanged();
-        FeatureObserver::observe(document(), FeatureObserver::FormAttribute);
+        FeatureObserver::observe(&document(), FeatureObserver::FormAttribute);
     } else if (name == disabledAttr) {
         bool oldDisabled = m_disabled;
         m_disabled = !value.isNull();
@@ -147,10 +147,10 @@ void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const Ato
         m_isRequired = !value.isNull();
         if (wasRequired != m_isRequired)
             requiredAttributeChanged();
-        FeatureObserver::observe(document(), FeatureObserver::RequiredAttribute);
+        FeatureObserver::observe(&document(), FeatureObserver::RequiredAttribute);
     } else if (name == autofocusAttr) {
         HTMLElement::parseAttribute(name, value);
-        FeatureObserver::observe(document(), FeatureObserver::AutoFocusAttribute);
+        FeatureObserver::observe(&document(), FeatureObserver::AutoFocusAttribute);
     } else
         HTMLElement::parseAttribute(name, value);
 }
@@ -177,11 +177,11 @@ static bool shouldAutofocus(HTMLFormControlElement* element)
         return false;
     if (!element->renderer())
         return false;
-    if (element->document()->ignoreAutofocus())
+    if (element->document().ignoreAutofocus())
         return false;
-    if (element->document()->isSandboxed(SandboxAutomaticFeatures)) {
+    if (element->document().isSandboxed(SandboxAutomaticFeatures)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
-        element->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked autofocusing on a form control because the form's frame is sandboxed and the 'allow-scripts' permission is not set.");
+        element->document().addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked autofocusing on a form control because the form's frame is sandboxed and the 'allow-scripts' permission is not set.");
         return false;
     }
     if (element->hasAutofocused())
@@ -209,12 +209,8 @@ static void focusPostAttach(Node* element, unsigned)
     element->deref(); 
 }
 
-void HTMLFormControlElement::attach(const AttachContext& context)
+void HTMLFormControlElement::didAttachRenderers()
 {
-    PostAttachCallbackDisabler disabler(this);
-
-    HTMLElement::attach(context);
-
     // The call to updateFromElement() needs to go after the call through
     // to the base class's attach() because that can sometimes do a close
     // on the renderer.
@@ -300,7 +296,7 @@ static void updateFromElementCallback(Node* node, unsigned)
         renderer->updateFromElement();
 }
 
-void HTMLFormControlElement::didRecalcStyle(StyleChange)
+void HTMLFormControlElement::didRecalcStyle(Style::Change)
 {
     // updateFromElement() can cause the selection to change, and in turn
     // trigger synchronous layout, so it must not be called during style recalc.
@@ -327,8 +323,8 @@ bool HTMLFormControlElement::isFocusable() const
 bool HTMLFormControlElement::isKeyboardFocusable(KeyboardEvent* event) const
 {
     if (isFocusable())
-        if (document()->frame())
-            return document()->frame()->eventHandler()->tabsToAllFormControls(event);
+        if (document().frame())
+            return document().frame()->eventHandler().tabsToAllFormControls(event);
     return false;
 }
 
@@ -396,7 +392,7 @@ void HTMLFormControlElement::setNeedsWillValidateCheck()
 
 void HTMLFormControlElement::updateVisibleValidationMessage()
 {
-    Page* page = document()->page();
+    Page* page = document().page();
     if (!page)
         return;
     String message;
@@ -418,10 +414,10 @@ bool HTMLFormControlElement::checkValidity(Vector<RefPtr<FormAssociatedElement> 
     if (!willValidate() || isValidFormControlElement())
         return true;
     // An event handler can deref this object.
-    RefPtr<HTMLFormControlElement> protector(this);
-    RefPtr<Document> originalDocument(document());
+    Ref<HTMLFormControlElement> protect(*this);
+    Ref<Document> originalDocument(document());
     bool needsDefaultAction = dispatchEvent(Event::create(eventNames().invalidEvent, false, true));
-    if (needsDefaultAction && unhandledInvalidControls && inDocument() && originalDocument == document())
+    if (needsDefaultAction && unhandledInvalidControls && inDocument() && &originalDocument.get() == &document())
         unhandledInvalidControls->append(this);
     return false;
 }
@@ -457,7 +453,7 @@ void HTMLFormControlElement::setCustomValidity(const String& error)
     setNeedsValidityCheck();
 }
 
-bool HTMLFormControlElement::validationMessageShadowTreeContains(Node* node) const
+bool HTMLFormControlElement::validationMessageShadowTreeContains(const Node* node) const
 {
     return m_validationMessage && m_validationMessage->shadowTreeContains(node);
 }

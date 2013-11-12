@@ -35,11 +35,10 @@ namespace WebCore {
 static inline SVGDocumentExtensions* svgExtensionsFromNode(Node* node)
 {
     ASSERT(node);
-    ASSERT(node->document());
-    return node->document()->accessSVGExtensions();
+    return node->document().accessSVGExtensions();
 }
 
-RenderSVGResourceContainer::RenderSVGResourceContainer(SVGStyledElement* node)
+RenderSVGResourceContainer::RenderSVGResourceContainer(SVGElement* node)
     : RenderSVGHiddenContainer(node)
     , m_id(node->getIdAttribute())
     , m_registered(false)
@@ -140,7 +139,7 @@ void RenderSVGResourceContainer::markClientForInvalidation(RenderObject* client,
         client->setNeedsBoundariesUpdate();
         break;
     case RepaintInvalidation:
-        if (client->view())
+        if (!client->documentBeingDestroyed())
             client->repaint();
         break;
     case ParentOnlyInvalidation:

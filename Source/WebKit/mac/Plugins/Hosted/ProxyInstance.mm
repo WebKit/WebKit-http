@@ -195,7 +195,7 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info);
     }
 
-    static const ClassInfo s_info;
+    DECLARE_INFO;
 
 private:
     ProxyRuntimeMethod(JSGlobalObject* globalObject, Structure* structure, Bindings::Method* method)
@@ -206,7 +206,7 @@ private:
     void finishCreation(VM& vm, const String& name)
     {
         Base::finishCreation(vm, name);
-        ASSERT(inherits(&s_info));
+        ASSERT(inherits(info()));
     }
 };
 
@@ -220,8 +220,8 @@ JSValue ProxyInstance::getMethod(JSC::ExecState* exec, PropertyName propertyName
 
 JSValue ProxyInstance::invokeMethod(ExecState* exec, JSC::RuntimeMethod* runtimeMethod)
 {
-    if (!asObject(runtimeMethod)->inherits(&ProxyRuntimeMethod::s_info))
-        return throwError(exec, createTypeError(exec, "Attempt to invoke non-plug-in method on plug-in object."));
+    if (!asObject(runtimeMethod)->inherits(ProxyRuntimeMethod::info()))
+        return exec->vm().throwException(exec, createTypeError(exec, "Attempt to invoke non-plug-in method on plug-in object."));
 
     ProxyMethod* method = static_cast<ProxyMethod*>(runtimeMethod->method());
     ASSERT(method);
@@ -352,7 +352,7 @@ Method* ProxyInstance::methodNamed(PropertyName propertyName)
         return 0;
     
     // If we already have an entry in the map, use it.
-    MethodMap::iterator existingMapEntry = m_methods.find(name.impl());
+    auto existingMapEntry = m_methods.find(name.impl());
     if (existingMapEntry != m_methods.end()) {
         if (existingMapEntry->value)
             return existingMapEntry->value;
@@ -374,7 +374,7 @@ Method* ProxyInstance::methodNamed(PropertyName propertyName)
         return 0;
 
     // Add a new entry to the map unless an entry was added while we were in waitForReply.
-    MethodMap::AddResult mapAddResult = m_methods.add(name.impl(), 0);
+    auto mapAddResult = m_methods.add(name.impl(), 0);
     if (mapAddResult.isNewEntry && reply->m_result)
         mapAddResult.iterator->value = new ProxyMethod(methodName);
 
@@ -391,7 +391,7 @@ Field* ProxyInstance::fieldNamed(PropertyName propertyName)
         return 0;
     
     // If we already have an entry in the map, use it.
-    FieldMap::iterator existingMapEntry = m_fields.find(name.impl());
+    auto existingMapEntry = m_fields.find(name.impl());
     if (existingMapEntry != m_fields.end())
         return existingMapEntry->value;
     
@@ -411,7 +411,7 @@ Field* ProxyInstance::fieldNamed(PropertyName propertyName)
         return 0;
     
     // Add a new entry to the map unless an entry was added while we were in waitForReply.
-    FieldMap::AddResult mapAddResult = m_fields.add(name.impl(), 0);
+    auto mapAddResult = m_fields.add(name.impl(), 0);
     if (mapAddResult.isNewEntry && reply->m_result)
         mapAddResult.iterator->value = new ProxyField(identifier);
     return mapAddResult.iterator->value;

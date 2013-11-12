@@ -54,10 +54,10 @@ public:
     void updateValidationMessage(const String&);
     void requestToHideMessage();
     bool isVisible() const;
-    bool shadowTreeContains(Node*) const;
+    bool shadowTreeContains(const Node*) const;
 
 private:
-    ValidationMessage(HTMLFormControlElement*);
+    explicit ValidationMessage(HTMLFormControlElement*);
     ValidationMessageClient* validationMessageClient() const;
     void setMessage(const String&);
     void setMessageDOMAndStartTimer(Timer<ValidationMessage>* = 0);

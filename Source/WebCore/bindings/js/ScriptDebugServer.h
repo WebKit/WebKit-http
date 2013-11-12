@@ -124,7 +124,9 @@ protected:
 
     virtual bool isContentScript(JSC::ExecState*);
 
-    bool hasBreakpoint(intptr_t sourceID, const TextPosition&) const;
+    bool hasBreakpoint(intptr_t sourceID, const TextPosition&, ScriptBreakpoint* hitBreakpoint) const;
+    bool evaluateBreakpointAction(const ScriptBreakpointAction&) const;
+    bool evaluateBreakpointActions(const ScriptBreakpoint&) const;
 
     void dispatchFunctionToListeners(JavaScriptExecutionCallback, JSC::JSGlobalObject*);
     void dispatchFunctionToListeners(const ListenerSet& listeners, JavaScriptExecutionCallback callback);

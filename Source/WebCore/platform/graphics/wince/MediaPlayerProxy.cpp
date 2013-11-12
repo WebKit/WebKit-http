@@ -69,11 +69,11 @@ ScriptInstance WebMediaPlayerProxy::pluginInstance()
         if (!r || !r->isWidget())
             return 0;
 
-        Frame* frame = element()->document()->frame();
+        Frame* frame = element()->document().frame();
 
         RenderWidget* renderWidget = static_cast<RenderWidget*>(element()->renderer());
         if (renderWidget && renderWidget->widget())
-            m_instance = frame->script()->createScriptInstanceForWidget(renderWidget->widget());
+            m_instance = frame->script().createScriptInstanceForWidget(renderWidget->widget());
     }
 
     return m_instance;
@@ -95,7 +95,7 @@ void WebMediaPlayerProxy::initEngine()
     if (url.isEmpty())
         return;
 
-    Frame* frame = element->document()->frame();
+    Frame* frame = element->document().frame();
     Vector<String> paramNames;
     Vector<String> paramValues;
     String serviceType;
@@ -122,8 +122,8 @@ HTMLMediaElement* WebMediaPlayerProxy::element()
 
 void WebMediaPlayerProxy::invokeMethod(const String& methodName)
 {
-    Frame* frame = element()->document()->frame();
-    RootObject *root = frame->script()->bindingRootObject();
+    Frame* frame = element()->document().frame();
+    RootObject* root = frame->script().bindingRootObject();
     if (!root)
         return;
     ExecState *exec = root->globalObject()->globalExec();

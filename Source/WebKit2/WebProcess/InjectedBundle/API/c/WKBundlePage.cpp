@@ -195,13 +195,13 @@ void* WKAccessibilityRootObject(WKBundlePageRef pageRef)
     if (!page)
         return 0;
     
-    WebCore::Frame* core = page->mainFrame();
-    if (!core || !core->document())
+    WebCore::Frame& core = page->mainFrame();
+    if (!core.document())
         return 0;
     
     WebCore::AXObjectCache::enableAccessibility();
 
-    WebCore::AccessibilityObject* root = core->document()->axObjectCache()->rootObject();
+    WebCore::AccessibilityObject* root = core.document()->axObjectCache()->rootObject();
     if (!root)
         return 0;
     
@@ -303,11 +303,6 @@ void WKBundlePageSetScaleAtOrigin(WKBundlePageRef pageRef, double scale, WKPoint
 WKBundleBackForwardListRef WKBundlePageGetBackForwardList(WKBundlePageRef pageRef)
 {
     return toAPI(toImpl(pageRef)->backForwardList());
-}
-
-void WKBundlePageSetUnderlayPage(WKBundlePageRef pageRef, WKBundlePageRef pageUnderlayRef)
-{
-    toImpl(pageRef)->setUnderlayPage(toImpl(pageUnderlayRef));
 }
 
 void WKBundlePageInstallPageOverlay(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)

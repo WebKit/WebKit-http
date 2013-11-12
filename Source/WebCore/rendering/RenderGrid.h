@@ -32,7 +32,7 @@ namespace WebCore {
 
 class GridTrack;
 
-class RenderGrid : public RenderBlock {
+class RenderGrid FINAL : public RenderBlock {
 public:
     RenderGrid(Element*);
     virtual ~RenderGrid();
@@ -44,6 +44,13 @@ public:
     virtual bool avoidsFloats() const OVERRIDE { return true; }
     virtual bool canCollapseAnonymousBlockChild() const OVERRIDE { return false; }
 
+    enum GridPositionSide {
+        ColumnStartSide,
+        ColumnEndSide,
+        RowStartSide,
+        RowEndSide
+    };
+
 private:
     virtual bool isRenderGrid() const OVERRIDE { return true; }
     virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const OVERRIDE;
@@ -52,6 +59,11 @@ private:
     LayoutUnit computePreferredTrackWidth(const Length&, size_t) const;
 
     struct GridSpan {
+        static PassOwnPtr<GridSpan> create(size_t initialPosition, size_t finalPosition)
+        {
+            return adoptPtr(new GridSpan(initialPosition, finalPosition));
+        }
+
         GridSpan(size_t initialPosition, size_t finalPosition)
             : initialPositionIndex(initialPosition)
             , finalPositionIndex(finalPosition)
@@ -110,6 +122,9 @@ private:
     void distributeSpaceToTracks(Vector<GridTrack*>&, Vector<GridTrack*>* tracksForGrowthAboveMaxBreadth, AccumulatorGetter, AccumulatorGrowFunction, LayoutUnit& availableLogicalSpace);
 
     const GridTrackSize& gridTrackSize(TrackSizingDirection, size_t) const;
+    size_t explicitGridColumnCount() const;
+    size_t explicitGridRowCount() const;
+    size_t explicitGridSizeForSide(GridPositionSide) const;
     size_t maximumIndexInDirection(TrackSizingDirection) const;
 
     LayoutUnit logicalContentHeightForChild(RenderBox*, Vector<GridTrack>&);
@@ -120,13 +135,12 @@ private:
 
     GridSpan resolveGridPositionsFromAutoPlacementPosition(const RenderBox*, TrackSizingDirection, size_t) const;
     PassOwnPtr<GridSpan> resolveGridPositionsFromStyle(const RenderBox*, TrackSizingDirection) const;
-    enum GridPositionSide {
-        StartSide,
-        EndSide,
-        BeforeSide,
-        AfterSide
-    };
+    size_t resolveNamedGridLinePositionFromStyle(const GridPosition&, GridPositionSide) const;
     size_t resolveGridPositionFromStyle(const GridPosition&, GridPositionSide) const;
+    PassOwnPtr<GridSpan> resolveGridPositionAgainstOppositePosition(size_t resolvedOppositePosition, const GridPosition&, GridPositionSide) const;
+    PassOwnPtr<GridSpan> resolveNamedGridLinePositionAgainstOppositePosition(size_t resolvedOppositePosition, const GridPosition&, GridPositionSide) const;
+    PassOwnPtr<GridSpan> resolveRowStartColumnStartNamedGridLinePositionAgainstOppositePosition(size_t resolvedOppositePosition, const GridPosition&, const Vector<size_t>&) const;
+    PassOwnPtr<GridSpan> resolveRowEndColumnEndNamedGridLinePositionAgainstOppositePosition(size_t resolvedOppositePosition, const GridPosition&, const Vector<size_t>&) const;
 
     LayoutUnit gridAreaBreadthForChild(const RenderBox* child, TrackSizingDirection, const Vector<GridTrack>&) const;
 

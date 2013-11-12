@@ -105,11 +105,11 @@ void SearchInputType::createShadowSubtree()
     ASSERT(container);
     ASSERT(textWrapper);
 
-    RefPtr<SearchFieldResultsButtonElement> resultsButton = SearchFieldResultsButtonElement::create(element()->document());
+    RefPtr<SearchFieldResultsButtonElement> resultsButton = SearchFieldResultsButtonElement::create(&element()->document());
     m_resultsButton = resultsButton.get();
     container->insertBefore(m_resultsButton, textWrapper, IGNORE_EXCEPTION);
 
-    RefPtr<SearchFieldCancelButtonElement> cancelButton = SearchFieldCancelButtonElement::create(element()->document());
+    RefPtr<SearchFieldCancelButtonElement> cancelButton = SearchFieldCancelButtonElement::create(&element()->document());
     m_cancelButton = cancelButton.get();
     container->insertBefore(m_cancelButton, textWrapper->nextSibling(), IGNORE_EXCEPTION);
 }
@@ -190,6 +190,22 @@ void SearchInputType::didSetValueByUserEdit(ValueChangeState state)
         startSearchEventTimer();
 
     TextFieldInputType::didSetValueByUserEdit(state);
+}
+
+bool SearchInputType::sizeShouldIncludeDecoration(int, int& preferredSize) const
+{
+    preferredSize = element()->size();
+    return true;
+}
+
+float SearchInputType::decorationWidth() const
+{
+    float width = 0;
+    if (m_resultsButton)
+        width += m_resultsButton->computedStyle()->logicalWidth().value();
+    if (m_cancelButton)
+        width += m_cancelButton->computedStyle()->logicalWidth().value();
+    return width;
 }
 
 } // namespace WebCore

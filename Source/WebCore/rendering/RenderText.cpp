@@ -29,6 +29,7 @@
 #include "EllipsisBox.h"
 #include "FloatQuad.h"
 #include "FontTranscoder.h"
+#include "Frame.h"
 #include "FrameView.h"
 #include "Hyphenation.h"
 #include "InlineTextBox.h"
@@ -77,8 +78,8 @@ public:
     void restartWithNewText(unsigned lastTypedCharacterOffset)
     {
         m_lastTypedCharacterOffset = lastTypedCharacterOffset;
-        if (Settings* settings = m_renderText->document()->settings())
-            startOneShot(settings->passwordEchoDurationInSeconds());
+        const Settings& settings = m_renderText->frame().settings();
+        startOneShot(settings.passwordEchoDurationInSeconds());
     }
     void invalidate() { m_lastTypedCharacterOffset = -1; }
     unsigned lastTypedCharacterOffset() { return m_lastTypedCharacterOffset; }
@@ -159,7 +160,7 @@ RenderText::RenderText(Node* node, PassRefPtr<StringImpl> str)
     m_canUseSimpleFontCodePath = computeCanUseSimpleFontCodePath();
     setIsText();
 
-    view()->frameView()->incrementVisuallyNonEmptyCharacterCount(m_text.length());
+    view().frameView().incrementVisuallyNonEmptyCharacterCount(m_text.length());
 }
 
 #ifndef NDEBUG
@@ -189,7 +190,7 @@ bool RenderText::isWordBreak() const
 
 void RenderText::updateNeedsTranscoding()
 {
-    const TextEncoding* encoding = document()->decoder() ? &document()->decoder()->encoding() : 0;
+    const TextEncoding* encoding = document().decoder() ? &document().decoder()->encoding() : 0;
     m_needsTranscoding = fontTranscoder().needsTranscoding(style()->font().fontDescription(), encoding);
 }
 
@@ -533,13 +534,12 @@ static VisiblePosition createVisiblePositionForBox(const InlineBox* box, int off
         affinity = offset > box->caretMinOffset() ? VP_UPSTREAM_IF_POSSIBLE : DOWNSTREAM;
         break;
     }
-    return box->renderer()->createVisiblePosition(offset, affinity);
+    return box->renderer().createVisiblePosition(offset, affinity);
 }
 
 static VisiblePosition createVisiblePositionAfterAdjustingOffsetForBiDi(const InlineTextBox* box, int offset, ShouldAffinityBeDownstream shouldAffinityBeDownstream)
 {
     ASSERT(box);
-    ASSERT(box->renderer());
     ASSERT(offset >= 0);
 
     if (offset && static_cast<unsigned>(offset) < box->len())
@@ -551,7 +551,7 @@ static VisiblePosition createVisiblePositionAfterAdjustingOffsetForBiDi(const In
 
         const InlineBox* prevBox = box->prevLeafChildIgnoringLineBreak();
         if ((prevBox && prevBox->bidiLevel() == box->bidiLevel())
-            || box->renderer()->containingBlock()->style()->direction() == box->direction()) // FIXME: left on 12CBA
+            || box->renderer().containingBlock()->style()->direction() == box->direction()) // FIXME: left on 12CBA
             return createVisiblePositionForBox(box, box->caretLeftmostOffset(), shouldAffinityBeDownstream);
 
         if (prevBox && prevBox->bidiLevel() > box->bidiLevel()) {
@@ -581,7 +581,7 @@ static VisiblePosition createVisiblePositionAfterAdjustingOffsetForBiDi(const In
 
     const InlineBox* nextBox = box->nextLeafChildIgnoringLineBreak();
     if ((nextBox && nextBox->bidiLevel() == box->bidiLevel())
-        || box->renderer()->containingBlock()->style()->direction() == box->direction())
+        || box->renderer().containingBlock()->style()->direction() == box->direction())
         return createVisiblePositionForBox(box, box->caretRightmostOffset(), shouldAffinityBeDownstream);
 
     // offset is on the right edge
@@ -722,9 +722,9 @@ LayoutRect RenderText::localCaretRect(InlineBox* inlineBox, int caretOffset, Lay
 ALWAYS_INLINE float RenderText::widthFromCache(const Font& f, int start, int len, float xPos, HashSet<const SimpleFontData*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
 {
     if (style()->hasTextCombine() && isCombineText()) {
-        const RenderCombineText* combineText = toRenderCombineText(this);
-        if (combineText->isCombined())
-            return combineText->combinedTextWidth(f);
+        const RenderCombineText& combineText = toRenderCombineText(*this);
+        if (combineText.isCombined())
+            return combineText.combinedTextWidth(f);
     }
 
     if (f.isFixedPitch() && !f.isSmallCaps() && m_isAllASCII && (!glyphOverflow || !glyphOverflow->computeBounds)) {
@@ -1400,7 +1400,7 @@ void RenderText::setTextInternal(PassRefPtr<StringImpl> text)
     ASSERT(text);
     m_text = text;
     if (m_needsTranscoding) {
-        const TextEncoding* encoding = document()->decoder() ? &document()->decoder()->encoding() : 0;
+        const TextEncoding* encoding = document().decoder() ? &document().decoder()->encoding() : 0;
         fontTranscoder().convert(m_text, style()->font().fontDescription(), encoding);
     }
     ASSERT(m_text);
@@ -1464,7 +1464,7 @@ void RenderText::setText(PassRefPtr<StringImpl> text, bool force)
     setNeedsLayoutAndPrefWidthsRecalc();
     m_knownToHaveNoOverflowAndNoFallbackFonts = false;
     
-    if (AXObjectCache* cache = document()->existingAXObjectCache())
+    if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->textChanged(this);
 }
 
@@ -1494,7 +1494,7 @@ void RenderText::dirtyLineBoxes(bool fullLayout)
 
 InlineTextBox* RenderText::createTextBox()
 {
-    return new (renderArena()) InlineTextBox(this);
+    return new (renderArena()) InlineTextBox(*this);
 }
 
 InlineTextBox* RenderText::createInlineTextBox()
@@ -1636,9 +1636,9 @@ LayoutRect RenderText::clippedOverflowRectForRepaint(const RenderLayerModelObjec
     RenderObject* rendererToRepaint = containingBlock();
 
     // Do not cross self-painting layer boundaries.
-    RenderObject* enclosingLayerRenderer = enclosingLayer()->renderer();
-    if (enclosingLayerRenderer != rendererToRepaint && !rendererToRepaint->isDescendantOf(enclosingLayerRenderer))
-        rendererToRepaint = enclosingLayerRenderer;
+    RenderObject& enclosingLayerRenderer = enclosingLayer()->renderer();
+    if (&enclosingLayerRenderer != rendererToRepaint && !rendererToRepaint->isDescendantOf(&enclosingLayerRenderer))
+        rendererToRepaint = &enclosingLayerRenderer;
 
     // The renderer we chose to repaint may be an ancestor of repaintContainer, but we need to do a repaintContainer-relative repaint.
     if (repaintContainer && repaintContainer != rendererToRepaint && !rendererToRepaint->isDescendantOf(repaintContainer))

@@ -79,16 +79,16 @@ namespace WebCore {
     typedef int ExceptionCode;
 
     struct FiringEventIterator {
-        FiringEventIterator(const AtomicString& eventType, size_t& iterator, size_t& end)
+        FiringEventIterator(const AtomicString& eventType, size_t& iterator, size_t& size)
             : eventType(eventType)
             , iterator(iterator)
-            , end(end)
+            , size(size)
         {
         }
 
         const AtomicString& eventType;
         size_t& iterator;
-        size_t& end;
+        size_t& size;
     };
     typedef Vector<FiringEventIterator, 1> FiringEventIteratorVector;
 
@@ -140,13 +140,14 @@ namespace WebCore {
         virtual ~EventTarget();
         
         virtual EventTargetData* eventTargetData() = 0;
-        virtual EventTargetData* ensureEventTargetData() = 0;
+        virtual EventTargetData& ensureEventTargetData() = 0;
 
     private:
         virtual void refEventTarget() = 0;
         virtual void derefEventTarget() = 0;
         
         void fireEventListeners(Event*, EventTargetData*, EventListenerVector&);
+        void setupLegacyTypeObserverIfNeeded(const AtomicString& legacyTypeName, bool hasLegacyTypeListeners, bool hasNewTypeListeners);
 
         friend class EventListenerIterator;
     };
@@ -166,8 +167,8 @@ namespace WebCore {
         void type::setOn##attribute(PassRefPtr<EventListener> listener) { setAttributeEventListener(eventNames().attribute##Event, listener); } \
 
     #define DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(attribute) \
-        EventListener* on##attribute() { return document()->getWindowAttributeEventListener(eventNames().attribute##Event); } \
-        void setOn##attribute(PassRefPtr<EventListener> listener) { document()->setWindowAttributeEventListener(eventNames().attribute##Event, listener); } \
+        EventListener* on##attribute() { return document().getWindowAttributeEventListener(eventNames().attribute##Event); } \
+        void setOn##attribute(PassRefPtr<EventListener> listener) { document().setWindowAttributeEventListener(eventNames().attribute##Event, listener); } \
 
     #define DEFINE_MAPPED_ATTRIBUTE_EVENT_LISTENER(attribute, eventName) \
         EventListener* on##attribute() { return getAttributeEventListener(eventNames().eventName##Event); } \

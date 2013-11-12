@@ -270,11 +270,6 @@ PassOwnPtr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, G
     return factory->createGraphicsLayer(client);
 }
 
-PassOwnPtr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerClient* client)
-{
-    return adoptPtr(new GraphicsLayerCA(client));
-}
-
 GraphicsLayerCA::GraphicsLayerCA(GraphicsLayerClient* client)
     : GraphicsLayer(client)
     , m_contentsLayerPurpose(NoContentsLayer)
@@ -310,6 +305,9 @@ void GraphicsLayerCA::willBeDestroyed()
     
     if (m_contentsLayer)
         m_contentsLayer->setOwner(0);
+
+    if (m_contentsClippingLayer)
+        m_contentsClippingLayer->setOwner(0);
         
     if (m_structuralLayer)
         m_structuralLayer->setOwner(0);
@@ -674,7 +672,21 @@ void GraphicsLayerCA::setContentsRect(const IntRect& rect)
         return;
 
     GraphicsLayer::setContentsRect(rect);
-    noteLayerPropertyChanged(ContentsRectChanged);
+    noteLayerPropertyChanged(ContentsRectsChanged);
+}
+
+void GraphicsLayerCA::setContentsClippingRect(const IntRect& rect)
+{
+    if (rect == m_contentsClippingRect)
+        return;
+
+    GraphicsLayer::setContentsClippingRect(rect);
+    noteLayerPropertyChanged(ContentsRectsChanged);
+}
+
+bool GraphicsLayerCA::shouldRepaintOnSizeChange() const
+{
+    return drawsContent() && !tiledBacking();
 }
 
 bool GraphicsLayerCA::addAnimation(const KeyframeValueList& valueList, const IntSize& boxSize, const Animation* anim, const String& animationName, double timeOffset)
@@ -1214,8 +1226,8 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
     if (m_uncommittedChanges & DirtyRectsChanged)
         repaintLayerDirtyRects();
     
-    if (m_uncommittedChanges & ContentsRectChanged)
-        updateContentsRect();
+    if (m_uncommittedChanges & ContentsRectsChanged) // Needs to happen before ChildrenChanged
+        updateContentsRects();
 
     if (m_uncommittedChanges & MaskLayerChanged)
         updateMaskLayer();
@@ -1297,7 +1309,7 @@ void GraphicsLayerCA::updateSublayerList(bool maxLayerDepthReached)
         // FIXME: add the contents layer in the correct order with negative z-order children.
         // This does not cause visible rendering issues because currently contents layers are only used
         // for replaced elements that don't have children.
-        primaryLayerChildren.append(m_contentsLayer);
+        primaryLayerChildren.append(m_contentsClippingLayer ? m_contentsClippingLayer : m_contentsLayer);
     }
     
     const Vector<GraphicsLayer*>& childLayers = children();
@@ -1722,7 +1734,7 @@ void GraphicsLayerCA::updateContentsImage()
                 it->value->setContents(m_contentsLayer->contents());
         }
         
-        updateContentsRect();
+        updateContentsRects();
     } else {
         // No image.
         // m_contentsLayer will be removed via updateSublayerList.
@@ -1732,56 +1744,111 @@ void GraphicsLayerCA::updateContentsImage()
 
 void GraphicsLayerCA::updateContentsMediaLayer()
 {
+    if (!m_contentsLayer || m_contentsLayerPurpose != ContentsLayerForMedia)
+        return;
+
     // Video layer was set as m_contentsLayer, and will get parented in updateSublayerList().
-    if (m_contentsLayer) {
-        setupContentsLayer(m_contentsLayer.get());
-        updateContentsRect();
-    }
+    setupContentsLayer(m_contentsLayer.get());
+    updateContentsRects();
 }
 
 void GraphicsLayerCA::updateContentsCanvasLayer()
 {
+    if (!m_contentsLayer || m_contentsLayerPurpose != ContentsLayerForCanvas)
+        return;
+
     // CanvasLayer was set as m_contentsLayer, and will get parented in updateSublayerList().
-    if (m_contentsLayer) {
-        setupContentsLayer(m_contentsLayer.get());
-        m_contentsLayer->setNeedsDisplay();
-        updateContentsRect();
-    }
+    setupContentsLayer(m_contentsLayer.get());
+    m_contentsLayer->setNeedsDisplay();
+    updateContentsRects();
 }
 
 void GraphicsLayerCA::updateContentsColorLayer()
 {
     // Color layer was set as m_contentsLayer, and will get parented in updateSublayerList().
-    if (m_contentsLayer) {
-        setupContentsLayer(m_contentsLayer.get());
-        updateContentsRect();
-        ASSERT(m_contentsSolidColor.isValid()); // An invalid color should have removed the contents layer.
-        m_contentsLayer->setBackgroundColor(m_contentsSolidColor);
+    if (!m_contentsLayer || m_contentsLayerPurpose != ContentsLayerForBackgroundColor)
+        return;
 
-        if (m_contentsLayerClones) {
-            LayerMap::const_iterator end = m_contentsLayerClones->end();
-            for (LayerMap::const_iterator it = m_contentsLayerClones->begin(); it != end; ++it)
-                it->value->setBackgroundColor(m_contentsSolidColor);
-        }
+    setupContentsLayer(m_contentsLayer.get());
+    updateContentsRects();
+    ASSERT(m_contentsSolidColor.isValid());
+    m_contentsLayer->setBackgroundColor(m_contentsSolidColor);
+
+    if (m_contentsLayerClones) {
+        LayerMap::const_iterator end = m_contentsLayerClones->end();
+        for (LayerMap::const_iterator it = m_contentsLayerClones->begin(); it != end; ++it)
+            it->value->setBackgroundColor(m_contentsSolidColor);
     }
 }
 
-void GraphicsLayerCA::updateContentsRect()
+void GraphicsLayerCA::updateContentsRects()
 {
     if (!m_contentsLayer)
         return;
 
-    FloatPoint point(m_contentsRect.x(), m_contentsRect.y());
-    FloatRect rect(0, 0, m_contentsRect.width(), m_contentsRect.height());
+    FloatPoint contentOrigin;
+    FloatRect contentBounds(0, 0, m_contentsRect.width(), m_contentsRect.height());
 
-    m_contentsLayer->setPosition(point);
-    m_contentsLayer->setBounds(rect);
+    FloatPoint clippingOrigin;
+    FloatRect clippingBounds;
+    
+    bool gainedOrLostClippingLayer = false;
+    if (!m_contentsClippingRect.contains(m_contentsRect)) {
+        if (!m_contentsClippingLayer) {
+            m_contentsClippingLayer = PlatformCALayer::create(PlatformCALayer::LayerTypeLayer, this);
+            m_contentsClippingLayer->setMasksToBounds(true);
+            m_contentsClippingLayer->setAnchorPoint(FloatPoint());
+#ifndef NDEBUG
+            m_contentsClippingLayer->setName("Contents Clipping");
+#endif
+            m_contentsLayer->removeFromSuperlayer();
+            m_contentsClippingLayer->appendSublayer(m_contentsLayer.get());
+            gainedOrLostClippingLayer = true;
+        }
+    
+        clippingOrigin = m_contentsClippingRect.location();
+        clippingBounds.setSize(m_contentsClippingRect.size());
+
+        contentOrigin = toPoint(m_contentsRect.location() - m_contentsClippingRect.location());
+
+        m_contentsClippingLayer->setPosition(clippingOrigin);
+        m_contentsClippingLayer->setBounds(clippingBounds);
+
+        m_contentsLayer->setPosition(contentOrigin);
+        m_contentsLayer->setBounds(contentBounds);
+    
+    } else {
+        if (m_contentsClippingLayer) {
+            m_contentsLayer->removeFromSuperlayer();
+
+            m_contentsClippingLayer->removeFromSuperlayer();
+            m_contentsClippingLayer->setOwner(0);
+            m_contentsClippingLayer = nullptr;
+            gainedOrLostClippingLayer = true;
+        }
+
+        contentOrigin = m_contentsRect.location();
+    }
+    
+    if (gainedOrLostClippingLayer)
+        noteSublayersChanged();
+
+    m_contentsLayer->setPosition(contentOrigin);
+    m_contentsLayer->setBounds(contentBounds);
 
     if (m_contentsLayerClones) {
         LayerMap::const_iterator end = m_contentsLayerClones->end();
         for (LayerMap::const_iterator it = m_contentsLayerClones->begin(); it != end; ++it) {
-            it->value->setPosition(point);
-            it->value->setBounds(rect);
+            it->value->setPosition(contentOrigin);
+            it->value->setBounds(contentBounds);
+        }
+    }
+
+    if (m_contentsClippingLayerClones) {
+        LayerMap::const_iterator end = m_contentsClippingLayerClones->end();
+        for (LayerMap::const_iterator it = m_contentsClippingLayerClones->begin(); it != end; ++it) {
+            it->value->setPosition(clippingOrigin);
+            it->value->setBounds(clippingBounds);
         }
     }
 }
@@ -2108,7 +2175,7 @@ bool GraphicsLayerCA::createTransformAnimationsFromKeyframes(const KeyframeValue
     int numAnimations = isMatrixAnimation ? 1 : operations->size();
 
     bool reverseAnimationList = true;
-#if !PLATFORM(IOS) && !PLATFORM(WIN) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+#if !PLATFORM(IOS) && !PLATFORM(WIN)
         // Old versions of Core Animation apply animations in reverse order (<rdar://problem/7095638>) so we need to flip the list.
         // to be non-additive. For binary compatibility, the current version of Core Animation preserves this behavior for applications linked
         // on or before Snow Leopard.
@@ -2528,7 +2595,7 @@ bool GraphicsLayerCA::setFilterAnimationKeyframes(const KeyframeValueList& value
 
 void GraphicsLayerCA::suspendAnimations(double time)
 {
-    double t = PlatformCALayer::currentTimeToMediaTime(time ? time : currentTime());
+    double t = PlatformCALayer::currentTimeToMediaTime(time ? time : monotonicallyIncreasingTime());
     primaryLayer()->setSpeed(0);
     primaryLayer()->setTimeOffset(t);
 
@@ -2657,6 +2724,20 @@ void GraphicsLayerCA::dumpAdditionalProperties(TextStream& textStream, int inden
         writeIndent(textStream, indent + 1);
         textStream << "(top left tile " << gridExtent.x() << ", " << gridExtent.y() << " tiles grid " << gridExtent.width() << " x " << gridExtent.height() << ")\n";
     }
+    
+    if (behavior & LayerTreeAsTextIncludeContentLayers) {
+        if (m_contentsClippingLayer) {
+            writeIndent(textStream, indent + 1);
+            textStream << "(contents clipping layer " << m_contentsClippingLayer->position().x() << ", " << m_contentsClippingLayer->position().y()
+                << " " << m_contentsClippingLayer->bounds().width() << " x " << m_contentsClippingLayer->bounds().height() << ")\n";
+        }
+
+        if (m_contentsLayer) {
+            writeIndent(textStream, indent + 1);
+            textStream << "(contents layer " << m_contentsLayer->position().x() << ", " << m_contentsLayer->position().y()
+                << " " << m_contentsLayer->bounds().width() << " x " << m_contentsLayer->bounds().height() << ")\n";
+        }
+    }
 }
 
 void GraphicsLayerCA::setDebugBorder(const Color& color, float borderWidth)
@@ -2684,8 +2765,15 @@ void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
     ASSERT(m_layer->layerType() != PlatformCALayer::LayerTypePageTiledBackingLayer);
     ASSERT(useTiledLayer != m_usingTiledBacking);
     RefPtr<PlatformCALayer> oldLayer = m_layer;
-    
-    m_layer = PlatformCALayer::create(useTiledLayer ? PlatformCALayer::LayerTypeTiledBackingLayer : PlatformCALayer::LayerTypeWebLayer, this);
+
+#if PLATFORM(WIN)
+    PlatformCALayer::LayerType layerType = useTiledLayer ? PlatformCALayer::LayerTypeWebTiledLayer : PlatformCALayer::LayerTypeWebLayer;
+#else
+    PlatformCALayer::LayerType layerType = useTiledLayer ? PlatformCALayer::LayerTypeTiledBackingLayer : PlatformCALayer::LayerTypeWebLayer;
+#endif
+
+    m_layer = PlatformCALayer::create(layerType, this);
+
     m_usingTiledBacking = useTiledLayer;
     
     m_layer->adoptSublayers(oldLayer.get());
@@ -2785,7 +2873,8 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::findOrMakeClone(CloneID cloneID, Pl
     return resultLayer;
 }   
 
-void GraphicsLayerCA::ensureCloneLayers(CloneID cloneID, RefPtr<PlatformCALayer>& primaryLayer, RefPtr<PlatformCALayer>& structuralLayer, RefPtr<PlatformCALayer>& contentsLayer, CloneLevel cloneLevel)
+void GraphicsLayerCA::ensureCloneLayers(CloneID cloneID, RefPtr<PlatformCALayer>& primaryLayer, RefPtr<PlatformCALayer>& structuralLayer,
+    RefPtr<PlatformCALayer>& contentsLayer, RefPtr<PlatformCALayer>& contentsClippingLayer, CloneLevel cloneLevel)
 {
     structuralLayer = 0;
     contentsLayer = 0;
@@ -2799,9 +2888,13 @@ void GraphicsLayerCA::ensureCloneLayers(CloneID cloneID, RefPtr<PlatformCALayer>
     if (!m_contentsLayerClones && m_contentsLayer)
         m_contentsLayerClones = adoptPtr(new LayerMap);
 
+    if (!m_contentsClippingLayerClones && m_contentsClippingLayer)
+        m_contentsClippingLayerClones = adoptPtr(new LayerMap);
+
     primaryLayer = findOrMakeClone(cloneID, m_layer.get(), m_layerClones.get(), cloneLevel);
     structuralLayer = findOrMakeClone(cloneID, m_structuralLayer.get(), m_structuralLayerClones.get(), cloneLevel);
     contentsLayer = findOrMakeClone(cloneID, m_contentsLayer.get(), m_contentsLayerClones.get(), cloneLevel);
+    contentsClippingLayer = findOrMakeClone(cloneID, m_contentsClippingLayer.get(), m_contentsClippingLayerClones.get(), cloneLevel);
 }
 
 void GraphicsLayerCA::removeCloneLayers()
@@ -2809,6 +2902,7 @@ void GraphicsLayerCA::removeCloneLayers()
     m_layerClones = nullptr;
     m_structuralLayerClones = nullptr;
     m_contentsLayerClones = nullptr;
+    m_contentsClippingLayerClones = nullptr;
 }
 
 FloatPoint GraphicsLayerCA::positionForCloneRootLayer() const
@@ -2839,7 +2933,8 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
     RefPtr<PlatformCALayer> primaryLayer;
     RefPtr<PlatformCALayer> structuralLayer;
     RefPtr<PlatformCALayer> contentsLayer;
-    ensureCloneLayers(replicaState.cloneID(), primaryLayer, structuralLayer, contentsLayer, cloneLevel);
+    RefPtr<PlatformCALayer> contentsClippingLayer;
+    ensureCloneLayers(replicaState.cloneID(), primaryLayer, structuralLayer, contentsLayer, contentsClippingLayer, cloneLevel);
 
     if (m_maskLayer) {
         RefPtr<PlatformCALayer> maskClone = static_cast<GraphicsLayerCA*>(m_maskLayer)->fetchCloneLayers(replicaRoot, replicaState, IntermediateCloneLevel);
@@ -2872,8 +2967,13 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
         replicaLayer = static_cast<GraphicsLayerCA*>(m_replicaLayer)->fetchCloneLayers(replicaRoot, replicaState, RootCloneLevel);
         replicaState.setBranchType(ReplicaState::ChildBranch);
     }
+
+    if (contentsClippingLayer) {
+        ASSERT(contentsLayer);
+        contentsClippingLayer->appendSublayer(contentsLayer.get());
+    }
     
-    if (replicaLayer || structuralLayer || contentsLayer || childLayers.size() > 0) {
+    if (replicaLayer || structuralLayer || contentsLayer || contentsClippingLayer || childLayers.size() > 0) {
         if (structuralLayer) {
             // Replicas render behind the actual layer content.
             if (replicaLayer)
@@ -2881,6 +2981,11 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
                 
             // Add the primary layer next. Even if we have negative z-order children, the primary layer always comes behind.
             clonalSublayers.append(primaryLayer);
+        } else if (contentsClippingLayer) {
+            // FIXME: add the contents layer in the correct order with negative z-order children.
+            // This does not cause visible rendering issues because currently contents layers are only used
+            // for replaced elements that don't have children.
+            clonalSublayers.append(contentsClippingLayer);
         } else if (contentsLayer) {
             // FIXME: add the contents layer in the correct order with negative z-order children.
             // This does not cause visible rendering issues because currently contents layers are only used
@@ -2909,11 +3014,11 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
     if (structuralLayer) {
         structuralLayer->setSublayers(clonalSublayers);
 
-        if (contentsLayer) {
+        if (contentsClippingLayer || contentsLayer) {
             // If we have a transform layer, then the contents layer is parented in the 
             // primary layer (which is itself a child of the transform layer).
             primaryLayer->removeAllSublayers();
-            primaryLayer->appendSublayer(contentsLayer.get());
+            primaryLayer->appendSublayer(contentsClippingLayer ? contentsClippingLayer.get() : contentsLayer.get());
         }
 
         result = structuralLayer;

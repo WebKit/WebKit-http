@@ -34,6 +34,7 @@
 #include "CSSStyleRule.h"
 #include "CSSValueKeywords.h"
 #include "CSSValueList.h"
+#include "CSSValuePool.h"
 #include "Editor.h"
 #include "Frame.h"
 #include "FrameSelection.h"
@@ -45,6 +46,7 @@
 #include "Position.h"
 #include "QualifiedName.h"
 #include "RenderStyle.h"
+#include "StyleFontSizeFunctions.h"
 #include "StylePropertySet.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
@@ -683,15 +685,20 @@ TriState EditingStyle::triStateOfStyle(const VisibleSelection& selection) const
         return triStateOfStyle(EditingStyle::styleAtSelectionStart(selection).get());
 
     TriState state = FalseTriState;
+    bool nodeIsStart = true;
     for (Node* node = selection.start().deprecatedNode(); node; node = NodeTraversal::next(node)) {
-        ComputedStyleExtractor computedStyle(node);
-        TriState nodeState = triStateOfStyle(&computedStyle, node->isTextNode() ? EditingStyle::DoNotIgnoreTextOnlyProperties : EditingStyle::IgnoreTextOnlyProperties);
-        if (node == selection.start().deprecatedNode())
-            state = nodeState;
-        else if (state != nodeState && node->isTextNode()) {
-            state = MixedTriState;
-            break;
+        if (node->renderer() && node->rendererIsEditable()) {
+            ComputedStyleExtractor computedStyle(node);
+            TriState nodeState = triStateOfStyle(&computedStyle, node->isTextNode() ? EditingStyle::DoNotIgnoreTextOnlyProperties : EditingStyle::IgnoreTextOnlyProperties);
+            if (nodeIsStart) {
+                state = nodeState;
+                nodeIsStart = false;
+            } else if (state != nodeState && node->isTextNode()) {
+                state = MixedTriState;
+                break;
+            }
         }
+
         if (node == selection.end().deprecatedNode())
             break;
     }
@@ -945,11 +952,9 @@ void EditingStyle::prepareToApplyAt(const Position& position, ShouldPreserveWrit
     }
 }
 
-void EditingStyle::mergeTypingStyle(Document* document)
+void EditingStyle::mergeTypingStyle(Document& document)
 {
-    ASSERT(document);
-
-    RefPtr<EditingStyle> typingStyle = document->frame()->selection()->typingStyle();
+    RefPtr<EditingStyle> typingStyle = document.frame()->selection().typingStyle();
     if (!typingStyle || typingStyle == this)
         return;
 
@@ -1056,8 +1061,8 @@ PassRefPtr<EditingStyle> EditingStyle::wrappingStyleForSerialization(Node* conte
 
 static void mergeTextDecorationValues(CSSValueList* mergedValue, const CSSValueList* valueToMerge)
 {
-    DEFINE_STATIC_LOCAL(const RefPtr<CSSPrimitiveValue>, underline, (CSSPrimitiveValue::createIdentifier(CSSValueUnderline)));
-    DEFINE_STATIC_LOCAL(const RefPtr<CSSPrimitiveValue>, lineThrough, (CSSPrimitiveValue::createIdentifier(CSSValueLineThrough)));
+    RefPtr<CSSPrimitiveValue> underline = cssValuePool().createIdentifierValue(CSSValueUnderline);
+    RefPtr<CSSPrimitiveValue> lineThrough = cssValuePool().createIdentifierValue(CSSValueLineThrough);
 
     if (valueToMerge->hasValue(underline.get()) && !mergedValue->hasValue(underline.get()))
         mergedValue->append(underline.get());
@@ -1102,7 +1107,7 @@ void EditingStyle::mergeStyle(const StylePropertySet* style, CSSPropertyOverride
 static PassRefPtr<MutableStylePropertySet> styleFromMatchedRulesForElement(Element* element, unsigned rulesToInclude)
 {
     RefPtr<MutableStylePropertySet> style = MutableStylePropertySet::create();
-    Vector<RefPtr<StyleRuleBase> > matchedRules = element->document()->ensureStyleResolver()->styleRulesForElement(element, rulesToInclude);
+    Vector<RefPtr<StyleRuleBase> > matchedRules = element->document().ensureStyleResolver().styleRulesForElement(element, rulesToInclude);
     for (unsigned i = 0; i < matchedRules.size(); ++i) {
         if (matchedRules[i]->isStyleRule())
             style->mergeAndOverrideOnConflict(static_pointer_cast<StyleRule>(matchedRules[i])->properties());
@@ -1118,7 +1123,7 @@ void EditingStyle::mergeStyleFromRules(StyledElement* element)
     // Styles from the inline style declaration, held in the variable "style", take precedence 
     // over those from matched rules.
     if (m_mutableStyle)
-        styleFromMatchedRules->mergeAndOverrideOnConflict(m_mutableStyle.get());
+        styleFromMatchedRules->mergeAndOverrideOnConflict(*m_mutableStyle);
 
     clear();
     m_mutableStyle = styleFromMatchedRules;
@@ -1147,7 +1152,7 @@ void EditingStyle::mergeStyleFromRulesForSerialization(StyledElement* element)
             }
         }
     }
-    m_mutableStyle->mergeAndOverrideOnConflict(fromComputedStyle.get());
+    m_mutableStyle->mergeAndOverrideOnConflict(*fromComputedStyle);
 }
 
 static void removePropertiesInStyle(MutableStylePropertySet* styleToRemovePropertiesFrom, StylePropertySet* style)
@@ -1361,7 +1366,7 @@ StyleChange::StyleChange(EditingStyle* style, const Position& position)
     , m_applySubscript(false)
     , m_applySuperscript(false)
 {
-    Document* document = position.anchorNode() ? position.anchorNode()->document() : 0;
+    Document* document = position.anchorNode() ? &position.anchorNode()->document() : 0;
     if (!style || !style->style() || !document || !document->frame())
         return;
 
@@ -1421,8 +1426,8 @@ void StyleChange::extractTextStyles(Document* document, MutableStylePropertySet*
     // Furthermore, text-decoration: none has been trimmed so that text-decoration property is always a CSSValueList.
     RefPtr<CSSValue> textDecoration = style->getPropertyCSSValue(CSSPropertyTextDecoration);
     if (textDecoration && textDecoration->isValueList()) {
-        DEFINE_STATIC_LOCAL(RefPtr<CSSPrimitiveValue>, underline, (CSSPrimitiveValue::createIdentifier(CSSValueUnderline)));
-        DEFINE_STATIC_LOCAL(RefPtr<CSSPrimitiveValue>, lineThrough, (CSSPrimitiveValue::createIdentifier(CSSValueLineThrough)));
+        RefPtr<CSSPrimitiveValue> underline = cssValuePool().createIdentifierValue(CSSValueUnderline);
+        RefPtr<CSSPrimitiveValue> lineThrough = cssValuePool().createIdentifierValue(CSSValueLineThrough);
 
         RefPtr<CSSValueList> newTextDecoration = static_cast<CSSValueList*>(textDecoration.get())->copy();
         if (newTextDecoration->removeAll(underline.get()))
@@ -1560,12 +1565,14 @@ static bool isCSSValueLength(CSSPrimitiveValue* value)
 
 int legacyFontSizeFromCSSValue(Document* document, CSSPrimitiveValue* value, bool shouldUseFixedFontDefaultSize, LegacyFontSizeMode mode)
 {
+    ASSERT(document); // FIXME: This method should take a Document&
+
     if (isCSSValueLength(value)) {
         int pixelFontSize = value->getIntValue(CSSPrimitiveValue::CSS_PX);
-        int legacyFontSize = StyleResolver::legacyFontSize(document, pixelFontSize, shouldUseFixedFontDefaultSize);
+        int legacyFontSize = Style::legacyFontSizeForPixelSize(pixelFontSize, shouldUseFixedFontDefaultSize, *document);
         // Use legacy font size only if pixel value matches exactly to that of legacy font size.
         int cssPrimitiveEquivalent = legacyFontSize - 1 + CSSValueXSmall;
-        if (mode == AlwaysUseLegacyFontSize || StyleResolver::fontSizeForKeyword(document, cssPrimitiveEquivalent, shouldUseFixedFontDefaultSize) == pixelFontSize)
+        if (mode == AlwaysUseLegacyFontSize || Style::fontSizeForKeyword(cssPrimitiveEquivalent, shouldUseFixedFontDefaultSize, *document) == pixelFontSize)
             return legacyFontSize;
 
         return 0;

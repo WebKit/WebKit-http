@@ -32,12 +32,14 @@
 
 #include "JSErrorHandler.h"
 
+#include "Document.h"
 #include "ErrorEvent.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "JSEvent.h"
 #include "JSMainThreadExecState.h"
 #include <runtime/JSLock.h>
+#include <wtf/Ref.h>
 
 using namespace JSC;
 
@@ -79,7 +81,7 @@ void JSErrorHandler::handleEvent(ScriptExecutionContext* scriptExecutionContext,
     CallType callType = jsFunction->methodTable()->getCallData(jsFunction, callData);
 
     if (callType != CallTypeNone) {
-        RefPtr<JSErrorHandler> protectedctor(this);
+        Ref<JSErrorHandler> protectedctor(*this);
 
         Event* savedEvent = globalObject->currentEvent();
         globalObject->setCurrentEvent(event);
@@ -88,15 +90,14 @@ void JSErrorHandler::handleEvent(ScriptExecutionContext* scriptExecutionContext,
         args.append(jsStringWithCache(exec, errorEvent->message()));
         args.append(jsStringWithCache(exec, errorEvent->filename()));
         args.append(jsNumber(errorEvent->lineno()));
+        args.append(jsNumber(errorEvent->colno()));
 
         VM& vm = globalObject->vm();
         DynamicGlobalObjectScope globalObjectScope(vm, vm.dynamicGlobalObject ? vm.dynamicGlobalObject : globalObject);
 
-        JSValue thisValue = globalObject->methodTable()->toThisObject(globalObject, exec);
-
         JSValue returnValue = scriptExecutionContext->isDocument()
-            ? JSMainThreadExecState::call(exec, jsFunction, callType, callData, thisValue, args)
-            : JSC::call(exec, jsFunction, callType, callData, thisValue, args);
+            ? JSMainThreadExecState::call(exec, jsFunction, callType, callData, globalObject, args)
+            : JSC::call(exec, jsFunction, callType, callData, globalObject, args);
 
         globalObject->setCurrentEvent(savedEvent);
 

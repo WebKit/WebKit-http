@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2011 Google Inc. All rights reserved.
@@ -44,6 +44,7 @@
 #include "ReferrerPolicy.h"
 #include "ScriptExecutionContext.h"
 #include "StringWithDirection.h"
+#include "StyleResolveTree.h"
 #include "Timer.h"
 #include "TreeScope.h"
 #include "UserActionElementSet.h"
@@ -174,10 +175,6 @@ class RequestAnimationFrameCallback;
 class ScriptedAnimationController;
 #endif
 
-#if ENABLE(MICRODATA)
-class MicroDataItemList;
-#endif
-
 #if ENABLE(TEXT_AUTOSIZING)
 class TextAutosizer;
 #endif
@@ -197,7 +194,7 @@ enum PageshowEventPersistence {
     PageshowEventPersisted = 1
 };
 
-enum StyleResolverUpdateFlag { RecalcStyleImmediately, DeferRecalcStyle, RecalcStyleIfNeeded };
+enum StyleResolverUpdateFlag { RecalcStyleImmediately, DeferRecalcStyle, RecalcStyleIfNeeded, DeferRecalcStyleIfNeeded };
 
 enum NodeListInvalidationType {
     DoNotInvalidateOnAttributeChanges = 0,
@@ -207,7 +204,6 @@ enum NodeListInvalidationType {
     InvalidateOnForAttrChange,
     InvalidateForFormControls,
     InvalidateOnHRefAttrChange,
-    InvalidateOnItemAttrChange,
     InvalidateOnAnyAttrChange,
 };
 const int numNodeListInvalidationTypes = InvalidateOnAnyAttrChange + 1;
@@ -238,7 +234,7 @@ public:
     }
     virtual ~Document();
 
-    MediaQueryMatcher* mediaQueryMatcher();
+    MediaQueryMatcher& mediaQueryMatcher();
 
     using ContainerNode::ref;
     using ContainerNode::deref;
@@ -250,7 +246,7 @@ public:
     Element* getElementByAccessKey(const String& key);
     void invalidateAccessKeyMap();
 
-    SelectorQueryCache* selectorQueryCache();
+    SelectorQueryCache& selectorQueryCache();
 
     // DOM methods & attributes for Document
 
@@ -282,6 +278,7 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(scroll);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(select);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(submit);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(wheel);
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(blur);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
@@ -330,7 +327,7 @@ public:
     void setReferrerPolicy(ReferrerPolicy referrerPolicy) { m_referrerPolicy = referrerPolicy; }
     ReferrerPolicy referrerPolicy() const { return m_referrerPolicy; }
 
-    DocumentType* doctype() const { return m_docType.get(); }
+    DocumentType* doctype() const;
 
     DOMImplementation* implementation();
     
@@ -410,7 +407,6 @@ public:
 #if ENABLE(PAGE_VISIBILITY_API)
     String visibilityState() const;
     bool hidden() const;
-    void dispatchVisibilityStateChangeEvent();
 #endif
 
 #if ENABLE(CSP_NEXT)
@@ -455,11 +451,11 @@ public:
 
     bool sawElementsInKnownNamespaces() const { return m_sawElementsInKnownNamespaces; }
 
-    StyleResolver* ensureStyleResolver()
+    StyleResolver& ensureStyleResolver()
     { 
         if (!m_styleResolver)
             createStyleResolver();
-        return m_styleResolver.get();
+        return *m_styleResolver;
     }
 
     void notifyRemovePendingSheetIfNeeded();
@@ -485,6 +481,8 @@ public:
      */
     void styleResolverChanged(StyleResolverUpdateFlag);
 
+    void scheduleOptimizedStyleSheetUpdate();
+
     void didAccessStyleResolver();
 
     void evaluateMediaQueryList();
@@ -498,6 +496,8 @@ public:
     Page* page() const; // can be NULL
     Settings* settings() const; // can be NULL
 
+    float deviceScaleFactor() const;
+
     PassRefPtr<Range> createRange();
 
     PassRefPtr<NodeIterator> createNodeIterator(Node* root, unsigned whatToShow,
@@ -510,13 +510,11 @@ public:
     PassRefPtr<CSSStyleDeclaration> createCSSStyleDeclaration();
     PassRefPtr<Text> createEditingTextNode(const String&);
 
-    void recalcStyle(StyleChange = NoChange);
-    bool childNeedsAndNotInStyleRecalc();
+    void recalcStyle(Style::Change = Style::NoChange);
     void updateStyleIfNeeded();
     void updateLayout();
     void updateLayoutIgnorePendingStylesheets();
     PassRefPtr<RenderStyle> styleForElementIgnoringPendingStylesheets(Element*);
-    PassRefPtr<RenderStyle> styleForPage(int pageIndex);
 
     // Returns true if page box (margin boxes and page borders) is visible.
     bool isPageBoxVisible(int pageIndex);
@@ -527,11 +525,10 @@ public:
     // auto is specified.
     void pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int& marginTop, int& marginRight, int& marginBottom, int& marginLeft);
 
-    static void updateStyleForAllDocuments(); // FIXME: Try to reduce the # of calls to this function.
     CachedResourceLoader* cachedResourceLoader() { return m_cachedResourceLoader.get(); }
 
-    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
-    virtual void detach(const AttachContext& = AttachContext()) OVERRIDE;
+    void didBecomeCurrentDocumentInFrame();
+    virtual void detach();
     void prepareForDestruction();
 
     // Override ScriptExecutionContext methods to do additional work
@@ -542,15 +539,13 @@ public:
 
     // Implemented in RenderView.h to avoid a cyclic header dependency this just
     // returns renderer so callers can avoid verbose casts.
-    RenderView* renderView() const;
+    RenderView* renderView() const { return m_renderView; }
 
+    // FIXME: Remove this, callers that have a Document* should call renderView().
     // Shadow the implementations on Node to provide faster access for documents.
-    RenderObject* renderer() const { return m_renderer; }
-    void setRenderer(RenderObject* renderer)
-    {
-        m_renderer = renderer;
-        Node::setRenderer(renderer);
-    }
+    RenderView* renderer() const { return m_renderView; }
+
+    bool renderTreeBeingDestroyed() const { return m_renderTreeBeingDestroyed; }
 
     AXObjectCache* existingAXObjectCache() const;
     AXObjectCache* axObjectCache() const;
@@ -604,7 +599,7 @@ public:
     bool canNavigate(Frame* targetFrame);
     Frame* findUnsafeParentScrollPropagationBoundary();
 
-    CSSStyleSheet* elementSheet();
+    CSSStyleSheet& elementSheet();
     
     virtual PassRefPtr<DocumentParser> createParser();
     DocumentParser* parser() const { return m_parser.get(); }
@@ -656,7 +651,7 @@ public:
     void resetLinkColor();
     void resetVisitedLinkColor();
     void resetActiveLinkColor();
-    VisitedLinkState* visitedLinkState() const { return m_visitedLinkState.get(); }
+    VisitedLinkState& visitedLinkState() const { return *m_visitedLinkState; }
 
     MouseEventWithHitTestResults prepareMouseEvent(const HitTestRequest&, const LayoutPoint&, const PlatformMouseEvent&);
 
@@ -678,14 +673,11 @@ public:
     bool ignoreAutofocus() const { return m_ignoreAutofocus; };
     void setIgnoreAutofocus(bool shouldIgnore = true) { m_ignoreAutofocus = shouldIgnore; };
 
-    void setActiveElement(PassRefPtr<Element>);
-    Element* activeElement() const { return m_activeElement.get(); }
-
     void removeFocusedNodeOfSubtree(Node*, bool amongChildrenOnly = false);
     void hoveredElementDidDetach(Element*);
     void elementInActiveChainDidDetach(Element*);
 
-    void updateHoverActiveState(const HitTestRequest&, Element*, const PlatformMouseEvent* = 0);
+    void updateHoverActiveState(const HitTestRequest&, Element*, const PlatformMouseEvent* = 0, StyleResolverUpdateFlag = RecalcStyleIfNeeded);
 
     // Updates for :target (CSS3 selector).
     void setCSSTarget(Element*);
@@ -697,6 +689,7 @@ public:
     bool hasPendingStyleRecalc() const;
     bool hasPendingForcedStyleRecalc() const;
     void styleRecalcTimerFired(Timer<Document>*);
+    void optimizedStyleSheetUpdateTimerFired(Timer<Document>*);
 
     void registerNodeList(LiveNodeListBase*);
     void unregisterNodeList(LiveNodeListBase*);
@@ -851,7 +844,7 @@ public:
 
     HTMLHeadElement* head();
 
-    DocumentMarkerController* markers() const { return m_markers.get(); }
+    DocumentMarkerController& markers() const { return *m_markers; }
 
     bool directionSetOnDocumentElement() const { return m_directionSetOnDocumentElement; }
     bool writingModeSetOnDocumentElement() const { return m_writingModeSetOnDocumentElement; }
@@ -893,8 +886,6 @@ public:
 
     void incDOMTreeVersion() { m_domTreeVersion = ++s_globalTreeVersion; }
     uint64_t domTreeVersion() const { return m_domTreeVersion; }
-
-    void setDocType(PassRefPtr<DocumentType>);
 
     // XPathEvaluator methods
     PassRefPtr<XPathExpression> createExpression(const String& expression,
@@ -1080,7 +1071,9 @@ public:
     PassRefPtr<Touch> createTouch(DOMWindow*, EventTarget*, int identifier, int pageX, int pageY, int screenX, int screenY, int radiusX, int radiusY, float rotationAngle, float force, ExceptionCode&) const;
 #endif
 
+#if ENABLE(WEB_TIMING)
     const DocumentTiming* timing() const { return &m_documentTiming; }
+#endif
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     int requestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback>);
@@ -1121,16 +1114,10 @@ public:
 
     bool visualUpdatesAllowed() const { return m_visualUpdatesAllowed; }
 
-#if ENABLE(MICRODATA)
-    PassRefPtr<NodeList> getItems(const String& typeNames);
-#endif
-
     bool isInDocumentWrite() { return m_writeRecursionDepth > 0; }
 
     void suspendScheduledTasks(ActiveDOMObject::ReasonForSuspension);
     void resumeScheduledTasks(ActiveDOMObject::ReasonForSuspension);
-
-    IntSize viewportSize() const;
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     IntSize initialViewportSize() const;
@@ -1171,13 +1158,6 @@ public:
     // Return a Locale for the default locale if the argument is null or empty.
     Locale& getCachedLocale(const AtomicString& locale = nullAtom);
 
-#if ENABLE(DIALOG_ELEMENT)
-    void addToTopLayer(Element*);
-    void removeFromTopLayer(Element*);
-    const Vector<RefPtr<Element> >& topLayerElements() const { return m_topLayerElements; }
-    Element* activeModalDialog() const { return !m_topLayerElements.isEmpty() ? m_topLayerElements.last().get() : 0; }
-#endif
-
 #if ENABLE(TEMPLATE_ELEMENT)
     const Document* templateDocument() const;
     Document* ensureTemplateDocument();
@@ -1208,6 +1188,10 @@ private:
     friend class Node;
     friend class IgnoreDestructiveWriteCountIncrementer;
 
+    void setRenderer(RenderObject*) WTF_DELETED_FUNCTION;
+    void setRenderView(RenderView*);
+
+    virtual void createRenderTree();
     virtual void dispose() OVERRIDE;
 
     void detachParser();
@@ -1217,7 +1201,7 @@ private:
 
     virtual bool isDocument() const OVERRIDE { return true; }
 
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
     virtual String nodeName() const;
     virtual NodeType nodeType() const;
@@ -1322,10 +1306,9 @@ private:
 
     String m_baseTarget;
 
-    RefPtr<DocumentType> m_docType;
     OwnPtr<DOMImplementation> m_implementation;
 
-    RefPtr<CSSStyleSheet> m_elemSheet;
+    RefPtr<CSSStyleSheet> m_elementSheet;
 
     bool m_printing;
     bool m_paginatedForScreen;
@@ -1361,12 +1344,13 @@ private:
     Color m_linkColor;
     Color m_visitedLinkColor;
     Color m_activeLinkColor;
-    OwnPtr<VisitedLinkState> m_visitedLinkState;
+    const OwnPtr<VisitedLinkState> m_visitedLinkState;
 
     bool m_visuallyOrdered;
     ReadyState m_readyState;
     bool m_bParsing;
-    
+
+    Timer<Document> m_optimizedStyleSheetUpdateTimer;
     Timer<Document> m_styleRecalcTimer;
     bool m_pendingStyleRecalcShouldForce;
     bool m_inStyleRecalc;
@@ -1390,7 +1374,7 @@ private:
     RefPtr<RenderArena> m_renderArena;
 
     OwnPtr<AXObjectCache> m_axObjectCache;
-    OwnPtr<DocumentMarkerController> m_markers;
+    const OwnPtr<DocumentMarkerController> m_markers;
     
     Timer<Document> m_updateFocusAppearanceTimer;
 
@@ -1423,7 +1407,7 @@ private:
 
     String m_contentLanguage;
 
-    RenderObject* m_savedRenderer;
+    RenderView* m_savedRenderView;
     
     RefPtr<TextResourceDecoder> m_decoder;
 
@@ -1468,7 +1452,7 @@ private:
     bool m_sawElementsInKnownNamespaces;
     bool m_isSrcdocDocument;
 
-    RenderObject* m_renderer;
+    RenderView* m_renderView;
     RefPtr<DocumentEventQueue> m_eventQueue;
 
     WeakPtrFactory<Document> m_weakFactory;
@@ -1490,10 +1474,6 @@ private:
     RefPtr<RenderStyle> m_savedPlaceholderRenderStyle;
 #endif
 
-#if ENABLE(DIALOG_ELEMENT)
-    Vector<RefPtr<Element> > m_topLayerElements;
-#endif
-
     int m_loadEventDelayCount;
     Timer<Document> m_loadEventDelayTimer;
 
@@ -1504,7 +1484,10 @@ private:
     bool m_directionSetOnDocumentElement;
     bool m_writingModeSetOnDocumentElement;
 
+#if ENABLE(WEB_TIMING)
     DocumentTiming m_documentTiming;
+#endif
+
     RefPtr<MediaQueryMatcher> m_mediaQueryMatcher;
     bool m_writeRecursionIsTooDeep;
     unsigned m_writeRecursionDepth;
@@ -1568,6 +1551,7 @@ private:
     HashSet<RefPtr<Element> > m_associatedFormControls;
 
     bool m_hasInjectedPlugInsScript;
+    bool m_renderTreeBeingDestroyed;
 };
 
 inline void Document::notifyRemovePendingSheetIfNeeded()
@@ -1623,7 +1607,7 @@ inline bool Node::isDocumentNode() const
 
 inline Node::Node(Document* document, ConstructionType type)
     : m_nodeFlags(type)
-    , m_parentOrShadowHostNode(0)
+    , m_parentNode(0)
     , m_treeScope(document)
     , m_previous(0)
     , m_next(0)
@@ -1641,5 +1625,9 @@ inline Node::Node(Document* document, ConstructionType type)
 Node* eventTargetNodeForDocument(Document*);
 
 } // namespace WebCore
+
+namespace WTF {
+inline WebCore::Document* getPtr(WebCore::Document& p) { return &p; }
+}
 
 #endif // Document_h

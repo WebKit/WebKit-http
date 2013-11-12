@@ -35,13 +35,14 @@
 
 #include "RenderLayerModelObject.h"
 #include "RenderSVGResource.h"
+#include "SVGElement.h"
 #include "SVGNames.h"
 #include "SVGResourcesCache.h"
-#include "SVGStyledElement.h"
+#include "ShadowRoot.h"
 
 namespace WebCore {
 
-RenderSVGModelObject::RenderSVGModelObject(SVGStyledElement* node)
+RenderSVGModelObject::RenderSVGModelObject(SVGElement* node)
     : RenderObject(node)
     , m_hasSVGShadow(false)
 {
@@ -122,7 +123,7 @@ bool RenderSVGModelObject::nodeAtPoint(const HitTestRequest&, HitTestResult&, co
 static void getElementCTM(SVGElement* element, AffineTransform& transform)
 {
     ASSERT(element);
-    element->document()->updateLayoutIgnorePendingStylesheets();
+    element->document().updateLayoutIgnorePendingStylesheets();
 
     SVGElement* stopAtElement = SVGLocatable::nearestViewportElement(element);
     ASSERT(stopAtElement);
@@ -132,10 +133,8 @@ static void getElementCTM(SVGElement* element, AffineTransform& transform)
 
     while (current && current->isSVGElement()) {
         SVGElement* currentElement = toSVGElement(current);
-        if (currentElement->isSVGStyledElement()) {
-            localTransform = currentElement->renderer()->localToParentTransform();
-            transform = localTransform.multiply(transform);
-        }
+        localTransform = currentElement->renderer()->localToParentTransform();
+        transform = localTransform.multiply(transform);
         // For getCTM() computation, stop at the nearest viewport element
         if (currentElement == stopAtElement)
             break;

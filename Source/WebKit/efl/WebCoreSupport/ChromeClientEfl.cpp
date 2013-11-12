@@ -86,8 +86,8 @@ static inline Evas_Object* kit(Frame* frame)
     if (!frame)
         return 0;
 
-    FrameLoaderClientEfl* client = static_cast<FrameLoaderClientEfl*>(frame->loader()->client());
-    return client ? client->webFrame() : 0;
+    FrameLoaderClientEfl& client = static_cast<FrameLoaderClientEfl&>(frame->loader().client());
+    return client.webFrame();
 }
 
 namespace WebCore {
@@ -107,7 +107,7 @@ void ChromeClientEfl::chromeDestroyed()
     delete this;
 }
 
-void ChromeClientEfl::focusedNodeChanged(Node*)
+void ChromeClientEfl::focusedElementChanged(Element*)
 {
     notImplemented();
 }
@@ -128,7 +128,7 @@ FloatRect ChromeClientEfl::windowRect()
 
 void ChromeClientEfl::setWindowRect(const FloatRect& rect)
 {
-    if (!ewk_view_setting_enable_auto_resize_window_get(m_view) || rect.isEmpty())
+    if (!ewk_view_setting_enable_auto_resize_window_get(m_view))
         return;
 
     Ecore_Evas* ee = ecore_evas_ecore_evas_get(evas_object_evas_get(m_view));
@@ -634,9 +634,9 @@ bool ChromeClientEfl::supportsFullScreenForElement(const WebCore::Element* eleme
 {
     UNUSED_PARAM(withKeyboard);
 
-    if (!element->document()->page())
+    if (!element->document().page())
         return false;
-    return element->document()->page()->settings()->fullScreenEnabled();
+    return element->document().page()->settings().fullScreenEnabled();
 }
 
 void ChromeClientEfl::enterFullScreenForElement(WebCore::Element* element)
@@ -645,9 +645,9 @@ void ChromeClientEfl::enterFullScreenForElement(WebCore::Element* element)
     // exitFullScreenForElement().
     m_fullScreenElement = element;
 
-    element->document()->webkitWillEnterFullScreenForElement(element);
+    element->document().webkitWillEnterFullScreenForElement(element);
     ewk_view_fullscreen_enter(m_view);
-    element->document()->webkitDidEnterFullScreenForElement(element);
+    element->document().webkitDidEnterFullScreenForElement(element);
 }
 
 void ChromeClientEfl::exitFullScreenForElement(WebCore::Element*)
@@ -657,9 +657,9 @@ void ChromeClientEfl::exitFullScreenForElement(WebCore::Element*)
     // So we use the reference to the element we saved above.
     ASSERT(m_fullScreenElement);
 
-    m_fullScreenElement->document()->webkitWillExitFullScreenForElement(m_fullScreenElement.get());
+    m_fullScreenElement->document().webkitWillExitFullScreenForElement(m_fullScreenElement.get());
     ewk_view_fullscreen_exit(m_view);
-    m_fullScreenElement->document()->webkitDidExitFullScreenForElement(m_fullScreenElement.get());
+    m_fullScreenElement->document().webkitDidExitFullScreenForElement(m_fullScreenElement.get());
 
     m_fullScreenElement.clear();
 }

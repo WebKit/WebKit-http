@@ -350,6 +350,7 @@ namespace WebCore {
         DEFINE_ATTRIBUTE_EVENT_LISTENER(waiting);
         DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitbeginfullscreen);
         DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitendfullscreen);
+        DEFINE_ATTRIBUTE_EVENT_LISTENER(wheel);
 
         DEFINE_MAPPED_ATTRIBUTE_EVENT_LISTENER(webkitanimationstart, webkitAnimationStart);
         DEFINE_MAPPED_ATTRIBUTE_EVENT_LISTENER(webkitanimationiteration, webkitAnimationIteration);
@@ -426,8 +427,8 @@ namespace WebCore {
 
         virtual void refEventTarget() { ref(); }
         virtual void derefEventTarget() { deref(); }
-        virtual EventTargetData* eventTargetData();
-        virtual EventTargetData* ensureEventTargetData();
+        virtual EventTargetData* eventTargetData() OVERRIDE;
+        virtual EventTargetData& ensureEventTargetData() OVERRIDE;
 
         static PassRefPtr<Frame> createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures&,
             DOMWindow* activeWindow, Frame* firstFrame, Frame* openerFrame,

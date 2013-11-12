@@ -61,6 +61,7 @@ void WebProcessCreationParameters::encode(CoreIPC::ArgumentEncoder& encoder) con
     encoder << diskCacheDirectoryExtensionHandle;
     encoder << cookieStorageDirectory;
     encoder << cookieStorageDirectoryExtensionHandle;
+    encoder << shouldUseTestingNetworkSession;
     encoder << urlSchemesRegistererdAsEmptyDocument;
     encoder << urlSchemesRegisteredAsSecure;
     encoder << urlSchemesForWhichDomainRelaxationIsForbidden;
@@ -93,6 +94,7 @@ void WebProcessCreationParameters::encode(CoreIPC::ArgumentEncoder& encoder) con
 #endif
 #if PLATFORM(MAC)
     encoder << presenterApplicationPid;
+    encoder << accessibilityEnhancedUserInterfaceEnabled;
     encoder << nsURLCacheMemoryCapacity;
     encoder << nsURLCacheDiskCapacity;
     encoder << acceleratedCompositingPort;
@@ -139,6 +141,8 @@ bool WebProcessCreationParameters::decode(CoreIPC::ArgumentDecoder& decoder, Web
     if (!decoder.decode(parameters.cookieStorageDirectory))
         return false;
     if (!decoder.decode(parameters.cookieStorageDirectoryExtensionHandle))
+        return false;
+    if (!decoder.decode(parameters.shouldUseTestingNetworkSession))
         return false;
     if (!decoder.decode(parameters.urlSchemesRegistererdAsEmptyDocument))
         return false;
@@ -197,6 +201,8 @@ bool WebProcessCreationParameters::decode(CoreIPC::ArgumentDecoder& decoder, Web
 
 #if PLATFORM(MAC)
     if (!decoder.decode(parameters.presenterApplicationPid))
+        return false;
+    if (!decoder.decode(parameters.accessibilityEnhancedUserInterfaceEnabled))
         return false;
     if (!decoder.decode(parameters.nsURLCacheMemoryCapacity))
         return false;

@@ -68,6 +68,7 @@
 #include "HTMLBodyElement.h"
 #include "HTMLElementFactory.h"
 #include "HTMLFrameOwnerElement.h"
+#include "HTMLFrameSetElement.h"
 #include "HTMLNames.h"
 #include "InspectorInstrumentation.h"
 #include "KURL.h"
@@ -149,10 +150,10 @@ bool HTMLDocument::hasFocus()
     Page* page = this->page();
     if (!page)
         return false;
-    if (!page->focusController()->isActive())
+    if (!page->focusController().isActive())
         return false;
-    if (Frame* focusedFrame = page->focusController()->focusedFrame()) {
-        if (focusedFrame->tree()->isDescendantOf(frame()))
+    if (Frame* focusedFrame = page->focusController().focusedFrame()) {
+        if (focusedFrame->tree().isDescendantOf(frame()))
             return true;
     }
     return false;
@@ -355,6 +356,26 @@ static HashSet<AtomicStringImpl*>* createHtmlCaseInsensitiveAttributesSet()
     return attrSet;
 }
 
+void HTMLDocument::addDocumentNamedItem(const AtomicString& name, Element* item)
+{
+    m_documentNamedItem.add(name.impl(), item);
+}
+
+void HTMLDocument::removeDocumentNamedItem(const AtomicString& name, Element* item)
+{
+    m_documentNamedItem.remove(name.impl(), item);
+}
+
+void HTMLDocument::addWindowNamedItem(const AtomicString& name, Element* item)
+{
+    m_windowNamedItem.add(name.impl(), item);
+}
+
+void HTMLDocument::removeWindowNamedItem(const AtomicString& name, Element* item)
+{
+    m_windowNamedItem.remove(name.impl(), item);
+}
+
 bool HTMLDocument::isCaseSensitiveAttribute(const QualifiedName& attributeName)
 {
     static HashSet<AtomicStringImpl*>* htmlCaseInsensitiveAttributesSet = createHtmlCaseInsensitiveAttributesSet();
@@ -372,7 +393,7 @@ void HTMLDocument::clear()
 bool HTMLDocument::isFrameSet() const
 {
     HTMLElement* bodyElement = body();
-    return bodyElement && bodyElement->hasTagName(framesetTag);
+    return bodyElement && isHTMLFrameSetElement(bodyElement);
 }
 
 }

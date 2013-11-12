@@ -40,6 +40,7 @@ inline HTMLFrameElement::HTMLFrameElement(const QualifiedName& tagName, Document
     , m_frameBorderSet(false)
 {
     ASSERT(hasTagName(frameTag));
+    setHasCustomStyleResolveCallbacks();
 }
 
 PassRefPtr<HTMLFrameElement> HTMLFrameElement::create(const QualifiedName& tagName, Document* document)
@@ -47,7 +48,7 @@ PassRefPtr<HTMLFrameElement> HTMLFrameElement::create(const QualifiedName& tagNa
     return adoptRef(new HTMLFrameElement(tagName, document));
 }
 
-bool HTMLFrameElement::rendererIsNeeded(const NodeRenderingContext&)
+bool HTMLFrameElement::rendererIsNeeded(const RenderStyle&)
 {
     // For compatibility, frames render even when display: none is set.
     return isURLAllowed();
@@ -58,28 +59,19 @@ RenderObject* HTMLFrameElement::createRenderer(RenderArena* arena, RenderStyle*)
     return new (arena) RenderFrame(this);
 }
 
-static inline HTMLFrameSetElement* containingFrameSetElement(Node* node)
-{
-    while ((node = node->parentNode())) {
-        if (node->hasTagName(framesetTag))
-            return static_cast<HTMLFrameSetElement*>(node);
-    }
-    return 0;
-}
-
 bool HTMLFrameElement::noResize() const
 {
     return hasAttribute(noresizeAttr);
 }
 
-void HTMLFrameElement::attach(const AttachContext& context)
+void HTMLFrameElement::didAttachRenderers()
 {
-    HTMLFrameElementBase::attach(context);
-    
-    if (HTMLFrameSetElement* frameSetElement = containingFrameSetElement(this)) {
-        if (!m_frameBorderSet)
-            m_frameBorder = frameSetElement->hasFrameBorder();
-    }
+    HTMLFrameElementBase::didAttachRenderers();
+    const HTMLFrameSetElement* containingFrameSet = HTMLFrameSetElement::findContaining(this);
+    if (!containingFrameSet)
+        return;
+    if (!m_frameBorderSet)
+        m_frameBorder = containingFrameSet->hasFrameBorder();
 }
 
 void HTMLFrameElement::parseAttribute(const QualifiedName& name, const AtomicString& value)

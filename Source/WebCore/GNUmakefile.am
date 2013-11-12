@@ -95,6 +95,7 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/rendering/style \
 	-I$(srcdir)/Source/WebCore/rendering/svg \
 	-I$(srcdir)/Source/WebCore/storage \
+	-I$(srcdir)/Source/WebCore/style \
 	-I$(srcdir)/Source/WebCore/svg \
 	-I$(srcdir)/Source/WebCore/svg/animation \
 	-I$(srcdir)/Source/WebCore/svg/graphics \
@@ -297,6 +298,7 @@ DerivedSources/WebCore/PlugInsResources.h: $(WebCore)/css/make-css-file-arrays.p
 DerivedSources/WebCore/JSHTMLElementWrapperFactory.cpp: DerivedSources/WebCore/HTMLElementFactory.cpp
 DerivedSources/WebCore/HTMLElementFactory.cpp: DerivedSources/WebCore/HTMLElementFactory.h
 DerivedSources/WebCore/HTMLElementFactory.h: DerivedSources/WebCore/HTMLNames.cpp
+DerivedSources/WebCore/HTMLElementTypeHelpers.h: DerivedSources/WebCore/HTMLNames.h
 DerivedSources/WebCore/HTMLNames.cpp: DerivedSources/WebCore/HTMLNames.h
 DerivedSources/WebCore/HTMLNames.h: $(WebCore)/dom/make_names.pl $(WebCore)/bindings/scripts/Hasher.pm $(WebCore)/bindings/scripts/StaticString.pm $(WebCore)/html/HTMLTagNames.in $(WebCore)/html/HTMLAttributeNames.in
 	$(AM_V_GEN)$(PERL) -I$(WebCore)/bindings/scripts $< --tags $(WebCore)/html/HTMLTagNames.in --attrs $(WebCore)/html/HTMLAttributeNames.in --extraDefines "$(feature_defines)" --factory --wrapperFactory --outputDir "$(GENSOURCES_WEBCORE)"
@@ -328,7 +330,7 @@ DerivedSources/WebCore/InspectorProtocolVersion.h : $(WebCore)/inspector/Inspect
 	$(AM_V_GEN)$(PYTHON) $(WebCore)/inspector/generate-inspector-protocol-version -o $(GENSOURCES_WEBCORE)/InspectorProtocolVersion.h $(WebCore)/inspector/Inspector.json
 
 DerivedSources/WebCore/InspectorBackendDispatcher.cpp: $(WebCore)/inspector/Inspector.json $(WebCore)/inspector/CodeGeneratorInspector.py
-	$(AM_V_GEN)$(PYTHON) $(WebCore)/inspector/CodeGeneratorInspector.py $< --output_h_dir $(GENSOURCES_WEBCORE) --output_cpp_dir $(GENSOURCES_WEBCORE)
+	$(AM_V_GEN)$(PYTHON) $(WebCore)/inspector/CodeGeneratorInspector.py $< --output_h_dir $(GENSOURCES_WEBCORE) --output_cpp_dir $(GENSOURCES_WEBCORE) --output_js_dir $(GENSOURCES_WEBCORE)
 DerivedSources/WebCore/InspectorTypeBuilder.h: DerivedSources/WebCore/InspectorTypeBuilder.cpp
 DerivedSources/WebCore/InspectorTypeBuilder.cpp: DerivedSources/WebCore/InspectorFrontend.h
 DerivedSources/WebCore/InspectorFrontend.h: DerivedSources/WebCore/InspectorFrontend.cpp

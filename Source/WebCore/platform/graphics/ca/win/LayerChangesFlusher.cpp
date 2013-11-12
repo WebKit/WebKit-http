@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@
 #if USE(ACCELERATED_COMPOSITING)
 
 #include "AbstractCACFLayerTreeHost.h"
-#include "StructuredExceptionHandlerSupressor.h"
+#include "StructuredExceptionHandlerSuppressor.h"
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
@@ -74,7 +74,8 @@ LRESULT LayerChangesFlusher::hookCallback(int code, WPARAM wParam, LPARAM lParam
 {
     // Supress the exception handler Windows puts around all hook calls so we can 
     // crash for debugging purposes if an exception is hit. 
-    StructuredExceptionHandlerSupressor supressor; 
+    ExceptionRegistration registrationStruct; // Note: must be stack allocated.
+    StructuredExceptionHandlerSuppressor supressor(registrationStruct);
     return shared().hookFired(code, wParam, lParam);
 }
 

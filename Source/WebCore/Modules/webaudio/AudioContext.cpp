@@ -79,11 +79,12 @@
 #include "GStreamerUtilities.h"
 #endif
 
-#include <wtf/ArrayBuffer.h>
+#include <runtime/ArrayBuffer.h>
 #include <wtf/Atomics.h>
 #include <wtf/MainThread.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -843,7 +844,7 @@ void AudioContext::deleteMarkedNodes()
     ASSERT(isMainThread());
 
     // Protect this object from being deleted before we release the mutex locked by AutoLocker.
-    RefPtr<AudioContext> protect(this);
+    Ref<AudioContext> protect(*this);
     {
         AutoLocker locker(this);
 
@@ -911,20 +912,16 @@ void AudioContext::addAutomaticPullNode(AudioNode* node)
 {
     ASSERT(isGraphOwner());
 
-    if (!m_automaticPullNodes.contains(node)) {
-        m_automaticPullNodes.add(node);
+    if (m_automaticPullNodes.add(node).isNewEntry)
         m_automaticPullNodesNeedUpdating = true;
-    }
 }
 
 void AudioContext::removeAutomaticPullNode(AudioNode* node)
 {
     ASSERT(isGraphOwner());
 
-    if (m_automaticPullNodes.contains(node)) {
-        m_automaticPullNodes.remove(node);
+    if (m_automaticPullNodes.remove(node))
         m_automaticPullNodesNeedUpdating = true;
-    }
 }
 
 void AudioContext::updateAutomaticPullNodes()

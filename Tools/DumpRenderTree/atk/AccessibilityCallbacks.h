@@ -29,7 +29,12 @@
 #ifndef AccessibilityCallbacks_h
 #define AccessibilityCallbacks_h
 
+#include "AccessibilityNotificationHandlerAtk.h"
+#include "AccessibilityUIElement.h"
+
 void connectAccessibilityCallbacks();
 void disconnectAccessibilityCallbacks();
+void addAccessibilityNotificationHandler(AccessibilityNotificationHandler*);
+void removeAccessibilityNotificationHandler(AccessibilityNotificationHandler*);
 
 #endif

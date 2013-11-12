@@ -72,20 +72,6 @@ const char* WebURLNamePboardType = "public.url-name";
 const char* WebURLPboardType = "public.url";
 const char* WebURLsWithTitlesPboardType = "WebURLsWithTitlesPboardType";
 
-static Vector<String> selectionPasteboardTypes(bool canSmartCopyOrDelete, bool selectionContainsAttachments)
-{
-    Vector<String> types;
-    if (canSmartCopyOrDelete)
-        types.append(WebSmartPastePboardType);
-    types.append(WebArchivePboardType);
-    if (selectionContainsAttachments)
-        types.append(String(NSRTFDPboardType));
-    types.append(String(NSRTFPboardType));
-    types.append(String(NSStringPboardType));
-
-    return types;
-}
-
 static const Vector<String> writableTypesForURL()
 {
     Vector<String> types;
@@ -113,12 +99,6 @@ static Vector<String> writableTypesForImage()
     Vector<String> types;
     types.appendVector(createWritableTypesForImage());
     return types;
-}
-
-Pasteboard* Pasteboard::generalPasteboard() 
-{
-    static Pasteboard* pasteboard = new Pasteboard(NSGeneralPboard);
-    return pasteboard;
 }
 
 Pasteboard::Pasteboard(const String& pasteboardName)
@@ -155,83 +135,43 @@ PassOwnPtr<Pasteboard> Pasteboard::createForDragAndDrop(const DragData& dragData
 
 void Pasteboard::clear()
 {
-    platformStrategies()->pasteboardStrategy()->setTypes(Vector<String>(), m_pasteboardName);
+    m_changeCount = platformStrategies()->pasteboardStrategy()->setTypes(Vector<String>(), m_pasteboardName);
 }
 
-PassRefPtr<SharedBuffer> Pasteboard::getDataSelection(Frame* frame, const String& pasteboardType)
+void Pasteboard::setTypes(const PasteboardWebContent& content)
 {
-    if (pasteboardType == WebArchivePboardType) {
-        RefPtr<LegacyWebArchive> archive = LegacyWebArchive::createFromSelection(frame);
-        RetainPtr<CFDataRef> data = archive ? archive->rawDataRepresentation() : 0;
-        return SharedBuffer::wrapNSData((NSData *)data.get());
-    }
+    Vector<String> types;
 
-    RefPtr<Range> range = frame->editor().selectedRange();
-    Node* commonAncestor = range->commonAncestorContainer(IGNORE_EXCEPTION);
-    ASSERT(commonAncestor);
-    Node* enclosingAnchor = enclosingNodeWithTag(firstPositionInNode(commonAncestor), HTMLNames::aTag);
-    if (enclosingAnchor && comparePositions(firstPositionInOrBeforeNode(range->startPosition().anchorNode()), range->startPosition()) >= 0)
-        range->setStart(enclosingAnchor, 0, IGNORE_EXCEPTION);
-    
-    NSAttributedString* attributedString = nil;
-    RetainPtr<WebHTMLConverter> converter = adoptNS([[WebHTMLConverter alloc] initWithDOMRange:kit(range.get())]);
-    if (converter)
-        attributedString = [converter.get() attributedString];
-    
-    if (pasteboardType == String(NSRTFDPboardType)) {
-        NSData *RTFDData = [attributedString RTFDFromRange:NSMakeRange(0, [attributedString length]) documentAttributes:nil];
-        return SharedBuffer::wrapNSData((NSData *)RTFDData);
-    }
-    if (pasteboardType == String(NSRTFPboardType)) {
-        if ([attributedString containsAttachments])
-            attributedString = attributedStringByStrippingAttachmentCharacters(attributedString);
-        NSData *RTFData = [attributedString RTFFromRange:NSMakeRange(0, [attributedString length]) documentAttributes:nil];
-        return SharedBuffer::wrapNSData((NSData *)RTFData);
-    }
-    return 0;
+    if (content.canSmartCopyOrDelete)
+        types.append(WebSmartPastePboardType);
+    if (content.dataInWebArchiveFormat)
+        types.append(WebArchivePboardType);
+    if (content.dataInRTFDFormat)
+        types.append(String(NSRTFDPboardType));
+    if (content.dataInRTFFormat)
+        types.append(String(NSRTFPboardType));
+    if (!content.dataInStringFormat.isNull())
+        types.append(String(NSStringPboardType));
+    types.appendVector(content.clientTypes);
+
+    m_changeCount = platformStrategies()->pasteboardStrategy()->setTypes(types, m_pasteboardName);
 }
 
-void Pasteboard::writeSelectionForTypes(const Vector<String>& pasteboardTypes, bool canSmartCopyOrDelete, Frame* frame, ShouldSerializeSelectedTextForClipboard shouldSerializeSelectedTextForClipboard)
+void Pasteboard::writeAfterSettingTypes(const PasteboardWebContent& content)
 {
-    NSAttributedString* attributedString = nil;
-    RetainPtr<WebHTMLConverter> converter = adoptNS([[WebHTMLConverter alloc] initWithDOMRange:kit(frame->editor().selectedRange().get())]);
-    if (converter)
-        attributedString = [converter.get() attributedString];
-    
-    Vector<String> types = !pasteboardTypes.isEmpty() ? pasteboardTypes : selectionPasteboardTypes(canSmartCopyOrDelete, [attributedString containsAttachments]);
-
-    Vector<String> clientTypes;
-    Vector<RefPtr<SharedBuffer> > clientData;
-    frame->editor().client()->getClientPasteboardDataForRange(frame->editor().selectedRange().get(), clientTypes, clientData);
-    types.appendVector(clientTypes);
-
-    platformStrategies()->pasteboardStrategy()->setTypes(types, m_pasteboardName);
-    frame->editor().client()->didSetSelectionTypesForPasteboard();
-
-    for (size_t i = 0; i < clientTypes.size(); ++i)
-        platformStrategies()->pasteboardStrategy()->setBufferForType(clientData[i], clientTypes[i], m_pasteboardName);
-
-    // Put HTML on the pasteboard.
-    if (types.contains(WebArchivePboardType))
-        platformStrategies()->pasteboardStrategy()->setBufferForType(getDataSelection(frame, WebArchivePboardType), WebArchivePboardType, m_pasteboardName);
-    
-    // Put the attributed string on the pasteboard (RTF/RTFD format).
-    if (types.contains(String(NSRTFDPboardType)))
-        platformStrategies()->pasteboardStrategy()->setBufferForType(getDataSelection(frame, NSRTFDPboardType), NSRTFDPboardType, m_pasteboardName);
-
-    if (types.contains(String(NSRTFPboardType)))
-        platformStrategies()->pasteboardStrategy()->setBufferForType(getDataSelection(frame, NSRTFPboardType), NSRTFPboardType, m_pasteboardName);
-    
-    // Put plain string on the pasteboard.
-    if (types.contains(String(NSStringPboardType))) {
-        String text = shouldSerializeSelectedTextForClipboard == IncludeImageAltTextForClipboard
-            ? frame->editor().stringSelectionForPasteboardWithImageAltText()
-            : frame->editor().stringSelectionForPasteboard();
-        platformStrategies()->pasteboardStrategy()->setStringForType(text, NSStringPboardType, m_pasteboardName);
-    }
-    
-    if (types.contains(WebSmartPastePboardType))
-        platformStrategies()->pasteboardStrategy()->setBufferForType(0, WebSmartPastePboardType, m_pasteboardName);
+    ASSERT(content.clientTypes.size() == content.clientData.size());
+    for (size_t i = 0, size = content.clientTypes.size(); i < size; ++i)
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(content.clientData[i], content.clientTypes[i], m_pasteboardName);
+    if (content.canSmartCopyOrDelete)
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(0, WebSmartPastePboardType, m_pasteboardName);
+    if (content.dataInWebArchiveFormat)
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(content.dataInWebArchiveFormat, WebArchivePboardType, m_pasteboardName);
+    if (content.dataInRTFDFormat)
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(content.dataInRTFDFormat, NSRTFDPboardType, m_pasteboardName);
+    if (content.dataInRTFFormat)
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(content.dataInRTFFormat, NSRTFPboardType, m_pasteboardName);
+    if (!content.dataInStringFormat.isNull())
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setStringForType(content.dataInStringFormat, NSStringPboardType, m_pasteboardName);
 }
 
 void Pasteboard::writePlainText(const String& text, SmartReplaceOption smartReplaceOption)
@@ -242,111 +182,88 @@ void Pasteboard::writePlainText(const String& text, SmartReplaceOption smartRepl
         types.append(WebSmartPastePboardType);
 
     platformStrategies()->pasteboardStrategy()->setTypes(types, m_pasteboardName);
-    platformStrategies()->pasteboardStrategy()->setStringForType(text, NSStringPboardType, m_pasteboardName);
+    m_changeCount = platformStrategies()->pasteboardStrategy()->setStringForType(text, NSStringPboardType, m_pasteboardName);
     if (smartReplaceOption == CanSmartReplace)
-        platformStrategies()->pasteboardStrategy()->setBufferForType(0, WebSmartPastePboardType, m_pasteboardName);
-}
-    
-void Pasteboard::writeSelection(Range*, bool canSmartCopyOrDelete, Frame* frame, ShouldSerializeSelectedTextForClipboard shouldSerializeSelectedTextForClipboard)
-{
-    writeSelectionForTypes(Vector<String>(), canSmartCopyOrDelete, frame, shouldSerializeSelectedTextForClipboard);
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(0, WebSmartPastePboardType, m_pasteboardName);
 }
 
-static void writeURLForTypes(const Vector<String>& types, const String& pasteboardName, const KURL& url, const String& titleStr, Frame* frame)
+static long writeURLForTypes(const Vector<String>& types, const String& pasteboardName, const PasteboardURL& pasteboardURL)
 {
-    platformStrategies()->pasteboardStrategy()->setTypes(types, pasteboardName);
+    long newChangeCount = platformStrategies()->pasteboardStrategy()->setTypes(types, pasteboardName);
     
-    ASSERT(!url.isEmpty());
+    ASSERT(!pasteboardURL.url.isEmpty());
     
-    NSURL *cocoaURL = url;
-    NSString *userVisibleString = frame->editor().client()->userVisibleString(cocoaURL);
-    
-    NSString *title = (NSString*)titleStr;
-    if ([title length] == 0) {
+    NSURL *cocoaURL = pasteboardURL.url;
+    NSString *userVisibleString = pasteboardURL.userVisibleForm;
+    NSString *title = (NSString *)pasteboardURL.title;
+    if (![title length]) {
         title = [[cocoaURL path] lastPathComponent];
-        if ([title length] == 0)
+        if (![title length])
             title = userVisibleString;
     }
+
     if (types.contains(WebURLsWithTitlesPboardType)) {
         Vector<String> paths;
         paths.append([cocoaURL absoluteString]);
-        paths.append(titleStr.stripWhiteSpace());
-        platformStrategies()->pasteboardStrategy()->setPathnamesForType(paths, WebURLsWithTitlesPboardType, pasteboardName);
+        paths.append(pasteboardURL.title.stripWhiteSpace());
+        newChangeCount = platformStrategies()->pasteboardStrategy()->setPathnamesForType(paths, WebURLsWithTitlesPboardType, pasteboardName);
     }
     if (types.contains(String(NSURLPboardType)))
-        platformStrategies()->pasteboardStrategy()->setStringForType([cocoaURL absoluteString], NSURLPboardType, pasteboardName);
+        newChangeCount = platformStrategies()->pasteboardStrategy()->setStringForType([cocoaURL absoluteString], NSURLPboardType, pasteboardName);
     if (types.contains(WebURLPboardType))
-        platformStrategies()->pasteboardStrategy()->setStringForType(userVisibleString, WebURLPboardType, pasteboardName);
+        newChangeCount = platformStrategies()->pasteboardStrategy()->setStringForType(userVisibleString, WebURLPboardType, pasteboardName);
     if (types.contains(WebURLNamePboardType))
-        platformStrategies()->pasteboardStrategy()->setStringForType(title, WebURLNamePboardType, pasteboardName);
+        newChangeCount = platformStrategies()->pasteboardStrategy()->setStringForType(title, WebURLNamePboardType, pasteboardName);
     if (types.contains(String(NSStringPboardType)))
-        platformStrategies()->pasteboardStrategy()->setStringForType(userVisibleString, NSStringPboardType, pasteboardName);
+        newChangeCount = platformStrategies()->pasteboardStrategy()->setStringForType(userVisibleString, NSStringPboardType, pasteboardName);
+
+    return newChangeCount;
 }
     
-void Pasteboard::writeURL(const KURL& url, const String& titleStr, Frame* frame)
+void Pasteboard::write(const PasteboardURL& pasteboardURL)
 {
-    writeURLForTypes(writableTypesForURL(), m_pasteboardName, url, titleStr, frame);
+    m_changeCount = writeURLForTypes(writableTypesForURL(), m_pasteboardName, pasteboardURL);
 }
 
-static NSFileWrapper* fileWrapperForImage(CachedResource* resource, NSURL *url)
+static NSFileWrapper* fileWrapper(const PasteboardImage& pasteboardImage)
 {
-    ResourceBuffer* coreData = resource->resourceBuffer();
-    NSData *data = [[[NSData alloc] initWithBytes:coreData->data() length:coreData->size()] autorelease];
+    NSData *data = pasteboardImage.resourceData->createNSData();
     NSFileWrapper *wrapper = [[[NSFileWrapper alloc] initRegularFileWithContents:data] autorelease];
-    String coreMIMEType = resource->response().mimeType();
-    NSString *MIMEType = nil;
-    if (!coreMIMEType.isNull())
-        MIMEType = coreMIMEType;
-    [wrapper setPreferredFilename:suggestedFilenameWithMIMEType(url, MIMEType)];
+    [data release];
+    [wrapper setPreferredFilename:suggestedFilenameWithMIMEType(pasteboardImage.url.url, pasteboardImage.resourceMIMEType)];
     return wrapper;
 }
 
-static void writeFileWrapperAsRTFDAttachment(NSFileWrapper* wrapper, const String& pasteboardName)
+static void writeFileWrapperAsRTFDAttachment(NSFileWrapper *wrapper, const String& pasteboardName, long& newChangeCount)
 {
     NSTextAttachment *attachment = [[NSTextAttachment alloc] initWithFileWrapper:wrapper];
-    
     NSAttributedString *string = [NSAttributedString attributedStringWithAttachment:attachment];
     [attachment release];
-    
+
     NSData *RTFDData = [string RTFDFromRange:NSMakeRange(0, [string length]) documentAttributes:nil];
-    if (RTFDData)
-        platformStrategies()->pasteboardStrategy()->setBufferForType(SharedBuffer::wrapNSData(RTFDData).get(), NSRTFDPboardType, pasteboardName);
+    if (!RTFDData)
+        return;
+
+    newChangeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(SharedBuffer::wrapNSData(RTFDData).get(), NSRTFDPboardType, pasteboardName);
 }
 
-void Pasteboard::writeImage(Node* node, const KURL& url, const String& title)
+void Pasteboard::write(const PasteboardImage& pasteboardImage)
 {
-    ASSERT(node);
-
-    if (!(node->renderer() && node->renderer()->isImage()))
-        return;
-
-    NSURL *cocoaURL = url;
-    ASSERT(cocoaURL);
-
-    RenderImage* renderer = toRenderImage(node->renderer());
-    CachedImage* cachedImage = renderer->cachedImage();
-    if (!cachedImage || cachedImage->errorOccurred())
-        return;
-
-    writeURLForTypes(writableTypesForImage(), m_pasteboardName, cocoaURL, nsStringNilIfEmpty(title), node->document()->frame());
-    
-    Image* image = cachedImage->imageForRenderer(renderer);
-    if (!image)
-        return;
-    NSData *imageData = (NSData *)[image->getNSImage() TIFFRepresentation];
+    NSData *imageData = [pasteboardImage.image->getNSImage() TIFFRepresentation];
     if (!imageData)
         return;
-    platformStrategies()->pasteboardStrategy()->setBufferForType(SharedBuffer::wrapNSData(imageData), NSTIFFPboardType, m_pasteboardName);
 
-    String MIMEType = cachedImage->response().mimeType();
-    ASSERT(MIMETypeRegistry::isSupportedImageResourceMIMEType(MIMEType));
+    // FIXME: Why can we assert this? It doesn't seem like it's guaranteed.
+    ASSERT(MIMETypeRegistry::isSupportedImageResourceMIMEType(pasteboardImage.resourceMIMEType));
 
-    writeFileWrapperAsRTFDAttachment(fileWrapperForImage(cachedImage, cocoaURL), m_pasteboardName);
+    m_changeCount = writeURLForTypes(writableTypesForImage(), m_pasteboardName, pasteboardImage.url);
+    m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(SharedBuffer::wrapNSData(imageData), NSTIFFPboardType, m_pasteboardName);
+    writeFileWrapperAsRTFDAttachment(fileWrapper(pasteboardImage), m_pasteboardName, m_changeCount);
 }
 
 void Pasteboard::writePasteboard(const Pasteboard& pasteboard)
 {
-    platformStrategies()->pasteboardStrategy()->copy(pasteboard.m_pasteboardName, m_pasteboardName);
+    m_changeCount = platformStrategies()->pasteboardStrategy()->copy(pasteboard.m_pasteboardName, m_pasteboardName);
 }
 
 bool Pasteboard::canSmartReplace()
@@ -415,7 +332,7 @@ static PassRefPtr<DocumentFragment> documentFragmentWithImageResource(Frame* fra
     if (!resource)
         return 0;
     
-    if (DocumentLoader* loader = frame->loader()->documentLoader())
+    if (DocumentLoader* loader = frame->loader().documentLoader())
         loader->addArchiveResource(resource.get());
 
     RefPtr<Element> imageElement = frame->document()->createElement(HTMLNames::imgTag, false);
@@ -460,7 +377,7 @@ static PassRefPtr<DocumentFragment> documentFragmentWithRTF(Frame* frame, NSStri
 
     size_t size = resources.size();
     if (size) {
-        DocumentLoader* loader = frame->loader()->documentLoader();
+        DocumentLoader* loader = frame->loader().documentLoader();
         for (size_t i = 0; i < size; ++i)
             loader->addArchiveResource(resources[i]);    
     }
@@ -495,10 +412,10 @@ static PassRefPtr<DocumentFragment> fragmentFromWebArchive(Frame* frame, PassRef
     if (!frame || !frame->document())
         return 0;
 
-    if (frame->loader()->client()->canShowMIMETypeAsHTML(MIMEType)) {
+    if (frame->loader().client().canShowMIMETypeAsHTML(MIMEType)) {
         RetainPtr<NSString> markupString = adoptNS([[NSString alloc] initWithData:[mainResource->data()->createNSData() autorelease] encoding:NSUTF8StringEncoding]);
         // FIXME: seems poor form to do this as a side effect of getting a document fragment
-        if (DocumentLoader* loader = frame->loader()->documentLoader())
+        if (DocumentLoader* loader = frame->loader().documentLoader())
             loader->addAllArchiveResources(coreArchive.get());
         return createFragmentFromMarkup(frame->document(), markupString.get(), mainResource->url(), DisallowScriptingAndPluginContent);
     }
@@ -652,7 +569,7 @@ void Pasteboard::clear(const String& type)
     String cocoaType = cocoaTypeFromHTMLClipboardType(type);
     if (cocoaType.isEmpty())
         return;
-    platformStrategies()->pasteboardStrategy()->setStringForType(emptyString(), cocoaType, m_pasteboardName);
+    m_changeCount = platformStrategies()->pasteboardStrategy()->setStringForType(emptyString(), cocoaType, m_pasteboardName);
 }
 
 static Vector<String> absoluteURLsFromPasteboardFilenames(const String& pasteboardName, bool onlyFirstURL = false)
@@ -761,7 +678,7 @@ static void addHTMLClipboardTypesForCocoaType(ListHashSet<String>& resultTypes, 
         resultTypes.add(utiType);
         return;
     }
-    // No mapping, just pass the whole string though
+    // No mapping, just pass the whole string through.
     resultTypes.add(cocoaType);
 }
 
@@ -778,7 +695,7 @@ bool Pasteboard::writeString(const String& type, const String& data)
         Vector<String> types;
         types.append(cocoaType);
         platformStrategies()->pasteboardStrategy()->setTypes(types, m_pasteboardName);
-        platformStrategies()->pasteboardStrategy()->setStringForType(cocoaData, cocoaType, m_pasteboardName);
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setStringForType(cocoaData, cocoaType, m_pasteboardName);
 
         return true;
     }
@@ -788,14 +705,14 @@ bool Pasteboard::writeString(const String& type, const String& data)
         Vector<String> types;
         types.append(cocoaType);
         platformStrategies()->pasteboardStrategy()->addTypes(types, m_pasteboardName);
-        platformStrategies()->pasteboardStrategy()->setStringForType(cocoaData, cocoaType, m_pasteboardName);
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setStringForType(cocoaData, cocoaType, m_pasteboardName);
         return true;
     }
 
     return false;
 }
 
-ListHashSet<String> Pasteboard::types()
+Vector<String> Pasteboard::types()
 {
     Vector<String> types;
     platformStrategies()->pasteboardStrategy()->getTypes(types, m_pasteboardName);
@@ -803,7 +720,7 @@ ListHashSet<String> Pasteboard::types()
     // Enforce changeCount ourselves for security. We check after reading instead of before to be
     // sure it doesn't change between our testing the change count and accessing the data.
     if (m_changeCount != platformStrategies()->pasteboardStrategy()->changeCount(m_pasteboardName))
-        return ListHashSet<String>();
+        return Vector<String>();
 
     ListHashSet<String> result;
     // FIXME: This loop could be split into two stages. One which adds all the HTML5 specified types
@@ -815,7 +732,8 @@ ListHashSet<String> Pasteboard::types()
         addHTMLClipboardTypesForCocoaType(result, types[i], m_pasteboardName);
     }
 
-    return result;
+    copyToVector(result, types);
+    return types;
 }
 
 Vector<String> Pasteboard::readFilenames()

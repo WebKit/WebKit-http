@@ -398,7 +398,7 @@ def cloopEmitUnaryOperation(operands, type, operator)
 end
 
 def cloopEmitCompareDoubleWithNaNCheckAndBranch(operands, condition)
-    $asm.putc "if (std::isnan(#{operands[0].clValue(:double)}) || isnan(#{operands[1].clValue(:double)})"
+    $asm.putc "if (std::isnan(#{operands[0].clValue(:double)}) || std::isnan(#{operands[1].clValue(:double)})"
     $asm.putc "    || (#{operands[0].clValue(:double)} #{condition} #{operands[1].clValue(:double)}))"
     $asm.putc "    goto #{operands[2].cLabel};"
 end
@@ -546,7 +546,7 @@ def cloopEmitCallSlowPath(operands)
     $asm.putc "    ExecState* exec = CAST<ExecState*>(#{operands[1].clValue(:voidPtr)});"
     $asm.putc "    Instruction* pc = CAST<Instruction*>(#{operands[2].clValue(:voidPtr)});"
     $asm.putc "    SlowPathReturnType result = #{operands[0].cLabel}(exec, pc);"
-    $asm.putc "    LLInt::decodeResult(result, t0.instruction, t1.execState);"
+    $asm.putc "    decodeResult(result, t0.instruction, t1.execState);"
     $asm.putc "}"
 end
 

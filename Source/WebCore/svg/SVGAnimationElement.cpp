@@ -35,10 +35,10 @@
 #include "FloatConversion.h"
 #include "RenderObject.h"
 #include "SVGAnimateElement.h"
+#include "SVGElement.h"
 #include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "SVGParserUtilities.h"
-#include "SVGStyledElement.h"
 #include <wtf/MathExtras.h>
 
 namespace WebCore {
@@ -351,13 +351,9 @@ bool SVGAnimationElement::isAccumulated() const
     return value == sum && animationMode() != ToAnimation;
 }
 
-bool SVGAnimationElement::isTargetAttributeCSSProperty(SVGElement* targetElement, const QualifiedName& attributeName)
+bool SVGAnimationElement::isTargetAttributeCSSProperty(SVGElement*, const QualifiedName& attributeName)
 {
-    ASSERT(targetElement);
-    if (!targetElement->isSVGStyledElement())
-        return false;
-
-    return SVGStyledElement::isAnimatableCSSProperty(attributeName);
+    return SVGElement::isAnimatableCSSProperty(attributeName);
 }
 
 SVGAnimationElement::ShouldApplyAnimation SVGAnimationElement::shouldApplyAnimation(SVGElement* targetElement, const QualifiedName& attributeName)
@@ -501,8 +497,7 @@ void SVGAnimationElement::currentValuesForValuesAnimation(float percent, float& 
 
     CalcMode calcMode = this->calcMode();
     if (hasTagName(SVGNames::animateTag) || hasTagName(SVGNames::animateColorTag)) {
-        SVGAnimateElement* animateElement = static_cast<SVGAnimateElement*>(this);
-        AnimatedPropertyType attributeType = animateElement->determineAnimatedPropertyType(targetElement());
+        AnimatedPropertyType attributeType = toSVGAnimateElement(this)->determineAnimatedPropertyType(targetElement());
         // Fall back to discrete animations for Strings.
         if (attributeType == AnimatedBoolean
             || attributeType == AnimatedEnumeration
@@ -635,7 +630,6 @@ void SVGAnimationElement::updateAnimation(float percent, unsigned repeatCount, S
 void SVGAnimationElement::computeCSSPropertyValue(SVGElement* element, CSSPropertyID id, String& valueString)
 {
     ASSERT(element);
-    ASSERT(element->isSVGStyledElement());
 
     // Don't include any properties resulting from CSS Transitions/Animations or SMIL animations, as we want to retrieve the "base value".
     element->setUseOverrideComputedStyle(true);
@@ -655,19 +649,16 @@ void SVGAnimationElement::adjustForInheritance(SVGElement* targetElement, const 
         return;
 
     SVGElement* svgParent = toSVGElement(parent);
-    if (!svgParent->isSVGStyledElement())
-        return;
     computeCSSPropertyValue(svgParent, cssPropertyID(attributeName.localName()), value);
 }
 
-static bool inheritsFromProperty(SVGElement* targetElement, const QualifiedName& attributeName, const String& value)
+static bool inheritsFromProperty(SVGElement*, const QualifiedName& attributeName, const String& value)
 {
-    ASSERT(targetElement);
     DEFINE_STATIC_LOCAL(const AtomicString, inherit, ("inherit", AtomicString::ConstructFromLiteral));
     
-    if (value.isEmpty() || value != inherit || !targetElement->isSVGStyledElement())
+    if (value.isEmpty() || value != inherit)
         return false;
-    return SVGStyledElement::isAnimatableCSSProperty(attributeName);
+    return SVGElement::isAnimatableCSSProperty(attributeName);
 }
 
 void SVGAnimationElement::determinePropertyValueTypes(const String& from, const String& to)

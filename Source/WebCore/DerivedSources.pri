@@ -209,6 +209,7 @@ IDL_BINDINGS += \
     $$PWD/css/FontLoader.idl \
     $$PWD/css/MediaList.idl \
     $$PWD/css/MediaQueryList.idl \
+    $$PWD/css/MediaQueryListListener.idl \
     $$PWD/css/Rect.idl \
     $$PWD/css/RGBColor.idl \
     $$PWD/css/StyleMedia.idl \
@@ -275,7 +276,6 @@ IDL_BINDINGS += \
     $$PWD/dom/PopStateEvent.idl \
     $$PWD/dom/ProcessingInstruction.idl \
     $$PWD/dom/ProgressEvent.idl \
-    $$PWD/dom/PropertyNodeList.idl \
     $$PWD/dom/RangeException.idl \
     $$PWD/dom/Range.idl \
     $$PWD/dom/RequestAnimationFrameCallback.idl \
@@ -301,14 +301,7 @@ IDL_BINDINGS += \
     $$PWD/fileapi/FileList.idl \
     $$PWD/fileapi/FileReader.idl \
     $$PWD/fileapi/FileReaderSync.idl \
-    $$PWD/html/canvas/ArrayBufferView.idl \
-    $$PWD/html/canvas/ArrayBuffer.idl \
-    $$PWD/html/canvas/DataView.idl \
-    $$PWD/html/canvas/Int8Array.idl \
-    $$PWD/html/canvas/Float32Array.idl \
-    $$PWD/html/canvas/Float64Array.idl \
     $$PWD/html/canvas/CanvasGradient.idl \
-    $$PWD/html/canvas/Int32Array.idl \
     $$PWD/html/canvas/CanvasPattern.idl \
     $$PWD/html/canvas/CanvasProxy.idl \
     $$PWD/html/canvas/CanvasRenderingContext.idl \
@@ -338,14 +331,9 @@ IDL_BINDINGS += \
     $$PWD/html/canvas/WebGLRenderingContext.idl \
     $$PWD/html/canvas/WebGLShader.idl \
     $$PWD/html/canvas/WebGLShaderPrecisionFormat.idl \
-    $$PWD/html/canvas/Int16Array.idl \
     $$PWD/html/canvas/WebGLTexture.idl \
     $$PWD/html/canvas/WebGLUniformLocation.idl \
     $$PWD/html/canvas/WebGLVertexArrayObjectOES.idl \
-    $$PWD/html/canvas/Uint8Array.idl \
-    $$PWD/html/canvas/Uint8ClampedArray.idl \
-    $$PWD/html/canvas/Uint32Array.idl \
-    $$PWD/html/canvas/Uint16Array.idl \
     $$PWD/html/DOMFormData.idl \
     $$PWD/html/DOMSettableTokenList.idl \
     $$PWD/html/DOMTokenList.idl \
@@ -364,7 +352,6 @@ IDL_BINDINGS += \
     $$PWD/html/HTMLCollection.idl \
     $$PWD/html/HTMLDataListElement.idl \
     $$PWD/html/HTMLDetailsElement.idl \
-    $$PWD/html/HTMLDialogElement.idl \
     $$PWD/html/HTMLDirectoryElement.idl \
     $$PWD/html/HTMLDivElement.idl \
     $$PWD/html/HTMLDListElement.idl \
@@ -406,7 +393,6 @@ IDL_BINDINGS += \
     $$PWD/html/HTMLParamElement.idl \
     $$PWD/html/HTMLPreElement.idl \
     $$PWD/html/HTMLProgressElement.idl \
-    $$PWD/html/HTMLPropertiesCollection.idl \
     $$PWD/html/HTMLQuoteElement.idl \
     $$PWD/html/HTMLScriptElement.idl \
     $$PWD/html/HTMLSelectElement.idl \
@@ -428,7 +414,6 @@ IDL_BINDINGS += \
     $$PWD/html/ImageData.idl \
     $$PWD/html/MediaController.idl \
     $$PWD/html/MediaError.idl \
-    $$PWD/html/MicroDataItemValue.idl \
     $$PWD/html/RadioNodeList.idl \
     $$PWD/html/TextMetrics.idl \
     $$PWD/html/TimeRanges.idl \
@@ -626,7 +611,6 @@ enable?(SVG) {
     $$PWD/svg/SVGStopElement.idl \
     $$PWD/svg/SVGStringList.idl \
     $$PWD/svg/SVGStyleElement.idl \
-    $$PWD/svg/SVGStyledElement.idl \
     $$PWD/svg/SVGSVGElement.idl \
     $$PWD/svg/SVGSwitchElement.idl \
     $$PWD/svg/SVGSymbolElement.idl \
@@ -827,7 +811,7 @@ GENERATORS += inspectorValidate
 inspectorJSON.output = InspectorFrontend.cpp InspectorBackendDispatcher.cpp InspectorTypeBuilder.cpp
 inspectorJSON.input = INSPECTOR_JSON
 inspectorJSON.script = $$PWD/inspector/CodeGeneratorInspector.py
-inspectorJSON.commands = python $$inspectorJSON.script $$PWD/inspector/Inspector.json --output_h_dir ${QMAKE_FUNC_FILE_OUT_PATH} --output_cpp_dir ${QMAKE_FUNC_FILE_OUT_PATH}
+inspectorJSON.commands = python $$inspectorJSON.script $$PWD/inspector/Inspector.json --output_h_dir ${QMAKE_FUNC_FILE_OUT_PATH} --output_cpp_dir ${QMAKE_FUNC_FILE_OUT_PATH} --output_js_dir ${QMAKE_FUNC_FILE_OUT_PATH}
 inspectorJSON.depends = $$inspectorJSON.script
 GENERATORS += inspectorJSON
 

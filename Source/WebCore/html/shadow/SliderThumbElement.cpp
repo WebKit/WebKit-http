@@ -34,7 +34,6 @@
 #include "SliderThumbElement.h"
 
 #include "CSSValueKeywords.h"
-#include "ElementShadow.h"
 #include "Event.h"
 #include "EventHandler.h"
 #include "Frame.h"
@@ -96,7 +95,7 @@ HTMLElement* sliderTrackElementOf(Node* node)
 // --------------------------------
 
 RenderSliderThumb::RenderSliderThumb(SliderThumbElement* element)
-    : RenderBlock(element)
+    : RenderBlockFlow(element)
 {
 }
 
@@ -207,6 +206,13 @@ void RenderSliderContainer::layout()
 
 // --------------------------------
 
+SliderThumbElement::SliderThumbElement(Document* document)
+    : HTMLDivElement(HTMLNames::divTag, document)
+    , m_inDragMode(false)
+{
+    setHasCustomStyleResolveCallbacks();
+}
+
 void SliderThumbElement::setPositionFromValue()
 {
     // Since the code to calculate position is in the RenderSliderThumb layout
@@ -223,17 +229,20 @@ RenderObject* SliderThumbElement::createRenderer(RenderArena* arena, RenderStyle
 
 bool SliderThumbElement::isDisabledFormControl() const
 {
-    return hostInput()->isDisabledFormControl();
+    HTMLInputElement* input = hostInput();
+    return !input || input->isDisabledFormControl();
 }
 
 bool SliderThumbElement::matchesReadOnlyPseudoClass() const
 {
-    return hostInput()->matchesReadOnlyPseudoClass();
+    HTMLInputElement* input = hostInput();
+    return input && input->matchesReadOnlyPseudoClass();
 }
 
 bool SliderThumbElement::matchesReadWritePseudoClass() const
 {
-    return hostInput()->matchesReadWritePseudoClass();
+    HTMLInputElement* input = hostInput();
+    return input && input->matchesReadWritePseudoClass();
 }
 
 Element* SliderThumbElement::focusDelegate()
@@ -247,41 +256,39 @@ void SliderThumbElement::dragFrom(const LayoutPoint& point)
     startDragging();
 }
 
-void SliderThumbElement::setPositionFromPoint(const LayoutPoint& point)
+void SliderThumbElement::setPositionFromPoint(const LayoutPoint& absolutePoint)
 {
-    HTMLInputElement* input = hostInput();
-    HTMLElement* trackElement = sliderTrackElementOf(input);
+    RefPtr<HTMLInputElement> input(hostInput());
+    HTMLElement* trackElement = sliderTrackElementOf(input.get());
 
     if (!input->renderer() || !renderBox() || !trackElement->renderBox())
         return;
 
     input->setTextAsOfLastFormControlChangeEvent(input->value());
-    LayoutPoint offset = roundedLayoutPoint(input->renderer()->absoluteToLocal(point, UseTransforms));
-    bool isVertical = hasVerticalAppearance(input);
+
+    // Do all the tracking math relative to the input's renderer's box.
+    RenderBox& inputRenderer = *toRenderBox(input->renderer());
+    RenderBox& trackRenderer = *trackElement->renderBox();
+
+    bool isVertical = hasVerticalAppearance(input.get());
     bool isLeftToRightDirection = renderBox()->style()->isLeftToRightDirection();
-    LayoutUnit trackSize;
+    
+    LayoutPoint offset = roundedLayoutPoint(inputRenderer.absoluteToLocal(absolutePoint, UseTransforms));
+    FloatRect trackBoundingBox = trackRenderer.localToContainerQuad(FloatRect(0, 0, trackRenderer.width(), trackRenderer.height()), &inputRenderer).enclosingBoundingBox();
+
+    LayoutUnit trackLength;
     LayoutUnit position;
-    LayoutUnit currentPosition;
-    // We need to calculate currentPosition from absolute points becaue the
-    // renderer for this node is usually on a layer and renderBox()->x() and
-    // y() are unusable.
-    // FIXME: This should probably respect transforms.
-    LayoutPoint absoluteThumbOrigin = renderBox()->absoluteBoundingBoxRectIgnoringTransforms().location();
-    LayoutPoint absoluteSliderContentOrigin = roundedLayoutPoint(input->renderer()->localToAbsolute());
-    IntRect trackBoundingBox = trackElement->renderer()->absoluteBoundingBoxRectIgnoringTransforms();
-    IntRect inputBoundingBox = input->renderer()->absoluteBoundingBoxRectIgnoringTransforms();
     if (isVertical) {
-        trackSize = trackElement->renderBox()->contentHeight() - renderBox()->height();
-        position = offset.y() - renderBox()->height() / 2 - trackBoundingBox.y() + inputBoundingBox.y() - renderBox()->marginBottom();
-        currentPosition = absoluteThumbOrigin.y() - absoluteSliderContentOrigin.y();
+        trackLength = trackRenderer.contentHeight() - renderBox()->height();
+        position = offset.y() - renderBox()->height() / 2 - trackBoundingBox.y() - renderBox()->marginBottom();
     } else {
-        trackSize = trackElement->renderBox()->contentWidth() - renderBox()->width();
-        position = offset.x() - renderBox()->width() / 2 - trackBoundingBox.x() + inputBoundingBox.x();
+        trackLength = trackRenderer.contentWidth() - renderBox()->width();
+        position = offset.x() - renderBox()->width() / 2 - trackBoundingBox.x();
         position -= isLeftToRightDirection ? renderBox()->marginLeft() : renderBox()->marginRight();
-        currentPosition = absoluteThumbOrigin.x() - absoluteSliderContentOrigin.x();
     }
-    position = max<LayoutUnit>(0, min(position, trackSize));
-    const Decimal ratio = Decimal::fromDouble(static_cast<double>(position) / trackSize);
+
+    position = max<LayoutUnit>(0, min(position, trackLength));
+    const Decimal ratio = Decimal::fromDouble(static_cast<double>(position) / trackLength);
     const Decimal fraction = isVertical || !isLeftToRightDirection ? Decimal(1) - ratio : ratio;
     StepRange stepRange(input->createStepRange(RejectAny));
     Decimal value = stepRange.clampValue(stepRange.valueFromProportion(fraction));
@@ -293,7 +300,7 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& point)
         if (closest.isFinite()) {
             double closestFraction = stepRange.proportionFromValue(closest).toDouble();
             double closestRatio = isVertical || !isLeftToRightDirection ? 1.0 - closestFraction : closestFraction;
-            LayoutUnit closestPosition = trackSize * closestRatio;
+            LayoutUnit closestPosition = trackLength * closestRatio;
             if ((closestPosition - position).abs() <= snappingThreshold)
                 value = closest;
         }
@@ -306,14 +313,15 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& point)
 
     // FIXME: This is no longer being set from renderer. Consider updating the method name.
     input->setValueFromRenderer(valueString);
-    renderer()->setNeedsLayout(true);
+    if (renderer())
+        renderer()->setNeedsLayout(true);
     input->dispatchFormControlChangeEvent();
 }
 
 void SliderThumbElement::startDragging()
 {
-    if (Frame* frame = document()->frame()) {
-        frame->eventHandler()->setCapturingMouseEventsNode(this);
+    if (Frame* frame = document().frame()) {
+        frame->eventHandler().setCapturingMouseEventsNode(this);
         m_inDragMode = true;
     }
 }
@@ -323,8 +331,8 @@ void SliderThumbElement::stopDragging()
     if (!m_inDragMode)
         return;
 
-    if (Frame* frame = document()->frame())
-        frame->eventHandler()->setCapturingMouseEventsNode(0);
+    if (Frame* frame = document().frame())
+        frame->eventHandler().setCapturingMouseEventsNode(0);
     m_inDragMode = false;
     if (renderer())
         renderer()->setNeedsLayout(true);
@@ -386,20 +394,20 @@ bool SliderThumbElement::willRespondToMouseClickEvents()
     return HTMLDivElement::willRespondToMouseClickEvents();
 }
 
-void SliderThumbElement::detach(const AttachContext& context)
+void SliderThumbElement::willDetachRenderers()
 {
     if (m_inDragMode) {
-        if (Frame* frame = document()->frame())
-            frame->eventHandler()->setCapturingMouseEventsNode(0);
+        if (Frame* frame = document().frame())
+            frame->eventHandler().setCapturingMouseEventsNode(0);
     }
-    HTMLDivElement::detach(context);
 }
 
 HTMLInputElement* SliderThumbElement::hostInput() const
 {
     // Only HTMLInputElement creates SliderThumbElement instances as its shadow nodes.
     // So, shadowHost() must be an HTMLInputElement.
-    return shadowHost()->toInputElement();
+    Element* host = shadowHost();
+    return host ? host->toInputElement() : 0;
 }
 
 static const AtomicString& sliderThumbShadowPseudoId()

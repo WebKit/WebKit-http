@@ -63,7 +63,7 @@ static WebHTMLView *getTopHTMLView(Frame* frame)
 {
     ASSERT(frame);
     ASSERT(frame->page());
-    return (WebHTMLView*)[[kit(frame->page()->mainFrame()) frameView] documentView];
+    return (WebHTMLView*)[[kit(&frame->page()->mainFrame()) frameView] documentView];
 }
 
 WebCore::DragDestinationAction WebDragClient::actionMaskForDrag(WebCore::DragData* dragData)
@@ -98,7 +98,7 @@ void WebDragClient::startDrag(DragImageRef dragImage, const IntPoint& at, const 
     if (![htmlView.get() isKindOfClass:[WebHTMLView class]])
         return;
     
-    NSEvent *event = linkDrag ? frame->eventHandler()->currentNSEvent() : [htmlView.get() _mouseDownEvent];
+    NSEvent *event = linkDrag ? frame->eventHandler().currentNSEvent() : [htmlView.get() _mouseDownEvent];
     WebHTMLView* topHTMLView = getTopHTMLView(frame);
     RetainPtr<WebHTMLView> topViewProtector = topHTMLView;
     

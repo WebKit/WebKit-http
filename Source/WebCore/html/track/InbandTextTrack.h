@@ -35,40 +35,6 @@
 
 namespace WebCore {
 
-class Document;
-class InbandTextTrackPrivate;
-class TextTrackCue;
-class WebVTTCueData;
-
-class TextTrackCueMap {
-public:
-    TextTrackCueMap();
-    virtual ~TextTrackCueMap();
-
-    void add(GenericCueData*, TextTrackCueGeneric*);
-    void add(WebVTTCueData*, TextTrackCue*);
-
-    void remove(TextTrackCue*);
-    void remove(GenericCueData*);
-    void remove(WebVTTCueData*);
-
-    PassRefPtr<GenericCueData> findGenericData(TextTrackCue*);
-    PassRefPtr<WebVTTCueData> findWebVTTData(TextTrackCue*);
-    PassRefPtr<TextTrackCueGeneric> find(GenericCueData*);
-    PassRefPtr<TextTrackCue> find(WebVTTCueData*);
-    
-private:
-    typedef HashMap<RefPtr<TextTrackCue>, RefPtr<GenericCueData> > GenericCueToDataMap;
-    typedef HashMap<RefPtr<GenericCueData>, RefPtr<TextTrackCueGeneric> > GenericCueDataToCueMap;
-    typedef HashMap<RefPtr<TextTrackCue>, RefPtr<WebVTTCueData> > WebVTTCueToDataMap;
-    typedef HashMap<RefPtr<WebVTTCueData>, RefPtr<TextTrackCue> > WebVTTCueDataToCueMap;
-
-    GenericCueToDataMap* m_genericCueToDataMap;
-    GenericCueDataToCueMap* m_genericDataToCueMap;
-    WebVTTCueToDataMap* m_webVTTCueToDataMap;
-    WebVTTCueDataToCueMap* m_webVTTDataToCueMap;
-};
-
 class InbandTextTrack : public TextTrack, public InbandTextTrackPrivateClient {
 public:
     static PassRefPtr<InbandTextTrack> create(ScriptExecutionContext*, TextTrackClient*, PassRefPtr<InbandTextTrackPrivate>);
@@ -82,26 +48,21 @@ public:
     virtual void setMode(const AtomicString&) OVERRIDE;
     size_t inbandTrackIndex();
 
-private:
+protected:
     InbandTextTrack(ScriptExecutionContext*, TextTrackClient*, PassRefPtr<InbandTextTrackPrivate>);
 
-    virtual void addGenericCue(InbandTextTrackPrivate*, PassRefPtr<GenericCueData>) OVERRIDE;
-    virtual void updateGenericCue(InbandTextTrackPrivate*, GenericCueData*) OVERRIDE;
-    virtual void removeGenericCue(InbandTextTrackPrivate*, GenericCueData*) OVERRIDE;
-    virtual void addWebVTTCue(InbandTextTrackPrivate*, PassRefPtr<WebVTTCueData>) OVERRIDE;
-    virtual void removeWebVTTCue(InbandTextTrackPrivate*, WebVTTCueData*) OVERRIDE;
-    virtual void removeCue(TextTrackCue*, ExceptionCode&) OVERRIDE;
+    RefPtr<InbandTextTrackPrivate> m_private;
+
+private:
+
     virtual void willRemoveTextTrackPrivate(InbandTextTrackPrivate*) OVERRIDE;
 
-    PassRefPtr<TextTrackCueGeneric> createCue(PassRefPtr<GenericCueData>);
-    void updateCueFromCueData(TextTrackCueGeneric*, GenericCueData*);
+    virtual void labelChanged(InbandTextTrackPrivate*, const String& label) OVERRIDE;
+    virtual void languageChanged(InbandTextTrackPrivate*, const String& language) OVERRIDE;
 
 #if USE(PLATFORM_TEXT_TRACK_MENU)
     virtual InbandTextTrackPrivate* privateTrack() OVERRIDE { return m_private.get(); }
 #endif
-
-    TextTrackCueMap m_cueMap;
-    RefPtr<InbandTextTrackPrivate> m_private;
 };
 
 } // namespace WebCore

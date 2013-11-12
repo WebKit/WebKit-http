@@ -65,11 +65,13 @@ private Q_SLOTS:
         m_view->setParentItem(rootObject());
         QQmlProperty::write(m_view, "anchors.fill", qVariantFromValue(rootObject()));
 
-        if (PlatformWebView::windowShapshotEnabled()) {
+        if (PlatformWebView::windowSnapshotEnabled()) {
             setSurfaceType(OpenGLSurface);
             create();
 #if QT_VERSION < QT_VERSION_CHECK(5, 1, 0)
             QQuickWindowPrivate::get(this)->setRenderWithoutShowing(true);
+#else
+            m_view->experimental()->setRenderToOffscreenBuffer(true);
 #endif
         } else
             m_view->experimental()->setRenderToOffscreenBuffer(true);
@@ -126,6 +128,7 @@ WKPageRef PlatformWebView::page()
 
 void PlatformWebView::focus()
 {
+    QWindowSystemInterface::handleWindowActivated(m_window);
     m_view->setFocus(true);
 }
 
@@ -172,7 +175,7 @@ WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
     return adoptWK(WKImageCreateFromQImage(m_window->grabWindow()));
 }
 
-bool PlatformWebView::windowShapshotEnabled()
+bool PlatformWebView::windowSnapshotEnabled()
 {
     // We need a way to disable UI side rendering for tests because it is
     // too slow without appropriate hardware.

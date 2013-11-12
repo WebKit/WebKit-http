@@ -10,9 +10,14 @@ function doMax(a, b) {
     return Math.max(a, b);
 }
 
-for (var i = 0; i < 1000; ++i) {
+testRunner.neverInlineFunction(doMin);
+testRunner.neverInlineFunction(doMax);
+
+var count = 0;
+while (!testRunner.numberOfDFGCompiles(doMin) || !testRunner.numberOfDFGCompiles(doMax)) {
     doMin(1.5, 2.5);
     doMax(1.5, 2.5);
+    count++;
 }
 
 shouldBe("doMin(1.5, 2.5)", "1.5");

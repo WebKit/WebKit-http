@@ -29,15 +29,8 @@
 
 namespace WebCore {
 
-Pasteboard* Pasteboard::generalPasteboard()
-{
-    static Pasteboard* pasteboard = new Pasteboard();
-    return pasteboard;
-}
-
 Pasteboard::Pasteboard()
 {
-    notImplemented();
 }
 
 void Pasteboard::writePlainText(const String&, SmartReplaceOption)
@@ -56,11 +49,6 @@ void Pasteboard::writeURL(const KURL&, const String&, Frame*)
 }
 
 void Pasteboard::writeImage(Node*, const KURL&, const String&)
-{
-    notImplemented();
-}
-
-void Pasteboard::writeClipboard(Clipboard*)
 {
     notImplemented();
 }
@@ -133,10 +121,10 @@ bool Pasteboard::writeString(const String&, const String&)
     return false;
 }
 
-ListHashSet<String> Pasteboard::types()
+Vector<String> Pasteboard::types()
 {
     notImplemented();
-    return ListHashSet<String>();
+    return Vector<String>();
 }
 
 Vector<String> Pasteboard::readFilenames()

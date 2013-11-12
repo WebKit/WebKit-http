@@ -202,7 +202,7 @@ void ChromeClientBlackBerry::takeFocus(FocusDirection)
     notImplemented();
 }
 
-void ChromeClientBlackBerry::focusedNodeChanged(Node*)
+void ChromeClientBlackBerry::focusedElementChanged(Element*)
 {
     m_webPagePrivate->m_inputHandler->focusedNodeChanged();
 }
@@ -224,7 +224,7 @@ Page* ChromeClientBlackBerry::createWindow(Frame* frame, const FrameLoadRequest&
     // as the one in FrameLoader::loadFrameRequest().
     const KURL& url = request.resourceRequest().url();
     if (!request.requester()->canDisplay(url)) {
-        frame->loader()->reportLocalLoadFailed(frame, url.string());
+        frame->loader().reportLocalLoadFailed(frame, url.string());
         return 0;
     }
 

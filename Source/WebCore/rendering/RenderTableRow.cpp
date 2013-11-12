@@ -159,14 +159,14 @@ void RenderTableRow::layout()
     ASSERT(needsLayout());
 
     // Table rows do not add translation.
-    LayoutStateMaintainer statePusher(view(), this, LayoutSize(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
+    LayoutStateMaintainer statePusher(&view(), this, LayoutSize(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
 
-    bool paginated = view()->layoutState()->isPaginated();
+    bool paginated = view().layoutState()->isPaginated();
                 
     for (RenderObject* child = firstChild(); child; child = child->nextSibling()) {
         if (child->isTableCell()) {
             RenderTableCell* cell = toRenderTableCell(child);
-            if (!cell->needsLayout() && paginated && view()->layoutState()->pageLogicalHeight() && view()->layoutState()->pageLogicalOffset(cell, cell->logicalTop()) != cell->pageLogicalOffset())
+            if (!cell->needsLayout() && paginated && view().layoutState()->pageLogicalHeight() && view().layoutState()->pageLogicalOffset(cell, cell->logicalTop()) != cell->pageLogicalOffset())
                 cell->setChildNeedsLayout(true, MarkOnlyThis);
 
             if (child->needsLayout()) {
@@ -273,7 +273,7 @@ RenderTableRow* RenderTableRow::createAnonymous(Document* document)
 
 RenderTableRow* RenderTableRow::createAnonymousWithParentRenderer(const RenderObject* parent)
 {
-    RenderTableRow* newRow = RenderTableRow::createAnonymous(parent->document());
+    RenderTableRow* newRow = RenderTableRow::createAnonymous(&parent->document());
     RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(parent->style(), TABLE_ROW);
     newRow->setStyle(newStyle.release());
     return newRow;

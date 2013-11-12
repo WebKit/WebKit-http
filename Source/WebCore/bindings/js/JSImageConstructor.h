@@ -20,6 +20,7 @@
 #ifndef JSImageConstructor_h
 #define JSImageConstructor_h
 
+#include "DOMConstructorWithDocument.h"
 #include "JSDOMBinding.h"
 #include "JSDocument.h"
 
@@ -38,10 +39,10 @@ namespace WebCore {
 
         static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
         {
-            return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), &s_info);
+            return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
         }
 
-        static const JSC::ClassInfo s_info;
+        DECLARE_INFO;
 
     private:
         JSImageConstructor(JSC::Structure*, JSDOMGlobalObject*);

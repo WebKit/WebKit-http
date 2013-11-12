@@ -48,8 +48,8 @@
 #include "SharedBuffer.h"
 #include "TextEncoding.h"
 #include "WebCoreInstanceHandle.h"
-#include "WindowsExtras.h"
 #include "markup.h"
+#include <wtf/WindowsExtras.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -88,12 +88,6 @@ static LRESULT CALLBACK PasteboardOwnerWndProc(HWND hWnd, UINT message, WPARAM w
         break;
     }
     return lresult;
-}
-
-Pasteboard* Pasteboard::generalPasteboard() 
-{
-    static Pasteboard* pasteboard = new Pasteboard;
-    return pasteboard;
 }
 
 PassOwnPtr<Pasteboard> Pasteboard::createForCopyAndPaste()
@@ -260,21 +254,21 @@ static void addMimeTypesForFormat(ListHashSet<String>& results, const FORMATETC&
     }
 }
 
-ListHashSet<String> Pasteboard::types()
+Vector<String> Pasteboard::types()
 {
     ListHashSet<String> results;
 
     if (!m_dataObject && m_dragDataMap.isEmpty())
-        return results;
+        return Vector<String>();
 
     if (m_dataObject) {
         COMPtr<IEnumFORMATETC> itr;
 
         if (FAILED(m_dataObject->EnumFormatEtc(DATADIR_GET, &itr)))
-            return results;
+            return Vector<String>();
 
         if (!itr)
-            return results;
+            return Vector<String>();
 
         FORMATETC data;
 
@@ -289,7 +283,9 @@ ListHashSet<String> Pasteboard::types()
         }
     }
 
-    return results;
+    Vector<String> vector;
+    copyToVector(results, vector);
+    return vector;
 }
 
 String Pasteboard::readString(const String& type)
@@ -436,7 +432,7 @@ void Pasteboard::writeRangeToDataObject(Range* selectedRange, Frame* frame)
 
     Vector<char> data;
     markupToCFHTML(createMarkup(selectedRange, 0, AnnotateForInterchange),
-        selectedRange->startContainer()->document()->url().string(), data);
+        selectedRange->startContainer()->document().url().string(), data);
     medium.hGlobal = createGlobalData(data);
     if (medium.hGlobal && FAILED(m_writableDataObject->SetData(htmlFormat(), &medium, TRUE)))
         ::GlobalFree(medium.hGlobal);
@@ -461,7 +457,7 @@ void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete,
     if (::OpenClipboard(m_owner)) {
         Vector<char> data;
         markupToCFHTML(createMarkup(selectedRange, 0, AnnotateForInterchange),
-            selectedRange->startContainer()->document()->url().string(), data);
+            selectedRange->startContainer()->document().url().string(), data);
         HGLOBAL cbData = createGlobalData(data);
         if (!::SetClipboardData(HTMLClipboardFormat, cbData))
             ::GlobalFree(cbData);
@@ -504,8 +500,6 @@ void Pasteboard::writePlainTextToDataObject(const String& text, SmartReplaceOpti
     medium.hGlobal = createGlobalData(str);
     if (medium.hGlobal && FAILED(m_writableDataObject->SetData(plainTextWFormat(), &medium, TRUE)))
         ::GlobalFree(medium.hGlobal);        
-
-    medium.hGlobal = 0;
 }
 
 void Pasteboard::writePlainText(const String& text, SmartReplaceOption smartReplaceOption)
@@ -774,11 +768,6 @@ void Pasteboard::writeImage(Node* node, const KURL&, const String&)
 }
 
 void Pasteboard::writePasteboard(const Pasteboard& sourcePasteboard)
-{
-    notImplemented();
-}
-
-void Pasteboard::writeClipboard(Clipboard*)
 {
     notImplemented();
 }
@@ -1054,6 +1043,19 @@ void Pasteboard::writeImageToDataObject(Element* element, const KURL& url)
 void Pasteboard::writeURLToWritableDataObject(const KURL& url, const String& title)
 {
     WebCore::writeURL(m_writableDataObject.get(), url, title, true, false);
+}
+
+void Pasteboard::writeMarkup(const String& markup)
+{
+    Vector<char> data;
+    markupToCFHTML(markup, "", data);
+
+    STGMEDIUM medium = {0};
+    medium.tymed = TYMED_HGLOBAL;
+
+    medium.hGlobal = createGlobalData(data);
+    if (medium.hGlobal && FAILED(m_writableDataObject->SetData(htmlFormat(), &medium, TRUE)))
+        GlobalFree(medium.hGlobal);
 }
 
 } // namespace WebCore

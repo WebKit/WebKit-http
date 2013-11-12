@@ -97,36 +97,33 @@ static const int mediaSliderThumbHeight = 12;
 static const char* toEdjeGroup(FormType type)
 {
     static const char* groups[] = {
-#define W(n) "webkit/widget/"n
-        W("button"),
-        W("radio"),
-        W("entry"),
-        W("checkbox"),
-        W("combo"),
+        "webkit/widget/button",
+        "webkit/widget/radio",
+        "webkit/widget/entry",
+        "webkit/widget/checkbox",
+        "webkit/widget/combo",
 #if ENABLE(PROGRESS_ELEMENT)
-        W("progressbar"),
+        "webkit/widget/progressbar",
 #endif
-        W("search/field"),
-        W("search/decoration"),
-        W("search/results_button"),
-        W("search/results_decoration"),
-        W("search/cancel_button"),
-        W("slider/vertical"),
-        W("slider/horizontal"),
-        W("slider/thumb_vertical"),
-        W("slider/thumb_horizontal"),
+        "webkit/widget/search/field",
+        "webkit/widget/search/results_button",
+        "webkit/widget/search/results_decoration",
+        "webkit/widget/search/cancel_button",
+        "webkit/widget/slider/vertical",
+        "webkit/widget/slider/horizontal",
+        "webkit/widget/slider/thumb_vertical",
+        "webkit/widget/slider/thumb_horizontal",
 #if ENABLE(VIDEO)
-        W("mediacontrol/playpause_button"),
-        W("mediacontrol/mute_button"),
-        W("mediacontrol/seekforward_button"),
-        W("mediacontrol/seekbackward_button"),
-        W("mediacontrol/fullscreen_button"),
+        "webkit/widget/mediacontrol/playpause_button",
+        "webkit/widget/mediacontrol/mute_button",
+        "webkit/widget/mediacontrol/seekforward_button",
+        "webkit/widget/mediacontrol/seekbackward_button",
+        "webkit/widget/mediacontrol/fullscreen_button",
 #endif
 #if ENABLE(VIDEO_TRACK)
-        W("mediacontrol/toggle_captions_button"),
+        "webkit/widget/mediacontrol/toggle_captions_button",
 #endif
-        W("spinner"),
-#undef W
+        "webkit/widget/spinner",
         0
     };
     ASSERT(type >= 0);
@@ -785,8 +782,8 @@ bool RenderThemeEfl::paintSliderThumb(RenderObject* object, const PaintInfo& inf
 
 void RenderThemeEfl::adjustCheckboxStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustCheckboxStyle(styleResolver, style, element);
+    if (!m_page && element && element->document().page()) {
+        static_cast<RenderThemeEfl*>(element->document().page()->theme())->adjustCheckboxStyle(styleResolver, style, element);
         return;
     }
 
@@ -808,8 +805,8 @@ bool RenderThemeEfl::paintCheckbox(RenderObject* object, const PaintInfo& info, 
 
 void RenderThemeEfl::adjustRadioStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustRadioStyle(styleResolver, style, element);
+    if (!m_page && element && element->document().page()) {
+        static_cast<RenderThemeEfl*>(element->document().page()->theme())->adjustRadioStyle(styleResolver, style, element);
         return;
     }
 
@@ -831,8 +828,8 @@ bool RenderThemeEfl::paintRadio(RenderObject* object, const PaintInfo& info, con
 
 void RenderThemeEfl::adjustButtonStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustButtonStyle(styleResolver, style, element);
+    if (!m_page && element && element->document().page()) {
+        static_cast<RenderThemeEfl*>(element->document().page()->theme())->adjustButtonStyle(styleResolver, style, element);
         return;
     }
 
@@ -848,8 +845,8 @@ bool RenderThemeEfl::paintButton(RenderObject* object, const PaintInfo& info, co
 
 void RenderThemeEfl::adjustMenuListStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustMenuListStyle(styleResolver, style, element);
+    if (!m_page && element && element->document().page()) {
+        static_cast<RenderThemeEfl*>(element->document().page()->theme())->adjustMenuListStyle(styleResolver, style, element);
         return;
     }
     adjustSizeConstraints(style, ComboBox);
@@ -887,8 +884,8 @@ bool RenderThemeEfl::paintMenuListButton(RenderObject* object, const PaintInfo& 
 
 void RenderThemeEfl::adjustTextFieldStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustTextFieldStyle(styleResolver, style, element);
+    if (!m_page && element && element->document().page()) {
+        static_cast<RenderThemeEfl*>(element->document().page()->theme())->adjustTextFieldStyle(styleResolver, style, element);
         return;
     }
     adjustSizeConstraints(style, TextField);
@@ -909,13 +906,13 @@ bool RenderThemeEfl::paintTextArea(RenderObject* object, const PaintInfo& info, 
     return paintTextField(object, info, rect);
 }
 
-void RenderThemeEfl::adjustSearchFieldDecorationStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
+void RenderThemeEfl::adjustSearchFieldResultsButtonStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustSearchFieldDecorationStyle(styleResolver, style, element);
+    if (!m_page && element && element->document().page()) {
+        static_cast<RenderThemeEfl*>(element->document().page()->theme())->adjustSearchFieldResultsButtonStyle(styleResolver, style, element);
         return;
     }
-    adjustSizeConstraints(style, SearchFieldDecoration);
+    adjustSizeConstraints(style, SearchFieldResultsButton);
     style->resetBorder();
     style->setWhiteSpace(PRE);
 
@@ -926,22 +923,6 @@ void RenderThemeEfl::adjustSearchFieldDecorationStyle(StyleResolver* styleResolv
     style->setHeight(Length(decorationSize, Fixed));
 }
 
-bool RenderThemeEfl::paintSearchFieldDecoration(RenderObject* object, const PaintInfo& info, const IntRect& rect)
-{
-    return paintThemePart(object, SearchFieldDecoration, info, rect);
-}
-
-void RenderThemeEfl::adjustSearchFieldResultsButtonStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
-{
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustSearchFieldResultsButtonStyle(styleResolver, style, element);
-        return;
-    }
-    adjustSizeConstraints(style, SearchFieldResultsButton);
-    style->resetBorder();
-    style->setWhiteSpace(PRE);
-}
-
 bool RenderThemeEfl::paintSearchFieldResultsButton(RenderObject* object, const PaintInfo& info, const IntRect& rect)
 {
     return paintThemePart(object, SearchFieldResultsButton, info, rect);
@@ -949,13 +930,19 @@ bool RenderThemeEfl::paintSearchFieldResultsButton(RenderObject* object, const P
 
 void RenderThemeEfl::adjustSearchFieldResultsDecorationStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustSearchFieldResultsDecorationStyle(styleResolver, style, element);
+    if (!m_page && element && element->document().page()) {
+        static_cast<RenderThemeEfl*>(element->document().page()->theme())->adjustSearchFieldResultsDecorationStyle(styleResolver, style, element);
         return;
     }
     adjustSizeConstraints(style, SearchFieldResultsDecoration);
     style->resetBorder();
     style->setWhiteSpace(PRE);
+
+    float fontScale = style->fontSize() / defaultFontSize;
+    int decorationSize = lroundf(std::min(std::max(minSearchDecorationButtonSize, defaultFontSize * fontScale), maxSearchDecorationButtonSize));
+
+    style->setWidth(Length(decorationSize + searchFieldDecorationButtonOffset, Fixed));
+    style->setHeight(Length(decorationSize, Fixed));
 }
 
 bool RenderThemeEfl::paintSearchFieldResultsDecoration(RenderObject* object, const PaintInfo& info, const IntRect& rect)
@@ -965,8 +952,8 @@ bool RenderThemeEfl::paintSearchFieldResultsDecoration(RenderObject* object, con
 
 void RenderThemeEfl::adjustSearchFieldCancelButtonStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustSearchFieldCancelButtonStyle(styleResolver, style, element);
+    if (!m_page && element && element->document().page()) {
+        static_cast<RenderThemeEfl*>(element->document().page()->theme())->adjustSearchFieldCancelButtonStyle(styleResolver, style, element);
         return;
     }
     adjustSizeConstraints(style, SearchFieldCancelButton);
@@ -989,8 +976,8 @@ bool RenderThemeEfl::paintSearchFieldCancelButton(RenderObject* object, const Pa
 
 void RenderThemeEfl::adjustSearchFieldStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustSearchFieldStyle(styleResolver, style, element);
+    if (!m_page && element && element->document().page()) {
+        static_cast<RenderThemeEfl*>(element->document().page()->theme())->adjustSearchFieldStyle(styleResolver, style, element);
         return;
     }
     adjustSizeConstraints(style, SearchField);
@@ -1005,8 +992,8 @@ bool RenderThemeEfl::paintSearchField(RenderObject* object, const PaintInfo& inf
 
 void RenderThemeEfl::adjustInnerSpinButtonStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
 {
-    if (!m_page && element && element->document()->page()) {
-        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustInnerSpinButtonStyle(styleResolver, style, element);
+    if (!m_page && element && element->document().page()) {
+        static_cast<RenderThemeEfl*>(element->document().page()->theme())->adjustInnerSpinButtonStyle(styleResolver, style, element);
         return;
     }
     adjustSizeConstraints(style, Spinner);

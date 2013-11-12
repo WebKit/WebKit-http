@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #ifndef GetByIdStatus_h
 #define GetByIdStatus_h
 
+#include "IntendedStructureChain.h"
 #include "PropertyOffset.h"
 #include "StructureSet.h"
 #include <wtf/NotFound.h>
@@ -33,7 +34,6 @@
 namespace JSC {
 
 class CodeBlock;
-class Identifier;
 
 class GetByIdStatus {
 public:
@@ -60,7 +60,7 @@ public:
     
     GetByIdStatus(
         State state, bool wasSeenInJIT, const StructureSet& structureSet = StructureSet(),
-        PropertyOffset offset = invalidOffset, JSValue specificValue = JSValue(), Vector<Structure*> chain = Vector<Structure*>())
+        PropertyOffset offset = invalidOffset, JSValue specificValue = JSValue(), PassRefPtr<IntendedStructureChain> chain = 0)
         : m_state(state)
         , m_structureSet(structureSet)
         , m_chain(chain)
@@ -71,8 +71,8 @@ public:
         ASSERT((state == Simple) == (offset != invalidOffset));
     }
     
-    static GetByIdStatus computeFor(CodeBlock*, unsigned bytecodeIndex, Identifier&);
-    static GetByIdStatus computeFor(VM&, Structure*, Identifier&);
+    static GetByIdStatus computeFor(CodeBlock*, unsigned bytecodeIndex, StringImpl* uid);
+    static GetByIdStatus computeFor(VM&, Structure*, StringImpl* uid);
     
     State state() const { return m_state; }
     
@@ -83,19 +83,19 @@ public:
     bool makesCalls() const { return m_state == MakesCalls; }
     
     const StructureSet& structureSet() const { return m_structureSet; }
-    const Vector<Structure*>& chain() const { return m_chain; } // Returns empty vector if this is a direct access.
+    IntendedStructureChain* chain() const { return const_cast<IntendedStructureChain*>(m_chain.get()); } // Returns null if this is a direct access.
     JSValue specificValue() const { return m_specificValue; } // Returns JSValue() if there is no specific value.
     PropertyOffset offset() const { return m_offset; }
     
     bool wasSeenInJIT() const { return m_wasSeenInJIT; }
     
 private:
-    static void computeForChain(GetByIdStatus& result, CodeBlock*, Identifier&, Structure*);
-    static GetByIdStatus computeFromLLInt(CodeBlock*, unsigned bytecodeIndex, Identifier&);
+    static void computeForChain(GetByIdStatus& result, CodeBlock*, StringImpl* uid);
+    static GetByIdStatus computeFromLLInt(CodeBlock*, unsigned bytecodeIndex, StringImpl* uid);
     
     State m_state;
     StructureSet m_structureSet;
-    Vector<Structure*> m_chain;
+    RefPtr<IntendedStructureChain> m_chain;
     JSValue m_specificValue;
     PropertyOffset m_offset;
     bool m_wasSeenInJIT;

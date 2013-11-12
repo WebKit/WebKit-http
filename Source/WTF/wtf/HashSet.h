@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2008, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2011, 2013 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,7 +21,7 @@
 #ifndef WTF_HashSet_h
 #define WTF_HashSet_h
 
-#include <wtf/FastAllocBase.h>
+#include <wtf/FastMalloc.h>
 #include <wtf/HashTable.h>
 
 namespace WTF {
@@ -82,12 +82,19 @@ namespace WTF {
         //   static bool equal(const ValueType&, const T&);
         //   static translate(ValueType&, const T&, unsigned hashCode);
         template<typename HashTranslator, typename T> AddResult add(const T&);
+        
+        // Attempts to add a list of things to the set. Returns true if any of
+        // them are new to the set. Returns false if the set is unchanged.
+        template<typename IteratorType>
+        bool add(IteratorType begin, IteratorType end);
 
-        void remove(const ValueType&);
-        void remove(iterator);
+        bool remove(const ValueType&);
+        bool remove(iterator);
         void clear();
 
         static bool isValidValue(const ValueType&);
+        
+        bool operator==(const HashSet&) const;
 
     private:
         friend void deleteAllValues<>(const HashSet&);
@@ -187,18 +194,29 @@ namespace WTF {
     }
 
     template<typename T, typename U, typename V>
-    inline void HashSet<T, U, V>::remove(iterator it)
+    template<typename IteratorType>
+    inline bool HashSet<T, U, V>::add(IteratorType begin, IteratorType end)
     {
-        if (it.m_impl == m_impl.end())
-            return;
-        m_impl.internalCheckTableConsistency();
-        m_impl.removeWithoutEntryConsistencyCheck(it.m_impl);
+        bool changed = false;
+        for (IteratorType iter = begin; iter != end; ++iter)
+            changed |= add(*iter).isNewEntry;
+        return changed;
     }
 
     template<typename T, typename U, typename V>
-    inline void HashSet<T, U, V>::remove(const ValueType& value)
+    inline bool HashSet<T, U, V>::remove(iterator it)
     {
-        remove(find(value));
+        if (it.m_impl == m_impl.end())
+            return false;
+        m_impl.internalCheckTableConsistency();
+        m_impl.removeWithoutEntryConsistencyCheck(it.m_impl);
+        return true;
+    }
+
+    template<typename T, typename U, typename V>
+    inline bool HashSet<T, U, V>::remove(const ValueType& value)
+    {
+        return remove(find(value));
     }
 
     template<typename T, typename U, typename V>
@@ -251,6 +269,18 @@ namespace WTF {
         for (unsigned i = 0; it != end; ++it, ++i)
             vector[i] = *it;
     }  
+
+    template<typename T, typename U, typename V>
+    inline bool HashSet<T, U, V>::operator==(const HashSet& other) const
+    {
+        if (size() != other.size())
+            return false;
+        for (const_iterator iter = begin(); iter != end(); ++iter) {
+            if (!other.contains(*iter))
+                return false;
+        }
+        return true;
+    }
 
 } // namespace WTF
 

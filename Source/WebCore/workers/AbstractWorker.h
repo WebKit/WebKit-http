@@ -57,7 +57,6 @@ namespace WebCore {
         using RefCounted<AbstractWorker>::ref;
         using RefCounted<AbstractWorker>::deref;
 
-        virtual void contextDestroyed() OVERRIDE;
         AbstractWorker(ScriptExecutionContext*);
         virtual ~AbstractWorker();
 
@@ -70,8 +69,10 @@ namespace WebCore {
         virtual void refEventTarget() OVERRIDE { ref(); }
         virtual void derefEventTarget() OVERRIDE { deref(); }
         virtual EventTargetData* eventTargetData() OVERRIDE;
-        virtual EventTargetData* ensureEventTargetData() OVERRIDE;
+        virtual EventTargetData& ensureEventTargetData() OVERRIDE;
         
+        virtual void contextDestroyed() OVERRIDE;
+
         EventTargetData m_eventTargetData;
     };
 

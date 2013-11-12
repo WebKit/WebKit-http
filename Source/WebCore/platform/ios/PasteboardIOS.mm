@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -100,18 +100,25 @@ namespace WebCore {
 
 NSString *WebArchivePboardType = @"Apple Web Archive pasteboard type";
 
-Pasteboard* Pasteboard::generalPasteboard()
-{
-    static Pasteboard* pasteboard = new Pasteboard();
-    return pasteboard;
-}
-
 Pasteboard::Pasteboard()
+    : m_frame(0)
 {
 }
 
-void Pasteboard::clear()
+PassOwnPtr<Pasteboard> Pasteboard::createForCopyAndPaste()
 {
+    return adoptPtr(new Pasteboard);
+}
+
+PassOwnPtr<Pasteboard> Pasteboard::createPrivate()
+{
+    return adoptPtr(new Pasteboard);
+}
+
+void Pasteboard::setFrame(Frame* frame)
+{
+    m_frame = frame;
+    m_changeCount = m_frame->editor().client()->pasteboardChangeCount();
 }
 
 void Pasteboard::writeSelection(Range* selectedRange, bool /*canSmartCopyOrDelete*/, Frame *frame, ShouldSerializeSelectedTextForClipboard shouldSerializeSelectedTextForClipboard)
@@ -194,7 +201,7 @@ void Pasteboard::writeImage(Node* node, Frame* frame)
     RetainPtr<CFStringRef> uti = adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, (CFStringRef)mimeType, NULL));
     if (uti) {
         [dictionary.get() setObject:imageData.get() forKey:(NSString *)uti.get()];
-        [dictionary.get() setObject:(NSString *)node->document()->completeURL(stripLeadingAndTrailingHTMLSpaces(static_cast<HTMLElement*>(node)->getAttribute("src"))) forKey:(NSString *)kUTTypeURL];
+        [dictionary.get() setObject:(NSString *)node->document().completeURL(stripLeadingAndTrailingHTMLSpaces(static_cast<HTMLElement*>(node)->getAttribute("src"))) forKey:(NSString *)kUTTypeURL];
     }
     frame->editor().client()->writeDataToPasteboard(dictionary.get());
 }
@@ -203,7 +210,7 @@ void Pasteboard::writePlainText(const String&, SmartReplaceOption)
 {
 }
 
-void Pasteboard::writeClipboard(Clipboard*)
+void Pasteboard::writePasteboard(const Pasteboard&)
 {
 }
 
@@ -254,7 +261,7 @@ static PassRefPtr<DocumentFragment> documentFragmentWithImageResource(Frame* fra
 {
     RefPtr<Element> imageElement = frame->document()->createElement(HTMLNames::imgTag, false);
 
-    if (DocumentLoader* loader = frame->loader()->documentLoader())
+    if (DocumentLoader* loader = frame->loader().documentLoader())
         loader->addArchiveResource(resource.get());
 
     NSURL *URL = resource->url();
@@ -282,7 +289,7 @@ static PassRefPtr<DocumentFragment> documentFragmentWithRTF(Frame* frame, NSStri
         return 0;
 
     RetainPtr<NSAttributedString> string;
-    if ([pasteboardType isEqualToString:(NSString*)kUTTypeRTFD])
+    if ([pasteboardType isEqualToString:(NSString *)kUTTypeRTFD])
         string = [[NSAttributedString alloc] initWithRTFD:pasteboardData documentAttributes:NULL];
 
     if (!string)
@@ -300,7 +307,7 @@ static PassRefPtr<DocumentFragment> documentFragmentWithRTF(Frame* frame, NSStri
 
     size_t size = resources.size();
     if (size) {
-        DocumentLoader* loader = frame->loader()->documentLoader();
+        DocumentLoader* loader = frame->loader().documentLoader();
         for (size_t i = 0; i < size; ++i)
             loader->addArchiveResource(resources[i]);
     }
@@ -342,9 +349,9 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragmentForPasteboardItemAtInde
                 RefPtr<ArchiveResource> mainResource = coreArchive->mainResource();
                 if (mainResource) {
                     NSString *MIMEType = mainResource->mimeType();
-                    if (frame->loader()->client()->canShowMIMETypeAsHTML(MIMEType)) {
+                    if (frame->loader().client().canShowMIMETypeAsHTML(MIMEType)) {
                         RetainPtr<NSString> markupString = adoptNS([[NSString alloc] initWithData:[mainResource->data()->createNSData() autorelease] encoding:NSUTF8StringEncoding]);
-                        if (DocumentLoader* loader = frame->loader()->documentLoader())
+                        if (DocumentLoader* loader = frame->loader().documentLoader())
                             loader->addAllArchiveResources(coreArchive.get());
 
                         fragment = createFragmentFromMarkup(frame->document(), markupString.get(), mainResource->url(), DisallowScriptingContent);
@@ -377,7 +384,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragmentForPasteboardItemAtInde
             NSURL *url = (NSURL *)value;
 
             if (!frame->editor().client()->hasRichlyEditableSelection()) {
-                fragment = createFragmentFromText(frame->selection()->toNormalizedRange().get(), [url absoluteString]);
+                fragment = createFragmentFromText(frame->selection().toNormalizedRange().get(), [url absoluteString]);
                 if (fragment)
                     return fragment.release();
             }
@@ -407,7 +414,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragmentForPasteboardItemAtInde
             }
 
             chosePlainText = true;
-            fragment = createFragmentFromText(frame->selection()->toNormalizedRange().get(), (NSString*)value);
+            fragment = createFragmentFromText(frame->selection().toNormalizedRange().get(), (NSString *)value);
             if (fragment)
                 return fragment.release();
         }
@@ -446,6 +453,179 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefP
         return fragment.release();
 
     return 0;
+}
+
+bool Pasteboard::hasData()
+{
+    return m_frame->editor().client()->getPasteboardItemsCount() != 0;
+}
+
+static String utiTypeFromCocoaType(NSString *type)
+{
+    RetainPtr<CFStringRef> utiType = adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, (CFStringRef)type, NULL));
+    if (!utiType)
+        return String();
+    return String(adoptCF(UTTypeCopyPreferredTagWithClass(utiType.get(), kUTTagClassMIMEType)).get());
+}
+
+static RetainPtr<NSString> cocoaTypeFromHTMLClipboardType(const String& type)
+{
+    String strippedType = type.stripWhiteSpace();
+
+    if (strippedType == "Text")
+        return (NSString *)kUTTypeText;
+    if (strippedType == "URL")
+        return (NSString *)kUTTypeURL;
+
+    // Ignore any trailing charset - JS strings are Unicode, which encapsulates the charset issue.
+    if (strippedType.startsWith("text/plain"))
+        return (NSString *)kUTTypeText;
+
+    // Special case because UTI doesn't work with Cocoa's URL type.
+    if (strippedType == "text/uri-list")
+        return (NSString *)kUTTypeURL;
+
+    // Try UTI now.
+    if (NSString *utiType = utiTypeFromCocoaType(strippedType))
+        return utiType;
+
+    // No mapping, just pass the whole string though.
+    return (NSString *)strippedType;
+}
+
+void Pasteboard::clear(const String& type)
+{
+    // Since UIPasteboard enforces changeCount itself on writing, we don't check it here.
+
+    RetainPtr<NSString> cocoaType = cocoaTypeFromHTMLClipboardType(type);
+    if (!cocoaType)
+        return;
+
+    // FIXME: Should write this with @{} syntax.
+    RetainPtr<NSDictionary> representations = adoptNS([[NSMutableDictionary alloc] init]);
+    [representations.get() setValue:0 forKey:cocoaType.get()];
+    m_frame->editor().client()->writeDataToPasteboard(representations.get());
+}
+
+void Pasteboard::clear()
+{
+    m_frame->editor().client()->writeDataToPasteboard(@{});
+}
+
+String Pasteboard::readString(const String& type)
+{
+    RetainPtr<NSString> cocoaType = cocoaTypeFromHTMLClipboardType(type);
+
+    // Grab the value off the pasteboard corresponding to the cocoaType.
+    RetainPtr<NSArray> pasteboardItem = m_frame->editor().client()->readDataFromPasteboard(cocoaType.get(), 0);
+
+    if ([pasteboardItem.get() count] == 0)
+        return String();
+
+    NSString *cocoaValue = nil;
+
+    if ([cocoaType.get() isEqualToString:(NSString *)kUTTypeURL]) {
+        id value = [pasteboardItem.get() objectAtIndex:0];
+        if (![value isKindOfClass:[NSURL class]]) {
+            ASSERT([value isKindOfClass:[NSURL class]]);
+            return String();
+        }
+        NSURL* absoluteURL = (NSURL*)value;
+
+        if (absoluteURL)
+            cocoaValue = [absoluteURL absoluteString];
+    } else if ([cocoaType.get() isEqualToString:(NSString *)kUTTypeText]) {
+        id value = [pasteboardItem.get() objectAtIndex:0];
+        if (![value isKindOfClass:[NSString class]]) {
+            ASSERT([value isKindOfClass:[NSString class]]);
+            return String();
+        }
+
+        cocoaValue = [(NSString *)value precomposedStringWithCanonicalMapping];
+    } else if (cocoaType) {
+        ASSERT([pasteboardItem.get() count] == 1);
+        id value = [pasteboardItem.get() objectAtIndex:0];
+        if (![value isKindOfClass:[NSData class]]) {
+            ASSERT([value isKindOfClass:[NSData class]]);
+            return String();
+        }
+        cocoaValue = [[[NSString alloc] initWithData:(NSData *)value encoding:NSUTF8StringEncoding] autorelease];
+    }
+
+    // Enforce changeCount ourselves for security. We check after reading instead of before to be
+    // sure it doesn't change between our testing the change count and accessing the data.
+    if (cocoaValue && m_changeCount == m_frame->editor().client()->pasteboardChangeCount())
+        return cocoaValue;
+
+    return String();
+}
+
+static void addHTMLClipboardTypesForCocoaType(ListHashSet<String>& resultTypes, NSString *cocoaType)
+{
+    // UTI may not do these right, so make sure we get the right, predictable result.
+    if ([cocoaType isEqualToString:(NSString *)kUTTypeText]) {
+        resultTypes.add(ASCIILiteral("text/plain"));
+        return;
+    }
+    if ([cocoaType isEqualToString:(NSString *)kUTTypeURL]) {
+        resultTypes.add(ASCIILiteral("text/uri-list"));
+        return;
+    }
+    String utiType = utiTypeFromCocoaType(cocoaType);
+    if (!utiType.isEmpty()) {
+        resultTypes.add(utiType);
+        return;
+    }
+    // No mapping, just pass the whole string though.
+    resultTypes.add(cocoaType);
+}
+
+bool Pasteboard::writeString(const String& type, const String& data)
+{
+    RetainPtr<NSString> cocoaType = cocoaTypeFromHTMLClipboardType(type);
+    if (!cocoaType)
+        return false;
+
+    NSString *cocoaData = data;
+    RetainPtr<NSObject> value;
+
+    if ([cocoaType.get() isEqualToString:(NSString *)kUTTypeURL])
+        value = adoptNS([[NSURL alloc] initWithString:cocoaData]);
+    else {
+        // Every other type we handle goes on the pasteboard as a string.
+        value = cocoaData;
+    }
+
+    RetainPtr<NSDictionary> representations = adoptNS([[NSMutableDictionary alloc] init]);
+    [representations.get() setValue:value.get() forKey:cocoaType.get()];
+    m_frame->editor().client()->writeDataToPasteboard(representations.get());
+    return true;
+}
+
+Vector<String> Pasteboard::types()
+{
+    NSArray* types = supportedPasteboardTypes();
+
+    // Enforce changeCount ourselves for security. We check after reading instead of before to be
+    // sure it doesn't change between our testing the change count and accessing the data.
+    if (m_changeCount != m_frame->editor().client()->pasteboardChangeCount())
+        return Vector<String>();
+
+    ListHashSet<String> result;
+    NSUInteger count = [types count];
+    for (NSUInteger i = 0; i < count; i++) {
+        NSString *type = [types objectAtIndex:i];
+        addHTMLClipboardTypesForCocoaType(result, type);
+    }
+
+    Vector<String> vector;
+    copyToVector(result, vector);
+    return vector;
+}
+
+Vector<String> Pasteboard::readFilenames()
+{
+    return Vector<String>();
 }
 
 }

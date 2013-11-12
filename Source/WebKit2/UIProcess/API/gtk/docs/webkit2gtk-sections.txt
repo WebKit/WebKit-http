@@ -178,6 +178,48 @@ WebKitWebViewPrivate
 </SECTION>
 
 <SECTION>
+<FILE>WebKitAuthenticationRequest</FILE>
+WebKitAuthenticationRequest
+WebKitAuthenticationScheme
+webkit_authentication_request_authenticate
+webkit_authentication_request_cancel
+webkit_authentication_request_can_save_credentials
+webkit_authentication_request_get_host
+webkit_authentication_request_get_port
+webkit_authentication_request_is_retry
+webkit_authentication_request_get_proposed_credential
+webkit_authentication_request_get_realm
+webkit_authentication_request_get_scheme
+webkit_authentication_request_is_for_proxy
+
+<SUBSECTION Standard>
+WebKitAuthenticationRequestClass
+WEBKIT_TYPE_AUTHENTICATION_REQUEST
+WEBKIT_AUTHENTICATION_REQUEST
+WEBKIT_AUTHENTICATION_REQUEST_CLASS
+WEBKIT_AUTHENTICATION_REQUEST_GET_CLASS
+WEBKIT_IS_AUTHENTICATION_REQUEST
+WEBKIT_IS_AUTHENTICATION_REQUEST_CLASS
+WEBKIT_TYPE_CREDENTIAL
+
+<SUBSECTION Private>
+WebKitAuthenticationRequestPrivate
+webkit_authentication_request_get_type
+webkit_credential_get_type
+
+<SUBSECTION>
+WebKitCredential
+WebKitCredentialPersistence
+webkit_credential_new
+webkit_credential_copy
+webkit_credential_free
+webkit_credential_get_password
+webkit_credential_get_persistence
+webkit_credential_get_username
+webkit_credential_has_password
+</SECTION>
+
+<SECTION>
 <FILE>WebKitBackForwardList</FILE>
 WebKitBackForwardList
 webkit_back_forward_list_get_length
@@ -998,6 +1040,7 @@ WebKitWebPage
 webkit_web_page_get_dom_document
 webkit_web_page_get_id
 webkit_web_page_get_uri
+webkit_web_page_get_main_frame
 
 <SUBSECTION Standard>
 WebKitWebPageClass
@@ -1011,4 +1054,46 @@ WEBKIT_WEB_PAGE_GET_CLASS
 <SUBSECTION Private>
 WebKitWebPagePrivate
 webkit_web_page_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitFrame</FILE>
+WebKitFrame
+webkit_frame_is_main_frame
+webkit_frame_get_uri
+webkit_frame_get_javascript_global_context
+webkit_frame_get_javascript_context_for_script_world
+
+<SUBSECTION Standard>
+WebKitFrameClass
+WEBKIT_TYPE_FRAME
+WEBKIT_FRAME
+WEBKIT_IS_FRAME
+WEBKIT_FRAME_CLASS
+WEBKIT_IS_FRAME_CLASS
+WEBKIT_FRAME_GET_CLASS
+
+<SUBSECTION Private>
+WebKitFramePrivate
+webkit_frame_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitScriptWorld</FILE>
+WebKitScriptWorld
+webkit_script_world_get_default
+webkit_script_world_new
+
+<SUBSECTION Standard>
+WebKitScriptWorldClass
+WEBKIT_TYPE_SCRIPT_WORLD
+WEBKIT_SCRIPT_WORLD
+WEBKIT_IS_SCRIPT_WORLD
+WEBKIT_SCRIPT_WORLD_CLASS
+WEBKIT_IS_SCRIPT_WORLD_CLASS
+WEBKIT_SCRIPT_WORLD_GET_CLASS
+
+<SUBSECTION Private>
+WebKitScriptWorldPrivate
+webkit_script_world_get_type
 </SECTION>

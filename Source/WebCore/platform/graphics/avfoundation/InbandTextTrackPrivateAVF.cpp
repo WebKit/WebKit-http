@@ -42,7 +42,12 @@
 #define SOFT_LINK_AVF_FRAMEWORK(Lib) SOFT_LINK_FRAMEWORK_OPTIONAL(Lib)
 #define SOFT_LINK_AVF_POINTER(Lib, Name, Type) SOFT_LINK_POINTER_OPTIONAL(Lib, Name, Type)
 #else
+#ifdef DEBUG_ALL
+#define SOFT_LINK_AVF_FRAMEWORK(Lib) SOFT_LINK_DEBUG_LIBRARY(Lib)
+#else
 #define SOFT_LINK_AVF_FRAMEWORK(Lib) SOFT_LINK_LIBRARY(Lib)
+#endif
+
 #define SOFT_LINK_AVF_POINTER(Lib, Name, Type) SOFT_LINK_VARIABLE_DLL_IMPORT_OPTIONAL(Lib, Name, Type)
 #endif
 
@@ -97,7 +102,8 @@ AVFInbandTrackParent::~AVFInbandTrackParent()
 }
 
 InbandTextTrackPrivateAVF::InbandTextTrackPrivateAVF(AVFInbandTrackParent* owner)
-    : m_owner(owner)
+    : InbandTextTrackPrivate(Generic)
+    , m_owner(owner)
     , m_pendingCueStatus(None)
     , m_index(0)
     , m_hasBeenReported(false)
@@ -126,7 +132,7 @@ static bool makeRGBA32FromARGBCFArray(CFArrayRef colorArray, RGBA32& color)
         componentArray[i] = component;
     }
 
-    color = makeRGBA32FromFloats(componentArray[1] * 255, componentArray[2] * 255, componentArray[3] * 255, componentArray[0] * 255);
+    color = makeRGBA32FromFloats(componentArray[1], componentArray[2], componentArray[3], componentArray[0]);
     return true;
 }
 

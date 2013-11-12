@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,8 +40,8 @@ public:
     ~Bytecodes();
     
     size_t id() const { return m_id; }
-    const String& inferredName() const { return m_inferredName; }
-    const String& sourceCode() const { return m_sourceCode; }
+    const CString& inferredName() const { return m_inferredName; }
+    const CString& sourceCode() const { return m_sourceCode; }
     unsigned instructionCount() const { return m_instructionCount; }
     CodeBlockHash hash() const { return m_hash; }
 
@@ -51,8 +51,8 @@ public:
     
 private:
     size_t m_id;
-    String m_inferredName;
-    String m_sourceCode;
+    CString m_inferredName;
+    CString m_sourceCode;
     CodeBlockHash m_hash;
     unsigned m_instructionCount;
 };

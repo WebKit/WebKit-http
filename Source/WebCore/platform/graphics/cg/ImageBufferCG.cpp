@@ -134,7 +134,7 @@ ImageBuffer::ImageBuffer(const IntSize& size, float resolutionScale, ColorSpace 
         return;
 
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
-    if (width.unsafeGet() >= maxIOSurfaceDimension || height.unsafeGet() >= maxIOSurfaceDimension)
+    if (width.unsafeGet() > maxIOSurfaceDimension || height.unsafeGet() > maxIOSurfaceDimension)
         accelerateRendering = false;
 #else
     ASSERT(renderingMode == Unaccelerated);
@@ -182,7 +182,7 @@ ImageBuffer::ImageBuffer(const IntSize& size, float resolutionScale, ColorSpace 
     m_context->translate(0, -size.height());
     m_context->setIsAcceleratedContext(accelerateRendering);
 #if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1070
-    m_data.m_lastFlushTime = currentTimeMS();
+    m_data.m_lastFlushTime = monotonicallyIncreasingTimeMS();
 #endif
     success = true;
 }
@@ -204,7 +204,7 @@ void ImageBuffer::flushContextIfNecessary() const
 #if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1070
     // Force a flush if last flush was more than 20ms ago
     if (m_context->isAcceleratedContext()) {
-        double elapsedTime = currentTimeMS() - m_data.m_lastFlushTime;
+        double elapsedTime = monotonicallyIncreasingTimeMS() - m_data.m_lastFlushTime;
         double maxFlushInterval = 20; // in ms
 
         if (elapsedTime > maxFlushInterval)
@@ -217,7 +217,7 @@ void ImageBuffer::flushContext() const
 {
     CGContextFlush(m_context->platformContext());
 #if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1070
-    m_data.m_lastFlushTime = currentTimeMS();
+    m_data.m_lastFlushTime = monotonicallyIncreasingTimeMS();
 #endif
 }
 
@@ -237,7 +237,10 @@ PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBeh
     if (!image)
         return 0;
 
-    return BitmapImage::create(image.get());
+    RefPtr<BitmapImage> bitmapImage = BitmapImage::create(image.get());
+    bitmapImage->setSpaceSize(spaceSize());
+
+    return bitmapImage.release();
 }
 
 BackingStoreCopy ImageBuffer::fastCopyImageMode()
@@ -265,7 +268,7 @@ PassNativeImagePtr ImageBuffer::copyNativeImage(BackingStoreCopy copyBehavior) c
     else {
         image = wkIOSurfaceContextCreateImage(context()->platformContext());
 #if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1070
-        m_data.m_lastFlushTime = currentTimeMS();
+        m_data.m_lastFlushTime = monotonicallyIncreasingTimeMS();
 #endif
     }
 #endif

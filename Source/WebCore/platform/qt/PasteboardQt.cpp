@@ -73,6 +73,13 @@ PassOwnPtr<Pasteboard> Pasteboard::createForCopyAndPaste()
 #endif
 }
 
+PassOwnPtr<Pasteboard> Pasteboard::createForGlobalSelection()
+{
+    OwnPtr<Pasteboard> pasteboard = createForCopyAndPaste();
+    pasteboard->m_selectionMode = true;
+    return pasteboard.release();
+}
+
 PassOwnPtr<Pasteboard> Pasteboard::createPrivate()
 {
     return create();
@@ -103,14 +110,6 @@ Pasteboard::~Pasteboard()
     else
         delete m_writableData;
     m_readableData = 0;
-}
-
-Pasteboard* Pasteboard::generalPasteboard()
-{
-    static Pasteboard* pasteboard = 0;
-    if (!pasteboard)
-        pasteboard = new Pasteboard(0, false);
-    return pasteboard;
 }
 
 void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete, Frame* frame, ShouldSerializeSelectedTextForClipboard shouldSerializeSelectedTextForClipboard)
@@ -230,20 +229,9 @@ void Pasteboard::writeImage(Node* node, const KURL&, const String&)
 #endif
 }
 
-bool Pasteboard::isSelectionMode() const
-{
-    return m_selectionMode;
-}
-
-void Pasteboard::setSelectionMode(bool selectionMode)
-{
-    m_selectionMode = selectionMode;
-}
-
 const QMimeData* Pasteboard::readData() const
 {
     ASSERT(!(m_readableData && m_writableData));
-    ASSERT(m_readableData || m_writableData);
     return m_readableData ? m_readableData : m_writableData;
 }
 
@@ -316,18 +304,19 @@ bool Pasteboard::writeString(const String& type, const String& data)
     return true;
 }
 
-// extensions beyond IE's API
-ListHashSet<String> Pasteboard::types()
+Vector<String> Pasteboard::types()
 {
     const QMimeData* data = readData();
     if (!data)
-        return ListHashSet<String>();
+        return Vector<String>();
 
     ListHashSet<String> result;
     QStringList formats = data->formats();
     for (int i = 0; i < formats.count(); ++i)
         result.add(formats.at(i));
-    return result;
+    Vector<String> vector;
+    copyToVector(result, vector);
+    return vector;
 }
 
 Vector<String> Pasteboard::readFilenames()

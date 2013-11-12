@@ -24,7 +24,7 @@ messages -> WebPage LegacyReceiver {
     SetActive(bool active)
     SetFocused(bool focused)
     SetInitialFocus(bool forward, bool isKeyboardEventValid, WebKit::WebKeyboardEvent event)
-    SetIsInWindow(bool isInWindow)
+    SetIsInWindow(bool isInWindow, bool wantsDidUpdateViewInWindowState)
 
     SetDrawsBackground(bool drawsBackground)
     SetDrawsTransparentBackground(bool drawsTransparentBackground)
@@ -48,7 +48,7 @@ messages -> WebPage LegacyReceiver {
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    DidEndColorChooser()
+    DidEndColorPicker()
     DidChooseColor(WebCore::Color color)
 #endif
 
@@ -289,6 +289,7 @@ messages -> WebPage LegacyReceiver {
 #endif
 
     SetMinimumLayoutSize(WebCore::IntSize minimumLayoutSize)
+    SetAutoSizingShouldExpandToViewHeight(bool shouldExpand)
 
 #if PLATFORM(EFL)
     ConfirmComposition(WTF::String compositionString)

@@ -49,7 +49,7 @@ namespace WebKit {
 NPJSObject* NPJSObject::create(VM& vm, NPRuntimeObjectMap* objectMap, JSObject* jsObject)
 {
     // We should never have a JSNPObject inside an NPJSObject.
-    ASSERT(!jsObject->inherits(&JSNPObject::s_info));
+    ASSERT(!jsObject->inherits(JSNPObject::info()));
 
     NPJSObject* npJSObject = toNPJSObject(createNPObject(0, npClass()));
     npJSObject->initialize(vm, objectMap, jsObject);
@@ -293,7 +293,7 @@ bool NPJSObject::invoke(ExecState* exec, JSGlobalObject* globalObject, JSValue f
     for (uint32_t i = 0; i < argumentCount; ++i)
         argumentList.append(m_objectMap->convertNPVariantToJSValue(exec, globalObject, arguments[i]));
 
-    JSValue value = JSC::call(exec, function, callType, callData, m_jsObject->methodTable()->toThisObject(m_jsObject.get(), exec), argumentList);
+    JSValue value = JSC::call(exec, function, callType, callData, m_jsObject.get(), argumentList);
 
     // Convert and return the result of the function call.
     m_objectMap->convertJSValueToNPVariant(exec, value, *result);

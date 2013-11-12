@@ -114,6 +114,7 @@ monospace
 //
 // CSS_PROP_*_COLOR
 //
+alpha
 aqua
 black
 blue
@@ -151,6 +152,7 @@ inactivecaption
 inactivecaptiontext
 infobackground
 infotext
+luminance
 menutext
 scrollbar
 threeddarkshadow
@@ -1007,6 +1009,13 @@ saturation
 color
 luminosity
 
+// object-fit
+// fill
+// contain
+// cover
+// none
+scale-down
+
 #if defined(ENABLE_CSS_IMAGE_RESOLUTION) && ENABLE_CSS_IMAGE_RESOLUTION
 from-image
 snap
@@ -1021,6 +1030,9 @@ snap
 drag
 no-drag
 #endif
+
+// -webkit-grid-{column-start|column-end|row-start|row-end}
+span
 
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
 // text-indent

@@ -30,6 +30,7 @@
 #include "HTMLNames.h"
 #include "ScriptEventListener.h"
 #include "Text.h"
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
@@ -52,9 +53,9 @@ bool HTMLScriptElement::isURLAttribute(const Attribute& attribute) const
     return attribute.name() == srcAttr || HTMLElement::isURLAttribute(attribute);
 }
 
-void HTMLScriptElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void HTMLScriptElement::childrenChanged(const ChildChange& change)
 {
-    HTMLElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
+    HTMLElement::childrenChanged(change);
     ScriptElement::childrenChanged();
 }
 
@@ -79,7 +80,7 @@ Node::InsertionNotificationRequest HTMLScriptElement::insertedInto(ContainerNode
 
 void HTMLScriptElement::setText(const String &value)
 {
-    RefPtr<Node> protectFromMutationEvents(this);
+    Ref<HTMLScriptElement> protectFromMutationEvents(*this);
 
     int numChildren = childNodeCount();
 
@@ -91,7 +92,7 @@ void HTMLScriptElement::setText(const String &value)
     if (numChildren > 0)
         removeChildren();
 
-    appendChild(document()->createTextNode(value.impl()), IGNORE_EXCEPTION);
+    appendChild(document().createTextNode(value.impl()), IGNORE_EXCEPTION);
 }
 
 void HTMLScriptElement::setAsync(bool async)
@@ -107,7 +108,7 @@ bool HTMLScriptElement::async() const
 
 KURL HTMLScriptElement::src() const
 {
-    return document()->completeURL(sourceAttributeValue());
+    return document().completeURL(sourceAttributeValue());
 }
 
 void HTMLScriptElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) const
@@ -172,7 +173,7 @@ void HTMLScriptElement::dispatchLoadEvent()
 
 PassRefPtr<Element> HTMLScriptElement::cloneElementWithoutAttributesAndChildren()
 {
-    return adoptRef(new HTMLScriptElement(tagQName(), document(), false, alreadyStarted()));
+    return adoptRef(new HTMLScriptElement(tagQName(), &document(), false, alreadyStarted()));
 }
 
 }

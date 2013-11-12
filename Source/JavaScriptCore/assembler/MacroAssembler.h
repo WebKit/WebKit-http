@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -457,6 +457,11 @@ public:
         compare32(cond, left, right, dest);
     }
 
+    void comparePtr(RelationalCondition cond, RegisterID left, RegisterID right, RegisterID dest)
+    {
+        compare32(cond, left, right, dest);
+    }
+    
     void storePtr(RegisterID src, ImplicitAddress address)
     {
         store32(src, address);
@@ -571,7 +576,9 @@ public:
     {
         return MacroAssemblerBase::branchTest8(cond, Address(address.base, address.offset), mask);
     }
-#else
+
+#else // !CPU(X86_64)
+
     void addPtr(RegisterID src, RegisterID dest)
     {
         add64(src, dest);
@@ -1067,7 +1074,7 @@ public:
             store64(imm.asTrustedImm64(), dest);
     }
 
-#endif
+#endif // ENABLE(JIT_CONSTANT_BLINDING)
 
 #endif // !CPU(X86_64)
 
@@ -1079,7 +1086,7 @@ public:
         // Debug always blind all constants, if only so we know
         // if we've broken blinding during patch development.
         return true;
-#else
+#else // ENABLE(FORCED_JIT_BLINDING)
 
         // First off we'll special case common, "safe" values to avoid hurting
         // performance too much
@@ -1100,7 +1107,7 @@ public:
             return false;
 
         return shouldBlindForSpecificArch(value);
-#endif
+#endif // ENABLE(FORCED_JIT_BLINDING)
     }
 
     struct BlindedImm32 {
@@ -1271,7 +1278,7 @@ public:
     {
         store64(value, addressForPoke(index));
     }
-#endif
+#endif // CPU(X86_64)
     
     void store32(Imm32 imm, Address dest)
     {
@@ -1280,7 +1287,7 @@ public:
             BlindedImm32 blind = xorBlindConstant(imm);
             store32(blind.value1, dest);
             xor32(blind.value2, dest);
-#else
+#else // CPU(X86) || CPU(X86_64)
             if (RegisterID scratchRegister = (RegisterID)scratchRegisterForBlinding()) {
                 loadXorBlindedConstant(xorBlindConstant(imm), scratchRegister);
                 store32(scratchRegister, dest);
@@ -1292,7 +1299,7 @@ public:
                     nop();
                 store32(imm.asTrustedImm32(), dest);
             }
-#endif
+#endif // CPU(X86) || CPU(X86_64)
         } else
             store32(imm.asTrustedImm32(), dest);
     }
@@ -1440,7 +1447,7 @@ public:
     {
         urshift32(src, trustedImm32ForShift(amount), dest);
     }
-#endif
+#endif // ENABLE(JIT_CONSTANT_BLINDING)
 };
 
 } // namespace JSC

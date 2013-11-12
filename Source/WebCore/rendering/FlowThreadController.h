@@ -37,6 +37,7 @@
 namespace WebCore {
 
 class RenderFlowThread;
+class RenderLayer;
 class RenderNamedFlowThread;
 
 typedef ListHashSet<RenderNamedFlowThread*> RenderNamedFlowThreadList;
@@ -58,7 +59,7 @@ public:
             m_view->setNeedsLayout(true);
     }
 
-    RenderNamedFlowThread* ensureRenderFlowThreadWithName(const AtomicString&);
+    RenderNamedFlowThread& ensureRenderFlowThreadWithName(const AtomicString&);
     const RenderNamedFlowThreadList* renderNamedFlowThreadList() const { return m_renderNamedFlowThreadList.get(); }
     bool hasRenderNamedFlowThreads() const { return m_renderNamedFlowThreadList && !m_renderNamedFlowThreadList->isEmpty(); }
     void layoutRenderNamedFlowThreads();
@@ -75,6 +76,17 @@ public:
     bool updateFlowThreadsNeedingLayout();
     bool updateFlowThreadsNeedingTwoStepLayout();
     void updateFlowThreadsIntoConstrainedPhase();
+    void updateFlowThreadsIntoOverflowPhase();
+    void updateFlowThreadsIntoMeasureContentPhase();
+    void updateFlowThreadsIntoFinalPhase();
+
+    // Collect the fixed positioned layers that have the named flows as containing block
+    // These layers are painted and hit-tested by RenderView
+    void collectFixedPositionedLayers(Vector<RenderLayer*>& fixedPosLayers) const;
+
+#if USE(ACCELERATED_COMPOSITING)
+    void updateRenderFlowThreadLayersIfNeeded();
+#endif
 
 #ifndef NDEBUG
     bool isAutoLogicalHeightRegionsCountConsistent() const;

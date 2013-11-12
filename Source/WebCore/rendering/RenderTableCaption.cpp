@@ -25,7 +25,7 @@
 namespace WebCore {
 
 RenderTableCaption::RenderTableCaption(Element* element)
-    : RenderBlock(element)
+    : RenderBlockFlow(element)
 {
 }
 

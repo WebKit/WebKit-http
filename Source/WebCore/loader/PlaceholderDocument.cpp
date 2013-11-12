@@ -26,14 +26,19 @@
 #include "config.h"
 #include "PlaceholderDocument.h"
 
+#include "ElementIterator.h"
+
 namespace WebCore {
 
-void PlaceholderDocument::attach(const AttachContext& context)
+void PlaceholderDocument::createRenderTree()
 {
     ASSERT(!attached());
 
-    // Skipping Document::attach().
-    ContainerNode::attach(context);
+    auto children = elementChildren(this);
+    for (auto child = children.begin(), end = children.end(); child != end; ++child)
+        Style::attachRenderTree(*child);
+
+    setAttached(true);
 }
 
 } // namespace WebCore

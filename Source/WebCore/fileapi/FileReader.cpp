@@ -40,7 +40,7 @@
 #include "Logging.h"
 #include "ProgressEvent.h"
 #include "ScriptExecutionContext.h"
-#include <wtf/ArrayBuffer.h>
+#include <runtime/ArrayBuffer.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/text/CString.h>
 
@@ -204,7 +204,7 @@ void FileReader::didStartLoading()
 void FileReader::didReceiveData()
 {
     // Fire the progress event at least every 50ms.
-    double now = currentTimeMS();
+    double now = monotonicallyIncreasingTimeMS();
     if (!m_lastProgressNotificationTimeMS)
         m_lastProgressNotificationTimeMS = now;
     else if (now - m_lastProgressNotificationTimeMS > progressNotificationIntervalMS) {

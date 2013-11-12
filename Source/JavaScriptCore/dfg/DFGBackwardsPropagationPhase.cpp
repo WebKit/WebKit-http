@@ -44,8 +44,8 @@ public:
     
     bool run()
     {
-        for (BlockIndex blockIndex = 0; blockIndex < m_graph.m_blocks.size(); ++blockIndex) {
-            BasicBlock* block = m_graph.m_blocks[blockIndex].get();
+        for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
+            BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
             
@@ -324,6 +324,14 @@ private:
             break;
         }
             
+        case NewTypedArray: {
+            // Negative zero is not observable. NaN versus undefined are only observable
+            // in that you would get a different exception message. So, like, whatever: we
+            // claim here that NaN v. undefined is observable.
+            node->child1()->mergeFlags(NodeUsedAsInt | NodeUsedAsNumber | NodeUsedAsOther);
+            break;
+        }
+            
         case StringCharAt: {
             node->child1()->mergeFlags(NodeUsedAsValue);
             node->child2()->mergeFlags(NodeUsedAsValue | NodeUsedAsInt);
@@ -344,6 +352,33 @@ private:
             m_graph.varArgChild(node, 0)->mergeFlags(NodeUsedAsValue);
             m_graph.varArgChild(node, 1)->mergeFlags(NodeUsedAsNumber | NodeUsedAsOther | NodeUsedAsInt);
             m_graph.varArgChild(node, 2)->mergeFlags(NodeUsedAsValue);
+            break;
+        }
+            
+        case Switch: {
+            SwitchData* data = node->switchData();
+            switch (data->kind) {
+            case SwitchImm:
+                // We don't need NodeNeedsNegZero because if the cases are all integers
+                // then -0 and 0 are treated the same.  We don't need NodeUsedAsOther
+                // because if all of the cases are integers then NaN and undefined are
+                // treated the same (i.e. they will take default).
+                node->child1()->mergeFlags(NodeUsedAsNumber | NodeUsedAsInt);
+                break;
+            case SwitchChar: {
+                // We don't need NodeNeedsNegZero because if the cases are all strings
+                // then -0 and 0 are treated the same.  We don't need NodeUsedAsOther
+                // because if all of the cases are single-character strings then NaN
+                // and undefined are treated the same (i.e. they will take default).
+                node->child1()->mergeFlags(NodeUsedAsNumber);
+                break;
+            }
+            case SwitchString:
+                // We don't need NodeNeedsNegZero because if the cases are all strings
+                // then -0 and 0 are treated the same.
+                node->child1()->mergeFlags(NodeUsedAsNumber | NodeUsedAsOther);
+                break;
+            }
             break;
         }
             

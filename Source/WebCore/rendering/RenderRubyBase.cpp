@@ -39,7 +39,7 @@ using namespace std;
 namespace WebCore {
 
 RenderRubyBase::RenderRubyBase()
-    : RenderBlock(0)
+    : RenderBlockFlow(0)
 {
     setInline(false);
 }
@@ -136,7 +136,7 @@ RenderRubyRun* RenderRubyBase::rubyRun() const
     ASSERT(parent());
     ASSERT(parent()->isRubyRun());
 
-    return toRenderRubyRun(parent());
+    return &toRenderRubyRun(*parent());
 }
 
 ETextAlign RenderRubyBase::textAlignmentForLine(bool /* endsWithSoftBreak */) const

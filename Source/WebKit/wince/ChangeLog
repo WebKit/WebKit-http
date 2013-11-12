@@ -1,3 +1,56 @@
+2013-08-24  Darin Adler  <darin@apple.com>
+
+        Frame::tree should return a reference instead of a pointer
+        https://bugs.webkit.org/show_bug.cgi?id=120259
+
+        Reviewed by Andreas Kling.
+
+        * WebView.cpp:
+        (WebView::createFrame):
+        Use tree(). instead of tree()->.
+
+2013-08-19  Pratik Solanki  <psolanki@apple.com>
+
+        <https://webkit.org/b/119918> Frame::selection() should return a reference
+
+        Reviewed by Darin Adler.
+
+        m_selection is never NULL so return a reference from Frame::selection(). Also removed some
+        unnecessary null checks and assert diff ts exposed as a result.
+
+        * WebCoreSupport/EditorClientWinCE.cpp:
+        (WebKit::EditorClientWinCE::handleEditingKeyboardEvent):
+
+2013-08-15  Anders Carlsson  <andersca@apple.com>
+
+        <https://webkit.org/b/119859> Frame::loader() should return a reference
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/FrameLoaderClientWinCE.cpp:
+        (WebKit::FrameLoaderClientWinCE::dispatchDecidePolicyForResponse):
+        (WebKit::FrameLoaderClientWinCE::dispatchDecidePolicyForNewWindowAction):
+        (WebKit::FrameLoaderClientWinCE::dispatchDecidePolicyForNavigationAction):
+        (WebKit::FrameLoaderClientWinCE::dispatchWillSubmitForm):
+        * WebCoreSupport/FrameNetworkingContextWinCE.cpp:
+        (WebKit::FrameNetworkingContextWinCE::referrer):
+        * WebView.cpp:
+        (WebView::createFrame):
+        (WebView::load):
+        (WebView::reload):
+        (WebView::stop):
+
+2013-07-25  Andreas Kling  <akling@apple.com>
+
+        ChromeClient::focusedNodeChanged() should be focusedElementChanged().
+        <http://webkit.org/b/119110>
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/ChromeClientWinCE.cpp:
+        (WebKit::ChromeClientWinCE::focusedElementChanged):
+        * WebCoreSupport/ChromeClientWinCE.h:
+
 2013-06-26  Patrick Gansterer  <paroga@webkit.org>
 
         Unreviewed WinCE build fix after r152065.

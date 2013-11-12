@@ -34,7 +34,7 @@
 #include "ChromeClientQt.h"
 #include "Font.h"
 #include "Image.h"
-#include "InitializeLogging.h"
+#include "Logging.h"
 #include "MemoryCache.h"
 #include "NotImplemented.h"
 #include "Page.h"
@@ -61,7 +61,7 @@ static WebCore::QStyleFacade* createStyleForPage(WebCore::Page* page)
 {
     QWebPageAdapter* pageAdapter = 0;
     if (page)
-        pageAdapter = static_cast<WebCore::ChromeClientQt*>(page->chrome().client())->m_webPage;
+        pageAdapter = static_cast<WebCore::ChromeClientQt&>(page->chrome().client()).m_webPage;
     return initCallback(pageAdapter);
 }
 

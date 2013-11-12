@@ -127,9 +127,9 @@ Node::InsertionNotificationRequest SVGScriptElement::insertedInto(ContainerNode*
     return InsertionDone;
 }
 
-void SVGScriptElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+void SVGScriptElement::childrenChanged(const ChildChange& change)
 {
-    SVGElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
+    SVGElement::childrenChanged(change);
     ScriptElement::childrenChanged();
 }
 
@@ -158,7 +158,7 @@ void SVGScriptElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) cons
 {
     SVGElement::addSubresourceAttributeURLs(urls);
 
-    addSubresourceURL(urls, document()->completeURL(href()));
+    addSubresourceURL(urls, document().completeURL(href()));
 }
 
 String SVGScriptElement::sourceAttributeValue() const
@@ -208,7 +208,7 @@ bool SVGScriptElement::hasSourceAttribute() const
 
 PassRefPtr<Element> SVGScriptElement::cloneElementWithoutAttributesAndChildren()
 {
-    return adoptRef(new SVGScriptElement(tagQName(), document(), false, alreadyStarted()));
+    return adoptRef(new SVGScriptElement(tagQName(), &document(), false, alreadyStarted()));
 }
 
 }

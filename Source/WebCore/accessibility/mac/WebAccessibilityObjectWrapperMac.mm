@@ -73,6 +73,7 @@
 #import "WebCoreObjCExtras.h"
 #import "WebCoreSystemInterface.h"
 #import "htmlediting.h"
+#import <wtf/ObjcRuntimeExtras.h>
 
 using namespace WebCore;
 using namespace HTMLNames;
@@ -403,14 +404,6 @@ using namespace std;
 
 #pragma mark SystemInterface wrappers
 
-static inline id CFAutoreleaseHelper(CFTypeRef obj)
-{
-    if (obj)
-        CFMakeCollectable(obj);
-    [(id)obj autorelease];
-    return (id)obj;
-}
-
 static inline BOOL AXObjectIsTextMarker(id obj)
 {
     return obj != nil && CFGetTypeID(obj) == wkGetAXTextMarkerTypeID();
@@ -427,21 +420,21 @@ static id AXTextMarkerRange(id startMarker, id endMarker)
     ASSERT(endMarker != nil);
     ASSERT(CFGetTypeID(startMarker) == wkGetAXTextMarkerTypeID());
     ASSERT(CFGetTypeID(endMarker) == wkGetAXTextMarkerTypeID());
-    return CFAutoreleaseHelper(wkCreateAXTextMarkerRange((CFTypeRef)startMarker, (CFTypeRef)endMarker));
+    return CFBridgingRelease(wkCreateAXTextMarkerRange((CFTypeRef)startMarker, (CFTypeRef)endMarker));
 }
 
 static id AXTextMarkerRangeStart(id range)
 {
     ASSERT(range != nil);
     ASSERT(CFGetTypeID(range) == wkGetAXTextMarkerRangeTypeID());
-    return CFAutoreleaseHelper(wkCopyAXTextMarkerRangeStart(range));
+    return CFBridgingRelease(wkCopyAXTextMarkerRangeStart(range));
 }
 
 static id AXTextMarkerRangeEnd(id range)
 {
     ASSERT(range != nil);
     ASSERT(CFGetTypeID(range) == wkGetAXTextMarkerRangeTypeID());
-    return CFAutoreleaseHelper(wkCopyAXTextMarkerRangeEnd(range));
+    return CFBridgingRelease(wkCopyAXTextMarkerRangeEnd(range));
 }
 
 #pragma mark Search helpers
@@ -526,7 +519,7 @@ static id textMarkerForVisiblePosition(AXObjectCache* cache, const VisiblePositi
     if (!textMarkerData.axID)
         return nil;
     
-    return CFAutoreleaseHelper(wkCreateAXTextMarker(&textMarkerData, sizeof(textMarkerData)));
+    return CFBridgingRelease(wkCreateAXTextMarker(&textMarkerData, sizeof(textMarkerData)));
 }
 
 - (id)textMarkerForVisiblePosition:(const VisiblePosition &)visiblePos
@@ -713,7 +706,7 @@ static void AXAttributeStringSetBlockquoteLevel(NSMutableAttributedString* attrS
     if (!AXAttributedStringRangeIsValid(attrString, range))
         return;
     
-    AccessibilityObject* obj = renderer->document()->axObjectCache()->getOrCreate(renderer);
+    AccessibilityObject* obj = renderer->document().axObjectCache()->getOrCreate(renderer);
     int quoteLevel = obj->blockquoteLevel();
     
     if (quoteLevel)
@@ -724,9 +717,9 @@ static void AXAttributeStringSetBlockquoteLevel(NSMutableAttributedString* attrS
 
 static void AXAttributeStringSetSpelling(NSMutableAttributedString* attrString, Node* node, const UChar* chars, int charLength, NSRange range)
 {
-    if (unifiedTextCheckerEnabled(node->document()->frame())) {
+    if (unifiedTextCheckerEnabled(node->document().frame())) {
         // Check the spelling directly since document->markersForNode() does not store the misspelled marking when the cursor is in a word.
-        TextCheckerClient* checker = node->document()->frame()->editor().textChecker();
+        TextCheckerClient* checker = node->document().frame()->editor().textChecker();
         
         // checkTextOfParagraph is the only spelling/grammar checker implemented in WK1 and WK2
         Vector<TextCheckingResult> results;
@@ -747,7 +740,7 @@ static void AXAttributeStringSetSpelling(NSMutableAttributedString* attrString, 
     int currentPosition = 0;
     while (charLength > 0) {
         const UChar* charData = chars + currentPosition;
-        TextCheckerClient* checker = node->document()->frame()->editor().textChecker();
+        TextCheckerClient* checker = node->document().frame()->editor().textChecker();
         
         int misspellingLocation = -1;
         int misspellingLength = 0;
@@ -776,7 +769,7 @@ static void AXAttributeStringSetHeadingLevel(NSMutableAttributedString* attrStri
     // Sometimes there are objects between the text and the heading.
     // In those cases the parent hierarchy should be queried to see if there is a heading level.
     int parentHeadingLevel = 0;
-    AccessibilityObject* parentObject = renderer->document()->axObjectCache()->getOrCreate(renderer->parent());
+    AccessibilityObject* parentObject = renderer->document().axObjectCache()->getOrCreate(renderer->parent());
     for (; parentObject; parentObject = parentObject->parentObject()) {
         parentHeadingLevel = parentObject->headingLevel();
         if (parentHeadingLevel)
@@ -801,11 +794,7 @@ static void AXAttributeStringSetElement(NSMutableAttributedString* attrString, N
         if (!renderer)
             return;
         
-        Document* doc = renderer->document();
-        if (!doc)
-            return;
-        
-        AXObjectCache* cache = doc->axObjectCache();
+        AXObjectCache* cache = renderer->document().axObjectCache();
         if (!cache)
             return;
         
@@ -862,7 +851,7 @@ static NSString* nsStringForReplacedNode(Node* replacedNode)
     }
     
     // create an AX object, but skip it if it is not supposed to be seen
-    RefPtr<AccessibilityObject> obj = replacedNode->renderer()->document()->axObjectCache()->getOrCreate(replacedNode->renderer());
+    RefPtr<AccessibilityObject> obj = replacedNode->renderer()->document().axObjectCache()->getOrCreate(replacedNode->renderer());
     if (obj->accessibilityIsIgnored())
         return nil;
     
@@ -917,7 +906,7 @@ static NSString* nsStringForReplacedNode(Node* replacedNode)
                 [attrString setAttributes:nil range:attrStringRange];
                 
                 // add the attachment attribute
-                AccessibilityObject* obj = replacedNode->renderer()->document()->axObjectCache()->getOrCreate(replacedNode->renderer());
+                AccessibilityObject* obj = replacedNode->renderer()->document().axObjectCache()->getOrCreate(replacedNode->renderer());
                 AXAttributeStringSetElement(attrString, NSAccessibilityAttachmentTextAttribute, obj, attrStringRange);
             }
         }
@@ -1127,6 +1116,7 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
                       NSAccessibilitySelectedAttribute,
                       NSAccessibilityBlockQuoteLevelAttribute,
                       NSAccessibilityTopLevelUIElementAttribute,
+                      NSAccessibilityLanguageAttribute,
                       nil];
     }
     if (commonMenuAttrs == nil) {
@@ -1254,6 +1244,9 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
         tempArray = [[NSMutableArray alloc] initWithArray:attributes];
         [tempArray addObject:NSAccessibilityIncrementButtonAttribute];
         [tempArray addObject:NSAccessibilityDecrementButtonAttribute];
+        [tempArray addObject:NSAccessibilityValueDescriptionAttribute];
+        [tempArray addObject:NSAccessibilityMinValueAttribute];
+        [tempArray addObject:NSAccessibilityMaxValueAttribute];
         incrementorAttrs = [[NSArray alloc] initWithArray:tempArray];
         [tempArray release];
     }
@@ -1467,7 +1460,7 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
     if (!frame)
         return nil;
     
-    return frame->loader()->client()->accessibilityRemoteObject();
+    return frame->loader().client().accessibilityRemoteObject();
 }
 
 static void convertToVector(NSArray* array, AccessibilityObject::AccessibilityChildrenVector& vector)
@@ -1540,7 +1533,7 @@ static NSMutableArray* convertToNSArray(const AccessibilityObject::Accessibility
         
         // If we have an empty chrome client (like SVG) then we should use the page
         // of the scroll view parent to help us get to the screen rect.
-        if (parent && page && page->chrome().client()->isEmptyChromeClient())
+        if (parent && page && page->chrome().client().isEmptyChromeClient())
             page = parent->page();
         
         if (page) {
@@ -1981,14 +1974,6 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     return [self remoteAccessibilityParentObject];
 }
 
-// FIXME: Different kinds of elements are putting the title tag to use in different
-// AX fields. This should be rectified, but in the initial patch I want to achieve
-// parity with existing behavior.
-- (BOOL)titleTagShouldBeUsedInDescriptionField
-{
-    return (m_object->isLink() && !m_object->isImageMapLink()) || m_object->isImage();
-}
-
 // This should be the "visible" text that's actually on the screen if possible.
 // If there's alternative text, that can override the title.
 - (NSString *)accessibilityTitle
@@ -2022,11 +2007,6 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         // that text as our title.
         if (text.textSource == LabelByElementText && !m_object->exposesTitleUIElement())
             return text.text;
-        
-        // FIXME: The title tag is used in certain cases for the title. This usage should
-        // probably be in the description field since it's not "visible".
-        if (text.textSource == TitleTagText && ![self titleTagShouldBeUsedInDescriptionField])
-            return text.text;
     }
     
     return [NSString string];
@@ -2043,13 +2023,23 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     m_object->accessibilityText(textOrder);
     
     unsigned length = textOrder.size();
+    bool visibleTextAvailable = false;
     for (unsigned k = 0; k < length; k++) {
         const AccessibilityText& text = textOrder[k];
         
         if (text.textSource == AlternativeText)
             return text.text;
         
-        if (text.textSource == TitleTagText && [self titleTagShouldBeUsedInDescriptionField])
+        switch (text.textSource) {
+        case VisibleText:
+        case ChildrenText:
+        case LabelByElementText:
+            visibleTextAvailable = true;
+        default:
+            break;
+        }
+        
+        if (text.textSource == TitleTagText && !visibleTextAvailable)
             return text.text;
     }
     
@@ -2576,9 +2566,9 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     
     if (m_object->renderer()) {
         if ([attributeName isEqualToString: @"AXStartTextMarker"])
-            return [self textMarkerForVisiblePosition:startOfDocument(m_object->renderer()->document())];
+            return [self textMarkerForVisiblePosition:startOfDocument(&m_object->renderer()->document())];
         if ([attributeName isEqualToString: @"AXEndTextMarker"])
-            return [self textMarkerForVisiblePosition:endOfDocument(m_object->renderer()->document())];
+            return [self textMarkerForVisiblePosition:endOfDocument(&m_object->renderer()->document())];
     }
     
     if ([attributeName isEqualToString:NSAccessibilityBlockQuoteLevelAttribute])
@@ -3019,7 +3009,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         }
     }
     
-    page->contextMenuController()->showContextMenuAt(page->mainFrame(), rect.center());
+    page->contextMenuController().showContextMenuAt(&page->mainFrame(), rect.center());
 }
 
 - (void)accessibilityScrollToVisible
@@ -3085,16 +3075,16 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         bool focus = [number boolValue];
         
         // If focus is just set without making the view the first responder, then keyboard focus won't move to the right place.
-        if (focus && m_object->isWebArea() && !m_object->document()->frame()->selection()->isFocusedAndActive()) {
+        if (focus && m_object->isWebArea() && !m_object->document()->frame()->selection().isFocusedAndActive()) {
             FrameView* frameView = m_object->documentFrameView();
             Page* page = m_object->page();
             if (page && frameView) {
-                ChromeClient* client = page->chrome().client();
-                client->focus();
+                ChromeClient& chromeClient = page->chrome().client();
+                chromeClient.focus();
                 if (frameView->platformWidget())
-                    client->makeFirstResponder(frameView->platformWidget());
+                    chromeClient.makeFirstResponder(frameView->platformWidget());
                 else
-                    client->makeFirstResponder();
+                    chromeClient.makeFirstResponder();
             }
         }
         
@@ -3156,7 +3146,7 @@ static RenderObject* rendererForView(NSView* view)
     if (!renderer)
         return nil;
     
-    AccessibilityObject* obj = renderer->document()->axObjectCache()->getOrCreate(renderer);
+    AccessibilityObject* obj = renderer->document().axObjectCache()->getOrCreate(renderer);
     if (obj)
         return obj->parentObjectUnignored()->wrapper();
     return nil;

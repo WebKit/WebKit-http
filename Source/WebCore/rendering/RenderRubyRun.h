@@ -31,7 +31,7 @@
 #ifndef RenderRubyRun_h
 #define RenderRubyRun_h
 
-#include "RenderBlock.h"
+#include "RenderBlockFlow.h"
 
 namespace WebCore {
 
@@ -41,7 +41,7 @@ class RenderRubyText;
 // RenderRubyRun are 'inline-block/table' like objects,and wrap a single pairing of a ruby base with its ruby text(s).
 // See RenderRuby.h for further comments on the structure
 
-class RenderRubyRun : public RenderBlock {
+class RenderRubyRun FINAL : public RenderBlockFlow {
 public:
     virtual ~RenderRubyRun();
 
@@ -78,6 +78,18 @@ private:
     virtual void removeLeftoverAnonymousBlock(RenderBlock*) { }
 };
 
+inline RenderRubyRun& toRenderRubyRun(RenderObject& object)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(object.isRubyRun());
+    return static_cast<RenderRubyRun&>(object);
+}
+
+inline const RenderRubyRun& toRenderRubyRun(const RenderObject& object)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(object.isRubyRun());
+    return static_cast<const RenderRubyRun&>(object);
+}
+
 inline RenderRubyRun* toRenderRubyRun(RenderObject* object)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRubyRun());
@@ -91,6 +103,7 @@ inline const RenderRubyRun* toRenderRubyRun(const RenderObject* object)
 }
 
 void toRenderRubyRun(const RenderRubyRun*);
+void toRenderRubyRun(const RenderRubyRun&);
 
 } // namespace WebCore
 

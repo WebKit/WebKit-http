@@ -28,6 +28,12 @@
 
 #import "WebFrame.h"
 #import "WebPage.h"
+#import "WKArray.h"
+#import "WKNumber.h"
+#import "WKRetainPtr.h"
+#import "WKSharedAPICast.h"
+#import "WKString.h"
+#import "WKStringCF.h"
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
@@ -35,6 +41,7 @@
 #import <WebCore/ScrollView.h>
 #import <WebCore/Scrollbar.h>
 #import <WebKitSystemInterface.h>
+#import <wtf/ObjcRuntimeExtras.h>
 
 using namespace WebCore;
 using namespace WebKit;
@@ -54,11 +61,11 @@ using namespace WebKit;
     if (!page)
         return nil;
     
-    WebCore::Frame* core = page->mainFrame();
-    if (!core || !core->document())
+    WebCore::Frame& core = page->mainFrame();
+    if (!core.document())
         return nil;
     
-    AccessibilityObject* root = core->document()->axObjectCache()->rootObject();
+    AccessibilityObject* root = core.document()->axObjectCache()->rootObject();
     if (!root)
         return nil;
     
@@ -101,6 +108,25 @@ using namespace WebKit;
                            NSAccessibilityPositionAttribute, NSAccessibilitySizeAttribute, NSAccessibilityChildrenAttribute, nil];
 
     return m_attributeNames;
+}
+
+- (NSArray *)accessibilityParameterizedAttributeNames
+{
+    WKRetainPtr<WKArrayRef> result = adoptWK(m_page->pageOverlayCopyAccessibilityAttributesNames(true));
+    if (!result)
+        return nil;
+    
+    NSMutableArray *names = [NSMutableArray array];
+    size_t count = WKArrayGetSize(result.get());
+    for (size_t k = 0; k < count; k++) {
+        WKTypeRef item = WKArrayGetItemAtIndex(result.get(), k);
+        if (toImpl(item)->type() == WKStringGetTypeID()) {
+            RetainPtr<CFStringRef> name = adoptCF(WKStringCopyCFString(kCFAllocatorDefault, (WKStringRef)item));
+            [names addObject:(NSString *)name.get()];
+        }
+    }
+    
+    return names;
 }
 
 - (BOOL)accessibilityIsAttributeSettable:(NSString *)attribute
@@ -158,6 +184,33 @@ using namespace WebKit;
     }
     if ([attribute isEqualToString:NSAccessibilityChildrenAttribute])
         return [self accessibilityChildren];
+
+    return nil;
+}
+
+- (NSPoint)_convertScreenPointToWindow:(NSPoint)point
+{
+    return m_page->screenToWindow(IntPoint(point.x, point.y));
+}
+
+- (id)accessibilityAttributeValue:(NSString *)attribute forParameter:(id)parameter
+{
+    WKRetainPtr<WKTypeRef> pageOverlayParameter = 0;
+    
+    if ([parameter isKindOfClass:[NSValue class]] && strcmp([(NSValue*)parameter objCType], @encode(NSPoint)) == 0) {
+        NSPoint point = [self _convertScreenPointToWindow:[(NSValue *)parameter pointValue]];
+        pageOverlayParameter = WKPointCreate(WKPointMake(point.x, point.y));
+    }
+    
+    WKRetainPtr<WKStringRef> attributeRef = adoptWK(WKStringCreateWithCFString((CFStringRef)attribute));
+    WKRetainPtr<WKTypeRef> result = adoptWK(m_page->pageOverlayCopyAccessibilityAttributeValue(attributeRef.get(), pageOverlayParameter.get()));
+    if (!result)
+        return nil;
+    
+    if (toImpl(result.get())->type() == WKStringGetTypeID())
+        return CFBridgingRelease(WKStringCopyCFString(kCFAllocatorDefault, (WKStringRef)result.get()));
+    else if (toImpl(result.get())->type() == WKBooleanGetTypeID())
+        return [NSNumber numberWithBool:WKBooleanGetValue(static_cast<WKBooleanRef>(result.get()))];
 
     return nil;
 }

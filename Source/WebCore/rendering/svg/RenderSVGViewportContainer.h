@@ -30,9 +30,9 @@ namespace WebCore {
 
 // This is used for non-root <svg> elements and <marker> elements, neither of which are SVGTransformable
 // thus we inherit from RenderSVGContainer instead of RenderSVGTransformableContainer
-class RenderSVGViewportContainer : public RenderSVGContainer {
+class RenderSVGViewportContainer FINAL : public RenderSVGContainer {
 public:
-    explicit RenderSVGViewportContainer(SVGStyledElement*);
+    explicit RenderSVGViewportContainer(SVGElement*);
     FloatRect viewport() const { return m_viewport; }
 
     bool isLayoutSizeChanged() const { return m_isLayoutSizeChanged; }

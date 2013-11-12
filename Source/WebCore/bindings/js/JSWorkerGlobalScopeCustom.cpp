@@ -56,7 +56,7 @@ namespace WebCore {
 void JSWorkerGlobalScope::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSWorkerGlobalScope* thisObject = jsCast<JSWorkerGlobalScope*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
@@ -73,14 +73,6 @@ bool JSWorkerGlobalScope::getOwnPropertySlotDelegate(ExecState* exec, PropertyNa
 {
     // Look for overrides before looking at any of our own properties.
     if (JSGlobalObject::getOwnPropertySlot(this, exec, propertyName, slot))
-        return true;
-    return false;
-}
-
-bool JSWorkerGlobalScope::getOwnPropertyDescriptorDelegate(ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
-{
-    // Look for overrides before looking at any of our own properties.
-    if (JSGlobalObject::getOwnPropertyDescriptor(this, exec, propertyName, descriptor))
         return true;
     return false;
 }

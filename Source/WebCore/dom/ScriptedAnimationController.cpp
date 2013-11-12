@@ -34,6 +34,7 @@
 #include "InspectorInstrumentation.h"
 #include "RequestAnimationFrameCallback.h"
 #include "Settings.h"
+#include <wtf/Ref.h>
 
 #if USE(REQUEST_ANIMATION_FRAME_TIMER)
 #include <algorithm>
@@ -95,6 +96,8 @@ void ScriptedAnimationController::setThrottled(bool isThrottled)
         m_animationTimer.stop();
         scheduleAnimation();
     }
+#else
+    UNUSED_PARAM(isThrottled);
 #endif
 }
 
@@ -138,7 +141,7 @@ void ScriptedAnimationController::serviceScriptedAnimations(double monotonicTime
 
     // Invoking callbacks may detach elements from our document, which clears the document's
     // reference to us, so take a defensive reference.
-    RefPtr<ScriptedAnimationController> protector(this);
+    Ref<ScriptedAnimationController> protect(*this);
 
     for (size_t i = 0; i < callbacks.size(); ++i) {
         RequestAnimationFrameCallback* callback = callbacks[i].get();

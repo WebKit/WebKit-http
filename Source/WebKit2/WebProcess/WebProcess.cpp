@@ -344,6 +344,9 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
     WebFrameNetworkingContext::setPrivateBrowsingStorageSessionIdentifierBase(parameters.uiProcessBundleIdentifier);
 #endif
 
+    if (parameters.shouldUseTestingNetworkSession)
+        NetworkStorageSession::switchToNewTestingSession();
+
 #if ENABLE(NETWORK_PROCESS)
     m_usesNetworkProcess = parameters.usesNetworkProcess;
     ensureNetworkProcessConnection();
@@ -453,14 +456,14 @@ void WebProcess::fullKeyboardAccessModeChanged(bool fullKeyboardAccessEnabled)
 
 void WebProcess::ensurePrivateBrowsingSession()
 {
-#if PLATFORM(MAC) || USE(CFNETWORK)
+#if PLATFORM(MAC) || USE(CFNETWORK) || USE(SOUP)
     WebFrameNetworkingContext::ensurePrivateBrowsingSession();
 #endif
 }
 
 void WebProcess::destroyPrivateBrowsingSession()
 {
-#if PLATFORM(MAC) || USE(CFNETWORK)
+#if PLATFORM(MAC) || USE(CFNETWORK) || USE(SOUP)
     WebFrameNetworkingContext::destroyPrivateBrowsingSession();
 #endif
 }
@@ -811,9 +814,11 @@ static inline void addCaseFoldedCharacters(StringHasher& hasher, const String& s
 {
     if (string.isEmpty())
         return;
-    if (string.is8Bit())
-        return hasher.addCharacters<LChar, CaseFoldingHash::foldCase<LChar>>(string.characters8(), string.length());
-    return hasher.addCharacters<UChar, CaseFoldingHash::foldCase<UChar>>(string.characters16(), string.length());
+    if (string.is8Bit()) {
+        hasher.addCharacters<LChar, CaseFoldingHash::foldCase<LChar>>(string.characters8(), string.length());
+        return;
+    }
+    hasher.addCharacters<UChar, CaseFoldingHash::foldCase<UChar>>(string.characters16(), string.length());
 }
 
 static unsigned hashForPlugInOrigin(const String& pageOrigin, const String& pluginOrigin, const String& mimeType)
@@ -1081,7 +1086,7 @@ void WebProcess::downloadRequest(uint64_t downloadID, uint64_t initiatingPageID,
 
     ResourceRequest requestWithOriginalURL = request;
     if (initiatingPage)
-        initiatingPage->mainFrame()->loader()->setOriginalURLForDownloadRequest(requestWithOriginalURL);
+        initiatingPage->mainFrame()->loader().setOriginalURLForDownloadRequest(requestWithOriginalURL);
 
     downloadManager().startDownload(downloadID, requestWithOriginalURL);
 }
@@ -1107,6 +1112,10 @@ void WebProcess::startMemorySampler(const SandboxExtension::Handle& sampleLogFil
 {
 #if ENABLE(MEMORY_SAMPLER)    
     WebMemorySampler::shared()->start(sampleLogFileHandle, sampleLogFilePath, interval);
+#else
+    UNUSED_PARAM(sampleLogFileHandle);
+    UNUSED_PARAM(sampleLogFilePath);
+    UNUSED_PARAM(interval);
 #endif
 }
     

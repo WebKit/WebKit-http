@@ -125,6 +125,7 @@ fast/text/international/thai-cursor-position.html
 platform/mac/editing/input/5576619.html
 platform/mac/editing/input/bold-node.html
 platform/mac/editing/input/caret-primary-bidi.html
+platform/mac/editing/input/firstrectforcharacterrange-caret-in-br.html
 platform/mac/editing/input/firstrectforcharacterrange-plain.html
 platform/mac/editing/input/firstrectforcharacterrange-styled.html
 platform/mac/editing/input/firstrectforcharacterrange-vertical.html
@@ -234,7 +235,6 @@ editing/text-iterator/findString-selection-disabled.html
 
 # WebKit2 needs an implementation of FrameLoaderClient::revertToProvisionalState
 # https://bugs.webkit.org/show_bug.cgi?id=81365
-http/tests/multipart/load-last-non-html-frame.php
 http/tests/multipart/multipart-wait-before-boundary.html
 
 # layoutTestController.setWindowIsKey() has no effect on the web process side in WebKit2
@@ -431,8 +431,6 @@ http/tests/security/contentTypeOptions
 
 # Unexpected redirection happens.
 http/tests/loading/redirect-methods.html
-
-webkit.org/b/116125 webarchive/loading/test-loading-archive-subresource-null-mimetype.html [ Failure ]
 
 # Should pass now on ports other than EFL and GTK.
 # But it needs to be checked first.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,13 +26,14 @@
 #ifndef PutByIdStatus_h
 #define PutByIdStatus_h
 
+#include "IntendedStructureChain.h"
 #include "PropertyOffset.h"
 #include <wtf/NotFound.h>
+#include <wtf/text/StringImpl.h>
 
 namespace JSC {
 
 class CodeBlock;
-class Identifier;
 class VM;
 class JSGlobalObject;
 class Structure;
@@ -76,7 +77,7 @@ public:
         State state,
         Structure* oldStructure,
         Structure* newStructure,
-        StructureChain* structureChain,
+        PassRefPtr<IntendedStructureChain> structureChain,
         PropertyOffset offset)
         : m_state(state)
         , m_oldStructure(oldStructure)
@@ -86,12 +87,12 @@ public:
     {
         ASSERT((m_state == NoInformation || m_state == TakesSlowPath) == !m_oldStructure);
         ASSERT((m_state != SimpleTransition) == !m_newStructure);
-        ASSERT((m_state != SimpleTransition) == !m_structureChain);
+        ASSERT(!((m_state != SimpleTransition) && m_structureChain));
         ASSERT((m_state == NoInformation || m_state == TakesSlowPath) == (m_offset == invalidOffset));
     }
     
-    static PutByIdStatus computeFor(CodeBlock*, unsigned bytecodeIndex, Identifier&);
-    static PutByIdStatus computeFor(VM&, JSGlobalObject*, Structure*, Identifier&, bool isDirect);
+    static PutByIdStatus computeFor(CodeBlock*, unsigned bytecodeIndex, StringImpl* uid);
+    static PutByIdStatus computeFor(VM&, JSGlobalObject*, Structure*, StringImpl* uid, bool isDirect);
     
     State state() const { return m_state; }
     
@@ -103,16 +104,16 @@ public:
     
     Structure* oldStructure() const { return m_oldStructure; }
     Structure* newStructure() const { return m_newStructure; }
-    StructureChain* structureChain() const { return m_structureChain; }
+    IntendedStructureChain* structureChain() const { return m_structureChain.get(); }
     PropertyOffset offset() const { return m_offset; }
     
 private:
-    static PutByIdStatus computeFromLLInt(CodeBlock*, unsigned bytecodeIndex, Identifier&);
+    static PutByIdStatus computeFromLLInt(CodeBlock*, unsigned bytecodeIndex, StringImpl* uid);
     
     State m_state;
     Structure* m_oldStructure;
     Structure* m_newStructure;
-    StructureChain* m_structureChain;
+    RefPtr<IntendedStructureChain> m_structureChain;
     PropertyOffset m_offset;
 };
 

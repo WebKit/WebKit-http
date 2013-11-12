@@ -632,6 +632,7 @@ void TextTrackCue::determineTextDirection()
     // their descendants.
     StringBuilder paragraphBuilder;
     for (Node* node = m_webVTTNodeTree->firstChild(); node; node = NodeTraversal::next(node, m_webVTTNodeTree.get())) {
+        // FIXME: The code does not match the comment above. This does not actually exclude Ruby Text Object descendant.
         if (!node->isTextNode() || node->localName() == rtTag)
             continue;
 
@@ -1168,9 +1169,9 @@ EventTargetData* TextTrackCue::eventTargetData()
     return &m_eventTargetData;
 }
 
-EventTargetData* TextTrackCue::ensureEventTargetData()
+EventTargetData& TextTrackCue::ensureEventTargetData()
 {
-    return &m_eventTargetData;
+    return m_eventTargetData;
 }
 
 bool TextTrackCue::isEqual(const TextTrackCue& cue, CueMatchRules match) const
@@ -1212,7 +1213,7 @@ void TextTrackCue::setFontSize(int fontSize, const IntSize&, bool important)
     
     LOG(Media, "TextTrackCue::setFontSize - setting cue font size to %i", fontSize);
 
-    displayTreeInternal()->setInlineStyleProperty(CSSPropertyFontSize, String::number(fontSize) + "px", important);
+    displayTreeInternal()->setInlineStyleProperty(CSSPropertyFontSize, fontSize, CSSPrimitiveValue::CSS_PX, important);
 }
 
 } // namespace WebCore

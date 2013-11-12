@@ -77,11 +77,9 @@ using namespace WebCore;
 
 using namespace HTMLNames;
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 @interface NSSpellChecker (WebNSSpellCheckerDetails)
 - (NSString *)languageForWordRange:(NSRange)range inString:(NSString *)string orthography:(NSOrthography *)orthography;
 @end
-#endif
 
 @interface NSAttributedString (WebNSAttributedStringDetails)
 - (id)_initWithDOMRange:(DOMRange*)range;
@@ -238,7 +236,7 @@ bool WebEditorClient::smartInsertDeleteEnabled()
     Page* page = [m_webView page];
     if (!page)
         return false;
-    return page->settings()->smartInsertDeleteEnabled();
+    return page->settings().smartInsertDeleteEnabled();
 }
 
 bool WebEditorClient::isSelectTrailingWhitespaceEnabled()
@@ -246,7 +244,7 @@ bool WebEditorClient::isSelectTrailingWhitespaceEnabled()
     Page* page = [m_webView page];
     if (!page)
         return false;
-    return page->settings()->selectTrailingWhitespaceEnabled();
+    return page->settings().selectTrailingWhitespaceEnabled();
 }
 
 bool WebEditorClient::shouldApplyStyle(StylePropertySet* style, Range* range)
@@ -612,7 +610,7 @@ void WebEditorClient::redo()
 
 void WebEditorClient::handleKeyboardEvent(KeyboardEvent* event)
 {
-    Frame* frame = event->target()->toNode()->document()->frame();
+    Frame* frame = event->target()->toNode()->document().frame();
     WebHTMLView *webHTMLView = [[kit(frame) frameView] documentView];
     if ([webHTMLView _interpretKeyEvent:event savingCommands:NO])
         event->setDefaultHandled();
@@ -620,7 +618,7 @@ void WebEditorClient::handleKeyboardEvent(KeyboardEvent* event)
 
 void WebEditorClient::handleInputMethodKeydown(KeyboardEvent* event)
 {
-    Frame* frame = event->target()->toNode()->document()->frame();
+    Frame* frame = event->target()->toNode()->document().frame();
     WebHTMLView *webHTMLView = [[kit(frame) frameView] documentView];
     if ([webHTMLView _interpretKeyEvent:event savingCommands:YES])
         event->setDefaultHandled();
@@ -635,7 +633,7 @@ void WebEditorClient::textFieldDidBeginEditing(Element* element)
 
     DOMHTMLInputElement* inputElement = kit(toHTMLInputElement(element));
     FormDelegateLog(inputElement);
-    CallFormDelegate(m_webView, @selector(textFieldDidBeginEditing:inFrame:), inputElement, kit(element->document()->frame()));
+    CallFormDelegate(m_webView, @selector(textFieldDidBeginEditing:inFrame:), inputElement, kit(element->document().frame()));
 }
 
 void WebEditorClient::textFieldDidEndEditing(Element* element)
@@ -645,7 +643,7 @@ void WebEditorClient::textFieldDidEndEditing(Element* element)
 
     DOMHTMLInputElement* inputElement = kit(toHTMLInputElement(element));
     FormDelegateLog(inputElement);
-    CallFormDelegate(m_webView, @selector(textFieldDidEndEditing:inFrame:), inputElement, kit(element->document()->frame()));
+    CallFormDelegate(m_webView, @selector(textFieldDidEndEditing:inFrame:), inputElement, kit(element->document().frame()));
 }
 
 void WebEditorClient::textDidChangeInTextField(Element* element)
@@ -658,7 +656,7 @@ void WebEditorClient::textDidChangeInTextField(Element* element)
 
     DOMHTMLInputElement* inputElement = kit(toHTMLInputElement(element));
     FormDelegateLog(inputElement);
-    CallFormDelegate(m_webView, @selector(textDidChangeInTextField:inFrame:), inputElement, kit(element->document()->frame()));
+    CallFormDelegate(m_webView, @selector(textDidChangeInTextField:inFrame:), inputElement, kit(element->document().frame()));
 }
 
 static SEL selectorForKeyEvent(KeyboardEvent* event)
@@ -692,7 +690,7 @@ bool WebEditorClient::doTextFieldCommandFromEvent(Element* element, KeyboardEven
     DOMHTMLInputElement* inputElement = kit(toHTMLInputElement(element));
     FormDelegateLog(inputElement);
     if (SEL commandSelector = selectorForKeyEvent(event))
-        return CallFormDelegateReturningBoolean(NO, m_webView, @selector(textField:doCommandBySelector:inFrame:), inputElement, commandSelector, kit(element->document()->frame()));
+        return CallFormDelegateReturningBoolean(NO, m_webView, @selector(textField:doCommandBySelector:inFrame:), inputElement, commandSelector, kit(element->document().frame()));
     return NO;
 }
 
@@ -704,7 +702,7 @@ void WebEditorClient::textWillBeDeletedInTextField(Element* element)
     DOMHTMLInputElement* inputElement = kit(toHTMLInputElement(element));
     FormDelegateLog(inputElement);
     // We're using the deleteBackward selector for all deletion operations since the autofill code treats all deletions the same way.
-    CallFormDelegateReturningBoolean(NO, m_webView, @selector(textField:doCommandBySelector:inFrame:), inputElement, @selector(deleteBackward:), kit(element->document()->frame()));
+    CallFormDelegateReturningBoolean(NO, m_webView, @selector(textField:doCommandBySelector:inFrame:), inputElement, @selector(deleteBackward:), kit(element->document().frame()));
 }
 
 void WebEditorClient::textDidChangeInTextArea(Element* element)
@@ -714,17 +712,13 @@ void WebEditorClient::textDidChangeInTextArea(Element* element)
 
     DOMHTMLTextAreaElement* textAreaElement = kit(toHTMLTextAreaElement(element));
     FormDelegateLog(textAreaElement);
-    CallFormDelegate(m_webView, @selector(textDidChangeInTextArea:inFrame:), textAreaElement, kit(element->document()->frame()));
+    CallFormDelegate(m_webView, @selector(textDidChangeInTextArea:inFrame:), textAreaElement, kit(element->document().frame()));
 }
 
 bool WebEditorClient::shouldEraseMarkersAfterChangeSelection(TextCheckingType type) const
 {
     // This prevents erasing spelling markers on OS X Lion or later to match AppKit on these Mac OS X versions.
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     return type != TextCheckingTypeSpelling;
-#else
-    return true;
-#endif
 }
 
 void WebEditorClient::ignoreWordInSpellDocument(const String& text)
@@ -913,7 +907,6 @@ bool WebEditorClient::spellingUIIsShowing()
 
 void WebEditorClient::getGuessesForWord(const String& word, const String& context, Vector<String>& guesses) {
     guesses.clear();
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     NSString* language = nil;
     NSOrthography* orthography = nil;
     NSSpellChecker *checker = [NSSpellChecker sharedSpellChecker];
@@ -922,9 +915,6 @@ void WebEditorClient::getGuessesForWord(const String& word, const String& contex
         language = [checker languageForWordRange:NSMakeRange(0, context.length()) inString:context orthography:orthography];
     }
     NSArray* stringsArray = [checker guessesForWordRange:NSMakeRange(0, word.length()) inString:word language:language inSpellDocumentWithTag:spellCheckerDocumentTag()];
-#else
-    NSArray* stringsArray = [[NSSpellChecker sharedSpellChecker] guessesForWord:word];
-#endif
     unsigned count = [stringsArray count];
 
     if (count > 0) {

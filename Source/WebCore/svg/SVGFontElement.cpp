@@ -41,11 +41,11 @@ DEFINE_ANIMATED_BOOLEAN(SVGFontElement, SVGNames::externalResourcesRequiredAttr,
 
 BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGFontElement)
     REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGStyledElement)
+    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
 inline SVGFontElement::SVGFontElement(const QualifiedName& tagName, Document* document)
-    : SVGStyledElement(tagName, document) 
+    : SVGElement(tagName, document) 
     , m_missingGlyph(0)
     , m_isGlyphCacheValid(false)
 {
@@ -72,7 +72,7 @@ SVGMissingGlyphElement* SVGFontElement::firstMissingGlyphElement() const
 {
     for (Node* child = firstChild(); child; child = child->nextSibling()) {
         if (child->hasTagName(SVGNames::missing_glyphTag))
-            return static_cast<SVGMissingGlyphElement*>(child);
+            return toSVGMissingGlyphElement(child);
     }
 
     return 0;
@@ -142,7 +142,7 @@ void SVGFontElement::ensureGlyphCache()
             SVGVKernElement* vkern = static_cast<SVGVKernElement*>(child);
             vkern->buildVerticalKerningPair(m_verticalKerningPairs);
         } else if (child->hasTagName(SVGNames::missing_glyphTag) && !firstMissingGlyphElement)
-            firstMissingGlyphElement = static_cast<SVGMissingGlyphElement*>(child);
+            firstMissingGlyphElement = toSVGMissingGlyphElement(child);
     }
 
     // Register each character of each ligature, if needed.

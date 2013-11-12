@@ -47,8 +47,8 @@ class InternalSettings : public InternalSettingsGenerated {
 public:
     class Backup {
     public:
-        explicit Backup(Settings*);
-        void restoreTo(Settings*);
+        explicit Backup(Settings&);
+        void restoreTo(Settings&);
 
         bool m_originalCSSExclusionsEnabled;
         bool m_originalCSSShapesEnabled;
@@ -67,9 +67,6 @@ public:
         float m_originalTextAutosizingFontScaleFactor;
 #endif
         String m_originalMediaTypeOverride;
-#if ENABLE(DIALOG_ELEMENT)
-        bool m_originalDialogElementEnabled;
-#endif
         bool m_originalCanvasUsesAcceleratedDrawing;
         bool m_originalMockScrollbarsEnabled;
         bool m_originalUsesOverlayScrollbars;
@@ -119,7 +116,6 @@ public:
     bool cssVariablesEnabled(ExceptionCode&);
     void setCanStartMedia(bool, ExceptionCode&);
     void setEditingBehavior(const String&, ExceptionCode&);
-    void setDialogElementEnabled(bool, ExceptionCode&);
     void setShouldDisplayTrackKind(const String& kind, bool enabled, ExceptionCode&);
     bool shouldDisplayTrackKind(const String& kind, ExceptionCode&);
     void setStorageBlockingPolicy(const String&, ExceptionCode&);

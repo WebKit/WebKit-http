@@ -44,19 +44,23 @@ PassRefPtr<AccessibilityMenuList> AccessibilityMenuList::create(RenderMenuList* 
 
 bool AccessibilityMenuList::press() const
 {
+#if !PLATFORM(IOS)
     RenderMenuList* menuList = static_cast<RenderMenuList*>(m_renderer);
     if (menuList->popupIsVisible())
         menuList->hidePopup();
     else
         menuList->showPopup();
     return true;
+#else
+    return false;
+#endif
 }
 
 void AccessibilityMenuList::addChildren()
 {
     m_haveChildren = true;
 
-    AXObjectCache* cache = m_renderer->document()->axObjectCache();
+    AXObjectCache* cache = m_renderer->document().axObjectCache();
 
     AccessibilityObject* list = cache->getOrCreate(MenuListPopupRole);
     if (!list)
@@ -84,7 +88,11 @@ void AccessibilityMenuList::childrenChanged()
 
 bool AccessibilityMenuList::isCollapsed() const
 {
+#if !PLATFORM(IOS)
     return !static_cast<RenderMenuList*>(m_renderer)->popupIsVisible();
+#else
+    return true;
+#endif
 }
 
 bool AccessibilityMenuList::canSetFocusAttribute() const
@@ -97,7 +105,7 @@ bool AccessibilityMenuList::canSetFocusAttribute() const
 
 void AccessibilityMenuList::didUpdateActiveOption(int optionIndex)
 {
-    RefPtr<Document> document = m_renderer->document();
+    RefPtr<Document> document = &m_renderer->document();
     AXObjectCache* cache = document->axObjectCache();
 
     const AccessibilityChildrenVector& childObjects = children();

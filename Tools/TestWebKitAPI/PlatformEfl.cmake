@@ -54,6 +54,7 @@ set(test_webcore_BINARIES
 
 # In here we list the bundles that are used by our specific WK2 API Tests
 list(APPEND bundle_harness_SOURCES
+    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/CoordinatedGraphics/WKViewIsActiveSetIsActive_Bundle.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/efl/WKViewClientWebProcessCallbacks_Bundle.cpp
 )
 
@@ -91,6 +92,7 @@ set(test_webkit2_api_BINARIES
     ReloadPageAfterCrash
     ResizeWindowAfterCrash
     ResponsivenessTimerDoesntFireEarly
+    ShouldGoToBackForwardListItem
     TerminateTwice
     UserMessage
     WKConnection
@@ -100,6 +102,7 @@ set(test_webkit2_api_BINARIES
     WKURL
     WillLoad
     WillSendSubmitEvent
+    CoordinatedGraphics/WKViewIsActiveSetIsActive
     CoordinatedGraphics/WKViewUserViewportToContents
     efl/WKViewClientWebProcessCallbacks
 )
@@ -121,7 +124,6 @@ set(test_webkit2_api_fail_BINARIES
     ResizeReversePaginatedWebView
     RestoreSessionStateContainingFormData
     ScrollPinningBehaviors
-    ShouldGoToBackForwardListItem
     WKPageGetScaleFactorNotZero
 )
 

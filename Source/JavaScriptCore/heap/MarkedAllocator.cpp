@@ -70,7 +70,7 @@ inline void* MarkedAllocator::tryAllocate(size_t bytes)
     
 void* MarkedAllocator::allocateSlowCase(size_t bytes)
 {
-    ASSERT(m_heap->vm()->apiLock().currentThreadIsHoldingLock());
+    ASSERT(m_heap->vm()->currentThreadIsHoldingAPILock());
 #if COLLECT_ON_EVERY_ALLOCATION
     m_heap->collectAllGarbage();
     ASSERT(m_heap->m_operationInProgress == NoOperation);
@@ -84,9 +84,7 @@ void* MarkedAllocator::allocateSlowCase(size_t bytes)
     if (LIKELY(result != 0))
         return result;
     
-    if (m_heap->shouldCollect()) {
-        m_heap->collect(Heap::DoNotSweep);
-
+    if (m_heap->collectIfNecessaryOrDefer()) {
         result = tryAllocate(bytes);
         if (result)
             return result;

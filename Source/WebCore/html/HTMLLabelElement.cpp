@@ -26,29 +26,23 @@
 #include "HTMLLabelElement.h"
 
 #include "Document.h"
+#include "ElementIterator.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "FormAssociatedElement.h"
 #include "HTMLNames.h"
-#include "NodeTraversal.h"
 
 namespace WebCore {
 
 using namespace HTMLNames;
 
-static LabelableElement* nodeAsLabelableElement(Node* node)
+static LabelableElement* nodeAsSupportedLabelableElement(Node* node)
 {
-    if (!node || !node->isHTMLElement())
+    if (!node || !isLabelableElement(node))
         return 0;
-    
-    HTMLElement* element = static_cast<HTMLElement*>(node);
-    if (!element->isLabelable())
-        return 0;
-
-    LabelableElement* labelableElement = static_cast<LabelableElement*>(element);
+    LabelableElement* labelableElement = static_cast<LabelableElement*>(node);
     if (!labelableElement->supportLabels())
         return 0;
-
     return labelableElement;
 }
 
@@ -75,17 +69,17 @@ LabelableElement* HTMLLabelElement::control()
         // Search the children and descendants of the label element for a form element.
         // per http://dev.w3.org/html5/spec/Overview.html#the-label-element
         // the form element must be "labelable form-associated element".
-        Element* element = this;
-        while ((element = ElementTraversal::next(element, this))) {
-            if (LabelableElement* labelableElement = nodeAsLabelableElement(element))
-                return labelableElement;
+        auto labelableDescendants = descendantsOfType<LabelableElement>(this);
+        for (auto labelableElement = labelableDescendants.begin(), end = labelableDescendants.end(); labelableElement != end; ++labelableElement) {
+            if (labelableElement->supportLabels())
+                return &*labelableElement;
         }
         return 0;
     }
     
     // Find the first element whose id is controlId. If it is found and it is a labelable form control,
     // return it, otherwise return 0.
-    return nodeAsLabelableElement(treeScope()->getElementById(controlId));
+    return nodeAsSupportedLabelableElement(treeScope()->getElementById(controlId));
 }
 
 HTMLFormElement* HTMLLabelElement::form() const
@@ -136,7 +130,7 @@ void HTMLLabelElement::defaultEventHandler(Event* evt)
         // Click the corresponding control.
         element->dispatchSimulatedClick(evt);
 
-        document()->updateLayoutIgnorePendingStylesheets();
+        document().updateLayoutIgnorePendingStylesheets();
         if (element->isMouseFocusable())
             element->focus();
 

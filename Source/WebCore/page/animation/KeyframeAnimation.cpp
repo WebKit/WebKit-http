@@ -51,7 +51,7 @@ KeyframeAnimation::KeyframeAnimation(const Animation* animation, RenderObject* r
 {
     // Get the keyframe RenderStyles
     if (m_object && m_object->node() && m_object->node()->isElementNode())
-        m_object->document()->ensureStyleResolver()->keyframeStylesForAnimation(toElement(m_object->node()), unanimatedStyle, m_keyframes);
+        m_object->document().ensureStyleResolver().keyframeStylesForAnimation(toElement(m_object->node()), unanimatedStyle, m_keyframes);
 
     // Update the m_transformFunctionListValid flag based on whether the function lists in the keyframes match.
     validateTransformFunctionList();
@@ -73,8 +73,8 @@ static const Animation* getAnimationFromStyleByName(const RenderStyle* style, co
         return 0;
 
     for (size_t i = 0; i < style->animations()->size(); i++) {
-        if (name == style->animations()->animation(i)->name())
-            return style->animations()->animation(i);
+        if (name == style->animations()->animation(i).name())
+            return &style->animations()->animation(i);
     }
 
     return 0;
@@ -269,7 +269,7 @@ void KeyframeAnimation::endAnimation()
 
 bool KeyframeAnimation::shouldSendEventForListener(Document::ListenerType listenerType) const
 {
-    return m_object->document()->hasListenerType(listenerType);
+    return m_object->document().hasListenerType(listenerType);
 }
 
 void KeyframeAnimation::onAnimationStart(double elapsedTime)
@@ -312,7 +312,7 @@ bool KeyframeAnimation::sendAnimationEvent(const AtomicString& eventType, double
         if (m_object->node() && m_object->node()->isElementNode())
             element = toElement(m_object->node());
 
-        ASSERT(!element || (element->document() && !element->document()->inPageCache()));
+        ASSERT(!element || !element->document().inPageCache());
         if (!element)
             return false;
 

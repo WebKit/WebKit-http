@@ -3,6 +3,9 @@ include $(srcdir)/Source/JavaScriptCore/GNUmakefile.list.am
 lib_LTLIBRARIES += \
 	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la
 
+jsc_lib_for_dep = libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la
+$(jsc_lib_for_dep): $(srcdir)/Source/JavaScriptCore/GNUmakefile.list.am
+
 # We are going to make everything public for now. When
 # https://bugs.webkit.org/show_bug.cgi?id=27551 is fixed we'll able to
 # simply rely on the usual symbol visibility flags.
@@ -25,8 +28,9 @@ libjavascriptcoregtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@
 libjavascriptcoregtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIBADD = \
 	-lpthread \
 	libWTF.la \
-	$(UNICODE_LIBS) \
 	$(GLIB_LIBS) \
+	$(LLVM_LIBS) \
+	$(UNICODE_LIBS) \
 	$(WINMM_LIBS)
 
 libjavascriptcoregtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CXXFLAGS = \
@@ -43,20 +47,19 @@ libjavascriptcoregtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@
 	$(javascriptcore_cppflags)
 
 javascriptcore_cppflags += \
-	$(JSC_CPPFLAGS) \
 	-I$(srcdir)/Source \
 	-I$(srcdir)/Source/JavaScriptCore \
 	-I$(srcdir)/Source/JavaScriptCore/API \
+	-I$(srcdir)/Source/JavaScriptCore/ForwardingHeaders \
 	-I$(srcdir)/Source/JavaScriptCore/assembler \
 	-I$(srcdir)/Source/JavaScriptCore/bytecode \
 	-I$(srcdir)/Source/JavaScriptCore/bytecompiler \
+	-I$(srcdir)/Source/JavaScriptCore/debugger \
 	-I$(srcdir)/Source/JavaScriptCore/dfg \
 	-I$(srcdir)/Source/JavaScriptCore/disassembler \
+	-I$(srcdir)/Source/JavaScriptCore/ftl \
 	-I$(srcdir)/Source/JavaScriptCore/heap \
-	-I$(srcdir)/Source/JavaScriptCore/debugger \
-	-I$(srcdir)/Source/JavaScriptCore/ForwardingHeaders \
 	-I$(srcdir)/Source/JavaScriptCore/interpreter \
-	-I$(srcdir)/Source/JavaScriptCore/jit \
 	-I$(srcdir)/Source/JavaScriptCore/jit \
 	-I$(srcdir)/Source/JavaScriptCore/llint \
 	-I$(srcdir)/Source/JavaScriptCore/parser \
@@ -64,14 +67,14 @@ javascriptcore_cppflags += \
 	-I$(srcdir)/Source/JavaScriptCore/runtime \
 	-I$(srcdir)/Source/JavaScriptCore/tools \
 	-I$(srcdir)/Source/JavaScriptCore/yarr \
-	-I$(top_builddir)/DerivedSources/JavaScriptCore
-
-javascriptcore_cppflags += \
-	-I$(srcdir)/Source/WTF
+	-I$(top_builddir)/DerivedSources/JavaScriptCore \
+	-I$(srcdir)/Source/WTF \
+	$(LLVM_CFLAGS)
 
 javascriptcore_cflags += \
 	$(global_cflags) \
 	$(GLIB_CFLAGS) \
+	$(LLVM_CFLAGS) \
 	$(UNICODE_CFLAGS)
 
 pkgconfig_DATA += Source/JavaScriptCore/javascriptcoregtk-@WEBKITGTK_API_VERSION@.pc

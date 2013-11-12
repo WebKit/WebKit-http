@@ -294,7 +294,7 @@ static NSMutableSet *pluginViews = nil;
         
 #if ENABLE(NETSCAPE_PLUGIN_API)
         if (Frame* frame = core([self webFrame]))
-            frame->script()->cleanupScriptObjectsForPlugin(self);
+            frame->script().cleanupScriptObjectsForPlugin(self);
 #endif
         
         [pluginViews removeObject:view];
@@ -343,7 +343,7 @@ static void cancelOutstandingCheck(const void *item, void *context)
         
 #if ENABLE(NETSCAPE_PLUGIN_API)
         if (Frame* frame = core([self webFrame]))
-            frame->script()->cleanupScriptObjectsForPlugin(self);
+            frame->script().cleanupScriptObjectsForPlugin(self);
 #endif
         
         [pluginViews removeObject:aView];
@@ -405,7 +405,7 @@ static void cancelOutstandingCheck(const void *item, void *context)
         FrameLoadRequest frameRequest(core(frame), request);
         frameRequest.setFrameName(target);
         frameRequest.setShouldCheckNewWindowPolicy(true);
-        core(frame)->loader()->load(frameRequest);
+        core(frame)->loader().load(frameRequest);
     }
 }
 
@@ -428,7 +428,7 @@ static void cancelOutstandingCheck(const void *item, void *context)
 {
     bool primary = true;
     if (Frame* frame = core([self webFrame]))
-        primary = frame->selection()->isFocusedAndActive();
+        primary = frame->selection().isFocusedAndActive();
     return primary ? [NSColor selectedTextBackgroundColor] : [NSColor secondarySelectedControlColor];
 }
 

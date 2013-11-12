@@ -21,32 +21,32 @@
 #define RenderSVGBlock_h
 
 #if ENABLE(SVG)
-#include "RenderBlock.h"
+#include "RenderBlockFlow.h"
 #include "SVGRenderSupport.h"
 
 namespace WebCore {
 
 class SVGElement;
 
-class RenderSVGBlock : public RenderBlock {
+class RenderSVGBlock : public RenderBlockFlow {
 public:
     explicit RenderSVGBlock(SVGElement*);
 
-    virtual LayoutRect visualOverflowRect() const;
+    virtual LayoutRect visualOverflowRect() const OVERRIDE FINAL;
 
 protected:
     virtual void willBeDestroyed() OVERRIDE;
 
 private:
-    virtual void setStyle(PassRefPtr<RenderStyle>);
-    virtual void updateFromStyle() OVERRIDE;
+    virtual void setStyle(PassRefPtr<RenderStyle>) OVERRIDE FINAL;
+    virtual void updateFromStyle() OVERRIDE FINAL;
 
-    virtual bool isRenderSVGBlock() const OVERRIDE { return true; };
+    virtual bool isRenderSVGBlock() const OVERRIDE FINAL { return true; };
 
     virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const;
 
-    virtual void styleWillChange(StyleDifference, const RenderStyle* newStyle);
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
+    virtual void styleWillChange(StyleDifference, const RenderStyle* newStyle) OVERRIDE FINAL;
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE FINAL;
 };
 
 }

@@ -75,7 +75,7 @@ NSImage* selectionImage(Frame* frame, bool forceBlackText)
 {
     frame->view()->setPaintBehavior(PaintBehaviorSelectionOnly | (forceBlackText ? PaintBehaviorForceBlackText : 0));
     frame->document()->updateLayout();
-    NSImage* result = imageFromRect(frame, frame->selection()->bounds());
+    NSImage* result = imageFromRect(frame, frame->selection().bounds());
     frame->view()->setPaintBehavior(PaintBehaviorNormal);
     return result;
 }
@@ -142,6 +142,9 @@ NSImage* snapshotDragImage(Frame* frame, Node* node, NSRect* imageRect, NSRect* 
 
     LayoutRect topLevelRect;
     NSRect paintingRect = pixelSnappedIntRect(renderer->paintingRootRect(topLevelRect));
+
+    if (NSIsEmptyRect(paintingRect))
+        return nil;
 
     frame->view()->setNodeToDraw(node); // invoke special sub-tree drawing mode
     NSImage* result = imageFromRect(frame, paintingRect);

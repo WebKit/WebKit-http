@@ -60,6 +60,7 @@ enum AccessType {
     access_put_by_id_generic,
     access_get_array_length,
     access_get_string_length,
+    access_in_list
 };
 
 inline bool isGetByIdAccess(AccessType accessType)
@@ -87,6 +88,16 @@ inline bool isPutByIdAccess(AccessType accessType)
     case access_put_by_id_replace:
     case access_put_by_id_list:
     case access_put_by_id_generic:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isInAccess(AccessType accessType)
+{
+    switch (accessType) {
+    case access_in_list:
         return true;
     default:
         return false;
@@ -127,12 +138,13 @@ struct StructureStubInfo {
         u.getByIdChain.isDirect = isDirect;
     }
 
-    void initGetByIdSelfList(PolymorphicAccessStructureList* structureList, int listSize)
+    void initGetByIdSelfList(PolymorphicAccessStructureList* structureList, int listSize, bool didSelfPatching = false)
     {
         accessType = access_get_by_id_self_list;
 
         u.getByIdSelfList.structureList = structureList;
         u.getByIdSelfList.listSize = listSize;
+        u.getByIdSelfList.didSelfPatching = didSelfPatching;
     }
 
     void initGetByIdProtoList(PolymorphicAccessStructureList* structureList, int listSize)
@@ -169,6 +181,13 @@ struct StructureStubInfo {
         accessType = access_put_by_id_list;
         u.putByIdList.list = list;
     }
+    
+    void initInList(PolymorphicAccessStructureList* list, int listSize)
+    {
+        accessType = access_in_list;
+        u.inList.structureList = list;
+        u.inList.listSize = listSize;
+    }
         
     void reset()
     {
@@ -197,16 +216,12 @@ struct StructureStubInfo {
         return WatchpointsOnStructureStubInfo::ensureReferenceAndAddWatchpoint(
             watchpoints, codeBlock, this);
     }
-        
-    unsigned bytecodeIndex;
-
+    
     int8_t accessType;
     bool seen : 1;
     bool resetByGC : 1;
 
-#if ENABLE(DFG_JIT)
     CodeOrigin codeOrigin;
-#endif // ENABLE(DFG_JIT)
 
     union {
         struct {
@@ -281,7 +296,8 @@ struct StructureStubInfo {
         } getByIdChain;
         struct {
             PolymorphicAccessStructureList* structureList;
-            int listSize;
+            int listSize : 31;
+            bool didSelfPatching : 1;
         } getByIdSelfList;
         struct {
             PolymorphicAccessStructureList* structureList;
@@ -298,6 +314,10 @@ struct StructureStubInfo {
         struct {
             PolymorphicPutByIdList* list;
         } putByIdList;
+        struct {
+            PolymorphicAccessStructureList* structureList;
+            int listSize;
+        } inList;
     } u;
 
     RefPtr<JITStubRoutine> stubRoutine;
@@ -313,7 +333,7 @@ inline void* getStructureStubInfoReturnLocation(StructureStubInfo* structureStub
 
 inline unsigned getStructureStubInfoBytecodeIndex(StructureStubInfo* structureStubInfo)
 {
-    return structureStubInfo->bytecodeIndex;
+    return structureStubInfo->codeOrigin.bytecodeIndex;
 }
 
 } // namespace JSC

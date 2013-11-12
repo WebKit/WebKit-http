@@ -99,7 +99,7 @@ void RenderScrollbarPart::computeScrollbarWidth()
 {
     if (!m_scrollbar->owningRenderer())
         return;
-    RenderView* renderView = view();
+    RenderView* renderView = &view();
     // FIXME: We are querying layout information but nothing guarantees that it's up-to-date, especially since we are called at style change.
     // FIXME: Querying the style's border information doesn't work on table cells with collapsing borders.
     int visibleSize = m_scrollbar->owningRenderer()->width() - m_scrollbar->owningRenderer()->style()->borderLeftWidth() - m_scrollbar->owningRenderer()->style()->borderRightWidth();
@@ -117,7 +117,7 @@ void RenderScrollbarPart::computeScrollbarHeight()
 {
     if (!m_scrollbar->owningRenderer())
         return;
-    RenderView* renderView = view();
+    RenderView* renderView = &view();
     // FIXME: We are querying layout information but nothing guarantees that it's up-to-date, especially since we are called at style change.
     // FIXME: Querying the style's border information doesn't work on table cells with collapsing borders.
     int visibleSize = m_scrollbar->owningRenderer()->height() -  m_scrollbar->owningRenderer()->style()->borderTopWidth() - m_scrollbar->owningRenderer()->style()->borderBottomWidth();
@@ -163,11 +163,9 @@ void RenderScrollbarPart::imageChanged(WrappedImagePtr image, const IntRect* rec
     if (m_scrollbar && m_part != NoPart)
         m_scrollbar->theme()->invalidatePart(m_scrollbar, m_part);
     else {
-        if (FrameView* frameView = view()->frameView()) {
-            if (frameView->isFrameViewScrollCorner(this)) {
-                frameView->invalidateScrollCorner(frameView->scrollCornerRect());
-                return;
-            }
+        if (view().frameView().isFrameViewScrollCorner(this)) {
+            view().frameView().invalidateScrollCorner(view().frameView().scrollCornerRect());
+            return;
         }
         
         RenderBlock::imageChanged(image, rect);
@@ -181,9 +179,18 @@ void RenderScrollbarPart::paintIntoRect(GraphicsContext* graphicsContext, const 
     setWidth(rect.width());
     setHeight(rect.height());
 
-    if (graphicsContext->paintingDisabled())
+    if (graphicsContext->paintingDisabled() || !style()->opacity())
         return;
 
+    // We don't use RenderLayers for scrollbar parts, so we need to handle opacity here.
+    // Opacity for ScrollbarBGPart is handled by RenderScrollbarTheme::willPaintScrollbar().
+    bool needsTransparencyLayer = m_part != ScrollbarBGPart && style()->opacity() < 1;
+    if (needsTransparencyLayer) {
+        graphicsContext->save();
+        graphicsContext->clip(rect);
+        graphicsContext->beginTransparencyLayer(style()->opacity());
+    }
+    
     // Now do the paint.
     PaintInfo paintInfo(graphicsContext, pixelSnappedIntRect(rect), PaintPhaseBlockBackground, PaintBehaviorNormal);
     paint(paintInfo, paintOffset);
@@ -195,6 +202,11 @@ void RenderScrollbarPart::paintIntoRect(GraphicsContext* graphicsContext, const 
     paint(paintInfo, paintOffset);
     paintInfo.phase = PaintPhaseOutline;
     paint(paintInfo, paintOffset);
+
+    if (needsTransparencyLayer) {
+        graphicsContext->endTransparencyLayer();
+        graphicsContext->restore();
+    }
 }
 
 RenderObject* RenderScrollbarPart::rendererOwningScrollbar() const

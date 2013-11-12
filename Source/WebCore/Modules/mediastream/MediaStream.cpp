@@ -221,6 +221,19 @@ MediaStreamTrack* MediaStream::getTrackById(String id)
     return 0;
 }
 
+void MediaStream::trackEnded()
+{
+    for (size_t i = 0; i < m_audioTracks.size(); ++i)
+        if (!m_audioTracks[i]->ended())
+            return;
+    
+    for (size_t i = 0; i < m_videoTracks.size(); ++i)
+        if (!m_videoTracks[i]->ended())
+            return;
+    
+    streamEnded();
+}
+
 void MediaStream::streamEnded()
 {
     if (ended())
@@ -251,9 +264,9 @@ EventTargetData* MediaStream::eventTargetData()
     return &m_eventTargetData;
 }
 
-EventTargetData* MediaStream::ensureEventTargetData()
+EventTargetData& MediaStream::ensureEventTargetData()
 {
-    return &m_eventTargetData;
+    return m_eventTargetData;
 }
 
 void MediaStream::addRemoteTrack(MediaStreamComponent* component)

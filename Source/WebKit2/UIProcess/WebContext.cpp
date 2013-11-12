@@ -56,9 +56,9 @@
 #include "WebProcessMessages.h"
 #include "WebProcessProxy.h"
 #include "WebResourceCacheManagerProxy.h"
-#include <WebCore/InitializeLogging.h>
 #include <WebCore/Language.h>
 #include <WebCore/LinkHash.h>
+#include <WebCore/Logging.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RunLoop.h>
 #include <runtime/InitializeThreading.h>
@@ -138,6 +138,7 @@ WebContext::WebContext(ProcessModel processModel, const String& injectedBundlePa
 #if USE(SOUP)
     , m_initialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain)
 #endif
+    , m_shouldUseTestingNetworkSession(false)
     , m_processTerminationEnabled(true)
 #if ENABLE(NETWORK_PROCESS)
     , m_usesNetworkProcess(false)
@@ -368,13 +369,15 @@ void WebContext::ensureNetworkProcess()
 
     NetworkProcessCreationParameters parameters;
 
+    parameters.privateBrowsingEnabled = WebPreferences::anyPageGroupsAreUsingPrivateBrowsing();
+
+    parameters.cacheModel = m_cacheModel;
+
     parameters.diskCacheDirectory = diskCacheDirectory();
     if (!parameters.diskCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.diskCacheDirectory, parameters.diskCacheDirectoryExtensionHandle);
 
-    parameters.privateBrowsingEnabled = WebPreferences::anyPageGroupsAreUsingPrivateBrowsing();
-
-    parameters.cacheModel = m_cacheModel;
+    parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
 
     // Add any platform specific parameters
     platformInitializeNetworkProcess(parameters);
@@ -504,6 +507,8 @@ WebProcessProxy* WebContext::createNewWebProcess()
     parameters.cookieStorageDirectory = cookieStorageDirectory();
     if (!parameters.cookieStorageDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.cookieStorageDirectory, parameters.cookieStorageDirectoryExtensionHandle);
+
+    parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
 
     parameters.shouldTrackVisitedLinks = m_historyClient.shouldTrackVisitedLinks();
     parameters.cacheModel = m_cacheModel;
@@ -1067,6 +1072,22 @@ String WebContext::cookieStorageDirectory() const
     return platformDefaultCookieStorageDirectory();
 }
 
+void WebContext::useTestingNetworkSession()
+{
+    ASSERT(m_processes.isEmpty());
+#if ENABLE(NETWORK_PROCESS)
+    ASSERT(!m_networkProcess);
+
+    if (m_networkProcess)
+        return;
+#endif
+
+    if (!m_processes.isEmpty())
+        return;
+
+    m_shouldUseTestingNetworkSession = true;
+}
+
 void WebContext::allowSpecificHTTPSCertificateForHost(const WebCertificateInfo* certificate, const String& host)
 {
 #if ENABLE(NETWORK_PROCESS)
@@ -1248,7 +1269,7 @@ void WebContext::pluginInfoStoreDidLoadPlugins(PluginInfoStore* store)
         pluginArray.append(ImmutableDictionary::adopt(map));
     }
 
-    m_client.plugInInformationBecameAvailable(this, ImmutableArray::adopt(pluginArray).leakRef());
+    m_client.plugInInformationBecameAvailable(this, ImmutableArray::adopt(pluginArray).get());
 }
 #endif
 

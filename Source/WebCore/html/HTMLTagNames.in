@@ -3,17 +3,17 @@ namespacePrefix="xhtml"
 namespaceURI="http://www.w3.org/1999/xhtml"
 fallbackInterfaceName="HTMLUnknownElement"
 
-a interfaceName=HTMLAnchorElement
+a interfaceName=HTMLAnchorElement, generateTypeHelpers
 abbr interfaceName=HTMLElement
 acronym interfaceName=HTMLElement
 address interfaceName=HTMLElement
 applet constructorNeedsCreatedByParser
-area
+area generateTypeHelpers
 article interfaceName=HTMLElement
 aside interfaceName=HTMLElement
-audio wrapperOnlyIfMediaIsAvailable, conditional=VIDEO, constructorNeedsCreatedByParser
+audio wrapperOnlyIfMediaIsAvailable, conditional=VIDEO, constructorNeedsCreatedByParser, generateTypeHelpers
 b interfaceName=HTMLElement
-base
+base generateTypeHelpers
 basefont interfaceName=HTMLBaseFontElement
 bdi interfaceName=HTMLBDIElement, JSInterfaceName=HTMLElement
 bdo interfaceName=HTMLElement
@@ -23,7 +23,7 @@ blockquote interfaceName=HTMLQuoteElement
 body
 br interfaceName=HTMLBRElement
 button constructorNeedsFormElement
-canvas
+canvas generateTypeHelpers
 caption interfaceName=HTMLTableCaptionElement
 center interfaceName=HTMLElement
 cite interfaceName=HTMLElement
@@ -39,20 +39,19 @@ del interfaceName=HTMLModElement
 details conditional=DETAILS_ELEMENT
 dfn interfaceName=HTMLElement
 dir interfaceName=HTMLDirectoryElement
-dialog conditional=DIALOG_ELEMENT, contextConditional=dialogElement
 div
 dl interfaceName=HTMLDListElement
 dt interfaceName=HTMLElement
 em interfaceName=HTMLElement
 embed constructorNeedsCreatedByParser
-fieldset interfaceName=HTMLFieldSetElement, constructorNeedsFormElement
+fieldset interfaceName=HTMLFieldSetElement, constructorNeedsFormElement, generateTypeHelpers
 figcaption interfaceName=HTMLElement
 figure interfaceName=HTMLElement
 font
 footer interfaceName=HTMLElement
-form
+form generateTypeHelpers
 frame
-frameset interfaceName=HTMLFrameSetElement
+frameset interfaceName=HTMLFrameSetElement, generateTypeHelpers
 h1 interfaceName=HTMLHeadingElement
 h2 interfaceName=HTMLHeadingElement
 h3 interfaceName=HTMLHeadingElement
@@ -67,25 +66,25 @@ html
 i interfaceName=HTMLElement
 iframe interfaceName=HTMLIFrameElement
 image interfaceName=HTMLElement
-img interfaceName=HTMLImageElement, constructorNeedsFormElement
-input constructorNeedsFormElement, constructorNeedsCreatedByParser
+img interfaceName=HTMLImageElement, constructorNeedsFormElement, generateTypeHelpers
+input constructorNeedsFormElement, constructorNeedsCreatedByParser, generateTypeHelpers
 ins interfaceName=HTMLModElement
 isindex interfaceName=HTMLUnknownElement
 kbd interfaceName=HTMLElement
 keygen constructorNeedsFormElement
-label
+label generateTypeHelpers
 layer interfaceName=HTMLElement
-legend
+legend generateTypeHelpers
 li interfaceName=HTMLLIElement
 link constructorNeedsCreatedByParser
 listing interfaceName=HTMLPreElement
 main interfaceName=HTMLElement
-map
+map generateTypeHelpers
 mark interfaceName=HTMLElement
 marquee
 menu
 meta
-meter interfaceName=HTMLMeterElement, conditional=METER_ELEMENT
+meter interfaceName=HTMLMeterElement, conditional=METER_ELEMENT, generateTypeHelpers
 nav interfaceName=HTMLElement
 nobr interfaceName=HTMLElement
 noembed interfaceName=HTMLElement
@@ -93,43 +92,43 @@ noframes interfaceName=HTMLElement
 nolayer interfaceName=HTMLElement
 object constructorNeedsFormElement, constructorNeedsCreatedByParser
 ol interfaceName=HTMLOListElement
-optgroup interfaceName=HTMLOptGroupElement
-option
+optgroup interfaceName=HTMLOptGroupElement, generateTypeHelpers
+option generateTypeHelpers
 output constructorNeedsFormElement
 p interfaceName=HTMLParagraphElement
-param
+param generateTypeHelpers
 plaintext interfaceName=HTMLElement
 pre
-progress interfaceName=HTMLProgressElement, conditional=PROGRESS_ELEMENT
+progress interfaceName=HTMLProgressElement, conditional=PROGRESS_ELEMENT, generateTypeHelpers
 q interfaceName=HTMLQuoteElement
 rp interfaceName=HTMLElement
 rt interfaceName=HTMLElement
 ruby interfaceName=HTMLElement
 s interfaceName=HTMLElement
 samp interfaceName=HTMLElement
-script constructorNeedsCreatedByParser
+script constructorNeedsCreatedByParser, generateTypeHelpers
 section interfaceName=HTMLElement
 select constructorNeedsFormElement
 small interfaceName=HTMLElement
-source wrapperOnlyIfMediaIsAvailable, conditional=VIDEO
+source wrapperOnlyIfMediaIsAvailable, conditional=VIDEO, generateTypeHelpers
 span
 strike interfaceName=HTMLElement
 strong interfaceName=HTMLElement
-style constructorNeedsCreatedByParser
+style constructorNeedsCreatedByParser, generateTypeHelpers
 sub interfaceName=HTMLElement
 summary interfaceName=HTMLSummaryElement, JSInterfaceName=HTMLElement, conditional=DETAILS_ELEMENT
 sup interfaceName=HTMLElement
-table
+table generateTypeHelpers
 tbody interfaceName=HTMLTableSectionElement
 td interfaceName=HTMLTableCellElement
 template conditional=TEMPLATE_ELEMENT
-textarea interfaceName=HTMLTextAreaElement, constructorNeedsFormElement
+textarea interfaceName=HTMLTextAreaElement, constructorNeedsFormElement, generateTypeHelpers
 tfoot interfaceName=HTMLTableSectionElement
 th interfaceName=HTMLTableCellElement
 thead interfaceName=HTMLTableSectionElement
-title
-tr interfaceName=HTMLTableRowElement
-track wrapperOnlyIfMediaIsAvailable, conditional=VIDEO_TRACK
+title generateTypeHelpers
+tr interfaceName=HTMLTableRowElement, generateTypeHelpers
+track wrapperOnlyIfMediaIsAvailable, conditional=VIDEO_TRACK, generateTypeHelpers
 tt interfaceName=HTMLElement
 u interfaceName=HTMLElement
 ul interfaceName=HTMLUListElement

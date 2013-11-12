@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,14 +28,24 @@
 
 namespace WebCore {
 
-DOMSettableTokenList::DOMSettableTokenList()
-    : m_value()
-    , m_tokens()
+PassRefPtr<DOMSettableTokenList> DOMSettableTokenList::create()
 {
+    return adoptRef(new DOMSettableTokenList());
 }
 
-DOMSettableTokenList::~DOMSettableTokenList()
+void DOMSettableTokenList::ref()
 {
+    RefCounted<DOMSettableTokenList>::ref();
+}
+
+void DOMSettableTokenList::deref()
+{
+    RefCounted<DOMSettableTokenList>::deref();
+}
+
+unsigned DOMSettableTokenList::length() const
+{
+    return m_tokens.size();
 }
 
 const AtomicString DOMSettableTokenList::item(unsigned index) const
@@ -49,38 +60,9 @@ bool DOMSettableTokenList::containsInternal(const AtomicString& token) const
     return m_tokens.contains(token);
 }
 
-void DOMSettableTokenList::add(const Vector<String>& tokens, ExceptionCode& ec)
+AtomicString DOMSettableTokenList::value() const
 {
-    DOMTokenList::add(tokens, ec);
-
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        if (m_tokens.isNull())
-            m_tokens.set(tokens[i], false);
-        else
-            m_tokens.add(tokens[i]);
-    }
-}
-
-void DOMSettableTokenList::addInternal(const AtomicString& token)
-{
-    DOMTokenList::addInternal(token);
-    if (m_tokens.isNull())
-        m_tokens.set(token, false);
-    else
-        m_tokens.add(token);
-}
-
-void DOMSettableTokenList::remove(const Vector<String>& tokens, ExceptionCode& ec)
-{
-    DOMTokenList::remove(tokens, ec);
-    for (size_t i = 0; i < tokens.size(); ++i)
-        m_tokens.remove(tokens[i]);
-}
-
-void DOMSettableTokenList::removeInternal(const AtomicString& token)
-{
-    DOMTokenList::removeInternal(token);
-    m_tokens.remove(token);
+    return m_value;
 }
 
 void DOMSettableTokenList::setValue(const AtomicString& value)

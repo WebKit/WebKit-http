@@ -65,14 +65,9 @@ RegExpPrototype::RegExpPrototype(JSGlobalObject* globalObject, Structure* struct
 {
 }
 
-bool RegExpPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
+bool RegExpPrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
 {
-    return getStaticFunctionSlot<RegExpObject>(exec, ExecState::regExpPrototypeTable(exec), jsCast<RegExpPrototype*>(cell), propertyName, slot);
-}
-
-bool RegExpPrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
-{
-    return getStaticFunctionDescriptor<RegExpObject>(exec, ExecState::regExpPrototypeTable(exec), jsCast<RegExpPrototype*>(object), propertyName, descriptor);
+    return getStaticFunctionSlot<RegExpObject>(exec, ExecState::regExpPrototypeTable(exec), jsCast<RegExpPrototype*>(object), propertyName, slot);
 }
 
 // ------------------------------ Functions ---------------------------
@@ -80,7 +75,7 @@ bool RegExpPrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec
 EncodedJSValue JSC_HOST_CALL regExpProtoFuncTest(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&RegExpObject::s_info))
+    if (!thisValue.inherits(RegExpObject::info()))
         return throwVMTypeError(exec);
     return JSValue::encode(jsBoolean(asRegExpObject(thisValue)->test(exec, exec->argument(0).toString(exec))));
 }
@@ -88,7 +83,7 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncTest(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL regExpProtoFuncExec(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&RegExpObject::s_info))
+    if (!thisValue.inherits(RegExpObject::info()))
         return throwVMTypeError(exec);
     return JSValue::encode(asRegExpObject(thisValue)->exec(exec, exec->argument(0).toString(exec)));
 }
@@ -96,19 +91,19 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncExec(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL regExpProtoFuncCompile(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&RegExpObject::s_info))
+    if (!thisValue.inherits(RegExpObject::info()))
         return throwVMTypeError(exec);
 
     RegExp* regExp;
     JSValue arg0 = exec->argument(0);
     JSValue arg1 = exec->argument(1);
     
-    if (arg0.inherits(&RegExpObject::s_info)) {
+    if (arg0.inherits(RegExpObject::info())) {
         if (!arg1.isUndefined())
             return throwVMError(exec, createTypeError(exec, ASCIILiteral("Cannot supply flags when constructing one RegExp from another.")));
         regExp = asRegExpObject(arg0)->regExp();
     } else {
-        String pattern = !exec->argumentCount() ? String("") : arg0.toString(exec)->value(exec);
+        String pattern = !exec->argumentCount() ? emptyString() : arg0.toString(exec)->value(exec);
         if (exec->hadException())
             return JSValue::encode(jsUndefined());
 
@@ -134,7 +129,7 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncCompile(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL regExpProtoFuncToString(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&RegExpObject::s_info))
+    if (!thisValue.inherits(RegExpObject::info()))
         return throwVMTypeError(exec);
 
     RegExpObject* thisObject = asRegExpObject(thisValue);

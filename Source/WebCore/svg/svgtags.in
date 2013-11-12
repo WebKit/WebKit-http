@@ -1,7 +1,8 @@
 namespace="SVG"
 namespaceURI="http://www.w3.org/2000/svg"
 guardFactoryWith="ENABLE(SVG)"
-fallbackInterfaceName="SVGElement"
+fallbackInterfaceName="SVGUnknownElement"
+fallbackJSInterfaceName="SVGElement"
 
 a
 #if ENABLE_SVG_FONTS
@@ -52,21 +53,21 @@ feTurbulence
 filter
 #endif
 #if ENABLE_SVG_FONTS
-font
-font_face
+font generateTypeHelpers
+font_face generateTypeHelpers
 font_face_format
 font_face_name
 font_face_src
 font_face_uri
 #endif
-foreignObject
+foreignObject generateTypeHelpers
 g
 #if ENABLE_SVG_FONTS
 glyph
 glyphRef
 hkern interfaceName=SVGHKernElement
 #endif
-image
+image generateTypeHelpers
 line
 linearGradient
 marker
@@ -82,7 +83,7 @@ polygon
 polyline
 radialGradient
 rect
-script constructorNeedsCreatedByParser
+script constructorNeedsCreatedByParser, generateTypeHelpers
 stop
 style constructorNeedsCreatedByParser
 svg interfaceName=SVGSVGElement

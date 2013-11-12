@@ -45,7 +45,7 @@ PassRefPtr<WebRenderObject> WebRenderObject::create(WebPage* page)
     if (!mainFrame)
         return 0;
 
-    if (!mainFrame->loader()->client()->hasHTMLView())
+    if (!mainFrame->loader().client().hasHTMLView())
         return 0;
 
     RenderView* contentRenderer = mainFrame->contentRenderer();
@@ -103,7 +103,7 @@ WebRenderObject::WebRenderObject(RenderObject* renderer, bool shouldIncludeDesce
         return;
 
     FrameView* frameView = toFrameView(widget);
-    if (RenderView* coreContentRenderer = frameView->frame()->contentRenderer()) {
+    if (RenderView* coreContentRenderer = frameView->frame().contentRenderer()) {
         RefPtr<WebRenderObject> contentRenderer = adoptRef(new WebRenderObject(coreContentRenderer, shouldIncludeDescendants));
         m_children->append(contentRenderer.get());
     }

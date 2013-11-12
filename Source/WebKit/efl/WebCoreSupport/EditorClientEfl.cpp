@@ -249,7 +249,7 @@ bool EditorClientEfl::smartInsertDeleteEnabled()
     WebCore::Page* corePage = EWKPrivate::corePage(m_view);
     if (!corePage)
         return false;
-    return corePage->settings()->smartInsertDeleteEnabled();
+    return corePage->settings().smartInsertDeleteEnabled();
 }
 
 bool EditorClientEfl::isSelectTrailingWhitespaceEnabled()
@@ -257,7 +257,7 @@ bool EditorClientEfl::isSelectTrailingWhitespaceEnabled()
     WebCore::Page* corePage = EWKPrivate::corePage(m_view);
     if (!corePage)
         return false;
-    return corePage->settings()->selectTrailingWhitespaceEnabled();
+    return corePage->settings().selectTrailingWhitespaceEnabled();
 }
 
 void EditorClientEfl::toggleContinuousSpellChecking()
@@ -284,39 +284,36 @@ bool EditorClientEfl::handleEditingKeyboardEvent(KeyboardEvent* event)
 {
     Node* node = event->target()->toNode();
     ASSERT(node);
-    Frame* frame = node->document()->frame();
+    Frame* frame = node->document().frame();
     ASSERT(frame);
 
     const PlatformKeyboardEvent* keyEvent = event->keyEvent();
     if (!keyEvent)
         return false;
 
-    if (!frame->settings())
-        return false;
-
-    bool caretBrowsing = frame->settings()->caretBrowsingEnabled();
+    bool caretBrowsing = frame->settings().caretBrowsingEnabled();
     if (caretBrowsing) {
         switch (keyEvent->windowsVirtualKeyCode()) {
         case VK_LEFT:
-            frame->selection()->modify(keyEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
+            frame->selection().modify(keyEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                        DirectionLeft,
                                        keyEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
                                        UserTriggered);
             return true;
         case VK_RIGHT:
-            frame->selection()->modify(keyEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
+            frame->selection().modify(keyEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                        DirectionRight,
                                        keyEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
                                        UserTriggered);
             return true;
         case VK_UP:
-            frame->selection()->modify(keyEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
+            frame->selection().modify(keyEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                        DirectionBackward,
                                        keyEvent->ctrlKey() ? ParagraphGranularity : LineGranularity,
                                        UserTriggered);
             return true;
         case VK_DOWN:
-            frame->selection()->modify(keyEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
+            frame->selection().modify(keyEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                        DirectionForward,
                                        keyEvent->ctrlKey() ? ParagraphGranularity : LineGranularity,
                                        UserTriggered);

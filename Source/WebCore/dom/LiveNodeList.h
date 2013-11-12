@@ -99,7 +99,7 @@ public:
     static bool shouldInvalidateTypeOnAttributeChange(NodeListInvalidationType, const QualifiedName&);
 
 protected:
-    Document* document() const { return m_ownerNode->document(); }
+    Document* document() const { return &m_ownerNode->document(); }
     Node* rootNode() const;
     ContainerNode* rootContainerNode() const;
     bool overridesItemAfter() const { return m_overridesItemAfter; }
@@ -177,11 +177,6 @@ ALWAYS_INLINE bool LiveNodeListBase::shouldInvalidateTypeOnAttributeChange(NodeL
             || attrName == HTMLNames::formAttr || attrName == HTMLNames::typeAttr;
     case InvalidateOnHRefAttrChange:
         return attrName == HTMLNames::hrefAttr;
-    case InvalidateOnItemAttrChange:
-#if ENABLE(MICRODATA)
-        return attrName == HTMLNames::itemscopeAttr || attrName == HTMLNames::itempropAttr
-            || attrName == HTMLNames::itemtypeAttr || attrName == HTMLNames::itemrefAttr || attrName == HTMLNames::idAttr;
-#endif // Intentionally fall through
     case DoNotInvalidateOnAttributeChanges:
         return false;
     case InvalidateOnAnyAttrChange:

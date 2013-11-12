@@ -25,9 +25,10 @@
 #include "CounterNode.h"
 #include "Document.h"
 #include "Element.h"
+#include "ElementTraversal.h"
 #include "HTMLNames.h"
 #include "HTMLOListElement.h"
-#include "NodeTraversal.h"
+#include "PseudoElement.h"
 #include "RenderListItem.h"
 #include "RenderListMarker.h"
 #include "RenderStyle.h"
@@ -64,6 +65,13 @@ static RenderObject* previousInPreOrder(const RenderObject* object)
     return previous ? previous->renderer() : 0;
 }
 
+static inline Element* parentOrPseudoHostElement(const RenderObject* object)
+{
+    if (object->node()->isPseudoElement())
+        return toPseudoElement(object->node())->hostElement();
+    return toElement(object->node())->parentElement();
+}
+
 // This function processes the renderer tree in the order of the DOM tree
 // including pseudo elements as defined in CSS 2.1.
 static RenderObject* previousSiblingOrParent(const RenderObject* object)
@@ -74,18 +82,13 @@ static RenderObject* previousSiblingOrParent(const RenderObject* object)
         previous = ElementTraversal::pseudoAwarePreviousSibling(previous);
     if (previous)
         return previous->renderer();
-    previous = self->parentElement();
+    previous = parentOrPseudoHostElement(object);
     return previous ? previous->renderer() : 0;
-}
-
-static inline Element* parentElement(RenderObject* object)
-{
-    return toElement(object->node())->parentElement();
 }
 
 static inline bool areRenderersElementsSiblings(RenderObject* first, RenderObject* second)
 {
-    return parentElement(first) == parentElement(second);
+    return parentOrPseudoHostElement(first) == parentOrPseudoHostElement(second);
 }
 
 // This function processes the renderer tree in the order of the DOM tree
@@ -271,7 +274,7 @@ static bool findPlaceForCounter(RenderObject* counterOwner, const AtomicString& 
                         previousSiblingProtector = currentCounter;
                         // We are no longer interested in previous siblings of the currentRenderer or their children
                         // as counters they may have attached cannot be the previous sibling of the counter we are placing.
-                        currentRenderer = parentElement(currentRenderer)->renderer();
+                        currentRenderer = parentOrPseudoHostElement(currentRenderer)->renderer();
                         continue;
                     }
                 } else
@@ -327,7 +330,7 @@ static CounterNode* makeCounterNode(RenderObject* object, const AtomicString& id
     // Checking if some nodes that were previously counter tree root nodes
     // should become children of this node now.
     CounterMaps& maps = counterMaps();
-    Element* stayWithin = parentElement(object);
+    Element* stayWithin = parentOrPseudoHostElement(object);
     bool skipDescendants;
     for (RenderObject* currentRenderer = nextInPreOrder(object, stayWithin); currentRenderer; currentRenderer = nextInPreOrder(currentRenderer, stayWithin, skipDescendants)) {
         skipDescendants = false;
@@ -339,7 +342,7 @@ static CounterNode* makeCounterNode(RenderObject* object, const AtomicString& id
         skipDescendants = true;
         if (currentCounter->parent())
             continue;
-        if (stayWithin == parentElement(currentRenderer) && currentCounter->hasResetType())
+        if (stayWithin == parentOrPseudoHostElement(currentRenderer) && currentCounter->hasResetType())
             break;
         newNode->insertAfter(currentCounter, newNode->lastChild(), identifier);
     }
@@ -352,7 +355,7 @@ RenderCounter::RenderCounter(Document* node, const CounterContent& counter)
     , m_counterNode(0)
     , m_nextForSameCounter(0)
 {
-    view()->addRenderCounter();
+    view().addRenderCounter();
 }
 
 RenderCounter::~RenderCounter()
@@ -365,8 +368,7 @@ RenderCounter::~RenderCounter()
 
 void RenderCounter::willBeDestroyed()
 {
-    if (view())
-        view()->removeRenderCounter();
+    view().removeRenderCounter();
     RenderText::willBeDestroyed();
 }
 
@@ -498,8 +500,7 @@ void RenderCounter::destroyCounterNode(RenderObject* owner, const AtomicString& 
 
 void RenderCounter::rendererRemovedFromTree(RenderObject* renderer)
 {
-    ASSERT(renderer->view());
-    if (!renderer->view()->hasRenderCounters())
+    if (!renderer->view().hasRenderCounters())
         return;
     RenderObject* currentRenderer = renderer->lastLeafChild();
     if (!currentRenderer)
@@ -550,11 +551,10 @@ static void updateCounters(RenderObject* renderer)
 
 void RenderCounter::rendererSubtreeAttached(RenderObject* renderer)
 {
-    ASSERT(renderer->view());
-    if (!renderer->view()->hasRenderCounters())
+    if (!renderer->view().hasRenderCounters())
         return;
     Node* node = renderer->node();
-    if (node)
+    if (node && !node->isPseudoElement())
         node = node->parentNode();
     else
         node = renderer->generatingNode();

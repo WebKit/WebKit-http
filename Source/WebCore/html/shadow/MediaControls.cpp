@@ -84,7 +84,7 @@ void MediaControls::setMediaController(MediaControllerInterface* controller)
 
 void MediaControls::reset()
 {
-    Page* page = document()->page();
+    Page* page = document().page();
     if (!page)
         return;
 
@@ -108,7 +108,7 @@ void MediaControls::reset()
             m_volumeSlider->hide();
         else {
             m_volumeSlider->show();
-            m_volumeSlider->setVolume(m_mediaController->volume());
+            setSliderVolume();
         }
     }
 
@@ -126,7 +126,7 @@ void MediaControls::reset()
 
 void MediaControls::reportedError()
 {
-    Page* page = document()->page();
+    Page* page = document().page();
     if (!page)
         return;
 
@@ -216,7 +216,7 @@ void MediaControls::updateCurrentTimeDisplay()
 {
     double now = m_mediaController->currentTime();
 
-    Page* page = document()->page();
+    Page* page = document().page();
     if (!page)
         return;
 
@@ -240,7 +240,7 @@ void MediaControls::changedMute()
 void MediaControls::changedVolume()
 {
     if (m_volumeSlider)
-        m_volumeSlider->setVolume(m_mediaController->volume());
+        setSliderVolume();
     if (m_panelMuteButton && m_panelMuteButton->renderer())
         m_panelMuteButton->renderer()->repaint();
 }
@@ -272,7 +272,7 @@ void MediaControls::enteredFullscreen()
     m_isFullscreen = true;
     m_fullScreenButton->setIsFullscreen(true);
 
-    if (Page* page = document()->page())
+    if (Page* page = document().page())
         page->chrome().setCursorHiddenUntilMouseMoves(true);
 
     startHideFullscreenControlsTimer();
@@ -340,7 +340,7 @@ void MediaControls::hideFullscreenControlsTimerFired(Timer<MediaControls>*)
     if (!shouldHideControls())
         return;
 
-    if (Page* page = document()->page())
+    if (Page* page = document().page())
         page->chrome().setCursorHiddenUntilMouseMoves(true);
 
     makeTransparent();
@@ -351,11 +351,11 @@ void MediaControls::startHideFullscreenControlsTimer()
     if (!m_isFullscreen)
         return;
 
-    Page* page = document()->page();
+    Page* page = document().page();
     if (!page)
         return;
 
-    m_hideFullscreenControlsTimer.startOneShot(page->settings()->timeWithoutMouseMovementBeforeHidingControls());
+    m_hideFullscreenControlsTimer.startOneShot(page->settings().timeWithoutMouseMovementBeforeHidingControls());
 }
 
 void MediaControls::stopHideFullscreenControlsTimer()
@@ -385,7 +385,7 @@ void MediaControls::createTextTrackDisplay()
     if (m_textDisplayContainer)
         return;
 
-    RefPtr<MediaControlTextTrackContainerElement> textDisplayContainer = MediaControlTextTrackContainerElement::create(document());
+    RefPtr<MediaControlTextTrackContainerElement> textDisplayContainer = MediaControlTextTrackContainerElement::create(&document());
     m_textDisplayContainer = textDisplayContainer.get();
 
     if (m_mediaController)
@@ -424,6 +424,11 @@ void MediaControls::textTrackPreferencesChanged()
         m_textDisplayContainer->updateSizes(true);
 }
 #endif
+
+void MediaControls::setSliderVolume()
+{
+    m_volumeSlider->setVolume(m_mediaController->muted() ? 0.0 : m_mediaController->volume());
+}
 
 }
 

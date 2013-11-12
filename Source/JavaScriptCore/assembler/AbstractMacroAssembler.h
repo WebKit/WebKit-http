@@ -95,6 +95,13 @@ public:
         TimesFour,
         TimesEight,
     };
+    
+    static Scale timesPtr()
+    {
+        if (sizeof(void*) == 4)
+            return TimesFour;
+        return TimesEight;
+    }
 
     // Address:
     //
@@ -104,6 +111,11 @@ public:
             : base(base)
             , offset(offset)
         {
+        }
+        
+        Address withOffset(int32_t additionalOffset)
+        {
+            return Address(base, offset + additionalOffset);
         }
 
         RegisterID base;

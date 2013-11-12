@@ -61,6 +61,9 @@ namespace WebKit {
 static PassRefPtr<ShareableBitmap> convertImageToBitmap(NSImage *image, const IntSize& size)
 {
     RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(size, ShareableBitmap::SupportsAlpha);
+    if (!bitmap)
+        return nullptr;
+
     OwnPtr<GraphicsContext> graphicsContext = bitmap->createGraphicsContext();
 
     RetainPtr<NSGraphicsContext> savedContext = [NSGraphicsContext currentContext];
@@ -79,7 +82,7 @@ void WebDragClient::startDrag(RetainPtr<NSImage> image, const IntPoint& point, c
     bitmapSize.scale(frame->page()->deviceScaleFactor());
     RefPtr<ShareableBitmap> bitmap = convertImageToBitmap(image.get(), bitmapSize);
     ShareableBitmap::Handle handle;
-    if (!bitmap->createHandle(handle))
+    if (!bitmap || !bitmap->createHandle(handle))
         return;
 
     // FIXME: Seems this message should be named StartDrag, not SetDragImage.

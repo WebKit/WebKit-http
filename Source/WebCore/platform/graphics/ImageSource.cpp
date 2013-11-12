@@ -99,18 +99,18 @@ bool ImageSource::isSizeAvailable()
     return m_decoder && m_decoder->isSizeAvailable();
 }
 
-IntSize ImageSource::size(RespectImageOrientationEnum shouldRespectOrientation) const
+IntSize ImageSource::size(ImageOrientationDescription description) const
 {
-    return frameSizeAtIndex(0, shouldRespectOrientation);
+    return frameSizeAtIndex(0, description);
 }
 
-IntSize ImageSource::frameSizeAtIndex(size_t index, RespectImageOrientationEnum shouldRespectOrientation) const
+IntSize ImageSource::frameSizeAtIndex(size_t index, ImageOrientationDescription description) const
 {
     if (!m_decoder)
         return IntSize();
 
     IntSize size = m_decoder->frameSizeAtIndex(index);
-    if ((shouldRespectOrientation == RespectImageOrientation) && m_decoder->orientation().usesWidthAsHeight())
+    if ((description.respectImageOrientation() == RespectImageOrientation) && m_decoder->orientation().usesWidthAsHeight())
         return IntSize(size.height(), size.width());
 
     return size;
@@ -155,16 +155,20 @@ PassNativeImagePtr ImageSource::createFrameAtIndex(size_t index)
     return buffer->asNewNativeImage();
 }
 
-float ImageSource::frameDurationAtIndex(size_t index) const
+float ImageSource::frameDurationAtIndex(size_t index)
 {
     if (!m_decoder)
+        return 0;
+
+    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index);
+    if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
         return 0;
 
     // Many annoying ads specify a 0 duration to make an image flash as quickly as possible.
     // We follow Firefox's behavior and use a duration of 100 ms for any frames that specify
     // a duration of <= 10 ms. See <rdar://problem/7689300> and <http://webkit.org/b/36082>
     // for more information.
-    const float duration = m_decoder->frameDurationAtIndex(index) / 1000.0f;
+    const float duration = buffer->duration() / 1000.0f;
     if (duration < 0.011f)
         return 0.100f;
     return duration;
@@ -175,14 +179,20 @@ ImageOrientation ImageSource::orientationAtIndex(size_t) const
     return m_decoder ? m_decoder->orientation() : DefaultImageOrientation;
 }
 
-bool ImageSource::frameHasAlphaAtIndex(size_t index) const
+bool ImageSource::frameHasAlphaAtIndex(size_t index)
 {
-    return !m_decoder || m_decoder->frameHasAlphaAtIndex(index);
+    if (!m_decoder)
+        return true;
+    return m_decoder->frameHasAlphaAtIndex(index);
 }
 
-bool ImageSource::frameIsCompleteAtIndex(size_t index) const
+bool ImageSource::frameIsCompleteAtIndex(size_t index)
 {
-    return m_decoder && m_decoder->frameIsCompleteAtIndex(index);
+    if (!m_decoder)
+        return false;
+
+    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index);
+    return buffer && buffer->status() == ImageFrame::FrameComplete;
 }
 
 unsigned ImageSource::frameBytesAtIndex(size_t index) const

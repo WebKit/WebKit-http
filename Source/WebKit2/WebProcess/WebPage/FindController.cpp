@@ -98,8 +98,8 @@ void FindController::countStringMatches(const String& string, FindOptions option
 
 static Frame* frameWithSelection(Page* page)
 {
-    for (Frame* frame = page->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
-        if (frame->selection()->isRange())
+    for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (frame->selection().isRange())
             return frame;
     }
 
@@ -119,7 +119,7 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
             m_webPage->corePage()->unmarkAllTextMatches();
 
         if (selectedFrame)
-            selectedFrame->selection()->clear();
+            selectedFrame->selection().clear();
 
         hideFindIndicator();
 
@@ -201,7 +201,7 @@ void FindController::findStringMatches(const String& string, FindOptions options
 
 bool FindController::getFindIndicatorBitmapAndRect(Frame* frame, ShareableBitmap::Handle& handle, IntRect& selectionRect)
 {
-    selectionRect = enclosingIntRect(frame->selection()->bounds());
+    selectionRect = enclosingIntRect(frame->selection().bounds());
 
     // Selection rect can be empty for matches that are currently obscured from view.
     if (selectionRect.isEmpty())
@@ -238,18 +238,18 @@ void FindController::getImageForFindMatch(uint32_t matchIndex)
 {
     if (matchIndex >= m_findMatches.size())
         return;
-    Frame* frame = m_findMatches[matchIndex]->startContainer()->document()->frame();
+    Frame* frame = m_findMatches[matchIndex]->startContainer()->document().frame();
     if (!frame)
         return;
 
-    VisibleSelection oldSelection = frame->selection()->selection();
-    frame->selection()->setSelection(VisibleSelection(m_findMatches[matchIndex].get()));
+    VisibleSelection oldSelection = frame->selection().selection();
+    frame->selection().setSelection(VisibleSelection(m_findMatches[matchIndex].get()));
 
     IntRect selectionRect;
     ShareableBitmap::Handle handle;
     getFindIndicatorBitmapAndRect(frame, handle, selectionRect);
 
-    frame->selection()->setSelection(oldSelection);
+    frame->selection().setSelection(oldSelection);
 
     if (handle.isNull())
         return;
@@ -261,10 +261,10 @@ void FindController::selectFindMatch(uint32_t matchIndex)
 {
     if (matchIndex >= m_findMatches.size())
         return;
-    Frame* frame = m_findMatches[matchIndex]->startContainer()->document()->frame();
+    Frame* frame = m_findMatches[matchIndex]->startContainer()->document().frame();
     if (!frame)
         return;
-    frame->selection()->setSelection(VisibleSelection(m_findMatches[matchIndex].get()));
+    frame->selection().setSelection(VisibleSelection(m_findMatches[matchIndex].get()));
 }
 
 void FindController::hideFindUI()
@@ -297,7 +297,7 @@ bool FindController::updateFindIndicator(Frame* selectedFrame, bool isShowingOve
     IntRect selectionRectInWindowCoordinates = selectedFrame->view()->contentsToWindow(selectionRect);
 
     Vector<FloatRect> textRects;
-    selectedFrame->selection()->getClippedVisibleTextRectangles(textRects);
+    selectedFrame->selection().getClippedVisibleTextRectangles(textRects);
 
     // We want the text rects in selection rect coordinates.
     Vector<FloatRect> textRectsInSelectionRectCoordinates;
@@ -328,11 +328,8 @@ void FindController::hideFindIndicator()
 
 void FindController::showFindIndicatorInSelection()
 {
-    Frame* selectedFrame = m_webPage->corePage()->focusController()->focusedOrMainFrame();
-    if (!selectedFrame)
-        return;
-    
-    updateFindIndicator(selectedFrame, false);
+    Frame& selectedFrame = m_webPage->corePage()->focusController().focusedOrMainFrame();
+    updateFindIndicator(&selectedFrame, false);
 }
 
 void FindController::deviceScaleFactorDidChange()
@@ -350,13 +347,13 @@ Vector<IntRect> FindController::rectsForTextMatches()
 {
     Vector<IntRect> rects;
 
-    for (Frame* frame = m_webPage->corePage()->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
+    for (Frame* frame = &m_webPage->corePage()->mainFrame(); frame; frame = frame->tree().traverseNext()) {
         Document* document = frame->document();
         if (!document)
             continue;
 
         IntRect visibleRect = frame->view()->visibleContentRect();
-        Vector<IntRect> frameRects = document->markers()->renderedRectsForMarkers(DocumentMarker::TextMatch);
+        Vector<IntRect> frameRects = document->markers().renderedRectsForMarkers(DocumentMarker::TextMatch);
         IntPoint frameOffset(-frame->view()->scrollOffsetRelativeToDocument().width(), -frame->view()->scrollOffsetRelativeToDocument().height());
         frameOffset = frame->view()->convertToContainingWindow(frameOffset);
 
@@ -397,35 +394,20 @@ static const float overlayBackgroundGreen = 0.1;
 static const float overlayBackgroundBlue = 0.1;
 static const float overlayBackgroundAlpha = 0.25;
 
-static Color overlayBackgroundColor(float fractionFadedIn)
+void FindController::drawRect(PageOverlay* /*pageOverlay*/, GraphicsContext& graphicsContext, const IntRect& dirtyRect)
 {
-    return Color(overlayBackgroundRed, overlayBackgroundGreen, overlayBackgroundBlue, overlayBackgroundAlpha * fractionFadedIn);
-}
-
-static Color holeShadowColor(float fractionFadedIn)
-{
-    return Color(0.0f, 0.0f, 0.0f, fractionFadedIn);
-}
-
-static Color holeFillColor(float fractionFadedIn)
-{
-    return Color(1.0f, 1.0f, 1.0f, fractionFadedIn);
-}
-
-void FindController::drawRect(PageOverlay* pageOverlay, GraphicsContext& graphicsContext, const IntRect& dirtyRect)
-{
-    float fractionFadedIn = pageOverlay->fractionFadedIn();
+    Color overlayBackgroundColor(overlayBackgroundRed, overlayBackgroundGreen, overlayBackgroundBlue, overlayBackgroundAlpha);
 
     Vector<IntRect> rects = rectsForTextMatches();
 
     // Draw the background.
-    graphicsContext.fillRect(dirtyRect, overlayBackgroundColor(fractionFadedIn), ColorSpaceSRGB);
+    graphicsContext.fillRect(dirtyRect, overlayBackgroundColor, ColorSpaceSRGB);
 
     {
         GraphicsContextStateSaver stateSaver(graphicsContext);
 
-        graphicsContext.setShadow(FloatSize(shadowOffsetX, shadowOffsetY), shadowBlurRadius, holeShadowColor(fractionFadedIn), ColorSpaceSRGB);
-        graphicsContext.setFillColor(holeFillColor(fractionFadedIn), ColorSpaceSRGB);
+        graphicsContext.setShadow(FloatSize(shadowOffsetX, shadowOffsetY), shadowBlurRadius, Color::black, ColorSpaceSRGB);
+        graphicsContext.setFillColor(Color::white, ColorSpaceSRGB);
 
         // Draw white frames around the holes.
         for (size_t i = 0; i < rects.size(); ++i) {
@@ -446,7 +428,7 @@ void FindController::drawRect(PageOverlay* pageOverlay, GraphicsContext& graphic
         return;
 
     if (Frame* selectedFrame = frameWithSelection(m_webPage->corePage())) {
-        IntRect findIndicatorRect = selectedFrame->view()->contentsToWindow(enclosingIntRect(selectedFrame->selection()->bounds()));
+        IntRect findIndicatorRect = selectedFrame->view()->contentsToWindow(enclosingIntRect(selectedFrame->selection().bounds()));
 
         if (findIndicatorRect != m_findIndicatorRect)
             hideFindIndicator();

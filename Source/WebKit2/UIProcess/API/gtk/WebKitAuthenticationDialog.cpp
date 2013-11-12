@@ -21,41 +21,46 @@
 #include "WebKitAuthenticationDialog.h"
 
 #include "AuthenticationDecisionListener.h"
-#include "WebCredential.h"
+#include "WebKitAuthenticationRequestPrivate.h"
+#include "WebKitCredentialPrivate.h"
 #include "WebKitPrivate.h"
+#include "WebKitWebView.h"
 
 using namespace WebKit;
 
 struct _WebKitAuthenticationDialogPrivate {
-    RefPtr<AuthenticationChallengeProxy> authenticationChallenge;
-
+    GRefPtr<WebKitAuthenticationRequest> request;
     GtkWidget* authWidget;
     GtkWidget* defaultButton;
+    unsigned long loadFailedEventID;
     GRefPtr<GtkStyleContext> styleContext;
+    WebKitWebView* webView;
 };
 
 WEBKIT_DEFINE_TYPE(WebKitAuthenticationDialog, webkit_authentication_dialog, GTK_TYPE_EVENT_BOX)
 
-static void webkitAuthenticationDialogAuthenticate(WebKitAuthenticationDialog* authDialog, WebCredential* credential)
-{
-    WebKitAuthenticationDialogPrivate* priv = authDialog->priv;
-    priv->authenticationChallenge->listener()->useCredential(credential);
-    gtk_widget_destroy(GTK_WIDGET(authDialog));
-}
-
 static void okButtonClicked(GtkButton*, WebKitAuthenticationDialog* authDialog)
 {
     WebKitAuthenticationDialogPrivate* priv = authDialog->priv;
-    RefPtr<WebCredential> webCredential = WebCredential::create(webkitAuthenticationWidgetCreateCredential(WEBKIT_AUTHENTICATION_WIDGET(priv->authWidget)));
-    webkitAuthenticationDialogAuthenticate(authDialog, webCredential.get());
+    WebKitCredential* credential = webkitCredentialCreate(webkitAuthenticationWidgetCreateCredential(WEBKIT_AUTHENTICATION_WIDGET(priv->authWidget)));
+    webkit_authentication_request_authenticate(priv->request.get(), credential);
+    webkit_credential_free(credential);
+    gtk_widget_destroy(GTK_WIDGET(authDialog));
 }
 
 static void cancelButtonClicked(GtkButton*, WebKitAuthenticationDialog* authDialog)
 {
-    webkitAuthenticationDialogAuthenticate(authDialog, 0);
+    webkit_authentication_request_authenticate(authDialog->priv->request.get(), 0);
+    gtk_widget_destroy(GTK_WIDGET(authDialog));
 }
 
-static void webkitAuthenticationDialogInitialize(WebKitAuthenticationDialog* authDialog, CredentialStorageMode credentialStorageMode)
+static void pageLoadFailed(WebKitWebView*, WebKitLoadEvent, const char*, GError*, WebKitAuthenticationDialog* authDialog)
+{
+    webkit_authentication_request_cancel(authDialog->priv->request.get());
+    gtk_widget_destroy(GTK_WIDGET(authDialog));
+}
+
+static void webkitAuthenticationDialogInitialize(WebKitAuthenticationDialog* authDialog, CredentialStorageMode credentialStorageMode, WebKitWebView* webView)
 {
     GtkWidget* frame = gtk_frame_new(0);
     gtk_frame_set_shadow_type(GTK_FRAME(frame), GTK_SHADOW_IN);
@@ -80,7 +85,7 @@ static void webkitAuthenticationDialogInitialize(WebKitAuthenticationDialog* aut
     gtk_box_pack_end(GTK_BOX(buttonBox), button, FALSE, TRUE, 0);
     gtk_widget_show(button);
 
-    authDialog->priv->authWidget = webkitAuthenticationWidgetNew(authDialog->priv->authenticationChallenge->core(), credentialStorageMode);
+    authDialog->priv->authWidget = webkitAuthenticationWidgetNew(webkitAuthenticationRequestGetAuthenticationChallenge(authDialog->priv->request.get())->core(), credentialStorageMode);
     gtk_box_pack_start(GTK_BOX(vBox), authDialog->priv->authWidget, TRUE, TRUE, 0);
     gtk_widget_show(authDialog->priv->authWidget);
 
@@ -92,6 +97,9 @@ static void webkitAuthenticationDialogInitialize(WebKitAuthenticationDialog* aut
 
     gtk_container_add(GTK_CONTAINER(authDialog), frame);
     gtk_widget_show(frame);
+
+    authDialog->priv->webView = webView;
+    authDialog->priv->loadFailedEventID = g_signal_connect(webView, "load-failed", G_CALLBACK(pageLoadFailed), authDialog);
 }
 
 static gboolean webkitAuthenticationDialogDraw(GtkWidget* widget, cairo_t* cr)
@@ -128,20 +136,32 @@ static void webkitAuthenticationDialogConstructed(GObject* object)
     gtk_widget_path_free(path);
 }
 
+static void webkitAuthenticationDialogDispose(GObject* object)
+{
+    WebKitAuthenticationDialogPrivate* priv = WEBKIT_AUTHENTICATION_DIALOG(object)->priv;
+    if (priv->loadFailedEventID) {
+        g_signal_handler_disconnect(priv->webView, priv->loadFailedEventID);
+        priv->loadFailedEventID = 0;
+    }
+
+    G_OBJECT_CLASS(webkit_authentication_dialog_parent_class)->dispose(object);
+}
+
 static void webkit_authentication_dialog_class_init(WebKitAuthenticationDialogClass* klass)
 {
     GObjectClass* objectClass = G_OBJECT_CLASS(klass);
     objectClass->constructed = webkitAuthenticationDialogConstructed;
+    objectClass->dispose = webkitAuthenticationDialogDispose;
 
     GtkWidgetClass* widgetClass = GTK_WIDGET_CLASS(klass);
     widgetClass->draw = webkitAuthenticationDialogDraw;
     widgetClass->map = webkitAuthenticationDialogMap;
 }
 
-GtkWidget* webkitAuthenticationDialogNew(AuthenticationChallengeProxy* authenticationChallenge, CredentialStorageMode mode)
+GtkWidget* webkitAuthenticationDialogNew(WebKitAuthenticationRequest* request, CredentialStorageMode mode, WebKitWebView* webView)
 {
     WebKitAuthenticationDialog* authDialog = WEBKIT_AUTHENTICATION_DIALOG(g_object_new(WEBKIT_TYPE_AUTHENTICATION_DIALOG, NULL));
-    authDialog->priv->authenticationChallenge = authenticationChallenge;
-    webkitAuthenticationDialogInitialize(authDialog, mode);
+    authDialog->priv->request = request;
+    webkitAuthenticationDialogInitialize(authDialog, mode, webView);
     return GTK_WIDGET(authDialog);
 }
