@@ -31,7 +31,11 @@
 #include "JSGlobalObject.h"
 
 #include "Arguments.h"
+#include "ArgumentsIteratorConstructor.h"
+#include "ArgumentsIteratorPrototype.h"
 #include "ArrayConstructor.h"
+#include "ArrayIteratorConstructor.h"
+#include "ArrayIteratorPrototype.h"
 #include "ArrayPrototype.h"
 #include "BooleanConstructor.h"
 #include "BooleanPrototype.h"
@@ -50,9 +54,11 @@
 #include "Interpreter.h"
 #include "JSAPIWrapperObject.h"
 #include "JSActivation.h"
+#include "JSArgumentsIterator.h"
 #include "JSArrayBuffer.h"
 #include "JSArrayBufferConstructor.h"
 #include "JSArrayBufferPrototype.h"
+#include "JSArrayIterator.h"
 #include "JSBoundFunction.h"
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
@@ -66,9 +72,11 @@
 #include "JSGlobalObjectFunctions.h"
 #include "JSLock.h"
 #include "JSMap.h"
+#include "JSMapIterator.h"
 #include "JSNameScope.h"
 #include "JSONObject.h"
 #include "JSSet.h"
+#include "JSSetIterator.h"
 #include "JSTypedArrayConstructors.h"
 #include "JSTypedArrayPrototypes.h"
 #include "JSTypedArrays.h"
@@ -77,6 +85,8 @@
 #include "LegacyProfiler.h"
 #include "Lookup.h"
 #include "MapConstructor.h"
+#include "MapIteratorConstructor.h"
+#include "MapIteratorPrototype.h"
 #include "MapPrototype.h"
 #include "MathObject.h"
 #include "NameConstructor.h"
@@ -96,6 +106,8 @@
 #include "RegExpObject.h"
 #include "RegExpPrototype.h"
 #include "SetConstructor.h"
+#include "SetIteratorConstructor.h"
+#include "SetIteratorPrototype.h"
 #include "SetPrototype.h"
 #include "StrictEvalActivation.h"
 #include "StringConstructor.h"
@@ -119,7 +131,7 @@ namespace JSC {
 
 const ClassInfo JSGlobalObject::s_info = { "GlobalObject", &Base::s_info, 0, ExecState::globalObjectTable, CREATE_METHOD_TABLE(JSGlobalObject) };
 
-const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled, 0 };
+const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled, 0, &shouldInterruptScriptBeforeTimeout };
 
 /* Source for JSGlobalObject.lut.h
 @begin globalObjectTable
@@ -245,15 +257,15 @@ void JSGlobalObject::reset(JSValue prototype)
     m_objectPrototype->putDirectNonIndexAccessor(vm, vm.propertyNames->underscoreProto, protoAccessor, Accessor | DontEnum);
     m_functionPrototype->structure()->setPrototypeWithoutTransition(vm, m_objectPrototype.get());
     
-    m_typedArrays[toIndex(TypeInt8)].prototype.set(vm, this, JSInt8ArrayPrototype::create(exec, this, JSInt8ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
-    m_typedArrays[toIndex(TypeInt16)].prototype.set(vm, this, JSInt16ArrayPrototype::create(exec, this, JSInt16ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
-    m_typedArrays[toIndex(TypeInt32)].prototype.set(vm, this, JSInt32ArrayPrototype::create(exec, this, JSInt32ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
-    m_typedArrays[toIndex(TypeUint8)].prototype.set(vm, this, JSUint8ArrayPrototype::create(exec, this, JSUint8ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
-    m_typedArrays[toIndex(TypeUint8Clamped)].prototype.set(vm, this, JSUint8ClampedArrayPrototype::create(exec, this, JSUint8ClampedArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
-    m_typedArrays[toIndex(TypeUint16)].prototype.set(vm, this, JSUint16ArrayPrototype::create(exec, this, JSUint16ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
-    m_typedArrays[toIndex(TypeUint32)].prototype.set(vm, this, JSUint32ArrayPrototype::create(exec, this, JSUint32ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
-    m_typedArrays[toIndex(TypeFloat32)].prototype.set(vm, this, JSFloat32ArrayPrototype::create(exec, this, JSFloat32ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
-    m_typedArrays[toIndex(TypeFloat64)].prototype.set(vm, this, JSFloat64ArrayPrototype::create(exec, this, JSFloat64ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
+    m_typedArrays[toIndex(TypeInt8)].prototype.set(vm, this, JSInt8ArrayPrototype::create(vm, this, JSInt8ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
+    m_typedArrays[toIndex(TypeInt16)].prototype.set(vm, this, JSInt16ArrayPrototype::create(vm, this, JSInt16ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
+    m_typedArrays[toIndex(TypeInt32)].prototype.set(vm, this, JSInt32ArrayPrototype::create(vm, this, JSInt32ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
+    m_typedArrays[toIndex(TypeUint8)].prototype.set(vm, this, JSUint8ArrayPrototype::create(vm, this, JSUint8ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
+    m_typedArrays[toIndex(TypeUint8Clamped)].prototype.set(vm, this, JSUint8ClampedArrayPrototype::create(vm, this, JSUint8ClampedArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
+    m_typedArrays[toIndex(TypeUint16)].prototype.set(vm, this, JSUint16ArrayPrototype::create(vm, this, JSUint16ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
+    m_typedArrays[toIndex(TypeUint32)].prototype.set(vm, this, JSUint32ArrayPrototype::create(vm, this, JSUint32ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
+    m_typedArrays[toIndex(TypeFloat32)].prototype.set(vm, this, JSFloat32ArrayPrototype::create(vm, this, JSFloat32ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
+    m_typedArrays[toIndex(TypeFloat64)].prototype.set(vm, this, JSFloat64ArrayPrototype::create(vm, this, JSFloat64ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
     m_typedArrays[toIndex(TypeDataView)].prototype.set(vm, this, JSDataViewPrototype::create(vm, JSDataViewPrototype::createStructure(vm, this, m_objectPrototype.get())));
     
     m_typedArrays[toIndex(TypeInt8)].structure.set(vm, this, JSInt8Array::createStructure(vm, this, m_typedArrays[toIndex(TypeInt8)].prototype.get()));
@@ -283,7 +295,7 @@ void JSGlobalObject::reset(JSValue prototype)
     m_objcWrapperObjectStructure.set(vm, this, JSCallbackObject<JSAPIWrapperObject>::createStructure(vm, this, m_objectPrototype.get()));
 #endif
 
-    m_arrayPrototype.set(vm, this, ArrayPrototype::create(vm, ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
+    m_arrayPrototype.set(vm, this, ArrayPrototype::create(vm, this, ArrayPrototype::createStructure(vm, this, m_objectPrototype.get())));
     
     m_originalArrayStructureForIndexingShape[UndecidedShape >> IndexingShapeShift].set(vm, this, JSArray::createStructure(vm, this, m_arrayPrototype.get(), ArrayWithUndecided));
     m_originalArrayStructureForIndexingShape[Int32Shape >> IndexingShapeShift].set(vm, this, JSArray::createStructure(vm, this, m_arrayPrototype.get(), ArrayWithInt32));
@@ -382,12 +394,17 @@ void JSGlobalObject::reset(JSValue prototype)
     FOR_EACH_SIMPLE_BUILTIN_TYPE(PUT_CONSTRUCTOR_FOR_SIMPLE_TYPE)
 
 #undef PUT_CONSTRUCTOR_FOR_SIMPLE_TYPE
-
+    PrototypeMap& prototypeMap = vm.prototypeMap;
+    Structure* iteratorResultStructure = prototypeMap.emptyObjectStructureForPrototype(m_objectPrototype.get(), JSFinalObject::defaultInlineCapacity());
+    PropertyOffset offset;
+    iteratorResultStructure = Structure::addPropertyTransition(vm, iteratorResultStructure, vm.propertyNames->done, 0, 0, offset);
+    iteratorResultStructure = Structure::addPropertyTransition(vm, iteratorResultStructure, vm.propertyNames->value, 0, 0, offset);
+    m_iteratorResultStructure.set(vm, this, iteratorResultStructure);
 
     m_evalFunction.set(vm, this, JSFunction::create(vm, this, 1, vm.propertyNames->eval.string(), globalFuncEval));
     putDirectWithoutTransition(vm, vm.propertyNames->eval, m_evalFunction.get(), DontEnum);
 
-    putDirectWithoutTransition(vm, vm.propertyNames->JSON, JSONObject::create(exec, this, JSONObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->JSON, JSONObject::create(vm, JSONObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->Math, MathObject::create(vm, this, MathObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
     
     FixedArray<InternalFunction*, NUMBER_OF_TYPED_ARRAY_TYPES> typedArrayConstructors;

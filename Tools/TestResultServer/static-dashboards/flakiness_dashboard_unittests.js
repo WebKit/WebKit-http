@@ -46,7 +46,7 @@ function resetGlobals()
     LOAD_BUILDBOT_DATA([{
         name: 'webkit.org',
         url: 'dummyurl',
-        tests: {'layout-tests': {'builders': ['Apple Lion Release WK2 (Tests)', 'Apple Lion Debug WK2 (Tests)', 'GTK Linux 64-bit Release', 'Qt Linux Tests']}}
+        tests: {'layout-tests': {'builders': ['Apple Lion Release WK2 (Tests)', 'Apple Lion Debug WK2 (Tests)', 'GTK Linux 64-bit Release']}}
     }]);
  
     for (var group in LAYOUT_TESTS_BUILDER_GROUPS)
@@ -160,7 +160,6 @@ test('platformAndBuildType', 30, function() {
     runPlatformAndBuildTypeTest('GTK Linux 32-bit Debug', 'GTK_LINUX_WK1', 'DEBUG');
     runPlatformAndBuildTypeTest('GTK Linux 64-bit Debug', 'GTK_LINUX_WK1', 'DEBUG');
     runPlatformAndBuildTypeTest('GTK Linux 64-bit Debug WK2', 'GTK_LINUX_WK2', 'DEBUG');
-    runPlatformAndBuildTypeTest('Qt Linux Release', 'QT_LINUX', 'RELEASE');
     runPlatformAndBuildTypeTest('Windows 7 Release (Tests)', 'APPLE_WIN_WIN7', 'RELEASE');
     runPlatformAndBuildTypeTest('Windows XP Debug (Tests)', 'APPLE_WIN_XP', 'DEBUG');
     
@@ -179,7 +178,7 @@ test('realModifiers', 3, function() {
 test('allTestsWithSamePlatformAndBuildType', 1, function() {
     // FIXME: test that allTestsWithSamePlatformAndBuildType actually returns the right set of tests.
     var expectedPlatformsList = ['APPLE_MAC_LION_WK1', 'APPLE_MAC_LION_WK2', 'APPLE_MAC_MOUNTAINLION_WK1', 'APPLE_MAC_MOUNTAINLION_WK2',
-                                 'APPLE_WIN_XP', 'APPLE_WIN_WIN7',  'GTK_LINUX_WK1', 'GTK_LINUX_WK2', 'QT_LINUX', 'EFL_LINUX_WK1', 'EFL_LINUX_WK2'];
+                                 'APPLE_WIN_XP', 'APPLE_WIN_WIN7',  'GTK_LINUX_WK1', 'GTK_LINUX_WK2', 'EFL_LINUX_WK1', 'EFL_LINUX_WK2'];
     var actualPlatformsList = Object.keys(g_allTestsByPlatformAndBuildType);
     deepEqual(expectedPlatformsList, actualPlatformsList);
 });
@@ -381,7 +380,7 @@ test('htmlForIndividualTestOnAllBuildersWithResultsLinks', 1, function() {
         '</table>' +
         '<div>The following builders either don\'t run this test (e.g. it\'s skipped) or all runs passed:</div>' +
         '<div class=skipped-builder-list>' +
-            '<div class=skipped-builder>Apple Lion Debug WK2 (Tests)</div><div class=skipped-builder>GTK Linux 64-bit Release</div><div class=skipped-builder>Qt Linux Tests</div>' +
+            '<div class=skipped-builder>Apple Lion Debug WK2 (Tests)</div><div class=skipped-builder>GTK Linux 64-bit Release</div>' +
         '</div>' +
         '<div class=expectations test=dummytest.html>' +
             '<div><span class=link onclick="g_history.setQueryParameter(\'showExpectations\', true)">Show results</span> | ' +
@@ -460,16 +459,6 @@ test('htmlForSingleTestRow', 1, function() {
     equal(htmlForSingleTestRow(test), expected);
 });
 
-test('lookupVirtualTestSuite', 2, function() {
-    equal(lookupVirtualTestSuite('fast/canvas/foo.html'), '');
-    equal(lookupVirtualTestSuite('platform/chromium/virtual/gpu/fast/canvas/foo.html'), 'platform/chromium/virtual/gpu/fast/canvas');
-});
-
-test('baseTest', 2, function() {
-    equal(baseTest('fast/canvas/foo.html', ''), 'fast/canvas/foo.html');
-    equal(baseTest('platform/chromium/virtual/gpu/fast/canvas/foo.html', 'platform/chromium/virtual/gpu/fast/canvas'), 'fast/canvas/foo.html');
-});
-
 // FIXME: Create builders_tests.js and move this there.
 
 test('requestBuilderListAddsBuilderGroupEntry', 1, function() {
@@ -513,21 +502,15 @@ test('popup', 2, function() {
     ok(!document.querySelector('#popup'));
 });
 
-test('gpuResultsPath', 3, function() {
-  equal(gpuResultsPath('777777', 'Win7 Release (ATI)'), '777777_Win7_Release_ATI_');
-  equal(gpuResultsPath('123', 'GPU Linux (dbg)(NVIDIA)'), '123_GPU_Linux_dbg_NVIDIA_');
-  equal(gpuResultsPath('12345', 'GPU Mac'), '12345_GPU_Mac');
-});
-
 test('TestTrie', 3, function() {
     var builders = {
-        "Dummy Chromium Windows Builder": true,
+        "Dummy Windows Builder": true,
         "Dummy GTK Linux Builder": true,
         "Dummy Apple Mac Lion Builder": true
     };
 
     var resultsByBuilder = {
-        "Dummy Chromium Windows Builder": {
+        "Dummy Windows Builder": {
             tests: {
                 "foo": true,
                 "foo/bar/1.html": true,

@@ -20,7 +20,7 @@
 
 [
     Constructor,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface XMLSerializer {
     [RaisesException] DOMString serializeToString([Default=Undefined] optional Node node);
 };

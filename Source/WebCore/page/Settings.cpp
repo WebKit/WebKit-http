@@ -46,8 +46,6 @@
 #include "TextAutosizer.h"
 #include <limits>
 
-using namespace std;
-
 namespace WebCore {
 
 static void setImageLoadingSettings(Page* page)
@@ -79,6 +77,10 @@ bool Settings::gAVFoundationEnabled = false;
 
 #if PLATFORM(MAC)
 bool Settings::gQTKitEnabled = true;
+#endif
+
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+bool Settings::gVideoPluginProxyEnabled = true;
 #endif
 
 bool Settings::gMockScrollbarsEnabled = false;
@@ -113,10 +115,12 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
 }
 
 #if PLATFORM(IOS)
+static const bool defaultFixedPositionCreatesStackingContext = true;
 static const bool defaultMediaPlaybackAllowsInline = false;
 static const bool defaultMediaPlaybackRequiresUserGesture = true;
 static const bool defaultShouldRespectImageOrientation = true;
 #else
+static const bool defaultFixedPositionCreatesStackingContext = false;
 static const bool defaultMediaPlaybackAllowsInline = true;
 static const bool defaultMediaPlaybackRequiresUserGesture = false;
 static const bool defaultShouldRespectImageOrientation = false;
@@ -134,7 +138,7 @@ static const bool defaultSelectTrailingWhitespaceEnabled = false;
 Settings::Settings(Page* page)
     : m_page(0)
     , m_mediaTypeOverride("screen")
-    , m_fontGenericFamilies(FontGenericFamilies::create())
+    , m_fontGenericFamilies(std::make_unique<FontGenericFamilies>())
     , m_storageBlockingPolicy(SecurityOrigin::AllowAllStorage)
 #if ENABLE(TEXT_AUTOSIZING)
     , m_textAutosizingFontScaleFactor(1)
@@ -180,6 +184,7 @@ Settings::Settings(Page* page)
 #if ENABLE(PAGE_VISIBILITY_API)
     , m_hiddenPageCSSAnimationSuspensionEnabled(false)
 #endif
+    , m_fontFallbackPrefersPictographs(false)
 {
     // A Frame may not have been created yet, so we initialize the AtomicString
     // hash before trying to use it.
@@ -576,6 +581,17 @@ void Settings::setQTKitEnabled(bool enabled)
 }
 #endif
 
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+void Settings::setVideoPluginProxyEnabled(bool enabled)
+{
+    if (gVideoPluginProxyEnabled == enabled)
+        return;
+
+    gVideoPluginProxyEnabled = enabled;
+    HTMLMediaElement::resetMediaEngines();
+}
+#endif
+
 void Settings::setScrollingPerformanceLoggingEnabled(bool enabled)
 {
     m_scrollingPerformanceLoggingEnabled = enabled;
@@ -592,6 +608,7 @@ void Settings::setAggressiveTileRetentionEnabled(bool enabled)
 void Settings::setMockScrollbarsEnabled(bool flag)
 {
     gMockScrollbarsEnabled = flag;
+    // FIXME: This should update scroll bars in existing pages.
 }
 
 bool Settings::mockScrollbarsEnabled()
@@ -602,6 +619,7 @@ bool Settings::mockScrollbarsEnabled()
 void Settings::setUsesOverlayScrollbars(bool flag)
 {
     gUsesOverlayScrollbars = flag;
+    // FIXME: This should update scroll bars in existing pages.
 }
 
 bool Settings::usesOverlayScrollbars()
@@ -638,6 +656,15 @@ void Settings::setHiddenPageCSSAnimationSuspensionEnabled(bool flag)
     m_page->hiddenPageCSSAnimationSuspensionStateChanged();
 }
 #endif
+
+void Settings::setFontFallbackPrefersPictographs(bool preferPictographs)
+{
+    if (m_fontFallbackPrefersPictographs == preferPictographs)
+        return;
+
+    m_fontFallbackPrefersPictographs = preferPictographs;
+    m_page->setNeedsRecalcStyleInAllFrames();
+}
 
 void Settings::setLowPowerVideoAudioBufferSizeEnabled(bool flag)
 {

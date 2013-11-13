@@ -93,7 +93,7 @@ static WebDataSource* getWebDataSource(DocumentLoader* loader)
 class WebFrameLoaderClient::WebFramePolicyListenerPrivate {
 public:
     WebFramePolicyListenerPrivate() 
-        : m_policyFunction(0)
+        : m_policyFunction(nullptr)
     { 
     }
 
@@ -529,7 +529,7 @@ void WebFrameLoaderClient::dispatchDidLayout(LayoutMilestones milestones)
     }
 }
 
-Frame* WebFrameLoaderClient::dispatchCreatePage(const NavigationAction&)
+Frame* WebFrameLoaderClient::dispatchCreatePage(const NavigationAction& navigationAction)
 {
     WebView* webView = m_webFrame->webView();
 
@@ -538,7 +538,8 @@ Frame* WebFrameLoaderClient::dispatchCreatePage(const NavigationAction&)
         return 0;
 
     COMPtr<IWebView> newWebView;
-    if (FAILED(ui->createWebViewWithRequest(webView, 0, &newWebView)))
+    COMPtr<WebMutableURLRequest> request = adoptCOM(WebMutableURLRequest::createInstance(ResourceRequest(navigationAction.url())));
+    if (FAILED(ui->createWebViewWithRequest(webView, request.get(), &newWebView)) || !newWebView)
         return 0;
 
     COMPtr<IWebFrame> mainFrame;
@@ -557,7 +558,7 @@ void WebFrameLoaderClient::dispatchShow()
         ui->webViewShow(webView);
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForResponse(FramePolicyFunction function, const ResourceResponse& response, const ResourceRequest& request)
+void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, FramePolicyFunction function)
 {
     WebView* webView = m_webFrame->webView();
     Frame* coreFrame = core(m_webFrame);
@@ -572,10 +573,10 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(FramePolicyFunction f
     if (SUCCEEDED(policyDelegate->decidePolicyForMIMEType(webView, BString(response.mimeType()), urlRequest.get(), m_webFrame, setUpPolicyListener(function).get())))
         return;
 
-    (coreFrame->loader().policyChecker().*function)(PolicyUse);
+    function(PolicyUse);
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function, const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState, const String& frameName)
+void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState, const String& frameName, FramePolicyFunction function)
 {
     WebView* webView = m_webFrame->webView();
     Frame* coreFrame = core(m_webFrame);
@@ -591,10 +592,10 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(FramePolicyFun
     if (SUCCEEDED(policyDelegate->decidePolicyForNewWindowAction(webView, actionInformation.get(), urlRequest.get(), BString(frameName), setUpPolicyListener(function).get())))
         return;
 
-    (coreFrame->loader().policyChecker().*function)(PolicyUse);
+    function(PolicyUse);
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function, const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState)
+void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState, FramePolicyFunction function)
 {
     WebView* webView = m_webFrame->webView();
     Frame* coreFrame = core(m_webFrame);
@@ -610,7 +611,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(FramePolicyFu
     if (SUCCEEDED(policyDelegate->decidePolicyForNavigationAction(webView, actionInformation.get(), urlRequest.get(), m_webFrame, setUpPolicyListener(function).get())))
         return;
 
-    (coreFrame->loader().policyChecker().*function)(PolicyUse);
+    function(PolicyUse);
 }
 
 void WebFrameLoaderClient::dispatchUnableToImplementPolicy(const ResourceError& error)
@@ -628,7 +629,7 @@ void WebFrameLoaderClient::dispatchWillSendSubmitEvent(PassRefPtr<WebCore::FormS
 {
 }
 
-void WebFrameLoaderClient::dispatchWillSubmitForm(FramePolicyFunction function, PassRefPtr<FormState> formState)
+void WebFrameLoaderClient::dispatchWillSubmitForm(PassRefPtr<FormState> formState, FramePolicyFunction function)
 {
     WebView* webView = m_webFrame->webView();
     Frame* coreFrame = core(m_webFrame);
@@ -637,7 +638,7 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(FramePolicyFunction function, 
     COMPtr<IWebFormDelegate> formDelegate;
 
     if (FAILED(webView->formDelegate(&formDelegate))) {
-        (coreFrame->loader().policyChecker().*function)(PolicyUse);
+        function(PolicyUse);
         return;
     }
 
@@ -656,7 +657,7 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(FramePolicyFunction function, 
         return;
 
     // FIXME: Add a sane default implementation
-    (coreFrame->loader().policyChecker().*function)(PolicyUse);
+    function(PolicyUse);
 }
 
 void WebFrameLoaderClient::setMainDocumentError(DocumentLoader*, const ResourceError& error)
@@ -1261,7 +1262,7 @@ void WebFrameLoaderClient::documentElementAvailable()
 {
 }
 
-void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* world)
+void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& world)
 {
     Frame* coreFrame = core(m_webFrame);
     ASSERT(coreFrame);
@@ -1278,7 +1279,7 @@ void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* 
     if (delegatePrivate && delegatePrivate->didClearWindowObjectForFrameInScriptWorld(webView, m_webFrame, WebScriptWorld::findOrCreateWorld(world).get()) != E_NOTIMPL)
         return;
 
-    if (world != mainThreadNormalWorld())
+    if (&world != &mainThreadNormalWorld())
         return;
 
     JSContextRef context = toRef(coreFrame->script().globalObject(world)->globalExec());
@@ -1346,7 +1347,7 @@ void WebFrameLoaderClient::cancelPolicyCheck()
         m_policyListenerPrivate->m_policyListener = 0;
     }
 
-    m_policyListenerPrivate->m_policyFunction = 0;
+    m_policyListenerPrivate->m_policyFunction = nullptr;
 }
 
 COMPtr<WebFramePolicyListener> WebFrameLoaderClient::setUpPolicyListener(WebCore::FramePolicyFunction function)
@@ -1373,10 +1374,10 @@ void WebFrameLoaderClient::receivedPolicyDecision(PolicyAction action)
     FramePolicyFunction function = m_policyListenerPrivate->m_policyFunction;
 
     m_policyListenerPrivate->m_policyListener = 0;
-    m_policyListenerPrivate->m_policyFunction = 0;
+    m_policyListenerPrivate->m_policyFunction = nullptr;
 
     Frame* coreFrame = core(m_webFrame);
     ASSERT(coreFrame);
 
-    (coreFrame->loader().policyChecker().*function)(action);
+    function(action);
 }

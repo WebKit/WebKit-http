@@ -49,7 +49,7 @@ public:
     virtual ~SubresourceLoader();
 
     void cancelIfNotFinishing();
-    virtual bool isSubresourceLoader();
+    virtual bool isSubresourceLoader() OVERRIDE;
     CachedResource* cachedResource();
 
 private:
@@ -102,7 +102,6 @@ private:
     bool m_loadingMultipartContent;
     SubresourceLoaderState m_state;
     OwnPtr<RequestCountTracker> m_requestCountTracker;
-    std::unique_ptr<PageActivityAssertionToken> m_activityAssertion;
 };
 
 }

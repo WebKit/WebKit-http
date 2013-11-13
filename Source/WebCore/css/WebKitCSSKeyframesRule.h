@@ -39,11 +39,11 @@ class WebKitCSSKeyframeRule;
 
 class StyleRuleKeyframes : public StyleRuleBase {
 public:
-    static PassRefPtr<StyleRuleKeyframes> create() { return adoptRef(new StyleRuleKeyframes()); }
+    static PassRef<StyleRuleKeyframes> create() { return adoptRef(*new StyleRuleKeyframes()); }
     
     ~StyleRuleKeyframes();
     
-    const Vector<RefPtr<StyleKeyframe> >& keyframes() const { return m_keyframes; }
+    const Vector<RefPtr<StyleKeyframe>>& keyframes() const { return m_keyframes; }
     
     void parserAppendKeyframe(PassRefPtr<StyleKeyframe>);
     void wrapperAppendKeyframe(PassRefPtr<StyleKeyframe>);
@@ -54,13 +54,13 @@ public:
     
     int findKeyframeIndex(const String& key) const;
 
-    PassRefPtr<StyleRuleKeyframes> copy() const { return adoptRef(new StyleRuleKeyframes(*this)); }
+    PassRef<StyleRuleKeyframes> copy() const { return adoptRef(*new StyleRuleKeyframes(*this)); }
 
 private:
     StyleRuleKeyframes();
     StyleRuleKeyframes(const StyleRuleKeyframes&);
 
-    Vector<RefPtr<StyleKeyframe> > m_keyframes;
+    Vector<RefPtr<StyleKeyframe>> m_keyframes;
     AtomicString m_name;
 };
 
@@ -91,7 +91,7 @@ private:
     WebKitCSSKeyframesRule(StyleRuleKeyframes*, CSSStyleSheet* parent);
 
     RefPtr<StyleRuleKeyframes> m_keyframesRule;
-    mutable Vector<RefPtr<WebKitCSSKeyframeRule> > m_childRuleCSSOMWrappers;
+    mutable Vector<RefPtr<WebKitCSSKeyframeRule>> m_childRuleCSSOMWrappers;
     mutable OwnPtr<CSSRuleList> m_ruleListCSSOMWrapper;
 };
 

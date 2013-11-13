@@ -23,15 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if defined(__LP64__) && defined(__clang__)
-
-#import "WKWebProcessPlugInBrowserContextController.h"
+#import "WKWebProcessPlugInBrowserContextControllerPrivate.h"
 #import "WKBase.h"
 
-@interface WKWebProcessPlugInBrowserContextController (Internal)
+#if WK_API_ENABLED
+
+@interface WKWebProcessPlugInBrowserContextController ()
 
 - (id)_initWithBundlePageRef:(WKBundlePageRef)bundlePageRef;
 
 @end
 
-#endif // defined(__LP64__) && defined(__clang__)
+#endif // WK_API_ENABLED

@@ -33,8 +33,6 @@
 #include <CFNetwork/CFURLResponsePriv.h>
 #include <wtf/RetainPtr.h>
 
-using namespace std;
-
 // We would like a better value for a maximum time_t,
 // but there is no way to do that in C with any certainty.
 // INT_MAX should work well enough for our purposes.
@@ -58,15 +56,6 @@ CFURLResponseRef ResourceResponse::cfURLResponse() const
     }
 
     return m_cfResponse.get();
-}
-
-static inline bool filenameHasSaneExtension(const String& filename)
-{
-    int dot = filename.find('.');
-
-    // The dot can't be the first or last character in the filename.
-    int length = filename.length();
-    return dot > 0 && dot < length - 1;
 }
 
 void ResourceResponse::platformLazyInit(InitLevel initLevel)

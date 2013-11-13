@@ -30,7 +30,7 @@ class HTMLTextAreaElement;
 
 class RenderTextControlMultiLine FINAL : public RenderTextControl {
 public:
-    explicit RenderTextControlMultiLine(HTMLTextAreaElement&);
+    RenderTextControlMultiLine(HTMLTextAreaElement&, PassRef<RenderStyle>);
     virtual ~RenderTextControlMultiLine();
 
     HTMLTextAreaElement& textAreaElement() const;
@@ -47,19 +47,11 @@ private:
     virtual LayoutUnit computeControlLogicalHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const OVERRIDE;
     virtual int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const;
 
-    virtual RenderStyle* textBaseStyle() const;
-    virtual PassRefPtr<RenderStyle> createInnerTextStyle(const RenderStyle* startStyle) const;
+    virtual PassRef<RenderStyle> createInnerTextStyle(const RenderStyle* startStyle) const;
     virtual RenderObject* layoutSpecialExcludedChild(bool relayoutChildren);
 };
 
-inline RenderTextControlMultiLine* toRenderTextControlMultiLine(RenderObject* object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTextArea());
-    return static_cast<RenderTextControlMultiLine*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderTextControlMultiLine(const RenderTextControlMultiLine*);
+RENDER_OBJECT_TYPE_CASTS(RenderTextControlMultiLine, isTextArea())
 
 }
 

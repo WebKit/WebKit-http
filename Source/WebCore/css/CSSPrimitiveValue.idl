@@ -18,7 +18,7 @@
  */
 
 [
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface CSSPrimitiveValue : CSSValue {
 
     // UnitTypes

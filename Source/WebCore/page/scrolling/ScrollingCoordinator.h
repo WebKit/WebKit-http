@@ -124,10 +124,6 @@ public:
     virtual void syncChildPositions(const LayoutRect&) { }
     virtual String scrollingStateTreeAsText() const;
     virtual bool isRubberBandInProgress() const { return false; }
-    virtual bool rubberBandsAtBottom() const { return false; }
-    virtual void setRubberBandsAtBottom(bool) { }
-    virtual bool rubberBandsAtTop() const { return false; }
-    virtual void setRubberBandsAtTop(bool) { }
     virtual void setScrollPinningBehavior(ScrollPinningBehavior) { }
 
     // Generated a unique id for scroll layers.
@@ -148,18 +144,10 @@ public:
     MainThreadScrollingReasons mainThreadScrollingReasons() const;
     bool shouldUpdateScrollLayerPositionOnMainThread() const { return mainThreadScrollingReasons() != 0; }
 
-    // These virtual functions are currently unique to Chromium's WebLayer approach. Their meaningful
-    // implementations are in ScrollingCoordinatorChromium.
     virtual void willDestroyScrollableArea(ScrollableArea*) { }
     virtual void scrollableAreaScrollLayerDidChange(ScrollableArea*) { }
     virtual void scrollableAreaScrollbarLayerDidChange(ScrollableArea*, ScrollbarOrientation) { }
     virtual void setLayerIsContainerForFixedPositionLayers(GraphicsLayer*, bool) { }
-    virtual void updateLayerPositionConstraint(RenderLayer*) { }
-    virtual void touchEventTargetRectsDidChange(const Document*) { }
-
-#if ENABLE(TOUCH_EVENT_TRACKING)
-    void computeAbsoluteTouchEventTargetRects(const Document*, Vector<IntRect>&);
-#endif
 
     static String mainThreadScrollingReasonsAsText(MainThreadScrollingReasons);
     String mainThreadScrollingReasonsAsText() const;

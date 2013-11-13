@@ -30,24 +30,13 @@
 #if ENABLE(VIDEO)
 #include "MediaControlsBlackBerry.h"
 
-#include "Chrome.h"
 #include "DOMTokenList.h"
 #include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
-#include "HTMLMediaElement.h"
 #include "HTMLNames.h"
-#include "MediaControlElements.h"
-#include "MouseEvent.h"
-#include "Page.h"
 #include "RenderDeprecatedFlexibleBox.h"
 #include "RenderSlider.h"
-#include "RenderTheme.h"
 #include "Settings.h"
-#include "Text.h"
-
-#if ENABLE(VIDEO_TRACK)
-#include "TextTrackCue.h"
-#endif
 
 using namespace std;
 
@@ -426,10 +415,10 @@ void MediaControlFullscreenFullscreenButtonElement::defaultEventHandler(Event* e
         // video implementation without requiring them to implement their own full 
         // screen behavior.
         if (document()->settings() && document()->settings()->fullScreenEnabled()) {
-            if (document()->webkitIsFullScreen() && document()->webkitCurrentFullScreenElement() == toParentMediaElement(this))
+            if (document()->webkitIsFullScreen() && document()->webkitCurrentFullScreenElement() == parentMediaElement(this))
                 document()->webkitCancelFullScreen();
             else
-                document()->requestFullScreenForElement(toParentMediaElement(this), 0, Document::ExemptIFrameAllowFullScreenRequirement);
+                document()->requestFullScreenForElement(parentMediaElement(this), 0, Document::ExemptIFrameAllowFullScreenRequirement);
         } else
 #endif
             mediaController()->enterFullscreen();

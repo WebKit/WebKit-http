@@ -66,8 +66,8 @@ public:
     void invalidateInjectedStyleSheetCache();
     void updateInjectedStyleSheetCache() const;
 
-    void addAuthorSheet(PassRefPtr<StyleSheetContents> authorSheet);
-    void addUserSheet(PassRefPtr<StyleSheetContents> userSheet);
+    void addAuthorSheet(PassRef<StyleSheetContents> authorSheet);
+    void addUserSheet(PassRef<StyleSheetContents> userSheet);
 
     enum UpdateFlag { NoUpdate = 0, OptimizedUpdate, FullUpdate };
 
@@ -118,18 +118,18 @@ public:
     void detachFromDocument();
 
 private:
-    void collectActiveStyleSheets(Vector<RefPtr<StyleSheet> >&);
+    void collectActiveStyleSheets(Vector<RefPtr<StyleSheet>>&);
     enum StyleResolverUpdateType {
         Reconstruct,
         Reset,
         Additive
     };
-    void analyzeStyleSheetChange(UpdateFlag, const Vector<RefPtr<CSSStyleSheet> >& newStylesheets, StyleResolverUpdateType&, bool& requiresFullStyleRecalc);
+    void analyzeStyleSheetChange(UpdateFlag, const Vector<RefPtr<CSSStyleSheet>>& newStylesheets, StyleResolverUpdateType&, bool& requiresFullStyleRecalc);
 
     Document& m_document;
 
-    Vector<RefPtr<StyleSheet> > m_styleSheetsForStyleSheetList;
-    Vector<RefPtr<CSSStyleSheet> > m_activeAuthorStyleSheets;
+    Vector<RefPtr<StyleSheet>> m_styleSheetsForStyleSheetList;
+    Vector<RefPtr<CSSStyleSheet>> m_activeAuthorStyleSheets;
 
     // This is a mirror of m_activeAuthorStyleSheets that gets populated on demand for activeStyleSheetsContains().
     mutable OwnPtr<HashSet<const CSSStyleSheet*>> m_weakCopyOfActiveStyleSheetListForFastLookup;

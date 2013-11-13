@@ -25,7 +25,7 @@
  */
 
 [
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface ClientRectList {
     readonly attribute unsigned long length;
     getter ClientRect item([IsIndex, Default=Undefined] optional unsigned long index);

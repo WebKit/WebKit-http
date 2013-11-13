@@ -46,8 +46,8 @@
 
 namespace WebCore {
 
-RenderSnapshottedPlugIn::RenderSnapshottedPlugIn(HTMLPlugInImageElement& element)
-    : RenderEmbeddedObject(element)
+RenderSnapshottedPlugIn::RenderSnapshottedPlugIn(HTMLPlugInImageElement& element, PassRef<RenderStyle> style)
+    : RenderEmbeddedObject(element, std::move(style))
     , m_snapshotResource(RenderImageResource::create())
     , m_isPotentialMouseActivation(false)
 {
@@ -124,8 +124,8 @@ void RenderSnapshottedPlugIn::paintSnapshot(PaintInfo& paintInfo, const LayoutPo
 
     GraphicsContext* context = paintInfo.context;
 #if PLATFORM(MAC)
-    if (style()->highlight() != nullAtom && !context->paintingDisabled())
-        paintCustomHighlight(toPoint(paintOffset - location()), style()->highlight(), true);
+    if (style().highlight() != nullAtom && !context->paintingDisabled())
+        paintCustomHighlight(toPoint(paintOffset - location()), style().highlight(), true);
 #endif
 
     LayoutSize contentSize(cWidth, cHeight);
@@ -139,11 +139,11 @@ void RenderSnapshottedPlugIn::paintSnapshot(PaintInfo& paintInfo, const LayoutPo
 
     bool useLowQualityScaling = shouldPaintAtLowQuality(context, image, image, alignedRect.size());
 
-    ImageOrientationDescription orientationDescription;
+    ImageOrientationDescription orientationDescription(shouldRespectImageOrientation());
 #if ENABLE(CSS_IMAGE_ORIENTATION)
-    orientationDescription.setImageOrientationEnum(style()->imageOrientation());
+    orientationDescription.setImageOrientationEnum(style().imageOrientation());
 #endif
-    context->drawImage(image, style()->colorSpace(), alignedRect, CompositeSourceOver, orientationDescription, useLowQualityScaling);
+    context->drawImage(image, style().colorSpace(), alignedRect, CompositeSourceOver, orientationDescription, useLowQualityScaling);
 }
 
 CursorDirective RenderSnapshottedPlugIn::getCursor(const LayoutPoint& point, Cursor& overrideCursor) const

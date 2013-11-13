@@ -46,7 +46,7 @@ public:
     virtual ~CachedFont();
 
     void beginLoadIfNeeded(CachedResourceLoader* dl);
-    bool stillNeedsLoad() const { return !m_loadInitiated; }
+    virtual bool stillNeedsLoad() const OVERRIDE { return !m_loadInitiated; }
 
     bool ensureCustomFontData();
     FontPlatformData platformDataFromCustomData(float size, bool bold, bool italic, FontOrientation = Horizontal, FontWidthVariant = RegularWidth, FontRenderingMode = NormalRenderingMode);
@@ -57,7 +57,7 @@ public:
 #endif
 
 private:
-    virtual void checkNotify();
+    virtual void checkNotify() OVERRIDE;
     virtual bool mayTryReplaceEncodedData() const OVERRIDE;
 
     virtual void load(CachedResourceLoader*, const ResourceLoaderOptions&) OVERRIDE;
@@ -67,7 +67,7 @@ private:
 
     virtual void allClientsRemoved() OVERRIDE;
 
-    FontCustomPlatformData* m_fontData;
+    std::unique_ptr<FontCustomPlatformData> m_fontData;
     bool m_loadInitiated;
     bool m_hasCreatedFontData;
 

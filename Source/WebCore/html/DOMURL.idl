@@ -32,7 +32,7 @@
     JSGenerateToJSObject,
     JSNoStaticTables,
     InterfaceName=URL,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface DOMURL {
     [CallWith=ScriptExecutionContext,TreatReturnedNullStringAs=Null] static DOMString createObjectURL(Blob? blob);
     [CallWith=ScriptExecutionContext] static void revokeObjectURL(DOMString url);

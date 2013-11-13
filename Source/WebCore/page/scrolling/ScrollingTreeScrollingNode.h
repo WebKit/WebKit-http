@@ -42,7 +42,7 @@ class ScrollingStateScrollingNode;
 
 class ScrollingTreeScrollingNode : public ScrollingTreeNode {
 public:
-    static PassOwnPtr<ScrollingTreeScrollingNode> create(ScrollingTree*, ScrollingNodeID);
+    static PassOwnPtr<ScrollingTreeScrollingNode> create(ScrollingTree&, ScrollingNodeID);
     virtual ~ScrollingTreeScrollingNode();
 
     virtual void updateBeforeChildren(ScrollingStateNode*) OVERRIDE;
@@ -56,10 +56,16 @@ public:
     MainThreadScrollingReasons shouldUpdateScrollLayerPositionOnMainThread() const { return m_shouldUpdateScrollLayerPositionOnMainThread; }
 
 protected:
-    explicit ScrollingTreeScrollingNode(ScrollingTree*, ScrollingNodeID);
+    ScrollingTreeScrollingNode(ScrollingTree&, ScrollingNodeID);
 
     const IntRect& viewportRect() const { return m_viewportRect; }
     const IntSize& totalContentsSize() const { return m_totalContentsSize; }
+
+    // If the totalContentsSize changes in the middle of a rubber-band, we still want to use the old totalContentsSize for the sake of
+    // computing the stretchAmount(). Using the old value will keep the animation smooth. When there is no rubber-band in progress at
+    // all, m_totalContentsSizeForRubberBand should be equivalent to m_totalContentsSize.
+    const IntSize& totalContentsSizeForRubberBand() const { return m_totalContentsSizeForRubberBand; }
+    void setTotalContentsSizeForRubberBand(const IntSize& totalContentsSizeForRubberBand) { m_totalContentsSizeForRubberBand = totalContentsSizeForRubberBand; }
 
     float frameScaleFactor() const { return m_frameScaleFactor; }
 
@@ -79,6 +85,7 @@ protected:
 private:
     IntRect m_viewportRect;
     IntSize m_totalContentsSize;
+    IntSize m_totalContentsSizeForRubberBand;
     IntPoint m_scrollOrigin;
     
     float m_frameScaleFactor;

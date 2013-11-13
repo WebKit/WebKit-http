@@ -35,16 +35,16 @@ namespace WebCore {
 
 using namespace MathMLNames;
     
-RenderMathMLUnderOver::RenderMathMLUnderOver(Element* element)
-    : RenderMathMLBlock(element)
+RenderMathMLUnderOver::RenderMathMLUnderOver(Element& element, PassRef<RenderStyle> style)
+    : RenderMathMLBlock(element, std::move(style))
 {
     // Determine what kind of under/over expression we have by element name
-    if (element->hasLocalName(MathMLNames::munderTag))
+    if (element.hasLocalName(MathMLNames::munderTag))
         m_kind = Under;
-    else if (element->hasLocalName(MathMLNames::moverTag))
+    else if (element.hasLocalName(MathMLNames::moverTag))
         m_kind = Over;
     else {
-        ASSERT(element->hasLocalName(MathMLNames::munderoverTag));
+        ASSERT(element.hasLocalName(MathMLNames::munderoverTag));
         m_kind = UnderOver;
     }
 }
@@ -57,12 +57,12 @@ RenderMathMLOperator* RenderMathMLUnderOver::unembellishedOperator()
     return toRenderMathMLBlock(base)->unembellishedOperator();
 }
 
-int RenderMathMLUnderOver::firstLineBoxBaseline() const
+int RenderMathMLUnderOver::firstLineBaseline() const
 {
     RenderBox* base = firstChildBox();
     if (!base)
         return -1;
-    LayoutUnit baseline = base->firstLineBoxBaseline();
+    LayoutUnit baseline = base->firstLineBaseline();
     if (baseline != -1)
         baseline += base->logicalTop();
     return baseline;

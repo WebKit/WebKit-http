@@ -38,6 +38,8 @@ namespace JSC { namespace DFG {
 
 struct OSRExitCompilationInfo {
     MacroAssembler::JumpList m_failureJumps;
+    MacroAssembler::Label m_replacementSource;
+    MacroAssembler::Label m_replacementDestination;
 };
 
 } } // namespace JSC::DFG

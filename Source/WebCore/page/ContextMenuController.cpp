@@ -192,7 +192,8 @@ static void insertUnicodeCharacter(UChar character, Frame* frame)
     if (!frame->editor().shouldInsertText(text, frame->selection().toNormalizedRange().get(), EditorInsertActionTyped))
         return;
 
-    TypingCommand::insertText(frame->document(), text, 0, TypingCommand::TextCompositionNone);
+    ASSERT(frame->document());
+    TypingCommand::insertText(*frame->document(), text, 0, TypingCommand::TextCompositionNone);
 }
 #endif
 
@@ -238,7 +239,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         // For now, call into the client. This is temporary!
         frame->editor().copyImage(m_hitTestResult);
         break;
-#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL)
     case ContextMenuItemTagCopyImageUrlToClipboard:
         frame->editor().copyURL(m_hitTestResult.absoluteImageURL(), m_hitTestResult.textContent());
         break;
@@ -337,7 +338,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         insertUnicodeCharacter(zeroWidthNonJoiner, frame);
         break;
 #endif
-#if PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL)
     case ContextMenuItemTagSelectAll:
         frame->editor().command("SelectAll").execute();
         break;
@@ -359,7 +360,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
 
             Document* document = frame->document();
             ASSERT(document);
-            RefPtr<ReplaceSelectionCommand> command = ReplaceSelectionCommand::create(*document, createFragmentFromMarkup(document, item->title(), ""), replaceOptions);
+            RefPtr<ReplaceSelectionCommand> command = ReplaceSelectionCommand::create(*document, createFragmentFromMarkup(*document, item->title(), ""), replaceOptions);
             applyCommand(command);
             frameSelection.revealSelection(ScrollAlignment::alignToEdgeIfNeeded);
         }
@@ -717,9 +718,10 @@ static bool selectionContainsPossibleWord(Frame* frame)
     // Current algorithm: look for a character that's not just a separator.
     for (TextIterator it(frame->selection().toNormalizedRange().get()); !it.atEnd(); it.advance()) {
         int length = it.length();
-        for (int i = 0; i < length; ++i)
-            if (!(category(it.characterAt(i)) & (Separator_Space | Separator_Line | Separator_Paragraph)))
+        for (int i = 0; i < length; ++i) {
+            if (!(U_GET_GC_MASK(it.characterAt(i)) & U_GC_Z_MASK))
                 return true;
+        }
     }
     return false;
 }
@@ -751,7 +753,7 @@ void ContextMenuController::populate()
         contextMenuItemTagDownloadImageToDisk());
     ContextMenuItem CopyImageItem(ActionType, ContextMenuItemTagCopyImageToClipboard, 
         contextMenuItemTagCopyImageToClipboard());
-#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL)
     ContextMenuItem CopyImageUrlItem(ActionType, ContextMenuItemTagCopyImageUrlToClipboard, 
         contextMenuItemTagCopyImageUrlToClipboard());
 #endif
@@ -802,7 +804,7 @@ void ContextMenuController::populate()
 #if PLATFORM(GTK)
     ContextMenuItem DeleteItem(ActionType, ContextMenuItemTagDelete, contextMenuItemTagDelete());
 #endif
-#if PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL)
     ContextMenuItem SelectAllItem(ActionType, ContextMenuItemTagSelectAll, contextMenuItemTagSelectAll());
 #endif
 
@@ -826,10 +828,6 @@ void ContextMenuController::populate()
                 appendItem(OpenLinkInNewWindowItem, m_contextMenu.get());
                 appendItem(DownloadFileItem, m_contextMenu.get());
             }
-#if PLATFORM(QT)
-            if (m_hitTestResult.isSelected()) 
-                appendItem(CopyItem, m_contextMenu.get());
-#endif
             appendItem(CopyLinkItem, m_contextMenu.get());
         }
 
@@ -842,7 +840,7 @@ void ContextMenuController::populate()
             appendItem(DownloadImageItem, m_contextMenu.get());
             if (imageURL.isLocalFile() || m_hitTestResult.image())
                 appendItem(CopyImageItem, m_contextMenu.get());
-#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL)
             appendItem(CopyImageUrlItem, m_contextMenu.get());
 #endif
         }
@@ -1022,7 +1020,7 @@ void ContextMenuController::populate()
         appendItem(DeleteItem, m_contextMenu.get());
         appendItem(*separatorItem(), m_contextMenu.get());
 #endif
-#if PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL)
         appendItem(SelectAllItem, m_contextMenu.get());
 #endif
 
@@ -1314,7 +1312,7 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
         case ContextMenuItemTagOpenImageInNewWindow:
         case ContextMenuItemTagDownloadImageToDisk:
         case ContextMenuItemTagCopyImageToClipboard:
-#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL)
         case ContextMenuItemTagCopyImageUrlToClipboard:
 #endif
             break;
@@ -1409,8 +1407,11 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
 #if USE(ACCESSIBILITY_CONTEXT_MENUS)
 void ContextMenuController::showContextMenuAt(Frame* frame, const IntPoint& clickPoint)
 {
+    clearContextMenu();
+    
     // Simulate a click in the middle of the accessibility object.
     PlatformMouseEvent mouseEvent(clickPoint, clickPoint, RightButton, PlatformEvent::MousePressed, 1, false, false, false, false, currentTime());
+    frame->eventHandler().handleMousePressEvent(mouseEvent);
     bool handled = frame->eventHandler().sendContextMenuEvent(mouseEvent);
     if (handled)
         m_client.showContextMenu();

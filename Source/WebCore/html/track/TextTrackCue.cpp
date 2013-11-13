@@ -176,14 +176,14 @@ const AtomicString& TextTrackCueBox::textTrackCueBoxShadowPseudoId()
     return trackDisplayBoxShadowPseudoId;
 }
 
-RenderElement* TextTrackCueBox::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* TextTrackCueBox::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderTextTrackCue(this);
+    return new RenderTextTrackCue(*this, std::move(style));
 }
 
 // ----------------------------
 
-TextTrackCue::TextTrackCue(ScriptExecutionContext* context, double start, double end, const String& content)
+TextTrackCue::TextTrackCue(ScriptExecutionContext& context, double start, double end, const String& content)
     : m_startTime(start)
     , m_endTime(end)
     , m_content(content)
@@ -201,11 +201,11 @@ TextTrackCue::TextTrackCue(ScriptExecutionContext* context, double start, double
     , m_isActive(false)
     , m_pauseOnExit(false)
     , m_snapToLines(true)
-    , m_cueBackgroundBox(HTMLSpanElement::create(spanTag, *toDocument(context)))
+    , m_cueBackgroundBox(HTMLSpanElement::create(spanTag, toDocument(context)))
     , m_displayTreeShouldChange(true)
     , m_displayDirection(CSSValueLtr)
 {
-    ASSERT(m_scriptExecutionContext->isDocument());
+    ASSERT(m_scriptExecutionContext.isDocument());
 
     // 4. If the text track cue writing direction is horizontal, then let
     // writing-mode be 'horizontal-tb'. Otherwise, if the text track cue writing
@@ -500,7 +500,7 @@ void TextTrackCue::invalidateCueIndex()
 void TextTrackCue::createWebVTTNodeTree()
 {
     if (!m_webVTTNodeTree)
-        m_webVTTNodeTree = WebVTTParser::create(0, m_scriptExecutionContext)->createDocumentFragmentFromCueText(m_content);
+        m_webVTTNodeTree = WebVTTParser::create(0, &m_scriptExecutionContext)->createDocumentFragmentFromCueText(m_content);
 }
 
 void TextTrackCue::copyWebVTTNodeToDOMTree(ContainerNode* webVTTNode, ContainerNode* parent)
@@ -615,7 +615,7 @@ static bool isCueParagraphSeparator(UChar character)
 {
     // Within a cue, paragraph boundaries are only denoted by Type B characters,
     // such as U+000A LINE FEED (LF), U+0085 NEXT LINE (NEL), and U+2029 PARAGRAPH SEPARATOR.
-    return WTF::Unicode::category(character) & WTF::Unicode::Separator_Paragraph;
+    return u_charType(character) == U_PARAGRAPH_SEPARATOR;
 }
 
 void TextTrackCue::determineTextDirection()
@@ -648,13 +648,12 @@ void TextTrackCue::determineTextDirection()
             return;
 
         if (UChar current = paragraph[i]) {
-            WTF::Unicode::Direction charDirection = WTF::Unicode::direction(current);
-            if (charDirection == WTF::Unicode::LeftToRight) {
+            UCharDirection charDirection = u_charDirection(current);
+            if (charDirection == U_LEFT_TO_RIGHT) {
                 m_displayDirection = CSSValueLtr;
                 return;
             }
-            if (charDirection == WTF::Unicode::RightToLeft
-                || charDirection == WTF::Unicode::RightToLeftArabic) {
+            if (charDirection == U_RIGHT_TO_LEFT || charDirection == U_RIGHT_TO_LEFT_ARABIC) {
                 m_displayDirection = CSSValueRtl;
                 return;
             }
@@ -765,7 +764,7 @@ void TextTrackCue::markFutureAndPastNodes(ContainerNode* root, double previousTi
         if (child->nodeName() == timestampTag) {
             unsigned position = 0;
             String timestamp = child->nodeValue();
-            double currentTimestamp = WebVTTParser::create(0, m_scriptExecutionContext)->collectTimeStamp(timestamp, &position);
+            double currentTimestamp = WebVTTParser::create(0, &m_scriptExecutionContext)->collectTimeStamp(timestamp, &position);
             ASSERT(currentTimestamp != -1);
             
             if (currentTimestamp > movieTime)

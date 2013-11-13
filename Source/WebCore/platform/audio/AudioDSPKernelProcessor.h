@@ -57,18 +57,18 @@ public:
     virtual PassOwnPtr<AudioDSPKernel> createKernel() = 0;
 
     // AudioProcessor methods
-    virtual void initialize();
-    virtual void uninitialize();
-    virtual void process(const AudioBus* source, AudioBus* destination, size_t framesToProcess);
-    virtual void reset();
-    virtual void setNumberOfChannels(unsigned numberOfChannels);
-    virtual unsigned numberOfChannels() const { return m_numberOfChannels; }
+    virtual void initialize() OVERRIDE;
+    virtual void uninitialize() OVERRIDE;
+    virtual void process(const AudioBus* source, AudioBus* destination, size_t framesToProcess) OVERRIDE;
+    virtual void reset() OVERRIDE;
+    virtual void setNumberOfChannels(unsigned) OVERRIDE;
+    virtual unsigned numberOfChannels() const OVERRIDE { return m_numberOfChannels; }
 
     virtual double tailTime() const OVERRIDE;
     virtual double latencyTime() const OVERRIDE;
 
 protected:
-    Vector<OwnPtr<AudioDSPKernel> > m_kernels;
+    Vector<OwnPtr<AudioDSPKernel>> m_kernels;
     bool m_hasJustReset;
 };
 

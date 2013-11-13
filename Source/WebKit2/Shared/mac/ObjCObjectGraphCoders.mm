@@ -56,7 +56,7 @@ enum WebKitNSType {
     NSNumberType,
     NSDateType,
     NSDataType,
-#if defined(__LP64__) && defined(__clang__)
+#if WK_API_ENABLED
     WKBrowsingContextControllerType,
     WKTypeRefWrapperType,
 #endif
@@ -79,7 +79,7 @@ static WebKitNSType typeFromObject(id object)
         return NSDateType;
     if ([object isKindOfClass:[NSData class]])
         return NSDataType;
-#if defined(__LP64__) && defined(__clang__)
+#if WK_API_ENABLED
     if ([object isKindOfClass:[WKBrowsingContextController class]] || [object isKindOfClass:[WKWebProcessPlugInBrowserContextController class]])
         return WKBrowsingContextControllerType;
     if ([object isKindOfClass:[WKTypeRefWrapper class]])
@@ -281,7 +281,7 @@ public:
             return;
 
         switch (type) {
-#if defined(__LP64__) && defined(__clang__)
+#if WK_API_ENABLED
         case WKBrowsingContextControllerType: {
             WKBrowsingContextController *browsingContextController = static_cast<WKBrowsingContextController *>(m_root);
 
@@ -333,7 +333,7 @@ public:
         }
 
         switch (type) {
-#if defined(__LP64__) && defined(__clang__)
+#if WK_API_ENABLED
         case WKBrowsingContextControllerType: {
             uint64_t pageID;
             if (!decoder.decode(pageID))
@@ -347,7 +347,7 @@ public:
             break;
         }
         case WKTypeRefWrapperType: {
-            RefPtr<APIObject> object;
+            RefPtr<API::Object> object;
             WebContextUserMessageDecoder objectDecoder(object, coder.m_process);
             if (!decoder.decode(objectDecoder))
                 return false;
@@ -385,7 +385,7 @@ public:
             return;
 
         switch (type) {
-#if defined(__LP64__) && defined(__clang__)
+#if WK_API_ENABLED
         case WKBrowsingContextControllerType: {
             WKWebProcessPlugInBrowserContextController *browserContextController = static_cast<WKWebProcessPlugInBrowserContextController *>(m_root);
 
@@ -435,7 +435,7 @@ public:
         }
 
         switch (type) {
-#if defined(__LP64__) && defined(__clang__)
+#if WK_API_ENABLED
         case WKBrowsingContextControllerType: {
             uint64_t pageID;
             if (!decoder.decode(pageID))
@@ -449,7 +449,7 @@ public:
             break;
         }
         case WKTypeRefWrapperType: {
-            RefPtr<APIObject> object;
+            RefPtr<API::Object> object;
             InjectedBundleUserMessageDecoder objectDecoder(object);
             if (!decoder.decode(objectDecoder))
                 return false;

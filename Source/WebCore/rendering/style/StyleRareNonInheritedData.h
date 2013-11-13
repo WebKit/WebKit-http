@@ -77,8 +77,8 @@ enum PageSizeType {
 // actually uses one of these properties.
 class StyleRareNonInheritedData : public RefCounted<StyleRareNonInheritedData> {
 public:
-    static PassRefPtr<StyleRareNonInheritedData> create() { return adoptRef(new StyleRareNonInheritedData); }
-    PassRefPtr<StyleRareNonInheritedData> copy() const { return adoptRef(new StyleRareNonInheritedData(*this)); }
+    static PassRef<StyleRareNonInheritedData> create() { return adoptRef(*new StyleRareNonInheritedData); }
+    PassRef<StyleRareNonInheritedData> copy() const { return adoptRef(*new StyleRareNonInheritedData(*this)); }
     ~StyleRareNonInheritedData();
     
     bool operator==(const StyleRareNonInheritedData&) const;
@@ -123,7 +123,7 @@ public:
     DataRef<StyleGridData> m_grid;
     DataRef<StyleGridItemData> m_gridItem;
 
-    OwnPtr<ContentData> m_content;
+    std::unique_ptr<ContentData> m_content;
     OwnPtr<CounterDirectiveMap> m_counterDirectives;
 
     OwnPtr<ShadowData> m_boxShadow;  // For box-shadow decorations.
@@ -143,14 +143,15 @@ public:
     RefPtr<ShapeValue> m_shapeOutside;
     Length m_shapeMargin;
     Length m_shapePadding;
+    float m_shapeImageThreshold;
 #endif
 
     RefPtr<ClipPathOperation> m_clipPath;
 
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     Color m_textDecorationColor;
     Color m_visitedLinkTextDecorationColor;
-#endif // CSS3_TEXT
+#endif
     Color m_visitedLinkBackgroundColor;
     Color m_visitedLinkOutlineColor;
     Color m_visitedLinkBorderLeftColor;
@@ -185,9 +186,9 @@ public:
     unsigned m_borderFit : 1; // EBorderFit
     unsigned m_textCombine : 1; // CSS3 text-combine properties
 
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     unsigned m_textDecorationStyle : 3; // TextDecorationStyle
-#endif // CSS3_TEXT
+#endif
     unsigned m_wrapFlow: 3; // WrapFlow
     unsigned m_wrapThrough: 1; // WrapThrough
 

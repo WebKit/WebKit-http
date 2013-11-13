@@ -26,7 +26,7 @@
 [
     Conditional=CSS_FILTERS,
     DoNotCheckConstants,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface WebKitCSSFilterValue : CSSValueList {
 
     // OperationTypes

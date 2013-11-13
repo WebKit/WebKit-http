@@ -27,25 +27,20 @@
 #include "config.h"
 #include "HTMLTreeBuilder.h"
 
-#include "AtomicHTMLToken.h"
 #include "Comment.h"
 #include "DocumentFragment.h"
 #include "DocumentType.h"
-#include "Element.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "HTMLElementFactory.h"
 #include "HTMLFormElement.h"
 #include "HTMLHtmlElement.h"
-#include "HTMLNames.h"
 #include "HTMLOptGroupElement.h"
 #include "HTMLOptionElement.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLScriptElement.h"
-#include "HTMLStackItem.h"
 #include "HTMLTemplateElement.h"
-#include "HTMLToken.h"
 #include "NotImplemented.h"
 #include "Text.h"
 
@@ -152,26 +147,26 @@ void HTMLConstructionSite::executeQueuedTasks()
     // We might be detached now.
 }
 
-HTMLConstructionSite::HTMLConstructionSite(Document* document, ParserContentPolicy parserContentPolicy, unsigned maximumDOMTreeDepth)
-    : m_document(document)
-    , m_attachmentRoot(document)
+HTMLConstructionSite::HTMLConstructionSite(Document& document, ParserContentPolicy parserContentPolicy, unsigned maximumDOMTreeDepth)
+    : m_document(&document)
+    , m_attachmentRoot(&document)
     , m_parserContentPolicy(parserContentPolicy)
     , m_isParsingFragment(false)
     , m_redirectAttachToFosterParent(false)
     , m_maximumDOMTreeDepth(maximumDOMTreeDepth)
-    , m_inQuirksMode(document->inQuirksMode())
+    , m_inQuirksMode(document.inQuirksMode())
 {
     ASSERT(m_document->isHTMLDocument() || m_document->isXHTMLDocument());
 }
 
-HTMLConstructionSite::HTMLConstructionSite(DocumentFragment* fragment, ParserContentPolicy parserContentPolicy, unsigned maximumDOMTreeDepth)
-    : m_document(&fragment->document())
-    , m_attachmentRoot(fragment)
+HTMLConstructionSite::HTMLConstructionSite(DocumentFragment& fragment, ParserContentPolicy parserContentPolicy, unsigned maximumDOMTreeDepth)
+    : m_document(&fragment.document())
+    , m_attachmentRoot(&fragment)
     , m_parserContentPolicy(parserContentPolicy)
     , m_isParsingFragment(true)
     , m_redirectAttachToFosterParent(false)
     , m_maximumDOMTreeDepth(maximumDOMTreeDepth)
-    , m_inQuirksMode(fragment->document().inQuirksMode())
+    , m_inQuirksMode(fragment.document().inQuirksMode())
 {
     ASSERT(m_document->isHTMLDocument() || m_document->isXHTMLDocument());
 }
@@ -410,8 +405,6 @@ void HTMLConstructionSite::insertHTMLBodyElement(AtomicHTMLToken* token)
     RefPtr<Element> body = createHTMLElement(token);
     attachLater(currentNode(), body);
     m_openElements.pushHTMLBodyElement(HTMLStackItem::create(body.release(), token));
-    if (Frame* frame = m_document->frame())
-        frame->loader().client().dispatchWillInsertBody();
 }
 
 void HTMLConstructionSite::insertHTMLFormElement(AtomicHTMLToken* token, bool isDemoted)
@@ -507,7 +500,7 @@ void HTMLConstructionSite::insertTextNode(const String& characters, WhitespaceMo
     if (previousChild && previousChild->isTextNode()) {
         // FIXME: We're only supposed to append to this text node if it
         // was the last text node inserted by the parser.
-        CharacterData* textNode = static_cast<CharacterData*>(previousChild);
+        Text* textNode = toText(previousChild);
         currentPosition = textNode->parserAppendData(characters, 0, lengthLimit);
     }
 
@@ -639,7 +632,7 @@ void HTMLConstructionSite::findFosterSite(HTMLConstructionSiteTask& task)
         // and instead use the DocumentFragment as a root node. So we must treat the root node (DocumentFragment) as if it is a html element here.
         bool parentCanBeFosterParent = parent && (parent->isElementNode() || (m_isParsingFragment && parent == m_openElements.rootNode()));
 #if ENABLE(TEMPLATE_ELEMENT)
-        parentCanBeFosterParent = parentCanBeFosterParent || (parent && parent->isDocumentFragment() && static_cast<DocumentFragment*>(parent)->isTemplateContent());
+        parentCanBeFosterParent = parentCanBeFosterParent || (parent && parent->isDocumentFragment() && toDocumentFragment(parent)->isTemplateContent());
 #endif
         if (parentCanBeFosterParent) {
             task.parent = parent;

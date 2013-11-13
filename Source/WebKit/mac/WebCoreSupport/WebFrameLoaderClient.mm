@@ -115,7 +115,6 @@
 #import <WebCore/ResourceHandle.h>
 #import <WebCore/ResourceLoader.h>
 #import <WebCore/ResourceRequest.h>
-#import <WebCore/RunLoop.h>
 #import <WebCore/ScriptController.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/WebCoreObjCExtras.h>
@@ -127,6 +126,7 @@
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
 #import <wtf/PassRefPtr.h>
+#import <wtf/RunLoop.h>
 #import <wtf/text/WTFString.h>
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
@@ -136,6 +136,10 @@
 #if USE(PLUGIN_HOST_PROCESS) && ENABLE(NETSCAPE_PLUGIN_API)
 #import "NetscapePluginHostManager.h"
 #import "WebHostedNetscapePluginView.h"
+#endif
+
+#if ENABLE(REMOTE_INSPECTOR)
+#import "WebInspectorServer.h"
 #endif
 
 using namespace WebCore;
@@ -617,6 +621,12 @@ void WebFrameLoaderClient::dispatchDidReceiveTitle(const StringWithDirection& ti
     if (implementations->didReceiveTitleForFrameFunc)
         // FIXME: use direction of title.
         CallFrameLoadDelegate(implementations->didReceiveTitleForFrameFunc, webView, @selector(webView:didReceiveTitle:forFrame:), (NSString *)title.string(), m_webFrame.get());
+
+#if ENABLE(REMOTE_INSPECTOR)
+    BOOL isMainFrame = [webView mainFrame] == m_webFrame.get();
+    if (isMainFrame)
+        [[WebView sharedWebInspectorServer] pushListing];
+#endif
 }
 
 void WebFrameLoaderClient::dispatchDidChangeIcons(WebCore::IconType)
@@ -743,8 +753,7 @@ void WebFrameLoaderClient::dispatchShow()
     [[webView _UIDelegateForwarder] webViewShow:webView];
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForResponse(FramePolicyFunction function,
-    const ResourceResponse& response, const ResourceRequest& request)
+void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, FramePolicyFunction function)
 {
     WebView *webView = getWebView(m_webFrame.get());
 
@@ -752,29 +761,27 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(FramePolicyFunction f
                         decidePolicyForMIMEType:response.mimeType()
                                         request:request.nsURLRequest(UpdateHTTPBody)
                                           frame:m_webFrame.get()
-                               decisionListener:setUpPolicyListener(function).get()];
+                               decisionListener:setUpPolicyListener(std::move(function)).get()];
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
-    const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState, const String& frameName)
+void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState, const String& frameName, FramePolicyFunction function)
 {
     WebView *webView = getWebView(m_webFrame.get());
     [[webView _policyDelegateForwarder] webView:webView
             decidePolicyForNewWindowAction:actionDictionary(action, formState)
                                    request:request.nsURLRequest(UpdateHTTPBody)
                               newFrameName:frameName
-                          decisionListener:setUpPolicyListener(function).get()];
+                          decisionListener:setUpPolicyListener(std::move(function)).get()];
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
-    const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState)
+void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState, FramePolicyFunction function)
 {
     WebView *webView = getWebView(m_webFrame.get());
     [[webView _policyDelegateForwarder] webView:webView
                 decidePolicyForNavigationAction:actionDictionary(action, formState)
                                         request:request.nsURLRequest(UpdateHTTPBody)
                                           frame:m_webFrame.get()
-                               decisionListener:setUpPolicyListener(function).get()];
+                               decisionListener:setUpPolicyListener(std::move(function)).get()];
 }
 
 void WebFrameLoaderClient::cancelPolicyCheck()
@@ -811,16 +818,16 @@ void WebFrameLoaderClient::dispatchWillSendSubmitEvent(PassRefPtr<WebCore::FormS
     CallFormDelegate(getWebView(m_webFrame.get()), @selector(willSendSubmitEventToForm:inFrame:withValues:), formElement, m_webFrame.get(), values);
 }
 
-void WebFrameLoaderClient::dispatchWillSubmitForm(FramePolicyFunction function, PassRefPtr<FormState> formState)
+void WebFrameLoaderClient::dispatchWillSubmitForm(PassRefPtr<FormState> formState, FramePolicyFunction function)
 {
     id <WebFormDelegate> formDelegate = [getWebView(m_webFrame.get()) _formDelegate];
     if (!formDelegate) {
-        (core(m_webFrame.get())->loader().policyChecker().*function)(PolicyUse);
+        function(PolicyUse);
         return;
     }
 
     NSDictionary *values = makeFormFieldValuesDictionary(formState.get());
-    CallFormDelegate(getWebView(m_webFrame.get()), @selector(frame:sourceFrame:willSubmitForm:withValues:submissionListener:), m_webFrame.get(), kit(formState->sourceDocument()->frame()), kit(formState->form()), values, setUpPolicyListener(function).get());
+    CallFormDelegate(getWebView(m_webFrame.get()), @selector(frame:sourceFrame:willSubmitForm:withValues:submissionListener:), m_webFrame.get(), kit(formState->sourceDocument()->frame()), kit(formState->form()), values, setUpPolicyListener(std::move(function)).get());
 }
 
 void WebFrameLoaderClient::revertToProvisionalState(DocumentLoader* loader)
@@ -1939,7 +1946,7 @@ String WebFrameLoaderClient::overrideMediaType() const
 void WebFrameLoaderClient::documentElementAvailable() {
 }
 
-void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* world)
+void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& world)
 {
     WebView *webView = getWebView(m_webFrame.get());
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
@@ -1950,7 +1957,7 @@ void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* 
         return;
     }
 
-    if (world != mainThreadNormalWorld())
+    if (&world != &mainThreadNormalWorld())
         return;
 
     Frame *frame = core(m_webFrame.get());
@@ -2002,7 +2009,7 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
 {
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
-    WebCore::RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMainRunLoop();
     WebCoreObjCFinalizeOnMainThread(self);
 }
 
@@ -2013,7 +2020,7 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
         return nil;
 
     _frame = frame;
-    _policyFunction = policyFunction;
+    _policyFunction = std::move(policyFunction);
 
     return self;
 }
@@ -2037,11 +2044,11 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
     if (!frame)
         return;
 
-    FramePolicyFunction policyFunction = _policyFunction;
+    FramePolicyFunction policyFunction = std::move(_policyFunction);
     _policyFunction = nullptr;
 
     ASSERT(policyFunction);
-    (frame->loader().policyChecker().*policyFunction)(action);
+    policyFunction(action);
 }
 
 - (void)ignore

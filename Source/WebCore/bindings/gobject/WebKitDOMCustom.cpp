@@ -23,6 +23,7 @@
 #include "WebKitDOMDOMStringList.h"
 #include "WebKitDOMHTMLCollection.h"
 #include "WebKitDOMHTMLFormElement.h"
+#include "WebKitDOMHTMLHeadElement.h"
 #include "WebKitDOMHTMLInputElement.h"
 #include "WebKitDOMHTMLInputElementPrivate.h"
 #include "WebKitDOMHTMLTextAreaElement.h"
@@ -30,6 +31,7 @@
 #include "WebKitDOMNodeList.h"
 #include "WebKitDOMObject.h"
 #include "WebKitDOMPrivate.h"
+#include "WebKitDOMProcessingInstruction.h"
 #include "WebKitDOMWebKitNamedFlow.h"
 
 using namespace WebKit;
@@ -245,6 +247,19 @@ void* webkit_dom_html_element_get_item_type(WebKitDOMHTMLElement*)
 {
     g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
     return 0;
+}
+
+// WebKitDOMHTMLStyleElement
+
+void webkit_dom_html_style_element_set_scoped(WebKitDOMHTMLStyleElement*, gboolean)
+{
+    g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
+}
+
+gboolean webkit_dom_html_style_element_get_scoped(WebKitDOMHTMLStyleElement*)
+{
+    g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
+    return FALSE;
 }
 
 // WebKitDOMHTMLPropertiesCollection
@@ -537,4 +552,42 @@ gulong webkit_dom_property_node_list_get_length(void*)
 {
     g_warning("%s: the PropertyNodeList object has been removed from WebKit, this function does nothing.", __func__);
     return 0;
+}
+
+gdouble webkit_dom_html_media_element_get_start_time(WebKitDOMHTMLMediaElement*)
+{
+    g_warning("%s: the HTMLMediaElement:start-time property has been removed from WebKit, this function does nothing.", __func__);
+    return 0;
+}
+
+gdouble webkit_dom_html_media_element_get_initial_time(WebKitDOMHTMLMediaElement*)
+{
+    g_warning("%s: the HTMLMediaElement:initial-time property has been removed from WebKit, this function does nothing.", __func__);
+    return 0;
+}
+
+// WebKitDOMHTMLHeadElement
+
+gchar* webkit_dom_html_head_element_get_profile(WebKitDOMHTMLHeadElement* self)
+{
+    g_warning("%s: the HeadElement object has been removed from WebKit, this function does nothing.", __func__);
+    return g_strdup("");
+}
+
+void webkit_dom_html_head_element_set_profile(WebKitDOMHTMLHeadElement* self, const gchar* value)
+{
+    g_warning("%s: the HeadElement object has been removed from WebKit, this function does nothing.", __func__);
+}
+
+// WebKitDOMProcessingInstruction
+
+gchar* webkit_dom_processing_instruction_get_data(WebKitDOMProcessingInstruction* self)
+{
+    g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
+    return g_strdup("");
+}
+
+void webkit_dom_processing_instruction_set_data(WebKitDOMProcessingInstruction* self, const gchar* value, GError** error)
+{
+    g_warning("%s: this functionality has been removed from WebKit, this function does nothing.", __func__);
 }

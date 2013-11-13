@@ -32,7 +32,7 @@
 
 namespace WebKit {
 
-class WebNavigationData : public TypedAPIObject<APIObject::TypeNavigationData> {
+class WebNavigationData : public API::TypedObject<API::Object::TypeNavigationData> {
 public:
     static PassRefPtr<WebNavigationData> create(const WebNavigationDataStore& store)
     {
@@ -44,6 +44,7 @@ public:
     String title() const { return m_store.title; }
     String url() const { return m_store.url; }
     const WebCore::ResourceRequest& originalRequest() const { return m_store.originalRequest; }
+    const WebCore::ResourceResponse& response() const { return m_store.response; }
 
 private:
     explicit WebNavigationData(const WebNavigationDataStore&);

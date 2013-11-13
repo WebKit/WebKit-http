@@ -60,9 +60,9 @@ public:
         Matrix3DTransformOperation
     };
 
-    static PassRefPtr<WebKitCSSTransformValue> create(TransformOperationType type)
+    static PassRef<WebKitCSSTransformValue> create(TransformOperationType type)
     {
-        return adoptRef(new WebKitCSSTransformValue(type));
+        return adoptRef(*new WebKitCSSTransformValue(type));
     }
 
     String customCSSText() const;
@@ -86,6 +86,12 @@ inline WebKitCSSTransformValue* toWebKitCSSTransformValue(CSSValue* value)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isWebKitCSSTransformValue());
     return static_cast<WebKitCSSTransformValue*>(value);
+}
+
+inline const WebKitCSSTransformValue* toWebKitCSSTransformValue(const CSSValue* value)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isWebKitCSSTransformValue());
+    return static_cast<const WebKitCSSTransformValue*>(value);
 }
 
 }

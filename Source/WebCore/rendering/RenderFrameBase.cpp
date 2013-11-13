@@ -33,8 +33,8 @@
 
 namespace WebCore {
 
-RenderFrameBase::RenderFrameBase(HTMLFrameElementBase& element)
-    : RenderWidget(element)
+RenderFrameBase::RenderFrameBase(HTMLFrameElementBase& element, PassRef<RenderStyle> style)
+    : RenderWidget(element, std::move(style))
 {
 }
 
@@ -54,14 +54,14 @@ inline bool shouldExpandFrame(LayoutUnit width, LayoutUnit height, bool hasFixed
 
 void RenderFrameBase::layoutWithFlattening(bool hasFixedWidth, bool hasFixedHeight)
 {
-    FrameView* childFrameView = toFrameView(widget());
+    FrameView* childFrameView = childView();
     RenderView* childRoot = childFrameView ? childFrameView->frame().contentRenderer() : 0;
 
     if (!childRoot || !shouldExpandFrame(width(), height(), hasFixedWidth, hasFixedHeight)) {
         updateWidgetPosition();
         if (childFrameView)
             childFrameView->layout();
-        setNeedsLayout(false);
+        clearNeedsLayout();
         return;
     }
 
@@ -80,7 +80,7 @@ void RenderFrameBase::layoutWithFlattening(bool hasFixedWidth, bool hasFixedHeig
 
     // make sure minimum preferred width is enforced
     if (isScrollable || !hasFixedWidth) {
-        setWidth(max(width(), childRoot->minPreferredLogicalWidth() + hBorder));
+        setWidth(std::max(width(), childRoot->minPreferredLogicalWidth() + hBorder));
         // update again to pass the new width to the child frame
         updateWidgetPosition();
         childFrameView->layout();
@@ -88,9 +88,9 @@ void RenderFrameBase::layoutWithFlattening(bool hasFixedWidth, bool hasFixedHeig
 
     // expand the frame by setting frame height = content height
     if (isScrollable || !hasFixedHeight || childRoot->isFrameSet())
-        setHeight(max<LayoutUnit>(height(), childFrameView->contentsHeight() + vBorder));
+        setHeight(std::max<LayoutUnit>(height(), childFrameView->contentsHeight() + vBorder));
     if (isScrollable || !hasFixedWidth || childRoot->isFrameSet())
-        setWidth(max<LayoutUnit>(width(), childFrameView->contentsWidth() + hBorder));
+        setWidth(std::max<LayoutUnit>(width(), childFrameView->contentsWidth() + hBorder));
 
     updateWidgetPosition();
 
@@ -98,7 +98,7 @@ void RenderFrameBase::layoutWithFlattening(bool hasFixedWidth, bool hasFixedHeig
     ASSERT(!childRoot->needsLayout());
     ASSERT(!childRoot->firstChild() || !childRoot->firstChild()->firstChildSlow() || !childRoot->firstChild()->firstChildSlow()->needsLayout());
 
-    setNeedsLayout(false);
+    clearNeedsLayout();
 }
 
 }

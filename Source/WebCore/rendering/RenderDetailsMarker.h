@@ -29,7 +29,7 @@ namespace WebCore {
 
 class RenderDetailsMarker FINAL : public RenderBlockFlow {
 public:
-    explicit RenderDetailsMarker(DetailsMarkerControl&);
+    RenderDetailsMarker(DetailsMarkerControl&, PassRef<RenderStyle>);
     DetailsMarkerControl& element() const { return static_cast<DetailsMarkerControl&>(nodeForNonAnonymous()); }
 
     enum Orientation { Up, Down, Left, Right };
@@ -45,13 +45,7 @@ private:
     Path getPath(const LayoutPoint& origin) const;
 };
 
-inline const RenderDetailsMarker& toRenderDetailsMarker(const RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isDetailsMarker());
-    return static_cast<const RenderDetailsMarker&>(object);
-}
-
-void toRenderDetailsMarker(const RenderDetailsMarker&);
+RENDER_OBJECT_TYPE_CASTS(RenderDetailsMarker, isDetailsMarker());
 
 }
 

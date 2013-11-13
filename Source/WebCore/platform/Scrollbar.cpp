@@ -34,12 +34,6 @@
 #include "ScrollbarTheme.h"
 #include <algorithm>
 
-#if ENABLE(GESTURE_EVENTS)
-#include "PlatformGestureEvent.h"
-#endif
-
-using namespace std;
-
 #if PLATFORM(GTK)
 // The position of the scrollbar thumb affects the appearance of the steppers, so
 // when the thumb moves, we have to invalidate them for painting.
@@ -286,9 +280,9 @@ void Scrollbar::moveThumb(int pos, bool draggingDocument)
         FloatPoint currentPosition = m_scrollableArea->scrollAnimator()->currentPosition();
         int destinationPosition = (m_orientation == HorizontalScrollbar ? currentPosition.x() : currentPosition.y()) + delta;
         if (delta > 0)
-            destinationPosition = min(destinationPosition + delta, maximum());
+            destinationPosition = std::min(destinationPosition + delta, maximum());
         else if (delta < 0)
-            destinationPosition = max(destinationPosition + delta, 0);
+            destinationPosition = std::max(destinationPosition + delta, 0);
         m_scrollableArea->scrollToOffsetWithoutAnimation(m_orientation, destinationPosition);
         m_documentDragPos = pos;
         return;
@@ -305,9 +299,9 @@ void Scrollbar::moveThumb(int pos, bool draggingDocument)
     int trackLen = theme()->trackLength(this);
     int maxPos = trackLen - thumbLen;
     if (delta > 0)
-        delta = min(maxPos - thumbPos, delta);
+        delta = std::min(maxPos - thumbPos, delta);
     else if (delta < 0)
-        delta = max(-thumbPos, delta);
+        delta = std::max(-thumbPos, delta);
     
     if (delta) {
         float newPosition = static_cast<float>(thumbPos + delta) * maximum() / (trackLen - thumbLen);
@@ -339,46 +333,6 @@ void Scrollbar::setPressedPart(ScrollbarPart part)
     else if (m_hoveredPart != NoPart)  // When we no longer have a pressed part, we can start drawing a hovered state on the hovered part.
         theme()->invalidatePart(this, m_hoveredPart);
 }
-
-#if ENABLE(GESTURE_EVENTS)
-bool Scrollbar::gestureEvent(const PlatformGestureEvent& evt)
-{
-    bool handled = false;
-    switch (evt.type()) {
-    case PlatformEvent::GestureTapDown:
-        setPressedPart(theme()->hitTest(this, evt.position()));
-        m_pressedPos = (orientation() == HorizontalScrollbar ? convertFromContainingWindow(evt.position()).x() : convertFromContainingWindow(evt.position()).y());
-        return true;
-    case PlatformEvent::GestureTapDownCancel:
-    case PlatformEvent::GestureScrollBegin:
-        if (m_pressedPart == ThumbPart) {
-            m_scrollPos = m_pressedPos;
-            return true;
-        }
-        break;
-    case PlatformEvent::GestureScrollUpdate:
-    case PlatformEvent::GestureScrollUpdateWithoutPropagation:
-        if (m_pressedPart == ThumbPart) {
-            m_scrollPos += HorizontalScrollbar ? evt.deltaX() : evt.deltaY();
-            moveThumb(m_scrollPos, false);
-            return true;
-        }
-        break;
-    case PlatformEvent::GestureScrollEnd:
-        m_scrollPos = 0;
-        break;
-    case PlatformEvent::GestureTap:
-        if (m_pressedPart != ThumbPart && m_pressedPart != NoPart)
-            handled = m_scrollableArea && m_scrollableArea->scroll(pressedPartScrollDirection(), pressedPartScrollGranularity());
-        break;
-    default:
-        break;
-    }
-    setPressedPart(NoPart);
-    m_pressedPos = 0;
-    return handled;
-}
-#endif
 
 bool Scrollbar::mouseMoved(const PlatformMouseEvent& evt)
 {
@@ -587,6 +541,17 @@ IntPoint Scrollbar::convertFromContainingView(const IntPoint& parentPoint) const
         return m_scrollableArea->convertFromContainingViewToScrollbar(this, parentPoint);
 
     return Widget::convertFromContainingView(parentPoint);
+}
+
+bool Scrollbar::supportsUpdateOnSecondaryThread() const
+{
+    // It's unfortunate that this needs to be done with an ifdef. Ideally there would be able to feature-detect
+    // the necessary support within AppKit.
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000 && ENABLE(THREADED_SCROLLING)
+    return m_scrollableArea ? !m_scrollableArea->updatesScrollLayerPositionOnMainThread() : false;
+#else
+    return false;
+#endif
 }
 
 } // namespace WebCore

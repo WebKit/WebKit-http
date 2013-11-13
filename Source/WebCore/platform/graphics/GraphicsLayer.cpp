@@ -46,7 +46,7 @@
 
 namespace WebCore {
 
-typedef HashMap<const GraphicsLayer*, Vector<FloatRect> > RepaintMap;
+typedef HashMap<const GraphicsLayer*, Vector<FloatRect>> RepaintMap;
 static RepaintMap& repaintRectMap()
 {
     DEFINE_STATIC_LOCAL(RepaintMap, map, ());
@@ -367,13 +367,19 @@ void GraphicsLayer::getDebugBorderInfo(Color& color, float& width) const
         width = 2;
         return;
     }
+
+    if (hasContentsLayer()) {
+        color = Color(255, 150, 255, 200); // non-painting layer with contents: pink
+        width = 2;
+        return;
+    }
     
     if (masksToBounds()) {
         color = Color(128, 255, 255, 48); // masking layer: pale blue
         width = 20;
         return;
     }
-        
+
     color = Color(255, 255, 0, 192); // container: yellow
     width = 2;
 }
@@ -506,7 +512,7 @@ int GraphicsLayer::validateTransformOperations(const KeyframeValueList& valueLis
     double maxRotAngle = -1.0;
         
     for (size_t j = 0; j < firstVal.operations().size(); ++j) {
-        TransformOperation::OperationType type = firstVal.operations().at(j)->getOperationType();
+        TransformOperation::OperationType type = firstVal.operations().at(j)->type();
         
         // if this is a rotation entry, we need to see if any angle differences are >= 180 deg
         if (type == TransformOperation::ROTATE_X ||
@@ -563,12 +569,6 @@ void GraphicsLayer::addRepaintRect(const FloatRect& repaintRect)
             repaintRects.append(largestRepaintRect);
         }
     }
-}
-
-void GraphicsLayer::writeIndent(TextStream& ts, int indent)
-{
-    for (int i = 0; i != indent; ++i)
-        ts << "  ";
 }
 
 void GraphicsLayer::dumpLayer(TextStream& ts, int indent, LayerTreeAsTextBehavior behavior) const
@@ -629,7 +629,7 @@ void GraphicsLayer::dumpProperties(TextStream& ts, int indent, LayerTreeAsTextBe
         ts << "(preserves3D " << m_preserves3D << ")\n";
     }
 
-    if (m_drawsContent) {
+    if (m_drawsContent && m_client->shouldDumpPropertyForLayer(this, "drawsContent")) {
         writeIndent(ts, indent + 1);
         ts << "(drawsContent " << m_drawsContent << ")\n";
     }
@@ -654,7 +654,7 @@ void GraphicsLayer::dumpProperties(TextStream& ts, int indent, LayerTreeAsTextBe
         ts << ")\n";
     }
 
-    if (m_backgroundColor.isValid()) {
+    if (m_backgroundColor.isValid() && m_client->shouldDumpPropertyForLayer(this, "backgroundColor")) {
         writeIndent(ts, indent + 1);
         ts << "(backgroundColor " << m_backgroundColor.nameForRenderTreeAsText() << ")\n";
     }
@@ -696,7 +696,7 @@ void GraphicsLayer::dumpProperties(TextStream& ts, int indent, LayerTreeAsTextBe
         ts << ")\n";
     }
 
-    if (behavior & LayerTreeAsTextIncludeRepaintRects && repaintRectMap().contains(this) && !repaintRectMap().get(this).isEmpty()) {
+    if (behavior & LayerTreeAsTextIncludeRepaintRects && repaintRectMap().contains(this) && !repaintRectMap().get(this).isEmpty() && m_client->shouldDumpPropertyForLayer(this, "repaintRects")) {
         writeIndent(ts, indent + 1);
         ts << "(repaint rects\n";
         for (size_t i = 0; i < repaintRectMap().get(this).size(); ++i) {
@@ -744,14 +744,29 @@ void GraphicsLayer::dumpProperties(TextStream& ts, int indent, LayerTreeAsTextBe
     dumpAdditionalProperties(ts, indent, behavior);
     
     if (m_children.size()) {
-        writeIndent(ts, indent + 1);
-        ts << "(children " << m_children.size() << "\n";
-        
-        unsigned i;
-        for (i = 0; i < m_children.size(); i++)
-            m_children[i]->dumpLayer(ts, indent + 2, behavior);
-        writeIndent(ts, indent + 1);
-        ts << ")\n";
+        TextStream childrenStream;
+        unsigned totalChildCount = m_children.size();
+        for (size_t childIndex = 0; childIndex < m_children.size(); childIndex++) {
+            GraphicsLayer* child = m_children[childIndex];
+            if (!m_client->shouldSkipLayerInDump(child)) {
+                child->dumpLayer(childrenStream, indent + 2, behavior);
+                continue;
+            }
+            
+            const Vector<GraphicsLayer*>& grandChildren = child->children();
+            totalChildCount += grandChildren.size() - 1;
+            for (size_t grandChildIndex = 0; grandChildIndex < grandChildren.size(); grandChildIndex++)
+                grandChildren[grandChildIndex]->dumpLayer(childrenStream, indent + 2, behavior);
+        }
+
+        writeIndent(childrenStream, indent + 1);
+        childrenStream << ")\n";
+
+        if (totalChildCount) {
+            writeIndent(ts, indent + 1);
+            ts << "(children " << totalChildCount << "\n";
+            ts << childrenStream.release();
+        }
     }
 }
 

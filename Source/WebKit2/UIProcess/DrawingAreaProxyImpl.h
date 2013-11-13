@@ -29,16 +29,14 @@
 #include "BackingStore.h"
 #include "DrawingAreaProxy.h"
 #include "LayerTreeContext.h"
-#include <WebCore/RunLoop.h>
 #include <wtf/OwnPtr.h>
+#include <wtf/RunLoop.h>
 
 namespace WebCore {
 class Region;
 }
 
 namespace WebKit {
-
-class CoordinatedLayerTreeHostProxy;
 
 class DrawingAreaProxyImpl : public DrawingAreaProxy {
 public:
@@ -59,7 +57,6 @@ private:
     virtual void deviceScaleFactorDidChange();
     virtual void layerHostingModeDidChange() OVERRIDE;
 
-    virtual void visibilityDidChange();
     virtual void setBackingStoreIsDiscardable(bool);
     virtual void waitForBackingStoreUpdateOnNextPaint();
 
@@ -81,9 +78,6 @@ private:
     void enterAcceleratedCompositingMode(const LayerTreeContext&);
     void exitAcceleratedCompositingMode();
     void updateAcceleratedCompositingMode(const LayerTreeContext&);
-#if USE(COORDINATED_GRAPHICS)
-    virtual void setVisibleContentsRect(const WebCore::FloatRect& visibleContentsRect, const WebCore::FloatPoint& trajectory) OVERRIDE;
-#endif
 #else
     bool isInAcceleratedCompositingMode() const { return false; }
 #endif
@@ -115,7 +109,7 @@ private:
     bool m_isBackingStoreDiscardable;
     std::unique_ptr<BackingStore> m_backingStore;
 
-    WebCore::RunLoop::Timer<DrawingAreaProxyImpl> m_discardBackingStoreTimer;
+    RunLoop::Timer<DrawingAreaProxyImpl> m_discardBackingStoreTimer;
 };
 
 } // namespace WebKit

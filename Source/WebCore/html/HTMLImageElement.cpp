@@ -32,12 +32,9 @@
 #include "HTMLAnchorElement.h"
 #include "HTMLDocument.h"
 #include "HTMLFormElement.h"
-#include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "Page.h"
 #include "RenderImage.h"
-
-using namespace std;
 
 namespace WebCore {
 
@@ -88,7 +85,7 @@ bool HTMLImageElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLImageElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLImageElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, value);
@@ -123,9 +120,24 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicStr
     } else if (name == srcAttr || name == srcsetAttr) {
         m_bestFitImageURL = bestFitSourceForImageAttributes(document().deviceScaleFactor(), fastGetAttribute(srcAttr), fastGetAttribute(srcsetAttr));
         m_imageLoader.updateFromElementIgnoringPreviousError();
-    } else if (name == usemapAttr)
+    } else if (name == usemapAttr) {
         setIsLink(!value.isNull() && !shouldProhibitLinks(this));
-    else if (name == onbeforeloadAttr)
+
+        if (inDocument() && !m_lowercasedUsemap.isNull())
+            document().removeImageElementByLowercasedUsemap(*m_lowercasedUsemap.impl(), *this);
+
+        // The HTMLImageElement's useMap() value includes the '#' symbol at the beginning, which has to be stripped off.
+        // FIXME: We should check that the first character is '#'.
+        // FIXME: HTML5 specification says we should strip any leading string before '#'.
+        // FIXME: HTML5 specification says we should ignore usemap attributes without #.
+        if (value.length() > 1)
+            m_lowercasedUsemap = value.string().substring(1).lower();
+        else
+            m_lowercasedUsemap = nullAtom;
+
+        if (inDocument() && !m_lowercasedUsemap.isNull())
+            document().addImageElementByLowercasedUsemap(*m_lowercasedUsemap.impl(), *this);
+    } else if (name == onbeforeloadAttr)
         setAttributeEventListener(eventNames().beforeloadEvent, name, value);
     else if (name == compositeAttr) {
         // FIXME: images don't support blend modes in their compositing attribute.
@@ -140,9 +152,9 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicStr
                 const AtomicString& id = getIdAttribute();
                 if (!id.isEmpty() && id != getNameAttribute()) {
                     if (willHaveName)
-                        document->addDocumentNamedItem(id, this);
+                        document->addDocumentNamedItem(*id.impl(), *this);
                     else
-                        document->removeDocumentNamedItem(id, this);
+                        document->removeDocumentNamedItem(*id.impl(), *this);
                 }
             }
         }
@@ -162,12 +174,12 @@ String HTMLImageElement::altText() const
     return alt;
 }
 
-RenderElement* HTMLImageElement::createRenderer(RenderArena& arena, RenderStyle& style)
+RenderElement* HTMLImageElement::createRenderer(PassRef<RenderStyle> style)
 {
-    if (style.hasContent())
-        return RenderElement::createFor(*this, style);
+    if (style.get().hasContent())
+        return RenderElement::createFor(*this, std::move(style));
 
-    RenderImage* image = new (arena) RenderImage(this);
+    RenderImage* image = new RenderImage(*this, std::move(style));
     image->setImageResource(RenderImageResource::create());
     return image;
 }
@@ -198,7 +210,7 @@ void HTMLImageElement::didAttachRenderers()
         renderImage->setImageSizeForAltText();
 }
 
-Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode& insertionPoint)
 {
     if (!m_form) { // m_form can be non-null if it was set in constructor.
         m_form = HTMLFormElement::findClosestFormAncestor(*this);
@@ -206,18 +218,25 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode*
             m_form->registerImgElement(this);
     }
 
+    if (insertionPoint.inDocument() && !m_lowercasedUsemap.isNull())
+        document().addImageElementByLowercasedUsemap(*m_lowercasedUsemap.impl(), *this);
+
     // If we have been inserted from a renderer-less document,
     // our loader may have not fetched the image, so do it now.
-    if (insertionPoint->inDocument() && !m_imageLoader.image())
+    if (insertionPoint.inDocument() && !m_imageLoader.image())
         m_imageLoader.updateFromElement();
 
     return HTMLElement::insertedInto(insertionPoint);
 }
 
-void HTMLImageElement::removedFrom(ContainerNode* insertionPoint)
+void HTMLImageElement::removedFrom(ContainerNode& insertionPoint)
 {
     if (m_form)
         m_form->removeImgElement(this);
+
+    if (insertionPoint.inDocument() && !m_lowercasedUsemap.isNull())
+        document().removeImageElementByLowercasedUsemap(*m_lowercasedUsemap.impl(), *this);
+
     m_form = 0;
     HTMLElement::removedFrom(insertionPoint);
 }
@@ -293,6 +312,12 @@ bool HTMLImageElement::isURLAttribute(const Attribute& attribute) const
         || HTMLElement::isURLAttribute(attribute);
 }
 
+bool HTMLImageElement::matchesLowercasedUsemap(const AtomicStringImpl& name) const
+{
+    ASSERT(String(&const_cast<AtomicStringImpl&>(name)).lower().impl() == &name);
+    return m_lowercasedUsemap.impl() == &name;
+}
+
 const AtomicString& HTMLImageElement::alt() const
 {
     return getAttribute(altAttr);
@@ -306,7 +331,7 @@ bool HTMLImageElement::draggable() const
 
 void HTMLImageElement::setHeight(int value)
 {
-    setAttribute(heightAttr, String::number(value));
+    setIntegralAttribute(heightAttr, value);
 }
 
 URL HTMLImageElement::src() const
@@ -321,7 +346,7 @@ void HTMLImageElement::setSrc(const String& value)
 
 void HTMLImageElement::setWidth(int value)
 {
-    setAttribute(widthAttr, String::number(value));
+    setIntegralAttribute(widthAttr, value);
 }
 
 int HTMLImageElement::x() const

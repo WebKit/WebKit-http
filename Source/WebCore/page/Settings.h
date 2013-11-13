@@ -261,8 +261,16 @@ public:
     void setHiddenPageCSSAnimationSuspensionEnabled(bool);
 #endif
 
+    void setFontFallbackPrefersPictographs(bool);
+    bool fontFallbackPrefersPictographs() const { return m_fontFallbackPrefersPictographs; }
+
     static bool lowPowerVideoAudioBufferSizeEnabled() { return gLowPowerVideoAudioBufferSizeEnabled; }
     static void setLowPowerVideoAudioBufferSizeEnabled(bool);
+
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    static void setVideoPluginProxyEnabled(bool flag);
+    static bool isVideoPluginProxyEnabled() { return gVideoPluginProxyEnabled; }
+#endif
 
 private:
     explicit Settings(Page*);
@@ -274,7 +282,7 @@ private:
 
     String m_mediaTypeOverride;
     URL m_userStyleSheetLocation;
-    RefPtr<FontGenericFamilies> m_fontGenericFamilies;
+    const std::unique_ptr<FontGenericFamilies> m_fontGenericFamilies;
     SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
 #if ENABLE(TEXT_AUTOSIZING)
     float m_textAutosizingFontScaleFactor;
@@ -323,6 +331,8 @@ private:
 #if ENABLE(PAGE_VISIBILITY_API)
     bool m_hiddenPageCSSAnimationSuspensionEnabled : 1;
 #endif
+    bool m_fontFallbackPrefersPictographs : 1;
+
     static double gDefaultMinDOMTimerInterval;
     static double gDefaultDOMTimerAlignmentInterval;
 
@@ -348,6 +358,10 @@ private:
     static double gHiddenPageDOMTimerAlignmentInterval;
 
     static bool gLowPowerVideoAudioBufferSizeEnabled;
+
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    static bool gVideoPluginProxyEnabled;
+#endif
 };
 
 } // namespace WebCore

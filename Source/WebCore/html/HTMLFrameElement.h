@@ -42,7 +42,7 @@ private:
     virtual void didAttachRenderers() OVERRIDE;
 
     virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
@@ -54,7 +54,7 @@ private:
     bool m_frameBorderSet;
 };
 
-ELEMENT_TYPE_CASTS(HTMLFrameElement)
+NODE_TYPE_CASTS(HTMLFrameElement)
 
 } // namespace WebCore
 

@@ -27,7 +27,6 @@
 #ifndef DrawingAreaProxy_h
 #define DrawingAreaProxy_h
 
-#include "BackingStore.h"
 #include "DrawingAreaInfo.h"
 #include "MessageReceiver.h"
 #include <WebCore/FloatPoint.h>
@@ -54,7 +53,6 @@ public:
     virtual void deviceScaleFactorDidChange() = 0;
 
     // FIXME: These should be pure virtual.
-    virtual void visibilityDidChange() { }
     virtual void layerHostingModeDidChange() { }
 
     virtual void setBackingStoreIsDiscardable(bool) { }

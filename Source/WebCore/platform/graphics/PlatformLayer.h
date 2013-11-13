@@ -31,9 +31,9 @@
 #if PLATFORM(MAC)
 OBJC_CLASS CALayer;
 typedef CALayer PlatformLayer;
-#elif PLATFORM(WIN)
+#elif PLATFORM(WIN) && USE(CA)
 typedef struct _CACFLayer PlatformLayer;
-#elif PLATFORM(QT)
+#elif PLATFORM(WIN) && USE(TEXTURE_MAPPER)
 namespace WebCore {
 class TextureMapperPlatformLayer;
 typedef TextureMapperPlatformLayer PlatformLayer;

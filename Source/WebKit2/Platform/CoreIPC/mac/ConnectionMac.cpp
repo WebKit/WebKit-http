@@ -30,15 +30,10 @@
 #include "ImportanceAssertion.h"
 #include "MachPort.h"
 #include "MachUtilities.h"
-#include <WebCore/RunLoop.h>
 #include <mach/mach_error.h>
 #include <mach/vm_map.h>
-
-#if HAVE(XPC)
+#include <wtf/RunLoop.h>
 #include <xpc/xpc.h>
-#endif
-
-using namespace WebCore;
 
 namespace CoreIPC {
 
@@ -77,12 +72,10 @@ void Connection::platformInvalidate()
         m_exceptionPort = MACH_PORT_NULL;
     }
 
-#if HAVE(XPC)
     if (m_xpcConnection) {
         xpc_release(m_xpcConnection);
         m_xpcConnection = 0;
     }
-#endif
 }
 
 void Connection::platformInitialize(Identifier identifier)
@@ -101,13 +94,11 @@ void Connection::platformInitialize(Identifier identifier)
     m_receivePortDataAvailableSource = nullptr;
     m_exceptionPortDataAvailableSource = nullptr;
 
-#if HAVE(XPC)
     m_xpcConnection = identifier.xpcConnection;
     // FIXME: Instead of explicitly retaining the connection here, Identifier::xpcConnection
     // should just be a smart pointer.
     if (m_xpcConnection)
         xpc_retain(m_xpcConnection);
-#endif
 }
 
 static dispatch_source_t createDataAvailableSource(mach_port_t receivePort, WorkQueue* workQueue, const Function<void()>& function)
@@ -208,8 +199,6 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
         Attachment::Type type = attachments[i].type();
         if (type == Attachment::MachPortType)
             numberOfPortDescriptors++;
-        else if (type == Attachment::MachOOLMemoryType)
-            numberOfOOLMemoryDescriptors++;
     }
     
     size_t messageSize = machMessageSize(encoder->bufferSize(), numberOfPortDescriptors, numberOfOOLMemoryDescriptors);
@@ -219,7 +208,6 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
     if (messageSize > sizeof(buffer)) {
         messageBodyIsOOL = true;
 
-        attachments.append(Attachment(encoder->buffer(), encoder->bufferSize(), MACH_MSG_VIRTUAL_COPY, false));
         numberOfOOLMemoryDescriptors++;
         messageSize = machMessageSize(0, numberOfPortDescriptors, numberOfOOLMemoryDescriptors);
     }
@@ -227,7 +215,7 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
     bool isComplex = (numberOfPortDescriptors + numberOfOOLMemoryDescriptors > 0);
 
     mach_msg_header_t* header = reinterpret_cast<mach_msg_header_t*>(&buffer);
-    header->msgh_bits = isComplex ? MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND | MACH_MSGH_BITS_COMPLEX, 0) : MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, 0);
+    header->msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, 0);
     header->msgh_size = messageSize;
     header->msgh_remote_port = m_sendPort;
     header->msgh_local_port = MACH_PORT_NULL;
@@ -238,10 +226,12 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
     uint8_t* messageData;
 
     if (isComplex) {
+        header->msgh_bits |= MACH_MSGH_BITS_COMPLEX;
+
         mach_msg_body_t* body = reinterpret_cast<mach_msg_body_t*>(header + 1);
         body->msgh_descriptor_count = numberOfPortDescriptors + numberOfOOLMemoryDescriptors;
-
         uint8_t* descriptorData = reinterpret_cast<uint8_t*>(body + 1);
+
         for (size_t i = 0; i < attachments.size(); ++i) {
             Attachment attachment = attachments[i];
 
@@ -254,18 +244,21 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
 
                 descriptorData += sizeof(mach_msg_port_descriptor_t);
                 break;
-            case Attachment::MachOOLMemoryType:
-                descriptor->out_of_line.address = attachment.address();
-                descriptor->out_of_line.size = attachment.size();
-                descriptor->out_of_line.copy = attachment.copyOptions();
-                descriptor->out_of_line.deallocate = attachment.deallocate();
-                descriptor->out_of_line.type = MACH_MSG_OOL_DESCRIPTOR;            
-
-                descriptorData += sizeof(mach_msg_ool_descriptor_t);
-                break;
             default:
                 ASSERT_NOT_REACHED();
             }
+        }
+
+        if (messageBodyIsOOL) {
+            mach_msg_descriptor_t* descriptor = reinterpret_cast<mach_msg_descriptor_t*>(descriptorData);
+
+            descriptor->out_of_line.address = encoder->buffer();
+            descriptor->out_of_line.size = encoder->bufferSize();
+            descriptor->out_of_line.copy = MACH_MSG_VIRTUAL_COPY;
+            descriptor->out_of_line.deallocate = false;
+            descriptor->out_of_line.type = MACH_MSG_OOL_DESCRIPTOR;
+
+            descriptorData += sizeof(mach_msg_ool_descriptor_t);
         }
 
         messageData = descriptorData;
@@ -333,10 +326,6 @@ static std::unique_ptr<MessageDecoder> createMessageDecoder(mach_msg_header_t* h
             attachments[numDescriptors - i - 1] = Attachment(descriptor->port.name, descriptor->port.disposition);
             descriptorData += sizeof(mach_msg_port_descriptor_t);
             break;
-        case MACH_MSG_OOL_DESCRIPTOR:
-            attachments[numDescriptors - i - 1] = Attachment(descriptor->out_of_line.address, descriptor->out_of_line.size, descriptor->out_of_line.copy, descriptor->out_of_line.deallocate);
-            descriptorData += sizeof(mach_msg_ool_descriptor_t);
-            break;
         default:
             ASSERT(false && "Unhandled descriptor type");
         }
@@ -345,15 +334,13 @@ static std::unique_ptr<MessageDecoder> createMessageDecoder(mach_msg_header_t* h
     if (messageBodyIsOOL) {
         mach_msg_descriptor_t* descriptor = reinterpret_cast<mach_msg_descriptor_t*>(descriptorData);
         ASSERT(descriptor->type.type == MACH_MSG_OOL_DESCRIPTOR);
-        Attachment messageBodyAttachment(descriptor->out_of_line.address, descriptor->out_of_line.size,
-                                         descriptor->out_of_line.copy, descriptor->out_of_line.deallocate);
 
-        uint8_t* messageBody = static_cast<uint8_t*>(messageBodyAttachment.address());
-        size_t messageBodySize = messageBodyAttachment.size();
+        uint8_t* messageBody = static_cast<uint8_t*>(descriptor->out_of_line.address);
+        size_t messageBodySize = descriptor->out_of_line.size;
 
         auto decoder = std::make_unique<MessageDecoder>(DataReference(messageBody, messageBodySize), std::move(attachments));
 
-        vm_deallocate(mach_task_self(), reinterpret_cast<vm_address_t>(messageBodyAttachment.address()), messageBodyAttachment.size());
+        vm_deallocate(mach_task_self(), reinterpret_cast<vm_address_t>(descriptor->out_of_line.address), descriptor->out_of_line.size);
 
         return decoder;
     }

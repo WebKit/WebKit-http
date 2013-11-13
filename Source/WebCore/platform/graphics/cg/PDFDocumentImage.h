@@ -70,7 +70,7 @@ private:
     virtual void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) OVERRIDE;
     virtual IntSize size() const OVERRIDE;
 
-    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode) OVERRIDE;
+    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, ImageOrientationDescription) OVERRIDE;
 
     // FIXME: Implement this to be less conservative.
     virtual bool currentFrameKnownToBeOpaque() OVERRIDE { return false; }
@@ -97,7 +97,6 @@ private:
     FloatRect m_cachedSourceRect;
     size_t m_cachedBytes;
 
-    FloatRect m_mediaBox;
     FloatRect m_cropBox;
     float m_rotation;
     bool m_hasPage;

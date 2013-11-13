@@ -50,8 +50,8 @@ webkit2_h_api += \
 	$(WebKit2)/UIProcess/API/C/WKApplicationCacheManager.h \
 	$(WebKit2)/UIProcess/API/C/WKAuthenticationChallenge.h \
 	$(WebKit2)/UIProcess/API/C/WKAuthenticationDecisionListener.h \
-	$(WebKit2)/UIProcess/API/C/WKBackForwardList.h \
-	$(WebKit2)/UIProcess/API/C/WKBackForwardListItem.h \
+	$(WebKit2)/UIProcess/API/C/WKBackForwardListRef.h \
+	$(WebKit2)/UIProcess/API/C/WKBackForwardListItemRef.h \
 	$(WebKit2)/UIProcess/API/C/WKBatteryManager.h \
 	$(WebKit2)/UIProcess/API/C/WKBatteryStatus.h \
 	$(WebKit2)/UIProcess/API/C/WKColorPickerResultListener.h \
@@ -74,7 +74,7 @@ webkit2_h_api += \
 	$(WebKit2)/UIProcess/API/C/WKKeyValueStorageManager.h \
 	$(WebKit2)/UIProcess/API/C/WKMediaCacheManager.h \
 	$(WebKit2)/UIProcess/API/C/WKNativeEvent.h \
-	$(WebKit2)/UIProcess/API/C/WKNavigationData.h \
+	$(WebKit2)/UIProcess/API/C/WKNavigationDataRef.h \
 	$(WebKit2)/UIProcess/API/C/WKNetworkInfo.h \
 	$(WebKit2)/UIProcess/API/C/WKNetworkInfoManager.h \
 	$(WebKit2)/UIProcess/API/C/WKNotification.h \
@@ -83,6 +83,7 @@ webkit2_h_api += \
 	$(WebKit2)/UIProcess/API/C/WKNotificationProvider.h \
 	$(WebKit2)/UIProcess/API/C/WKOpenPanelParameters.h \
 	$(WebKit2)/UIProcess/API/C/WKOpenPanelResultListener.h \
+	$(WebKit2)/UIProcess/API/C/WKOriginDataManager.h \
 	$(WebKit2)/UIProcess/API/C/WKPageGroup.h \
 	$(WebKit2)/UIProcess/API/C/WKPage.h \
 	$(WebKit2)/UIProcess/API/C/WKPagePrivate.h \
@@ -100,6 +101,7 @@ webkit2gtk_h_api += \
 	$(WebKit2)/UIProcess/API/gtk/WebKitAuthenticationRequest.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitBackForwardList.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitBackForwardListItem.h \
+	$(WebKit2)/UIProcess/API/gtk/WebKitCertificateInfo.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitContextMenu.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitContextMenuActions.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitContextMenuItem.h \
@@ -223,6 +225,10 @@ webkit2_built_sources += \
 	DerivedSources/WebKit2/WebNetworkInfoManagerProxyMessages.h \
 	DerivedSources/WebKit2/WebNotificationManagerMessageReceiver.cpp \
 	DerivedSources/WebKit2/WebNotificationManagerMessages.h \
+	DerivedSources/WebKit2/WebOriginDataManagerMessageReceiver.cpp \
+	DerivedSources/WebKit2/WebOriginDataManagerMessages.h \
+	DerivedSources/WebKit2/WebOriginDataManagerProxyMessageReceiver.cpp \
+	DerivedSources/WebKit2/WebOriginDataManagerProxyMessages.h \
 	DerivedSources/WebKit2/WebPageGroupProxyMessageReceiver.cpp \
 	DerivedSources/WebKit2/WebPageGroupProxyMessages.h \
 	DerivedSources/WebKit2/WebPageProxyMessageReceiver.cpp \
@@ -281,10 +287,10 @@ webkit2platform_sources += \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.h \
 	Source/WebKit2/Platform/CoreIPC/MessageSender.cpp \
 	Source/WebKit2/Platform/CoreIPC/MessageSender.h \
-	Source/WebKit2/Platform/CoreIPC/StringReference.cpp \
-	Source/WebKit2/Platform/CoreIPC/StringReference.h \
 	Source/WebKit2/Platform/CoreIPC/unix/AttachmentUnix.cpp \
 	Source/WebKit2/Platform/CoreIPC/unix/ConnectionUnix.cpp \
+	Source/WebKit2/Platform/IPC/StringReference.cpp \
+	Source/WebKit2/Platform/IPC/StringReference.h \
 	Source/WebKit2/Platform/gtk/LoggingGtk.cpp \
 	Source/WebKit2/Platform/gtk/ModuleGtk.cpp \
 	Source/WebKit2/Platform/gtk/WorkQueueGtk.cpp \
@@ -300,6 +306,8 @@ webkit2platform_sources += \
 
 webkit2_sources += \
 	Source/WebKit2/config.h \
+	Source/WebKit2/NetworkProcess/soup/NetworkProcessSoup.cpp \
+	Source/WebKit2/NetworkProcess/soup/NetworkResourceLoadSchedulerSoup.cpp \
 	Source/WebKit2/PluginProcess/PluginControllerProxy.cpp \
 	Source/WebKit2/PluginProcess/PluginControllerProxy.h \
 	Source/WebKit2/PluginProcess/PluginCreationParameters.cpp \
@@ -314,6 +322,7 @@ webkit2_sources += \
 	Source/WebKit2/Shared/FontInfo.h \
 	Source/WebKit2/Shared/HTTPCookieAcceptPolicy.h \
 	Source/WebKit2/Shared/ResourceCachesToClear.h \
+	Source/WebKit2/Shared/ViewState.h \
 	Source/WebKit2/Shared/WebMemorySampler.h \
 	Source/WebKit2/Shared/APIClient.h \
 	Source/WebKit2/Shared/APIClientTraits.cpp \
@@ -435,8 +444,6 @@ webkit2_sources += \
 	Source/WebKit2/Shared/ImmutableDictionary.cpp \
 	Source/WebKit2/Shared/ImmutableDictionary.h \
 	Source/WebKit2/Shared/LayerTreeContext.h \
-	Source/WebKit2/Shared/MutableArray.cpp \
-	Source/WebKit2/Shared/MutableArray.h \
 	Source/WebKit2/Shared/MutableDictionary.cpp \
 	Source/WebKit2/Shared/MutableDictionary.h \
 	Source/WebKit2/Shared/NativeWebKeyboardEvent.h \
@@ -577,10 +584,10 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/C/WKAuthenticationChallenge.h \
 	Source/WebKit2/UIProcess/API/C/WKAuthenticationDecisionListener.cpp \
 	Source/WebKit2/UIProcess/API/C/WKAuthenticationDecisionListener.h \
-	Source/WebKit2/UIProcess/API/C/WKBackForwardList.cpp \
-	Source/WebKit2/UIProcess/API/C/WKBackForwardList.h \
-	Source/WebKit2/UIProcess/API/C/WKBackForwardListItem.cpp \
-	Source/WebKit2/UIProcess/API/C/WKBackForwardListItem.h \
+	Source/WebKit2/UIProcess/API/C/WKBackForwardListRef.cpp \
+	Source/WebKit2/UIProcess/API/C/WKBackForwardListRef.h \
+	Source/WebKit2/UIProcess/API/C/WKBackForwardListItemRef.cpp \
+	Source/WebKit2/UIProcess/API/C/WKBackForwardListItemRef.h \
 	Source/WebKit2/UIProcess/API/C/WKBatteryManager.cpp \
 	Source/WebKit2/UIProcess/API/C/WKBatteryManager.h \
 	Source/WebKit2/UIProcess/API/C/WKBatteryStatus.cpp \
@@ -624,8 +631,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/C/WKMediaCacheManager.cpp \
 	Source/WebKit2/UIProcess/API/C/WKMediaCacheManager.h \
 	Source/WebKit2/UIProcess/API/C/WKNativeEvent.h \
-	Source/WebKit2/UIProcess/API/C/WKNavigationData.cpp \
-	Source/WebKit2/UIProcess/API/C/WKNavigationData.h \
+	Source/WebKit2/UIProcess/API/C/WKNavigationDataRef.cpp \
+	Source/WebKit2/UIProcess/API/C/WKNavigationDataRef.h \
 	Source/WebKit2/UIProcess/API/C/WKNetworkInfo.cpp \
 	Source/WebKit2/UIProcess/API/C/WKNetworkInfo.h \
 	Source/WebKit2/UIProcess/API/C/WKNetworkInfoManager.cpp \
@@ -641,6 +648,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/C/WKOpenPanelParameters.h \
 	Source/WebKit2/UIProcess/API/C/WKOpenPanelResultListener.cpp \
 	Source/WebKit2/UIProcess/API/C/WKOpenPanelResultListener.h \
+	Source/WebKit2/UIProcess/API/C/WKOriginDataManager.cpp \
+	Source/WebKit2/UIProcess/API/C/WKOriginDataManager.h \
 	Source/WebKit2/UIProcess/API/C/WKPage.cpp \
 	Source/WebKit2/UIProcess/API/C/WKPageGroup.cpp \
 	Source/WebKit2/UIProcess/API/C/WKPageGroup.h \
@@ -673,6 +682,9 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardListItem.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardListItem.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardListPrivate.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitCertificateInfo.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitCertificateInfo.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitCertificateInfoPrivate.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitContextMenu.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitContextMenu.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitContextMenuPrivate.h \
@@ -816,6 +828,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/Authentication/WebProtectionSpace.h \
 	Source/WebKit2/UIProcess/BackingStore.cpp \
 	Source/WebKit2/UIProcess/BackingStore.h \
+	Source/WebKit2/UIProcess/DefaultUndoController.cpp \
+	Source/WebKit2/UIProcess/DefaultUndoController.h \
 	Source/WebKit2/UIProcess/Downloads/DownloadProxy.cpp \
 	Source/WebKit2/UIProcess/Downloads/DownloadProxy.h \
 	Source/WebKit2/UIProcess/Downloads/DownloadProxyMap.cpp \
@@ -826,6 +840,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/DrawingAreaProxyImpl.h \
 	Source/WebKit2/UIProcess/FindIndicator.cpp \
 	Source/WebKit2/UIProcess/FindIndicator.h \
+	Source/WebKit2/UIProcess/FrameLoadState.cpp \
+	Source/WebKit2/UIProcess/FrameLoadState.h \
 	Source/WebKit2/UIProcess/GenericCallback.h \
 	Source/WebKit2/UIProcess/GeolocationPermissionRequestManagerProxy.cpp \
 	Source/WebKit2/UIProcess/GeolocationPermissionRequestManagerProxy.h \
@@ -852,6 +868,7 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp \
 	Source/WebKit2/UIProcess/Launcher/ProcessLauncher.cpp \
 	Source/WebKit2/UIProcess/Launcher/ProcessLauncher.h \
+	Source/WebKit2/UIProcess/Network/soup/NetworkProcessProxySoup.cpp \
 	Source/WebKit2/UIProcess/Notifications/NotificationPermissionRequest.cpp \
 	Source/WebKit2/UIProcess/Notifications/NotificationPermissionRequest.h \
 	Source/WebKit2/UIProcess/Notifications/NotificationPermissionRequestManagerProxy.cpp \
@@ -886,6 +903,7 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/Storage/LocalStorageDatabaseTracker.h \
 	Source/WebKit2/UIProcess/Storage/StorageManager.cpp \
 	Source/WebKit2/UIProcess/Storage/StorageManager.h \
+	Source/WebKit2/UIProcess/soup/WebContextSoup.cpp \
 	Source/WebKit2/UIProcess/soup/WebCookieManagerProxySoup.cpp \
 	Source/WebKit2/UIProcess/soup/WebSoupRequestManagerClient.cpp \
 	Source/WebKit2/UIProcess/soup/WebSoupRequestManagerClient.h \
@@ -976,6 +994,10 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebNetworkInfoProvider.h \
 	Source/WebKit2/UIProcess/WebOpenPanelResultListenerProxy.cpp \
 	Source/WebKit2/UIProcess/WebOpenPanelResultListenerProxy.h \
+	Source/WebKit2/UIProcess/WebOriginDataManagerProxy.cpp \
+	Source/WebKit2/UIProcess/WebOriginDataManagerProxy.h \
+	Source/WebKit2/UIProcess/WebOriginDataManagerProxyChangeClient.cpp \
+	Source/WebKit2/UIProcess/WebOriginDataManagerProxyChangeClient.h \
 	Source/WebKit2/UIProcess/WebPageContextMenuClient.cpp \
 	Source/WebKit2/UIProcess/WebPageContextMenuClient.h \
 	Source/WebKit2/UIProcess/WebPageGroup.cpp \
@@ -1022,6 +1044,7 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Cookies/soup/WebCookieManagerSoup.cpp \
 	Source/WebKit2/WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.cpp \
 	Source/WebKit2/WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.h \
+	Source/WebKit2/WebProcess/Databases/IndexedDB/WebIDBFactoryBackend.h \
 	Source/WebKit2/WebProcess/FullScreen/WebFullScreenManager.cpp \
 	Source/WebKit2/WebProcess/FullScreen/WebFullScreenManager.h \
 	Source/WebKit2/WebProcess/Geolocation/GeolocationPermissionRequestManager.cpp \
@@ -1131,6 +1154,8 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Notifications/NotificationPermissionRequestManager.h \
 	Source/WebKit2/WebProcess/Notifications/WebNotificationManager.cpp \
 	Source/WebKit2/WebProcess/Notifications/WebNotificationManager.h \
+	Source/WebKit2/WebProcess/OriginData/WebOriginDataManager.cpp \
+	Source/WebKit2/WebProcess/OriginData/WebOriginDataManager.h \
 	Source/WebKit2/WebProcess/Plugins/Netscape/JSNPMethod.cpp \
 	Source/WebKit2/WebProcess/Plugins/Netscape/JSNPMethod.h \
 	Source/WebKit2/WebProcess/Plugins/Netscape/JSNPObject.cpp \

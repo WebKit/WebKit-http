@@ -33,46 +33,27 @@
 
 namespace WebCore {
 
-PassOwnPtr<ContentData> ContentData::create(PassRefPtr<StyleImage> image)
+std::unique_ptr<ContentData> ContentData::clone() const
 {
-    return adoptPtr(new ImageContentData(image));
-}
-
-PassOwnPtr<ContentData> ContentData::create(const String& text)
-{
-    return adoptPtr(new TextContentData(text));
-}
-
-PassOwnPtr<ContentData> ContentData::create(PassOwnPtr<CounterContent> counter)
-{
-    return adoptPtr(new CounterContentData(counter));
-}
-
-PassOwnPtr<ContentData> ContentData::create(QuoteType quote)
-{
-    return adoptPtr(new QuoteContentData(quote));
-}
-
-PassOwnPtr<ContentData> ContentData::clone() const
-{
-    OwnPtr<ContentData> result = cloneInternal();
+    auto result = cloneInternal();
     
     ContentData* lastNewData = result.get();
     for (const ContentData* contentData = next(); contentData; contentData = contentData->next()) {
-        OwnPtr<ContentData> newData = contentData->cloneInternal();
-        lastNewData->setNext(newData.release());
+        auto newData = contentData->cloneInternal();
+        lastNewData->setNext(std::move(newData));
         lastNewData = lastNewData->next();
     }
         
-    return result.release();
+    return result;
 }
 
 RenderObject* ImageContentData::createRenderer(Document& document, RenderStyle& pseudoStyle) const
 {
-    RenderImage* image = RenderImage::createAnonymous(document);
+    // FIXME: We should find a way to avoid setting the style twice here.
+    RenderImage* image = new RenderImage(document, pseudoStyle);
     image->setPseudoStyle(&pseudoStyle);
     if (m_image)
-        image->setImageResource(RenderImageResourceStyleImage::create(m_image.get()));
+        image->setImageResource(RenderImageResourceStyleImage::create(*m_image));
     else
         image->setImageResource(RenderImageResource::create());
     return image;
@@ -80,17 +61,17 @@ RenderObject* ImageContentData::createRenderer(Document& document, RenderStyle& 
 
 RenderObject* TextContentData::createRenderer(Document& document, RenderStyle&) const
 {
-    return RenderTextFragment::createAnonymous(document, m_text);
+    return new RenderTextFragment(document, m_text);
 }
 
 RenderObject* CounterContentData::createRenderer(Document& document, RenderStyle&) const
 {
-    return RenderCounter::createAnonymous(document, *m_counter);
+    return new RenderCounter(document, *m_counter);
 }
 
 RenderObject* QuoteContentData::createRenderer(Document& document, RenderStyle&) const
 {
-    return RenderQuote::createAnonymous(document, m_quote);
+    return new RenderQuote(document, m_quote);
 }
 
 } // namespace WebCore

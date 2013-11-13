@@ -35,17 +35,16 @@ public:
     static PassRefPtr<HTMLTableCellElement> create(const QualifiedName&, Document&);
 
     int cellIndex() const;
-
     int colSpan() const;
     int rowSpan() const;
 
     void setCellIndex(int);
+    void setColSpan(int);
+    void setRowSpan(int);
 
     String abbr() const;
     String axis() const;
-    void setColSpan(int);
     String headers() const;
-    void setRowSpan(int);
     String scope() const;
 
     HTMLTableCellElement* cellAbove() const;
@@ -55,34 +54,17 @@ private:
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet&) OVERRIDE;
     virtual const StylePropertySet* additionalPresentationAttributeStyle() OVERRIDE;
 
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const OVERRIDE;
 };
 
-HTMLTableCellElement* toHTMLTableCellElement(Node* node);
-const HTMLTableCellElement* toHTMLTableCellElement(const Node* node);
-
-// This will catch anyone doing an unnecessary cast.
-void toHTMLTableCellElement(const HTMLTableCellElement*);
-
-#ifdef NDEBUG
-
-// The debug versions of these, with assertions, are not inlined.
-
-inline HTMLTableCellElement* toHTMLTableCellElement(Node* node)
-{
-    return static_cast<HTMLTableCellElement*>(node);
-}
-
-inline const HTMLTableCellElement* toHTMLTableCellElement(const Node* node)
-{
-    return static_cast<const HTMLTableCellElement*>(node);
-}
-#endif
+void isHTMLTableCellElement(const HTMLTableCellElement&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isHTMLTableCellElement(const Node& node) { return node.hasTagName(HTMLNames::tdTag) || node.hasTagName(HTMLNames::thTag); }
+NODE_TYPE_CASTS(HTMLTableCellElement)
 
 } // namespace
 

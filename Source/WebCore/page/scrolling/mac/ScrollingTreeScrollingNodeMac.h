@@ -29,6 +29,7 @@
 #if ENABLE(THREADED_SCROLLING)
 
 #include "ScrollElasticityController.h"
+#include "ScrollbarThemeMac.h"
 #include "ScrollingTreeScrollingNode.h"
 #include <wtf/RetainPtr.h>
 
@@ -38,7 +39,7 @@ namespace WebCore {
 
 class ScrollingTreeScrollingNodeMac : public ScrollingTreeScrollingNode, private ScrollElasticityControllerClient {
 public:
-    explicit ScrollingTreeScrollingNodeMac(ScrollingTree*, ScrollingNodeID);
+    ScrollingTreeScrollingNodeMac(ScrollingTree&, ScrollingNodeID);
     virtual ~ScrollingTreeScrollingNodeMac();
 
 private:
@@ -84,6 +85,8 @@ private:
     RetainPtr<CALayer> m_counterScrollingLayer;
     RetainPtr<CALayer> m_headerLayer;
     RetainPtr<CALayer> m_footerLayer;
+    RetainPtr<ScrollbarPainter> m_verticalScrollbarPainter;
+    RetainPtr<ScrollbarPainter> m_horizontalScrollbarPainter;
     IntPoint m_probableMainThreadScrollPosition;
     bool m_lastScrollHadUnfilledPixels;
 };

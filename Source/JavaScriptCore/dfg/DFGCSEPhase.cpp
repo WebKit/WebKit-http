@@ -189,6 +189,7 @@ private:
                     return node;
                 break;
                 
+            case PutByValDirect:
             case PutByVal:
                 if (!m_graph.byValIsPure(node))
                     return 0;
@@ -368,6 +369,8 @@ private:
                 if (node->child1() == child1 && node->child2() == child2)
                     return node;
                 break;
+                    
+            case PutByValDirect:
             case PutByVal:
             case PutByValAlias: {
                 if (!m_graph.byValIsPure(node))
@@ -447,7 +450,8 @@ private:
             case PutByOffset:
                 // Setting a property cannot change the structure.
                 break;
-                
+                    
+            case PutByValDirect:
             case PutByVal:
             case PutByValAlias:
                 if (m_graph.byValIsPure(node)) {
@@ -494,7 +498,8 @@ private:
             case PutByOffset:
                 // Setting a property cannot change the structure.
                 break;
-                
+                    
+            case PutByValDirect:
             case PutByVal:
             case PutByValAlias:
                 if (m_graph.byValIsPure(node)) {
@@ -612,7 +617,8 @@ private:
                     return 0;
                 }
                 break;
-                
+                    
+            case PutByValDirect:
             case PutByVal:
             case PutByValAlias:
                 if (m_graph.byValIsPure(node)) {
@@ -652,7 +658,8 @@ private:
                     return 0;
                 }
                 break;
-                
+                    
+            case PutByValDirect:
             case PutByVal:
             case PutByValAlias:
             case GetByVal:
@@ -698,7 +705,8 @@ private:
                 // storage, so we conservatively assume that it may change the storage
                 // pointer of any object, including ours.
                 return 0;
-                
+                    
+            case PutByValDirect:
             case PutByVal:
             case PutByValAlias:
                 if (m_graph.byValIsPure(node)) {
@@ -902,7 +910,9 @@ private:
                 
             case GetMyScope:
             case SkipTopScope:
-                if (m_graph.uncheckedActivationRegisterFor(node->codeOrigin) == local)
+                if (node->codeOrigin.inlineCallFrame)
+                    break;
+                if (m_graph.uncheckedActivationRegister() == local)
                     result.mayBeAccessed = true;
                 break;
                 
@@ -1049,6 +1059,8 @@ private:
         case ArithMin:
         case ArithMax:
         case ArithSqrt:
+        case ArithSin:
+        case ArithCos:
         case StringCharAt:
         case StringCharCodeAt:
         case IsUndefined:
@@ -1250,7 +1262,8 @@ private:
             if (m_graph.byValIsPure(node))
                 setReplacement(getByValLoadElimination(node->child1().node(), node->child2().node()));
             break;
-            
+                
+        case PutByValDirect:
         case PutByVal: {
             if (cseMode == StoreElimination)
                 break;
@@ -1410,13 +1423,13 @@ private:
 bool performCSE(Graph& graph)
 {
     SamplingRegion samplingRegion("DFG CSE Phase");
-    return runPhase<CSEPhase<NormalCSE> >(graph);
+    return runPhase<CSEPhase<NormalCSE>>(graph);
 }
 
 bool performStoreElimination(Graph& graph)
 {
     SamplingRegion samplingRegion("DFG Store Elimination Phase");
-    return runPhase<CSEPhase<StoreElimination> >(graph);
+    return runPhase<CSEPhase<StoreElimination>>(graph);
 }
 
 } } // namespace JSC::DFG

@@ -33,11 +33,9 @@ SVGTextLayoutAttributesBuilder::SVGTextLayoutAttributesBuilder()
 {
 }
 
-void SVGTextLayoutAttributesBuilder::buildLayoutAttributesForTextRenderer(RenderSVGInlineText* text)
+void SVGTextLayoutAttributesBuilder::buildLayoutAttributesForTextRenderer(RenderSVGInlineText& text)
 {
-    ASSERT(text);
-
-    RenderSVGText* textRoot = RenderSVGText::locateRenderSVGTextAncestor(text);
+    RenderSVGText* textRoot = RenderSVGText::locateRenderSVGTextAncestor(&text);
     if (!textRoot)
         return;
 
@@ -54,7 +52,7 @@ void SVGTextLayoutAttributesBuilder::buildLayoutAttributesForTextRenderer(Render
         buildCharacterDataMap(textRoot);
     }
 
-    m_metricsBuilder.buildMetricsAndLayoutAttributes(textRoot, text, m_characterDataMap);
+    m_metricsBuilder.buildMetricsAndLayoutAttributes(textRoot, &text, m_characterDataMap);
 }
 
 bool SVGTextLayoutAttributesBuilder::buildLayoutAttributesForForSubtree(RenderSVGText* textRoot)
@@ -85,7 +83,7 @@ void SVGTextLayoutAttributesBuilder::rebuildMetricsForTextRenderer(RenderSVGInli
 
 static inline void processRenderSVGInlineText(RenderSVGInlineText* text, unsigned& atCharacter, const UChar*& lastCharacter)
 {
-    if (text->style()->whiteSpace() == PRE) {
+    if (text->style().whiteSpace() == PRE) {
         atCharacter += text->textLength();
         return;
     }

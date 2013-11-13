@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 #if ENABLE(JAVASCRIPT_DEBUGGER)
 
 #include "ScriptState.h"
+#include "SourceID.h"
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
 
@@ -54,6 +55,7 @@ public:
 
         String url;
         String source;
+        String sourceURL;
         String sourceMappingURL;
         int startLine;
         int startColumn;
@@ -64,7 +66,7 @@ public:
 
     virtual ~ScriptDebugListener() { }
 
-    virtual void didParseSource(const String& scriptId, const Script&) = 0;
+    virtual void didParseSource(SourceID, const Script&) = 0;
     virtual void failedToParseSource(const String& url, const String& data, int firstLine, int errorLine, const String& errorMessage) = 0;
     virtual void didPause(JSC::ExecState*, const ScriptValue& callFrames, const ScriptValue& exception) = 0;
     virtual void didContinue() = 0;

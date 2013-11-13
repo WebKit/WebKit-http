@@ -7,6 +7,9 @@ function testDestructuring(pattern, expression, result, expr) {
     debug("Function as String: " + functionString);
     shouldBe(functionString + "(" + expression + ")", result);
     shouldBe("(" + eval(functionString) + ")(" + expression + ")", result);
+    shouldBe("(" + pattern + "=" + expression + "); var r="+expr+"; r", result);
+    if (pattern[0] == '[')
+        shouldBe("" + pattern + "=" + expression + "; var r="+expr+"; r", result);
 }
 
 testDestructuring("[a,b]", "['1','2']", "'12'");
@@ -43,6 +46,10 @@ function testDeconstructArgLength() {
 }
 shouldBe("testDeconstructArgs('1', '2')", "'12'");
 shouldBe("testDeconstructArgLength('1', '2')", "2");
+var text = '3';
+Object.prototype.__defineGetter__(1, function(){ var r = text; text = "fail"; return r; })
+shouldBe("testDeconstructArgs('2')", "'23'");
+
 
 
 

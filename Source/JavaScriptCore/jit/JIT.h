@@ -42,19 +42,22 @@
 #include "CompactJITCodeMap.h"
 #include "Interpreter.h"
 #include "JITDisassembler.h"
+#include "JITInlineCacheGenerator.h"
 #include "JSInterfaceJIT.h"
 #include "LegacyProfiler.h"
 #include "Opcode.h"
 #include "ResultType.h"
+#include "SamplingTool.h"
 #include "UnusedPointer.h"
-#include <bytecode/SamplingTool.h>
 
 namespace JSC {
 
+    class ArrayAllocationProfile;
     class CodeBlock;
     class FunctionExecutable;
     class JIT;
     class JSPropertyNameIterator;
+    class Identifier;
     class Interpreter;
     class JSScope;
     class JSStack;
@@ -145,111 +148,6 @@ namespace JSC {
         }
     };
 
-    enum PropertyStubGetById_T { PropertyStubGetById };
-    enum PropertyStubPutById_T { PropertyStubPutById };
-
-    struct PropertyStubCompilationInfo {
-        enum Type { GetById, PutById } m_type;
-    
-        unsigned bytecodeIndex;
-        MacroAssembler::Call callReturnLocation;
-        MacroAssembler::Label hotPathBegin;
-        MacroAssembler::DataLabelPtr getStructureToCompare;
-        MacroAssembler::PatchableJump getStructureCheck;
-        MacroAssembler::ConvertibleLoadLabel propertyStorageLoad;
-#if USE(JSVALUE64)
-        MacroAssembler::DataLabelCompact getDisplacementLabel;
-#else
-        MacroAssembler::DataLabelCompact getDisplacementLabel1;
-        MacroAssembler::DataLabelCompact getDisplacementLabel2;
-#endif
-        MacroAssembler::Label getPutResult;
-        MacroAssembler::Label getColdPathBegin;
-        MacroAssembler::DataLabelPtr putStructureToCompare;
-#if USE(JSVALUE64)
-        MacroAssembler::DataLabel32 putDisplacementLabel;
-#else
-        MacroAssembler::DataLabel32 putDisplacementLabel1;
-        MacroAssembler::DataLabel32 putDisplacementLabel2;
-#endif
-
-#if !ASSERT_DISABLED
-        PropertyStubCompilationInfo()
-            : bytecodeIndex(std::numeric_limits<unsigned>::max())
-        {
-        }
-#endif
-
-
-        PropertyStubCompilationInfo(
-            PropertyStubGetById_T, unsigned bytecodeIndex, MacroAssembler::Label hotPathBegin,
-            MacroAssembler::DataLabelPtr structureToCompare,
-            MacroAssembler::PatchableJump structureCheck,
-            MacroAssembler::ConvertibleLoadLabel propertyStorageLoad,
-#if USE(JSVALUE64)
-            MacroAssembler::DataLabelCompact displacementLabel,
-#else
-            MacroAssembler::DataLabelCompact displacementLabel1,
-            MacroAssembler::DataLabelCompact displacementLabel2,
-#endif
-            MacroAssembler::Label putResult)
-            : m_type(GetById)
-            , bytecodeIndex(bytecodeIndex)
-            , hotPathBegin(hotPathBegin)
-            , getStructureToCompare(structureToCompare)
-            , getStructureCheck(structureCheck)
-            , propertyStorageLoad(propertyStorageLoad)
-#if USE(JSVALUE64)
-            , getDisplacementLabel(displacementLabel)
-#else
-            , getDisplacementLabel1(displacementLabel1)
-            , getDisplacementLabel2(displacementLabel2)
-#endif
-            , getPutResult(putResult)
-        {
-        }
-
-        PropertyStubCompilationInfo(
-            PropertyStubPutById_T, unsigned bytecodeIndex, MacroAssembler::Label hotPathBegin,
-            MacroAssembler::DataLabelPtr structureToCompare,
-            MacroAssembler::ConvertibleLoadLabel propertyStorageLoad,
-#if USE(JSVALUE64)
-            MacroAssembler::DataLabel32 displacementLabel
-#else
-            MacroAssembler::DataLabel32 displacementLabel1,
-            MacroAssembler::DataLabel32 displacementLabel2
-#endif
-            )
-            : m_type(PutById)
-            , bytecodeIndex(bytecodeIndex)
-            , hotPathBegin(hotPathBegin)
-            , propertyStorageLoad(propertyStorageLoad)
-            , putStructureToCompare(structureToCompare)
-#if USE(JSVALUE64)
-            , putDisplacementLabel(displacementLabel)
-#else
-            , putDisplacementLabel1(displacementLabel1)
-            , putDisplacementLabel2(displacementLabel2)
-#endif
-        {
-        }
-
-        void slowCaseInfo(PropertyStubGetById_T, MacroAssembler::Label coldPathBegin, MacroAssembler::Call call)
-        {
-            ASSERT(m_type == GetById);
-            callReturnLocation = call;
-            getColdPathBegin = coldPathBegin;
-        }
-
-        void slowCaseInfo(PropertyStubPutById_T, MacroAssembler::Call call)
-        {
-            ASSERT(m_type == PutById);
-            callReturnLocation = call;
-        }
-
-        void copyToStubInfo(StructureStubInfo& info, LinkBuffer &patchBuffer);
-    };
-
     struct ByValCompilationInfo {
         ByValCompilationInfo() { }
         
@@ -285,7 +183,6 @@ namespace JSC {
     class JIT : private JSInterfaceJIT {
         friend class JITSlowPathCall;
         friend class JITStubCall;
-        friend struct PropertyStubCompilationInfo;
 
         using MacroAssembler::Jump;
         using MacroAssembler::JumpList;
@@ -310,46 +207,6 @@ namespace JSC {
             jit.privateCompileClosureCall(callLinkInfo, calleeCodeBlock, expectedStructure, expectedExecutable, codePtr);
         }
 
-        static void compileGetByIdProto(VM* vm, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, Structure* structure, Structure* prototypeStructure, const Identifier& ident, const PropertySlot& slot, PropertyOffset cachedOffset, ReturnAddressPtr returnAddress)
-        {
-            JIT jit(vm, codeBlock);
-            jit.m_bytecodeOffset = stubInfo->codeOrigin.bytecodeIndex;
-            jit.privateCompileGetByIdProto(stubInfo, structure, prototypeStructure, ident, slot, cachedOffset, returnAddress, callFrame);
-        }
-
-        static void compileGetByIdSelfList(VM* vm, CodeBlock* codeBlock, StructureStubInfo* stubInfo, PolymorphicAccessStructureList* polymorphicStructures, int currentIndex, Structure* structure, const Identifier& ident, const PropertySlot& slot, PropertyOffset cachedOffset)
-        {
-            JIT jit(vm, codeBlock);
-            jit.m_bytecodeOffset = stubInfo->codeOrigin.bytecodeIndex;
-            jit.privateCompileGetByIdSelfList(stubInfo, polymorphicStructures, currentIndex, structure, ident, slot, cachedOffset);
-        }
-        static void compileGetByIdProtoList(VM* vm, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, PolymorphicAccessStructureList* prototypeStructureList, int currentIndex, Structure* structure, Structure* prototypeStructure, const Identifier& ident, const PropertySlot& slot, PropertyOffset cachedOffset)
-        {
-            JIT jit(vm, codeBlock);
-            jit.m_bytecodeOffset = stubInfo->codeOrigin.bytecodeIndex;
-            jit.privateCompileGetByIdProtoList(stubInfo, prototypeStructureList, currentIndex, structure, prototypeStructure, ident, slot, cachedOffset, callFrame);
-        }
-        static void compileGetByIdChainList(VM* vm, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, PolymorphicAccessStructureList* prototypeStructureList, int currentIndex, Structure* structure, StructureChain* chain, size_t count, const Identifier& ident, const PropertySlot& slot, PropertyOffset cachedOffset)
-        {
-            JIT jit(vm, codeBlock);
-            jit.m_bytecodeOffset = stubInfo->codeOrigin.bytecodeIndex;
-            jit.privateCompileGetByIdChainList(stubInfo, prototypeStructureList, currentIndex, structure, chain, count, ident, slot, cachedOffset, callFrame);
-        }
-
-        static void compileGetByIdChain(VM* vm, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, Structure* structure, StructureChain* chain, size_t count, const Identifier& ident, const PropertySlot& slot, PropertyOffset cachedOffset, ReturnAddressPtr returnAddress)
-        {
-            JIT jit(vm, codeBlock);
-            jit.m_bytecodeOffset = stubInfo->codeOrigin.bytecodeIndex;
-            jit.privateCompileGetByIdChain(stubInfo, structure, chain, count, ident, slot, cachedOffset, returnAddress, callFrame);
-        }
-        
-        static void compilePutByIdTransition(VM* vm, CodeBlock* codeBlock, StructureStubInfo* stubInfo, Structure* oldStructure, Structure* newStructure, PropertyOffset cachedOffset, StructureChain* chain, ReturnAddressPtr returnAddress, bool direct)
-        {
-            JIT jit(vm, codeBlock);
-            jit.m_bytecodeOffset = stubInfo->codeOrigin.bytecodeIndex;
-            jit.privateCompilePutByIdTransition(stubInfo, oldStructure, newStructure, cachedOffset, chain, returnAddress, direct);
-        }
-        
         static void compileGetByVal(VM* vm, CodeBlock* codeBlock, ByValInfo* byValInfo, ReturnAddressPtr returnAddress, JITArrayMode arrayMode)
         {
             JIT jit(vm, codeBlock);
@@ -358,6 +215,13 @@ namespace JSC {
         }
 
         static void compilePutByVal(VM* vm, CodeBlock* codeBlock, ByValInfo* byValInfo, ReturnAddressPtr returnAddress, JITArrayMode arrayMode)
+        {
+            JIT jit(vm, codeBlock);
+            jit.m_bytecodeOffset = byValInfo->bytecodeIndex;
+            jit.privateCompilePutByVal(byValInfo, returnAddress, arrayMode);
+        }
+        
+        static void compileDirectPutByVal(VM* vm, CodeBlock* codeBlock, ByValInfo* byValInfo, ReturnAddressPtr returnAddress, JITArrayMode arrayMode)
         {
             JIT jit(vm, codeBlock);
             jit.m_bytecodeOffset = byValInfo->bytecodeIndex;
@@ -377,23 +241,6 @@ namespace JSC {
             return jit.privateCompileCTINativeCall(vm, func);
         }
 
-        static void resetPatchGetById(RepatchBuffer&, StructureStubInfo*);
-        static void resetPatchPutById(RepatchBuffer&, StructureStubInfo*);
-        static void patchGetByIdSelf(CodeBlock*, StructureStubInfo*, Structure*, PropertyOffset cachedOffset, ReturnAddressPtr);
-        static void patchPutByIdReplace(CodeBlock*, StructureStubInfo*, Structure*, PropertyOffset cachedOffset, ReturnAddressPtr, bool direct);
-
-        static void compilePatchGetArrayLength(VM* vm, CodeBlock* codeBlock, ReturnAddressPtr returnAddress)
-        {
-            JIT jit(vm, codeBlock);
-#if ENABLE(DFG_JIT)
-            // Force profiling to be enabled during stub generation.
-            jit.m_canBeOptimized = true;
-            jit.m_canBeOptimizedOrInlined = true;
-            jit.m_shouldEmitProfiling = true;
-#endif // ENABLE(DFG_JIT)
-            return jit.privateCompilePatchGetArrayLength(returnAddress);
-        }
-
         static void linkFor(ExecState*, JSFunction* callee, CodeBlock* callerCodeBlock, CodeBlock* calleeCodeBlock, CodePtr, CallLinkInfo*, VM*, CodeSpecializationKind);
         static void linkSlowCall(CodeBlock* callerCodeBlock, CallLinkInfo*);
 
@@ -407,13 +254,6 @@ namespace JSC {
         
         void privateCompileClosureCall(CallLinkInfo*, CodeBlock* calleeCodeBlock, Structure*, ExecutableBase*, MacroAssemblerCodePtr);
         
-        void privateCompileGetByIdProto(StructureStubInfo*, Structure*, Structure* prototypeStructure, const Identifier&, const PropertySlot&, PropertyOffset cachedOffset, ReturnAddressPtr, CallFrame*);
-        void privateCompileGetByIdSelfList(StructureStubInfo*, PolymorphicAccessStructureList*, int, Structure*, const Identifier&, const PropertySlot&, PropertyOffset cachedOffset);
-        void privateCompileGetByIdProtoList(StructureStubInfo*, PolymorphicAccessStructureList*, int, Structure*, Structure* prototypeStructure, const Identifier&, const PropertySlot&, PropertyOffset cachedOffset, CallFrame*);
-        void privateCompileGetByIdChainList(StructureStubInfo*, PolymorphicAccessStructureList*, int, Structure*, StructureChain*, size_t count, const Identifier&, const PropertySlot&, PropertyOffset cachedOffset, CallFrame*);
-        void privateCompileGetByIdChain(StructureStubInfo*, Structure*, StructureChain*, size_t count, const Identifier&, const PropertySlot&, PropertyOffset cachedOffset, ReturnAddressPtr, CallFrame*);
-        void privateCompilePutByIdTransition(StructureStubInfo*, Structure*, Structure*, PropertyOffset cachedOffset, StructureChain*, ReturnAddressPtr, bool direct);
-        
         void privateCompileGetByVal(ByValInfo*, ReturnAddressPtr, JITArrayMode);
         void privateCompilePutByVal(ByValInfo*, ReturnAddressPtr, JITArrayMode);
 
@@ -421,7 +261,30 @@ namespace JSC {
         CodeRef privateCompileCTINativeCall(VM*, NativeFunction);
         void privateCompilePatchGetArrayLength(ReturnAddressPtr returnAddress);
 
-        static bool isDirectPutById(StructureStubInfo*);
+        // Add a call out from JIT code, without an exception check.
+        Call appendCall(const FunctionPtr& function)
+        {
+            Call functionCall = call();
+            m_calls.append(CallRecord(functionCall, m_bytecodeOffset, function.value()));
+            return functionCall;
+        }
+
+        void exceptionCheck(Jump jumpToHandler)
+        {
+            m_exceptionChecks.append(jumpToHandler);
+        }
+
+        void exceptionCheck()
+        {
+            m_exceptionChecks.append(emitExceptionCheck());
+        }
+
+        void exceptionCheckWithCallFrameRollback()
+        {
+            m_exceptionChecksWithCallFrameRollback.append(emitExceptionCheck());
+        }
+
+        void privateCompileExceptionHandlers();
 
         void addSlowCase(Jump);
         void addSlowCase(JumpList);
@@ -522,24 +385,14 @@ namespace JSC {
         void emitStore(int index, const JSValue constant, RegisterID base = callFrameRegister);
         void emitStoreInt32(int index, RegisterID payload, bool indexIsInt32 = false);
         void emitStoreInt32(int index, TrustedImm32 payload, bool indexIsInt32 = false);
-        void emitStoreAndMapInt32(int index, RegisterID tag, RegisterID payload, bool indexIsInt32, size_t opcodeLength);
         void emitStoreCell(int index, RegisterID payload, bool indexIsCell = false);
         void emitStoreBool(int index, RegisterID payload, bool indexIsBool = false);
         void emitStoreDouble(int index, FPRegisterID value);
 
-        bool isLabeled(unsigned bytecodeOffset);
-        void map(unsigned bytecodeOffset, int virtualRegisterIndex, RegisterID tag, RegisterID payload);
-        void unmap(RegisterID);
-        void unmap();
-        bool isMapped(int virtualRegisterIndex);
-        bool getMappedPayload(int virtualRegisterIndex, RegisterID& payload);
-        bool getMappedTag(int virtualRegisterIndex, RegisterID& tag);
-        
         void emitJumpSlowCaseIfNotJSCell(int virtualRegisterIndex);
         void emitJumpSlowCaseIfNotJSCell(int virtualRegisterIndex, RegisterID tag);
 
         void compileGetByIdHotPath(const Identifier*);
-        void compileGetByIdSlowCase(int resultVReg, int baseVReg, const Identifier*, Vector<SlowCaseEntry>::iterator&);
         void compileGetDirectOffset(RegisterID base, RegisterID resultTag, RegisterID resultPayload, PropertyOffset cachedOffset);
         void compileGetDirectOffset(JSObject* base, RegisterID resultTag, RegisterID resultPayload, PropertyOffset cachedOffset);
         void compileGetDirectOffset(RegisterID base, RegisterID resultTag, RegisterID resultPayload, RegisterID offset, FinalObjectMode = MayBeFinal);
@@ -550,38 +403,7 @@ namespace JSC {
         void emitSub32Constant(int dst, int op, int32_t constant, ResultType opType);
         void emitBinaryDoubleOp(OpcodeID, int dst, int op1, int op2, OperandTypes, JumpList& notInt32Op1, JumpList& notInt32Op2, bool op1IsInRegisters = true, bool op2IsInRegisters = true);
 
-#if CPU(ARM_TRADITIONAL)
-        // sequenceOpCall
-        static const int sequenceOpCallInstructionSpace = 12;
-        static const int sequenceOpCallConstantSpace = 2;
-        // sequenceGetByIdHotPath
-        static const int sequenceGetByIdHotPathInstructionSpace = 36;
-        static const int sequenceGetByIdHotPathConstantSpace = 4;
-        // sequenceGetByIdSlowCase
-        static const int sequenceGetByIdSlowCaseInstructionSpace = 80;
-        static const int sequenceGetByIdSlowCaseConstantSpace = 4;
-        // sequencePutById
-        static const int sequencePutByIdInstructionSpace = 36;
-        static const int sequencePutByIdConstantSpace = 4;
-#elif CPU(SH4)
-        // sequenceOpCall
-        static const int sequenceOpCallInstructionSpace = 12;
-        static const int sequenceOpCallConstantSpace = 2;
-        // sequenceGetByIdHotPath
-        static const int sequenceGetByIdHotPathInstructionSpace = 36;
-        static const int sequenceGetByIdHotPathConstantSpace = 5;
-        // sequenceGetByIdSlowCase
-        static const int sequenceGetByIdSlowCaseInstructionSpace = 38;
-        static const int sequenceGetByIdSlowCaseConstantSpace = 4;
-        // sequencePutById
-        static const int sequencePutByIdInstructionSpace = 36;
-        static const int sequencePutByIdConstantSpace = 5;
-#endif
-
 #else // USE(JSVALUE32_64)
-        /* This function is deprecated. */
-        void emitGetJITStubArg(int argumentNumber, RegisterID dst);
-
         void emitGetVirtualRegister(int src, RegisterID dst);
         void emitGetVirtualRegister(VirtualRegister src, RegisterID dst);
         void emitGetVirtualRegisters(int src1, RegisterID dst1, int src2, RegisterID dst2);
@@ -592,10 +414,12 @@ namespace JSC {
         {
             emitPutVirtualRegister(dst, payload);
         }
+        void emitStoreCell(VirtualRegister dst, RegisterID payload)
+        {
+            emitPutVirtualRegister(dst, payload);
+        }
 
         int32_t getConstantOperandImmediateInt(int src);
-
-        void killLastResultRegister();
 
         Jump emitJumpIfJSCell(RegisterID);
         Jump emitJumpIfBothJSCells(RegisterID, RegisterID, RegisterID);
@@ -616,7 +440,6 @@ namespace JSC {
         void compileBinaryArithOpSlowCase(Instruction*, OpcodeID, Vector<SlowCaseEntry>::iterator&, int dst, int src1, int src2, OperandTypes, bool op1HasImmediateIntFastCase, bool op2HasImmediateIntFastCase);
 
         void compileGetByIdHotPath(int baseVReg, const Identifier*);
-        void compileGetByIdSlowCase(int resultVReg, int baseVReg, const Identifier*, Vector<SlowCaseEntry>::iterator&);
         void compileGetDirectOffset(RegisterID base, RegisterID result, PropertyOffset cachedOffset);
         void compileGetDirectOffset(JSObject* base, RegisterID result, PropertyOffset cachedOffset);
         void compileGetDirectOffset(RegisterID base, RegisterID result, RegisterID offset, RegisterID scratch, FinalObjectMode = MayBeFinal);
@@ -624,22 +447,8 @@ namespace JSC {
 
 #endif // USE(JSVALUE32_64)
 
-#if (defined(ASSEMBLER_HAS_CONSTANT_POOL) && ASSEMBLER_HAS_CONSTANT_POOL)
-#define BEGIN_UNINTERRUPTED_SEQUENCE(name) do { beginUninterruptedSequence(name ## InstructionSpace, name ## ConstantSpace); } while (false)
-#define END_UNINTERRUPTED_SEQUENCE_FOR_PUT(name, dst) do { endUninterruptedSequence(name ## InstructionSpace, name ## ConstantSpace, dst); } while (false)
-#define END_UNINTERRUPTED_SEQUENCE(name) END_UNINTERRUPTED_SEQUENCE_FOR_PUT(name, 0)
-
-        void beginUninterruptedSequence(int, int);
-        void endUninterruptedSequence(int, int, int);
-
-#else
-#define BEGIN_UNINTERRUPTED_SEQUENCE(name)
-#define END_UNINTERRUPTED_SEQUENCE(name)
-#define END_UNINTERRUPTED_SEQUENCE_FOR_PUT(name, dst)
-#endif
-
         void emit_compareAndJump(OpcodeID, int op1, int op2, unsigned target, RelationalCondition);
-        void emit_compareAndJumpSlow(int op1, int op2, unsigned target, DoubleCondition, int (JIT_STUB *stub)(STUB_ARGS_DECLARATION), bool invert, Vector<SlowCaseEntry>::iterator&);
+        void emit_compareAndJumpSlow(int op1, int op2, unsigned target, DoubleCondition, size_t (JIT_OPERATION *operation)(ExecState*, EncodedJSValue, EncodedJSValue), bool invert, Vector<SlowCaseEntry>::iterator&);
 
         void emit_op_add(Instruction*);
         void emit_op_bitand(Instruction*);
@@ -820,8 +629,6 @@ namespace JSC {
         bool isOperandConstantImmediateInt(int src);
         bool isOperandConstantImmediateChar(int src);
 
-        bool atJumpTarget();
-
         Jump getSlowCase(Vector<SlowCaseEntry>::iterator& iter)
         {
             return iter++->from;
@@ -838,9 +645,88 @@ namespace JSC {
         }
         void linkSlowCaseIfNotJSCell(Vector<SlowCaseEntry>::iterator&, int virtualRegisterIndex);
 
+        MacroAssembler::Call appendCallWithExceptionCheck(const FunctionPtr&);
+        MacroAssembler::Call appendCallWithCallFrameRollbackOnException(const FunctionPtr&);
+        MacroAssembler::Call appendCallWithExceptionCheckSetJSValueResult(const FunctionPtr&, int);
+        MacroAssembler::Call appendCallWithExceptionCheckSetJSValueResultWithProfile(const FunctionPtr&, int);
+        
+        enum WithProfileTag { WithProfile };
+        
+        MacroAssembler::Call callOperation(C_JITOperation_E);
+        MacroAssembler::Call callOperation(C_JITOperation_EO, GPRReg);
+        MacroAssembler::Call callOperation(C_JITOperation_ESt, Structure*);
+        MacroAssembler::Call callOperation(C_JITOperation_EZ, int32_t);
+        MacroAssembler::Call callOperation(F_JITOperation_EJJZ, GPRReg, GPRReg, int32_t);
+        MacroAssembler::Call callOperation(J_JITOperation_E, int);
+        MacroAssembler::Call callOperation(J_JITOperation_EAapJ, int, ArrayAllocationProfile*, GPRReg);
+        MacroAssembler::Call callOperation(J_JITOperation_EAapJcpZ, int, ArrayAllocationProfile*, GPRReg, int32_t);
+        MacroAssembler::Call callOperation(J_JITOperation_EAapJcpZ, int, ArrayAllocationProfile*, const JSValue*, int32_t);
+        MacroAssembler::Call callOperation(J_JITOperation_EC, int, JSCell*);
+        MacroAssembler::Call callOperation(J_JITOperation_EJ, int, GPRReg);
+#if USE(JSVALUE64)
+        MacroAssembler::Call callOperation(WithProfileTag, J_JITOperation_ESsiJI, int, StructureStubInfo*, GPRReg, StringImpl*);
+#else
+        MacroAssembler::Call callOperation(WithProfileTag, J_JITOperation_ESsiJI, int, StructureStubInfo*, GPRReg, GPRReg, StringImpl*);
+#endif
+        MacroAssembler::Call callOperation(J_JITOperation_EJIdc, int, GPRReg, const Identifier*);
+        MacroAssembler::Call callOperation(J_JITOperation_EJJ, int, GPRReg, GPRReg);
+#if USE(JSVALUE64)
+        MacroAssembler::Call callOperation(WithProfileTag, J_JITOperation_EJJ, int, GPRReg, GPRReg);
+#else
+        MacroAssembler::Call callOperation(WithProfileTag, J_JITOperation_EJJ, int, GPRReg, GPRReg, GPRReg, GPRReg);
+#endif
+        MacroAssembler::Call callOperation(J_JITOperation_EP, int, void*);
+        MacroAssembler::Call callOperation(WithProfileTag, J_JITOperation_EPc, int, Instruction*);
+        MacroAssembler::Call callOperation(J_JITOperation_EZ, int, int32_t);
+        MacroAssembler::Call callOperation(P_JITOperation_EJS, GPRReg, size_t);
+        MacroAssembler::Call callOperation(P_JITOperation_EZ, int32_t);
+        MacroAssembler::Call callOperation(S_JITOperation_ECC, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(S_JITOperation_EJ, RegisterID);
+        MacroAssembler::Call callOperation(S_JITOperation_EJJ, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(S_JITOperation_EOJss, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_E);
+        MacroAssembler::Call callOperation(V_JITOperation_EC, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_ECC, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_ECICC, RegisterID, const Identifier*, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_EIdJZ, const Identifier*, RegisterID, int32_t);
+        MacroAssembler::Call callOperation(V_JITOperation_EJ, RegisterID);
+#if USE(JSVALUE64)
+        MacroAssembler::Call callOperationNoExceptionCheck(V_JITOperation_EJ, RegisterID);
+#else
+        MacroAssembler::Call callOperationNoExceptionCheck(V_JITOperation_EJ, RegisterID, RegisterID);
+#endif
+        MacroAssembler::Call callOperation(V_JITOperation_EJIdJJ, RegisterID, const Identifier*, RegisterID, RegisterID);
+#if USE(JSVALUE64)
+        MacroAssembler::Call callOperation(V_JITOperation_ESsiJJI, StructureStubInfo*, RegisterID, RegisterID, StringImpl*);
+#else
+        MacroAssembler::Call callOperation(V_JITOperation_ESsiJJI, StructureStubInfo*, RegisterID, RegisterID, RegisterID, RegisterID, StringImpl*);
+#endif
+        MacroAssembler::Call callOperation(V_JITOperation_EJJJ, RegisterID, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_EJZJ, RegisterID, int32_t, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_EJZ, RegisterID, int32_t);
+        MacroAssembler::Call callOperation(V_JITOperation_EPc, Instruction*);
+        MacroAssembler::Call callOperation(V_JITOperation_EZ, int32_t);
+        MacroAssembler::Call callOperationWithCallFrameRollbackOnException(J_JITOperation_E);
+        MacroAssembler::Call callOperationWithCallFrameRollbackOnException(V_JITOperation_ECb, CodeBlock*);
+        MacroAssembler::Call callOperationWithCallFrameRollbackOnException(Z_JITOperation_E);
+#if USE(JSVALUE32_64)
+        MacroAssembler::Call callOperation(F_JITOperation_EJJZ, GPRReg, GPRReg, GPRReg, GPRReg, int32_t);
+        MacroAssembler::Call callOperation(J_JITOperation_EAapJ, int, ArrayAllocationProfile*, GPRReg, GPRReg);
+        MacroAssembler::Call callOperation(J_JITOperation_EJ, int, GPRReg, GPRReg);
+        MacroAssembler::Call callOperation(J_JITOperation_EJIdc, int, GPRReg, GPRReg, const Identifier*);
+        MacroAssembler::Call callOperation(J_JITOperation_EJJ, int, GPRReg, GPRReg, GPRReg, GPRReg);
+        MacroAssembler::Call callOperation(P_JITOperation_EJS, GPRReg, GPRReg, size_t);
+        MacroAssembler::Call callOperation(S_JITOperation_EJ, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(S_JITOperation_EJJ, RegisterID, RegisterID, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_EIdJZ, const Identifier*, RegisterID, RegisterID, int32_t);
+        MacroAssembler::Call callOperation(V_JITOperation_EJ, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_EJJJ, RegisterID, RegisterID, RegisterID, RegisterID, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_EJZ, RegisterID, RegisterID, int32_t);
+        MacroAssembler::Call callOperation(V_JITOperation_EJZJ, RegisterID, RegisterID, int32_t, RegisterID, RegisterID);
+#endif
+
         Jump checkStructure(RegisterID reg, Structure* structure);
 
-        void restoreArgumentReferenceForTrampoline();
         void updateTopCallFrame();
 
         Call emitNakedCall(CodePtr function = CodePtr());
@@ -893,7 +779,8 @@ namespace JSC {
 
         Vector<CallRecord> m_calls;
         Vector<Label> m_labels;
-        Vector<PropertyStubCompilationInfo> m_propertyAccessCompilationInfo;
+        Vector<JITGetByIdGenerator> m_getByIds;
+        Vector<JITPutByIdGenerator> m_putByIds;
         Vector<ByValCompilationInfo> m_byValCompilationInfo;
         Vector<StructureStubCompilationInfo> m_callStructureStubCompilationInfo;
         Vector<JumpTable> m_jmpTable;
@@ -902,27 +789,14 @@ namespace JSC {
         Vector<SlowCaseEntry> m_slowCases;
         Vector<SwitchRecord> m_switches;
 
-        unsigned m_propertyAccessInstructionIndex;
+        JumpList m_exceptionChecks;
+        JumpList m_exceptionChecksWithCallFrameRollback;
+
+        unsigned m_getByIdIndex;
+        unsigned m_putByIdIndex;
         unsigned m_byValInstructionIndex;
         unsigned m_callLinkInfoIndex;
 
-#if USE(JSVALUE32_64)
-        unsigned m_jumpTargetIndex;
-        unsigned m_mappedBytecodeOffset;
-        int m_mappedVirtualRegisterIndex;
-        RegisterID m_mappedTag;
-        RegisterID m_mappedPayload;
-#else
-        int m_lastResultBytecodeRegister;
-#endif
-        unsigned m_jumpTargetsPosition;
-
-#ifndef NDEBUG
-#if defined(ASSEMBLER_HAS_CONSTANT_POOL) && ASSEMBLER_HAS_CONSTANT_POOL
-        Label m_uninterruptedInstructionSequenceBegin;
-        int m_uninterruptedConstantSequenceBegin;
-#endif
-#endif
         OwnPtr<JITDisassembler> m_disassembler;
         RefPtr<Profiler::Compilation> m_compilation;
         WeakRandom m_randomGenerator;

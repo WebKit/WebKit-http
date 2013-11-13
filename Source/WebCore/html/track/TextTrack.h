@@ -67,9 +67,9 @@ class TextTrack : public TrackBase, public EventTargetWithInlineData
 #endif
     {
 public:
-    static PassRefPtr<TextTrack> create(ScriptExecutionContext* context, TextTrackClient* client, const AtomicString& kind, const AtomicString& label, const AtomicString& language)
+    static PassRefPtr<TextTrack> create(ScriptExecutionContext* context, TextTrackClient* client, const AtomicString& kind, const AtomicString& id, const AtomicString& label, const AtomicString& language)
     {
-        return adoptRef(new TextTrack(context, client, kind, label, language, AddTrack));
+        return adoptRef(new TextTrack(context, client, kind, id, label, language, AddTrack));
     }
     virtual ~TextTrack();
 
@@ -150,11 +150,15 @@ public:
     PassRefPtr<PlatformTextTrack> platformTextTrack();
 #endif
 
+#if ENABLE(MEDIA_SOURCE)
+    virtual void setLanguage(const AtomicString&) OVERRIDE;
+#endif
+
     using RefCounted<TrackBase>::ref;
     using RefCounted<TrackBase>::deref;
 
 protected:
-    TextTrack(ScriptExecutionContext*, TextTrackClient*, const AtomicString& kind, const AtomicString& label, const AtomicString& language, TextTrackType);
+    TextTrack(ScriptExecutionContext*, TextTrackClient*, const AtomicString& kind, const AtomicString& id, const AtomicString& label, const AtomicString& language, TextTrackType);
 #if ENABLE(VIDEO_TRACK) && ENABLE(WEBVTT_REGIONS)
     TextTrackRegionList* regionList();
 #endif
@@ -163,6 +167,8 @@ protected:
 
 private:
     virtual bool isValidKind(const AtomicString&) const OVERRIDE;
+
+    virtual bool enabled() const OVERRIDE;
 
     virtual void refEventTarget() OVERRIDE FINAL { ref(); }
     virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
@@ -192,7 +198,7 @@ private:
 
 inline TextTrack* toTextTrack(TrackBase* track)
 {
-    ASSERT(track->type() == TrackBase::TextTrack);
+    ASSERT_WITH_SECURITY_IMPLICATION(track->type() == TrackBase::TextTrack);
     return static_cast<TextTrack*>(track);
 }
 

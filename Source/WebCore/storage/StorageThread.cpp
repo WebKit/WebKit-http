@@ -40,11 +40,6 @@ static HashSet<StorageThread*>& activeStorageThreads()
     return threads;
 }
 
-PassOwnPtr<StorageThread> StorageThread::create()
-{
-    return adoptPtr(new StorageThread);
-}
-
 StorageThread::StorageThread()
     : m_threadID(0)
 {
@@ -75,7 +70,7 @@ void StorageThread::threadEntryPoint()
 {
     ASSERT(!isMainThread());
 
-    while (OwnPtr<Function<void ()> > function = m_queue.waitForMessage()) {
+    while (auto function = m_queue.waitForMessage()) {
         AutodrainedPool pool;
         (*function)();
     }
@@ -85,7 +80,7 @@ void StorageThread::dispatch(const Function<void ()>& function)
 {
     ASSERT(isMainThread());
     ASSERT(!m_queue.killed() && m_threadID);
-    m_queue.append(adoptPtr(new Function<void ()>(function)));
+    m_queue.append(std::make_unique<Function<void ()>>(function));
 }
 
 void StorageThread::terminate()
@@ -97,7 +92,7 @@ void StorageThread::terminate()
     if (!m_threadID)
         return;
 
-    m_queue.append(adoptPtr(new Function<void ()>((bind(&StorageThread::performTerminate, this)))));
+    m_queue.append(std::make_unique<Function<void ()>>(bind(&StorageThread::performTerminate, this)));
     waitForThreadCompletion(m_threadID);
     ASSERT(m_queue.killed());
     m_threadID = 0;

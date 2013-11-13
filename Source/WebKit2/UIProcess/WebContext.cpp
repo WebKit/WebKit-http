@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -60,11 +60,11 @@
 #include <WebCore/LinkHash.h>
 #include <WebCore/Logging.h>
 #include <WebCore/ResourceRequest.h>
-#include <WebCore/RunLoop.h>
 #include <runtime/InitializeThreading.h>
 #include <runtime/Operations.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
+#include <wtf/RunLoop.h>
 
 #if ENABLE(BATTERY_STATUS)
 #include "WebBatteryManagerProxy.h"
@@ -406,30 +406,56 @@ void WebContext::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProx
 }
 #endif
 
+#if ENABLE(DATABASE_PROCESS)
+void WebContext::ensureDatabaseProcess()
+{
+    if (m_databaseProcess)
+        return;
+
+    m_databaseProcess = DatabaseProcessProxy::create(this);
+}
+
+void WebContext::getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply> reply)
+{
+    ASSERT(reply);
+
+    ensureDatabaseProcess();
+
+    m_databaseProcess->getDatabaseProcessConnection(reply);
+}
+#endif
 
 void WebContext::willStartUsingPrivateBrowsing()
 {
     const Vector<WebContext*>& contexts = allContexts();
-    for (size_t i = 0, count = contexts.size(); i < count; ++i) {
-#if ENABLE(NETWORK_PROCESS)
-        if (contexts[i]->usesNetworkProcess() && contexts[i]->networkProcess())
-            contexts[i]->networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession(), 0);
-#endif
-        contexts[i]->sendToAllProcesses(Messages::WebProcess::EnsurePrivateBrowsingSession());
-    }
+    for (size_t i = 0, count = contexts.size(); i < count; ++i)
+        contexts[i]->setAnyPageGroupMightHavePrivateBrowsingEnabled(true);
 }
 
 void WebContext::willStopUsingPrivateBrowsing()
 {
     const Vector<WebContext*>& contexts = allContexts();
-    for (size_t i = 0, count = contexts.size(); i < count; ++i) {
-#if ENABLE(NETWORK_PROCESS)
-        if (contexts[i]->usesNetworkProcess() && contexts[i]->networkProcess())
-            contexts[i]->networkProcess()->send(Messages::NetworkProcess::DestroyPrivateBrowsingSession(), 0);
-#endif
+    for (size_t i = 0, count = contexts.size(); i < count; ++i)
+        contexts[i]->setAnyPageGroupMightHavePrivateBrowsingEnabled(false);
+}
 
-        contexts[i]->sendToAllProcesses(Messages::WebProcess::DestroyPrivateBrowsingSession());
+void WebContext::setAnyPageGroupMightHavePrivateBrowsingEnabled(bool privateBrowsingEnabled)
+{
+    m_iconDatabase->setPrivateBrowsingEnabled(privateBrowsingEnabled);
+
+#if ENABLE(NETWORK_PROCESS)
+    if (usesNetworkProcess() && networkProcess()) {
+        if (privateBrowsingEnabled)
+            networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession(), 0);
+        else
+            networkProcess()->send(Messages::NetworkProcess::DestroyPrivateBrowsingSession(), 0);
     }
+#endif // ENABLED(NETWORK_PROCESS)
+
+    if (privateBrowsingEnabled)
+        sendToAllProcesses(Messages::WebProcess::EnsurePrivateBrowsingSession());
+    else
+        sendToAllProcesses(Messages::WebProcess::DestroyPrivateBrowsingSession());
 }
 
 void (*s_invalidMessageCallback)(WKStringRef messageName);
@@ -544,7 +570,7 @@ WebProcessProxy* WebContext::createNewWebProcess()
     // Add any platform specific parameters
     platformInitializeWebProcess(parameters);
 
-    RefPtr<APIObject> injectedBundleInitializationUserData = m_injectedBundleClient.getInjectedBundleInitializationUserData(this);
+    RefPtr<API::Object> injectedBundleInitializationUserData = m_injectedBundleClient.getInjectedBundleInitializationUserData(this);
     if (!injectedBundleInitializationUserData)
         injectedBundleInitializationUserData = m_injectedBundleInitializationUserData;
     process->send(Messages::WebProcess::InitializeWebProcess(parameters, WebContextUserMessageEncoder(injectedBundleInitializationUserData.get())), 0);
@@ -556,7 +582,7 @@ WebProcessProxy* WebContext::createNewWebProcess()
 
     if (m_processModel == ProcessModelSharedSecondaryProcess) {
         for (size_t i = 0; i != m_messagesToInjectedBundlePostedToEmptyContext.size(); ++i) {
-            pair<String, RefPtr<APIObject>>& message = m_messagesToInjectedBundlePostedToEmptyContext[i];
+            pair<String, RefPtr<API::Object>>& message = m_messagesToInjectedBundlePostedToEmptyContext[i];
 
             CoreIPC::ArgumentEncoder messageData;
 
@@ -655,6 +681,9 @@ void WebContext::disconnectProcess(WebProcessProxy* process)
         RefPtr<WebProcessProxy> protect(process);
         if (m_processWithPageCache == process)
             m_processWithPageCache = 0;
+
+        static_cast<WebContextSupplement*>(supplement<WebGeolocationManagerProxy>())->processDidClose(process);
+
         m_processes.remove(m_processes.find(process));
         return;
     }
@@ -725,16 +754,11 @@ DownloadProxy* WebContext::download(WebPageProxy* initiatingPage, const Resource
     }
 #endif
 
-#if PLATFORM(QT)
-    ASSERT(initiatingPage); // Our design does not suppport downloads without a WebPage.
-    initiatingPage->handleDownloadRequest(downloadProxy);
-#endif
-
     m_processes[0]->send(Messages::WebProcess::DownloadRequest(downloadProxy->downloadID(), initiatingPageID, request), 0);
     return downloadProxy;
 }
 
-void WebContext::postMessageToInjectedBundle(const String& messageName, APIObject* messageBody)
+void WebContext::postMessageToInjectedBundle(const String& messageName, API::Object* messageBody)
 {
     if (m_processes.isEmpty()) {
         if (m_processModel == ProcessModelSharedSecondaryProcess)
@@ -754,12 +778,12 @@ void WebContext::postMessageToInjectedBundle(const String& messageName, APIObjec
 
 // InjectedBundle client
 
-void WebContext::didReceiveMessageFromInjectedBundle(const String& messageName, APIObject* messageBody)
+void WebContext::didReceiveMessageFromInjectedBundle(const String& messageName, API::Object* messageBody)
 {
     m_injectedBundleClient.didReceiveMessageFromInjectedBundle(this, messageName, messageBody);
 }
 
-void WebContext::didReceiveSynchronousMessageFromInjectedBundle(const String& messageName, APIObject* messageBody, RefPtr<APIObject>& returnData)
+void WebContext::didReceiveSynchronousMessageFromInjectedBundle(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData)
 {
     m_injectedBundleClient.didReceiveSynchronousMessageFromInjectedBundle(this, messageName, messageBody, returnData);
 }
@@ -912,7 +936,7 @@ void WebContext::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
     if (decoder.messageReceiverName() == WebContextLegacyMessages::messageReceiverName()
         && decoder.messageName() == WebContextLegacyMessages::postMessageMessageName()) {
         String messageName;
-        RefPtr<APIObject> messageBody;
+        RefPtr<API::Object> messageBody;
         WebContextUserMessageDecoder messageBodyDecoder(messageBody, WebProcessProxy::fromConnection(connection));
         if (!decoder.decode(messageName))
             return;
@@ -938,14 +962,14 @@ void WebContext::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC:
         // FIXME: We should probably encode something in the case that the arguments do not decode correctly.
 
         String messageName;
-        RefPtr<APIObject> messageBody;
+        RefPtr<API::Object> messageBody;
         WebContextUserMessageDecoder messageBodyDecoder(messageBody, WebProcessProxy::fromConnection(connection));
         if (!decoder.decode(messageName))
             return;
         if (!decoder.decode(messageBodyDecoder))
             return;
 
-        RefPtr<APIObject> returnData;
+        RefPtr<API::Object> returnData;
         didReceiveSynchronousMessageFromInjectedBundle(messageName, messageBody.get(), returnData);
         replyEncoder->encode(WebContextUserMessageEncoder(returnData.get()));
         return;
@@ -1076,10 +1100,15 @@ void WebContext::allowSpecificHTTPSCertificateForHost(const WebCertificateInfo* 
         return;
     }
 #else
+#if USE(SOUP)
+    m_processes[0]->send(Messages::WebProcess::AllowSpecificHTTPSCertificateForHost(certificate->platformCertificateInfo(), host), 0);
+    return;
+#else
     UNUSED_PARAM(certificate);
     UNUSED_PARAM(host);
 #endif
-    // FIXME: It's unclear whether we want this SPI to be exposed and used for clients that don't use the NetworkProcess.
+#endif
+
     ASSERT_NOT_REACHED();
 }
 
@@ -1227,29 +1256,33 @@ void WebContext::pluginInfoStoreDidLoadPlugins(PluginInfoStore* store)
 #endif
     ASSERT(store == &m_pluginInfoStore);
 
-    Vector<RefPtr<APIObject>> pluginArray;
+    Vector<PluginModuleInfo> pluginModules = m_pluginInfoStore.plugins();
 
-    Vector<PluginModuleInfo> plugins = m_pluginInfoStore.plugins();
-    for (size_t i = 0; i < plugins.size(); ++i) {
-        PluginModuleInfo& plugin = plugins[i];
+    Vector<RefPtr<API::Object>> plugins;
+    plugins.reserveInitialCapacity(pluginModules.size());
+
+    for (const auto& pluginModule : pluginModules) {
         ImmutableDictionary::MapType map;
-        map.set(ASCIILiteral("path"), WebString::create(plugin.path));
-        map.set(ASCIILiteral("name"), WebString::create(plugin.info.name));
-        map.set(ASCIILiteral("file"), WebString::create(plugin.info.file));
-        map.set(ASCIILiteral("desc"), WebString::create(plugin.info.desc));
-        Vector<RefPtr<APIObject>> mimeArray;
-        for (size_t j = 0; j <  plugin.info.mimes.size(); ++j)
-            mimeArray.append(WebString::create(plugin.info.mimes[j].type));
-        map.set(ASCIILiteral("mimes"), ImmutableArray::adopt(mimeArray));
+        map.set(ASCIILiteral("path"), WebString::create(pluginModule.path));
+        map.set(ASCIILiteral("name"), WebString::create(pluginModule.info.name));
+        map.set(ASCIILiteral("file"), WebString::create(pluginModule.info.file));
+        map.set(ASCIILiteral("desc"), WebString::create(pluginModule.info.desc));
+
+        Vector<RefPtr<API::Object>> mimeTypes;
+        mimeTypes.reserveInitialCapacity(pluginModule.info.mimes.size());
+        for (const auto& mimeClassInfo : pluginModule.info.mimes)
+            mimeTypes.uncheckedAppend(WebString::create(mimeClassInfo.type));
+        map.set(ASCIILiteral("mimes"), ImmutableArray::create(std::move(mimeTypes)));
+
 #if PLATFORM(MAC)
-        map.set(ASCIILiteral("bundleId"), WebString::create(plugin.bundleIdentifier));
-        map.set(ASCIILiteral("version"), WebString::create(plugin.versionString));
+        map.set(ASCIILiteral("bundleId"), WebString::create(pluginModule.bundleIdentifier));
+        map.set(ASCIILiteral("version"), WebString::create(pluginModule.versionString));
 #endif
 
-        pluginArray.append(ImmutableDictionary::adopt(map));
+        plugins.uncheckedAppend(ImmutableDictionary::adopt(map));
     }
 
-    m_client.plugInInformationBecameAvailable(this, ImmutableArray::adopt(pluginArray).get());
+    m_client.plugInInformationBecameAvailable(this, ImmutableArray::create(std::move(plugins)).get());
 }
 #endif
 

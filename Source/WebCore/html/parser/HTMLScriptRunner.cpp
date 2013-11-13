@@ -29,7 +29,6 @@
 #include "Attribute.h"
 #include "CachedScript.h"
 #include "CachedResourceLoader.h"
-#include "CustomElementRegistry.h"
 #include "Element.h"
 #include "Event.h"
 #include "Frame.h"
@@ -47,13 +46,12 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-HTMLScriptRunner::HTMLScriptRunner(Document* document, HTMLScriptRunnerHost* host)
-    : m_document(document)
+HTMLScriptRunner::HTMLScriptRunner(Document& document, HTMLScriptRunnerHost& host)
+    : m_document(&document)
     , m_host(host)
     , m_scriptNestingLevel(0)
     , m_hasScriptsWaitingForStylesheets(false)
 {
-    ASSERT(m_host);
 }
 
 HTMLScriptRunner::~HTMLScriptRunner()
@@ -118,7 +116,7 @@ void HTMLScriptRunner::executeParsingBlockingScript()
     ASSERT(m_document->haveStylesheetsLoaded());
     ASSERT(isPendingScriptReady(m_parserBlockingScript));
 
-    InsertionPointRecord insertionPointRecord(m_host->inputStream());
+    InsertionPointRecord insertionPointRecord(m_host.inputStream());
     executePendingScriptAndDispatchEvent(m_parserBlockingScript);
 }
 
@@ -131,12 +129,8 @@ void HTMLScriptRunner::executePendingScriptAndDispatchEvent(PendingScript& pendi
     if (pendingScript.cachedScript() && pendingScript.watchingForLoad())
         stopWatchingForLoad(pendingScript);
 
-    if (!isExecutingScript()) {
-#if ENABLE(CUSTOM_ELEMENTS)
-        CustomElementRegistry::deliverAllLifecycleCallbacks();
-#endif
+    if (!isExecutingScript())
         MutationObserver::deliverAllMutations();
-    }
 
     // Clear the pending script before possible rentrancy from executeScript()
     RefPtr<Element> element = pendingScript.releaseElementAndClear();
@@ -157,14 +151,14 @@ void HTMLScriptRunner::executePendingScriptAndDispatchEvent(PendingScript& pendi
 void HTMLScriptRunner::watchForLoad(PendingScript& pendingScript)
 {
     ASSERT(!pendingScript.watchingForLoad());
-    m_host->watchForLoad(pendingScript.cachedScript());
+    m_host.watchForLoad(pendingScript.cachedScript());
     pendingScript.setWatchingForLoad(true);
 }
 
 void HTMLScriptRunner::stopWatchingForLoad(PendingScript& pendingScript)
 {
     ASSERT(pendingScript.watchingForLoad());
-    m_host->stopWatchingForLoad(pendingScript.cachedScript());
+    m_host.stopWatchingForLoad(pendingScript.cachedScript());
     pendingScript.setWatchingForLoad(false);
 }
 
@@ -175,7 +169,7 @@ void HTMLScriptRunner::execute(PassRefPtr<Element> scriptElement, const TextPosi
     ASSERT(scriptElement);
     // FIXME: If scripting is disabled, always just return.
 
-    bool hadPreloadScanner = m_host->hasPreloadScanner();
+    bool hadPreloadScanner = m_host.hasPreloadScanner();
 
     // Try to execute the script given to us.
     runScript(scriptElement.get(), scriptStartPosition);
@@ -184,8 +178,8 @@ void HTMLScriptRunner::execute(PassRefPtr<Element> scriptElement, const TextPosi
         if (isExecutingScript())
             return; // Unwind to the outermost HTMLScriptRunner::execute before continuing parsing.
         // If preload scanner got created, it is missing the source after the current insertion point. Append it and scan.
-        if (!hadPreloadScanner && m_host->hasPreloadScanner())
-            m_host->appendCurrentInputStreamToPreloadScannerAndScan();
+        if (!hadPreloadScanner && m_host.hasPreloadScanner())
+            m_host.appendCurrentInputStreamToPreloadScannerAndScan();
         executeParsingBlockingScripts();
     }
 }
@@ -299,14 +293,10 @@ void HTMLScriptRunner::runScript(Element* script, const TextPosition& scriptStar
         // every script element, even if it's not ready to execute yet. There's
         // unfortuantely no obvious way to tell if prepareScript is going to
         // execute the script from out here.
-        if (!isExecutingScript()) {
-#if ENABLE(CUSTOM_ELEMENTS)
-            CustomElementRegistry::deliverAllLifecycleCallbacks();
-#endif
+        if (!isExecutingScript())
             MutationObserver::deliverAllMutations();
-        }
 
-        InsertionPointRecord insertionPointRecord(m_host->inputStream());
+        InsertionPointRecord insertionPointRecord(m_host.inputStream());
         NestingLevelIncrementer nestingLevelIncrementer(m_scriptNestingLevel);
 
         scriptElement->prepareScript(scriptStartPosition);

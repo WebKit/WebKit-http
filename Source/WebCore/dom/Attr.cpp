@@ -24,11 +24,9 @@
 #include "Attr.h"
 
 #include "ExceptionCode.h"
-#include "HTMLNames.h"
 #include "ScopedEventQueue.h"
 #include "StylePropertySet.h"
 #include "StyledElement.h"
-#include "Text.h"
 #include "TextNodeTraversal.h"
 #include "XMLNSNames.h"
 #include <wtf/text/AtomicString.h>
@@ -43,7 +41,6 @@ Attr::Attr(Element* element, const QualifiedName& name)
     , m_element(element)
     , m_name(name)
     , m_ignoreChildrenChanged(0)
-    , m_specified(true)
 {
 }
 
@@ -53,7 +50,6 @@ Attr::Attr(Document& document, const QualifiedName& name, const AtomicString& st
     , m_name(name)
     , m_standaloneValue(standaloneValue)
     , m_ignoreChildrenChanged(0)
-    , m_specified(true)
 {
 }
 
@@ -121,7 +117,7 @@ void Attr::setValue(const AtomicString& value)
     createTextChild();
     m_ignoreChildrenChanged--;
 
-    invalidateNodeListCachesInAncestors(&m_name, m_element);
+    invalidateNodeListAndCollectionCachesInAncestors(&m_name, m_element);
 }
 
 void Attr::setValue(const AtomicString& value, ExceptionCode&)
@@ -164,7 +160,7 @@ void Attr::childrenChanged(const ChildChange&)
     if (m_ignoreChildrenChanged > 0)
         return;
 
-    invalidateNodeListCachesInAncestors(&qualifiedName(), m_element);
+    invalidateNodeListAndCollectionCachesInAncestors(&qualifiedName(), m_element);
 
     StringBuilder valueBuilder;
     TextNodeTraversal::appendContents(this, valueBuilder);
@@ -191,9 +187,9 @@ CSSStyleDeclaration* Attr::style()
 {
     // This function only exists to support the Obj-C bindings.
     if (!m_element || !m_element->isStyledElement())
-        return 0;
+        return nullptr;
     m_style = MutableStylePropertySet::create();
-    static_cast<StyledElement*>(m_element)->collectStyleForPresentationAttribute(qualifiedName(), value(), m_style.get());
+    static_cast<StyledElement*>(m_element)->collectStyleForPresentationAttribute(qualifiedName(), value(), *m_style);
     return m_style->ensureCSSStyleDeclaration();
 }
 

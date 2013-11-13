@@ -69,7 +69,7 @@ namespace WebCore {
         virtual URL completeURL(const String&) const OVERRIDE FINAL;
 
         const GroupSettings* groupSettings() { return m_groupSettings.get(); }
-        virtual String userAgent(const URL&) const;
+        virtual String userAgent(const URL&) const OVERRIDE;
 
         virtual void disableEval(const String& errorMessage) OVERRIDE;
 
@@ -139,7 +139,7 @@ namespace WebCore {
         virtual SecurityOrigin* topOrigin() const OVERRIDE { return m_topOrigin.get(); }
 
     protected:
-        WorkerGlobalScope(const URL&, const String& userAgent, PassOwnPtr<GroupSettings>, WorkerThread*, PassRefPtr<SecurityOrigin> topOrigin);
+        WorkerGlobalScope(const URL&, const String& userAgent, std::unique_ptr<GroupSettings>, WorkerThread*, PassRefPtr<SecurityOrigin> topOrigin);
         void applyContentSecurityPolicyFromString(const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType);
 
         virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<ScriptCallStack>) OVERRIDE;
@@ -161,7 +161,7 @@ namespace WebCore {
 
         URL m_url;
         String m_userAgent;
-        OwnPtr<GroupSettings> m_groupSettings;
+        std::unique_ptr<GroupSettings> m_groupSettings;
 
         mutable RefPtr<WorkerLocation> m_location;
         mutable RefPtr<WorkerNavigator> m_navigator;

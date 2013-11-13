@@ -47,7 +47,7 @@ namespace WebCore {
     class ResourceRequest;
 }
 
-typedef HashMap<RefPtr<WebCore::ResourceLoader>, RetainPtr<WebResource> > ResourceMap;
+typedef HashMap<RefPtr<WebCore::ResourceLoader>, RetainPtr<WebResource>> ResourceMap;
 
 class WebFrameLoaderClient : public WebCore::FrameLoaderClient {
 public:
@@ -112,18 +112,15 @@ private:
     virtual WebCore::Frame* dispatchCreatePage(const WebCore::NavigationAction&) OVERRIDE;
     virtual void dispatchShow() OVERRIDE;
 
-    virtual void dispatchDecidePolicyForResponse(WebCore::FramePolicyFunction, 
-        const WebCore::ResourceResponse&, const WebCore::ResourceRequest&);
-    virtual void dispatchDecidePolicyForNewWindowAction(WebCore::FramePolicyFunction,
-        const WebCore::NavigationAction&, const WebCore::ResourceRequest&, PassRefPtr<WebCore::FormState>, const WTF::String& frameName) OVERRIDE;
-    virtual void dispatchDecidePolicyForNavigationAction(WebCore::FramePolicyFunction,
-        const WebCore::NavigationAction&, const WebCore::ResourceRequest&, PassRefPtr<WebCore::FormState>) OVERRIDE;
+    virtual void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, WebCore::FramePolicyFunction);
+    virtual void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, PassRefPtr<WebCore::FormState>, const WTF::String& frameName, WebCore::FramePolicyFunction) OVERRIDE;
+    virtual void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, PassRefPtr<WebCore::FormState>, WebCore::FramePolicyFunction) OVERRIDE;
     virtual void cancelPolicyCheck() OVERRIDE;
 
     virtual void dispatchUnableToImplementPolicy(const WebCore::ResourceError&) OVERRIDE;
 
     virtual void dispatchWillSendSubmitEvent(PassRefPtr<WebCore::FormState>) OVERRIDE;
-    virtual void dispatchWillSubmitForm(WebCore::FramePolicyFunction, PassRefPtr<WebCore::FormState>) OVERRIDE;
+    virtual void dispatchWillSubmitForm(PassRefPtr<WebCore::FormState>, WebCore::FramePolicyFunction) OVERRIDE;
 
     virtual void revertToProvisionalState(WebCore::DocumentLoader*) OVERRIDE;
     virtual void setMainDocumentError(WebCore::DocumentLoader*, const WebCore::ResourceError&) OVERRIDE;
@@ -213,7 +210,7 @@ private:
     virtual WebCore::ObjectContentType objectContentType(const WebCore::URL&, const WTF::String& mimeType, bool shouldPreferPlugInsForImages) OVERRIDE;
     virtual WTF::String overrideMediaType() const OVERRIDE;
     
-    virtual void dispatchDidClearWindowObjectInWorld(WebCore::DOMWrapperWorld*) OVERRIDE;
+    virtual void dispatchDidClearWindowObjectInWorld(WebCore::DOMWrapperWorld&) OVERRIDE;
     virtual void documentElementAvailable() OVERRIDE;
     virtual void didPerformFirstNavigation() const OVERRIDE;
 

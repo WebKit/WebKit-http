@@ -44,6 +44,16 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
 #if ENABLE(DRAGGABLE_REGION)
     , m_draggableRegionMode(DraggableRegionNone)
 #endif
+    , m_deprecatedFlexibleBox(StyleDeprecatedFlexibleBoxData::create())
+    , m_flexibleBox(StyleFlexibleBoxData::create())
+    , m_marquee(StyleMarqueeData::create())
+    , m_multiCol(StyleMultiColData::create())
+    , m_transform(StyleTransformData::create())
+#if ENABLE(CSS_FILTERS)
+    , m_filter(StyleFilterData::create())
+#endif
+    , m_grid(StyleGridData::create())
+    , m_gridItem(StyleGridItemData::create())
     , m_mask(FillLayer(MaskFillLayer))
     , m_pageSize()
 #if ENABLE(CSS_SHAPES)
@@ -51,6 +61,7 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , m_shapeOutside(RenderStyle::initialShapeOutside())
     , m_shapeMargin(RenderStyle::initialShapeMargin())
     , m_shapePadding(RenderStyle::initialShapePadding())
+    , m_shapeImageThreshold(RenderStyle::initialShapeImageThreshold())
 #endif
     , m_clipPath(RenderStyle::initialClipPath())
     , m_visitedLinkBackgroundColor(RenderStyle::initialBackgroundColor())
@@ -75,9 +86,9 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , m_appearance(RenderStyle::initialAppearance())
     , m_borderFit(RenderStyle::initialBorderFit())
     , m_textCombine(RenderStyle::initialTextCombine())
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     , m_textDecorationStyle(RenderStyle::initialTextDecorationStyle())
-#endif // CSS3_TEXT
+#endif
     , m_wrapFlow(RenderStyle::initialWrapFlow())
     , m_wrapThrough(RenderStyle::initialWrapThrough())
 #if USE(ACCELERATED_COMPOSITING)
@@ -128,12 +139,13 @@ StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonInherited
     , m_shapeOutside(o.m_shapeOutside)
     , m_shapeMargin(o.m_shapeMargin)
     , m_shapePadding(o.m_shapePadding)
+    , m_shapeImageThreshold(o.m_shapeImageThreshold)
 #endif
     , m_clipPath(o.m_clipPath)
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     , m_textDecorationColor(o.m_textDecorationColor)
     , m_visitedLinkTextDecorationColor(o.m_visitedLinkTextDecorationColor)
-#endif // CSS3_TEXT
+#endif
     , m_visitedLinkBackgroundColor(o.m_visitedLinkBackgroundColor)
     , m_visitedLinkOutlineColor(o.m_visitedLinkOutlineColor)
     , m_visitedLinkBorderLeftColor(o.m_visitedLinkBorderLeftColor)
@@ -161,9 +173,9 @@ StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonInherited
     , m_appearance(o.m_appearance)
     , m_borderFit(o.m_borderFit)
     , m_textCombine(o.m_textCombine)
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     , m_textDecorationStyle(o.m_textDecorationStyle)
-#endif // CSS3_TEXT
+#endif
     , m_wrapFlow(o.m_wrapFlow)
     , m_wrapThrough(o.m_wrapThrough)
 #if USE(ACCELERATED_COMPOSITING)
@@ -220,12 +232,13 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_shapeOutside == o.m_shapeOutside
         && m_shapeMargin == o.m_shapeMargin
         && m_shapePadding == o.m_shapePadding
+        && m_shapeImageThreshold == o.m_shapeImageThreshold
 #endif
         && m_clipPath == o.m_clipPath
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
         && m_textDecorationColor == o.m_textDecorationColor
         && m_visitedLinkTextDecorationColor == o.m_visitedLinkTextDecorationColor
-#endif // CSS3_TEXT
+#endif
         && m_visitedLinkBackgroundColor == o.m_visitedLinkBackgroundColor
         && m_visitedLinkOutlineColor == o.m_visitedLinkOutlineColor
         && m_visitedLinkBorderLeftColor == o.m_visitedLinkBorderLeftColor
@@ -253,9 +266,9 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_appearance == o.m_appearance
         && m_borderFit == o.m_borderFit
         && m_textCombine == o.m_textCombine
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
         && m_textDecorationStyle == o.m_textDecorationStyle
-#endif // CSS3_TEXT
+#endif
         && m_wrapFlow == o.m_wrapFlow
         && m_wrapThrough == o.m_wrapThrough
 #if USE(ACCELERATED_COMPOSITING)

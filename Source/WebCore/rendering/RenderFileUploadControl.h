@@ -33,7 +33,7 @@ class HTMLInputElement;
 
 class RenderFileUploadControl FINAL : public RenderBlockFlow {
 public:
-    explicit RenderFileUploadControl(HTMLInputElement&);
+    RenderFileUploadControl(HTMLInputElement&, PassRef<RenderStyle>);
     virtual ~RenderFileUploadControl();
 
     String buttonValue();
@@ -46,39 +46,26 @@ private:
 
     virtual bool isFileUploadControl() const OVERRIDE { return true; }
 
-    virtual const char* renderName() const { return "RenderFileUploadControl"; }
+    virtual const char* renderName() const OVERRIDE { return "RenderFileUploadControl"; }
 
     virtual bool canBeReplacedWithInlineRunIn() const OVERRIDE;
-    virtual void updateFromElement();
+    virtual void updateFromElement() OVERRIDE;
     virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const OVERRIDE;
-    virtual void computePreferredLogicalWidths();
-    virtual void paintObject(PaintInfo&, const LayoutPoint&);
+    virtual void computePreferredLogicalWidths() OVERRIDE;
+    virtual void paintObject(PaintInfo&, const LayoutPoint&) OVERRIDE;
 
-    virtual bool requiresForcedStyleRecalcPropagation() const { return true; }
+    virtual bool requiresForcedStyleRecalcPropagation() const OVERRIDE { return true; }
 
     int maxFilenameWidth() const;
     
-    virtual VisiblePosition positionForPoint(const LayoutPoint&);
+    virtual VisiblePosition positionForPoint(const LayoutPoint&) OVERRIDE;
 
     HTMLInputElement* uploadButton() const;
 
     bool m_canReceiveDroppedFiles;
 };
 
-inline RenderFileUploadControl* toRenderFileUploadControl(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isFileUploadControl());
-    return static_cast<RenderFileUploadControl*>(object);
-}
-
-inline const RenderFileUploadControl* toRenderFileUploadControl(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isFileUploadControl());
-    return static_cast<const RenderFileUploadControl*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderFileUploadControl(const RenderFileUploadControl*);
+RENDER_OBJECT_TYPE_CASTS(RenderFileUploadControl, isFileUploadControl())
 
 } // namespace WebCore
 

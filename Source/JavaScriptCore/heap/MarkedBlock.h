@@ -69,6 +69,8 @@ namespace JSC {
     // size.
 
     class MarkedBlock : public HeapBlock<MarkedBlock> {
+        friend class LLIntOffsetsExtractor;
+
     public:
         static const size_t atomSize = 8; // bytes
         static const size_t blockSize = 64 * KB;
@@ -187,7 +189,7 @@ namespace JSC {
 #else
         WTF::Bitmap<atomsPerBlock, WTF::BitmapNotAtomic> m_marks;
 #endif
-        OwnPtr<WTF::Bitmap<atomsPerBlock> > m_newlyAllocated;
+        OwnPtr<WTF::Bitmap<atomsPerBlock>> m_newlyAllocated;
 
         DestructorType m_destructorType;
         MarkedAllocator* m_allocator;

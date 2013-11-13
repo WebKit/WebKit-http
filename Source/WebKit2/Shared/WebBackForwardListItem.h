@@ -37,7 +37,7 @@ namespace CoreIPC {
 
 namespace WebKit {
 
-class WebBackForwardListItem : public TypedAPIObject<APIObject::TypeBackForwardListItem> {
+class WebBackForwardListItem : public API::TypedObject<API::Object::TypeBackForwardListItem> {
 public:
     static PassRefPtr<WebBackForwardListItem> create(const String& originalURL, const String& url, const String& title, const uint8_t* backForwardData, size_t backForwardDataSize, uint64_t itemID)
     {
@@ -74,6 +74,8 @@ private:
     uint64_t m_itemID;
     Vector<uint8_t> m_backForwardData;
 };
+
+typedef Vector<RefPtr<WebBackForwardListItem>> BackForwardListItemVector;
 
 } // namespace WebKit
 

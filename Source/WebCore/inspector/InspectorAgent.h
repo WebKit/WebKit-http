@@ -54,9 +54,9 @@ typedef String ErrorString;
 class InspectorAgent : public InspectorBaseAgent<InspectorAgent>, public InspectorBackendDispatcher::InspectorCommandHandler {
     WTF_MAKE_NONCOPYABLE(InspectorAgent);
 public:
-    static PassOwnPtr<InspectorAgent> create(Page* page, InjectedScriptManager* injectedScriptManager, InstrumentingAgents* instrumentingAgents, InspectorCompositeState* state)
+    static PassOwnPtr<InspectorAgent> create(Page* page, InjectedScriptManager* injectedScriptManager, InstrumentingAgents* instrumentingAgents)
     {
-        return adoptPtr(new InspectorAgent(page, injectedScriptManager, instrumentingAgents, state));
+        return adoptPtr(new InspectorAgent(page, injectedScriptManager, instrumentingAgents));
     }
 
     virtual ~InspectorAgent();
@@ -75,7 +75,7 @@ public:
     virtual void setFrontend(InspectorFrontend*);
     virtual void clearFrontend();
 
-    void didClearWindowObjectInWorld(Frame*, DOMWrapperWorld*);
+    void didClearWindowObjectInWorld(Frame*, DOMWrapperWorld&);
 
     void didCommitLoad();
     void domContentLoadedEventFired();
@@ -90,7 +90,7 @@ public:
     void inspect(PassRefPtr<TypeBuilder::Runtime::RemoteObject> objectToInspect, PassRefPtr<InspectorObject> hints);
 
 private:
-    InspectorAgent(Page*, InjectedScriptManager*, InstrumentingAgents*, InspectorCompositeState*);
+    InspectorAgent(Page*, InjectedScriptManager*, InstrumentingAgents*);
 
     Page* m_inspectedPage;
     InspectorFrontend* m_frontend;
@@ -99,6 +99,8 @@ private:
     Vector<pair<long, String>> m_pendingEvaluateTestCommands;
     pair<RefPtr<TypeBuilder::Runtime::RemoteObject>, RefPtr<InspectorObject>> m_pendingInspectData;
     HashMap<String, String> m_injectedScriptForOrigin;
+
+    bool m_enabled;
 };
 
 } // namespace WebCore

@@ -43,7 +43,6 @@ namespace WebCore {
 class ConsoleMessage;
 class DOMWindow;
 class InspectorFrontend;
-class InspectorState;
 class InjectedScriptManager;
 class InstrumentingAgents;
 class ResourceError;
@@ -57,21 +56,20 @@ typedef String ErrorString;
 class InspectorConsoleAgent : public InspectorBaseAgent<InspectorConsoleAgent>, public InspectorBackendDispatcher::ConsoleCommandHandler {
     WTF_MAKE_NONCOPYABLE(InspectorConsoleAgent);
 public:
-    InspectorConsoleAgent(InstrumentingAgents*, InspectorCompositeState*, InjectedScriptManager*);
+    InspectorConsoleAgent(InstrumentingAgents*, InjectedScriptManager*);
     virtual ~InspectorConsoleAgent();
 
     virtual void enable(ErrorString*);
     virtual void disable(ErrorString*);
     virtual void clearMessages(ErrorString*);
-    bool enabled() { return m_enabled; }
+    bool enabled() const { return m_enabled; }
     void reset();
 
     virtual void setFrontend(InspectorFrontend*);
     virtual void clearFrontend();
-    virtual void restore();
 
     void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, JSC::ExecState*, PassRefPtr<ScriptArguments>, unsigned long requestIdentifier = 0);
-    void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, const String& scriptId, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
+    void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, const String& scriptID, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
 
     // FIXME: Remove once we no longer generate stacks outside of Inspector.
     void addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier = 0);
@@ -84,7 +82,7 @@ public:
 
     void frameWindowDiscarded(DOMWindow*);
 
-    void didFinishXHRLoading(unsigned long requestIdentifier, const String& url, const String& sendURL, unsigned sendLineNumber);
+    void didFinishXHRLoading(unsigned long requestIdentifier, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber);
     void didReceiveResponse(unsigned long requestIdentifier, const ResourceResponse&);
     void didFailLoading(unsigned long requestIdentifier, const ResourceError&);
 #if ENABLE(JAVASCRIPT_DEBUGGER)
@@ -105,11 +103,12 @@ protected:
     InjectedScriptManager* m_injectedScriptManager;
     InspectorFrontend::Console* m_frontend;
     ConsoleMessage* m_previousMessage;
-    Vector<OwnPtr<ConsoleMessage> > m_consoleMessages;
+    Vector<OwnPtr<ConsoleMessage>> m_consoleMessages;
     int m_expiredConsoleMessageCount;
     HashMap<String, unsigned> m_counts;
     HashMap<String, double> m_times;
     bool m_enabled;
+    bool m_monitoringXHREnabled;
 private:
     static int s_enabledAgentCount;
 };

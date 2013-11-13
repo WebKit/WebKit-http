@@ -1529,29 +1529,47 @@ static inline BOOL read2DigitNumber(const char **pp, int8_t *outval)
 
 static inline NSDate *_dateForString(NSString *string)
 {
-    CFGregorianDate date;
     const char *p = [string UTF8String];
-    int8_t secval = 0;
-    BOOL wellFormed = YES;
+    RetainPtr<NSDateComponents> dateComponents = adoptNS([[NSDateComponents alloc] init]);
 
-    date.year = 0;
+    // Set the time zone to GMT
+    [dateComponents setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
+
+    NSInteger year = 0;
     while (*p && isASCIIDigit(*p))
-        date.year = 10 * date.year + *p++ - '0';
+        year = 10 * year + *p++ - '0';
     if (*p++ != '-')
-        wellFormed = NO;
-    if (!wellFormed || !read2DigitNumber(&p, &date.month) || *p++ != '-')
-        wellFormed = NO;
-    if (!wellFormed || !read2DigitNumber(&p, &date.day) || *p++ != 'T')
-        wellFormed = NO;
-    if (!wellFormed || !read2DigitNumber(&p, &date.hour) || *p++ != ':')
-        wellFormed = NO;
-    if (!wellFormed || !read2DigitNumber(&p, &date.minute) || *p++ != ':')
-        wellFormed = NO;
-    if (!wellFormed || !read2DigitNumber(&p, &secval) || *p++ != 'Z')
-        wellFormed = NO;
-    if (wellFormed)
-        date.second = secval;
-    return wellFormed ? [(NSDate *)CFDateCreate(NULL, CFGregorianDateGetAbsoluteTime(date, NULL)) autorelease] : nil;
+        return nil;
+    [dateComponents setYear:year];
+
+    int8_t component;
+    if (!read2DigitNumber(&p, &component) || *p++ != '-')
+        return nil;
+    [dateComponents setMonth:component];
+
+    if (!read2DigitNumber(&p, &component) || *p++ != 'T')
+        return nil;
+    [dateComponents setDay:component];
+
+    if (!read2DigitNumber(&p, &component) || *p++ != ':')
+        return nil;
+    [dateComponents setHour:component];
+
+    if (!read2DigitNumber(&p, &component) || *p++ != ':')
+        return nil;
+    [dateComponents setMinute:component];
+
+    if (!read2DigitNumber(&p, &component) || *p++ != 'Z')
+        return nil;
+    [dateComponents setSecond:component];
+    
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    NSString *calendarIdentifier = NSCalendarIdentifierGregorian;
+#else
+    NSString *calendarIdentifier = NSGregorianCalendar;
+#endif
+
+    return [[[[NSCalendar alloc] initWithCalendarIdentifier:calendarIdentifier] autorelease] dateFromComponents:dateComponents.get()];
 }
 
 static NSInteger _colCompare(id block1, id block2, void *)
@@ -2487,21 +2505,21 @@ static NSInteger _colCompare(id block1, id block2, void *)
         ASSERT(renderer);
         if (!renderer)
             continue;
-        RenderStyle* style = renderer->style();
-        if (style->textDecorationsInEffect() & TextDecorationUnderline)
+        const RenderStyle& style = renderer->style();
+        if (style.textDecorationsInEffect() & TextDecorationUnderline)
             [attrs.get() setObject:[NSNumber numberWithInteger:NSUnderlineStyleSingle] forKey:NSUnderlineStyleAttributeName];
-        if (style->textDecorationsInEffect() & TextDecorationLineThrough)
+        if (style.textDecorationsInEffect() & TextDecorationLineThrough)
             [attrs.get() setObject:[NSNumber numberWithInteger:NSUnderlineStyleSingle] forKey:NSStrikethroughStyleAttributeName];
-        if (NSFont *font = style->font().primaryFont()->getNSFont())
+        if (NSFont *font = style.font().primaryFont()->getNSFont())
             [attrs.get() setObject:font forKey:NSFontAttributeName];
         else
-            [attrs.get() setObject:[fontManager convertFont:WebDefaultFont() toSize:style->font().primaryFont()->platformData().size()] forKey:NSFontAttributeName];
-        if (style->visitedDependentColor(CSSPropertyColor).alpha())
-            [attrs.get() setObject:nsColor(style->visitedDependentColor(CSSPropertyColor)) forKey:NSForegroundColorAttributeName];
+            [attrs.get() setObject:[fontManager convertFont:WebDefaultFont() toSize:style.font().primaryFont()->platformData().size()] forKey:NSFontAttributeName];
+        if (style.visitedDependentColor(CSSPropertyColor).alpha())
+            [attrs.get() setObject:nsColor(style.visitedDependentColor(CSSPropertyColor)) forKey:NSForegroundColorAttributeName];
         else
             [attrs.get() removeObjectForKey:NSForegroundColorAttributeName];
-        if (style->visitedDependentColor(CSSPropertyBackgroundColor).alpha())
-            [attrs.get() setObject:nsColor(style->visitedDependentColor(CSSPropertyBackgroundColor)) forKey:NSBackgroundColorAttributeName];
+        if (style.visitedDependentColor(CSSPropertyBackgroundColor).alpha())
+            [attrs.get() setObject:nsColor(style.visitedDependentColor(CSSPropertyBackgroundColor)) forKey:NSBackgroundColorAttributeName];
         else
             [attrs.get() removeObjectForKey:NSBackgroundColorAttributeName];
 

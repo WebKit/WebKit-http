@@ -60,7 +60,7 @@ class RenderWidget : public RenderReplaced, private OverlapTestRequestClient {
 public:
     virtual ~RenderWidget();
 
-    HTMLFrameOwnerElement& frameOwnerElement() const { return toFrameOwnerElement(nodeForNonAnonymous()); }
+    HTMLFrameOwnerElement& frameOwnerElement() const { return toHTMLFrameOwnerElement(nodeForNonAnonymous()); }
 
     Widget* widget() const { return m_widget.get(); }
     void setWidget(PassRefPtr<Widget>);
@@ -70,23 +70,18 @@ public:
     void updateWidgetPosition();
     IntRect windowClipRect() const;
 
-    void notifyWidget(WidgetNotification);
-
 #if USE(ACCELERATED_COMPOSITING)
     bool requiresAcceleratedCompositing() const;
 #endif
 
     WeakPtr<RenderWidget> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
-    virtual void viewCleared() { }
-
 protected:
-    explicit RenderWidget(HTMLFrameOwnerElement&);
+    RenderWidget(HTMLFrameOwnerElement&, PassRef<RenderStyle>);
 
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE FINAL;
     virtual void layout() OVERRIDE;
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
-    virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const OVERRIDE;
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
     virtual void paintContents(PaintInfo&, const LayoutPoint&);
 #if USE(ACCELERATED_COMPOSITING)
@@ -113,20 +108,7 @@ private:
     IntRect m_clipRect; // The rectangle needs to remain correct after scrolling, so it is stored in content view coordinates, and not clipped to window.
 };
 
-inline RenderWidget* toRenderWidget(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isWidget());
-    return static_cast<RenderWidget*>(object);
-}
-
-inline const RenderWidget* toRenderWidget(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isWidget());
-    return static_cast<const RenderWidget*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderWidget(const RenderWidget*);
+RENDER_OBJECT_TYPE_CASTS(RenderWidget, isWidget())
 
 } // namespace WebCore
 

@@ -32,7 +32,6 @@
 #include "SegmentedString.h"
 #include "XMLErrors.h"
 #include <wtf/HashMap.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/text/AtomicStringHash.h>
 #include <wtf/text/CString.h>
 
@@ -69,11 +68,11 @@ class Text;
     class XMLDocumentParser : public ScriptableDocumentParser, public CachedResourceClient {
         WTF_MAKE_FAST_ALLOCATED;
     public:
-        static PassRefPtr<XMLDocumentParser> create(Document* document, FrameView* view)
+        static PassRefPtr<XMLDocumentParser> create(Document& document, FrameView* view)
         {
             return adoptRef(new XMLDocumentParser(document, view));
         }
-        static PassRefPtr<XMLDocumentParser> create(DocumentFragment* fragment, Element* element, ParserContentPolicy parserContentPolicy)
+        static PassRefPtr<XMLDocumentParser> create(DocumentFragment& fragment, Element* element, ParserContentPolicy parserContentPolicy)
         {
             return adoptRef(new XMLDocumentParser(fragment, element, parserContentPolicy));
         }
@@ -86,7 +85,7 @@ class Text;
         void setIsXHTMLDocument(bool isXHTML) { m_isXHTMLDocument = isXHTML; }
         bool isXHTMLDocument() const { return m_isXHTMLDocument; }
 
-        static bool parseDocumentFragment(const String&, DocumentFragment*, Element* parent = 0, ParserContentPolicy = AllowScriptingContent);
+        static bool parseDocumentFragment(const String&, DocumentFragment&, Element* parent = 0, ParserContentPolicy = AllowScriptingContent);
 
         // Used by the XMLHttpRequest to check if the responseXML was well formed.
         virtual bool wellFormed() const { return !m_sawError; }
@@ -96,8 +95,8 @@ class Text;
         static bool supportsXMLVersion(const String&);
 
     private:
-        XMLDocumentParser(Document*, FrameView* = 0);
-        XMLDocumentParser(DocumentFragment*, Element*, ParserContentPolicy);
+        XMLDocumentParser(Document&, FrameView* = 0);
+        XMLDocumentParser(DocumentFragment&, Element*, ParserContentPolicy);
 
         // From DocumentParser
         virtual void insert(const SegmentedString&);
@@ -160,7 +159,7 @@ public:
 
         xmlParserCtxtPtr context() const { return m_context ? m_context->context() : 0; };
         RefPtr<XMLParserContext> m_context;
-        OwnPtr<PendingCallbacks> m_pendingCallbacks;
+        std::unique_ptr<PendingCallbacks> m_pendingCallbacks;
         Vector<xmlChar> m_bufferedText;
         int m_depthTriggeringEntityExpansion;
         bool m_isParsingEntityDeclaration;
@@ -179,7 +178,7 @@ public:
         bool m_requestingScript;
         bool m_finishCalled;
 
-        OwnPtr<XMLErrors> m_xmlErrors;
+        std::unique_ptr<XMLErrors> m_xmlErrors;
 
         CachedResourceHandle<CachedScript> m_pendingScript;
         RefPtr<Element> m_scriptElement;

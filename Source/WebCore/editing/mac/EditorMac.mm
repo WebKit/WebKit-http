@@ -100,7 +100,7 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText)
 bool Editor::insertParagraphSeparatorInQuotedContent()
 {
     // FIXME: Why is this missing calls to canEdit, canEditRichly, etc.?
-    TypingCommand::insertParagraphSeparatorInQuotedContent(m_frame.document());
+    TypingCommand::insertParagraphSeparatorInQuotedContent(document());
     revealSelectionAfterEditingOperation();
     return true;
 }
@@ -118,7 +118,7 @@ static RenderStyle* styleForSelectionStart(Frame* frame, Node *&nodeToRemove)
 
     RefPtr<EditingStyle> typingStyle = frame->selection().typingStyle();
     if (!typingStyle || !typingStyle->style())
-        return position.deprecatedNode()->renderer()->style();
+        return &position.deprecatedNode()->renderer()->style();
 
     RefPtr<Element> styleElement = frame->document()->createElement(spanTag, false);
 
@@ -130,7 +130,7 @@ static RenderStyle* styleForSelectionStart(Frame* frame, Node *&nodeToRemove)
     position.deprecatedNode()->parentNode()->appendChild(styleElement, ASSERT_NO_EXCEPTION);
 
     nodeToRemove = styleElement.get();
-    return styleElement->renderer() ? styleElement->renderer()->style() : 0;
+    return styleElement->renderer() ? &styleElement->renderer()->style() : 0;
 }
 
 const SimpleFontData* Editor::fontForSelection(bool& hasMultipleFonts) const
@@ -163,7 +163,7 @@ const SimpleFontData* Editor::fontForSelection(bool& hasMultipleFonts) const
             if (!renderer)
                 continue;
             // FIXME: Are there any node types that have renderers, but that we should be skipping?
-            const SimpleFontData* primaryFont = renderer->style()->font().primaryFont();
+            const SimpleFontData* primaryFont = renderer->style().font().primaryFont();
             if (!font)
                 font = primaryFont;
             else if (font != primaryFont) {
@@ -462,7 +462,7 @@ bool Editor::WebContentReader::readWebArchive(PassRefPtr<SharedBuffer> buffer)
             loader->addAllArchiveResources(archive.get());
 
         String markupString = String::fromUTF8(mainResource->data()->data(), mainResource->data()->size());
-        fragment = createFragmentFromMarkup(frame.document(), markupString, mainResource->url(), DisallowScriptingAndPluginContent);
+        fragment = createFragmentFromMarkup(*frame.document(), markupString, mainResource->url(), DisallowScriptingAndPluginContent);
         return true;
     }
 
@@ -514,7 +514,11 @@ bool Editor::WebContentReader::readHTML(const String& string)
     if (stringOmittingMicrosoftPrefix.isEmpty())
         return false;
 
-    fragment = createFragmentFromMarkup(frame.document(), stringOmittingMicrosoftPrefix, emptyString(), DisallowScriptingAndPluginContent);
+    if (!frame.document())
+        return false;
+    Document& document = *frame.document();
+
+    fragment = createFragmentFromMarkup(document, stringOmittingMicrosoftPrefix, emptyString(), DisallowScriptingAndPluginContent);
     return fragment;
 }
 
@@ -560,7 +564,7 @@ bool Editor::WebContentReader::readPlainText(const String& text)
     if (!allowPlainText)
         return false;
 
-    fragment = createFragmentFromText(&context, [text precomposedStringWithCanonicalMapping]);
+    fragment = createFragmentFromText(context, [text precomposedStringWithCanonicalMapping]);
     if (!fragment)
         return false;
 
@@ -583,10 +587,10 @@ PassRefPtr<DocumentFragment> Editor::createFragmentForImageResourceAndAddResourc
     if (!resource)
         return nullptr;
 
-    RefPtr<Element> imageElement = m_frame.document()->createElement(HTMLNames::imgTag, false);
+    RefPtr<Element> imageElement = document().createElement(HTMLNames::imgTag, false);
     imageElement->setAttribute(HTMLNames::srcAttr, resource->url().string());
 
-    RefPtr<DocumentFragment> fragment = m_frame.document()->createDocumentFragment();
+    RefPtr<DocumentFragment> fragment = document().createDocumentFragment();
     fragment->appendChild(imageElement.release());
 
     // FIXME: The code in createFragmentAndAddResources calls setDefersLoading(true). Don't we need that here?
@@ -598,7 +602,7 @@ PassRefPtr<DocumentFragment> Editor::createFragmentForImageResourceAndAddResourc
 
 PassRefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedString *string)
 {
-    if (!m_frame.page() || !m_frame.document() || !m_frame.document()->isHTMLDocument())
+    if (!m_frame.page() || !document().isHTMLDocument())
         return nullptr;
 
     if (!string)

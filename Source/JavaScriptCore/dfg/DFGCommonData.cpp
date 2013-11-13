@@ -62,6 +62,16 @@ void CommonData::shrinkToFit()
     transitions.shrinkToFit();
 }
 
+bool CommonData::invalidate()
+{
+    if (!isStillValid)
+        return false;
+    for (unsigned i = jumpReplacements.size(); i--;)
+        jumpReplacements[i].fire();
+    isStillValid = false;
+    return true;
+}
+
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)

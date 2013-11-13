@@ -37,7 +37,7 @@
 namespace WebCore {
 
 LoadableTextTrack::LoadableTextTrack(HTMLTrackElement* track, const String& kind, const String& label, const String& language)
-    : TextTrack(&track->document(), track, kind, label, language, TrackElement)
+    : TextTrack(&track->document(), track, kind, emptyString(), label, language, TrackElement)
     , m_trackElement(track)
     , m_loadTimer(this, &LoadableTextTrack::loadTimerFired)
     , m_isDefault(false)
@@ -103,7 +103,7 @@ void LoadableTextTrack::newCuesAvailable(TextTrackLoader* loader)
 {
     ASSERT_UNUSED(loader, m_loader == loader);
 
-    Vector<RefPtr<TextTrackCue> > newCues;
+    Vector<RefPtr<TextTrackCue>> newCues;
     m_loader->getNewCues(newCues);
 
     if (!m_cues)
@@ -138,7 +138,7 @@ void LoadableTextTrack::newRegionsAvailable(TextTrackLoader* loader)
 {
     ASSERT_UNUSED(loader, m_loader == loader);
 
-    Vector<RefPtr<TextTrackRegion> > newRegions;
+    Vector<RefPtr<TextTrackRegion>> newRegions;
     m_loader->getNewRegions(newRegions);
 
     for (size_t i = 0; i < newRegions.size(); ++i) {
@@ -147,6 +147,13 @@ void LoadableTextTrack::newRegionsAvailable(TextTrackLoader* loader)
     }
 }
 #endif
+
+AtomicString LoadableTextTrack::id() const
+{
+    if (m_trackElement)
+        return m_trackElement->getAttribute("id");
+    return emptyString();
+}
 
 size_t LoadableTextTrack::trackElementIndex()
 {

@@ -36,12 +36,11 @@
 #include "TextTrack.h"
 
 #include "Event.h"
-#include "ExceptionCode.h"
 #include "HTMLMediaElement.h"
+#include "SourceBuffer.h"
 #include "TextTrackCueList.h"
 #include "TextTrackList.h"
 #include "TextTrackRegionList.h"
-#include "TrackBase.h"
 
 namespace WebCore {
 
@@ -103,18 +102,18 @@ const AtomicString& TextTrack::showingKeyword()
 
 TextTrack* TextTrack::captionMenuOffItem()
 {
-    static TextTrack* off = TextTrack::create(0, 0, "off menu item", "", "").leakRef();
+    static TextTrack* off = TextTrack::create(0, 0, "off menu item", "", "", "").leakRef();
     return off;
 }
 
 TextTrack* TextTrack::captionMenuAutomaticItem()
 {
-    static TextTrack* automatic = TextTrack::create(0, 0, "automatic menu item", "", "").leakRef();
+    static TextTrack* automatic = TextTrack::create(0, 0, "automatic menu item", "", "", "").leakRef();
     return automatic;
 }
 
-TextTrack::TextTrack(ScriptExecutionContext* context, TextTrackClient* client, const AtomicString& kind, const AtomicString& label, const AtomicString& language, TextTrackType type)
-    : TrackBase(TrackBase::TextTrack, label, language)
+TextTrack::TextTrack(ScriptExecutionContext* context, TextTrackClient* client, const AtomicString& kind, const AtomicString& id, const AtomicString& label, const AtomicString& language, TextTrackType type)
+    : TrackBase(TrackBase::TextTrack, id, label, language)
     , m_cues(0)
     , m_scriptExecutionContext(context)
 #if ENABLE(WEBVTT_REGIONS)
@@ -128,7 +127,7 @@ TextTrack::TextTrack(ScriptExecutionContext* context, TextTrackClient* client, c
     , m_renderedTrackIndex(invalidTrackIndex)
     , m_hasBeenConfigured(false)
 {
-    setKind(kind);
+    setKindInternal(kind);
 }
 
 TextTrack::~TextTrack()
@@ -150,6 +149,11 @@ TextTrack::~TextTrack()
 bool TextTrack::isValidKind(const AtomicString& value) const
 {
     return TextTrack::isValidKindKeyword(value);
+}
+
+bool TextTrack::enabled() const
+{
+    return m_mode != disabledKeyword();
 }
 
 bool TextTrack::isValidKindKeyword(const AtomicString& value)
@@ -174,7 +178,28 @@ void TextTrack::setKind(const AtomicString& newKind)
 {
     String oldKind = kind();
 
+#if ENABLE(MEDIA_SOURCE)
+    // 10.1 kind, on setting:
+    // 1. If the value being assigned to this attribute does not match one of the text track kinds,
+    // then abort these steps.
+    if (!isValidKindKeyword(newKind))
+        return;
+
+    // 2. Update this attribute to the new value.
+    setKindInternal(newKind);
+
+    // 3. If the sourceBuffer attribute on this track is not null, then queue a task to fire a simple
+    // event named change at sourceBuffer.textTracks.
+    if (m_sourceBuffer)
+        m_sourceBuffer->textTracks()->scheduleChangeEvent();
+
+    // 4. Queue a task to fire a simple event named change at the TextTrackList object referenced by
+    // the textTracks attribute on the HTMLMediaElement.
+    if (mediaElement())
+        mediaElement()->textTracks()->scheduleChangeEvent();
+#else
     TrackBase::setKind(newKind);
+#endif
 
     if (m_client && oldKind != kind())
         m_client->textTrackKindChanged(this);
@@ -548,6 +573,29 @@ bool TextTrack::isMainProgramContent() const
     // tracks are main content and all other track types are not.
     return kind() == captionsKeyword();
 }
+
+#if ENABLE(MEDIA_SOURCE)
+void TextTrack::setLanguage(const AtomicString& language)
+{
+    // 11.1 language, on setting:
+    // 1. If the value being assigned to this attribute is not an empty string or a BCP 47 language
+    // tag[BCP47], then abort these steps.
+    // FIXME(123926): Validate the BCP47-ness of langague.
+
+    // 2. Update this attribute to the new value.
+    TrackBase::setLanguage(language);
+
+    // 3. If the sourceBuffer attribute on this track is not null, then queue a task to fire a simple
+    // event named change at sourceBuffer.textTracks.
+    if (m_sourceBuffer)
+        m_sourceBuffer->textTracks()->scheduleChangeEvent();
+
+    // 4. Queue a task to fire a simple event named change at the TextTrackList object referenced by
+    // the textTracks attribute on the HTMLMediaElement.
+    if (mediaElement())
+        mediaElement()->textTracks()->scheduleChangeEvent();
+}
+#endif
 
 } // namespace WebCore
 

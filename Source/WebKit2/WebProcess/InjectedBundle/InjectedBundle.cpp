@@ -99,7 +99,7 @@ void InjectedBundle::initializeClient(WKBundleClient* client)
     m_client.initialize(client);
 }
 
-void InjectedBundle::postMessage(const String& messageName, APIObject* messageBody)
+void InjectedBundle::postMessage(const String& messageName, API::Object* messageBody)
 {
     auto encoder = std::make_unique<CoreIPC::MessageEncoder>(WebContextLegacyMessages::messageReceiverName(), WebContextLegacyMessages::postMessageMessageName(), 0);
     encoder->encode(messageName);
@@ -108,7 +108,7 @@ void InjectedBundle::postMessage(const String& messageName, APIObject* messageBo
     WebProcess::shared().parentProcessConnection()->sendMessage(std::move(encoder));
 }
 
-void InjectedBundle::postSynchronousMessage(const String& messageName, APIObject* messageBody, RefPtr<APIObject>& returnData)
+void InjectedBundle::postSynchronousMessage(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData)
 {
     InjectedBundleUserMessageDecoder messageDecoder(returnData);
 
@@ -218,7 +218,8 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitXSSAuditorEnabled, XSSAuditorEnabled, xssAuditorEnabled) \
     macro(WebKitShouldRespectImageOrientation, ShouldRespectImageOrientation, shouldRespectImageOrientation) \
     macro(WebKitEnableCaretBrowsing, CaretBrowsingEnabled, caretBrowsingEnabled) \
-    macro(WebKitDisplayImagesKey, LoadsImagesAutomatically, loadsImagesAutomatically)
+    macro(WebKitDisplayImagesKey, LoadsImagesAutomatically, loadsImagesAutomatically) \
+    macro(WebKitMediaStreamEnabled, MediaStreamEnabled, mediaStreamEnabled)
 
     if (preference == "WebKitAcceleratedCompositingEnabled")
         enabled = enabled && LayerTreeHost::supportsAcceleratedCompositing();
@@ -406,14 +407,14 @@ PassRefPtr<ImmutableArray> InjectedBundle::originsWithApplicationCache()
 {
     HashSet<RefPtr<SecurityOrigin>> origins;
     cacheStorage().getOriginsWithCache(origins);
-    Vector< RefPtr<APIObject>> originsVector;
 
-    HashSet<RefPtr<SecurityOrigin>>::iterator it = origins.begin();
-    HashSet<RefPtr<SecurityOrigin>>::iterator end = origins.end();
-    for ( ; it != end; ++it)
-        originsVector.append(WebString::create((*it)->databaseIdentifier()));
+    Vector<RefPtr<API::Object>> originIdentifiers;
+    originIdentifiers.reserveInitialCapacity(origins.size());
 
-    return ImmutableArray::adopt(originsVector);
+    for (const auto& origin : origins)
+        originIdentifiers.uncheckedAppend(WebString::create(origin->databaseIdentifier()));
+
+    return ImmutableArray::create(std::move(originIdentifiers));
 }
 
 int InjectedBundle::numberOfPages(WebFrame* frame, double pageWidthInPixels, double pageHeightInPixels)
@@ -575,12 +576,12 @@ void InjectedBundle::didInitializePageGroup(WebPageGroupProxy* pageGroup)
     m_client.didInitializePageGroup(this, pageGroup);
 }
 
-void InjectedBundle::didReceiveMessage(const String& messageName, APIObject* messageBody)
+void InjectedBundle::didReceiveMessage(const String& messageName, API::Object* messageBody)
 {
     m_client.didReceiveMessage(this, messageName, messageBody);
 }
 
-void InjectedBundle::didReceiveMessageToPage(WebPage* page, const String& messageName, APIObject* messageBody)
+void InjectedBundle::didReceiveMessageToPage(WebPage* page, const String& messageName, API::Object* messageBody)
 {
     m_client.didReceiveMessageToPage(this, page, messageName, messageBody);
 }

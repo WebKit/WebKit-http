@@ -43,7 +43,7 @@ class TrackBase;
 
 class TrackListBase : public RefCounted<TrackListBase>, public EventTargetWithInlineData {
 public:
-    ~TrackListBase();
+    virtual ~TrackListBase();
 
     virtual unsigned length() const;
     virtual bool contains(TrackBase*) const;
@@ -68,13 +68,15 @@ public:
     // Needs to be public so tracks can call it
     void scheduleChangeEvent();
 
+    bool isAnyTrackEnabled() const;
+
 protected:
     TrackListBase(HTMLMediaElement*, ScriptExecutionContext*);
 
     void scheduleAddTrackEvent(PassRefPtr<TrackBase>);
     void scheduleRemoveTrackEvent(PassRefPtr<TrackBase>);
 
-    Vector<RefPtr<TrackBase> > m_inbandTracks;
+    Vector<RefPtr<TrackBase>> m_inbandTracks;
 
 private:
 
@@ -87,7 +89,7 @@ private:
     ScriptExecutionContext* m_context;
     HTMLMediaElement* m_element;
 
-    Vector<RefPtr<Event> > m_pendingEvents;
+    Vector<RefPtr<Event>> m_pendingEvents;
     Timer<TrackListBase> m_pendingEventTimer;
 
     int m_dispatchingEvents;

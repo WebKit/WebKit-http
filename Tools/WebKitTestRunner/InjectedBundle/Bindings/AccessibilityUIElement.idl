@@ -157,6 +157,8 @@ interface AccessibilityUIElement {
     AccessibilityTextMarkerRange textMarkerRangeForMarkers(AccessibilityTextMarker startMarker, AccessibilityTextMarker endMarker);
     AccessibilityTextMarker startTextMarkerForTextMarkerRange(AccessibilityTextMarkerRange range);
     AccessibilityTextMarker endTextMarkerForTextMarkerRange(AccessibilityTextMarkerRange range);
+    AccessibilityTextMarker endTextMarkerForBounds(int x, int y, int width, int height);
+    AccessibilityTextMarker startTextMarkerForBounds(int x, int y, int width, int height);
     AccessibilityTextMarker textMarkerForPoint(int x, int y);
     AccessibilityTextMarker previousTextMarker(AccessibilityTextMarker marker);
     AccessibilityTextMarker nextTextMarker(AccessibilityTextMarker marker);
@@ -167,6 +169,8 @@ interface AccessibilityUIElement {
     int indexForTextMarker(AccessibilityTextMarker marker);
     boolean isTextMarkerValid(AccessibilityTextMarker marker);
     AccessibilityTextMarker textMarkerForIndex(int textIndex);
+    readonly attribute AccessibilityTextMarker startTextMarker;
+    readonly attribute AccessibilityTextMarker endTextMarker;
 
     // Returns an ordered list of supported actions for an element.
     readonly attribute DOMString supportedActions;

@@ -26,7 +26,7 @@
 #ifndef OpenGLESShims_h
 #define OpenGLESShims_h
 
-#if PLATFORM(BLACKBERRY) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN) || PLATFORM(NIX)
+#if PLATFORM(BLACKBERRY) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN) || PLATFORM(NIX)
 #define glBindFramebufferEXT glBindFramebuffer
 #define glFramebufferTexture2DEXT glFramebufferTexture2D
 #define glBindRenderbufferEXT glBindRenderbuffer
@@ -44,7 +44,6 @@
 #define glIsRenderbufferEXT glIsRenderbuffer
 #define glIsFramebufferEXT glIsFramebuffer
 #define glGenerateMipmapEXT glGenerateMipmap
-#define GL_COLOR_ATTACHMENT0_EXT GL_COLOR_ATTACHMENT0
 #define GL_DEPTH_ATTACHMENT_EXT GL_DEPTH_ATTACHMENT
 #define GL_FRAMEBUFFER_COMPLETE_EXT GL_FRAMEBUFFER_COMPLETE
 #define GL_FRAMEBUFFER_EXT GL_FRAMEBUFFER

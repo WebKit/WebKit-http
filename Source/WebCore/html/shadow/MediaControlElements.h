@@ -112,7 +112,7 @@ private:
     explicit MediaControlTimelineContainerElement(Document&);
     virtual const AtomicString& shadowPseudoId() const OVERRIDE;
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 };
 
 // ----------------------------
@@ -129,7 +129,7 @@ private:
     virtual const AtomicString& shadowPseudoId() const OVERRIDE;
     virtual void defaultEventHandler(Event*) OVERRIDE;
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 };
 
 // ----------------------------
@@ -316,10 +316,10 @@ private:
     virtual const AtomicString& shadowPseudoId() const OVERRIDE;
     virtual void defaultEventHandler(Event*) OVERRIDE;
 
-    typedef Vector<RefPtr<Element> > TrackMenuItems;
+    typedef Vector<RefPtr<Element>> TrackMenuItems;
     TrackMenuItems m_menuItems;
 #if ENABLE(VIDEO_TRACK)
-    typedef HashMap<RefPtr<Element>, RefPtr<TextTrack> > MenuItemToTrackMap;
+    typedef HashMap<RefPtr<Element>, RefPtr<TextTrack>> MenuItemToTrackMap;
     MenuItemToTrackMap m_menuToTrackMap;
 #endif
     MediaControls* m_controls;
@@ -455,7 +455,7 @@ private:
     explicit MediaControlTextTrackContainerElement(Document&);
     virtual const AtomicString& shadowPseudoId() const OVERRIDE;
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     virtual PassRefPtr<Image> createTextTrackRepresentationImage() OVERRIDE;
     virtual void textTrackRepresentationBoundsChanged(const IntRect&) OVERRIDE;

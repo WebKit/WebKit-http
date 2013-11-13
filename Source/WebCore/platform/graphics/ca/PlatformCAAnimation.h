@@ -53,6 +53,11 @@ class TimingFunction;
 class PlatformCAAnimation : public RefCounted<PlatformCAAnimation> {
 public:
     friend class PlatformCALayer;
+#if PLATFORM(MAC)
+    friend class PlatformCALayerMac;
+#elif PLATFORM(WIN)
+    friend class PlatformCALayerWin;
+#endif
     
     enum AnimationType { Basic, Keyframe };
     enum FillModeType { NoFillMode, Forwards, Backwards, Both };
@@ -62,8 +67,6 @@ public:
     static PassRefPtr<PlatformCAAnimation> create(PlatformAnimationRef);
 
     ~PlatformCAAnimation();
-    
-    static bool supportsValueFunction();
     
     PassRefPtr<PlatformCAAnimation> copy() const;
 
@@ -130,7 +133,7 @@ public:
     void setValues(const Vector<FloatPoint3D>&);
     void setValues(const Vector<WebCore::Color>&);
 #if ENABLE(CSS_FILTERS)
-    void setValues(const Vector<RefPtr<FilterOperation> >&, int internalFilterPropertyIndex);
+    void setValues(const Vector<RefPtr<FilterOperation>>&, int internalFilterPropertyIndex);
 #endif
     void copyValuesFrom(const PlatformCAAnimation*);
 
@@ -149,7 +152,7 @@ protected:
         if (beginTime() <= 0)
             setBeginTime(t);
     }
-    
+
 private:
     AnimationType m_type;
     

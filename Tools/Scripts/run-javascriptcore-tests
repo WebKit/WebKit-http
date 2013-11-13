@@ -65,20 +65,17 @@ my $jsDriverArgs = "-L " . join(" ", @testsToSkip);
 # These variables are intentionally left undefined.
 my $root;
 my $showHelp;
+my $extraTests;
 
 my $buildJSC = 1;
 
 my $runTestAPI = isAppleMacWebKit() || isAppleWinWebKit();
 
-my $runMozilla = 1;
-
-# FIXME: run-layout-jsc tests doesn't work properly on Windows
-# https://bugs.webkit.org/show_bug.cgi?id=120765
-my $runLayout = !isAppleWinWebKit();
+my $runMozilla = 0;
 
 # FIXME: run-jsc-stress-tests should be ported to other platforms.
 # https://bugs.webkit.org/show_bug.cgi?id=120809
-my $runJSCStress = !isAppleWinWebKit();
+my $runJSCStress = !isAppleWinWebKit() && !isWinCairo();
 
 my $enableFTL = 0;
 
@@ -86,29 +83,26 @@ my $programName = basename($0);
 my $buildJSCDefault = $buildJSC ? "will check" : "will not check";
 my $testapiDefault = $runTestAPI ? "will run" : "will not run";
 my $mozillaDefault = $runMozilla ? "will run" : "will not run";
-my $layoutJSDefault = $runLayout ? "will run" : "will not run";
 my $jscStressDefault = $runJSCStress ? "will run" : " will not run";
 my $usage = <<EOF;
 Usage: $programName [options] [options to pass to build system]
   --help                        Show this help message
   --jsDriver-args=              A string of arguments to pass to jsDriver.pl
   --root=                       Path to pre-built root containing jsc
+  --extra-tests=                Path to a file containing extra tests
   --[no-]ftl-jit                Turn the FTL JIT on or off
   --[no-]build                  Check (or don't check) to see if the jsc build is up-to-date (default: $buildJSCDefault)
   --[no-]testapi                Run (or don't run) testapi (default: $testapiDefault)
-  --[no-]mozilla                Run (or don't run) the Mozilla tests (default: $mozillaDefault)
-  --[no-]layout                 Run (or don't run) the LayoutTests js tests (default: $layoutJSDefault)
   --[no-]jsc-stress             Run (or don't run) the JSC stress tests (default: $jscStressDefault)
 EOF
 
 GetOptions(
     'j|jsDriver-args=s' => \$jsDriverArgs,
     'root=s' => \$root,
+    'extra-tests=s' => \$extraTests,
     'build!' => \$buildJSC,
     'ftl-jit!' => \$enableFTL,
     'testapi!' => \$runTestAPI,
-    'mozilla!' => \$runMozilla,
-    'layout!' => \$runLayout,
     'jsc-stress!' => \$runJSCStress,
     'help' => \$showHelp
 );
@@ -154,7 +148,7 @@ sub testapiPath($)
 {
     my ($productDir) = @_;
     my $jscName = "testapi";
-    $jscName .= "_debug" if configurationForVisualStudio() eq "Debug_All";
+    $jscName .= "_debug" if configuration() eq "Debug_All";
     return "$productDir/$jscName";
 }
 
@@ -173,6 +167,8 @@ if ($runTestAPI) {
 
 # Find JavaScriptCore directory
 chdirWebKit();
+
+$runMozilla = !$runJSCStress;
 
 my %mozillaFailures;
 my %newMozillaFailures;
@@ -225,16 +221,6 @@ if ($runMozilla) {
 }
 
 chdirWebKit();
-my $layoutJSResultsDir = $productDir . "/layout-jsc-results";
-
-if ($runLayout) {
-    # Run the js tests.
-    my @layoutJSDriverCmd = ("/bin/sh", "Tools/Scripts/run-layout-jsc", "-j", jscPath($productDir), "-r", $layoutJSResultsDir, "-t", "LayoutTests");
-    print "Running: " . join(" ", @layoutJSDriverCmd) . "\n";
-    my $result = system(@layoutJSDriverCmd);
-    exit exitStatus($result) if $result;
-}
-
 my $jscStressResultsDir = $productDir . "/jsc-stress-results";
 
 if ($runJSCStress) {
@@ -245,11 +231,19 @@ if ($runJSCStress) {
         "-j", jscPath($productDir), "-o", $jscStressResultsDir,
         "PerformanceTests/SunSpider/tests/sunspider-1.0",
         "PerformanceTests/SunSpider/tests/v8-v6",
+        "Source/JavaScriptCore/tests/mozilla/mozilla-tests.yaml",
         "LayoutTests/js/regress/script-tests",
-        "PerformanceTests/SunSpider/profiler-test.yaml"
+        "PerformanceTests/SunSpider/profiler-test.yaml",
+        "LayoutTests/jsc-layout-tests.yaml"
     );
     if ($enableFTL) {
         push(@jscStressDriverCmd, "--ftl-jit");
+    }
+    if (defined($extraTests)) {
+        push(@jscStressDriverCmd, $extraTests);
+    }
+    if (defined($ENV{"EXTRA_JSC_TESTS"})) {
+        push(@jscStressDriverCmd, $ENV{"EXTRA_JSC_TESTS"});
     }
     print "Running: " . join(" ", @jscStressDriverCmd) . "\n";
     my $result = system(@jscStressDriverCmd);
@@ -300,24 +294,6 @@ sub printThingsFound
     print " $verb.\n";
 }
 
-my @layoutJSFailList = readAllLines($layoutJSResultsDir . "/failed");
-my @layoutJSCrashList = readAllLines($layoutJSResultsDir . "/crashed");
-my $numJSFailures = @layoutJSFailList;
-my $numJSCrashes = @layoutJSCrashList;
-
-if ($numJSFailures) {
-    print "\n** The following LayoutTests/js test failures have been introduced:\n";
-    foreach my $testFailure (@layoutJSFailList) {
-        print "\t$testFailure";
-    }
-}
-if ($numJSCrashes) {
-    print "\n** The following LayoutTests/js test crashes have been introduced:\n";
-    foreach my $testCrash (@layoutJSCrashList) {
-        print "\t$testCrash";
-    }
-}
-
 my @jscStressFailList = readAllLines($jscStressResultsDir . "/failed");
 my $numJSCStressFailures = @jscStressFailList;
 
@@ -339,15 +315,6 @@ if ($runMozilla) {
     print "\n";
 }
 
-if ($runLayout) {
-    print "Results for LayoutTests/js tests:\n";
-    printThingsFound($numJSFailures, "failure", "failures", "found");
-    printThingsFound($numJSCrashes, "crash", "crashes", "found");
-    print "    OK.\n" if $numJSFailures == 0 && $numJSCrashes == 0;
-    
-    print "\n";
-}
-
 if ($runJSCStress) {
     print "Results for JSC stress tests:\n";
     printThingsFound($numJSCStressFailures, "failure", "failures", "found");
@@ -356,4 +323,4 @@ if ($runJSCStress) {
     print "\n";
 }
 
-exit(1)  if ($runMozilla && $numNewMozillaFailures) || ($runLayout && ($numJSFailures || $numJSCrashes)) || ($runJSCStress && $numJSCStressFailures);
+exit(1)  if ($runMozilla && $numNewMozillaFailures) || ($runJSCStress && $numJSCStressFailures);

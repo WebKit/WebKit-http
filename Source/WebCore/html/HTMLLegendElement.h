@@ -40,12 +40,12 @@ private:
     // Control in the legend's fieldset that gets focus and access key.
     HTMLFormControlElement* associatedControl();
 
-    virtual void accessKeyAction(bool sendMouseEvents);
+    virtual void accessKeyAction(bool sendMouseEvents) OVERRIDE;
     virtual void focus(bool restorePreviousSelection, FocusDirection) OVERRIDE;
     virtual HTMLFormElement* virtualForm() const OVERRIDE;
 };
 
-ELEMENT_TYPE_CASTS(HTMLLegendElement)
+NODE_TYPE_CASTS(HTMLLegendElement)
 
 } //namespace
 

@@ -42,30 +42,30 @@
 
 namespace WebCore {
 
-RenderSVGModelObject::RenderSVGModelObject(SVGElement& element)
-    : RenderElement(&element)
+RenderSVGModelObject::RenderSVGModelObject(SVGElement& element, PassRef<RenderStyle> style)
+    : RenderElement(element, std::move(style), 0)
     , m_hasSVGShadow(false)
 {
 }
 
 LayoutRect RenderSVGModelObject::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
-    return SVGRenderSupport::clippedOverflowRectForRepaint(this, repaintContainer);
+    return SVGRenderSupport::clippedOverflowRectForRepaint(*this, repaintContainer);
 }
 
 void RenderSVGModelObject::computeFloatRectForRepaint(const RenderLayerModelObject* repaintContainer, FloatRect& repaintRect, bool fixed) const
 {
-    SVGRenderSupport::computeFloatRectForRepaint(this, repaintContainer, repaintRect, fixed);
+    SVGRenderSupport::computeFloatRectForRepaint(*this, repaintContainer, repaintRect, fixed);
 }
 
 void RenderSVGModelObject::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags, bool* wasFixed) const
 {
-    SVGRenderSupport::mapLocalToContainer(this, repaintContainer, transformState, wasFixed);
+    SVGRenderSupport::mapLocalToContainer(*this, repaintContainer, transformState, wasFixed);
 }
 
 const RenderObject* RenderSVGModelObject::pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
 {
-    return SVGRenderSupport::pushMappingToContainer(this, ancestorToStopAt, geometryMap);
+    return SVGRenderSupport::pushMappingToContainer(*this, ancestorToStopAt, geometryMap);
 }
 
 // Copied from RenderBox, this method likely requires further refactoring to work easily for both SVG and CSS Box Model content.
@@ -94,24 +94,19 @@ void RenderSVGModelObject::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixe
 
 void RenderSVGModelObject::willBeDestroyed()
 {
-    SVGResourcesCache::clientDestroyed(this);
+    SVGResourcesCache::clientDestroyed(*this);
     RenderElement::willBeDestroyed();
-}
-
-void RenderSVGModelObject::styleWillChange(StyleDifference diff, const RenderStyle* newStyle)
-{
-    if (diff == StyleDifferenceLayout) {
-        setNeedsBoundariesUpdate();
-        if (newStyle->hasTransform())
-            setNeedsTransformUpdate();
-    }
-    RenderElement::styleWillChange(diff, newStyle);
 }
 
 void RenderSVGModelObject::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
+    if (diff == StyleDifferenceLayout) {
+        setNeedsBoundariesUpdate();
+        if (style().hasTransform())
+            setNeedsTransformUpdate();
+    }
     RenderElement::styleDidChange(diff, oldStyle);
-    SVGResourcesCache::clientStyleChanged(this, diff, style());
+    SVGResourcesCache::clientStyleChanged(*this, diff, style());
 }
 
 bool RenderSVGModelObject::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation&, const LayoutPoint&, HitTestAction)
@@ -174,7 +169,7 @@ void RenderSVGModelObject::absoluteFocusRingQuads(Vector<FloatQuad>& quads)
     
 bool RenderSVGModelObject::checkIntersection(RenderObject* renderer, const FloatRect& rect)
 {
-    if (!renderer || renderer->style()->pointerEvents() == PE_NONE)
+    if (!renderer || renderer->style().pointerEvents() == PE_NONE)
         return false;
     if (!isGraphicsElement(renderer))
         return false;
@@ -187,7 +182,7 @@ bool RenderSVGModelObject::checkIntersection(RenderObject* renderer, const Float
 
 bool RenderSVGModelObject::checkEnclosure(RenderObject* renderer, const FloatRect& rect)
 {
-    if (!renderer || renderer->style()->pointerEvents() == PE_NONE)
+    if (!renderer || renderer->style().pointerEvents() == PE_NONE)
         return false;
     if (!isGraphicsElement(renderer))
         return false;

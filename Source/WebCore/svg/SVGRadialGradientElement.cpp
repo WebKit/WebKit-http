@@ -127,12 +127,12 @@ void SVGRadialGradientElement::svgAttributeChanged(const QualifiedName& attrName
     updateRelativeLengthsInformation();
         
     if (RenderObject* object = renderer())
-        object->setNeedsLayout(true);
+        object->setNeedsLayout();
 }
 
-RenderElement* SVGRadialGradientElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGRadialGradientElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderSVGResourceRadialGradient(*this);
+    return new RenderSVGResourceRadialGradient(*this, std::move(style));
 }
 
 bool SVGRadialGradientElement::collectGradientAttributes(RadialGradientAttributes& attributes)

@@ -63,8 +63,7 @@ class ThreadableLoader;
 
 typedef int ExceptionCode;
 
-// FIXME: This class should be marked FINAL once <http://webkit.org/b/121747> is fixed.
-class Notification : public RefCounted<Notification>, public ActiveDOMObject, public EventTargetWithInlineData {
+class Notification FINAL : public RefCounted<Notification>, public ActiveDOMObject, public EventTargetWithInlineData {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     Notification();
@@ -72,7 +71,7 @@ public:
     static PassRefPtr<Notification> create(const String& title, const String& body, const String& iconURI, ScriptExecutionContext*, ExceptionCode&, PassRefPtr<NotificationCenter> provider);
 #endif
 #if ENABLE(NOTIFICATIONS)
-    static PassRefPtr<Notification> create(ScriptExecutionContext*, const String& title, const Dictionary& options);
+    static PassRefPtr<Notification> create(ScriptExecutionContext&, const String& title, const Dictionary& options);
 #endif
     
     virtual ~Notification();
@@ -123,8 +122,8 @@ public:
     using RefCounted<Notification>::deref;
 
     // EventTarget interface
-    virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL { return NotificationEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL { return ActiveDOMObject::scriptExecutionContext(); }
+    virtual EventTargetInterface eventTargetInterface() const OVERRIDE { return NotificationEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE { return ActiveDOMObject::scriptExecutionContext(); }
 
     void stopLoadingIcon();
 
@@ -144,7 +143,7 @@ private:
     Notification(const String& title, const String& body, const String& iconURI, ScriptExecutionContext*, ExceptionCode&, PassRefPtr<NotificationCenter>);
 #endif
 #if ENABLE(NOTIFICATIONS)
-    Notification(ScriptExecutionContext*, const String& title);
+    Notification(ScriptExecutionContext&, const String& title);
 #endif
 
     void setBody(const String& body) { m_body = body; }
@@ -153,8 +152,8 @@ private:
     virtual void contextDestroyed() OVERRIDE;
 
     // EventTarget interface
-    virtual void refEventTarget() OVERRIDE FINAL { ref(); }
-    virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
+    virtual void refEventTarget() OVERRIDE { ref(); }
+    virtual void derefEventTarget() OVERRIDE { deref(); }
 
     void startLoadingIcon();
     void finishLoadingIcon();
@@ -182,7 +181,7 @@ private:
     RefPtr<NotificationCenter> m_notificationCenter;
 
 #if ENABLE(NOTIFICATIONS)
-    OwnPtr<Timer<Notification> > m_taskTimer;
+    OwnPtr<Timer<Notification>> m_taskTimer;
 #endif
 };
 

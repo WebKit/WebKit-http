@@ -36,11 +36,6 @@
 #include <wtf/RetainPtr.h>
 #endif
 
-#if PLATFORM(QT)
-#include <QPointer>
-#include <qglobal.h>
-#endif
-
 #if PLATFORM(MAC)
 OBJC_CLASS NSView;
 OBJC_CLASS NSWindow;
@@ -58,13 +53,6 @@ typedef struct _GtkContainer GtkContainer;
 typedef GtkWidget* PlatformWidget;
 #endif
 
-#if PLATFORM(QT)
-QT_BEGIN_NAMESPACE
-class QObject;
-QT_END_NAMESPACE
-typedef QObject* PlatformWidget;
-#endif
-
 #if PLATFORM(BLACKBERRY) || PLATFORM(NIX)
 typedef void* PlatformWidget;
 #endif
@@ -76,17 +64,14 @@ typedef BView* PlatformWidget;
 
 #if PLATFORM(EFL)
 #if USE(EO)
-typedef struct _Eo Evas_Object;
+typedef struct _Eo_Opaque Evas_Object;
 #else
 typedef struct _Evas_Object Evas_Object;
 #endif
 typedef Evas_Object* PlatformWidget;
 #endif
 
-#if PLATFORM(QT)
-class QWebPageClient;
-typedef QWebPageClient* PlatformPageClient;
-#elif PLATFORM(BLACKBERRY)
+#if PLATFORM(BLACKBERRY)
 #include "PageClientBlackBerry.h"
 typedef PageClientBlackBerry* PlatformPageClient;
 #elif PLATFORM(EFL)
@@ -104,7 +89,6 @@ class Font;
 class GraphicsContext;
 class PlatformMouseEvent;
 class ScrollView;
-class WidgetPrivate;
 
 enum WidgetNotification { WillPaintFlattened, DidPaintFlattened };
 
@@ -225,11 +209,6 @@ public:
     Evas_Object* evasObject() { return m_evasObject; }
 #endif
 
-#if PLATFORM(QT)
-    QObject* bindingObject() const;
-    void setBindingObject(QObject*);
-#endif
-
     // Virtual methods to convert points to/from the containing ScrollView
     virtual IntRect convertToContainingView(const IntRect&) const;
     virtual IntRect convertFromContainingView(const IntRect&) const;
@@ -262,10 +241,6 @@ private:
 
     IntRect m_frame; // Not used when a native widget exists.
 
-#if PLATFORM(MAC)
-    WidgetPrivate* m_data;
-#endif
-
 #if PLATFORM(HAIKU)
     PlatformWidget m_topLevelPlatformWidget;	// TODO: Still needed?
 #endif
@@ -273,12 +248,10 @@ private:
 #if PLATFORM(EFL)
     Evas_Object* m_evasObject;
 #endif
-
-#if PLATFORM(QT)
-    QPointer<QObject> m_bindingObject;
-#endif
-
 };
+
+#define WIDGET_TYPE_CASTS(ToValueTypeName, predicate) \
+    TYPE_CASTS_BASE(ToValueTypeName, Widget, object, object->predicate, object.predicate)
 
 #if !PLATFORM(MAC)
 

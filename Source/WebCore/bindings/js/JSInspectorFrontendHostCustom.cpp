@@ -75,9 +75,7 @@ JSValue JSInspectorFrontendHost::platform(ExecState* execState)
 
 JSValue JSInspectorFrontendHost::port(ExecState* execState)
 {
-#if PLATFORM(QT)
-    DEFINE_STATIC_LOCAL(const String, port, (ASCIILiteral("qt")));
-#elif PLATFORM(GTK)
+#if PLATFORM(GTK)
     DEFINE_STATIC_LOCAL(const String, port, (ASCIILiteral("gtk")));
 #elif PLATFORM(HAIKU)
     DEFINE_STATIC_LOCAL(const String, port, (ASCIILiteral("haiku")));
@@ -147,7 +145,7 @@ JSValue JSInspectorFrontendHost::showContextMenu(ExecState* exec)
 #else
     Vector<ContextMenuItem> items = menu.items();
 #endif
-    impl()->showContextMenu(event, items);
+    impl().showContextMenu(event, items);
 #else
     UNUSED_PARAM(exec);
 #endif

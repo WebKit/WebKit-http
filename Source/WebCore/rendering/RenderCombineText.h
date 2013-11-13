@@ -39,7 +39,7 @@ public:
     void getStringToRender(int, String& string, int& length) const;
     bool isCombined() const { return m_isCombined; }
     float combinedTextWidth(const Font& font) const { return font.size(); }
-    const Font& originalFont() const { return parent()->style()->font(); }
+    const Font& originalFont() const { return parent()->style().font(); }
     const Font& textCombineFont() const { return m_combineFontStyle->font(); }
 
 private:
@@ -57,19 +57,7 @@ private:
     bool m_needsFontUpdate : 1;
 };
 
-inline RenderCombineText& toRenderCombineText(RenderObject& object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isCombineText());
-    return static_cast<RenderCombineText&>(object);
-}
-
-inline const RenderCombineText& toRenderCombineText(const RenderObject& object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isCombineText());
-    return static_cast<const RenderCombineText&>(object);
-}
-
-void toRenderCombineText(const RenderCombineText&);
+RENDER_OBJECT_TYPE_CASTS(RenderCombineText, isCombineText());
 
 } // namespace WebCore
 

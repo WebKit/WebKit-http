@@ -27,7 +27,7 @@
  */
 
 [
-    SkipVTableValidation
+    SkipVTableValidation,
 ] interface Clipboard {
     attribute DOMString dropEffect;
     attribute DOMString effectAllowed;

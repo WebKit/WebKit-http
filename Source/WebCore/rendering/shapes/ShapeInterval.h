@@ -48,6 +48,7 @@ public:
     T x1() const { return m_x1; }
     T x2() const { return m_x2; }
     T width() const { return m_x2 - m_x1; }
+    bool isEmpty() const { return m_x1 == m_x2; }
 
     void setX1(T x1)
     {
@@ -84,7 +85,7 @@ public:
         return ShapeInterval<T>(std::max<T>(x1(), interval.x1()), std::min<T>(x2(), interval.x2()));
     }
 
-    typedef Vector<ShapeInterval<T> > ShapeIntervals;
+    typedef Vector<ShapeInterval<T>> ShapeIntervals;
     typedef typename ShapeIntervals::const_iterator const_iterator;
     typedef typename ShapeIntervals::iterator iterator;
 

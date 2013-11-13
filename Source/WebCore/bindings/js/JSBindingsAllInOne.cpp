@@ -26,7 +26,6 @@
 // This all-in-one cpp file cuts down on template bloat to allow us to build our Windows release build.
 
 #include "ArrayValue.cpp"
-#include "BindingState.cpp"
 #include "CallbackFunction.cpp"
 #include "DOMObjectHashTableMap.cpp"
 #include "DOMWrapperWorld.cpp"
@@ -56,6 +55,7 @@
 #include "JSDOMMimeTypeArrayCustom.cpp"
 #include "JSDOMPluginArrayCustom.cpp"
 #include "JSDOMPluginCustom.cpp"
+#include "JSDOMPromise.cpp"
 #include "JSDOMStringListCustom.cpp"
 #include "JSDOMStringMapCustom.cpp"
 #include "JSDOMWindowBase.cpp"
@@ -150,7 +150,6 @@
 #include "ScriptController.cpp"
 #include "ScriptDebugServer.cpp"
 #include "ScriptFunctionCall.cpp"
-#include "ScriptGCEvent.cpp"
 #include "ScriptProfiler.cpp"
 #include "ScriptState.cpp"
 #include "SerializedScriptValue.cpp"

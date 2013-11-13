@@ -39,9 +39,9 @@ namespace WebCore {
 
 class WebKitCSSMixFunctionValue : public CSSValueList {
 public:
-    static PassRefPtr<WebKitCSSMixFunctionValue> create()
+    static PassRef<WebKitCSSMixFunctionValue> create()
     {
-        return adoptRef(new WebKitCSSMixFunctionValue());
+        return adoptRef(*new WebKitCSSMixFunctionValue());
     }
 
     String customCSSText() const;
@@ -55,12 +55,8 @@ private:
     WebKitCSSMixFunctionValue(const WebKitCSSMixFunctionValue& cloneFrom);
 };
 
-inline WebKitCSSMixFunctionValue* toWebKitCSSMixFunctionValue(CSSValue* value)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isWebKitCSSMixFunctionValue());
-    return static_cast<WebKitCSSMixFunctionValue*>(value);
-}
-    
+CSS_VALUE_TYPE_CASTS(WebKitCSSMixFunctionValue, isWebKitCSSMixFunctionValue())
+
 } // namespace WebCore
 
 #endif // ENABLE(CSS_SHADERS)

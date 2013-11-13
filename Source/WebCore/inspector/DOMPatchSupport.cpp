@@ -54,8 +54,6 @@
 #include <wtf/text/Base64.h>
 #include <wtf/text/CString.h>
 
-using namespace std;
-
 namespace WebCore {
 
 using HTMLNames::bodyTag;
@@ -68,7 +66,7 @@ struct DOMPatchSupport::Digest {
     String m_sha1;
     String m_attrsSHA1;
     Node* m_node;
-    Vector<OwnPtr<Digest> > m_children;
+    Vector<OwnPtr<Digest>> m_children;
 };
 
 void DOMPatchSupport::patchDocument(Document* document, const String& markup)
@@ -101,10 +99,10 @@ void DOMPatchSupport::patchDocument(const String& markup)
 
     ASSERT(newDocument);
     RefPtr<DocumentParser> parser;
-    if (m_document->isHTMLDocument())
-        parser = HTMLDocumentParser::create(static_cast<HTMLDocument*>(newDocument.get()), false);
+    if (newDocument->isHTMLDocument())
+        parser = HTMLDocumentParser::create(static_cast<HTMLDocument&>(*newDocument), false);
     else
-        parser = XMLDocumentParser::create(newDocument.get(), 0);
+        parser = XMLDocumentParser::create(*newDocument, 0);
     parser->insert(markup); // Use insert() so that the parser will not yield.
     parser->finish();
     parser->detach();
@@ -119,33 +117,32 @@ void DOMPatchSupport::patchDocument(const String& markup)
     }
 }
 
-Node* DOMPatchSupport::patchNode(Node* node, const String& markup, ExceptionCode& ec)
+Node* DOMPatchSupport::patchNode(Node& node, const String& markup, ExceptionCode& ec)
 {
     // Don't parse <html> as a fragment.
-    if (node->isDocumentNode() || (node->parentNode() && node->parentNode()->isDocumentNode())) {
+    if (node.isDocumentNode() || (node.parentNode() && node.parentNode()->isDocumentNode())) {
         patchDocument(markup);
         return 0;
     }
 
-    Node* previousSibling = node->previousSibling();
+    Node* previousSibling = node.previousSibling();
     // FIXME: This code should use one of createFragment* in markup.h
     RefPtr<DocumentFragment> fragment = DocumentFragment::create(*m_document);
     if (m_document->isHTMLDocument())
-        fragment->parseHTML(markup, node->parentElement() ? node->parentElement() : m_document->documentElement());
+        fragment->parseHTML(markup, node.parentElement() ? node.parentElement() : m_document->documentElement());
     else
-        fragment->parseXML(markup, node->parentElement() ? node->parentElement() : m_document->documentElement());
+        fragment->parseXML(markup, node.parentElement() ? node.parentElement() : m_document->documentElement());
 
     // Compose the old list.
-    ContainerNode* parentNode = node->parentNode();
-    Vector<OwnPtr<Digest> > oldList;
+    ContainerNode* parentNode = node.parentNode();
+    Vector<OwnPtr<Digest>> oldList;
     for (Node* child = parentNode->firstChild(); child; child = child->nextSibling())
         oldList.append(createDigest(child, 0));
 
     // Compose the new list.
-    String markupCopy = markup;
-    markupCopy.makeLower();
-    Vector<OwnPtr<Digest> > newList;
-    for (Node* child = parentNode->firstChild(); child != node; child = child->nextSibling())
+    String markupCopy = markup.lower();
+    Vector<OwnPtr<Digest>> newList;
+    for (Node* child = parentNode->firstChild(); child != &node; child = child->nextSibling())
         newList.append(createDigest(child, 0));
     for (Node* child = fragment->firstChild(); child; child = child->nextSibling()) {
         if (child->hasTagName(headTag) && !child->firstChild() && markupCopy.find("</head>") == notFound)
@@ -154,13 +151,13 @@ Node* DOMPatchSupport::patchNode(Node* node, const String& markup, ExceptionCode
             continue; // HTML5 parser inserts empty <body> tag whenever it parses </head>
         newList.append(createDigest(child, &m_unusedNodesMap));
     }
-    for (Node* child = node->nextSibling(); child; child = child->nextSibling())
+    for (Node* child = node.nextSibling(); child; child = child->nextSibling())
         newList.append(createDigest(child, 0));
 
     if (!innerPatchChildren(parentNode, oldList, newList, ec)) {
         // Fall back to total replace.
         ec = 0;
-        if (!m_domEditor->replaceChild(parentNode, fragment.release(), node, ec))
+        if (!m_domEditor->replaceChild(parentNode, fragment.release(), &node, ec))
             return 0;
     }
     return previousSibling ? previousSibling->nextSibling() : parentNode->firstChild();
@@ -215,7 +212,7 @@ bool DOMPatchSupport::innerPatchNode(Digest* oldDigest, Digest* newDigest, Excep
 }
 
 pair<DOMPatchSupport::ResultMap, DOMPatchSupport::ResultMap>
-DOMPatchSupport::diff(const Vector<OwnPtr<Digest> >& oldList, const Vector<OwnPtr<Digest> >& newList)
+DOMPatchSupport::diff(const Vector<OwnPtr<Digest>>& oldList, const Vector<OwnPtr<Digest>>& newList)
 {
     ResultMap newMap(newList.size());
     ResultMap oldMap(oldList.size());
@@ -246,7 +243,7 @@ DOMPatchSupport::diff(const Vector<OwnPtr<Digest> >& oldList, const Vector<OwnPt
         newMap[newIndex].second = oldIndex;
     }
 
-    typedef HashMap<String, Vector<size_t> > DiffTable;
+    typedef HashMap<String, Vector<size_t>> DiffTable;
     DiffTable newTable;
     DiffTable oldTable;
 
@@ -268,8 +265,8 @@ DOMPatchSupport::diff(const Vector<OwnPtr<Digest> >& oldList, const Vector<OwnPt
         if (oldIt == oldTable.end() || oldIt->value.size() != 1)
             continue;
 
-        newMap[newIt->value[0]] = make_pair(newList[newIt->value[0]].get(), oldIt->value[0]);
-        oldMap[oldIt->value[0]] = make_pair(oldList[oldIt->value[0]].get(), newIt->value[0]);
+        newMap[newIt->value[0]] = std::make_pair(newList[newIt->value[0]].get(), oldIt->value[0]);
+        oldMap[oldIt->value[0]] = std::make_pair(oldList[oldIt->value[0]].get(), newIt->value[0]);
     }
 
     for (size_t i = 0; newList.size() > 0 && i < newList.size() - 1; ++i) {
@@ -278,8 +275,8 @@ DOMPatchSupport::diff(const Vector<OwnPtr<Digest> >& oldList, const Vector<OwnPt
 
         size_t j = newMap[i].second + 1;
         if (j < oldMap.size() && !oldMap[j].first && newList[i + 1]->m_sha1 == oldList[j]->m_sha1) {
-            newMap[i + 1] = make_pair(newList[i + 1].get(), j);
-            oldMap[j] = make_pair(oldList[j].get(), i + 1);
+            newMap[i + 1] = std::make_pair(newList[i + 1].get(), j);
+            oldMap[j] = std::make_pair(oldList[j].get(), i + 1);
         }
     }
 
@@ -289,8 +286,8 @@ DOMPatchSupport::diff(const Vector<OwnPtr<Digest> >& oldList, const Vector<OwnPt
 
         size_t j = newMap[i].second - 1;
         if (!oldMap[j].first && newList[i - 1]->m_sha1 == oldList[j]->m_sha1) {
-            newMap[i - 1] = make_pair(newList[i - 1].get(), j);
-            oldMap[j] = make_pair(oldList[j].get(), i - 1);
+            newMap[i - 1] = std::make_pair(newList[i - 1].get(), j);
+            oldMap[j] = std::make_pair(oldList[j].get(), i - 1);
         }
     }
 
@@ -302,7 +299,7 @@ DOMPatchSupport::diff(const Vector<OwnPtr<Digest> >& oldList, const Vector<OwnPt
     return make_pair(oldMap, newMap);
 }
 
-bool DOMPatchSupport::innerPatchChildren(ContainerNode* parentNode, const Vector<OwnPtr<Digest> >& oldList, const Vector<OwnPtr<Digest> >& newList, ExceptionCode& ec)
+bool DOMPatchSupport::innerPatchChildren(ContainerNode* parentNode, const Vector<OwnPtr<Digest>>& oldList, const Vector<OwnPtr<Digest>>& newList, ExceptionCode& ec)
 {
     pair<ResultMap, ResultMap> resultMaps = diff(oldList, newList);
     ResultMap& oldMap = resultMaps.first;
@@ -313,7 +310,7 @@ bool DOMPatchSupport::innerPatchChildren(ContainerNode* parentNode, const Vector
 
     // 1. First strip everything except for the nodes that retain. Collect pending merges.
     HashMap<Digest*, Digest*> merges;
-    HashSet<size_t, WTF::IntHash<size_t>, WTF::UnsignedWithZeroKeyHashTraits<size_t> > usedNewOrdinals;
+    HashSet<size_t, WTF::IntHash<size_t>, WTF::UnsignedWithZeroKeyHashTraits<size_t>> usedNewOrdinals;
     for (size_t i = 0; i < oldList.size(); ++i) {
         if (oldMap[i].first) {
             if (!usedNewOrdinals.contains(oldMap[i].second)) {
@@ -352,7 +349,7 @@ bool DOMPatchSupport::innerPatchChildren(ContainerNode* parentNode, const Vector
     }
 
     // Mark retained nodes as used, do not reuse node more than once.
-    HashSet<size_t, WTF::IntHash<size_t>, WTF::UnsignedWithZeroKeyHashTraits<size_t> >  usedOldOrdinals;
+    HashSet<size_t, WTF::IntHash<size_t>, WTF::UnsignedWithZeroKeyHashTraits<size_t>>  usedOldOrdinals;
     for (size_t i = 0; i < newList.size(); ++i) {
         if (!newMap[i].first)
             continue;

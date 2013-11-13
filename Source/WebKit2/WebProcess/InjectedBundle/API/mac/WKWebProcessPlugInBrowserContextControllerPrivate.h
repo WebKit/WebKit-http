@@ -23,14 +23,22 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if defined(__LP64__) && defined(__clang__)
-
 #import <WebKit2/WKWebProcessPlugInBrowserContextController.h>
+
+#if WK_API_ENABLED
+
+#import <WebKit2/WKBase.h>
+
+@class WKBrowsingContextHandle;
 
 @interface WKWebProcessPlugInBrowserContextController (Private)
 
-@property(readonly) WKBundlePageRef _bundlePageRef;
+@property (nonatomic, readonly) WKBundlePageRef _bundlePageRef;
+
+@property (nonatomic, readonly) WKBrowsingContextHandle *handle;
+
++ (instancetype)lookUpBrowsingContextFromHandle:(WKBrowsingContextHandle *)handle;
 
 @end
 
-#endif // defined(__LP64__) && defined(__clang__)
+#endif // WK_API_ENABLED

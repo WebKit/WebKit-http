@@ -33,12 +33,10 @@
 
 #include "RenderRubyText.h"
 
-using namespace std;
-
 namespace WebCore {
 
-RenderRubyText::RenderRubyText(Element& element)
-    : RenderBlockFlow(&element)
+RenderRubyText::RenderRubyText(Element& element, PassRef<RenderStyle> style)
+    : RenderBlockFlow(element, std::move(style))
 {
 }
 
@@ -46,17 +44,17 @@ RenderRubyText::~RenderRubyText()
 {
 }
 
-bool RenderRubyText::isChildAllowed(RenderObject* child, RenderStyle*) const
+bool RenderRubyText::isChildAllowed(const RenderObject& child, const RenderStyle&) const
 {
-    return child->isInline();
+    return child.isInline();
 }
 
 ETextAlign RenderRubyText::textAlignmentForLine(bool endsWithSoftBreak) const
 {
-    ETextAlign textAlign = style()->textAlign();
+    ETextAlign textAlign = style().textAlign();
     // FIXME: This check is bogus since user can set the initial value.
     if (textAlign != RenderStyle::initialTextAlign())
-        return RenderBlock::textAlignmentForLine(endsWithSoftBreak);
+        return RenderBlockFlow::textAlignmentForLine(endsWithSoftBreak);
 
     // The default behavior is to allow ruby text to expand if it is shorter than the ruby base.
     return JUSTIFY;
@@ -64,10 +62,10 @@ ETextAlign RenderRubyText::textAlignmentForLine(bool endsWithSoftBreak) const
 
 void RenderRubyText::adjustInlineDirectionLineBounds(int expansionOpportunityCount, float& logicalLeft, float& logicalWidth) const
 {
-    ETextAlign textAlign = style()->textAlign();
+    ETextAlign textAlign = style().textAlign();
     // FIXME: This check is bogus since user can set the initial value.
     if (textAlign != RenderStyle::initialTextAlign())
-        return RenderBlock::adjustInlineDirectionLineBounds(expansionOpportunityCount, logicalLeft, logicalWidth);
+        return RenderBlockFlow::adjustInlineDirectionLineBounds(expansionOpportunityCount, logicalLeft, logicalWidth);
 
     int maxPreferredLogicalWidth = this->maxPreferredLogicalWidth();
     if (maxPreferredLogicalWidth >= logicalWidth)
@@ -77,7 +75,7 @@ void RenderRubyText::adjustInlineDirectionLineBounds(int expansionOpportunityCou
     // ruby character on each side.
     float inset = (logicalWidth - maxPreferredLogicalWidth) / (expansionOpportunityCount + 1);
     if (expansionOpportunityCount)
-        inset = min<float>(2 * style()->fontSize(), inset);
+        inset = std::min<float>(2 * style().fontSize(), inset);
 
     logicalLeft += inset / 2;
     logicalWidth -= inset;

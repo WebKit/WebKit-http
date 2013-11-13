@@ -84,7 +84,7 @@ END_REGISTER_ANIMATED_PROPERTIES
 
 inline SVGPathElement::SVGPathElement(const QualifiedName& tagName, Document& document)
     : SVGGraphicsElement(tagName, document)
-    , m_pathByteStream(SVGPathByteStream::create())
+    , m_pathByteStream(std::make_unique<SVGPathByteStream>())
     , m_pathSegList(PathSegUnalteredRole)
     , m_isAnimValObserved(false)
 {
@@ -294,14 +294,14 @@ void SVGPathElement::invalidateMPathDependencies()
     }
 }
 
-Node::InsertionNotificationRequest SVGPathElement::insertedInto(ContainerNode* rootParent)
+Node::InsertionNotificationRequest SVGPathElement::insertedInto(ContainerNode& rootParent)
 {
     SVGGraphicsElement::insertedInto(rootParent);
     invalidateMPathDependencies();
     return InsertionDone;
 }
 
-void SVGPathElement::removedFrom(ContainerNode* rootParent)
+void SVGPathElement::removedFrom(ContainerNode& rootParent)
 {
     SVGGraphicsElement::removedFrom(rootParent);
     invalidateMPathDependencies();
@@ -405,10 +405,10 @@ FloatRect SVGPathElement::getBBox(StyleUpdateStrategy styleUpdateStrategy)
     return renderer->path().boundingRect();
 }
 
-RenderElement* SVGPathElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGPathElement::createRenderer(PassRef<RenderStyle> style)
 {
     // By default, any subclass is expected to do path-based drawing
-    return new (arena) RenderSVGPath(*this);
+    return new RenderSVGPath(*this, std::move(style));
 }
 
 }

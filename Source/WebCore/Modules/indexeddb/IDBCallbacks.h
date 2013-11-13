@@ -29,7 +29,6 @@
 #ifndef IDBCallbacks_h
 #define IDBCallbacks_h
 
-#include "IDBDatabaseBackendInterface.h"
 #include "IDBDatabaseError.h"
 #include "IDBKey.h"
 #include "IDBKeyPath.h"
@@ -40,7 +39,10 @@
 
 namespace WebCore {
 class DOMStringList;
-class IDBCursorBackendInterface;
+class IDBCursorBackend;
+class IDBDatabaseBackend;
+
+struct IDBDatabaseMetadata;
 
 class IDBCallbacks : public RefCounted<IDBCallbacks> {
 public:
@@ -50,7 +52,7 @@ public:
     // From IDBFactory.webkitGetDatabaseNames()
     virtual void onSuccess(PassRefPtr<DOMStringList>) = 0;
     // From IDBObjectStore/IDBIndex.openCursor(), IDBIndex.openKeyCursor()
-    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>) = 0;
+    virtual void onSuccess(PassRefPtr<IDBCursorBackend>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>) = 0;
     // From IDBObjectStore.add()/put(), IDBIndex.getKey()
     virtual void onSuccess(PassRefPtr<IDBKey>) = 0;
     // From IDBObjectStore/IDBIndex.get()/count(), and various methods that yield null/undefined.
@@ -66,12 +68,12 @@ public:
     // From IDBCursor.advance()/continue()
     virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>) = 0;
     // From IDBCursor.advance()/continue()
-    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >& keys, const Vector<RefPtr<IDBKey> >& primaryKeys, const Vector<RefPtr<SharedBuffer> >& values) = 0;
+    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey>>& keys, const Vector<RefPtr<IDBKey>>& primaryKeys, const Vector<RefPtr<SharedBuffer>>& values) = 0;
     // From IDBFactory.open()/deleteDatabase()
     virtual void onBlocked(uint64_t /* existingVersion */) { ASSERT_NOT_REACHED(); }
     // From IDBFactory.open()
-    virtual void onUpgradeNeeded(uint64_t /* oldVersion */, PassRefPtr<IDBDatabaseBackendInterface>, const IDBDatabaseMetadata&) { ASSERT_NOT_REACHED(); }
-    virtual void onSuccess(PassRefPtr<IDBDatabaseBackendInterface>, const IDBDatabaseMetadata&) { ASSERT_NOT_REACHED(); }
+    virtual void onUpgradeNeeded(uint64_t /* oldVersion */, PassRefPtr<IDBDatabaseBackend>, const IDBDatabaseMetadata&) { ASSERT_NOT_REACHED(); }
+    virtual void onSuccess(PassRefPtr<IDBDatabaseBackend>, const IDBDatabaseMetadata&) { ASSERT_NOT_REACHED(); }
 };
 
 } // namespace WebCore

@@ -57,7 +57,6 @@
 #include "MainFrame.h"
 #include "OverflowEvent.h"
 #include "ProgressTracker.h"
-#include "RenderArena.h"
 #include "RenderEmbeddedObject.h"
 #include "RenderFullScreen.h"
 #include "RenderIFrame.h"
@@ -185,7 +184,6 @@ FrameView::FrameView(Frame& frame)
     , m_inProgrammaticScroll(false)
     , m_safeToPropagateScrollToParent(true)
     , m_deferredRepaintTimer(this, &FrameView::deferredRepaintTimerFired)
-    , m_disableRepaints(0)
     , m_isTrackingRepaints(false)
     , m_shouldUpdateWhileOffscreen(true)
     , m_deferSetNeedsLayouts(0)
@@ -247,11 +245,6 @@ FrameView::~FrameView()
     ASSERT(m_scheduledEvents.isEmpty());
 
     ASSERT(frame().view() != this || !frame().contentRenderer());
-
-    // FIXME: How could this ever happen when RenderWidget retains the Widget!?
-    RenderWidget* renderer = frame().ownerRenderer();
-    if (renderer && renderer->widget() == this)
-        renderer->setWidget(0);
 }
 
 void FrameView::reset()
@@ -293,7 +286,6 @@ void FrameView::reset()
     m_isVisuallyNonEmpty = false;
     m_firstVisuallyNonEmptyLayoutCallbackPending = true;
     m_maintainScrollPositionAnchor = 0;
-    m_disableRepaints = 0;
 }
 
 void FrameView::removeFromAXObjectCache()
@@ -403,9 +395,6 @@ void FrameView::clear()
     setCanBlitOnScroll(true);
     
     reset();
-
-    if (RenderWidget* renderer = frame().ownerRenderer())
-        renderer->viewCleared();
 
     setScrollbarsSuppressed(true);
 }
@@ -541,17 +530,17 @@ PassRefPtr<Scrollbar> FrameView::createScrollbar(ScrollbarOrientation orientatio
 
     // Try the <body> element first as a scrollbar source.
     Element* body = doc ? doc->body() : 0;
-    if (body && body->renderer() && body->renderer()->style()->hasPseudoStyle(SCROLLBAR))
+    if (body && body->renderer() && body->renderer()->style().hasPseudoStyle(SCROLLBAR))
         return RenderScrollbar::createCustomScrollbar(this, orientation, body);
     
     // If the <body> didn't have a custom style, then the root element might.
     Element* docElement = doc ? doc->documentElement() : 0;
-    if (docElement && docElement->renderer() && docElement->renderer()->style()->hasPseudoStyle(SCROLLBAR))
+    if (docElement && docElement->renderer() && docElement->renderer()->style().hasPseudoStyle(SCROLLBAR))
         return RenderScrollbar::createCustomScrollbar(this, orientation, docElement);
         
     // If we have an owning iframe/frame element, then it can set the custom scrollbar also.
     RenderWidget* frameRenderer = frame().ownerRenderer();
-    if (frameRenderer && frameRenderer->style()->hasPseudoStyle(SCROLLBAR))
+    if (frameRenderer && frameRenderer->style().hasPseudoStyle(SCROLLBAR))
         return RenderScrollbar::createCustomScrollbar(this, orientation, 0, &frame());
     
     // Nobody set a custom style, so we just use a native scrollbar.
@@ -611,8 +600,8 @@ void FrameView::applyOverflowToViewport(RenderElement* o, ScrollbarMode& hMode, 
 
     bool overrideHidden = frame().isMainFrame() && ((frame().frameScaleFactor() > 1) || headerHeight() || footerHeight());
 
-    EOverflow overflowX = o->style()->overflowX();
-    EOverflow overflowY = o->style()->overflowY();
+    EOverflow overflowX = o->style().overflowX();
+    EOverflow overflowY = o->style().overflowY();
 
 #if ENABLE(SVG)
     if (o->isSVGRoot()) {
@@ -672,7 +661,7 @@ void FrameView::applyPaginationToViewport()
     auto body = document->body();
     if (body && body->renderer()) {
         if (body->hasTagName(bodyTag))
-            documentOrBodyRenderer = documentRenderer->style()->overflowX() == OVISIBLE && documentElement->hasTagName(htmlTag) ? body->renderer() : documentRenderer;
+            documentOrBodyRenderer = documentRenderer->style().overflowX() == OVISIBLE && documentElement->hasTagName(htmlTag) ? body->renderer() : documentRenderer;
     }
 
     Pagination pagination;
@@ -682,10 +671,10 @@ void FrameView::applyPaginationToViewport()
         return;
     }
 
-    EOverflow overflowY = documentOrBodyRenderer->style()->overflowY();
+    EOverflow overflowY = documentOrBodyRenderer->style().overflowY();
     if (overflowY == OPAGEDX || overflowY == OPAGEDY) {
-        pagination.mode = WebCore::paginationModeForRenderStyle(documentOrBodyRenderer->style());
-        pagination.gap = static_cast<unsigned>(documentOrBodyRenderer->style()->columnGap());
+        pagination.mode = WebCore::paginationModeForRenderStyle(&documentOrBodyRenderer->style());
+        pagination.gap = static_cast<unsigned>(documentOrBodyRenderer->style().columnGap());
     }
 
     setPagination(pagination);
@@ -726,7 +715,7 @@ void FrameView::calculateScrollbarModesForLayout(ScrollbarMode& hMode, Scrollbar
             } else if (body->hasTagName(bodyTag)) {
                 // It's sufficient to just check the X overflow,
                 // since it's illegal to have visible in only one direction.
-                RenderElement* o = rootRenderer->style()->overflowX() == OVISIBLE && document->documentElement()->hasTagName(htmlTag) ? body->renderer() : rootRenderer;
+                RenderElement* o = rootRenderer->style().overflowX() == OVISIBLE && document->documentElement()->hasTagName(htmlTag) ? body->renderer() : rootRenderer;
                 applyOverflowToViewport(o, hMode, vMode);
             }
         } else if (rootRenderer)
@@ -919,7 +908,7 @@ void FrameView::setHeaderHeight(int headerHeight)
     m_headerHeight = headerHeight;
 
     if (RenderView* renderView = this->renderView())
-        renderView->setNeedsLayout(true);
+        renderView->setNeedsLayout();
 }
 
 void FrameView::setFooterHeight(int footerHeight)
@@ -929,7 +918,7 @@ void FrameView::setFooterHeight(int footerHeight)
     m_footerHeight = footerHeight;
 
     if (RenderView* renderView = this->renderView())
-        renderView->setNeedsLayout(true);
+        renderView->setNeedsLayout();
 }
 
 bool FrameView::hasCompositedContent() const
@@ -1035,17 +1024,6 @@ void FrameView::setIsInWindow(bool isInWindow)
 {
     if (RenderView* renderView = this->renderView())
         renderView->setIsInWindow(isInWindow);
-
-    if (isInWindow)
-        resumeAnimatingImages();
-}
-
-void FrameView::resumeAnimatingImages()
-{
-    // Drawing models which cache painted content while out-of-window (WebKit2's composited drawing areas, etc.)
-    // require that we repaint animated images to kickstart the animation loop.
-
-    CachedImage::resumeAnimatingImagesForLoader(frame().document()->cachedResourceLoader());
 }
 
 RenderObject* FrameView::layoutRoot(bool onlyDuringLayout) const
@@ -1075,7 +1053,7 @@ inline void FrameView::forceLayoutParentViewIfNeeded()
     // FrameView for a layout. After that the RenderEmbeddedObject (ownerRenderer) carries the
     // correct size, which RenderSVGRoot::computeReplacedLogicalWidth/Height rely on, when laying
     // out for the first time, or when the RenderSVGRoot size has changed dynamically (eg. via <script>).
-    RefPtr<FrameView> frameView = &ownerRenderer->view().frameView();
+    Ref<FrameView> frameView(ownerRenderer->view().frameView());
 
     // Mark the owner renderer as needing layout.
     ownerRenderer->setNeedsLayoutAndPrefWidthsRecalc();
@@ -1126,7 +1104,7 @@ void FrameView::layout(bool allowSubtree)
     ASSERT(!document.inPageCache());
 
     bool subtree;
-    RenderObject* root;
+    RenderElement* root;
 
     {
         TemporaryChange<bool> changeSchedulingEnabled(m_layoutSchedulingEnabled, false);
@@ -1187,10 +1165,10 @@ void FrameView::layout(bool allowSubtree)
             HTMLElement* body = document.body();
             if (body && body->renderer()) {
                 if (body->hasTagName(framesetTag) && !frameFlatteningEnabled()) {
-                    body->renderer()->setChildNeedsLayout(true);
+                    body->renderer()->setChildNeedsLayout();
                 } else if (body->hasTagName(bodyTag)) {
                     if (!m_firstLayout && m_size.height() != layoutHeight() && body->renderer()->enclosingBox()->stretchesToViewport())
-                        body->renderer()->setChildNeedsLayout(true);
+                        body->renderer()->setChildNeedsLayout();
                 }
             }
 
@@ -1219,7 +1197,7 @@ void FrameView::layout(bool allowSubtree)
                         m_lastViewportSize = fixedLayoutSize();
                     else
                         m_lastViewportSize = visibleContentRect(IncludeScrollbars).size();
-                    m_lastZoomFactor = root->style()->zoom();
+                    m_lastZoomFactor = root->style().zoom();
 
                     // Set the initial vMode to AlwaysOn if we're auto.
                     if (vMode == ScrollbarAuto)
@@ -1244,9 +1222,9 @@ void FrameView::layout(bool allowSubtree)
                     RenderBox* rootRenderer = document.documentElement() ? document.documentElement()->renderBox() : 0;
                     RenderBox* bodyRenderer = rootRenderer && document.body() ? document.body()->renderBox() : 0;
                     if (bodyRenderer && bodyRenderer->stretchesToViewport())
-                        bodyRenderer->setChildNeedsLayout(true);
+                        bodyRenderer->setChildNeedsLayout();
                     else if (rootRenderer && rootRenderer->stretchesToViewport())
-                        rootRenderer->setChildNeedsLayout(true);
+                        rootRenderer->setChildNeedsLayout();
                 }
             }
         }
@@ -1643,7 +1621,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
     Region regionToUpdate;
     for (auto it = m_viewportConstrainedObjects->begin(), end = m_viewportConstrainedObjects->end(); it != end; ++it) {
         RenderElement* renderer = *it;
-        if (!renderer->style()->hasViewportConstrainedPosition())
+        if (!renderer->style().hasViewportConstrainedPosition())
             continue;
 #if USE(ACCELERATED_COMPOSITING)
         if (renderer->isComposited())
@@ -1942,7 +1920,7 @@ void FrameView::setViewportConstrainedObjectsNeedLayout()
         return;
 
     for (auto it = m_viewportConstrainedObjects->begin(), end = m_viewportConstrainedObjects->end(); it != end; ++it)
-        (*it)->setNeedsLayout(true);
+        (*it)->setNeedsLayout();
 }
 
 void FrameView::scrollPositionChangedViaPlatformWidget()
@@ -2022,13 +2000,6 @@ void FrameView::updateFixedElementsAfterScrolling()
 #endif
 }
 
-bool FrameView::shouldRubberBandInDirection(ScrollDirection direction) const
-{
-    if (Page* page = frame().page())
-        return page->chrome().client().shouldRubberBandInDirection(direction);
-    return ScrollView::shouldRubberBandInDirection(direction);
-}
-
 bool FrameView::isRubberBandInProgress() const
 {
     if (scrollbarsSuppressed())
@@ -2078,17 +2049,23 @@ HostWindow* FrameView::hostWindow() const
     return 0;
 }
 
+void FrameView::addTrackedRepaintRect(const IntRect& r)
+{
+    if (!m_isTrackingRepaints || r.isEmpty())
+        return;
+
+    IntRect repaintRect = r;
+    repaintRect.move(-scrollOffset());
+    m_trackedRepaintRects.append(repaintRect);
+}
+
 const unsigned cRepaintRectUnionThreshold = 25;
 
 void FrameView::repaintContentRectangle(const IntRect& r, bool immediate)
 {
     ASSERT(!frame().ownerElement());
 
-    if (m_isTrackingRepaints) {
-        IntRect repaintRect = r;
-        repaintRect.move(-scrollOffset());
-        m_trackedRepaintRects.append(repaintRect);
-    }
+    addTrackedRepaintRect(r);
 
     double delay = m_deferringRepaints ? 0 : adjustedDeferredRepaintDelay();
     if ((m_deferringRepaints || m_deferredRepaintTimer.isActive() || delay) && !immediate) {
@@ -2211,9 +2188,6 @@ void FrameView::startDeferredRepaintTimer(double delay)
     if (m_deferredRepaintTimer.isActive())
         return;
 
-    if (m_disableRepaints)
-        return;
-
     m_deferredRepaintTimer.startOneShot(delay);
 }
 
@@ -2238,9 +2212,6 @@ void FrameView::flushDeferredRepaints()
 
 void FrameView::doDeferredRepaints()
 {
-    if (m_disableRepaints)
-        return;
-
     ASSERT(!m_deferringRepaints);
     if (!shouldUpdate()) {
         m_repaintRects.clear();
@@ -2308,23 +2279,12 @@ double FrameView::adjustedDeferredRepaintDelay() const
     if (!m_deferredRepaintDelay)
         return 0;
     double timeSinceLastPaint = monotonicallyIncreasingTime() - m_lastPaintTime;
-    return max(0., m_deferredRepaintDelay - timeSinceLastPaint);
+    return std::max<double>(0, m_deferredRepaintDelay - timeSinceLastPaint);
 }
     
 void FrameView::deferredRepaintTimerFired(Timer<FrameView>*)
 {
     doDeferredRepaints();
-}
-
-void FrameView::beginDisableRepaints()
-{
-    m_disableRepaints++;
-}
-
-void FrameView::endDisableRepaints()
-{
-    ASSERT(m_disableRepaints > 0);
-    m_disableRepaints--;
 }
 
 void FrameView::updateLayerFlushThrottlingInAllFrames()
@@ -2376,7 +2336,7 @@ void FrameView::scheduleRelayout()
     // When frame flattening is enabled, the contents of the frame could affect the layout of the parent frames.
     // Also invalidate parent frame starting from the owner element of this frame.
     if (frame().ownerRenderer() && isInChildFrameWithFrameFlattening())
-        frame().ownerRenderer()->setNeedsLayout(true, MarkContainingBlockChain);
+        frame().ownerRenderer()->setNeedsLayout(MarkContainingBlockChain);
 
     int delay = frame().document()->minimumLayoutDelay();
     if (m_layoutTimer.isActive() && m_delayedLayout && !delay)
@@ -2403,7 +2363,7 @@ static bool isObjectAncestorContainerOf(RenderObject* ancestor, RenderObject* de
     return false;
 }
 
-void FrameView::scheduleRelayoutOfSubtree(RenderObject& newRelayoutRoot)
+void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
 {
     ASSERT(renderView());
     RenderView& renderView = *this->renderView();
@@ -2485,7 +2445,7 @@ void FrameView::setNeedsLayout()
     }
 
     if (RenderView* renderView = this->renderView())
-        renderView->setNeedsLayout(true);
+        renderView->setNeedsLayout();
 }
 
 void FrameView::unscheduleRelayout()
@@ -2510,7 +2470,7 @@ void FrameView::serviceScriptedAnimations(double monotonicAnimationStartTime)
         frame->animation().serviceAnimations();
     }
 
-    Vector<RefPtr<Document> > documents;
+    Vector<RefPtr<Document>> documents;
     for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext())
         documents.append(frame->document());
 
@@ -2789,6 +2749,8 @@ void FrameView::sendResizeEventIfNeeded()
     RenderView* renderView = this->renderView();
     if (!renderView || renderView->printing())
         return;
+    if (frame().page() && frame().page()->chrome().client().isSVGImageChromeClient())
+        return;
 
     IntSize currentSize;
     if (useFixedLayout() && !fixedLayoutSize().isEmpty() && delegatesScrolling())
@@ -2796,7 +2758,7 @@ void FrameView::sendResizeEventIfNeeded()
     else
         currentSize = visibleContentRect(IncludeScrollbars).size();
 
-    float currentZoomFactor = renderView->style()->zoom();
+    float currentZoomFactor = renderView->style().zoom();
     bool shouldSendResizeEvent = !m_firstLayout && (currentSize != m_lastViewportSize || currentZoomFactor != m_lastZoomFactor);
 
     m_lastViewportSize = currentSize;
@@ -2933,7 +2895,7 @@ void FrameView::autoSizeIfEnabled()
     m_autoSizeContentSize = contentsSize();
 
     if (m_autoSizeFixedMinimumHeight) {
-        resize(m_autoSizeContentSize.width(), max(m_autoSizeFixedMinimumHeight, m_autoSizeContentSize.height()));
+        resize(m_autoSizeContentSize.width(), std::max(m_autoSizeFixedMinimumHeight, m_autoSizeContentSize.height()));
         document->updateLayoutIgnorePendingStylesheets();
     }
 
@@ -3043,6 +3005,16 @@ bool FrameView::isActive() const
     return page && page->focusController().isActive();
 }
 
+bool FrameView::updatesScrollLayerPositionOnMainThread() const
+{
+    if (Page* page = frame().page()) {
+        if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
+            return scrollingCoordinator->shouldUpdateScrollLayerPositionOnMainThread();
+    }
+
+    return true;
+}
+
 void FrameView::scrollTo(const IntSize& newOffset)
 {
     LayoutSize offset = scrollOffset();
@@ -3069,7 +3041,7 @@ IntRect FrameView::windowResizerRect() const
 
 float FrameView::visibleContentScaleFactor() const
 {
-    if (!frame().isMainFrame() || !frame().settings().applyPageScaleFactorInCompositor())
+    if (!frame().isMainFrame() || !frame().settings().delegatesPageScaling())
         return 1;
 
     return frame().page()->pageScaleFactor();
@@ -3215,7 +3187,7 @@ void FrameView::updateScrollCorner()
         Element* body = doc ? doc->body() : 0;
         if (body && body->renderer()) {
             renderer = body->renderer();
-            cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), renderer->style());
+            cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), &renderer->style());
         }
         
         if (!cornerStyle) {
@@ -3223,21 +3195,23 @@ void FrameView::updateScrollCorner()
             Element* docElement = doc ? doc->documentElement() : 0;
             if (docElement && docElement->renderer()) {
                 renderer = docElement->renderer();
-                cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), renderer->style());
+                cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), &renderer->style());
             }
         }
         
         if (!cornerStyle) {
             // If we have an owning iframe/frame element, then it can set the custom scrollbar also.
             if (RenderWidget* renderer = frame().ownerRenderer())
-                cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), renderer->style());
+                cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), &renderer->style());
         }
     }
 
     if (cornerStyle) {
-        if (!m_scrollCorner)
-            m_scrollCorner = RenderScrollbarPart::createAnonymous(renderer->document());
-        m_scrollCorner->setStyle(cornerStyle.release());
+        if (!m_scrollCorner) {
+            m_scrollCorner = new RenderScrollbarPart(renderer->document(), cornerStyle.releaseNonNull());
+            m_scrollCorner->initializeStyle();
+        } else
+            m_scrollCorner->setStyle(cornerStyle.releaseNonNull());
         invalidateScrollCorner(cornerRect);
     } else if (m_scrollCorner) {
         m_scrollCorner->destroy();
@@ -3292,9 +3266,9 @@ Color FrameView::documentBackgroundColor() const
     Color htmlBackgroundColor;
     Color bodyBackgroundColor;
     if (htmlElement && htmlElement->renderer())
-        htmlBackgroundColor = htmlElement->renderer()->style()->visitedDependentColor(CSSPropertyBackgroundColor);
+        htmlBackgroundColor = htmlElement->renderer()->style().visitedDependentColor(CSSPropertyBackgroundColor);
     if (bodyElement && bodyElement->renderer())
-        bodyBackgroundColor = bodyElement->renderer()->style()->visitedDependentColor(CSSPropertyBackgroundColor);
+        bodyBackgroundColor = bodyElement->renderer()->style().visitedDependentColor(CSSPropertyBackgroundColor);
 
     if (!bodyBackgroundColor.isValid()) {
         if (!htmlBackgroundColor.isValid())
@@ -3386,7 +3360,7 @@ bool FrameView::doLayoutWithFrameFlattening(bool allowSubtree)
 
     parentView->layout(allowSubtree);
 
-    RenderObject* root = m_layoutRoot ? m_layoutRoot : frame().document()->renderView();
+    RenderElement* root = m_layoutRoot ? m_layoutRoot : frame().document()->renderView();
     ASSERT_UNUSED(root, !root->needsLayout());
 
     return true;
@@ -3722,8 +3696,8 @@ void FrameView::forceLayoutForPagination(const FloatSize& pageSize, const FloatS
     // Dumping externalRepresentation(frame().renderer()).ascii() is a good trick to see
     // the state of things before and after the layout
     if (RenderView* renderView = this->renderView()) {
-        float pageLogicalWidth = renderView->style()->isHorizontalWritingMode() ? pageSize.width() : pageSize.height();
-        float pageLogicalHeight = renderView->style()->isHorizontalWritingMode() ? pageSize.height() : pageSize.width();
+        float pageLogicalWidth = renderView->style().isHorizontalWritingMode() ? pageSize.width() : pageSize.height();
+        float pageLogicalHeight = renderView->style().isHorizontalWritingMode() ? pageSize.height() : pageSize.width();
 
         LayoutUnit flooredPageLogicalWidth = static_cast<LayoutUnit>(pageLogicalWidth);
         LayoutUnit flooredPageLogicalHeight = static_cast<LayoutUnit>(pageLogicalHeight);
@@ -3736,7 +3710,7 @@ void FrameView::forceLayoutForPagination(const FloatSize& pageSize, const FloatS
         // page width when shrunk, we will lay out at maximum shrink and clip extra content.
         // FIXME: We are assuming a shrink-to-fit printing implementation.  A cropping
         // implementation should not do this!
-        bool horizontalWritingMode = renderView->style()->isHorizontalWritingMode();
+        bool horizontalWritingMode = renderView->style().isHorizontalWritingMode();
         const LayoutRect& documentRect = renderView->documentRect();
         LayoutUnit docLogicalWidth = horizontalWritingMode ? documentRect.width() : documentRect.height();
         if (docLogicalWidth > pageLogicalWidth) {
@@ -3758,7 +3732,7 @@ void FrameView::forceLayoutForPagination(const FloatSize& pageSize, const FloatS
             LayoutUnit docLogicalTop = horizontalWritingMode ? updatedDocumentRect.y() : updatedDocumentRect.x();
             LayoutUnit docLogicalRight = horizontalWritingMode ? updatedDocumentRect.maxX() : updatedDocumentRect.maxY();
             LayoutUnit clippedLogicalLeft = 0;
-            if (!renderView->style()->isLeftToRightDirection())
+            if (!renderView->style().isLeftToRightDirection())
                 clippedLogicalLeft = docLogicalRight - pageLogicalWidth;
             LayoutRect overflow(clippedLogicalLeft, docLogicalTop, pageLogicalWidth, docLogicalHeight);
 
@@ -4076,7 +4050,7 @@ bool FrameView::isVerticalDocument() const
     if (!renderView)
         return true;
 
-    return renderView->style()->isHorizontalWritingMode();
+    return renderView->style().isHorizontalWritingMode();
 }
 
 bool FrameView::isFlippedDocument() const
@@ -4085,7 +4059,7 @@ bool FrameView::isFlippedDocument() const
     if (!renderView)
         return false;
 
-    return renderView->style()->isFlippedBlocksWritingMode();
+    return renderView->style().isFlippedBlocksWritingMode();
 }
 
 void FrameView::notifyWidgetsInAllFrames(WidgetNotification notification)

@@ -139,12 +139,12 @@ void SVGAElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 }
 
-RenderElement* SVGAElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGAElement::createRenderer(PassRef<RenderStyle> style)
 {
     if (parentNode() && parentNode()->isSVGElement() && toSVGElement(parentNode())->isTextContent())
-        return new (arena) RenderSVGInline(*this);
+        return new RenderSVGInline(*this, std::move(style));
 
-    return new (arena) RenderSVGTransformableContainer(*this);
+    return new RenderSVGTransformableContainer(*this, std::move(style));
 }
 
 void SVGAElement::defaultEventHandler(Event* event)
@@ -160,9 +160,9 @@ void SVGAElement::defaultEventHandler(Event* event)
             String url = stripLeadingAndTrailingHTMLSpaces(href());
 
             if (url[0] == '#') {
-                Element* targetElement = treeScope()->getElementById(url.substring(1));
-                if (SVGSMILElement::isSMILElement(targetElement)) {
-                    toSVGSMILElement(targetElement)->beginByLinkActivation();
+                Element* targetElement = treeScope().getElementById(url.substring(1));
+                if (targetElement && isSVGSMILElement(*targetElement)) {
+                    toSVGSMILElement(*targetElement).beginByLinkActivation();
                     event->setDefaultHandled();
                     return;
                 }
@@ -223,11 +223,11 @@ bool SVGAElement::isKeyboardFocusable(KeyboardEvent* event) const
     return document().frame()->eventHandler().tabsToLinks(event);
 }
 
-bool SVGAElement::childShouldCreateRenderer(const Node* child) const
+bool SVGAElement::childShouldCreateRenderer(const Node& child) const
 {
     // http://www.w3.org/2003/01/REC-SVG11-20030114-errata#linking-text-environment
     // The 'a' element may contain any element that its parent may contain, except itself.
-    if (child->hasTagName(SVGNames::aTag))
+    if (child.hasTagName(SVGNames::aTag))
         return false;
     if (parentNode() && parentNode()->isSVGElement())
         return parentNode()->childShouldCreateRenderer(child);

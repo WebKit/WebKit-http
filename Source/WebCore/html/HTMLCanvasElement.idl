@@ -25,7 +25,7 @@
  */
 
 [
-    JSGenerateToNativeObject
+    JSGenerateToNativeObject,
 ] interface HTMLCanvasElement : HTMLElement {
 
     attribute long width;

@@ -19,7 +19,7 @@
 */
 
 [
-    InterfaceName=Plugin
+    InterfaceName=Plugin,
 ] interface DOMPlugin {
     readonly attribute DOMString name;
     readonly attribute DOMString filename;

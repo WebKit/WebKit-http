@@ -41,8 +41,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderHTMLCanvas::RenderHTMLCanvas(HTMLCanvasElement& element)
-    : RenderReplaced(&element, element.size())
+RenderHTMLCanvas::RenderHTMLCanvas(HTMLCanvasElement& element, PassRef<RenderStyle> style)
+    : RenderReplaced(element, std::move(style), element.size())
 {
     // Actual size is not known yet, report the default intrinsic size.
     view().frameView().incrementVisuallyNonEmptyPixelCount(roundedIntSize(intrinsicSize()));
@@ -84,14 +84,14 @@ void RenderHTMLCanvas::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& pa
             page->addRelevantRepaintedObject(this, intersection(paintRect, contentRect));
     }
 
-    bool useLowQualityScale = style()->imageRendering() == ImageRenderingCrispEdges || style()->imageRendering() == ImageRenderingOptimizeSpeed;
+    bool useLowQualityScale = style().imageRendering() == ImageRenderingCrispEdges || style().imageRendering() == ImageRenderingOptimizeSpeed;
     canvasElement().paint(context, paintRect, useLowQualityScale);
 }
 
 void RenderHTMLCanvas::canvasSizeChanged()
 {
     IntSize canvasSize = canvasElement().size();
-    LayoutSize zoomedSize(canvasSize.width() * style()->effectiveZoom(), canvasSize.height() * style()->effectiveZoom());
+    LayoutSize zoomedSize(canvasSize.width() * style().effectiveZoom(), canvasSize.height() * style().effectiveZoom());
 
     if (zoomedSize == intrinsicSize())
         return;
@@ -111,7 +111,7 @@ void RenderHTMLCanvas::canvasSizeChanged()
         return;
 
     if (!selfNeedsLayout())
-        setNeedsLayout(true);
+        setNeedsLayout();
 }
 
 } // namespace WebCore

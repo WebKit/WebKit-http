@@ -21,7 +21,7 @@
  */
 
 [
-    Conditional=SVG
+    Conditional=SVG,
 ] interface SVGLength { 
     // Length Unit Types
     const unsigned short SVG_LENGTHTYPE_UNKNOWN    = 0;

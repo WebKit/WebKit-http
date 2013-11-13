@@ -103,16 +103,6 @@ enum FindDirection { FindDirectionForward, FindDirectionBackward };
 
 float deviceScaleFactor(Frame*);
 
-struct ArenaSize {
-    ArenaSize(size_t treeSize, size_t allocated)
-        : treeSize(treeSize)
-        , allocated(allocated)
-    {
-    }
-    size_t treeSize;
-    size_t allocated;
-};
-
 class Page : public Supplementable<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
     friend class Settings;
@@ -145,7 +135,7 @@ public:
     explicit Page(PageClients&);
     ~Page();
 
-    ArenaSize renderTreeSize() const;
+    uint64_t renderTreeSize() const;
 
     void setNeedsRecalcStyleInAllFrames();
 
@@ -236,8 +226,6 @@ public:
     bool tabKeyCyclesThroughElements() const { return m_tabKeyCyclesThroughElements; }
 
     bool findString(const String&, FindOptions);
-    // FIXME: Switch callers over to the FindOptions version and retire this one.
-    bool findString(const String&, TextCaseSensitivity, FindDirection, bool shouldWrap);
 
     PassRefPtr<Range> rangeOfString(const String&, Range*, FindOptions);
 
@@ -252,7 +240,7 @@ public:
     // the index of the first range after the user selection
     // NoMatchAfterUserSelection if there is no matching text after the user selection.
     enum { NoMatchAfterUserSelection = -1 };
-    void findStringMatchingRanges(const String&, FindOptions, int maxCount, Vector<RefPtr<Range> >*, int& indexForSelection);
+    void findStringMatchingRanges(const String&, FindOptions, int maxCount, Vector<RefPtr<Range>>*, int& indexForSelection);
 #if PLATFORM(MAC)
     void addSchedulePair(PassRefPtr<SchedulePair>);
     void removeSchedulePair(PassRefPtr<SchedulePair>);
@@ -284,11 +272,6 @@ public:
     void setShouldSuppressScrollbarAnimations(bool suppressAnimations);
     void lockAllOverlayScrollbarsToHidden(bool lockOverlayScrollbars);
 
-    bool rubberBandsAtBottom();
-    void setRubberBandsAtBottom(bool);
-    bool rubberBandsAtTop();
-    void setRubberBandsAtTop(bool);
-
     // Page and FrameView both store a Pagination value. Page::pagination() is set only by API,
     // and FrameView::pagination() is set only by CSS. Page::pagination() will affect all
     // FrameViews in the page cache, but FrameView::pagination() only affects the current
@@ -319,7 +302,6 @@ public:
     void storageBlockingStateChanged();
     void privateBrowsingStateChanged();
 
-    static void setDebuggerForAllPages(JSC::Debugger*);
     void setDebugger(JSC::Debugger*);
     JSC::Debugger* debugger() const { return m_debugger; }
 
@@ -357,6 +339,7 @@ public:
 #if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     void setVisibilityState(PageVisibilityState, bool);
 #endif
+    void resumeAnimatingImages();
 
     void addLayoutMilestones(LayoutMilestones);
     void removeLayoutMilestones(LayoutMilestones);

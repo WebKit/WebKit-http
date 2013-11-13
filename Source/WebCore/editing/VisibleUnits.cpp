@@ -31,14 +31,12 @@
 #include "HTMLNames.h"
 #include "InlineTextBox.h"
 #include "NodeTraversal.h"
-#include "Position.h"
-#include "RenderBlock.h"
+#include "RenderBlockFlow.h"
 #include "RenderObject.h"
 #include "RenderedPosition.h"
 #include "Text.h"
 #include "TextBoundaries.h"
 #include "TextIterator.h"
-#include "VisiblePosition.h"
 #include "VisibleSelection.h"
 #include "htmlediting.h"
 
@@ -457,7 +455,7 @@ static VisiblePosition previousBoundary(const VisiblePosition& c, BoundarySearch
     Document& boundaryDocument = boundary->document();
     Position start = createLegacyEditingPosition(boundary, 0).parentAnchoredEquivalent();
     Position end = pos.parentAnchoredEquivalent();
-    RefPtr<Range> searchRange = Range::create(&boundaryDocument);
+    RefPtr<Range> searchRange = Range::create(boundaryDocument);
     
     Vector<UChar, 1024> string;
     unsigned suffixLength = 0;
@@ -489,7 +487,7 @@ static VisiblePosition previousBoundary(const VisiblePosition& c, BoundarySearch
 
     SimplifiedBackwardsTextIterator it(searchRange.get());
     unsigned next = 0;
-    bool inTextSecurityMode = start.deprecatedNode() && start.deprecatedNode()->renderer() && start.deprecatedNode()->renderer()->style()->textSecurity() != TSNONE;
+    bool inTextSecurityMode = start.deprecatedNode() && start.deprecatedNode()->renderer() && start.deprecatedNode()->renderer()->style().textSecurity() != TSNONE;
     bool needMoreContext = false;
     while (!it.atEnd()) {
         // iterate to get chunks until the searchFunction returns a non-zero value.
@@ -562,7 +560,7 @@ static VisiblePosition nextBoundary(const VisiblePosition& c, BoundarySearchFunc
     searchRange->setStart(start.deprecatedNode(), start.deprecatedEditingOffset(), IGNORE_EXCEPTION);
     TextIterator it(searchRange.get(), TextIteratorEmitsCharactersBetweenAllVisiblePositions);
     unsigned next = 0;
-    bool inTextSecurityMode = start.deprecatedNode() && start.deprecatedNode()->renderer() && start.deprecatedNode()->renderer()->style()->textSecurity() != TSNONE;
+    bool inTextSecurityMode = start.deprecatedNode() && start.deprecatedNode()->renderer() && start.deprecatedNode()->renderer()->style().textSecurity() != TSNONE;
     bool needMoreContext = false;
     while (!it.atEnd()) {
         // Keep asking the iterator for chunks until the search function
@@ -905,7 +903,7 @@ bool isEndOfLine(const VisiblePosition &p)
 static inline IntPoint absoluteLineDirectionPointToLocalPointInBlock(RootInlineBox* root, int lineDirectionPoint)
 {
     ASSERT(root);
-    RenderBlock& containingBlock = root->block();
+    RenderBlockFlow& containingBlock = root->blockFlow();
     FloatPoint absoluteBlockPoint = containingBlock.localToAbsolute(FloatPoint());
     if (containingBlock.hasOverflowClip())
         absoluteBlockPoint -= containingBlock.scrolledContentOffset();
@@ -1120,8 +1118,8 @@ VisiblePosition startOfParagraph(const VisiblePosition& c, EditingBoundaryCrossi
             n = NodeTraversal::previousPostOrder(n, startBlock);
             continue;
         }
-        RenderStyle* style = r->style();
-        if (style->visibility() != VISIBLE) {
+        const RenderStyle& style = r->style();
+        if (style.visibility() != VISIBLE) {
             n = NodeTraversal::previousPostOrder(n, startBlock);
             continue;
         }
@@ -1129,15 +1127,15 @@ VisiblePosition startOfParagraph(const VisiblePosition& c, EditingBoundaryCrossi
         if (r->isBR() || isBlock(n))
             break;
 
-        if (r->isText() && toRenderText(r)->renderedTextLength()) {
+        if (r->isText() && toRenderText(r)->hasRenderedText()) {
             ASSERT_WITH_SECURITY_IMPLICATION(n->isTextNode());
             type = Position::PositionIsOffsetInAnchor;
-            if (style->preserveNewline()) {
+            if (style.preserveNewline()) {
                 const UChar* chars = toRenderText(r)->characters();
                 int i = toRenderText(r)->textLength();
                 int o = offset;
                 if (n == startNode && o < i)
-                    i = max(0, o);
+                    i = std::max(0, o);
                 while (--i >= 0) {
                     if (chars[i] == '\n')
                         return VisiblePosition(Position(toText(n), i + 1), DOWNSTREAM);
@@ -1201,8 +1199,8 @@ VisiblePosition endOfParagraph(const VisiblePosition &c, EditingBoundaryCrossing
             n = NodeTraversal::next(n, stayInsideBlock);
             continue;
         }
-        RenderStyle* style = r->style();
-        if (style->visibility() != VISIBLE) {
+        const RenderStyle& style = r->style();
+        if (style.visibility() != VISIBLE) {
             n = NodeTraversal::next(n, stayInsideBlock);
             continue;
         }
@@ -1211,11 +1209,11 @@ VisiblePosition endOfParagraph(const VisiblePosition &c, EditingBoundaryCrossing
             break;
 
         // FIXME: We avoid returning a position where the renderer can't accept the caret.
-        if (r->isText() && toRenderText(r)->renderedTextLength()) {
+        if (r->isText() && toRenderText(r)->hasRenderedText()) {
             ASSERT_WITH_SECURITY_IMPLICATION(n->isTextNode());
             int length = toRenderText(r)->textLength();
             type = Position::PositionIsOffsetInAnchor;
-            if (style->preserveNewline()) {
+            if (style.preserveNewline()) {
                 const UChar* chars = toRenderText(r)->characters();
                 int o = n == startNode ? offset : 0;
                 for (int i = o; i < length; ++i) {

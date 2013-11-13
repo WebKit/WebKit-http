@@ -64,7 +64,6 @@ inline SVGImageElement::SVGImageElement(const QualifiedName& tagName, Document& 
     , m_height(LengthModeHeight)
     , m_imageLoader(this)
 {
-    ASSERT(isSVGImageElement(this));
     registerAnimatedPropertiesForSVGImageElement();
 }
 
@@ -96,7 +95,7 @@ bool SVGImageElement::isPresentationAttribute(const QualifiedName& name) const
     return SVGGraphicsElement::isPresentationAttribute(name);
 }
 
-void SVGImageElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void SVGImageElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (!isSupportedAttribute(name))
         SVGGraphicsElement::collectStyleForPresentationAttribute(name, value, style);
@@ -183,9 +182,9 @@ bool SVGImageElement::selfHasRelativeLengths() const
         || height().isRelative();
 }
 
-RenderElement* SVGImageElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGImageElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderSVGImage(*this);
+    return new RenderSVGImage(*this, std::move(style));
 }
 
 bool SVGImageElement::haveLoadedRequiredResources()
@@ -203,10 +202,10 @@ void SVGImageElement::didAttachRenderers()
     }
 }
 
-Node::InsertionNotificationRequest SVGImageElement::insertedInto(ContainerNode* rootParent)
+Node::InsertionNotificationRequest SVGImageElement::insertedInto(ContainerNode& rootParent)
 {
     SVGGraphicsElement::insertedInto(rootParent);
-    if (!rootParent->inDocument())
+    if (!rootParent.inDocument())
         return InsertionDone;
     // Update image loader, as soon as we're living in the tree.
     // We can only resolve base URIs properly, after that!

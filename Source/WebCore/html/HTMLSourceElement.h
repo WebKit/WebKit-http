@@ -48,8 +48,8 @@ public:
 private:
     HTMLSourceElement(const QualifiedName&, Document&);
     
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    virtual void removedFrom(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
+    virtual void removedFrom(ContainerNode&) OVERRIDE;
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
     void errorEventTimerFired(Timer<HTMLSourceElement>*);
@@ -57,7 +57,7 @@ private:
     Timer<HTMLSourceElement> m_errorEventTimer;
 };
 
-ELEMENT_TYPE_CASTS(HTMLSourceElement)
+NODE_TYPE_CASTS(HTMLSourceElement)
 
 } //namespace
 

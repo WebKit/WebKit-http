@@ -31,6 +31,9 @@
 #import "config.h"
 #import "AccessibilityCommonMac.h"
 #import "AccessibilityController.h"
+
+#if HAVE(ACCESSIBILITY)
+
 #import "AccessibilityNotificationHandler.h"
 #import "InjectedBundle.h"
 #import "InjectedBundlePage.h"
@@ -94,7 +97,7 @@ static id findAccessibleObjectById(id obj, NSString *idAttribute)
             return result;
     }
 
-    return 0;
+    return nullptr;
 }
 
 PassRefPtr<AccessibilityUIElement> AccessibilityController::accessibleElementById(JSStringRef idAttribute)
@@ -106,7 +109,9 @@ PassRefPtr<AccessibilityUIElement> AccessibilityController::accessibleElementByI
     if (result)
         return AccessibilityUIElement::create(result);
 
-    return 0;
+    return nullptr;
 }
 
 } // namespace WTR
+
+#endif // HAVE(ACCESSIBILITY)

@@ -37,16 +37,13 @@
 #include <string.h>
 #include <wtf/Assertions.h>
 
-using namespace WTF;
-using namespace Unicode;
-
 #include "KeywordLookup.h"
 #include "Lexer.lut.h"
 #include "Parser.h"
 
 namespace JSC {
 
-Keywords::Keywords(VM* vm)
+Keywords::Keywords(VM& vm)
     : m_vm(vm)
     , m_keywordTable(JSC::mainTable)
 {
@@ -637,9 +634,9 @@ ALWAYS_INLINE bool Lexer<T>::lastTokenWasRestrKeyword() const
     return m_lastToken == CONTINUE || m_lastToken == BREAK || m_lastToken == RETURN || m_lastToken == THROW;
 }
 
-static NEVER_INLINE bool isNonLatin1IdentStart(int c)
+static NEVER_INLINE bool isNonLatin1IdentStart(UChar c)
 {
-    return category(c) & (Letter_Uppercase | Letter_Lowercase | Letter_Titlecase | Letter_Modifier | Letter_Other);
+    return U_GET_GC_MASK(c) & U_GC_L_MASK;
 }
 
 static ALWAYS_INLINE bool isLatin1(LChar)
@@ -664,8 +661,7 @@ static inline bool isIdentStart(UChar c)
 
 static NEVER_INLINE bool isNonLatin1IdentPart(int c)
 {
-    return (category(c) & (Letter_Uppercase | Letter_Lowercase | Letter_Titlecase | Letter_Modifier | Letter_Other
-        | Mark_NonSpacing | Mark_SpacingCombining | Number_DecimalDigit | Punctuation_Connector)) || c == 0x200C || c == 0x200D;
+    return (U_GET_GC_MASK(c) & (U_GC_L_MASK | U_GC_MN_MASK | U_GC_MC_MASK | U_GC_ND_MASK | U_GC_PC_MASK)) || c == 0x200C || c == 0x200D;
 }
 
 static ALWAYS_INLINE bool isIdentPart(LChar c)
@@ -1582,6 +1578,12 @@ start:
     case CharacterDot:
         shift();
         if (!isASCIIDigit(m_current)) {
+            if (UNLIKELY((m_current == '.') && (peek(1) == '.'))) {
+                shift();
+                shift();
+                token = DOTDOTDOT;
+                break;
+            }
             token = DOT;
             break;
         }

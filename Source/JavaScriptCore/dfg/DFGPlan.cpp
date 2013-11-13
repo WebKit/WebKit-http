@@ -41,6 +41,7 @@
 #include "DFGFailedFinalizer.h"
 #include "DFGFlushLivenessAnalysisPhase.h"
 #include "DFGFixupPhase.h"
+#include "DFGInvalidationPointInjectionPhase.h"
 #include "DFGJITCompiler.h"
 #include "DFGLICMPhase.h"
 #include "DFGLivenessAnalysisPhase.h"
@@ -50,11 +51,13 @@
 #include "DFGPredictionInjectionPhase.h"
 #include "DFGPredictionPropagationPhase.h"
 #include "DFGSSAConversionPhase.h"
+#include "DFGStackLayoutPhase.h"
 #include "DFGTierUpCheckInjectionPhase.h"
 #include "DFGTypeCheckHoistingPhase.h"
 #include "DFGUnificationPhase.h"
 #include "DFGValidate.h"
 #include "DFGVirtualRegisterAllocationPhase.h"
+#include "DFGWatchpointCollectionPhase.h"
 #include "OperandsInlines.h"
 #include "Operations.h"
 #include <wtf/CurrentTime.h>
@@ -66,6 +69,7 @@
 #include "FTLLink.h"
 #include "FTLLowerDFGToLLVM.h"
 #include "FTLState.h"
+#include "InitializeLLVM.h"
 #endif
 
 namespace JSC { namespace DFG {
@@ -185,6 +189,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
     performBackwardsPropagation(dfg);
     performPredictionPropagation(dfg);
     performFixup(dfg);
+    performInvalidationPointInjection(dfg);
     performTypeCheckHoisting(dfg);
     
     unsigned count = 1;
@@ -226,7 +231,24 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
     switch (mode) {
     case DFGMode: {
         performTierUpCheckInjection(dfg);
-        break;
+
+        performCPSRethreading(dfg);
+        performDCE(dfg);
+        performStackLayout(dfg);
+        performVirtualRegisterAllocation(dfg);
+        performWatchpointCollection(dfg);
+        dumpAndVerifyGraph(dfg, "Graph after optimization:");
+        
+        JITCompiler dataFlowJIT(dfg);
+        if (codeBlock->codeType() == FunctionCode) {
+            dataFlowJIT.compileFunction();
+            dataFlowJIT.linkFunction();
+        } else {
+            dataFlowJIT.compile();
+            dataFlowJIT.link();
+        }
+        
+        return DFGPath;
     }
     
     case FTLMode:
@@ -247,14 +269,15 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         performLivenessAnalysis(dfg);
         performCFA(dfg);
         performDCE(dfg); // We rely on this to convert dead SetLocals into the appropriate hint, and to kill dead code that won't be recognized as dead by LLVM.
+        performStackLayout(dfg);
         performLivenessAnalysis(dfg);
         performFlushLivenessAnalysis(dfg);
         performOSRAvailabilityAnalysis(dfg);
+        performWatchpointCollection(dfg);
         
         dumpAndVerifyGraph(dfg, "Graph just before FTL lowering:");
         
-        // FIXME: Support OSR entry.
-        // https://bugs.webkit.org/show_bug.cgi?id=113625
+        initializeLLVM();
         
         FTL::State state(dfg);
         FTL::lowerDFGToLLVM(state);
@@ -262,40 +285,30 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         if (Options::reportCompileTimes())
             beforeFTL = currentTimeMS();
         
-        if (Options::llvmAlwaysFails()) {
+        if (Options::llvmAlwaysFailsBeforeCompile()) {
             FTL::fail(state);
             return FTLPath;
         }
         
         FTL::compile(state);
+
+        if (Options::llvmAlwaysFailsBeforeLink()) {
+            FTL::fail(state);
+            return FTLPath;
+        }
+        
         FTL::link(state);
         return FTLPath;
 #else
         RELEASE_ASSERT_NOT_REACHED();
-        break;
+        return FailPath;
 #endif // ENABLE(FTL_JIT)
     }
         
     default:
         RELEASE_ASSERT_NOT_REACHED();
-        break;
+        return FailPath;
     }
-    
-    performCPSRethreading(dfg);
-    performDCE(dfg);
-    performVirtualRegisterAllocation(dfg);
-    dumpAndVerifyGraph(dfg, "Graph after optimization:");
-
-    JITCompiler dataFlowJIT(dfg);
-    if (codeBlock->codeType() == FunctionCode) {
-        dataFlowJIT.compileFunction();
-        dataFlowJIT.linkFunction();
-    } else {
-        dataFlowJIT.compile();
-        dataFlowJIT.link();
-    }
-    
-    return DFGPath;
 }
 
 bool Plan::isStillValid()
@@ -306,7 +319,7 @@ bool Plan::isStillValid()
 
 void Plan::reallyAdd(CommonData* commonData)
 {
-    watchpoints.reallyAdd();
+    watchpoints.reallyAdd(codeBlock.get(), *commonData);
     identifiers.reallyAdd(vm, commonData);
     weakReferences.reallyAdd(vm, commonData);
     transitions.reallyAdd(vm, commonData);

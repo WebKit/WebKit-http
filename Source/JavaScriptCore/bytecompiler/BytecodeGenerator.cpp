@@ -387,13 +387,14 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionBodyNode* functionBody, Unl
     if (isConstructor()) {
         emitCreateThis(&m_thisRegister);
     } else if (functionBody->usesThis() || codeBlock->usesEval() || m_shouldEmitDebugHooks) {
+        m_codeBlock->addPropertyAccessInstruction(instructions().size());
         emitOpcode(op_to_this);
         instructions().append(kill(&m_thisRegister));
         instructions().append(0);
     }
     for (size_t i = 0; i < deconstructedParameters.size(); i++) {
         auto& entry = deconstructedParameters[i];
-        entry.second->emitBytecode(*this, entry.first);
+        entry.second->bindValue(*this, entry.first);
     }
 }
 
@@ -956,7 +957,7 @@ unsigned BytecodeGenerator::addConstant(const Identifier& ident)
     StringImpl* rep = ident.impl();
     IdentifierMap::AddResult result = m_identifierMap.add(rep, m_codeBlock->numberOfIdentifiers());
     if (result.isNewEntry)
-        m_codeBlock->addIdentifier(Identifier(m_vm, rep));
+        m_codeBlock->addIdentifier(ident);
 
     return result.iterator->value;
 }
@@ -1412,6 +1413,17 @@ RegisterID* BytecodeGenerator::emitPutByVal(RegisterID* base, RegisterID* proper
     return value;
 }
 
+RegisterID* BytecodeGenerator::emitDirectPutByVal(RegisterID* base, RegisterID* property, RegisterID* value)
+{
+    UnlinkedArrayProfile arrayProfile = newArrayProfile();
+    emitOpcode(op_put_by_val_direct);
+    instructions().append(base->index());
+    instructions().append(property->index());
+    instructions().append(value->index());
+    instructions().append(arrayProfile);
+    return value;
+}
+
 RegisterID* BytecodeGenerator::emitDeleteByVal(RegisterID* dst, RegisterID* base, RegisterID* property)
 {
     emitOpcode(op_del_by_val);
@@ -1434,6 +1446,7 @@ RegisterID* BytecodeGenerator::emitCreateThis(RegisterID* dst)
 {
     RefPtr<RegisterID> func = newTemporary(); 
 
+    m_codeBlock->addPropertyAccessInstruction(instructions().size());
     emitOpcode(op_get_callee);
     instructions().append(func->index());
     instructions().append(0);
@@ -1513,13 +1526,16 @@ RegisterID* BytecodeGenerator::emitNewArray(RegisterID* dst, ElementNode* elemen
 
     Vector<RefPtr<RegisterID>, 16, UnsafeVectorOverflow> argv;
     for (ElementNode* n = elements; n; n = n->next()) {
-        if (n->elision())
+        if (!length)
             break;
+        length--;
+        ASSERT(!n->value()->isSpreadExpression());
         argv.append(newTemporary());
         // op_new_array requires the initial values to be a sequential range of registers
         ASSERT(argv.size() == 1 || argv[argv.size() - 1]->index() == argv[argv.size() - 2]->index() - 1);
         emitNode(argv.last().get(), n->value());
     }
+    ASSERT(!length);
     emitOpcode(op_new_array);
     instructions().append(dst->index());
     instructions().append(argv.size() ? argv[0]->index() : 0); // argv
@@ -1691,9 +1707,18 @@ RegisterID* BytecodeGenerator::emitCall(OpcodeID opcodeID, RegisterID* dst, Regi
 
     // Generate code for arguments.
     unsigned argument = 0;
-    for (ArgumentListNode* n = callArguments.argumentsNode()->m_listNode; n; n = n->m_next)
-        emitNode(callArguments.argumentRegister(argument++), n);
-
+    if (callArguments.argumentsNode()) {
+        ArgumentListNode* n = callArguments.argumentsNode()->m_listNode;
+        if (n && n->m_expr->isSpreadExpression()) {
+            RELEASE_ASSERT(!n->m_next);
+            auto expression = static_cast<SpreadExpressionNode*>(n->m_expr)->expression();
+            expression->emitBytecode(*this, callArguments.argumentRegister(0));
+            return emitCallVarargs(dst, func, callArguments.thisRegister(), callArguments.argumentRegister(0), newTemporary(), callArguments.profileHookRegister(), divot, divotStart, divotEnd);
+        }
+        for (; n; n = n->m_next)
+            emitNode(callArguments.argumentRegister(argument++), n);
+    }
+    
     // Reserve space for call frame.
     Vector<RefPtr<RegisterID>, JSStack::CallFrameHeaderSize, UnsafeVectorOverflow> callFrame;
     for (int i = 0; i < JSStack::CallFrameHeaderSize; ++i)
@@ -2366,6 +2391,61 @@ void BytecodeGenerator::emitReadOnlyExceptionIfNeeded()
     emitOpcode(op_throw_static_error);
     instructions().append(addConstantValue(addStringConstant(Identifier(m_vm, StrictModeReadonlyPropertyWriteError)))->index());
     instructions().append(false);
+}
+    
+void BytecodeGenerator::emitEnumeration(ThrowableExpressionData* node, ExpressionNode* subjectNode, const std::function<void(BytecodeGenerator&, RegisterID*)>& callBack)
+{
+    if (subjectNode->isResolveNode()
+        && willResolveToArguments(static_cast<ResolveNode*>(subjectNode)->identifier())
+        && !symbolTable().slowArguments()) {
+        RefPtr<RegisterID> index = emitLoad(newTemporary(), jsNumber(0));
+
+        LabelScopePtr scope = newLabelScope(LabelScope::Loop);
+        RefPtr<RegisterID> value = emitLoad(newTemporary(), jsUndefined());
+        
+        emitJump(scope->continueTarget());
+        
+        RefPtr<Label> loopStart = newLabel();
+        emitLabel(loopStart.get());
+        emitLoopHint();
+        emitGetArgumentByVal(value.get(), uncheckedRegisterForArguments(), index.get());
+        callBack(*this, value.get());
+        emitInc(index.get());
+        emitLabel(scope->continueTarget());
+
+        RefPtr<RegisterID> length = emitGetArgumentsLength(newTemporary(), uncheckedRegisterForArguments());
+        emitJumpIfTrue(emitEqualityOp(op_less, newTemporary(), index.get(), length.get()), loopStart.get());
+        emitLabel(scope->breakTarget());
+        return;
+    }
+
+    LabelScopePtr scope = newLabelScope(LabelScope::Loop);
+    RefPtr<RegisterID> subject = newTemporary();
+    emitNode(subject.get(), subjectNode);
+    RefPtr<RegisterID> iterator = emitGetById(newTemporary(), subject.get(), propertyNames().iteratorPrivateName);
+    {
+        CallArguments args(*this, 0);
+        emitMove(args.thisRegister(), subject.get());
+        emitCall(iterator.get(), iterator.get(), NoExpectedFunction, args, node->divot(), node->divotStart(), node->divotEnd());
+    }
+    RefPtr<RegisterID> iteratorNext = emitGetById(newTemporary(), iterator.get(), propertyNames().iteratorNextPrivateName);
+    RefPtr<RegisterID> value = newTemporary();
+    emitLoad(value.get(), jsUndefined());
+    
+    emitJump(scope->continueTarget());
+    
+    RefPtr<Label> loopStart = newLabel();
+    emitLabel(loopStart.get());
+    emitLoopHint();
+    callBack(*this, value.get());
+    emitLabel(scope->continueTarget());
+    CallArguments nextArguments(*this, 0, 1);
+    emitMove(nextArguments.thisRegister(), iterator.get());
+    emitMove(nextArguments.argumentRegister(0), value.get());
+    emitCall(value.get(), iteratorNext.get(), NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd());
+    RefPtr<RegisterID> result = newTemporary();
+    emitJumpIfFalse(emitEqualityOp(op_stricteq, result.get(), value.get(), emitLoad(0, JSValue(vm()->iterationTerminator.get()))), loopStart.get());
+    emitLabel(scope->breakTarget());
 }
 
 } // namespace JSC

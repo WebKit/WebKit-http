@@ -216,7 +216,7 @@ enum {
 - (float)_verticalPageScrollDistance
 {
     float height = [[self _contentView] bounds].size.height;
-    return max<float>(height * Scrollbar::minFractionToStepWhenPaging(), height - Scrollbar::maxOverlapBetweenPages());
+    return std::max<float>(height * Scrollbar::minFractionToStepWhenPaging(), height - Scrollbar::maxOverlapBetweenPages());
 }
 
 static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCClass, NSArray *supportTypes)
@@ -575,7 +575,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     RenderView* renderView = document->renderView();
     if (!renderView)
         return YES;
-    return renderView->style()->isHorizontalWritingMode();
+    return renderView->style().isHorizontalWritingMode();
 }
 
 - (BOOL)_isFlippedDocument
@@ -589,7 +589,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     RenderView* renderView = document->renderView();
     if (!renderView)
         return NO;
-    return renderView->style()->isFlippedBlocksWritingMode();
+    return renderView->style().isFlippedBlocksWritingMode();
 }
 
 - (BOOL)_scrollToBeginningOfDocument
@@ -698,7 +698,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 - (float)_horizontalPageScrollDistance
 {
     float width = [[self _contentView] bounds].size.width;
-    return max<float>(width * Scrollbar::minFractionToStepWhenPaging(), width - Scrollbar::maxOverlapBetweenPages());
+    return std::max<float>(width * Scrollbar::minFractionToStepWhenPaging(), width - Scrollbar::maxOverlapBetweenPages());
 }
 
 - (BOOL)_pageVertically:(BOOL)up

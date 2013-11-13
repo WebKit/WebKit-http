@@ -1,3 +1,85 @@
+2013-11-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Update binary drops to a version that includes new stackmap fixes and exposes the new calling conventions.
+
+        * LLVMIncludesMountainLion.tar.bz2:
+        * LLVMLibrariesMountainLion.tar.bz2:
+
+2013-11-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Update binary drops to a version that includes my pretty stack trace changes.
+
+        * LLVMIncludesMountainLion.tar.bz2:
+        * LLVMLibrariesMountainLion.tar.bz2:
+
+2013-11-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, update binary drops.
+        
+        These include my LLVMDisablePrettyStackTrace() fix and are built with --enable-crash-overrides=no
+
+        * LLVMIncludesMountainLion.tar.bz2:
+        * LLVMLibrariesMountainLion.tar.bz2:
+
+2013-10-21  Mark Rowe  <mrowe@apple.com>
+
+        Add a version of WebKitSystemInterface for Mavericks.
+
+        Reviewed by Ryosuke Niwa.
+
+        * libWebKitSystemInterfaceMavericks.a: Added.
+
+2013-10-17  Anthony Johnson  <anthony.johnson@flexsim.com>
+
+        Crash fix for Windows XP.
+        https://bugs.webkit.org/show_bug.cgi?id=122790
+
+        Reviewed by Geoffrey Garen.
+
+        * win/tools/vsprops/common.props:
+        Replaced stack and heap sizes of zero with blank stack and heap sizes.
+
+2013-10-16  Filip Pizlo  <fpizlo@apple.com>
+
+        libllvmForJSC shouldn't call exit(1) on report_fatal_error()
+        https://bugs.webkit.org/show_bug.cgi?id=122905
+        <rdar://problem/15237856>
+
+        Reviewed by Michael Saboff.
+
+        * LLVMIncludesMountainLion.tar.bz2:
+        * LLVMLibrariesMountainLion.tar.bz2:
+
+2013-10-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Update the binary drops to the latest version of LLVM, built without -fvisibility=hidden
+        now that we have soft linking. Also include DataTypes.h in the drop.
+
+        Rubber stamped by Michael Saboff.
+
+        * LLVMIncludesMountainLion.tar.bz2:
+        * LLVMLibrariesMountainLion.tar.bz2:
+
+2013-10-01  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should use the new version of LLVM MCJIT memory manager APIs that take a SectionName
+        https://bugs.webkit.org/show_bug.cgi?id=122193
+
+        Reviewed by Geoffrey Garen.
+
+        * LLVMIncludesMountainLion.tar.bz2:
+        * LLVMLibrariesMountainLion.tar.bz2:
+
+2013-10-01  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Implement the media controls in JavaScript.
+        https://bugs.webkit.org/show_bug.cgi?id=122166
+
+        Reviewed by Jer Noble.
+
+        * win/tools/vsprops/FeatureDefines.props: Activate the
+        ENABLE_MEDIA_CONTROLS_SCRIPT flag.
+
 2013-09-24  Bear Travis  <betravis@adobe.com>
 
         Disable CSS_SHAPES on Windows

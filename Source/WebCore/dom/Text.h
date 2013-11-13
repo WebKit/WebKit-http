@@ -47,9 +47,11 @@ public:
     String wholeText() const;
     PassRefPtr<Text> replaceWholeText(const String&, ExceptionCode&);
     
-    RenderText* createTextRenderer(RenderArena&, RenderStyle&);
+    RenderText* createTextRenderer(RenderStyle&);
     
     virtual bool canContainRangeEndPoint() const OVERRIDE FINAL { return true; }
+
+    RenderText* renderer() const;
 
 protected:
     Text(Document& document, const String& data, ConstructionType type)
@@ -66,30 +68,15 @@ private:
     virtual PassRefPtr<Text> virtualCreate(const String&);
 
 #ifndef NDEBUG
-    virtual void formatForDebugger(char* buffer, unsigned length) const;
+    virtual void formatForDebugger(char* buffer, unsigned length) const OVERRIDE;
 #endif
 };
 
-inline Text& toText(Node& node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(node.isTextNode());
-    return static_cast<Text&>(node);
-}
+inline bool isText(const Node& node) { return node.isTextNode(); }
+void isText(const Text&); // Catch unnecessary runtime check of type known at compile time.
+void isText(const ContainerNode&); // Catch unnecessary runtime check of type known at compile time.
 
-inline Text* toText(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isTextNode());
-    return static_cast<Text*>(node);
-}
-
-inline const Text* toText(const Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isTextNode());
-    return static_cast<const Text*>(node);
-}
-
-void toText(const Text&);
-void toText(const Text*);
+NODE_TYPE_CASTS(Text)
 
 } // namespace WebCore
 

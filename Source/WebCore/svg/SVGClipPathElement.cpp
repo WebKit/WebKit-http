@@ -100,7 +100,7 @@ void SVGClipPathElement::svgAttributeChanged(const QualifiedName& attrName)
     SVGElementInstance::InvalidationGuard invalidationGuard(this);
 
     if (RenderObject* object = renderer())
-        object->setNeedsLayout(true);
+        object->setNeedsLayout();
 }
 
 void SVGClipPathElement::childrenChanged(const ChildChange& change)
@@ -111,12 +111,12 @@ void SVGClipPathElement::childrenChanged(const ChildChange& change)
         return;
 
     if (RenderObject* object = renderer())
-        object->setNeedsLayout(true);
+        object->setNeedsLayout();
 }
 
-RenderElement* SVGClipPathElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGClipPathElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderSVGResourceClipper(*this);
+    return new RenderSVGResourceClipper(*this, std::move(style));
 }
 
 }

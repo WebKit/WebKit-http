@@ -25,21 +25,25 @@
 #define HTMLOptionsCollection_h
 
 #include "HTMLCollection.h"
+#include "HTMLSelectElement.h"
 
 namespace WebCore {
 
 class HTMLOptionElement;
-class HTMLSelectElement;
 
 typedef int ExceptionCode;
 
-class HTMLOptionsCollection : public HTMLCollection {
+class HTMLOptionsCollection FINAL : public HTMLCollection {
 public:
-    static PassRefPtr<HTMLOptionsCollection> create(Node*, CollectionType);
+    static PassRef<HTMLOptionsCollection> create(HTMLSelectElement&, CollectionType);
+
+    HTMLSelectElement& selectElement() { return toHTMLSelectElement(ownerNode()); }
+    const HTMLSelectElement& selectElement() const { return toHTMLSelectElement(ownerNode()); }
 
     void add(PassRefPtr<HTMLOptionElement>, ExceptionCode&);
     void add(PassRefPtr<HTMLOptionElement>, int index, ExceptionCode&);
     void remove(int index);
+    void remove(HTMLOptionElement*);
 
     int selectedIndex() const;
     void setSelectedIndex(int);
@@ -47,7 +51,7 @@ public:
     void setLength(unsigned, ExceptionCode&);
 
 private:
-    HTMLOptionsCollection(Node*);
+    explicit HTMLOptionsCollection(HTMLSelectElement&);
 };
 
 } //namespace

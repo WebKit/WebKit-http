@@ -30,8 +30,6 @@
 OBJC_CLASS NSMutableArray;
 #elif PLATFORM(WIN)
 #include <windows.h>
-#elif PLATFORM(QT)
-#include <qlist.h>
 #elif PLATFORM(GTK)
 typedef struct _GtkMenu GtkMenu;
 #elif PLATFORM(HAIKU)
@@ -43,9 +41,6 @@ namespace WebCore {
 #if !USE(CROSS_PLATFORM_CONTEXT_MENUS)
 #if PLATFORM(MAC)
     typedef NSMutableArray* PlatformMenuDescription;
-#elif PLATFORM(QT)
-    class ContextMenuItem;
-    typedef const QList<ContextMenuItem>* PlatformMenuDescription;
 #elif PLATFORM(GTK)
     typedef GtkMenu* PlatformMenuDescription;
 #elif PLATFORM(HAIKU)

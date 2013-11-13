@@ -223,10 +223,15 @@ public:
     AccessibilityTextMarkerRange textMarkerRangeForMarkers(AccessibilityTextMarker* startMarker, AccessibilityTextMarker* endMarker);
     AccessibilityTextMarker startTextMarkerForTextMarkerRange(AccessibilityTextMarkerRange*);
     AccessibilityTextMarker endTextMarkerForTextMarkerRange(AccessibilityTextMarkerRange*);
+    AccessibilityTextMarker endTextMarkerForBounds(int x, int y, int width, int height);
+    AccessibilityTextMarker startTextMarkerForBounds(int x, int y, int width, int height);
     AccessibilityTextMarker textMarkerForPoint(int x, int y);
     AccessibilityTextMarker previousTextMarker(AccessibilityTextMarker*);
     AccessibilityTextMarker nextTextMarker(AccessibilityTextMarker*);
     AccessibilityUIElement accessibilityElementForTextMarker(AccessibilityTextMarker*);
+    AccessibilityTextMarker startTextMarker();
+    AccessibilityTextMarker endTextMarker();
+    
     JSStringRef stringForTextMarkerRange(AccessibilityTextMarkerRange*);
     int textMarkerRangeLength(AccessibilityTextMarkerRange*);
     bool attributedStringForTextMarkerRangeContainsAttribute(JSStringRef, AccessibilityTextMarkerRange*);
@@ -276,7 +281,7 @@ private:
     NotificationHandler m_notificationHandler;
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
     RefPtr<AccessibilityNotificationHandler> m_notificationHandler;
 #endif
 };

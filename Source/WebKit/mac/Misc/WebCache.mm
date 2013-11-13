@@ -33,9 +33,9 @@
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/CrossOriginPreflightResultCache.h>
 #import <WebCore/MemoryCache.h>
-#import <WebCore/RunLoop.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
+#import <wtf/RunLoop.h>
 
 @implementation WebCache
 
@@ -43,7 +43,7 @@
 {
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
-    WebCore::RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMainRunLoop();
     InitWebCoreSystemInterface();   
 }
 
@@ -112,6 +112,18 @@
 #endif
             [NSNumber numberWithInt:s.scripts.purgedSize], @"JavaScript",
             nil],
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+        [NSDictionary dictionaryWithObjectsAndKeys:
+            [NSNumber numberWithInt:s.images.mappedSize], @"Images",
+            [NSNumber numberWithInt:s.cssStyleSheets.mappedSize] ,@"CSS",
+#if ENABLE(XSLT)
+            [NSNumber numberWithInt:s.xslStyleSheets.mappedSize], @"XSL",
+#else
+            [NSNumber numberWithInt:0], @"XSL",
+#endif
+            [NSNumber numberWithInt:s.scripts.mappedSize], @"JavaScript",
+            nil],
+#endif // ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
         nil];
 }
 

@@ -37,15 +37,15 @@
 using namespace WebCore;
 
 @interface WKUserDataWrapper : NSObject {
-    RefPtr<WebKit::APIObject> _webUserData;
+    RefPtr<API::Object> _webUserData;
 }
-- (id)initWithUserData:(WebKit::APIObject*)userData;
-- (WebKit::APIObject*)userData;
+- (id)initWithUserData:(API::Object*)userData;
+- (API::Object*)userData;
 @end
 
 @implementation WKUserDataWrapper
 
-- (id)initWithUserData:(WebKit::APIObject*)userData
+- (id)initWithUserData:(API::Object*)userData
 {
     self = [super init];
     if (!self)
@@ -55,7 +55,7 @@ using namespace WebCore;
     return self;
 }
 
-- (WebKit::APIObject*)userData
+- (API::Object*)userData
 {
     return _webUserData.get();
 }
@@ -220,8 +220,11 @@ void WebContextMenuProxyMac::showContextMenu(const IntPoint& menuLocation, const
     NSPoint location = NSMakePoint(NSMinX(menuRect), NSMaxY(menuRect) - vertOffset);
 
     location = [m_webView convertPoint:location toView:nil];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     location = [m_webView.window convertBaseToScreen:location];
- 
+#pragma clang diagnostic pop
+
     WKPopupContextMenu(menu, location);
 
     [m_popup.get() dismissPopUp];

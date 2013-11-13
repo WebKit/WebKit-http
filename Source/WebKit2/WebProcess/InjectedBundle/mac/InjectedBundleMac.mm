@@ -44,7 +44,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-bool InjectedBundle::load(APIObject* initializationUserData)
+bool InjectedBundle::load(API::Object* initializationUserData)
 {
     if (m_sandboxExtension) {
         if (!m_sandboxExtension->consumePermanently()) {
@@ -85,7 +85,7 @@ bool InjectedBundle::load(APIObject* initializationUserData)
         return true;
     }
     
-#if defined(__LP64__) && defined(__clang__)
+#if WK_API_ENABLED
     // Otherwise, look to see if the bundle has a principal class
     Class principalClass = [m_platformBundle principalClass];
     if (!principalClass) {
@@ -109,7 +109,7 @@ bool InjectedBundle::load(APIObject* initializationUserData)
 
     if ([instance respondsToSelector:@selector(webProcessPlugIn:initializeWithObject:)]) {
         RetainPtr<id> objCInitializationUserData;
-        if (initializationUserData && initializationUserData->type() == APIObject::TypeObjCObjectGraph)
+        if (initializationUserData && initializationUserData->type() == API::Object::TypeObjCObjectGraph)
             objCInitializationUserData = static_cast<ObjCObjectGraph*>(initializationUserData)->rootObject();
         [instance webProcessPlugIn:[WKWebProcessPlugInController _shared] initializeWithObject:objCInitializationUserData.get()];
     } else if ([instance respondsToSelector:@selector(webProcessPlugInInitialize:)]) {

@@ -56,7 +56,7 @@ bool HTMLBRElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLBRElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLBRElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == clearAttr) {
         // If the string is empty, then don't add the clear property.
@@ -71,12 +71,12 @@ void HTMLBRElement::collectStyleForPresentationAttribute(const QualifiedName& na
         HTMLElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
-RenderElement* HTMLBRElement::createRenderer(RenderArena& arena, RenderStyle& style)
+RenderElement* HTMLBRElement::createRenderer(PassRef<RenderStyle> style)
 {
-    if (style.hasContent())
-        return RenderElement::createFor(*this, style);
+    if (style.get().hasContent())
+        return RenderElement::createFor(*this, std::move(style));
 
-    return new (arena) RenderLineBreak(*this);
+    return new RenderLineBreak(*this, std::move(style));
 }
 
 }

@@ -45,19 +45,13 @@
 #include "HTMLUListElement.h"
 #include "NodeTraversal.h"
 #include "PositionIterator.h"
-#include "Range.h"
 #include "RenderElement.h"
 #include "ShadowRoot.h"
 #include "Text.h"
-#include "TextIterator.h"
-#include "VisiblePosition.h"
-#include "VisibleSelection.h"
 #include "VisibleUnits.h"
 #include <wtf/Assertions.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/unicode/CharacterNames.h>
-
-using namespace std;
 
 namespace WebCore {
 
@@ -260,8 +254,8 @@ VisiblePosition firstEditablePositionAfterPositionInRoot(const Position& positio
 
     Position p = position;
 
-    if (position.deprecatedNode()->treeScope() != highestRoot->treeScope()) {
-        Node* shadowAncestor = highestRoot->treeScope()->ancestorInThisScope(p.deprecatedNode());
+    if (&position.deprecatedNode()->treeScope() != &highestRoot->treeScope()) {
+        Node* shadowAncestor = highestRoot->treeScope().ancestorInThisScope(p.deprecatedNode());
         if (!shadowAncestor)
             return VisiblePosition();
 
@@ -285,8 +279,8 @@ VisiblePosition lastEditablePositionBeforePositionInRoot(const Position& positio
 
     Position p = position;
 
-    if (position.deprecatedNode()->treeScope() != highestRoot->treeScope()) {
-        Node* shadowAncestor = highestRoot->treeScope()->ancestorInThisScope(p.deprecatedNode());
+    if (&position.deprecatedNode()->treeScope() != &highestRoot->treeScope()) {
+        Node* shadowAncestor = highestRoot->treeScope().ancestorInThisScope(p.deprecatedNode());
         if (!shadowAncestor)
             return VisiblePosition();
 
@@ -332,7 +326,7 @@ TextDirection directionOfEnclosingBlock(const Position& position)
     auto renderer = block->renderer();
     if (!renderer)
         return LTR;
-    return renderer->style()->direction();
+    return renderer->style().direction();
 }
 
 // This method is used to create positions in the DOM. It returns the maximum valid offset
@@ -410,13 +404,13 @@ bool isSpecialElement(const Node *n)
     if (!renderer)
         return false;
         
-    if (renderer->style()->display() == TABLE || renderer->style()->display() == INLINE_TABLE)
+    if (renderer->style().display() == TABLE || renderer->style().display() == INLINE_TABLE)
         return true;
 
-    if (renderer->style()->isFloating())
+    if (renderer->style().isFloating())
         return true;
 
-    if (renderer->style()->position() != StaticPosition)
+    if (renderer->style().position() != StaticPosition)
         return true;
         
     return false;
@@ -537,46 +531,6 @@ VisiblePosition visiblePositionAfterNode(Node* node)
     return positionInParentAfterNode(node);
 }
 
-// Create a range object with two visible positions, start and end.
-// create(PassRefPtr<Document>, const Position&, const Position&); will use deprecatedEditingOffset
-// Use this function instead of create a regular range object (avoiding editing offset).
-PassRefPtr<Range> createRange(PassRefPtr<Document> document, const VisiblePosition& start, const VisiblePosition& end, ExceptionCode& ec)
-{
-    ec = 0;
-    RefPtr<Range> selectedRange = Range::create(document);
-    selectedRange->setStart(start.deepEquivalent().containerNode(), start.deepEquivalent().computeOffsetInContainerNode(), ec);
-    if (!ec)
-        selectedRange->setEnd(end.deepEquivalent().containerNode(), end.deepEquivalent().computeOffsetInContainerNode(), ec);
-    return selectedRange.release();
-}
-
-// Extend rangeToExtend to include nodes that wraps range and visibly starts and ends inside or at the boudnaries of maximumRange
-// e.g. if the original range spaned "hello" in <div>hello</div>, then this function extends the range to contain div's around it.
-// Call this function before copying / moving paragraphs to contain all wrapping nodes.
-// This function stops extending the range immediately below rootNode; i.e. the extended range can contain a child node of rootNode
-// but it can never contain rootNode itself.
-PassRefPtr<Range> extendRangeToWrappingNodes(PassRefPtr<Range> range, const Range* maximumRange, const Node* rootNode)
-{
-    ASSERT(range);
-    ASSERT(maximumRange);
-
-    Node* ancestor = range->commonAncestorContainer(IGNORE_EXCEPTION); // Find the closest common ancestor.
-    Node* highestNode = 0;
-    // traverse through ancestors as long as they are contained within the range, content-editable, and below rootNode (could be =0).
-    while (ancestor && ancestor->rendererIsEditable() && isNodeVisiblyContainedWithin(ancestor, maximumRange) && ancestor != rootNode) {
-        highestNode = ancestor;
-        ancestor = ancestor->parentNode();
-    }
-
-    if (!highestNode)
-        return range;
-
-    // Create new range with the highest editable node contained within the range
-    RefPtr<Range> extendedRange = Range::create(&range->ownerDocument());
-    extendedRange->selectNode(highestNode, IGNORE_EXCEPTION);
-    return extendedRange.release();
-}
-
 bool isListElement(Node *n)
 {
     return (n && (n->hasTagName(ulTag) || n->hasTagName(olTag) || n->hasTagName(dlTag)));
@@ -584,7 +538,7 @@ bool isListElement(Node *n)
 
 bool isListItem(const Node *n)
 {
-    return n && n->renderer() && n->renderer()->isListItem();
+    return n && (isListElement(n->parentNode()) || (n->renderer() && n->renderer()->isListItem()));
 }
 
 Node* enclosingNodeWithTag(const Position& p, const QualifiedName& tagName)
@@ -679,13 +633,13 @@ Node* enclosingTableCell(const Position& p)
 Element* enclosingAnchorElement(const Position& p)
 {
     if (p.isNull())
-        return 0;
+        return nullptr;
 
     for (Node* node = p.deprecatedNode(); node; node = node->parentNode()) {
         if (node->isElementNode() && node->isLink())
             return toElement(node);
     }
-    return 0;
+    return nullptr;
 }
 
 HTMLElement* enclosingList(Node* node)
@@ -860,7 +814,7 @@ bool isTableElement(Node* n)
         return false;
 
     RenderObject* renderer = n->renderer();
-    return (renderer && (renderer->style()->display() == TABLE || renderer->style()->display() == INLINE_TABLE));
+    return (renderer && (renderer->style().display() == TABLE || renderer->style().display() == INLINE_TABLE));
 }
 
 bool isTableCell(const Node* node)
@@ -1014,7 +968,7 @@ bool isNodeRendered(const Node* node)
     if (!renderer)
         return false;
 
-    return renderer->style()->visibility() == VISIBLE;
+    return renderer->style().visibility() == VISIBLE;
 }
 
 unsigned numEnclosingMailBlockquotes(const Position& p)
@@ -1099,7 +1053,7 @@ bool lineBreakExistsAtPosition(const Position& position)
     if (!position.anchorNode()->renderer())
         return false;
     
-    if (!position.anchorNode()->isTextNode() || !position.anchorNode()->renderer()->style()->preserveNewline())
+    if (!position.anchorNode()->isTextNode() || !position.anchorNode()->renderer()->style().preserveNewline())
         return false;
     
     Text* textNode = toText(position.anchorNode());
@@ -1155,8 +1109,7 @@ int indexForVisiblePosition(const VisiblePosition& visiblePosition, RefPtr<Conta
     else
         scope = document.documentElement();
 
-    RefPtr<Range> range = Range::create(&document, firstPositionInNode(scope.get()), p.parentAnchoredEquivalent());
-
+    RefPtr<Range> range = Range::create(document, firstPositionInNode(scope.get()), p.parentAnchoredEquivalent());
     return TextIterator::rangeLength(range.get(), true);
 }
 
@@ -1164,7 +1117,7 @@ int indexForVisiblePosition(const VisiblePosition& visiblePosition, RefPtr<Conta
 int indexForVisiblePosition(Node* node, const VisiblePosition& visiblePosition, bool forSelectionPreservation)
 {
     ASSERT(node);
-    RefPtr<Range> range = Range::create(&node->document(), firstPositionInNode(node), visiblePosition.deepEquivalent().parentAnchoredEquivalent());
+    RefPtr<Range> range = Range::create(node->document(), firstPositionInNode(node), visiblePosition.deepEquivalent().parentAnchoredEquivalent());
     return TextIterator::rangeLength(range.get(), forSelectionPreservation);
 }
 
@@ -1184,7 +1137,7 @@ VisiblePosition visiblePositionForIndexUsingCharacterIterator(Node* node, int in
     if (index <= 0)
         return VisiblePosition(firstPositionInOrBeforeNode(node), DOWNSTREAM);
 
-    RefPtr<Range> range = Range::create(&node->document());
+    RefPtr<Range> range = Range::create(node->document());
     range->selectNodeContents(node, IGNORE_EXCEPTION);
     CharacterIterator it(range.get());
     it.advance(index - 1);

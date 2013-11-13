@@ -33,9 +33,11 @@
 #include "DFGFinalizer.h"
 #include "FTLGeneratedFunction.h"
 #include "FTLJITCode.h"
+#include "FTLOSRExitCompilationInfo.h"
+#include "FTLSlowPathCall.h"
+#include "LLVMAPI.h"
 #include "LinkBuffer.h"
 #include "MacroAssembler.h"
-#include <wtf/LLVMHeaders.h>
 
 namespace JSC { namespace FTL {
 
@@ -44,36 +46,17 @@ public:
     JITFinalizer(DFG::Plan&);
     virtual ~JITFinalizer();
     
-    void initializeExitThunksLinkBuffer(PassOwnPtr<LinkBuffer> buffer)
-    {
-        m_exitThunksLinkBuffer = buffer;
-    }
-    void initializeEntrypointLinkBuffer(PassOwnPtr<LinkBuffer> buffer)
-    {
-        m_entrypointLinkBuffer = buffer;
-    }
-    void initializeFunction(GeneratedFunction function)
-    {
-        m_function = function;
-    }
-    void initializeArityCheck(MacroAssembler::Label label)
-    {
-        m_arityCheck = label;
-    }
-    void initializeJITCode(PassRefPtr<JITCode> jitCode)
-    {
-        m_jitCode = jitCode;
-    }
-    
     bool finalize();
     bool finalizeFunction();
 
-private:
-    OwnPtr<LinkBuffer> m_exitThunksLinkBuffer;
-    OwnPtr<LinkBuffer> m_entrypointLinkBuffer;
-    MacroAssembler::Label m_arityCheck;
-    GeneratedFunction m_function;
-    RefPtr<JITCode> m_jitCode;
+    OwnPtr<LinkBuffer> exitThunksLinkBuffer;
+    OwnPtr<LinkBuffer> entrypointLinkBuffer;
+    OwnPtr<LinkBuffer> sideCodeLinkBuffer;
+    Vector<SlowPathCall> slowPathCalls; // Calls inside the side code.
+    Vector<OSRExitCompilationInfo> osrExit;
+    MacroAssembler::Label arityCheck;
+    GeneratedFunction function;
+    RefPtr<JITCode> jitCode;
 };
 
 } } // namespace JSC::FTL

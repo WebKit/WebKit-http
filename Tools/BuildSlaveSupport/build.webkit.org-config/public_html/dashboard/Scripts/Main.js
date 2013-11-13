@@ -23,15 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-var webkitBuildbot = new WebKitBuildbot;
-
 var categorizedQueuesByPlatformAndBuildType = {};
 
-for (var id in webkitBuildbot.queues) {
-    var queue = webkitBuildbot.queues[id];
+for (var id in buildbot.queues) {
+    var queue = buildbot.queues[id];
     var platform = categorizedQueuesByPlatformAndBuildType[queue.platform];
     if (!platform)
         platform = categorizedQueuesByPlatformAndBuildType[queue.platform] = {};
+    if (!platform.builders)
+        platform.builders = {};
 
     var categoryName;
     if (queue.builder) {
@@ -60,6 +60,20 @@ var testNames = {};
 testNames[Buildbot.TestCategory.WebKit2] = "WK2 Tests";
 testNames[Buildbot.TestCategory.WebKit1] = "WK1 Tests";
 
+function sortedPlatforms()
+{
+    var platforms = [];
+
+    for (var platformKey in Buildbot.Platform)
+        platforms.push(Buildbot.Platform[platformKey]);
+
+    platforms.sort(function(a, b) {
+        return a.order - b.order;
+    });
+    
+    return platforms;
+}
+
 function documentReady()
 {
     var table = document.createElement("table");
@@ -84,20 +98,24 @@ function documentReady()
 
     table.appendChild(row);
 
-    for (var platformKey in Buildbot.Platform) {
-        var platformQueues = categorizedQueuesByPlatformAndBuildType[Buildbot.Platform[platformKey]];
+    var platforms = sortedPlatforms();
+
+    for (var i in platforms) {
+        var platform = platforms[i];
+        var platformQueues = categorizedQueuesByPlatformAndBuildType[platform.name];
         if (!platformQueues)
             continue;
 
         var row = document.createElement("tr");
         row.classList.add("platform");
-        row.classList.add(Buildbot.Platform[platformKey]);
+        row.classList.add(platform.name);
 
         var cell = document.createElement("td");
         cell.classList.add("logo");
 
         var ringImage = document.createElement("img");
         ringImage.classList.add("ring");
+        ringImage.title = platform.readableName;
         cell.appendChild(ringImage);
 
         var logoImage = document.createElement("img");

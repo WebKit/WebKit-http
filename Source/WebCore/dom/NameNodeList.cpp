@@ -23,16 +23,13 @@
 #include "config.h"
 #include "NameNodeList.h"
 
-#include "Element.h"
-#include "HTMLNames.h"
 #include "NodeRareData.h"
-#include <wtf/Assertions.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
 
-NameNodeList::NameNodeList(PassRefPtr<Node> rootNode, const AtomicString& name)
+NameNodeList::NameNodeList(ContainerNode& rootNode, const AtomicString& name)
     : LiveNodeList(rootNode, NameNodeListType, InvalidateOnNameAttrChange)
     , m_name(name)
 {
@@ -40,7 +37,7 @@ NameNodeList::NameNodeList(PassRefPtr<Node> rootNode, const AtomicString& name)
 
 NameNodeList::~NameNodeList()
 {
-    ownerNode()->nodeLists()->removeCacheWithAtomicName(this, NameNodeListType, m_name);
+    ownerNode().nodeLists()->removeCacheWithAtomicName(this, m_name);
 } 
 
 bool NameNodeList::nodeMatches(Element* testNode) const

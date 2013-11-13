@@ -26,7 +26,7 @@
 #include "config.h"
 #include "WKContextMenuItem.h"
 
-#include "MutableArray.h"
+#include "ImmutableArray.h"
 #include "WebContextMenuItem.h"
 #include "WebContextMenuItemData.h"
 #include "WKAPICast.h"
@@ -44,7 +44,7 @@ WKTypeID WKContextMenuItemGetTypeID()
 #if ENABLE(CONTEXT_MENUS)
     return toAPI(WebContextMenuItem::APIType);
 #else
-    return toAPI(APIObject::TypeNull);
+    return toAPI(API::Object::TypeNull);
 #endif
 }
 

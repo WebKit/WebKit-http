@@ -90,15 +90,15 @@ public:
     bool contains(const KeyType&) const;
     MappedPeekType get(const KeyType&) const;
 
-    // replaces value but not key if key is already present
-    // return value is a pair of the iterator to the key location, 
-    // and a boolean that's true if a new value was actually added
+    // Replaces the value but not the key if the key is already present.
+    // Return value includes both an iterator to the key location,
+    // and an isNewEntry boolean that's true if a new entry was added.
     template<typename V> AddResult set(const KeyType&, V&&);
     template<typename V> AddResult set(KeyType&&, V&&);
 
-    // does nothing if key is already present
-    // return value is a pair of the iterator to the key location, 
-    // and a boolean that's true if a new value was actually added
+    // Does nothing if the key is already present.
+    // Return value includes both an iterator to the key location,
+    // and an isNewEntry boolean that's true if a new entry was added.
     template<typename V> AddResult add(const KeyType&, V&&);
     template<typename V> AddResult add(KeyType&&, V&&);
 
@@ -467,15 +467,6 @@ template<typename T, typename U, typename V, typename W, typename X>
 inline bool operator!=(const HashMap<T, U, V, W, X>& a, const HashMap<T, U, V, W, X>& b)
 {
     return !(a == b);
-}
-
-template<typename T, typename U, typename V, typename W, typename X>
-inline void deleteAllValues(const HashMap<T, U, V, W, X>& collection)
-{
-    typedef typename HashMap<T, U, V, W, X>::const_iterator iterator;
-    iterator end = collection.end();
-    for (iterator it = collection.begin(); it != end; ++it)
-        delete it->value;
 }
 
 template<typename T, typename U, typename V, typename W, typename X, typename Y>

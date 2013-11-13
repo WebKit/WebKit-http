@@ -48,15 +48,15 @@ namespace WebCore {
 
 static const double progressNotificationIntervalMS = 50;
 
-PassRefPtr<FileReader> FileReader::create(ScriptExecutionContext* context)
+PassRefPtr<FileReader> FileReader::create(ScriptExecutionContext& context)
 {
     RefPtr<FileReader> fileReader(adoptRef(new FileReader(context)));
     fileReader->suspendIfNeeded();
     return fileReader.release();
 }
 
-FileReader::FileReader(ScriptExecutionContext* context)
-    : ActiveDOMObject(context)
+FileReader::FileReader(ScriptExecutionContext& context)
+    : ActiveDOMObject(&context)
     , m_state(EMPTY)
     , m_aborting(false)
     , m_readType(FileReaderLoader::ReadAsBinaryString)
@@ -141,7 +141,7 @@ void FileReader::readInternal(Blob* blob, FileReaderLoader::ReadType type, Excep
     m_state = LOADING;
     m_error = 0;
 
-    m_loader = adoptPtr(new FileReaderLoader(m_readType, this));
+    m_loader = std::make_unique<FileReaderLoader>(m_readType, this);
     m_loader->setEncoding(m_encoding);
     m_loader->setDataType(m_blob->type());
     m_loader->start(scriptExecutionContext(), m_blob.get());

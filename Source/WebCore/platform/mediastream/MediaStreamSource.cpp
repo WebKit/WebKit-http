@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,26 +36,37 @@
 
 #include "MediaStreamSource.h"
 
-#include "AudioDestinationConsumer.h"
+#include "MediaStreamCenter.h"
+#include "MediaStreamSourceCapabilities.h"
+#include "UUID.h"
+
 #include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
-PassRefPtr<MediaStreamSource> MediaStreamSource::create(const String& id, Type type, const String& name, ReadyState readyState, bool requiresConsumer)
-{
-    return adoptRef(new MediaStreamSource(id, type, name, readyState, requiresConsumer));
-}
-
-MediaStreamSource::MediaStreamSource(const String& id, Type type, const String& name, ReadyState readyState, bool requiresConsumer)
+MediaStreamSource::MediaStreamSource(const String& id, Type type, const String& name)
     : m_id(id)
     , m_type(type)
     , m_name(name)
-    , m_readyState(readyState)
-    , m_stream(0)
-    , m_requiresConsumer(requiresConsumer)
+    , m_readyState(New)
     , m_enabled(true)
     , m_muted(false)
+    , m_readonly(false)
+    , m_remote(false)
 {
+    if (!m_id.isEmpty())
+        return;
+    
+    m_id = createCanonicalUUIDString();
+}
+
+void MediaStreamSource::reset()
+{
+    m_readyState = New;
+    m_enabled = true;
+    m_muted = false;
+    m_readonly = false;
+    m_remote = false;
 }
 
 void MediaStreamSource::setReadyState(ReadyState readyState)
@@ -62,8 +75,17 @@ void MediaStreamSource::setReadyState(ReadyState readyState)
         return;
 
     m_readyState = readyState;
-    for (Vector<Observer*>::iterator i = m_observers.begin(); i != m_observers.end(); ++i)
-        (*i)->sourceChangedState();
+    for (auto observer = m_observers.begin(); observer != m_observers.end(); ++observer)
+        (*observer)->sourceReadyStateChanged();
+
+    if (m_readyState == Live) {
+        startProducingData();
+        return;
+    }
+    
+    // There are no more consumers of this source's data, shut it down as appropriate.
+    if (m_readyState == Ended)
+        stopProducingData();
 }
 
 void MediaStreamSource::addObserver(MediaStreamSource::Observer* observer)
@@ -76,12 +98,9 @@ void MediaStreamSource::removeObserver(MediaStreamSource::Observer* observer)
     size_t pos = m_observers.find(observer);
     if (pos != notFound)
         m_observers.remove(pos);
-}
 
-void MediaStreamSource::setStream(MediaStreamDescriptor* stream)
-{
-    ASSERT(!m_stream && stream);
-    m_stream = stream;
+    if (!m_observers.size())
+        stop();
 }
 
 void MediaStreamSource::setMuted(bool muted)
@@ -90,43 +109,52 @@ void MediaStreamSource::setMuted(bool muted)
         return;
 
     m_muted = muted;
-    for (Vector<Observer*>::iterator i = m_observers.begin(); i != m_observers.end(); ++i)
-        (*i)->sourceChangedState();
+
+    if (m_readyState == Ended)
+        return;
+
+    for (auto observer = m_observers.begin(); observer != m_observers.end(); ++observer)
+        (*observer)->sourceMutedChanged();
 }
 
-void MediaStreamSource::addAudioConsumer(PassRefPtr<AudioDestinationConsumer> consumer)
+void MediaStreamSource::setEnabled(bool enabled)
 {
-    ASSERT(m_requiresConsumer);
-    MutexLocker locker(m_audioConsumersLock);
-    m_audioConsumers.append(consumer);
-}
-
-bool MediaStreamSource::removeAudioConsumer(AudioDestinationConsumer* consumer)
-{
-    ASSERT(m_requiresConsumer);
-    MutexLocker locker(m_audioConsumersLock);
-    size_t pos = m_audioConsumers.find(consumer);
-    if (pos != notFound) {
-        m_audioConsumers.remove(pos);
-        return true;
+    if (!enabled) {
+        // Don't disable the source unless all observers are disabled.
+        for (auto observer = m_observers.begin(); observer != m_observers.end(); ++observer) {
+            if ((*observer)->observerIsEnabled())
+                return;
+        }
     }
-    return false;
+
+    if (m_enabled == enabled)
+        return;
+
+    m_enabled = enabled;
+
+    if (m_readyState == Ended)
+        return;
+
+    if (!enabled)
+        stopProducingData();
+    else
+        startProducingData();
+
+    for (auto observer = m_observers.begin(); observer != m_observers.end(); ++observer)
+        (*observer)->sourceEnabledChanged();
 }
 
-void MediaStreamSource::setAudioFormat(size_t numberOfChannels, float sampleRate)
+bool MediaStreamSource::readonly() const
 {
-    ASSERT(m_requiresConsumer);
-    MutexLocker locker(m_audioConsumersLock);
-    for (Vector<RefPtr<AudioDestinationConsumer> >::iterator it = m_audioConsumers.begin(); it != m_audioConsumers.end(); ++it)
-        (*it)->setFormat(numberOfChannels, sampleRate);
+    return m_readonly;
 }
 
-void MediaStreamSource::consumeAudio(AudioBus* bus, size_t numberOfFrames)
+void MediaStreamSource::stop()
 {
-    ASSERT(m_requiresConsumer);
-    MutexLocker locker(m_audioConsumersLock);
-    for (Vector<RefPtr<AudioDestinationConsumer> >::iterator it = m_audioConsumers.begin(); it != m_audioConsumers.end(); ++it)
-        (*it)->consumeAudio(bus, numberOfFrames);
+    // This is called from the track.stop() method, which should "Permanently stop the generation of data
+    // for track's source", so go straight to ended. This will notify any other tracks using this source
+    // that it is no longer available.
+    setReadyState(Ended);
 }
 
 } // namespace WebCore

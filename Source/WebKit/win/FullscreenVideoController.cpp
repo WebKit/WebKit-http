@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(VIDEO)
+#if ENABLE(VIDEO) && !USE(GSTREAMER)
 
 #include "FullscreenVideoController.h"
 
@@ -39,7 +39,7 @@
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/HWndDC.h>
 #include <WebCore/Page.h>
-#include <WebCore/PlatformCALayer.h>
+#include <WebCore/PlatformCALayerWin.h>
 #include <WebCore/TextRun.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
 #include <windowsx.h>
@@ -187,16 +187,16 @@ private:
 
     virtual void platformCALayerAnimationStarted(CFTimeInterval beginTime) { }
     virtual GraphicsLayer::CompositingCoordinatesOrientation platformCALayerContentsOrientation() const { return GraphicsLayer::CompositingCoordinatesBottomUp; }
-    virtual void platformCALayerPaintContents(GraphicsContext&, const IntRect& inClip) { }
+    virtual void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const IntRect& inClip) { }
     virtual bool platformCALayerShowDebugBorders() const { return false; }
     virtual bool platformCALayerShowRepaintCounter(PlatformCALayer*) const { return false; }
-    virtual int platformCALayerIncrementRepaintCount() { return 0; }
+    virtual int platformCALayerIncrementRepaintCount(PlatformCALayer*) { return 0; }
 
     virtual bool platformCALayerContentsOpaque() const { return false; }
     virtual bool platformCALayerDrawsContent() const { return false; }
     virtual void platformCALayerLayerDidDisplay(PlatformLayer*) { }
     virtual void platformCALayerDidCreateTiles(const Vector<FloatRect>&) { }
-    virtual float platformCALayerDeviceScaleFactor() { return 1; }
+    virtual float platformCALayerDeviceScaleFactor() const OVERRIDE { return 1; }
 
     FullscreenVideoController* m_parent;
 };
@@ -229,7 +229,8 @@ void FullscreenVideoController::LayerClient::platformCALayerLayoutSublayersOfLay
     FloatPoint videoOrigin;
     videoOrigin.setX((layerBounds.width() - videoSize.width()) * 0.5);
     videoOrigin.setY((layerBounds.height() - videoSize.height()) * 0.5);
-    videoLayer->setFrame(FloatRect(videoOrigin, videoSize));
+    videoLayer->setPosition(videoOrigin);
+    videoLayer->setBounds(FloatRect(FloatPoint(), videoSize));
 }
 #endif 
 
@@ -248,7 +249,7 @@ FullscreenVideoController::FullscreenVideoController()
     , m_timer(this, &FullscreenVideoController::timerFired)
 #if USE(ACCELERATED_COMPOSITING)
     , m_layerClient(adoptPtr(new LayerClient(this)))
-    , m_rootChild(PlatformCALayer::create(PlatformCALayer::LayerTypeLayer, m_layerClient.get()))
+    , m_rootChild(PlatformCALayerWin::create(PlatformCALayer::LayerTypeLayer, m_layerClient.get()))
 #endif
     , m_fullscreenWindow(adoptPtr(new MediaPlayerPrivateFullscreenWindow(this)))
 {

@@ -609,9 +609,6 @@ void GraphicsLayerTextureMapper::updateBackingStoreIfNeeded()
     if (dirtyRect.isEmpty())
         return;
 
-#if PLATFORM(QT) && !defined(QT_NO_DYNAMIC_CAST)
-    ASSERT(dynamic_cast<TextureMapperTiledBackingStore*>(m_backingStore.get()));
-#endif
     TextureMapperTiledBackingStore* backingStore = static_cast<TextureMapperTiledBackingStore*>(m_backingStore.get());
 
     backingStore->updateContents(textureMapper, this, m_size, dirtyRect, BitmapTexture::UpdateCanModifyOriginalImageData);
@@ -670,6 +667,10 @@ void GraphicsLayerTextureMapper::removeAnimation(const String& animationName)
 #if ENABLE(CSS_FILTERS)
 bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
 {
+    TextureMapper* textureMapper = m_layer->textureMapper();
+    // TextureMapperImageBuffer does not support CSS filters.
+    if (!textureMapper || textureMapper->accelerationMode() == TextureMapper::SoftwareMode)
+        return false;
     notifyChange(FilterChange);
     return GraphicsLayer::setFilters(filters);
 }

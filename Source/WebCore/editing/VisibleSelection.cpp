@@ -28,9 +28,7 @@
 
 #include "Document.h"
 #include "Element.h"
-#include "Range.h"
 #include "TextIterator.h"
-#include "VisiblePosition.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
 #include <stdio.h>
@@ -130,7 +128,7 @@ PassRefPtr<Range> VisibleSelection::firstRange() const
         return 0;
     Position start = m_start.parentAnchoredEquivalent();
     Position end = m_end.parentAnchoredEquivalent();
-    return Range::create(&start.anchorNode()->document(), start, end);
+    return Range::create(start.anchorNode()->document(), start, end);
 }
 
 PassRefPtr<Range> VisibleSelection::toNormalizedRange() const
@@ -186,7 +184,7 @@ PassRefPtr<Range> VisibleSelection::toNormalizedRange() const
 
     // VisibleSelections are supposed to always be valid.  This constructor will ASSERT
     // if a valid range could not be created, which is fine for this callsite.
-    return Range::create(&s.anchorNode()->document(), s, e);
+    return Range::create(s.anchorNode()->document(), s, e);
 }
 
 bool VisibleSelection::expandUsingGranularity(TextGranularity granularity)
@@ -210,7 +208,7 @@ static PassRefPtr<Range> makeSearchRange(const Position& pos)
     if (!boundary)
         return 0;
 
-    RefPtr<Range> searchRange(Range::create(&n->document()));
+    RefPtr<Range> searchRange(Range::create(n->document()));
     ExceptionCode ec = 0;
 
     Position start(pos.parentAnchoredEquivalent());
@@ -463,17 +461,17 @@ void VisibleSelection::setWithoutValidation(const Position& base, const Position
 
 static Position adjustPositionForEnd(const Position& currentPosition, Node* startContainerNode)
 {
-    TreeScope* treeScope = startContainerNode->treeScope();
+    TreeScope& treeScope = startContainerNode->treeScope();
 
-    ASSERT(currentPosition.containerNode()->treeScope() != treeScope);
+    ASSERT(&currentPosition.containerNode()->treeScope() != &treeScope);
 
-    if (Node* ancestor = treeScope->ancestorInThisScope(currentPosition.containerNode())) {
+    if (Node* ancestor = treeScope.ancestorInThisScope(currentPosition.containerNode())) {
         if (ancestor->contains(startContainerNode))
             return positionAfterNode(ancestor);
         return positionBeforeNode(ancestor);
     }
 
-    if (Node* lastChild = treeScope->rootNode()->lastChild())
+    if (Node* lastChild = treeScope.rootNode()->lastChild())
         return positionAfterNode(lastChild);
 
     return Position();
@@ -481,17 +479,17 @@ static Position adjustPositionForEnd(const Position& currentPosition, Node* star
 
 static Position adjustPositionForStart(const Position& currentPosition, Node* endContainerNode)
 {
-    TreeScope* treeScope = endContainerNode->treeScope();
+    TreeScope& treeScope = endContainerNode->treeScope();
 
-    ASSERT(currentPosition.containerNode()->treeScope() != treeScope);
+    ASSERT(&currentPosition.containerNode()->treeScope() != &treeScope);
     
-    if (Node* ancestor = treeScope->ancestorInThisScope(currentPosition.containerNode())) {
+    if (Node* ancestor = treeScope.ancestorInThisScope(currentPosition.containerNode())) {
         if (ancestor->contains(endContainerNode))
             return positionBeforeNode(ancestor);
         return positionAfterNode(ancestor);
     }
 
-    if (Node* firstChild = treeScope->rootNode()->firstChild())
+    if (Node* firstChild = treeScope.rootNode()->firstChild())
         return positionBeforeNode(firstChild);
 
     return Position();
@@ -502,7 +500,7 @@ void VisibleSelection::adjustSelectionToAvoidCrossingShadowBoundaries()
     if (m_base.isNull() || m_start.isNull() || m_end.isNull())
         return;
 
-    if (m_start.anchorNode()->treeScope() == m_end.anchorNode()->treeScope())
+    if (&m_start.anchorNode()->treeScope() == &m_end.anchorNode()->treeScope())
         return;
 
     if (m_baseIsFirst) {
@@ -513,7 +511,7 @@ void VisibleSelection::adjustSelectionToAvoidCrossingShadowBoundaries()
         m_start = m_extent;
     }
 
-    ASSERT(m_start.anchorNode()->treeScope() == m_end.anchorNode()->treeScope());
+    ASSERT(&m_start.anchorNode()->treeScope() == &m_end.anchorNode()->treeScope());
 }
 
 void VisibleSelection::adjustSelectionToAvoidCrossingEditingBoundaries()

@@ -32,7 +32,6 @@
 #include "XMLHttpRequest.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
@@ -43,20 +42,16 @@ namespace WebCore {
     class ScriptExecutionContext;
     class XMLHttpRequest;
 
-    // FIXME: This class should be marked FINAL once <http://webkit.org/b/121747> is fixed.
-    class XMLHttpRequestUpload : public EventTargetWithInlineData {
+    class XMLHttpRequestUpload FINAL : public EventTargetWithInlineData {
     public:
-        static PassOwnPtr<XMLHttpRequestUpload> create(XMLHttpRequest* xmlHttpRequest)
-        {
-            return adoptPtr(new XMLHttpRequestUpload(xmlHttpRequest));
-        }
+        explicit XMLHttpRequestUpload(XMLHttpRequest*);
 
         void ref() { m_xmlHttpRequest->ref(); }
         void deref() { m_xmlHttpRequest->deref(); }
         XMLHttpRequest* xmlHttpRequest() const { return m_xmlHttpRequest; }
 
-        virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL { return XMLHttpRequestUploadEventTargetInterfaceType; }
-        virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL { return m_xmlHttpRequest->scriptExecutionContext(); }
+        virtual EventTargetInterface eventTargetInterface() const OVERRIDE { return XMLHttpRequestUploadEventTargetInterfaceType; }
+        virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE { return m_xmlHttpRequest->scriptExecutionContext(); }
 
         DEFINE_ATTRIBUTE_EVENT_LISTENER(abort);
         DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
@@ -68,8 +63,6 @@ namespace WebCore {
         void dispatchEventAndLoadEnd(PassRefPtr<Event>);
 
     private:
-        explicit XMLHttpRequestUpload(XMLHttpRequest*);
-
         virtual void refEventTarget() OVERRIDE FINAL { ref(); }
         virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
 

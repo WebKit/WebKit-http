@@ -47,8 +47,8 @@ public:
     virtual void insert(const SegmentedString&) = 0;
 
     // appendBytes and flush are used by DocumentWriter (the loader).
-    virtual void appendBytes(DocumentWriter*, const char* bytes, size_t length) = 0;
-    virtual void flush(DocumentWriter*) = 0;
+    virtual void appendBytes(DocumentWriter&, const char* bytes, size_t length) = 0;
+    virtual void flush(DocumentWriter&) = 0;
 
     virtual void pinToMainThread() { }
 
@@ -100,7 +100,7 @@ public:
     virtual void resumeScheduledTasks();
 
 protected:
-    explicit DocumentParser(Document*);
+    explicit DocumentParser(Document&);
 
 private:
     enum ParserState {

@@ -43,12 +43,6 @@
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/AtomicStringHash.h>
 
-#if PLATFORM(QT)
-QT_BEGIN_NAMESPACE
-class QNetworkAccessManager;
-QT_END_NAMESPACE
-#endif
-
 #if PLATFORM(MAC)
 #include <dispatch/dispatch.h>
 #endif
@@ -78,6 +72,14 @@ struct WebProcessCreationParameters;
 #if ENABLE(NETWORK_PROCESS)
 class NetworkProcessConnection;
 class WebResourceLoadScheduler;
+#else
+#if USE(SOUP)
+class PlatformCertificateInfo;
+#endif
+#endif
+
+#if ENABLE(DATABASE_PROCESS)
+class WebToDatabaseProcessConnection;
 #endif
 
 class WebProcess : public ChildProcess, private DownloadManager::Client {
@@ -139,10 +141,6 @@ public:
     const TextCheckerState& textCheckerState() const { return m_textCheckerState; }
     DownloadManager& downloadManager();
 
-#if PLATFORM(QT)
-    QNetworkAccessManager* networkAccessManager() { return m_networkAccessManager; }
-#endif
-
     void clearResourceCaches(ResourceCachesToClear = AllResourceCaches);
     
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -158,6 +156,11 @@ public:
     WebResourceLoadScheduler& webResourceLoadScheduler();
 #endif
 
+#if ENABLE(DATABASE_PROCESS)
+    void webToDatabaseProcessConnectionClosed(WebToDatabaseProcessConnection*);
+    WebToDatabaseProcessConnection* webToDatabaseProcessConnection();
+#endif
+
     void setCacheModel(uint32_t);
 
     void ensurePrivateBrowsingSession();
@@ -169,6 +172,10 @@ public:
     void nonVisibleProcessCleanupTimerFired(WebCore::Timer<WebProcess>*);
 
     void updateActivePages();
+
+#if !ENABLE(NETWORK_PROCESS) && USE(SOUP)
+    void allowSpecificHTTPSCertificateForHost(const PlatformCertificateInfo&, const String& host);
+#endif
 
 private:
     WebProcess();
@@ -215,9 +222,6 @@ private:
 
     void downloadRequest(uint64_t downloadID, uint64_t initiatingPageID, const WebCore::ResourceRequest&);
     void cancelDownload(uint64_t downloadID);
-#if PLATFORM(QT)
-    void startTransfer(uint64_t downloadID, const String& destination);
-#endif
 
     void setTextCheckerState(const TextCheckerState&);
     
@@ -240,6 +244,10 @@ private:
     virtual void initializeConnection(CoreIPC::Connection*) OVERRIDE;
     virtual bool shouldTerminate() OVERRIDE;
     virtual void terminate() OVERRIDE;
+
+#if PLATFORM(MAC)
+    virtual void stopRunLoop() OVERRIDE;
+#endif
 
     void platformInitializeProcess(const ChildProcessInitializationParameters&);
 
@@ -284,10 +292,6 @@ private:
 
     bool m_fullKeyboardAccessEnabled;
 
-#if PLATFORM(QT)
-    QNetworkAccessManager* m_networkAccessManager;
-#endif
-
     HashMap<uint64_t, WebFrame*> m_frameMap;
 
     typedef HashMap<const char*, OwnPtr<WebProcessSupplement>, PtrHash<const char*>> WebProcessSupplementMap;
@@ -302,6 +306,11 @@ private:
     RefPtr<NetworkProcessConnection> m_networkProcessConnection;
     bool m_usesNetworkProcess;
     WebResourceLoadScheduler* m_webResourceLoadScheduler;
+#endif
+
+#if ENABLE(DATABASE_PROCESS)
+    void ensureWebToDatabaseProcessConnection();
+    RefPtr<WebToDatabaseProcessConnection> m_webToDatabaseProcessConnection;
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

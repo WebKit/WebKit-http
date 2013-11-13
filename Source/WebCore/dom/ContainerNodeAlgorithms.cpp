@@ -26,8 +26,6 @@
 #include "config.h"
 #include "ContainerNodeAlgorithms.h"
 
-#include "Element.h"
-#include "HTMLFrameOwnerElement.h"
 
 namespace WebCore {
 
@@ -105,7 +103,7 @@ unsigned assertConnectedSubrameCountIsConsistent(Node& node)
     unsigned count = 0;
 
     if (node.isElementNode()) {
-        if (node.isFrameOwnerElement() && toFrameOwnerElement(node).contentFrame())
+        if (node.isFrameOwnerElement() && toHTMLFrameOwnerElement(node).contentFrame())
             count++;
 
         if (ShadowRoot* root = toElement(node).shadowRoot())

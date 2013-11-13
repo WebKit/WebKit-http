@@ -40,7 +40,7 @@ namespace JSC {
 
 class RegExpCache : private WeakHandleOwner {
 friend class RegExp;
-typedef HashMap<RegExpKey, Weak<RegExp> > RegExpCacheMap;
+typedef HashMap<RegExpKey, Weak<RegExp>> RegExpCacheMap;
 
 public:
     RegExpCache(VM* vm);
@@ -52,7 +52,7 @@ private:
 
     static const int maxStrongCacheableEntries = 32;
 
-    virtual void finalize(Handle<Unknown>, void* context);
+    virtual void finalize(Handle<Unknown>, void* context) OVERRIDE;
 
     RegExp* lookupOrCreate(const WTF::String& patternString, RegExpFlags);
     void addToStrongCache(RegExp*);

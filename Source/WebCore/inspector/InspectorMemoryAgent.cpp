@@ -41,13 +41,11 @@
 #include "Frame.h"
 #include "InspectorDOMStorageAgent.h"
 #include "InspectorFrontend.h"
-#include "InspectorState.h"
 #include "InspectorValues.h"
 #include "InstrumentingAgents.h"
 #include "MemoryCache.h"
 #include "Node.h"
 #include "NodeTraversal.h"
-#include "ScriptGCEvent.h"
 #include "ScriptProfiler.h"
 #include "StyledElement.h"
 #include <runtime/ArrayBufferView.h>
@@ -76,15 +74,15 @@ void InspectorMemoryAgent::getDOMCounters(ErrorString*, int* documents, int* nod
     *jsEventListeners = ThreadLocalInspectorCounters::current().counterValue(ThreadLocalInspectorCounters::JSEventListenerCounter);
 }
 
-InspectorMemoryAgent::InspectorMemoryAgent(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* state)
-    : InspectorBaseAgent<InspectorMemoryAgent>("Memory", instrumentingAgents, state)
+InspectorMemoryAgent::InspectorMemoryAgent(InstrumentingAgents* instrumentingAgents)
+    : InspectorBaseAgent<InspectorMemoryAgent>("Memory", instrumentingAgents)
     , m_frontend(0)
 {
 }
 
-PassOwnPtr<InspectorMemoryAgent> InspectorMemoryAgent::create(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* state)
+PassOwnPtr<InspectorMemoryAgent> InspectorMemoryAgent::create(InstrumentingAgents* instrumentingAgents)
 {
-    return adoptPtr(new InspectorMemoryAgent(instrumentingAgents, state));
+    return adoptPtr(new InspectorMemoryAgent(instrumentingAgents));
 }
 
 

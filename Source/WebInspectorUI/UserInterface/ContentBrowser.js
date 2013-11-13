@@ -152,14 +152,15 @@ WebInspector.ContentBrowser.prototype = {
         this._contentViewContainer.updateLayout();
     },
 
-    showContentViewForRepresentedObject: function(representedObject)
+    showContentViewForRepresentedObject: function(representedObject, cookie)
     {
-        return this._contentViewContainer.showContentViewForRepresentedObject(representedObject);
+        var contentView = this.contentViewForRepresentedObject(representedObject);
+        return this._contentViewContainer.showContentView(contentView, cookie);
     },
 
-    showContentView: function(contentView)
+    showContentView: function(contentView, cookie)
     {
-        return this._contentViewContainer.showContentView(contentView);
+        return this._contentViewContainer.showContentView(contentView, cookie);
     },
 
     contentViewForRepresentedObject: function(representedObject, onlyExisting)
@@ -411,7 +412,7 @@ WebInspector.ContentBrowser.prototype = {
 
         // Go through each of the items of the new content view and add a divider before them.
         currentContentView.navigationItems.forEach(function(navigationItem, index) {
-            // Add dividers before items unless it's the first item and not a button. 
+            // Add dividers before items unless it's the first item and not a button.
             if (index !== 0 || navigationItem instanceof WebInspector.ButtonNavigationItem) {
                 var divider = new WebInspector.DividerNavigationItem;
                 navigationBar.insertNavigationItem(divider, insertionIndex++);
@@ -433,7 +434,7 @@ WebInspector.ContentBrowser.prototype = {
             this._findBanner.numberOfResults = null;
             return;
         }
-        
+
         this._findBanner.targetElement = currentContentView.element;
         this._findBanner.numberOfResults = currentContentView.hasPerformedSearch ? currentContentView.numberOfSearchResults : null;
 

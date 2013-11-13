@@ -60,7 +60,6 @@
 namespace WebCore {
 
 using namespace HTMLNames;
-using namespace std;
 
 Chrome::Chrome(Page& page, ChromeClient& client)
     : m_page(page)
@@ -404,7 +403,7 @@ void Chrome::setToolTip(const HitTestResult& result)
                     if (HTMLFormElement* form = input->form()) {
                         toolTip = form->action();
                         if (form->renderer())
-                            toolTipDirection = form->renderer()->style()->direction();
+                            toolTipDirection = form->renderer()->style().direction();
                         else
                             toolTipDirection = LTR;
                     }

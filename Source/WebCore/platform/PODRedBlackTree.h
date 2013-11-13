@@ -73,6 +73,7 @@
 #define PODRedBlackTree_h
 
 #include "PODFreeListArena.h"
+#include "ValueToString.h"
 #include <wtf/Assertions.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
@@ -83,11 +84,6 @@
 #endif
 
 namespace WebCore {
-
-#ifndef NDEBUG
-template<class T>
-struct ValueToString;
-#endif
 
 enum UninitializedTreeEnum {
     UninitializedTree
@@ -133,7 +129,7 @@ public:
 
     // Constructs a new red-black tree, allocating temporary objects
     // from the given PODArena.
-    explicit PODRedBlackTree(PassRefPtr<PODFreeListArena<Node> > arena)
+    explicit PODRedBlackTree(PassRefPtr<PODFreeListArena<Node>> arena)
         : m_arena(arena)
         , m_root(0)
         , m_needsFullOrderingComparisons(false)
@@ -734,7 +730,7 @@ private:
         Counter()
             : m_count(0) { }
 
-        virtual void visit(const T&) { ++m_count; }
+        virtual void visit(const T&) OVERRIDE { ++m_count; }
         int count() const { return m_count; }
 
     private:
@@ -814,7 +810,7 @@ private:
     //----------------------------------------------------------------------
     // Data members
 
-    RefPtr<PODFreeListArena<Node> > m_arena;
+    RefPtr<PODFreeListArena<Node>> m_arena;
     Node* m_root;
     bool m_needsFullOrderingComparisons;
 #ifndef NDEBUG

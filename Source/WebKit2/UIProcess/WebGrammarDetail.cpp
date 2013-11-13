@@ -58,10 +58,10 @@ WebGrammarDetail::WebGrammarDetail(int location, int length, ImmutableArray* gue
 PassRefPtr<ImmutableArray> WebGrammarDetail::guesses() const
 {
     size_t numGuesses = m_grammarDetail.guesses.size();
-    Vector<RefPtr<APIObject> > wkGuesses(numGuesses);
+    Vector<RefPtr<API::Object> > wkGuesses(numGuesses);
     for (unsigned i = 0; i < numGuesses; ++i)
         wkGuesses[i] = WebString::create(m_grammarDetail.guesses[i]);
-    return ImmutableArray::adopt(wkGuesses);
+    return ImmutableArray::create(std::move(wkGuesses));
 }
 
 WebGrammarDetail::WebGrammarDetail(const WebCore::GrammarDetail& grammarDetail)

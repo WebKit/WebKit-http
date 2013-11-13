@@ -185,10 +185,15 @@ void WebChromeClient::focusedFrameChanged(Frame* frame)
     WebProcess::shared().parentProcessConnection()->send(Messages::WebPageProxy::FocusedFrameChanged(webFrame ? webFrame->frameID() : 0), m_page->pageID());
 }
 
-Page* WebChromeClient::createWindow(Frame*, const FrameLoadRequest& request, const WindowFeatures& windowFeatures, const NavigationAction& navigationAction)
+Page* WebChromeClient::createWindow(Frame* frame, const FrameLoadRequest& request, const WindowFeatures& windowFeatures, const NavigationAction& navigationAction)
 {
     uint32_t modifiers = static_cast<uint32_t>(InjectedBundleNavigationAction::modifiersForNavigationAction(navigationAction));
     int32_t mouseButton = static_cast<int32_t>(InjectedBundleNavigationAction::mouseButtonForNavigationAction(navigationAction));
+
+#if ENABLE(FULLSCREEN_API)
+    if (frame->document() && frame->document()->webkitCurrentFullScreenElement())
+        frame->document()->webkitCancelFullScreen();
+#endif
 
     uint64_t newPageID = 0;
     WebPageCreationParameters parameters;
@@ -547,7 +552,7 @@ void WebChromeClient::scrollbarsModeDidChange() const
 
 void WebChromeClient::mouseDidMoveOverElement(const HitTestResult& hitTestResult, unsigned modifierFlags)
 {
-    RefPtr<APIObject> userData;
+    RefPtr<API::Object> userData;
 
     // Notify the bundle client.
     m_page->injectedBundleUIClient().mouseDidMoveOverElement(m_page, hitTestResult, static_cast<WebEvent::Modifiers>(modifierFlags), userData);
@@ -829,19 +834,6 @@ void WebChromeClient::notifyScrollerThumbIsVisibleInRect(const IntRect& scroller
 void WebChromeClient::recommendedScrollbarStyleDidChange(int32_t newStyle)
 {
     m_page->send(Messages::WebPageProxy::RecommendedScrollbarStyleDidChange(newStyle));
-}
-
-bool WebChromeClient::shouldRubberBandInDirection(WebCore::ScrollDirection direction) const
-{
-    ASSERT(direction != WebCore::ScrollUp && direction != WebCore::ScrollDown);
-    
-    if (direction == WebCore::ScrollLeft)
-        return m_page->injectedBundleUIClient().shouldRubberBandInDirection(m_page, WKScrollDirectionLeft);
-    if (direction == WebCore::ScrollRight)
-        return m_page->injectedBundleUIClient().shouldRubberBandInDirection(m_page, WKScrollDirectionRight);
-
-    ASSERT_NOT_REACHED();
-    return true;
 }
 
 Color WebChromeClient::underlayColor() const

@@ -163,6 +163,35 @@ inline double remainder(double numerator, double denominator)
 
 #endif
 
+inline double asinh(double d)
+{
+    return log(d + sqrt(d * d + 1.0));
+}
+
+inline double acosh(double d)
+{
+    return log(d + sqrt(d + 1) * sqrt(d - 1));
+}
+
+inline double atanh(double d)
+{
+    return (log((1.0 + d) / (1.0 - d))) / 2.0;
+}
+
+inline double expm1(double d)
+{
+    return exp(d) - 1.0;
+}
+
+inline double log1p(double d)
+{
+    return log(1.0 + d);
+}
+
+inline double cbrt(double d)
+{
+    return pow(d, 1.0 / 3.0);
+}
 
 #endif
 
@@ -300,6 +329,11 @@ template<> inline long long int clampTo(double, long long int, long long int); /
 inline int clampToInteger(double value)
 {
     return clampTo<int>(value);
+}
+
+inline unsigned clampToUnsigned(double value)
+{
+    return clampTo<unsigned>(value);
 }
 
 inline float clampToFloat(double value)

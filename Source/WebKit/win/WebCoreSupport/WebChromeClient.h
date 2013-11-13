@@ -141,6 +141,10 @@ public:
         virtual void scheduleCompositingLayerFlush();
 #endif
 
+#if USE(TILED_BACKING_STORE)
+    virtual void delegatedScrollRequested(const WebCore::IntPoint&) { }
+#endif
+
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual WebCore::GraphicsDeviceAdapter* graphicsDeviceAdapter() const OVERRIDE;
 #endif
@@ -169,7 +173,6 @@ public:
     virtual void exitFullScreenForElement(WebCore::Element*);
 #endif
 
-    virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return true; }
     virtual void numWheelEventHandlersChanged(unsigned) { }
 
     WebView* webView() { return m_webView; }

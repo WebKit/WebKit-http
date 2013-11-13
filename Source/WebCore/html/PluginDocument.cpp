@@ -44,21 +44,21 @@ namespace WebCore {
 using namespace HTMLNames;
 
 // FIXME: Share more code with MediaDocumentParser.
-class PluginDocumentParser : public RawDataDocumentParser {
+class PluginDocumentParser FINAL : public RawDataDocumentParser {
 public:
-    static PassRefPtr<PluginDocumentParser> create(PluginDocument* document)
+    static PassRefPtr<PluginDocumentParser> create(PluginDocument& document)
     {
         return adoptRef(new PluginDocumentParser(document));
     }
 
 private:
-    PluginDocumentParser(Document* document)
+    PluginDocumentParser(Document& document)
         : RawDataDocumentParser(document)
         , m_embedElement(0)
     {
     }
 
-    virtual void appendBytes(DocumentWriter*, const char*, size_t);
+    virtual void appendBytes(DocumentWriter&, const char*, size_t);
 
     void createDocumentStructure();
 
@@ -93,14 +93,14 @@ void PluginDocumentParser::createDocumentStructure()
     DocumentLoader* loader = document()->loader();
     ASSERT(loader);
     if (loader)
-        m_embedElement->setAttribute(typeAttr, loader->writer()->mimeType());
+        m_embedElement->setAttribute(typeAttr, loader->writer().mimeType());
 
     toPluginDocument(document())->setPluginElement(m_embedElement);
 
     body->appendChild(embedElement, IGNORE_EXCEPTION);
 }
 
-void PluginDocumentParser::appendBytes(DocumentWriter*, const char*, size_t)
+void PluginDocumentParser::appendBytes(DocumentWriter&, const char*, size_t)
 {
     if (m_embedElement)
         return;
@@ -141,7 +141,7 @@ PluginDocument::PluginDocument(Frame* frame, const URL& url)
 
 PassRefPtr<DocumentParser> PluginDocument::createParser()
 {
-    return PluginDocumentParser::create(this);
+    return PluginDocumentParser::create(*this);
 }
 
 Widget* PluginDocument::pluginWidget()

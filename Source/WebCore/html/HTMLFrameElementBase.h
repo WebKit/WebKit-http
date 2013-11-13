@@ -34,7 +34,7 @@ public:
     URL location() const;
     void setLocation(const String&);
 
-    virtual ScrollbarMode scrollingMode() const { return m_scrolling; }
+    virtual ScrollbarMode scrollingMode() const OVERRIDE { return m_scrolling; }
     
     int marginWidth() const { return m_marginWidth; }
     int marginHeight() const { return m_marginHeight; }
@@ -42,7 +42,7 @@ public:
     int width();
     int height();
 
-    virtual bool canContainRangeEndPoint() const { return false; }
+    virtual bool canContainRangeEndPoint() const OVERRIDE { return false; }
 
 protected:
     HTMLFrameElementBase(const QualifiedName&, Document&);
@@ -50,7 +50,7 @@ protected:
     bool isURLAllowed() const;
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
     virtual void didNotifySubtreeInsertions(ContainerNode*) OVERRIDE;
     virtual void didAttachRenderers() OVERRIDE;
 
@@ -61,7 +61,7 @@ private:
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
     virtual bool isHTMLContentAttribute(const Attribute&) const OVERRIDE;
 
-    virtual bool isFrameElementBase() const { return true; }
+    virtual bool isFrameElementBase() const OVERRIDE { return true; }
 
     virtual bool areAuthorShadowsAllowed() const OVERRIDE { return false; }
 
@@ -81,21 +81,11 @@ private:
     bool m_viewSource;
 };
 
-inline bool isHTMLFrameElementBase(const Node* node)
-{
-    return isHTMLFrameElement(node) || isHTMLIFrameElement(node);
-}
+void isHTMLFrameElementBase(const HTMLFrameElementBase&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isHTMLFrameElementBase(const Element& element) { return isHTMLFrameElement(element) || isHTMLIFrameElement(element); }
+inline bool isHTMLFrameElementBase(const Node& node) { return node.isElementNode() && isHTMLFrameElementBase(toElement(node)); }
 
-inline bool isHTMLFrameElementBase(const Element* element)
-{
-    return isHTMLFrameElement(element) || isHTMLIFrameElement(element);
-}
-
-inline HTMLFrameElementBase* toHTMLFrameElementBase(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLFrameElementBase(node));
-    return static_cast<HTMLFrameElementBase*>(node);
-}
+NODE_TYPE_CASTS(HTMLFrameElementBase)
 
 } // namespace WebCore
 

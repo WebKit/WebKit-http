@@ -31,6 +31,7 @@
 #if ENABLE(FTL_JIT)
 
 #include "FTLAbstractHeap.h"
+#include "IndexingType.h"
 
 namespace JSC { namespace FTL {
 
@@ -41,6 +42,7 @@ namespace JSC { namespace FTL {
 #define FOR_EACH_ABSTRACT_FIELD(macro) \
     macro(Butterfly_publicLength, Butterfly::offsetOfPublicLength()) \
     macro(Butterfly_vectorLength, Butterfly::offsetOfVectorLength()) \
+    macro(CallFrame_callerFrame, CallFrame::callerFrameOffset()) \
     macro(JSArrayBufferView_length, JSArrayBufferView::offsetOfLength()) \
     macro(JSArrayBufferView_mode, JSArrayBufferView::offsetOfMode()) \
     macro(JSArrayBufferView_vector, JSArrayBufferView::offsetOfVector()) \
@@ -50,12 +52,14 @@ namespace JSC { namespace FTL {
     macro(JSString_length, JSString::offsetOfLength()) \
     macro(JSString_value, JSString::offsetOfValue()) \
     macro(JSVariableObject_registers, JSVariableObject::offsetOfRegisters()) \
+    macro(MarkedAllocator_freeListHead, MarkedAllocator::offsetOfFreeListHead()) \
     macro(StringImpl_data, StringImpl::dataOffset()) \
     macro(StringImpl_hashAndFlags, StringImpl::flagsOffset()) \
     macro(Structure_classInfo, Structure::classInfoOffset()) \
     macro(Structure_globalObject, Structure::globalObjectOffset()) \
     macro(Structure_indexingType, Structure::indexingTypeOffset()) \
-    macro(Structure_typeInfoFlags, Structure::typeInfoFlagsOffset())
+    macro(Structure_typeInfoFlags, Structure::typeInfoFlagsOffset()) \
+    macro(Structure_typeInfoType, Structure::typeInfoTypeOffset())
 
 #define FOR_EACH_INDEXED_ABSTRACT_HEAP(macro) \
     macro(characters8, sizeof(LChar)) \
@@ -64,6 +68,7 @@ namespace JSC { namespace FTL {
     macro(indexedDoubleProperties, sizeof(double)) \
     macro(indexedContiguousProperties, sizeof(EncodedJSValue)) \
     macro(indexedArrayStorageProperties, sizeof(EncodedJSValue)) \
+    macro(singleCharacterStrings, sizeof(JSString*)) \
     macro(variables, sizeof(Register))
     
 #define FOR_EACH_NUMBERED_ABSTRACT_HEAP(macro) \
@@ -88,6 +93,8 @@ public:
     FOR_EACH_ABSTRACT_FIELD(ABSTRACT_FIELD_DECLARATION)
 #undef ABSTRACT_FIELD_DECLARATION
     
+    AbstractField& JSCell_freeListNext;
+    
 #define INDEXED_ABSTRACT_HEAP_DECLARATION(name, size) IndexedAbstractHeap name;
     FOR_EACH_INDEXED_ABSTRACT_HEAP(INDEXED_ABSTRACT_HEAP_DECLARATION)
 #undef INDEXED_ABSTRACT_HEAP_DECLARATION
@@ -97,6 +104,31 @@ public:
 #undef NUMBERED_ABSTRACT_HEAP_DECLARATION
 
     AbsoluteAbstractHeap absolute;
+    
+    IndexedAbstractHeap* forIndexingType(IndexingType indexingType)
+    {
+        switch (indexingType) {
+        case ALL_BLANK_INDEXING_TYPES:
+        case ALL_UNDECIDED_INDEXING_TYPES:
+            return 0;
+            
+        case ALL_INT32_INDEXING_TYPES:
+            return &indexedInt32Properties;
+            
+        case ALL_DOUBLE_INDEXING_TYPES:
+            return &indexedDoubleProperties;
+            
+        case ALL_CONTIGUOUS_INDEXING_TYPES:
+            return &indexedContiguousProperties;
+            
+        case ALL_ARRAY_STORAGE_INDEXING_TYPES:
+            return &indexedArrayStorageProperties;
+            
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            return 0;
+        }
+    }
 
 private:
     friend class AbstractHeap;

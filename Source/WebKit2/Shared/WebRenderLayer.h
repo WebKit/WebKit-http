@@ -36,13 +36,13 @@ namespace WebKit {
 
 class WebPage;
 
-class WebRenderLayer : public TypedAPIObject<APIObject::TypeRenderLayer> {
+class WebRenderLayer : public API::TypedObject<API::Object::TypeRenderLayer> {
 public:
     enum CompositingLayerType { None, Normal, Tiled, Media, Container };
 
     static PassRefPtr<WebRenderLayer> create(WebPage*);
     static PassRefPtr<WebRenderLayer> create(PassRefPtr<WebRenderObject> renderer, bool isReflection, bool isClipping, bool isClipped, CompositingLayerType type,
-        WebCore::IntRect absoluteBoundingBox, PassRefPtr<MutableArray> negativeZOrderList, PassRefPtr<MutableArray> normalFlowList, PassRefPtr<MutableArray> positiveZOrderList)
+        WebCore::IntRect absoluteBoundingBox, PassRefPtr<ImmutableArray> negativeZOrderList, PassRefPtr<ImmutableArray> normalFlowList, PassRefPtr<ImmutableArray> positiveZOrderList)
     {
         return adoptRef(new WebRenderLayer(renderer, isReflection, isClipping, isClipped, type, absoluteBoundingBox, negativeZOrderList, normalFlowList, positiveZOrderList));
     }
@@ -61,7 +61,7 @@ public:
 private:
     WebRenderLayer(WebCore::RenderLayer*);
     WebRenderLayer(PassRefPtr<WebRenderObject> renderer, bool isReflection, bool isClipping, bool isClipped, CompositingLayerType type, WebCore::IntRect absoluteBoundingBox,
-        PassRefPtr<MutableArray> negativeZOrderList, PassRefPtr<MutableArray> normalFlowList, PassRefPtr<MutableArray> positiveZOrderList)
+        PassRefPtr<ImmutableArray> negativeZOrderList, PassRefPtr<ImmutableArray> normalFlowList, PassRefPtr<ImmutableArray> positiveZOrderList)
         : m_renderer(renderer)
         , m_isReflection(isReflection)
         , m_isClipping(isClipping)
@@ -74,7 +74,7 @@ private:
     {
     }
 
-    static PassRefPtr<MutableArray> createArrayFromLayerList(Vector<WebCore::RenderLayer*>*);
+    static PassRefPtr<ImmutableArray> createArrayFromLayerList(Vector<WebCore::RenderLayer*>*);
 
     RefPtr<WebRenderObject> m_renderer;
     bool m_isReflection;
@@ -83,9 +83,9 @@ private:
     CompositingLayerType m_compositingLayerType;
     WebCore::IntRect m_absoluteBoundingBox;
 
-    RefPtr<MutableArray> m_negativeZOrderList;
-    RefPtr<MutableArray> m_normalFlowList;
-    RefPtr<MutableArray> m_positiveZOrderList;
+    RefPtr<ImmutableArray> m_negativeZOrderList;
+    RefPtr<ImmutableArray> m_normalFlowList;
+    RefPtr<ImmutableArray> m_positiveZOrderList;
 };
 
 } // namespace WebKit

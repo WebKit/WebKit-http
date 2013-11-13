@@ -34,8 +34,6 @@
 #import "NotImplemented.h"
 #import "WebCoreFrameView.h"
 
-using namespace std;
-
 @interface NSWindow (WebWindowDetails)
 - (BOOL)_needsToResetDragMargins;
 - (void)_setNeedsToResetDragMargins:(BOOL)needs;
@@ -134,7 +132,7 @@ void ScrollView::platformSetContentsSize()
     int w = m_contentsSize.width();
     int h = m_contentsSize.height();
     LOG(Frames, "%p %@ at w %d h %d\n", documentView(), [(id)[documentView() class] className], w, h);            
-    [documentView() setFrameSize:NSMakeSize(max(0, w), max(0, h))];
+    [documentView() setFrameSize:NSMakeSize(std::max(0, w), std::max(0, h))];
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 
@@ -150,7 +148,7 @@ void ScrollView::platformSetScrollPosition(const IntPoint& scrollPoint)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     NSPoint floatPoint = scrollPoint;
-    NSPoint tempPoint = { max(-[scrollView() scrollOrigin].x, floatPoint.x), max(-[scrollView() scrollOrigin].y, floatPoint.y) };  // Don't use NSMakePoint to work around 4213314.
+    NSPoint tempPoint = { std::max(-[scrollView() scrollOrigin].x, floatPoint.x), std::max(-[scrollView() scrollOrigin].y, floatPoint.y) };  // Don't use NSMakePoint to work around 4213314.
     [documentView() scrollPoint:tempPoint];
     END_BLOCK_OBJC_EXCEPTIONS;
 }
@@ -182,7 +180,10 @@ IntRect ScrollView::platformContentsToScreen(const IntRect& rect) const
     if (NSView* documentView = this->documentView()) {
         NSRect tempRect = rect;
         tempRect = [documentView convertRect:tempRect toView:nil];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         tempRect.origin = [[documentView window] convertBaseToScreen:tempRect.origin];
+#pragma clang diagnostic pop
         return enclosingIntRect(tempRect);
     }
     END_BLOCK_OBJC_EXCEPTIONS;
@@ -193,7 +194,10 @@ IntPoint ScrollView::platformScreenToContents(const IntPoint& point) const
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     if (NSView* documentView = this->documentView()) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         NSPoint windowCoord = [[documentView window] convertScreenToBase: point];
+#pragma clang diagnostic pop
         return IntPoint([documentView convertPoint:windowCoord fromView:nil]);
     }
     END_BLOCK_OBJC_EXCEPTIONS;

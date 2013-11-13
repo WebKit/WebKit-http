@@ -27,6 +27,7 @@
 #include "HTMLInterchange.h"
 
 #include "RenderElement.h"
+#include "RenderText.h"
 #include "Text.h"
 #include "TextIterator.h"
 #include <wtf/text/StringBuilder.h>
@@ -37,7 +38,7 @@ namespace WebCore {
 String convertHTMLTextToInterchangeFormat(const String& in, const Text* node)
 {
     // Assume all the text comes from node.
-    if (node->renderer() && node->renderer()->style()->preserveNewline())
+    if (node->renderer() && node->renderer()->style().preserveNewline())
         return in;
 
     const char convertedSpaceString[] = "<span class=\"" AppleConvertedSpace "\">\xA0</span>";

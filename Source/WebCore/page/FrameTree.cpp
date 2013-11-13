@@ -33,8 +33,6 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
-using std::swap;
-
 namespace WebCore {
 
 FrameTree::~FrameTree()
@@ -179,7 +177,7 @@ static bool inScope(Frame& frame, TreeScope& scope)
     HTMLFrameOwnerElement* owner = document->ownerElement();
     if (!owner)
         return false;
-    return owner->treeScope() == &scope;
+    return &owner->treeScope() == &scope;
 }
 
 inline Frame* FrameTree::scopedChild(unsigned index, TreeScope* scope) const

@@ -20,7 +20,7 @@ bdo interfaceName=HTMLElement
 bgsound interfaceName=HTMLElement
 big interfaceName=HTMLElement
 blockquote interfaceName=HTMLQuoteElement
-body
+body generateTypeHelpers
 br interfaceName=HTMLBRElement
 button constructorNeedsFormElement
 canvas generateTypeHelpers
@@ -57,11 +57,11 @@ h3 interfaceName=HTMLHeadingElement
 h4 interfaceName=HTMLHeadingElement
 h5 interfaceName=HTMLHeadingElement
 h6 interfaceName=HTMLHeadingElement
-head
+head generateTypeHelpers
 header interfaceName=HTMLElement
 hgroup interfaceName=HTMLElement
 hr interfaceName=HTMLHRElement
-html
+html generateTypeHelpers
 i interfaceName=HTMLElement
 iframe interfaceName=HTMLIFrameElement, generateTypeHelpers
 image interfaceName=HTMLElement
@@ -75,7 +75,7 @@ label generateTypeHelpers
 layer interfaceName=HTMLElement
 legend generateTypeHelpers
 li interfaceName=HTMLLIElement
-link constructorNeedsCreatedByParser
+link constructorNeedsCreatedByParser, generateTypeHelpers
 listing interfaceName=HTMLPreElement
 main interfaceName=HTMLElement
 map generateTypeHelpers
@@ -120,7 +120,7 @@ sup interfaceName=HTMLElement
 table generateTypeHelpers
 tbody interfaceName=HTMLTableSectionElement
 td interfaceName=HTMLTableCellElement
-template conditional=TEMPLATE_ELEMENT
+template conditional=TEMPLATE_ELEMENT, generateTypeHelpers
 textarea interfaceName=HTMLTextAreaElement, constructorNeedsFormElement, generateTypeHelpers
 tfoot interfaceName=HTMLTableSectionElement
 th interfaceName=HTMLTableCellElement

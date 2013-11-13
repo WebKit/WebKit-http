@@ -54,7 +54,6 @@
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/ResourceBuffer.h>
 #import <WebCore/ResourceRequest.h>
-#import <WebCore/RunLoop.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreURLResponse.h>
@@ -65,6 +64,7 @@
 #import <wtf/MainThread.h>
 #import <wtf/RefPtr.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/RunLoop.h>
 
 using namespace WebCore;
 
@@ -96,6 +96,17 @@ static inline WebDataSourcePrivate* toPrivate(void* privateAttribute)
 {
     return reinterpret_cast<WebDataSourcePrivate*>(privateAttribute);
 }
+
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+static void BufferMemoryMapped(PassRefPtr<SharedBuffer> buffer, SharedBuffer::CompletionStatus mapStatus, SharedBuffer::MemoryMappedNotifyCallbackData data)
+{
+    NSObject<WebDataSourcePrivateDelegate> *delegate = [(WebDataSource *)data dataSourceDelegate];
+    if (mapStatus == SharedBuffer::Succeeded)
+        [delegate dataSourceMemoryMapped];
+    else
+        [delegate dataSourceMemoryMapFailed];
+}
+#endif
 
 @interface WebDataSource (WebFileInternal)
 @end
@@ -134,7 +145,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     if (self == [WebDataSource class]) {
         JSC::initializeThreading();
         WTF::initializeMainThreadToProcessMainThread();
-        WebCore::RunLoop::initializeMainRunLoop();
+        RunLoop::initializeMainRunLoop();
         WebCoreObjCFinalizeOnMainThread(self);
     }
 }
@@ -195,6 +206,54 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
         return;
 
     toPrivate(_private)->loader->setDeferMainResourceDataLoad(flag);
+}
+
+- (void)_setAllowToBeMemoryMapped
+{
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+    RefPtr<ResourceBuffer> mainResourceBuffer = toPrivate(_private)->loader->mainResourceData();
+    if (!mainResourceBuffer)
+        return;
+
+    RefPtr<SharedBuffer> mainResourceData = mainResourceBuffer->sharedBuffer();
+    if (!mainResourceData)
+        return;
+
+    if (mainResourceData->memoryMappedNotificationCallback() != BufferMemoryMapped) {
+        ASSERT(!mainResourceData->memoryMappedNotificationCallback() && !mainResourceData->memoryMappedNotificationCallbackData());
+        mainResourceData->setMemoryMappedNotificationCallback(BufferMemoryMapped, self);
+    }
+
+    switch (mainResourceData->allowToBeMemoryMapped()) {
+    case SharedBuffer::SuccessAlreadyMapped:
+        [[self dataSourceDelegate] dataSourceMemoryMapped];
+        return;
+    case SharedBuffer::PreviouslyQueuedForMapping:
+    case SharedBuffer::QueuedForMapping:
+        return;
+    case SharedBuffer::FailureCacheFull:
+        [[self dataSourceDelegate] dataSourceMemoryMapFailed];
+        return;
+    }
+    ASSERT_NOT_REACHED();
+#endif
+}
+
+- (void)setDataSourceDelegate:(NSObject<WebDataSourcePrivateDelegate> *)delegate
+{
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+    ASSERT(!toPrivate(_private)->_dataSourceDelegate);
+    toPrivate(_private)->_dataSourceDelegate = delegate;
+#endif
+}
+
+- (NSObject<WebDataSourcePrivateDelegate> *)dataSourceDelegate
+{
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+    return toPrivate(_private)->_dataSourceDelegate;
+#else
+    return nullptr;
+#endif
 }
 
 @end
@@ -383,6 +442,20 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     if (toPrivate(_private) && toPrivate(_private)->includedInWebKitStatistics)
         --WebDataSourceCount;
 
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+    if (_private) {
+        RefPtr<ResourceBuffer> mainResourceBuffer = toPrivate(_private)->loader->mainResourceData();
+        if (mainResourceBuffer) {
+            RefPtr<SharedBuffer> mainResourceData = mainResourceBuffer->sharedBuffer();
+            if (mainResourceData && 
+                mainResourceData->memoryMappedNotificationCallbackData() == self &&
+                mainResourceData->memoryMappedNotificationCallback() == BufferMemoryMapped) {
+                mainResourceData->setMemoryMappedNotificationCallback(nullptr, nullptr);
+            }
+        }
+    }
+#endif
+
     delete toPrivate(_private);
 
     [super dealloc];
@@ -485,7 +558,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 
 - (NSArray *)subresources
 {
-    Vector<PassRefPtr<ArchiveResource> > coreSubresources;
+    Vector<PassRefPtr<ArchiveResource>> coreSubresources;
     toPrivate(_private)->loader->getSubresources(coreSubresources);
 
     NSMutableArray *subresources = [[NSMutableArray alloc] initWithCapacity:coreSubresources.size()];

@@ -32,8 +32,12 @@
 
 namespace WebCore {
 
-TrackBase::TrackBase(Type type, const AtomicString& label, const AtomicString& language)
+TrackBase::TrackBase(Type type, const AtomicString& id, const AtomicString& label, const AtomicString& language)
     : m_mediaElement(0)
+#if ENABLE(MEDIA_SOURCE)
+    , m_sourceBuffer(0)
+#endif
+    , m_id(id)
     , m_label(label)
     , m_language(language)
 {
@@ -51,6 +55,11 @@ Element* TrackBase::element()
 }
 
 void TrackBase::setKind(const AtomicString& kind)
+{
+    setKindInternal(kind);
+}
+
+void TrackBase::setKindInternal(const AtomicString& kind)
 {
     String oldKind = m_kind;
 

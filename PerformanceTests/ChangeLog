@@ -1,3 +1,166 @@
+2013-11-13  Antti Koivisto  <antti@apple.com>
+
+        This was supposed to test overflow-wrap:break-word instead of word-break:break-all.
+
+        Rubber-stamped by Andreas Kling.
+
+        * Layout/line-layout-simple.html:
+
+2013-11-12  Andreas Kling  <akling@apple.com>
+
+        Remove body onload handler from html5-8266.html that was causing
+        the test to sometimes finish before doing anything interesting.
+
+        Unskip Parser/HTML5-8266-FullRender.html now that it's stable.
+
+        Rubber-stamped by Antti Koivisto.
+
+        * Parser/resources/html5-8266.html:
+        * Skipped:
+
+2013-11-12  Andreas Kling  <akling@apple.com>
+
+        Neutralize external resource loads in the new HTML5 spec copy.
+
+        Skip Parser/HTML5-8266-FullRender.html until I can make it less flaky.
+
+        * Parser/resources/html5-8266.html:
+        * Skipped:
+
+2013-11-12  Andreas Kling  <akling@apple.com>
+
+        Import a fresh version of the full HTML5 spec for perf testing.
+
+        Rubber-stamped by Antti Koivisto.
+
+        * Parser/HTML5-8266-FullRender.html: Added.
+        * Parser/HTML5-8266-ParseOnly.html: Added.
+        * Parser/resources/html5-8266.html: Added.
+
+2013-11-09  Antti Koivisto  <antti@apple.com>
+
+        Add subtest for word-break:break-all to Layout/line-layout-simple.html
+        https://bugs.webkit.org/show_bug.cgi?id=124103
+
+        Reviewed by Andreas Kling.
+
+        * Layout/line-layout-simple.html:
+
+        Combination "white-space:pre-wrap; word-break:break-all" is common for pure text.
+
+2013-11-08  Antti Koivisto  <antti@apple.com>
+
+        Add line layout performance test that exercises more cases
+        https://bugs.webkit.org/show_bug.cgi?id=124041
+        
+        Reviewed by Anders Carlsson.
+
+        The existing line-layout.html covers the most basic left-aligned case only.
+        Add a test with more coverage for things that are mostly not yet supported by the simple
+        line layout path:
+        
+        - centered text
+        - right aligned text
+        - justified text
+        - pre
+        - white-space:pre-wrap
+        - text with simple inlines
+        - text with br
+
+        * Layout/line-layout-simple.html: Added.
+
+2013-10-25  Sergio Villar Senin  <svillar@igalia.com>
+
+        Use a Vector instead of HashSet to computed the orderValues in RenderFlexibleBox
+        https://bugs.webkit.org/show_bug.cgi?id=118620
+
+        Reviewed by Antti Koivisto.
+
+        From Blink r152960 by <ojan@chromium.org>
+
+        New performance test for layouts in flexboxes.
+
+        * Layout/flexbox-lots-of-data.html: Added.
+
+2013-10-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r157916.
+        http://trac.webkit.org/changeset/157916
+        https://bugs.webkit.org/show_bug.cgi?id=123274
+
+        Broke Layout/flexbox-lots-of-data.html on perfbot (Requested
+        by ap on #webkit).
+
+        * Layout/flexbox-lots-of-data.html: Removed.
+
+2013-10-14  Sergio Villar Senin  <svillar@igalia.com>
+
+        Use a Vector instead of HashSet to computed the orderValues in RenderFlexibleBox
+        https://bugs.webkit.org/show_bug.cgi?id=118620
+
+        Reviewed by Antti Koivisto.
+
+        From Blink r152960 by <ojan@chromium.org>
+
+        New performance test for layouts in flexboxes.
+
+        * Layout/flexbox-lots-of-data.html: Added.
+
+2013-10-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DoYouEvenBench: Make it work on Internet Explorer 11 Release Preview
+        https://bugs.webkit.org/show_bug.cgi?id=122406
+
+        Reviewed by Darin Adler.
+
+        On Internet Explorer 11, $(elem).closest('li').data('id') fails to find the containig li of elem once
+        the first item is marked complete or deleted until we get back to the event loop in the jQuery/TodoMVC.
+        Worked around this limitation by overriding app.getTodo to use each item's id computed in advance.
+
+        Also use $.text instead of execCommand('InsertText') in FlightJS/MailClient since Internet Explorer
+        doesn't support execCommand('InsertText'). Also select the recipient to avoid exceptions.
+
+        * DoYouEvenBench/benchmark.html:
+
+2013-10-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DoYouEvenBench: Add Facebook's React TodoMVC test case
+        https://bugs.webkit.org/show_bug.cgi?id=122379
+
+        Reviewed by Andreas Kling.
+
+        Add React/TodoMVC as a new test case. Somehow we beat Firefox on this one as well.
+
+        * DoYouEvenBench/benchmark.html:
+        * DoYouEvenBench/todomvc/labs: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower.json: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/LICENSE: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/README.md: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/build: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/build/director.js: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/build/director.min.js: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/director/build/ender.js: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/react: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/react/JSXTransformer.js: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/react/bower.json: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/react/react.js: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/react/react.min.js: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/todomvc-common: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/todomvc-common/base.css: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/todomvc-common/base.js: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/bower_components/todomvc-common/bg.png: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/index.html: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/js: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/js/app.jsx: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/js/footer.jsx: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/js/todoItem.jsx: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/js/utils.jsx: Added.
+        * DoYouEvenBench/todomvc/labs/architecture-examples/react/readme.md: Added.
+
 2013-09-25  Ryosuke Niwa  <rniwa@webkit.org>
 
         DoYouEvenBench: Add a test case for FlightJS

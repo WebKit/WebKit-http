@@ -75,16 +75,16 @@ const AtomicString& SVGAltGlyphElement::format() const
     return fastGetAttribute(SVGNames::formatAttr);
 }
 
-bool SVGAltGlyphElement::childShouldCreateRenderer(const Node* child) const
+bool SVGAltGlyphElement::childShouldCreateRenderer(const Node& child) const
 {
-    if (child->isTextNode())
+    if (child.isTextNode())
         return true;
     return false;
 }
 
-RenderElement* SVGAltGlyphElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGAltGlyphElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderSVGTSpan(*this);
+    return new RenderSVGTSpan(*this, std::move(style));
 }
 
 bool SVGAltGlyphElement::hasValidGlyphElements(Vector<String>& glyphNames) const

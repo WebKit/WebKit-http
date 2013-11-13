@@ -35,6 +35,7 @@
 #include "Frame.h"
 #include "FrameNetworkingContext.h"
 #include "HTMLFormElement.h"
+#include <wtf/NeverDestroyed.h>
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
@@ -44,27 +45,27 @@ namespace WebCore {
 
 void fillWithEmptyClients(Page::PageClients& pageClients)
 {
-    static ChromeClient* dummyChromeClient = adoptPtr(new EmptyChromeClient).leakPtr();
-    pageClients.chromeClient = dummyChromeClient;
+    static NeverDestroyed<EmptyChromeClient> dummyChromeClient;
+    pageClients.chromeClient = &dummyChromeClient.get();
 
 #if ENABLE(CONTEXT_MENUS)
-    static ContextMenuClient* dummyContextMenuClient = adoptPtr(new EmptyContextMenuClient).leakPtr();
-    pageClients.contextMenuClient = dummyContextMenuClient;
+    static NeverDestroyed<EmptyContextMenuClient> dummyContextMenuClient;
+    pageClients.contextMenuClient = &dummyContextMenuClient.get();
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
-    static DragClient* dummyDragClient = adoptPtr(new EmptyDragClient).leakPtr();
-    pageClients.dragClient = dummyDragClient;
+    static NeverDestroyed<EmptyDragClient> dummyDragClient;
+    pageClients.dragClient = &dummyDragClient.get();
 #endif
 
-    static EditorClient* dummyEditorClient = adoptPtr(new EmptyEditorClient).leakPtr();
-    pageClients.editorClient = dummyEditorClient;
+    static NeverDestroyed<EmptyEditorClient> dummyEditorClient;
+    pageClients.editorClient = &dummyEditorClient.get();
 
-    static InspectorClient* dummyInspectorClient = adoptPtr(new EmptyInspectorClient).leakPtr();
-    pageClients.inspectorClient = dummyInspectorClient;
+    static NeverDestroyed<EmptyInspectorClient> dummyInspectorClient;
+    pageClients.inspectorClient = &dummyInspectorClient.get();
 
-    static FrameLoaderClient* dummyFrameLoaderClient = new EmptyFrameLoaderClient;
-    pageClients.loaderClientForMainFrame = dummyFrameLoaderClient;
+    static NeverDestroyed<EmptyFrameLoaderClient> dummyFrameLoaderClient;
+    pageClients.loaderClientForMainFrame = &dummyFrameLoaderClient.get();
 }
 
 class EmptyPopupMenu : public PopupMenu {
@@ -114,11 +115,11 @@ void EmptyChromeClient::runOpenPanel(Frame*, PassRefPtr<FileChooser>)
 {
 }
 
-void EmptyFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction, const NavigationAction&, const ResourceRequest&, PassRefPtr<FormState>, const String&)
+void EmptyFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, PassRefPtr<FormState>, const String&, FramePolicyFunction)
 {
 }
 
-void EmptyFrameLoaderClient::dispatchDecidePolicyForNavigationAction(FramePolicyFunction, const NavigationAction&, const ResourceRequest&, PassRefPtr<FormState>)
+void EmptyFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, PassRefPtr<FormState>, FramePolicyFunction)
 {
 }
 
@@ -126,7 +127,7 @@ void EmptyFrameLoaderClient::dispatchWillSendSubmitEvent(PassRefPtr<FormState>)
 {
 }
 
-void EmptyFrameLoaderClient::dispatchWillSubmitForm(FramePolicyFunction, PassRefPtr<FormState>)
+void EmptyFrameLoaderClient::dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction)
 {
 }
 

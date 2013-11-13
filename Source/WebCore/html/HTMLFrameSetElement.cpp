@@ -70,7 +70,7 @@ bool HTMLFrameSetElement::isPresentationAttribute(const QualifiedName& name) con
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLFrameSetElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLFrameSetElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == bordercolorAttr)
         addHTMLColorToStyle(style, CSSPropertyBorderColor, value);
@@ -155,19 +155,17 @@ bool HTMLFrameSetElement::rendererIsNeeded(const RenderStyle& style)
     return style.isStyleAvailable();
 }
 
-RenderElement* HTMLFrameSetElement::createRenderer(RenderArena& arena, RenderStyle& style)
+RenderElement* HTMLFrameSetElement::createRenderer(PassRef<RenderStyle> style)
 {
-    if (style.hasContent())
-        return RenderElement::createFor(*this, style);
+    if (style.get().hasContent())
+        return RenderElement::createFor(*this, std::move(style));
     
-    return new (arena) RenderFrameSet(*this);
+    return new RenderFrameSet(*this, std::move(style));
 }
 
 HTMLFrameSetElement* HTMLFrameSetElement::findContaining(Element* descendant)
 {
-    auto ancestorFrameSets = ancestorsOfType<HTMLFrameSetElement>(descendant);
-    auto enclosingFrameSet = ancestorFrameSets.begin();
-    return enclosingFrameSet != ancestorFrameSets.end() ? &*enclosingFrameSet : nullptr;
+    return ancestorsOfType<HTMLFrameSetElement>(*descendant).first();
 }
 
 void HTMLFrameSetElement::willAttachRenderers()
@@ -203,16 +201,16 @@ void HTMLFrameSetElement::defaultEventHandler(Event* evt)
 bool HTMLFrameSetElement::willRecalcStyle(Style::Change)
 {
     if (needsStyleRecalc() && renderer()) {
-        renderer()->setNeedsLayout(true);
+        renderer()->setNeedsLayout();
         clearNeedsStyleRecalc();
     }
     return true;
 }
 
-Node::InsertionNotificationRequest HTMLFrameSetElement::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest HTMLFrameSetElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint->inDocument()) {
+    if (insertionPoint.inDocument()) {
         if (Frame* frame = document().frame())
             frame->loader().client().dispatchDidBecomeFrameset(document().isFrameSet());
     }
@@ -220,10 +218,10 @@ Node::InsertionNotificationRequest HTMLFrameSetElement::insertedInto(ContainerNo
     return InsertionDone;
 }
 
-void HTMLFrameSetElement::removedFrom(ContainerNode* insertionPoint)
+void HTMLFrameSetElement::removedFrom(ContainerNode& insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
-    if (insertionPoint->inDocument()) {
+    if (insertionPoint.inDocument()) {
         if (Frame* frame = document().frame())
             frame->loader().client().dispatchDidBecomeFrameset(document().isFrameSet());
     }

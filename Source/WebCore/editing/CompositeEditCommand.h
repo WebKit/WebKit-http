@@ -44,7 +44,7 @@ public:
 
     virtual void unapply() OVERRIDE;
     virtual void reapply() OVERRIDE;
-    EditAction editingAction() const OVERRIDE { return m_editAction; }
+    virtual EditAction editingAction() const OVERRIDE { return m_editAction; }
     void append(SimpleEditCommand*);
     bool wasCreateLinkCommand() const { return m_editAction == EditActionCreateLink; }
 
@@ -65,7 +65,7 @@ private:
     RefPtr<Document> m_document;
     VisibleSelection m_startingSelection;
     VisibleSelection m_endingSelection;
-    Vector<RefPtr<SimpleEditCommand> > m_commands;
+    Vector<RefPtr<SimpleEditCommand>> m_commands;
     RefPtr<Element> m_startingRootEditableElement;
     RefPtr<Element> m_endingRootEditableElement;
     EditAction m_editAction;
@@ -152,7 +152,7 @@ protected:
 
     PassRefPtr<Node> moveParagraphContentsToNewBlockIfNecessary(const Position&);
     
-    void pushAnchorElementDown(Node*);
+    void pushAnchorElementDown(Element&);
     
     void moveParagraph(const VisiblePosition&, const VisiblePosition&, const VisiblePosition&, bool preserveSelection = false, bool preserveStyle = true);
     void moveParagraphs(const VisiblePosition&, const VisiblePosition&, const VisiblePosition&, bool preserveSelection = false, bool preserveStyle = true);
@@ -167,10 +167,10 @@ protected:
     
     PassRefPtr<Node> splitTreeToNode(Node*, Node*, bool splitAncestor = false);
 
-    Vector<RefPtr<EditCommand> > m_commands;
+    Vector<RefPtr<EditCommand>> m_commands;
 
 private:
-    bool isCompositeEditCommand() const OVERRIDE { return true; }
+    virtual bool isCompositeEditCommand() const OVERRIDE { return true; }
 
     RefPtr<EditCommandComposition> m_composition;
 };
@@ -180,7 +180,7 @@ void applyCommand(PassRefPtr<CompositeEditCommand>);
 inline CompositeEditCommand* toCompositeEditCommand(EditCommand* command)
 {
     ASSERT(command);
-    ASSERT(command->isCompositeEditCommand());
+    ASSERT_WITH_SECURITY_IMPLICATION(command->isCompositeEditCommand());
     return static_cast<CompositeEditCommand*>(command);
 }
 

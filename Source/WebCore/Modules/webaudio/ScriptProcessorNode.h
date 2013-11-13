@@ -58,10 +58,10 @@ public:
     virtual ~ScriptProcessorNode();
 
     // AudioNode
-    virtual void process(size_t framesToProcess);
-    virtual void reset();
-    virtual void initialize();
-    virtual void uninitialize();
+    virtual void process(size_t framesToProcess) OVERRIDE;
+    virtual void reset() OVERRIDE;
+    virtual void initialize() OVERRIDE;
+    virtual void uninitialize() OVERRIDE;
 
     size_t bufferSize() const { return m_bufferSize; }
 
@@ -82,8 +82,8 @@ private:
     void swapBuffers() { m_doubleBufferIndex = 1 - m_doubleBufferIndex; }
     unsigned m_doubleBufferIndex;
     unsigned m_doubleBufferIndexForEvent;
-    Vector<RefPtr<AudioBuffer> > m_inputBuffers;
-    Vector<RefPtr<AudioBuffer> > m_outputBuffers;
+    Vector<RefPtr<AudioBuffer>> m_inputBuffers;
+    Vector<RefPtr<AudioBuffer>> m_outputBuffers;
 
     size_t m_bufferSize;
     unsigned m_bufferReadWriteIndex;

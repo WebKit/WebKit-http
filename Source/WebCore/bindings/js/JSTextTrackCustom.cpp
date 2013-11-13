@@ -42,10 +42,38 @@ void JSTextTrack::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT(jsTextTrack->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(jsTextTrack, visitor);
 
-    TextTrack* textTrack = jsTextTrack->impl();
-    visitor.addOpaqueRoot(root(textTrack));
+    TextTrack& textTrack = jsTextTrack->impl();
+    visitor.addOpaqueRoot(root(&textTrack));
 
-    textTrack->visitJSEventListeners(visitor);
+    textTrack.visitJSEventListeners(visitor);
+}
+
+void JSTextTrack::setKind(ExecState* exec, JSValue value)
+{
+    UNUSED_PARAM(exec);
+#if ENABLE(MEDIA_SOURCE)
+    const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
+    if (exec->hadException())
+        return;
+    impl().setKind(nativeValue);
+#else
+    UNUSED_PARAM(value);
+    return;
+#endif
+}
+
+void JSTextTrack::setLanguage(ExecState* exec, JSValue value)
+{
+    UNUSED_PARAM(exec);
+#if ENABLE(MEDIA_SOURCE)
+    const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
+    if (exec->hadException())
+        return;
+    impl().setLanguage(nativeValue);
+#else
+    UNUSED_PARAM(value);
+    return;
+#endif
 }
 
 } // namespace WebCore

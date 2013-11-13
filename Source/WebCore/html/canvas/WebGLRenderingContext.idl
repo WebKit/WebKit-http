@@ -41,7 +41,7 @@ typedef /*unrestricted*/ float GLclampf;
 [
     Conditional=WEBGL,
     JSCustomMarkFunction,
-    DoNotCheckConstants
+    DoNotCheckConstants,
 ] interface WebGLRenderingContext : CanvasRenderingContext {
 
     /* ClearBufferMask */

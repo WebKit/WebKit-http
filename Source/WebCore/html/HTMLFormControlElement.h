@@ -34,7 +34,6 @@ class HTMLFieldSetElement;
 class HTMLFormElement;
 class HTMLLegendElement;
 class ValidationMessage;
-class ValidityState;
 
 // HTMLFormControlElement is the default implementation of FormAssociatedElement,
 // and form-associated element implementations should use HTMLFormControlElement
@@ -68,7 +67,7 @@ public:
     virtual bool isDisabledFormControl() const OVERRIDE;
 
     virtual bool isFocusable() const OVERRIDE;
-    virtual bool isEnumeratable() const { return false; }
+    virtual bool isEnumeratable() const OVERRIDE { return false; }
 
     bool isRequired() const;
 
@@ -80,16 +79,16 @@ public:
 
     // Override in derived classes to get the encoded name=value pair for submitting.
     // Return true for a successful control (see HTML4-17.13.2).
-    virtual bool appendFormData(FormDataList&, bool) { return false; }
+    virtual bool appendFormData(FormDataList&, bool) OVERRIDE { return false; }
 
     virtual bool isSuccessfulSubmitButton() const { return false; }
     virtual bool isActivatedSubmit() const { return false; }
     virtual void setActivatedSubmit(bool) { }
 
-    virtual bool willValidate() const;
+    virtual bool willValidate() const OVERRIDE;
     void updateVisibleValidationMessage();
     void hideVisibleValidationMessage();
-    bool checkValidity(Vector<RefPtr<FormAssociatedElement> >* unhandledInvalidControls = 0);
+    bool checkValidity(Vector<RefPtr<FormAssociatedElement>>* unhandledInvalidControls = 0);
     // This must be called when a validation constraint or control value is changed.
     void setNeedsValidityCheck();
     virtual void setCustomValidity(const String&) OVERRIDE;
@@ -112,8 +111,8 @@ protected:
     virtual void requiredAttributeChanged();
     virtual void disabledAttributeChanged();
     virtual void didAttachRenderers() OVERRIDE;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    virtual void removedFrom(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
+    virtual void removedFrom(ContainerNode&) OVERRIDE;
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
     virtual bool supportsFocus() const OVERRIDE;
@@ -128,24 +127,25 @@ protected:
     void setNeedsWillValidateCheck();
     virtual bool recalcWillValidate() const;
 
-    bool validationMessageShadowTreeContains(const Node*) const;
+    bool validationMessageShadowTreeContains(const Node&) const;
 
 private:
-    virtual void refFormAssociatedElement() { ref(); }
-    virtual void derefFormAssociatedElement() { deref(); }
+    virtual void refFormAssociatedElement() OVERRIDE { ref(); }
+    virtual void derefFormAssociatedElement() OVERRIDE { deref(); }
 
-    virtual bool isFormControlElement() const { return true; }
+    virtual bool isFormControlElement() const OVERRIDE { return true; }
     virtual bool alwaysCreateUserAgentShadowRoot() const OVERRIDE { return true; }
 
     virtual short tabIndex() const OVERRIDE FINAL;
 
-    virtual HTMLFormElement* virtualForm() const;
-    virtual bool isDefaultButtonForForm() const;
-    virtual bool isValidFormControlElement();
+    virtual HTMLFormElement* virtualForm() const OVERRIDE;
+    virtual bool isDefaultButtonForForm() const OVERRIDE;
+    virtual bool isValidFormControlElement() OVERRIDE;
     void updateAncestorDisabledState() const;
 
-    virtual HTMLElement* asHTMLElement() OVERRIDE FINAL { return this; }
-    virtual FormNamedItem* asFormNamedItem() OVERRIDE FINAL { return this; }
+    virtual HTMLElement& asHTMLElement() OVERRIDE FINAL { return *this; }
+    virtual const HTMLFormControlElement& asHTMLElement() const OVERRIDE FINAL { return *this; }
+    virtual HTMLFormControlElement* asFormNamedItem() OVERRIDE FINAL { return this; }
 
     OwnPtr<ValidationMessage> m_validationMessage;
     bool m_disabled : 1;
@@ -173,28 +173,12 @@ private:
     bool m_hasAutofocused : 1;
 };
 
-inline bool isHTMLFormControlElement(const Node* node)
-{
-    return node->isElementNode() && toElement(node)->isFormControlElement();
-}
+void isHTMLFormControlElement(const HTMLFormControlElement&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isHTMLFormControlElement(const Element& element) { return element.isFormControlElement(); }
+inline bool isHTMLFormControlElement(const Node& node) { return node.isElementNode() && toElement(node).isFormControlElement(); }
+template <> inline bool isElementOfType<const HTMLFormControlElement>(const Element& element) { return isHTMLFormControlElement(element); }
 
-inline HTMLFormControlElement& toHTMLFormControlElement(Node& node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(isHTMLFormControlElement(&node));
-    return static_cast<HTMLFormControlElement&>(node);
-}
-
-inline HTMLFormControlElement* toHTMLFormControlElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLFormControlElement(node));
-    return static_cast<HTMLFormControlElement*>(node);
-}
-
-void toHTMLFormControlElement(const HTMLFormControlElement*);
-void toHTMLFormControlElement(const HTMLFormControlElement&);
-
-template <> inline bool isElementOfType<HTMLFormControlElement>(const Element* element) { return isHTMLFormControlElement(element); }
-
+NODE_TYPE_CASTS(HTMLFormControlElement)
 
 } // namespace
 

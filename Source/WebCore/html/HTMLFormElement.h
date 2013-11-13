@@ -91,7 +91,7 @@ public:
     String method() const;
     void setMethod(const String&);
 
-    virtual String target() const;
+    virtual String target() const OVERRIDE;
 
     bool wasUserSubmitted() const;
 
@@ -111,17 +111,17 @@ public:
 private:
     HTMLFormElement(const QualifiedName&, Document&);
 
-    virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    virtual void removedFrom(ContainerNode*) OVERRIDE;
+    virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
+    virtual void removedFrom(ContainerNode&) OVERRIDE;
     virtual void finishParsingChildren() OVERRIDE;
 
-    virtual void handleLocalEvents(Event*);
+    virtual void handleLocalEvents(Event&) OVERRIDE;
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
-    virtual void documentDidResumeFromPageCache();
+    virtual void documentDidResumeFromPageCache() OVERRIDE;
 
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
@@ -138,7 +138,7 @@ private:
     // Validates each of the controls, and stores controls of which 'invalid'
     // event was not canceled to the specified vector. Returns true if there
     // are any invalid controls in this form.
-    bool checkInvalidControlsAndCollectUnhandled(Vector<RefPtr<FormAssociatedElement> >&);
+    bool checkInvalidControlsAndCollectUnhandled(Vector<RefPtr<FormAssociatedElement>>&);
 
     HTMLElement* elementFromPastNamesMap(const AtomicString&) const;
     void addToPastNamesMap(FormNamedItem*, const AtomicString& pastName);
@@ -166,7 +166,7 @@ private:
     bool m_wasDemoted;
 };
 
-ELEMENT_TYPE_CASTS(HTMLFormElement)
+NODE_TYPE_CASTS(HTMLFormElement)
 
 } // namespace WebCore
 

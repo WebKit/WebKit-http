@@ -36,8 +36,6 @@
 #include "AccessibilityTableRow.h"
 #include "RenderObject.h"
 
-using namespace std;
-
 namespace WebCore {
 
 AccessibilityARIAGrid::AccessibilityARIAGrid(RenderObject* renderer)
@@ -59,7 +57,7 @@ bool AccessibilityARIAGrid::addTableCellChild(AccessibilityObject* child, HashSe
     if (!child || !child->isTableRow() || child->ariaRoleAttribute() != RowRole)
         return false;
         
-    AccessibilityTableRow* row = static_cast<AccessibilityTableRow*>(child);
+    AccessibilityTableRow* row = toAccessibilityTableRow(child);
     if (appendedRows.contains(row))
         return false;
         
@@ -121,7 +119,7 @@ void AccessibilityARIAGrid::addChildren()
     
     // make the columns based on the number of columns in the first body
     for (unsigned i = 0; i < columnCount; ++i) {
-        AccessibilityTableColumn* column = static_cast<AccessibilityTableColumn*>(axCache->getOrCreate(ColumnRole));
+        AccessibilityTableColumn* column = toAccessibilityTableColumn(axCache->getOrCreate(ColumnRole));
         column->setColumnIndex((int)i);
         column->setParent(this);
         m_columns.append(column);

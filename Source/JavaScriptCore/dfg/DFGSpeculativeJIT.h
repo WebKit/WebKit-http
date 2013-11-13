@@ -278,39 +278,15 @@ public:
         use(nodeUse.node());
     }
     
-    RegisterSet usedRegisters()
-    {
-        RegisterSet result;
-        for (unsigned i = GPRInfo::numberOfRegisters; i--;) {
-            GPRReg gpr = GPRInfo::toRegister(i);
-            if (m_gprs.isInUse(gpr))
-                result.set(gpr);
-        }
-        for (unsigned i = FPRInfo::numberOfRegisters; i--;) {
-            FPRReg fpr = FPRInfo::toRegister(i);
-            if (m_fprs.isInUse(fpr))
-                result.set(fpr);
-        }
-        return result;
-    }
+    RegisterSet usedRegisters();
     
     bool masqueradesAsUndefinedWatchpointIsStillValid(const CodeOrigin& codeOrigin)
     {
         return m_jit.graph().masqueradesAsUndefinedWatchpointIsStillValid(codeOrigin);
     }
-    void speculationWatchpointForMasqueradesAsUndefined(const CodeOrigin& codeOrigin)
-    {
-        m_jit.addLazily(
-            speculationWatchpoint(),
-            m_jit.graph().globalObjectFor(codeOrigin)->masqueradesAsUndefinedWatchpoint());
-    }
     bool masqueradesAsUndefinedWatchpointIsStillValid()
     {
         return masqueradesAsUndefinedWatchpointIsStillValid(m_currentNode->codeOrigin);
-    }
-    void speculationWatchpointForMasqueradesAsUndefined()
-    {
-        speculationWatchpointForMasqueradesAsUndefined(m_currentNode->codeOrigin);
     }
 
     void writeBarrier(GPRReg ownerGPR, GPRReg valueGPR, Edge valueUse, WriteBarrierUseKind, GPRReg scratchGPR1 = InvalidGPRReg, GPRReg scratchGPR2 = InvalidGPRReg);
@@ -721,7 +697,6 @@ public:
     
     void compileMovHint(Node*);
     void compileMovHintAndCheck(Node*);
-    void compileInlineStart(Node*);
 
     void nonSpeculativeUInt32ToNumber(Node*);
 
@@ -750,39 +725,55 @@ public:
     void compileInstanceOfForObject(Node*, GPRReg valueReg, GPRReg prototypeReg, GPRReg scratchAndResultReg);
     void compileInstanceOf(Node*);
     
+    ptrdiff_t calleeFrameOffset(int numArgs)
+    {
+        return virtualRegisterForLocal(m_jit.graph().m_nextMachineLocal + JSStack::CallFrameHeaderSize + numArgs).offset() * sizeof(Register);
+    }
+    
     // Access to our fixed callee CallFrame.
-    MacroAssembler::Address callFrameSlot(int slot)
+    MacroAssembler::Address calleeFrameSlot(int numArgs, int slot)
     {
-        return MacroAssembler::Address(GPRInfo::callFrameRegister, (-m_jit.codeBlock()->m_numCalleeRegisters + slot) * static_cast<int>(sizeof(Register)));
+        return MacroAssembler::Address(GPRInfo::callFrameRegister, calleeFrameOffset(numArgs) + sizeof(Register) * slot);
     }
 
     // Access to our fixed callee CallFrame.
-    MacroAssembler::Address argumentSlot(int argument)
+    MacroAssembler::Address calleeArgumentSlot(int numArgs, int argument)
     {
-        return MacroAssembler::Address(GPRInfo::callFrameRegister, (-m_jit.codeBlock()->m_numCalleeRegisters + virtualRegisterForArgument(argument).offset()) * static_cast<int>(sizeof(Register)));
+        return calleeFrameSlot(numArgs, virtualRegisterForArgument(argument).offset());
     }
 
-    MacroAssembler::Address callFrameTagSlot(int slot)
+    MacroAssembler::Address calleeFrameTagSlot(int numArgs, int slot)
     {
-        return MacroAssembler::Address(GPRInfo::callFrameRegister, (-m_jit.codeBlock()->m_numCalleeRegisters + slot) * static_cast<int>(sizeof(Register)) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
+        return calleeFrameSlot(numArgs, slot).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
     }
 
-    MacroAssembler::Address callFramePayloadSlot(int slot)
+    MacroAssembler::Address calleeFramePayloadSlot(int numArgs, int slot)
     {
-        return MacroAssembler::Address(GPRInfo::callFrameRegister, (-m_jit.codeBlock()->m_numCalleeRegisters + slot) * static_cast<int>(sizeof(Register)) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
+        return calleeFrameSlot(numArgs, slot).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
     }
 
-    MacroAssembler::Address argumentTagSlot(int argument)
+    MacroAssembler::Address calleeArgumentTagSlot(int numArgs, int argument)
     {
-        return MacroAssembler::Address(GPRInfo::callFrameRegister, (-m_jit.codeBlock()->m_numCalleeRegisters + virtualRegisterForArgument(argument).offset()) * static_cast<int>(sizeof(Register)) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
+        return calleeArgumentSlot(numArgs, argument).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
     }
 
-    MacroAssembler::Address argumentPayloadSlot(int argument)
+    MacroAssembler::Address calleeArgumentPayloadSlot(int numArgs, int argument)
     {
-        return MacroAssembler::Address(GPRInfo::callFrameRegister, (-m_jit.codeBlock()->m_numCalleeRegisters + virtualRegisterForArgument(argument).offset()) * static_cast<int>(sizeof(Register)) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
+        return calleeArgumentSlot(numArgs, argument).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
+    }
+
+    MacroAssembler::Address calleeFrameCallerFrame(int numArgs)
+    {
+        return calleeFrameSlot(numArgs, 0).withOffset(CallFrame::callerFrameOffset());
     }
 
     void emitCall(Node*);
+    
+    int32_t framePointerOffsetToGetActivationRegisters()
+    {
+        return m_jit.codeBlock()->framePointerOffsetToGetActivationRegisters(
+            m_jit.graph().m_machineCaptureStart);
+    }
     
     // Called once a node has completed code generation but prior to setting
     // its result, to free up its children. (This must happen prior to setting
@@ -1099,6 +1090,18 @@ public:
         return appendCall(operation);
     }
 
+    JITCompiler::Call callOperationWithCallFrameRollbackOnException(V_JITOperation_ECb operation, void* pointer)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(pointer));
+        return appendCallWithCallFrameRollbackOnException(operation);
+    }
+
+    JITCompiler::Call callOperationWithCallFrameRollbackOnException(Z_JITOperation_E operation, GPRReg result)
+    {
+        m_jit.setupArgumentsExecState();
+        return appendCallWithCallFrameRollbackOnExceptionSetResult(operation, result);
+    }
+
     template<typename FunctionType, typename ArgumentType1>
     JITCompiler::Call callOperation(FunctionType operation, NoResultTag, ArgumentType1 arg1)
     {
@@ -1130,6 +1133,11 @@ public:
         m_jit.setupArguments(arg1, arg2);
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(D_JITOperation_D operation, FPRReg result, FPRReg arg1)
+    {
+        m_jit.setupArguments(arg1);
+        return appendCallSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(D_JITOperation_DD operation, FPRReg result, FPRReg arg1, FPRReg arg2)
     {
         m_jit.setupArguments(arg1, arg2);
@@ -1143,6 +1151,11 @@ public:
     JITCompiler::Call callOperation(C_JITOperation_EZ operation, GPRReg result, GPRReg arg1)
     {
         m_jit.setupArgumentsWithExecState(arg1);
+        return appendCallWithExceptionCheckSetResult(operation, result);
+    }
+    JITCompiler::Call callOperation(C_JITOperation_EZ operation, GPRReg result, int32_t arg1)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImm32(arg1));
         return appendCallWithExceptionCheckSetResult(operation, result);
     }
 
@@ -1204,14 +1217,14 @@ public:
         m_jit.setupArgumentsWithExecState(TrustedImmPtr(cell));
         return appendCallWithExceptionCheckSetResult(operation, result);
     }
-    JITCompiler::Call callOperation(J_JITOperation_ECI operation, GPRReg result, GPRReg arg1, const StringImpl* uid)
+    JITCompiler::Call callOperation(J_JITOperation_ESsiCI operation, GPRReg result, StructureStubInfo* stubInfo, GPRReg arg1, const StringImpl* uid)
     {
-        m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(uid));
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(stubInfo), arg1, TrustedImmPtr(uid));
         return appendCallWithExceptionCheckSetResult(operation, result);
     }
-    JITCompiler::Call callOperation(J_JITOperation_EJI operation, GPRReg result, GPRReg arg1, StringImpl* uid)
+    JITCompiler::Call callOperation(J_JITOperation_ESsiJI operation, GPRReg result, StructureStubInfo* stubInfo, GPRReg arg1, StringImpl* uid)
     {
-        m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(uid));
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(stubInfo), arg1, TrustedImmPtr(uid));
         return appendCallWithExceptionCheckSetResult(operation, result);
     }
     JITCompiler::Call callOperation(J_JITOperation_EDA operation, GPRReg result, FPRReg arg1, GPRReg arg2)
@@ -1335,9 +1348,9 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, arg2, TrustedImmPtr(pointer));
         return appendCallWithExceptionCheck(operation);
     }
-    JITCompiler::Call callOperation(V_JITOperation_EJCI operation, GPRReg arg1, GPRReg arg2, StringImpl* uid)
+    JITCompiler::Call callOperation(V_JITOperation_ESsiJJI operation, StructureStubInfo* stubInfo, GPRReg arg1, GPRReg arg2, StringImpl* uid)
     {
-        m_jit.setupArgumentsWithExecState(arg1, arg2, TrustedImmPtr(uid));
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(stubInfo), arg1, arg2, TrustedImmPtr(uid));
         return appendCallWithExceptionCheck(operation);
     }
     JITCompiler::Call callOperation(V_JITOperation_EJJJ operation, GPRReg arg1, GPRReg arg2, GPRReg arg3)
@@ -1379,7 +1392,8 @@ public:
 #endif
 
 // JSVALUE32_64 is a 64-bit integer that cannot be put half in an argument register and half on stack when using SH4 architecture.
-// To avoid this, let's occupy the 4th argument register (r7) with a dummy argument when necessary.
+// To avoid this, let's occupy the 4th argument register (r7) with a dummy argument when necessary. This must only be done when there
+// is no other 32-bit value argument behind this 64-bit JSValue.
 #if CPU(SH4)
 #define SH4_32BIT_DUMMY_ARG      TrustedImm32(0),
 #else
@@ -1460,19 +1474,19 @@ public:
         m_jit.setupArgumentsWithExecState(TrustedImmPtr(cell));
         return appendCallWithExceptionCheckSetResult(operation, resultPayload, resultTag);
     }
-    JITCompiler::Call callOperation(J_JITOperation_ECI operation, GPRReg resultTag, GPRReg resultPayload, GPRReg arg1, const StringImpl* uid)
+    JITCompiler::Call callOperation(J_JITOperation_ESsiCI operation, GPRReg resultTag, GPRReg resultPayload, StructureStubInfo* stubInfo, GPRReg arg1, const StringImpl* uid)
     {
-        m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(uid));
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(stubInfo), arg1, TrustedImmPtr(uid));
         return appendCallWithExceptionCheckSetResult(operation, resultPayload, resultTag);
     }
-    JITCompiler::Call callOperation(J_JITOperation_EJI operation, GPRReg resultTag, GPRReg resultPayload, GPRReg arg1Tag, GPRReg arg1Payload, StringImpl* uid)
+    JITCompiler::Call callOperation(J_JITOperation_ESsiJI operation, GPRReg resultTag, GPRReg resultPayload, StructureStubInfo* stubInfo, GPRReg arg1Tag, GPRReg arg1Payload, StringImpl* uid)
     {
-        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, TrustedImmPtr(uid));
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(stubInfo), arg1Payload, arg1Tag, TrustedImmPtr(uid));
         return appendCallWithExceptionCheckSetResult(operation, resultPayload, resultTag);
     }
-    JITCompiler::Call callOperation(J_JITOperation_EJI operation, GPRReg resultTag, GPRReg resultPayload, int32_t arg1Tag, GPRReg arg1Payload, StringImpl* uid)
+    JITCompiler::Call callOperation(J_JITOperation_ESsiJI operation, GPRReg resultTag, GPRReg resultPayload, StructureStubInfo* stubInfo, int32_t arg1Tag, GPRReg arg1Payload, StringImpl* uid)
     {
-        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, TrustedImm32(arg1Tag), TrustedImmPtr(uid));
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(stubInfo), arg1Payload, TrustedImm32(arg1Tag), TrustedImmPtr(uid));
         return appendCallWithExceptionCheckSetResult(operation, resultPayload, resultTag);
     }
     JITCompiler::Call callOperation(J_JITOperation_EDA operation, GPRReg resultTag, GPRReg resultPayload, FPRReg arg1, GPRReg arg2)
@@ -1592,9 +1606,9 @@ public:
         m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, arg2, TrustedImmPtr(pointer));
         return appendCallWithExceptionCheck(operation);
     }
-    JITCompiler::Call callOperation(V_JITOperation_EJCI operation, GPRReg arg1Tag, GPRReg arg1Payload, GPRReg arg2, StringImpl* uid)
+    JITCompiler::Call callOperation(V_JITOperation_ESsiJJI operation, StructureStubInfo* stubInfo, GPRReg arg1Tag, GPRReg arg1Payload, GPRReg arg2Payload, StringImpl* uid)
     {
-        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, arg2, TrustedImmPtr(uid));
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(stubInfo), arg1Payload, arg1Tag, arg2Payload, TrustedImm32(JSValue::CellTag), TrustedImmPtr(uid));
         return appendCallWithExceptionCheck(operation);
     }
     JITCompiler::Call callOperation(V_JITOperation_ECJJ operation, GPRReg arg1, GPRReg arg2Tag, GPRReg arg2Payload, GPRReg arg3Tag, GPRReg arg3Payload)
@@ -1705,10 +1719,25 @@ public:
         m_jit.exceptionCheck();
         return call;
     }
+    JITCompiler::Call appendCallWithCallFrameRollbackOnException(const FunctionPtr& function)
+    {
+        prepareForExternalCall();
+        m_jit.emitStoreCodeOrigin(m_currentNode->codeOrigin);
+        JITCompiler::Call call = m_jit.appendCall(function);
+        m_jit.exceptionCheckWithCallFrameRollback();
+        return call;
+    }
     JITCompiler::Call appendCallWithExceptionCheckSetResult(const FunctionPtr& function, GPRReg result)
     {
         JITCompiler::Call call = appendCallWithExceptionCheck(function);
-        if (result != InvalidGPRReg)
+        if ((result != InvalidGPRReg) && (result != GPRInfo::returnValueGPR))
+            m_jit.move(GPRInfo::returnValueGPR, result);
+        return call;
+    }
+    JITCompiler::Call appendCallWithCallFrameRollbackOnExceptionSetResult(const FunctionPtr& function, GPRReg result)
+    {
+        JITCompiler::Call call = appendCallWithCallFrameRollbackOnException(function);
+        if ((result != InvalidGPRReg) && (result != GPRInfo::returnValueGPR))
             m_jit.move(GPRInfo::returnValueGPR, result);
         return call;
     }
@@ -1752,23 +1781,7 @@ public:
         }
         return call;
     }
-#elif CPU(ARM)
-#if CPU(ARM_HARDFP)
-    JITCompiler::Call appendCallWithExceptionCheckSetResult(const FunctionPtr& function, FPRReg result)
-    {
-        JITCompiler::Call call = appendCallWithExceptionCheck(function);
-        if (result != InvalidFPRReg)
-            m_jit.moveDouble(result, FPRInfo::argumentFPR0);
-        return call;
-    }
-    JITCompiler::Call appendCallSetResult(const FunctionPtr& function, FPRReg result)
-    {
-        JITCompiler::Call call = appendCall(function);
-        if (result != InvalidFPRReg)
-            m_jit.moveDouble(result, FPRInfo::argumentFPR0);
-        return call;
-    }
-#else
+#elif CPU(ARM) && !CPU(ARM_HARDFP)
     JITCompiler::Call appendCallWithExceptionCheckSetResult(const FunctionPtr& function, FPRReg result)
     {
         JITCompiler::Call call = appendCallWithExceptionCheck(function);
@@ -1783,8 +1796,7 @@ public:
             m_jit.assembler().vmov(result, GPRInfo::returnValueGPR, GPRInfo::returnValueGPR2);
         return call;
     }
-#endif // CPU(ARM_HARDFP)
-#else
+#else // CPU(X86_64) || (CPU(ARM) && CPU(ARM_HARDFP)) || CPU(ARM64) || CPU(MIPS) || CPU(SH4)
     JITCompiler::Call appendCallWithExceptionCheckSetResult(const FunctionPtr& function, FPRReg result)
     {
         JITCompiler::Call call = appendCallWithExceptionCheck(function);
@@ -1938,6 +1950,8 @@ public:
     void compileLogicalNot(Node*);
     void compileStringEquality(Node*);
     void compileStringIdentEquality(Node*);
+    void compileStringZeroLength(Node*);
+
     void emitObjectOrOtherBranch(Edge value, BasicBlock* taken, BasicBlock* notTaken);
     void emitBranch(Node*);
     
@@ -2038,7 +2052,15 @@ public:
     MacroAssembler::Jump emitAllocateBasicStorage(SizeType size, GPRReg resultGPR)
     {
         CopiedAllocator* copiedAllocator = &m_jit.vm()->heap.storageAllocator();
-        
+
+        // It's invalid to allocate zero bytes in CopiedSpace. 
+#ifndef NDEBUG
+        m_jit.move(size, resultGPR);
+        MacroAssembler::Jump nonZeroSize = m_jit.branchTest32(MacroAssembler::NonZero, resultGPR);
+        m_jit.breakpoint();
+        nonZeroSize.link(&m_jit);
+#endif
+
         m_jit.loadPtr(&copiedAllocator->m_currentRemaining, resultGPR);
         MacroAssembler::Jump slowPath = m_jit.branchSubPtr(JITCompiler::Signed, size, resultGPR);
         m_jit.storePtr(resultGPR, &copiedAllocator->m_currentRemaining);
@@ -2117,16 +2139,8 @@ public:
     // Add a speculation check with additional recovery.
     void backwardSpeculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
     void backwardSpeculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
-    // Use this like you would use speculationCheck(), except that you don't pass it a jump
-    // (because you don't have to execute a branch; that's kind of the whole point), and you
-    // must register the returned Watchpoint with something relevant. In general, this should
-    // be used with extreme care. Use speculationCheck() unless you've got an amazing reason
-    // not to.
-    JumpReplacementWatchpoint* speculationWatchpoint(ExitKind, JSValueSource, Node*);
-    // The default for speculation watchpoints is that they're uncounted, because the
-    // act of firing a watchpoint invalidates it. So, future recompilations will not
-    // attempt to set this watchpoint again.
-    JumpReplacementWatchpoint* speculationWatchpoint(ExitKind = UncountableWatchpoint);
+    
+    void emitInvalidationPoint(Node*);
     
     // It is generally a good idea to not use this directly.
     void convertLastOSRExitToForward(const ValueRecovery& = ValueRecovery());
@@ -2185,41 +2199,16 @@ public:
     // flag is cleared, indicating no further code generation should take place.
     bool m_compileOkay;
     
-    // Tracking for which nodes are currently holding the values of arguments and bytecode
-    // operand-indexed variables.
-    
-    ValueSource valueSourceForOperand(VirtualRegister operand)
+    void recordSetLocal(
+        VirtualRegister bytecodeReg, VirtualRegister machineReg, DataFormat format)
     {
-        return valueSourceReferenceForOperand(operand);
+        m_stream->appendAndLog(VariableEvent::setLocal(bytecodeReg, machineReg, format));
     }
     
-    void setNodeForOperand(Node* node, VirtualRegister operand)
+    void recordSetLocal(DataFormat format)
     {
-        valueSourceReferenceForOperand(operand) = ValueSource(MinifiedID(node));
-    }
-    
-    // Call this with care, since it both returns a reference into an array
-    // and potentially resizes the array. So it would not be right to call this
-    // twice and then perform operands on both references, since the one from
-    // the first call may no longer be valid.
-    ValueSource& valueSourceReferenceForOperand(VirtualRegister operand)
-    {
-        if (operand.isArgument()) {
-            int argument = operand.toArgument();
-            return m_arguments[argument];
-        }
-
-        int local = operand.toLocal();
-        if ((unsigned)local >= m_variables.size())
-            m_variables.resize(local + 1);
-        
-        return m_variables[local];
-    }
-    
-    void recordSetLocal(VirtualRegister operand, ValueSource valueSource)
-    {
-        valueSourceReferenceForOperand(operand) = valueSource;
-        m_stream->appendAndLog(VariableEvent::setLocal(operand, valueSource.dataFormat()));
+        VariableAccessData* variable = m_currentNode->variableAccessData();
+        recordSetLocal(variable->local(), variable->machineLocal(), format);
     }
 
     GenerationInfo& generationInfoFromVirtualRegister(VirtualRegister virtualRegister)
@@ -2265,9 +2254,6 @@ public:
     };
     Vector<BranchRecord, 8> m_branches;
 
-    Vector<ValueSource, 0> m_arguments;
-    Vector<ValueSource, 0> m_variables;
-    VirtualRegister m_lastSetOperand;
     CodeOrigin m_codeOriginForExitTarget;
     CodeOrigin m_codeOriginForExitProfile;
     
@@ -2281,13 +2267,6 @@ public:
     
     Vector<OwnPtr<SlowPathGenerator>, 8> m_slowPathGenerators;
     Vector<SilentRegisterSavePlan> m_plans;
-    
-    ValueRecovery computeValueRecoveryFor(int operand, const ValueSource&);
-
-    ValueRecovery computeValueRecoveryFor(int operand)
-    {
-        return computeValueRecoveryFor(operand, valueSourceForOperand(VirtualRegister(operand)));
-    }
 };
 
 
@@ -3042,18 +3021,13 @@ void SpeculativeJIT::speculateStringObjectForStructure(Edge edge, StructureLocat
 {
     Structure* stringObjectStructure =
         m_jit.globalObjectFor(m_currentNode->codeOrigin)->stringObjectStructure();
-    Structure* stringPrototypeStructure = stringObjectStructure->storedPrototype().asCell()->structure();
-    ASSERT(m_jit.graph().watchpoints().isValidOrMixed(stringPrototypeStructure->transitionWatchpointSet()));
     
-    if (!m_state.forNode(edge).m_currentKnownStructure.isSubsetOf(StructureSet(m_jit.globalObjectFor(m_currentNode->codeOrigin)->stringObjectStructure()))) {
+    if (!m_state.forNode(edge).m_currentKnownStructure.isSubsetOf(StructureSet(stringObjectStructure))) {
         speculationCheck(
             NotStringObject, JSValueRegs(), 0,
             m_jit.branchPtr(
                 JITCompiler::NotEqual, structureLocation, TrustedImmPtr(stringObjectStructure)));
     }
-    m_jit.addLazily(
-        speculationWatchpoint(NotStringObject),
-        stringPrototypeStructure->transitionWatchpointSet());
 }
 
 #define DFG_TYPE_CHECK(source, edge, typesPassedThrough, jumpToFail) do { \

@@ -122,12 +122,21 @@ public:
 
     void disconnectDescendantFrames();
 
-    virtual bool childShouldCreateRenderer(const Node*) const { return true; }
+    virtual bool childShouldCreateRenderer(const Node&) const { return true; }
 
     using Node::setAttributeEventListener;
     void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
 
     RenderElement* renderer() const;
+
+    Element* querySelector(const AtomicString& selectors, ExceptionCode&);
+    RefPtr<NodeList> querySelectorAll(const AtomicString& selectors, ExceptionCode&);
+
+    PassRefPtr<NodeList> getElementsByTagName(const AtomicString&);
+    PassRefPtr<NodeList> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
+    PassRefPtr<NodeList> getElementsByName(const String& elementName);
+    PassRefPtr<NodeList> getElementsByClassName(const String& classNames);
+    PassRefPtr<RadioNodeList> radioNodeList(const AtomicString&);
 
 protected:
     explicit ContainerNode(Document*, ConstructionType = CreateContainer);
@@ -167,32 +176,10 @@ private:
     Node* m_lastChild;
 };
 
-inline ContainerNode* toContainerNode(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isContainerNode());
-    return static_cast<ContainerNode*>(node);
-}
+inline bool isContainerNode(const Node& node) { return node.isContainerNode(); }
+void isContainerNode(const ContainerNode&); // Catch unnecessary runtime check of type known at compile time.
 
-inline const ContainerNode* toContainerNode(const Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isContainerNode());
-    return static_cast<const ContainerNode*>(node);
-}
-
-inline ContainerNode& toContainerNode(Node& node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(node.isContainerNode());
-    return static_cast<ContainerNode&>(node);
-}
-inline const ContainerNode& toContainerNode(const Node& node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(node.isContainerNode());
-    return static_cast<const ContainerNode&>(node);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toContainerNode(const ContainerNode*);
-void toContainerNode(const ContainerNode&);
+NODE_TYPE_CASTS(ContainerNode)
 
 inline ContainerNode::ContainerNode(Document* document, ConstructionType type)
     : Node(document, type)
@@ -248,7 +235,7 @@ inline bool Node::needsNodeRenderingTraversalSlowPath() const
 
 inline bool Node::isTreeScope() const
 {
-    return treeScope()->rootNode() == this;
+    return treeScope().rootNode() == this;
 }
 
 // This constant controls how much buffer is initially allocated
@@ -290,7 +277,7 @@ public:
                 m_currentNode = node->nextSibling();
             return node.release();
         }
-        Vector<RefPtr<Node> >& nodeVector = *m_childNodes;
+        Vector<RefPtr<Node>>& nodeVector = *m_childNodes;
         if (m_currentIndex >= nodeVector.size())
             return 0;
         return nodeVector[m_currentIndex++];
@@ -300,7 +287,7 @@ public:
     {
         if (hasSnapshot())
             return;
-        m_childNodes = adoptPtr(new Vector<RefPtr<Node> >());
+        m_childNodes = adoptPtr(new Vector<RefPtr<Node>>());
         Node* node = m_currentNode.get();
         while (node) {
             m_childNodes->append(node);
@@ -325,7 +312,7 @@ private:
 
     RefPtr<Node> m_currentNode;
     unsigned m_currentIndex;
-    OwnPtr<Vector<RefPtr<Node> > > m_childNodes; // Lazily instantiated.
+    OwnPtr<Vector<RefPtr<Node>>> m_childNodes; // Lazily instantiated.
     ChildNodesLazySnapshot* m_nextSnapshot;
 };
 

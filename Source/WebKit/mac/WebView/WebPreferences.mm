@@ -43,10 +43,10 @@
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/ResourceHandle.h>
-#import <WebCore/RunLoop.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/RunLoop.h>
 
 using namespace WebCore;
 
@@ -75,77 +75,74 @@ static bool contains(const char* const array[], int count, const char* item)
 
 static WebCacheModel cacheModelForMainBundle(void)
 {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    @autoreleasepool {
+        // Apps that probably need the small setting
+        static const char* const documentViewerIDs[] = {
+            "Microsoft/com.microsoft.Messenger",
+            "com.adiumX.adiumX", 
+            "com.alientechnology.Proteus",
+            "com.apple.Dashcode",
+            "com.apple.iChat", 
+            "com.barebones.bbedit",
+            "com.barebones.textwrangler",
+            "com.barebones.yojimbo",
+            "com.equinux.iSale4",
+            "com.growl.growlframework",
+            "com.intrarts.PandoraMan",
+            "com.karelia.Sandvox",
+            "com.macromates.textmate",
+            "com.realmacsoftware.rapidweaverpro",
+            "com.red-sweater.marsedit",
+            "com.yahoo.messenger3",
+            "de.codingmonkeys.SubEthaEdit",
+            "fi.karppinen.Pyro",
+            "info.colloquy", 
+            "kungfoo.tv.ecto",
+        };
 
-    // Apps that probably need the small setting
-    static const char* const documentViewerIDs[] = {
-        "Microsoft/com.microsoft.Messenger",
-        "com.adiumX.adiumX", 
-        "com.alientechnology.Proteus",
-        "com.apple.Dashcode",
-        "com.apple.iChat", 
-        "com.barebones.bbedit", 
-        "com.barebones.textwrangler",
-        "com.barebones.yojimbo",
-        "com.equinux.iSale4",
-        "com.growl.growlframework",
-        "com.intrarts.PandoraMan",
-        "com.karelia.Sandvox",
-        "com.macromates.textmate",
-        "com.realmacsoftware.rapidweaverpro",
-        "com.red-sweater.marsedit",
-        "com.yahoo.messenger3",
-        "de.codingmonkeys.SubEthaEdit",
-        "fi.karppinen.Pyro",
-        "info.colloquy", 
-        "kungfoo.tv.ecto",
-    };
+        // Apps that probably need the medium setting
+        static const char* const documentBrowserIDs[] = {
+            "com.apple.Dictionary",
+            "com.apple.Xcode",
+            "com.apple.dashboard.client", 
+            "com.apple.helpviewer",
+            "com.culturedcode.xyle",
+            "com.macrabbit.CSSEdit",
+            "com.panic.Coda",
+            "com.ranchero.NetNewsWire",
+            "com.thinkmac.NewsLife",
+            "org.xlife.NewsFire",
+            "uk.co.opencommunity.vienna2",
+        };
 
-    // Apps that probably need the medium setting
-    static const char* const documentBrowserIDs[] = {
-        "com.apple.Dictionary",
-        "com.apple.Xcode",
-        "com.apple.dashboard.client", 
-        "com.apple.helpviewer",
-        "com.culturedcode.xyle",
-        "com.macrabbit.CSSEdit",
-        "com.panic.Coda",
-        "com.ranchero.NetNewsWire",
-        "com.thinkmac.NewsLife",
-        "org.xlife.NewsFire",
-        "uk.co.opencommunity.vienna2",
-    };
+        // Apps that probably need the large setting
+        static const char* const primaryWebBrowserIDs[] = {
+            "com.app4mac.KidsBrowser"
+            "com.app4mac.wKiosk",
+            "com.freeverse.bumpercar",
+            "com.omnigroup.OmniWeb5",
+            "com.sunrisebrowser.Sunrise",
+            "net.hmdt-web.Shiira",
+        };
 
-    // Apps that probably need the large setting
-    static const char* const primaryWebBrowserIDs[] = {
-        "com.app4mac.KidsBrowser"
-        "com.app4mac.wKiosk",
-        "com.freeverse.bumpercar",
-        "com.omnigroup.OmniWeb5",
-        "com.sunrisebrowser.Sunrise",
-        "net.hmdt-web.Shiira",
-    };
+        const char* bundleID = [[[NSBundle mainBundle] bundleIdentifier] UTF8String];
+        if (contains(documentViewerIDs, sizeof(documentViewerIDs) / sizeof(documentViewerIDs[0]), bundleID))
+            return WebCacheModelDocumentViewer;
+        if (contains(documentBrowserIDs, sizeof(documentBrowserIDs) / sizeof(documentBrowserIDs[0]), bundleID))
+            return WebCacheModelDocumentBrowser;
+        if (contains(primaryWebBrowserIDs, sizeof(primaryWebBrowserIDs) / sizeof(primaryWebBrowserIDs[0]), bundleID))
+            return WebCacheModelPrimaryWebBrowser;
 
-    WebCacheModel cacheModel;
+        bool isLinkedAgainstWebKit = WebKitLinkedOnOrAfter(0);
+        if (!isLinkedAgainstWebKit)
+            return WebCacheModelDocumentViewer; // Apps that don't link against WebKit probably aren't meant to be browsers.
 
-    const char* bundleID = [[[NSBundle mainBundle] bundleIdentifier] UTF8String];
-    if (contains(documentViewerIDs, sizeof(documentViewerIDs) / sizeof(documentViewerIDs[0]), bundleID))
-        cacheModel = WebCacheModelDocumentViewer;
-    else if (contains(documentBrowserIDs, sizeof(documentBrowserIDs) / sizeof(documentBrowserIDs[0]), bundleID))
-        cacheModel = WebCacheModelDocumentBrowser;
-    else if (contains(primaryWebBrowserIDs, sizeof(primaryWebBrowserIDs) / sizeof(primaryWebBrowserIDs[0]), bundleID))
-        cacheModel = WebCacheModelPrimaryWebBrowser;
-    else {
         bool isLegacyApp = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_CACHE_MODEL_API);
         if (isLegacyApp)
-            cacheModel = WebCacheModelDocumentBrowser; // To avoid regressions in apps that depended on old WebKit's large cache.
-        else
-            cacheModel = WebCacheModelDocumentViewer; // To save memory.
+            return WebCacheModelDocumentBrowser; // To avoid regressions in apps that depended on old WebKit's large cache.
+
+        return WebCacheModelDocumentViewer; // To save memory.
     }
-
-    [pool drain];
-
-    return cacheModel;
 }
 
 @interface WebPreferences ()
@@ -309,7 +306,7 @@ public:
 {
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
-    WebCore::RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMainRunLoop();
 
     NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
         @"Times",                       WebKitStandardFontPreferenceKey,
@@ -382,6 +379,7 @@ public:
         [NSNumber numberWithBool:NO],   WebKitShowRepaintCounterPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitWebGLEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitMultithreadedWebGLEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO],  WebKitForceSoftwareWebGLRenderingPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitAccelerated2dCanvasEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitFrameFlatteningEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitSpatialNavigationEnabledPreferenceKey,
@@ -416,12 +414,20 @@ public:
 #if ENABLE(IOS_TEXT_AUTOSIZING)
         [NSNumber numberWithFloat:WKGetMinimumZoomFontSize()], WebKitMinimumZoomFontSizePreferenceKey,
 #endif
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+        [NSNumber numberWithBool:YES], WebKitDiskImageCacheEnabledPreferenceKey,
+        [NSNumber numberWithUnsignedInt:(100 * 1024)], WebKitDiskImageCacheMinimumImageSizePreferenceKey,
+        [NSNumber numberWithUnsignedInt:(100 * 1024 * 1024)], WebKitDiskImageCacheMaximumCacheSizePreferenceKey,
+#endif
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
         [NSNumber numberWithBool:YES],  WebKitQTKitEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitLowPowerVideoAudioBufferSizeEnabledPreferenceKey,
+#if !PLATFORM(IOS)
+        [NSNumber numberWithBool:NO],   WebKitVideoPluginProxyEnabledKey,
+#endif
         nil];
 
 
@@ -1477,6 +1483,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitMultithreadedWebGLEnabledPreferenceKey];
 }
 
+- (BOOL)forceSoftwareWebGLRendering
+{
+    return [self _boolValueForKey:WebKitForceSoftwareWebGLRenderingPreferenceKey];
+}
+
+- (void)setForceSoftwareWebGLRendering:(BOOL)forced
+{
+    [self _setBoolValue:forced forKey:WebKitForceSoftwareWebGLRenderingPreferenceKey];
+}
+
 - (BOOL)accelerated2dCanvasEnabled
 {
     return [self _boolValueForKey:WebKitAccelerated2dCanvasEnabledPreferenceKey];
@@ -1486,6 +1502,48 @@ static NSString *classIBCreatorID = nil;
 {
     [self _setBoolValue:enabled forKey:WebKitAccelerated2dCanvasEnabledPreferenceKey];
 }
+
+#if ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
+- (BOOL)diskImageCacheEnabled
+{
+    return [self _boolValueForKey:WebKitDiskImageCacheEnabledPreferenceKey];
+}
+
+- (void)setDiskImageCacheEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitDiskImageCacheEnabledPreferenceKey];
+}
+
+- (unsigned)diskImageCacheMinimumImageSize
+{
+    return [self _integerValueForKey:WebKitDiskImageCacheMinimumImageSizePreferenceKey];
+}
+
+- (void)setDiskImageCacheMinimumImageSize:(unsigned)minimumSize
+{
+    [self _setIntegerValue:minimumSize forKey:WebKitDiskImageCacheMinimumImageSizePreferenceKey];
+}
+
+- (unsigned)diskImageCacheMaximumCacheSize
+{
+    return [self _integerValueForKey:WebKitDiskImageCacheMaximumCacheSizePreferenceKey];
+}
+
+- (void)setDiskImageCacheMaximumCacheSize:(unsigned)maximumSize
+{
+    [self _setIntegerValue:maximumSize forKey:WebKitDiskImageCacheMaximumCacheSizePreferenceKey];
+}
+
+- (NSString *)_diskImageCacheSavedCacheDirectory
+{
+    return [[self _stringValueForKey:WebKitDiskImageCacheSavedCacheDirectoryKey] stringByStandardizingPath];
+}
+
+- (void)_setDiskImageCacheSavedCacheDirectory:(NSString *)path
+{
+    [self _setStringValue:[path stringByStandardizingPath] forKey:WebKitDiskImageCacheSavedCacheDirectoryKey];
+}
+#endif // ENABLE(DISK_IMAGE_CACHE) && PLATFORM(IOS)
 
 - (BOOL)isFrameFlatteningEnabled
 {
@@ -1610,6 +1668,16 @@ static NSString *classIBCreatorID = nil;
 - (BOOL)isQTKitEnabled
 {
     return [self _boolValueForKey:WebKitQTKitEnabledPreferenceKey];
+}
+
+- (void)setVideoPluginProxyEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitVideoPluginProxyEnabledKey];
+}
+
+- (BOOL)isVideoPluginProxyEnabled
+{
+    return [self _boolValueForKey:WebKitVideoPluginProxyEnabledKey];
 }
 
 - (void)setHixie76WebSocketProtocolEnabled:(BOOL)flag

@@ -32,12 +32,10 @@
 #include "RenderView.h"
 #include <wtf/StackStats.h>
 
-using namespace std;
-
 namespace WebCore {
 
-RenderScrollbarPart::RenderScrollbarPart(RenderScrollbar* scrollbar, ScrollbarPart part)
-    : RenderBlock(0)
+RenderScrollbarPart::RenderScrollbarPart(Document& document, PassRef<RenderStyle> style, RenderScrollbar* scrollbar, ScrollbarPart part)
+    : RenderBlock(document, std::move(style), 0)
     , m_scrollbar(scrollbar)
     , m_part(part)
 {
@@ -45,13 +43,6 @@ RenderScrollbarPart::RenderScrollbarPart(RenderScrollbar* scrollbar, ScrollbarPa
 
 RenderScrollbarPart::~RenderScrollbarPart()
 {
-}
-
-RenderScrollbarPart* RenderScrollbarPart::createAnonymous(Document& document, RenderScrollbar* scrollbar, ScrollbarPart part)
-{
-    RenderScrollbarPart* renderer = new (*document.renderArena()) RenderScrollbarPart(scrollbar, part);
-    renderer->setDocumentForAnonymous(document);
-    return renderer;
 }
 
 void RenderScrollbarPart::layout()
@@ -63,7 +54,7 @@ void RenderScrollbarPart::layout()
     else
         layoutVerticalPart();
 
-    setNeedsLayout(false);
+    clearNeedsLayout();
 }
 
 void RenderScrollbarPart::layoutHorizontalPart()
@@ -102,15 +93,15 @@ void RenderScrollbarPart::computeScrollbarWidth()
     RenderView* renderView = &view();
     // FIXME: We are querying layout information but nothing guarantees that it's up-to-date, especially since we are called at style change.
     // FIXME: Querying the style's border information doesn't work on table cells with collapsing borders.
-    int visibleSize = m_scrollbar->owningRenderer()->width() - m_scrollbar->owningRenderer()->style()->borderLeftWidth() - m_scrollbar->owningRenderer()->style()->borderRightWidth();
-    int w = calcScrollbarThicknessUsing(MainOrPreferredSize, style()->width(), visibleSize, renderView);
-    int minWidth = calcScrollbarThicknessUsing(MinSize, style()->minWidth(), visibleSize, renderView);
-    int maxWidth = style()->maxWidth().isUndefined() ? w : calcScrollbarThicknessUsing(MaxSize, style()->maxWidth(), visibleSize, renderView);
-    setWidth(max(minWidth, min(maxWidth, w)));
+    int visibleSize = m_scrollbar->owningRenderer()->width() - m_scrollbar->owningRenderer()->style().borderLeftWidth() - m_scrollbar->owningRenderer()->style().borderRightWidth();
+    int w = calcScrollbarThicknessUsing(MainOrPreferredSize, style().width(), visibleSize, renderView);
+    int minWidth = calcScrollbarThicknessUsing(MinSize, style().minWidth(), visibleSize, renderView);
+    int maxWidth = style().maxWidth().isUndefined() ? w : calcScrollbarThicknessUsing(MaxSize, style().maxWidth(), visibleSize, renderView);
+    setWidth(std::max(minWidth, std::min(maxWidth, w)));
     
     // Buttons and track pieces can all have margins along the axis of the scrollbar. 
-    m_marginBox.setLeft(minimumValueForLength(style()->marginLeft(), visibleSize, renderView));
-    m_marginBox.setRight(minimumValueForLength(style()->marginRight(), visibleSize, renderView));
+    m_marginBox.setLeft(minimumValueForLength(style().marginLeft(), visibleSize, renderView));
+    m_marginBox.setRight(minimumValueForLength(style().marginRight(), visibleSize, renderView));
 }
 
 void RenderScrollbarPart::computeScrollbarHeight()
@@ -120,15 +111,15 @@ void RenderScrollbarPart::computeScrollbarHeight()
     RenderView* renderView = &view();
     // FIXME: We are querying layout information but nothing guarantees that it's up-to-date, especially since we are called at style change.
     // FIXME: Querying the style's border information doesn't work on table cells with collapsing borders.
-    int visibleSize = m_scrollbar->owningRenderer()->height() -  m_scrollbar->owningRenderer()->style()->borderTopWidth() - m_scrollbar->owningRenderer()->style()->borderBottomWidth();
-    int h = calcScrollbarThicknessUsing(MainOrPreferredSize, style()->height(), visibleSize, renderView);
-    int minHeight = calcScrollbarThicknessUsing(MinSize, style()->minHeight(), visibleSize, renderView);
-    int maxHeight = style()->maxHeight().isUndefined() ? h : calcScrollbarThicknessUsing(MaxSize, style()->maxHeight(), visibleSize, renderView);
-    setHeight(max(minHeight, min(maxHeight, h)));
+    int visibleSize = m_scrollbar->owningRenderer()->height() -  m_scrollbar->owningRenderer()->style().borderTopWidth() - m_scrollbar->owningRenderer()->style().borderBottomWidth();
+    int h = calcScrollbarThicknessUsing(MainOrPreferredSize, style().height(), visibleSize, renderView);
+    int minHeight = calcScrollbarThicknessUsing(MinSize, style().minHeight(), visibleSize, renderView);
+    int maxHeight = style().maxHeight().isUndefined() ? h : calcScrollbarThicknessUsing(MaxSize, style().maxHeight(), visibleSize, renderView);
+    setHeight(std::max(minHeight, std::min(maxHeight, h)));
 
     // Buttons and track pieces can all have margins along the axis of the scrollbar. 
-    m_marginBox.setTop(minimumValueForLength(style()->marginTop(), visibleSize, renderView));
-    m_marginBox.setBottom(minimumValueForLength(style()->marginBottom(), visibleSize, renderView));
+    m_marginBox.setTop(minimumValueForLength(style().marginTop(), visibleSize, renderView));
+    m_marginBox.setBottom(minimumValueForLength(style().marginBottom(), visibleSize, renderView));
 }
 
 void RenderScrollbarPart::computePreferredLogicalWidths()
@@ -139,12 +130,6 @@ void RenderScrollbarPart::computePreferredLogicalWidths()
     m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = 0;
 
     setPreferredLogicalWidthsDirty(false);
-}
-
-void RenderScrollbarPart::styleWillChange(StyleDifference diff, const RenderStyle* newStyle)
-{
-    RenderBlock::styleWillChange(diff, newStyle);
-    setInline(false);
 }
 
 void RenderScrollbarPart::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
@@ -179,16 +164,16 @@ void RenderScrollbarPart::paintIntoRect(GraphicsContext* graphicsContext, const 
     setWidth(rect.width());
     setHeight(rect.height());
 
-    if (graphicsContext->paintingDisabled() || !style()->opacity())
+    if (graphicsContext->paintingDisabled() || !style().opacity())
         return;
 
     // We don't use RenderLayers for scrollbar parts, so we need to handle opacity here.
     // Opacity for ScrollbarBGPart is handled by RenderScrollbarTheme::willPaintScrollbar().
-    bool needsTransparencyLayer = m_part != ScrollbarBGPart && style()->opacity() < 1;
+    bool needsTransparencyLayer = m_part != ScrollbarBGPart && style().opacity() < 1;
     if (needsTransparencyLayer) {
         graphicsContext->save();
         graphicsContext->clip(rect);
-        graphicsContext->beginTransparencyLayer(style()->opacity());
+        graphicsContext->beginTransparencyLayer(style().opacity());
     }
     
     // Now do the paint.

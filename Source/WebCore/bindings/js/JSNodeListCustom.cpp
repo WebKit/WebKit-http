@@ -26,6 +26,7 @@
 #include "config.h"
 #include "JSNodeList.h"
 
+#include "ChildNodeList.h"
 #include "JSNode.h"
 #include "LiveNodeList.h"
 #include "Node.h"
@@ -41,9 +42,13 @@ bool JSNodeListOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handl
     JSNodeList* jsNodeList = jsCast<JSNodeList*>(handle.get().asCell());
     if (!jsNodeList->hasCustomProperties())
         return false;
-    if (!jsNodeList->impl()->isLiveNodeList())
-        return false;
-    return visitor.containsOpaqueRoot(root(static_cast<LiveNodeList*>(jsNodeList->impl())->ownerNode()));
+    if (jsNodeList->impl().isLiveNodeList())
+        return visitor.containsOpaqueRoot(root(static_cast<LiveNodeList&>(jsNodeList->impl()).ownerNode()));
+    if (jsNodeList->impl().isChildNodeList())
+        return visitor.containsOpaqueRoot(root(static_cast<ChildNodeList&>(jsNodeList->impl()).ownerNode()));
+    if (jsNodeList->impl().isEmptyNodeList())
+        return visitor.containsOpaqueRoot(root(static_cast<EmptyNodeList&>(jsNodeList->impl()).ownerNode()));
+    return false;
 }
 
 bool JSNodeList::canGetItemsForName(ExecState*, NodeList* impl, PropertyName propertyName)
@@ -54,7 +59,7 @@ bool JSNodeList::canGetItemsForName(ExecState*, NodeList* impl, PropertyName pro
 JSValue JSNodeList::nameGetter(ExecState* exec, JSValue slotBase, PropertyName propertyName)
 {
     JSNodeList* thisObj = jsCast<JSNodeList*>(asObject(slotBase));
-    return toJS(exec, thisObj->globalObject(), thisObj->impl()->namedItem(propertyNameToAtomicString(propertyName)));
+    return toJS(exec, thisObj->globalObject(), thisObj->impl().namedItem(propertyNameToAtomicString(propertyName)));
 }
 
 } // namespace WebCore

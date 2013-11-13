@@ -54,7 +54,7 @@ bool HTMLTableColElement::isPresentationAttribute(const QualifiedName& name) con
     return HTMLTablePartElement::isPresentationAttribute(name);
 }
 
-void HTMLTableColElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLTableColElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, value);
@@ -92,12 +92,12 @@ const StylePropertySet* HTMLTableColElement::additionalPresentationAttributeStyl
 
 void HTMLTableColElement::setSpan(int n)
 {
-    setAttribute(spanAttr, String::number(n));
+    setIntegralAttribute(spanAttr, n);
 }
 
 String HTMLTableColElement::width() const
 {
-    return getAttribute(widthAttr);
+    return fastGetAttribute(widthAttr);
 }
 
 }

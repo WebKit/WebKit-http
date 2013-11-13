@@ -25,7 +25,7 @@
 
 [
     Conditional=VIDEO,
-    JSGenerateToNativeObject
+    JSGenerateToNativeObject,
 ] interface HTMLVideoElement : HTMLMediaElement {
     [Reflect] attribute unsigned long width;
     [Reflect] attribute unsigned long height;

@@ -37,8 +37,8 @@ namespace WebCore {
 
 RenderSVGResourceType RenderSVGResourceMarker::s_resourceType = MarkerResourceType;
 
-RenderSVGResourceMarker::RenderSVGResourceMarker(SVGMarkerElement& element)
-    : RenderSVGResourceContainer(element)
+RenderSVGResourceMarker::RenderSVGResourceMarker(SVGMarkerElement& element, PassRef<RenderStyle> style)
+    : RenderSVGResourceContainer(element, std::move(style))
 {
 }
 
@@ -72,7 +72,7 @@ void RenderSVGResourceMarker::removeClientFromCache(RenderObject* client, bool m
 
 void RenderSVGResourceMarker::applyViewportClip(PaintInfo& paintInfo)
 {
-    if (SVGRenderSupport::isOverflowHidden(this))
+    if (SVGRenderSupport::isOverflowHidden(*this))
         paintInfo.context->clip(m_viewport);
 }
 

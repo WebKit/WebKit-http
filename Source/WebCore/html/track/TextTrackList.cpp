@@ -34,7 +34,6 @@
 #include "InbandTextTrack.h"
 #include "InbandTextTrackPrivate.h"
 #include "LoadableTextTrack.h"
-#include "TextTrack.h"
 
 using namespace WebCore;
 
@@ -105,7 +104,7 @@ int TextTrackList::getTrackIndexRelativeToRenderedTracks(TextTrack *textTrack)
     return -1;
 }
 
-TextTrack* TextTrackList::item(unsigned index)
+TextTrack* TextTrackList::item(unsigned index) const
 {
     // 4.8.10.12.1 Text track model
     // The text tracks are sorted as follows:
@@ -130,7 +129,7 @@ TextTrack* TextTrackList::item(unsigned index)
 
 void TextTrackList::invalidateTrackIndexesAfterTrack(TextTrack* track)
 {
-    Vector<RefPtr<TrackBase> >* tracks = 0;
+    Vector<RefPtr<TrackBase>>* tracks = 0;
 
     if (track->trackType() == TextTrack::TrackElement) {
         tracks = &m_elementTracks;
@@ -183,7 +182,7 @@ void TextTrackList::append(PassRefPtr<TextTrack> prpTrack)
 void TextTrackList::remove(TrackBase* track)
 {
     TextTrack* textTrack = toTextTrack(track);
-    Vector<RefPtr<TrackBase> >* tracks = 0;
+    Vector<RefPtr<TrackBase>>* tracks = 0;
     if (textTrack->trackType() == TextTrack::TrackElement)
         tracks = &m_elementTracks;
     else if (textTrack->trackType() == TextTrack::AddTrack)
@@ -209,7 +208,7 @@ void TextTrackList::remove(TrackBase* track)
 
 bool TextTrackList::contains(TrackBase* track) const
 {
-    const Vector<RefPtr<TrackBase> >* tracks = 0;
+    const Vector<RefPtr<TrackBase>>* tracks = 0;
     TextTrack::TextTrackType type = toTextTrack(track)->trackType();
     if (type == TextTrack::TrackElement)
         tracks = &m_elementTracks;

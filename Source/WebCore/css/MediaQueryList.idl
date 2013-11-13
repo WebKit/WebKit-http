@@ -18,7 +18,7 @@
  */
 [
     NoInterfaceObject,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface MediaQueryList {
     readonly attribute DOMString media;
     readonly attribute boolean matches;

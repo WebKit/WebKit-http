@@ -216,13 +216,12 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action
 
     ASSERT(m_policyFunction);
 
-    FramePolicyFunction function = m_policyFunction;
+    FramePolicyFunction function = std::move(m_policyFunction);
 
     invalidatePolicyListener();
 
     m_policyDownloadID = downloadID;
-
-    (m_coreFrame->loader().policyChecker().*function)(action);
+    function(action);
 }
 
 void WebFrame::startDownload(const WebCore::ResourceRequest& request)
@@ -422,7 +421,7 @@ PassRefPtr<ImmutableArray> WebFrame::childFrames()
     if (!size)
         return ImmutableArray::create();
 
-    Vector<RefPtr<APIObject>> vector;
+    Vector<RefPtr<API::Object>> vector;
     vector.reserveInitialCapacity(size);
 
     for (Frame* child = m_coreFrame->tree().firstChild(); child; child = child->tree().nextSibling()) {
@@ -432,7 +431,7 @@ PassRefPtr<ImmutableArray> WebFrame::childFrames()
         vector.uncheckedAppend(webFrame);
     }
 
-    return ImmutableArray::adopt(vector);
+    return ImmutableArray::create(std::move(vector));
 }
 
 String WebFrame::layerTreeAsText() const
@@ -629,7 +628,7 @@ WebFrame* WebFrame::frameForContext(JSContextRef context)
     if (strcmp(globalObjectObj->classInfo()->className, "JSDOMWindowShell") != 0)
         return 0;
 
-    Frame* coreFrame = static_cast<JSDOMWindowShell*>(globalObjectObj)->window()->impl()->frame();
+    Frame* coreFrame = static_cast<JSDOMWindowShell*>(globalObjectObj)->window()->impl().frame();
 
     WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(coreFrame->loader().client());
     return webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
@@ -664,7 +663,7 @@ String WebFrame::counterValue(JSObjectRef element)
     if (!toJS(element)->inherits(JSElement::info()))
         return String();
 
-    return counterValueForElement(static_cast<JSElement*>(toJS(element))->impl());
+    return counterValueForElement(&static_cast<JSElement*>(toJS(element))->impl());
 }
 
 String WebFrame::provisionalURL() const
@@ -735,46 +734,23 @@ void WebFrame::setTextDirection(const String& direction)
 }
 
 #if PLATFORM(MAC)
-
-class WebFrameFilter : public FrameFilter {
-public:
-    WebFrameFilter(WebFrame*, WebFrame::FrameFilterFunction, void* context);
-        
-private:
-    virtual bool shouldIncludeSubframe(Frame*) const OVERRIDE;
-
-    WebFrame* m_topLevelWebFrame;
-    WebFrame::FrameFilterFunction m_callback;
-    void* m_context;
-};
-
-WebFrameFilter::WebFrameFilter(WebFrame* topLevelWebFrame, WebFrame::FrameFilterFunction callback, void* context)
-    : m_topLevelWebFrame(topLevelWebFrame)
-    , m_callback(callback)
-    , m_context(context)
-{
-}
-
-bool WebFrameFilter::shouldIncludeSubframe(Frame* frame) const
-{
-    if (!m_callback)
-        return true;
-
-    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader().client());
-    WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
-    ASSERT(webFrame);
-
-    return m_callback(toAPI(m_topLevelWebFrame), toAPI(webFrame), m_context);
-}
-
 RetainPtr<CFDataRef> WebFrame::webArchiveData(FrameFilterFunction callback, void* context)
 {
-    WebFrameFilter filter(this, callback, context);
+    RefPtr<LegacyWebArchive> archive = LegacyWebArchive::create(coreFrame()->document(), [this, callback, context](Frame& frame) -> bool {
+        if (!callback)
+            return true;
 
-    if (RefPtr<LegacyWebArchive> archive = LegacyWebArchive::create(coreFrame()->document(), &filter))
-        return archive->rawDataRepresentation();
-    
-    return 0;
+        WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame.loader().client());
+        WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
+        ASSERT(webFrame);
+
+        return callback(toAPI(this), toAPI(webFrame), context);
+    });
+
+    if (!archive)
+        return nullptr;
+
+    return archive->rawDataRepresentation();
 }
 #endif
     

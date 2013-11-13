@@ -54,6 +54,10 @@
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
+#if ENABLE(DATABASE_PROCESS)
+#include "DatabaseProcessProxy.h"
+#endif
+
 #if ENABLE(NETWORK_PROCESS)
 #include "NetworkProcessProxy.h"
 #endif
@@ -87,7 +91,7 @@ extern NSString *SchemeForCustomProtocolRegisteredNotificationName;
 extern NSString *SchemeForCustomProtocolUnregisteredNotificationName;
 #endif
 
-class WebContext : public TypedAPIObject<APIObject::TypeContext>, private CoreIPC::MessageReceiver
+class WebContext : public API::TypedObject<API::Object::TypeContext>, private CoreIPC::MessageReceiver
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , private PluginInfoStoreClient
 #endif
@@ -155,13 +159,13 @@ public:
 
     DownloadProxy* download(WebPageProxy* initiatingPage, const WebCore::ResourceRequest&);
 
-    void setInjectedBundleInitializationUserData(PassRefPtr<APIObject> userData) { m_injectedBundleInitializationUserData = userData; }
+    void setInjectedBundleInitializationUserData(PassRefPtr<API::Object> userData) { m_injectedBundleInitializationUserData = userData; }
 
-    void postMessageToInjectedBundle(const String&, APIObject*);
+    void postMessageToInjectedBundle(const String&, API::Object*);
 
     // InjectedBundle client
-    void didReceiveMessageFromInjectedBundle(const String&, APIObject*);
-    void didReceiveSynchronousMessageFromInjectedBundle(const String&, APIObject*, RefPtr<APIObject>& returnData);
+    void didReceiveMessageFromInjectedBundle(const String&, API::Object*);
+    void didReceiveSynchronousMessageFromInjectedBundle(const String&, API::Object*, RefPtr<API::Object>& returnData);
 
     void populateVisitedLinks();
 
@@ -276,6 +280,10 @@ public:
     void getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>);
 #endif
 
+#if ENABLE(DATABASE_PROCESS)
+    void ensureDatabaseProcess();
+    void getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>);
+#endif
 
 #if PLATFORM(MAC)
     void setProcessSuppressionEnabled(bool);
@@ -390,6 +398,8 @@ private:
     void addPlugInAutoStartOriginHash(const String& pageOrigin, unsigned plugInOriginHash);
     void plugInDidReceiveUserInteraction(unsigned plugInOriginHash);
 
+    void setAnyPageGroupMightHavePrivateBrowsingEnabled(bool);
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
     // PluginInfoStoreClient:
     virtual void pluginInfoStoreDidLoadPlugins(PluginInfoStore*) OVERRIDE;
@@ -407,7 +417,7 @@ private:
 
     RefPtr<WebPageGroup> m_defaultPageGroup;
 
-    RefPtr<APIObject> m_injectedBundleInitializationUserData;
+    RefPtr<API::Object> m_injectedBundleInitializationUserData;
     String m_injectedBundlePath;
     WebContextInjectedBundleClient m_injectedBundleClient;
 
@@ -435,7 +445,7 @@ private:
 
     // Messages that were posted before any pages were created.
     // The client should use initialization messages instead, so that a restarted process would get the same state.
-    Vector<pair<String, RefPtr<APIObject>>> m_messagesToInjectedBundlePostedToEmptyContext;
+    Vector<pair<String, RefPtr<API::Object>>> m_messagesToInjectedBundlePostedToEmptyContext;
 
     CacheModel m_cacheModel;
 
@@ -483,6 +493,10 @@ private:
 #if ENABLE(NETWORK_PROCESS)
     bool m_usesNetworkProcess;
     RefPtr<NetworkProcessProxy> m_networkProcess;
+#endif
+
+#if ENABLE(DATABASE_PROCESS)
+    RefPtr<DatabaseProcessProxy> m_databaseProcess;
 #endif
     
     HashMap<uint64_t, RefPtr<DictionaryCallback>> m_dictionaryCallbacks;

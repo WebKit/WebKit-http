@@ -26,9 +26,7 @@
 #include "HTMLParserIdioms.h"
 
 #include "Decimal.h"
-#include "HTMLIdentifier.h"
 #include "URL.h"
-#include "QualifiedName.h"
 #include <limits>
 #include <wtf/MathExtras.h>
 #include <wtf/text/AtomicString.h>
@@ -169,7 +167,7 @@ static bool parseHTMLIntegerInternal(const CharacterType* position, const Charac
     // Step 5
     if (position == end)
         return false;
-    ASSERT(position < end);
+    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
 
     // Step 6
     if (*position == '-') {
@@ -179,7 +177,7 @@ static bool parseHTMLIntegerInternal(const CharacterType* position, const Charac
         ++position;
     if (position == end)
         return false;
-    ASSERT(position < end);
+    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
 
     // Step 7
     if (!isASCIIDigit(*position))
@@ -230,7 +228,7 @@ static bool parseHTMLNonNegativeIntegerInternal(const CharacterType* position, c
     // Step 4
     if (position == end)
         return false;
-    ASSERT(position < end);
+    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
 
     // Step 5
     if (*position == '+')
@@ -239,7 +237,7 @@ static bool parseHTMLNonNegativeIntegerInternal(const CharacterType* position, c
     // Step 6
     if (position == end)
         return false;
-    ASSERT(position < end);
+    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
 
     // Step 7
     if (!isASCIIDigit(*position))
@@ -300,11 +298,20 @@ bool threadSafeMatch(const HTMLIdentifier& localName, const QualifiedName& qName
 #endif
 
 struct ImageWithScale {
-    String imageURL;
+    unsigned imageURLStart;
+    unsigned imageURLLength;
     float scaleFactor;
-    bool operator==(const ImageWithScale& image) const
+
+    ImageWithScale()
+        : imageURLStart(0)
+        , imageURLLength(0)
+        , scaleFactor(1)
+    { 
+    }
+
+    bool hasImageURL() const
     {
-        return scaleFactor == image.scaleFactor && imageURL == image.imageURL;
+        return imageURLLength;
     }
 };
 typedef Vector<ImageWithScale> ImageCandidates;
@@ -390,7 +397,8 @@ static void parseImagesWithScaleFromSrcsetAttribute(const String& srcsetAttribut
             }
         }
         ImageWithScale image;
-        image.imageURL = String(srcsetAttribute.characters() + imageURLStart, imageURLEnd - imageURLStart);
+        image.imageURLStart = imageURLStart;
+        image.imageURLLength = imageURLEnd - imageURLStart;
         image.scaleFactor = imageScaleFactor;
 
         imageCandidates.append(image);
@@ -406,11 +414,8 @@ String bestFitSourceForImageAttributes(float deviceScaleFactor, const String& sr
     parseImagesWithScaleFromSrcsetAttribute(srcsetAttribute, imageCandidates);
 
     if (!srcAttribute.isEmpty()) {
-        ImageWithScale image;
-        image.imageURL = srcAttribute;
-        image.scaleFactor = 1.0;
-
-        imageCandidates.append(image);
+        ImageWithScale srcPlaceholderImage;
+        imageCandidates.append(srcPlaceholderImage);
     }
 
     if (imageCandidates.isEmpty())
@@ -420,9 +425,10 @@ String bestFitSourceForImageAttributes(float deviceScaleFactor, const String& sr
 
     for (size_t i = 0; i < imageCandidates.size() - 1; ++i) {
         if (imageCandidates[i].scaleFactor >= deviceScaleFactor)
-            return String(imageCandidates[i].imageURL);
+            return imageCandidates[i].hasImageURL() ? srcsetAttribute.substringSharingImpl(imageCandidates[i].imageURLStart, imageCandidates[i].imageURLLength) : srcAttribute;
     }
-    return String(imageCandidates.last().imageURL);
+    const ImageWithScale& lastCandidate = imageCandidates.last();
+    return lastCandidate.hasImageURL() ? srcsetAttribute.substringSharingImpl(lastCandidate.imageURLStart, lastCandidate.imageURLLength) : srcAttribute;
 }
 
 }

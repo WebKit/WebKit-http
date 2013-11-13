@@ -33,7 +33,7 @@ class SearchPopupMenu;
 
 class RenderSearchField FINAL : public RenderTextControlSingleLine, private PopupMenuClient {
 public:
-    explicit RenderSearchField(HTMLInputElement&);
+    RenderSearchField(HTMLInputElement&, PassRef<RenderStyle>);
     virtual ~RenderSearchField();
 
     void updateCancelButtonVisibility() const;
@@ -90,14 +90,7 @@ private:
     Vector<String> m_recentSearches;
 };
 
-inline RenderSearchField* toRenderSearchField(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTextField());
-    return static_cast<RenderSearchField*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderSearchField(const RenderSearchField*);
+RENDER_OBJECT_TYPE_CASTS(RenderSearchField, isTextField())
 
 }
 

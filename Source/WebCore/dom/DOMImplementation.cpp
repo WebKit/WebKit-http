@@ -35,13 +35,11 @@
 #include "FrameLoaderClient.h"
 #include "FTPDirectoryDocument.h"
 #include "HTMLDocument.h"
-#include "HTMLNames.h"
 #include "HTMLViewSourceDocument.h"
 #include "Image.h"
 #include "ImageDocument.h"
 #include "MediaDocument.h"
 #include "MediaList.h"
-#include "MediaPlayer.h"
 #include "MIMETypeRegistry.h"
 #include "Page.h"
 #include "PluginData.h"
@@ -51,7 +49,6 @@
 #include "StyleSheetContents.h"
 #include "SubframeLoader.h"
 #include "TextDocument.h"
-#include "ThreadGlobalData.h"
 #include "XMLNames.h"
 #include <wtf/StdLibExtras.h>
 
@@ -262,9 +259,9 @@ PassRefPtr<CSSStyleSheet> DOMImplementation::createCSSStyleSheet(const String&, 
 {
     // FIXME: Title should be set.
     // FIXME: Media could have wrong syntax, in which case we should generate an exception.
-    RefPtr<CSSStyleSheet> sheet = CSSStyleSheet::create(StyleSheetContents::create());
-    sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(media));
-    return sheet;
+    auto sheet = CSSStyleSheet::create(StyleSheetContents::create());
+    sheet.get().setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(media));
+    return std::move(sheet);
 }
 
 static inline bool isValidXMLMIMETypeChar(UChar c)
@@ -356,7 +353,10 @@ PassRefPtr<Document> DOMImplementation::createDocument(const String& type, Frame
      // Check to see if the type can be played by our MediaPlayer, if so create a MediaDocument
     // Key system is not applicable here.
     DOMImplementationSupportsTypeClient client(frame && frame->settings().needsSiteSpecificQuirks(), url.host());
-    if (MediaPlayer::supportsType(ContentType(type), String(), url, &client))
+    MediaEngineSupportParameters parameters;
+    parameters.type = type;
+    parameters.url = url;
+    if (MediaPlayer::supportsType(parameters, &client))
          return MediaDocument::create(frame, url);
 #endif
 

@@ -38,6 +38,7 @@
 
 #include <wtf/Platform.h>
 
+#include <stdarg.h>
 #include <stddef.h>
 
 #if !COMPILER(MSVC)
@@ -107,6 +108,20 @@
 extern "C" {
 #endif
 
+/* CRASH() - Raises a fatal error resulting in program termination and triggering either the debugger or the crash reporter.
+
+   Use CRASH() in response to known, unrecoverable errors like out-of-memory.
+   Macro is enabled in both debug and release mode.
+   To test for unknown errors and verify assumptions, use ASSERT instead, to avoid impacting performance in release builds.
+
+   Signals are ignored by the crash reporter on OS X so we must do better.
+*/
+#if COMPILER(CLANG)
+#define NO_RETURN_DUE_TO_CRASH NO_RETURN
+#else
+#define NO_RETURN_DUE_TO_CRASH
+#endif
+
 typedef enum { WTFLogChannelOff, WTFLogChannelOn } WTFLogChannelState;
 
 typedef struct {
@@ -121,7 +136,9 @@ WTF_EXPORT_PRIVATE void WTFReportFatalError(const char* file, int line, const ch
 WTF_EXPORT_PRIVATE void WTFReportError(const char* file, int line, const char* function, const char* format, ...) WTF_ATTRIBUTE_PRINTF(4, 5);
 WTF_EXPORT_PRIVATE void WTFLog(WTFLogChannel*, const char* format, ...) WTF_ATTRIBUTE_PRINTF(2, 3);
 WTF_EXPORT_PRIVATE void WTFLogVerbose(const char* file, int line, const char* function, WTFLogChannel*, const char* format, ...) WTF_ATTRIBUTE_PRINTF(5, 6);
+WTF_EXPORT_PRIVATE void WTFLogAlwaysV(const char* format, va_list);
 WTF_EXPORT_PRIVATE void WTFLogAlways(const char* format, ...) WTF_ATTRIBUTE_PRINTF(1, 2);
+WTF_EXPORT_PRIVATE void WTFLogAlwaysAndCrash(const char* format, ...) WTF_ATTRIBUTE_PRINTF(1, 2) NO_RETURN_DUE_TO_CRASH;
 WTF_EXPORT_PRIVATE WTFLogChannel* WTFLogChannelByName(WTFLogChannel*[], size_t count, const char*);
 WTF_EXPORT_PRIVATE void WTFInitializeLogChannelStatesFromString(WTFLogChannel*[], size_t count, const char*);
 
@@ -137,20 +154,6 @@ WTF_EXPORT_PRIVATE void WTFInstallReportBacktraceOnCrashHook();
 WTF_EXPORT_PRIVATE void WTFInvokeCrashHook();
 #ifdef __cplusplus
 }
-#endif
-
-/* CRASH() - Raises a fatal error resulting in program termination and triggering either the debugger or the crash reporter.
-
-   Use CRASH() in response to known, unrecoverable errors like out-of-memory.
-   Macro is enabled in both debug and release mode.
-   To test for unknown errors and verify assumptions, use ASSERT instead, to avoid impacting performance in release builds.
-
-   Signals are ignored by the crash reporter on OS X so we must do better.
-*/
-#if COMPILER(CLANG)
-#define NO_RETURN_DUE_TO_CRASH NO_RETURN
-#else
-#define NO_RETURN_DUE_TO_CRASH
 #endif
 
 #ifndef CRASH
@@ -387,5 +390,31 @@ static inline void UNREACHABLE_FOR_PLATFORM()
 #define RELEASE_ASSERT_WITH_MESSAGE(assertion, ...) ASSERT_WITH_MESSAGE(assertion, __VA_ARGS__)
 #define RELEASE_ASSERT_NOT_REACHED() ASSERT_NOT_REACHED()
 #endif
+
+/* TYPE CAST */
+
+#define TYPE_CASTS_BASE(ToClassName, argumentType, argumentName, pointerPredicate, referencePredicate) \
+inline ToClassName* to##ToClassName(argumentType* argumentName) \
+{ \
+    ASSERT_WITH_SECURITY_IMPLICATION(!argumentName || (pointerPredicate)); \
+    return static_cast<ToClassName*>(argumentName); \
+} \
+inline const ToClassName* to##ToClassName(const argumentType* argumentName) \
+{ \
+    ASSERT_WITH_SECURITY_IMPLICATION(!argumentName || (pointerPredicate)); \
+    return static_cast<const ToClassName*>(argumentName); \
+} \
+inline ToClassName& to##ToClassName(argumentType& argumentName) \
+{ \
+    ASSERT_WITH_SECURITY_IMPLICATION(referencePredicate); \
+    return static_cast<ToClassName&>(argumentName); \
+} \
+inline const ToClassName& to##ToClassName(const argumentType& argumentName) \
+{ \
+    ASSERT_WITH_SECURITY_IMPLICATION(referencePredicate); \
+    return static_cast<const ToClassName&>(argumentName); \
+} \
+void to##ToClassName(const ToClassName*); \
+void to##ToClassName(const ToClassName&);
 
 #endif /* WTF_Assertions_h */

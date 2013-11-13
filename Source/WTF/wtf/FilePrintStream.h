@@ -42,12 +42,12 @@ public:
     FilePrintStream(FILE*, AdoptionMode = Adopt);
     virtual ~FilePrintStream();
     
-    WTF_EXPORT_PRIVATE static OwnPtr<FilePrintStream> open(const char* filename, const char* mode);
+    WTF_EXPORT_PRIVATE static std::unique_ptr<FilePrintStream> open(const char* filename, const char* mode);
     
     FILE* file() { return m_file; }
     
-    void vprintf(const char* format, va_list) WTF_ATTRIBUTE_PRINTF(2, 0);
-    void flush();
+    virtual void vprintf(const char* format, va_list) OVERRIDE WTF_ATTRIBUTE_PRINTF(2, 0);
+    virtual void flush() OVERRIDE;
 
 private:
     FILE* m_file;

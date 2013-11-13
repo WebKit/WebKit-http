@@ -44,10 +44,12 @@ public:
         const WTF::KeyValuePair<JSValue, JSValue> operator*() const;
         JSValue key() const { ASSERT(!atEnd()); return m_mapData->m_entries[m_index].key.get(); }
         JSValue value() const { ASSERT(!atEnd()); return m_mapData->m_entries[m_index].value.get(); }
-        void operator++();
+        void operator++() { ASSERT(!atEnd()); internalIncrement(); }
         static const_iterator end(const MapData*);
         bool operator!=(const const_iterator& other);
         bool operator==(const const_iterator& other);
+
+        bool ensureSlot();
 
     private:
         // This is a bit gnarly. We use an index of -1 to indicate the
@@ -56,6 +58,7 @@ public:
         // We need this in order to keep the common case (eg. iter != end())
         // fast.
         bool atEnd() const { return static_cast<size_t>(m_index) >= static_cast<size_t>(m_mapData->m_size); }
+        void internalIncrement();
         const MapData* m_mapData;
         int32_t m_index;
     };
@@ -166,9 +169,8 @@ ALWAYS_INLINE MapData::KeyType::KeyType(JSValue v)
         value = jsNumber(i);
 }
 
-ALWAYS_INLINE void MapData::const_iterator::operator++()
+ALWAYS_INLINE void MapData::const_iterator::internalIncrement()
 {
-    ASSERT(!atEnd());
     Entry* entries = m_mapData->m_entries;
     size_t index = m_index + 1;
     size_t end = m_mapData->m_size;
@@ -176,12 +178,25 @@ ALWAYS_INLINE void MapData::const_iterator::operator++()
         index++;
     m_index = index;
 }
+    
+ALWAYS_INLINE bool MapData::const_iterator::ensureSlot()
+{
+    // When an iterator exists outside of host cost it is possible for
+    // the containing map to be modified
+    Entry* entries = m_mapData->m_entries;
+    size_t index = m_index;
+    size_t end = m_mapData->m_size;
+    if (index < end && entries[index].key)
+        return true;
+    internalIncrement();
+    return static_cast<size_t>(m_index) < end;
+}
 
 ALWAYS_INLINE MapData::const_iterator::const_iterator(const MapData* mapData)
     : m_mapData(mapData)
-    , m_index(0)
+    , m_index(-1)
 {
-    m_mapData->m_iteratorCount++;
+    internalIncrement();
 }
 
 ALWAYS_INLINE MapData::const_iterator::~const_iterator()

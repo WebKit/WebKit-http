@@ -54,7 +54,6 @@ webkit_dom_test_active_dom_object_get_type (void);
  * @self: A #WebKitDOMTestActiveDOMObject
  * @nextChild: A #WebKitDOMNode
  *
- *
 **/
 WEBKIT_API void
 webkit_dom_test_active_dom_object_exciting_function(WebKitDOMTestActiveDOMObject* self, WebKitDOMNode* nextChild);
@@ -64,7 +63,6 @@ webkit_dom_test_active_dom_object_exciting_function(WebKitDOMTestActiveDOMObject
  * @self: A #WebKitDOMTestActiveDOMObject
  * @message: A #gchar
  *
- *
 **/
 WEBKIT_API void
 webkit_dom_test_active_dom_object_post_message(WebKitDOMTestActiveDOMObject* self, const gchar* message);
@@ -73,8 +71,7 @@ webkit_dom_test_active_dom_object_post_message(WebKitDOMTestActiveDOMObject* sel
  * webkit_dom_test_active_dom_object_get_exciting_attr:
  * @self: A #WebKitDOMTestActiveDOMObject
  *
- * Returns:
- *
+ * Returns: A #glong
 **/
 WEBKIT_API glong
 webkit_dom_test_active_dom_object_get_exciting_attr(WebKitDOMTestActiveDOMObject* self);

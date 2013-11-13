@@ -35,13 +35,6 @@
 #include <wtf/MathExtras.h>
 #include <wtf/unicode/CharacterNames.h>
 
-#if PLATFORM(QT)
-#include <QRawFont>
-QT_BEGIN_NAMESPACE
-class QTextLayout;
-QT_END_NAMESPACE
-#endif
-
 // "X11/X.h" defines Complex to 0 and conflicts
 // with Complex value in CodePath enum.
 #ifdef Complex
@@ -125,6 +118,7 @@ public:
     void setLetterSpacing(short s) { m_letterSpacing = s; }
     bool isFixedPitch() const;
     bool isPrinterFont() const { return m_fontDescription.usePrinterFont(); }
+    bool isSVGFont() const { return primaryFont()->isSVGFont(); }
     
     FontRenderingMode renderingMode() const { return m_fontDescription.renderingMode(); }
 
@@ -169,11 +163,6 @@ public:
 
     static unsigned expansionOpportunityCount(const LChar*, size_t length, TextDirection, bool& isAfterExpansion);
     static unsigned expansionOpportunityCount(const UChar*, size_t length, TextDirection, bool& isAfterExpansion);
-
-#if PLATFORM(QT)
-    QRawFont rawFont() const;
-    QFont syntheticFont() const;
-#endif
 
     static void setShouldUseSmoothing(bool);
     static bool shouldUseSmoothing();
@@ -307,10 +296,6 @@ private:
 
         return features;
     }
-
-#if PLATFORM(QT)
-    void initFormatForTextLayout(QTextLayout*, const TextRun&) const;
-#endif
 
     static TypesettingFeatures s_defaultTypesettingFeatures;
 

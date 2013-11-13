@@ -32,26 +32,33 @@
 
 #if ENABLE(MEDIA_SOURCE)
 
+#include "MediaPlayer.h"
 #include <wtf/Forward.h>
+#include <wtf/RefCounted.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
+class ContentType;
 class SourceBufferPrivate;
 
-class MediaSourcePrivate {
+class MediaSourcePrivate : public RefCounted<MediaSourcePrivate> {
 public:
-    typedef Vector<String, 0> CodecsArray;
+    typedef Vector<String> CodecsArray;
 
     MediaSourcePrivate() { }
     virtual ~MediaSourcePrivate() { }
 
     enum AddStatus { Ok, NotSupported, ReachedIdLimit };
-    virtual AddStatus addSourceBuffer(const String& type, const CodecsArray&, OwnPtr<SourceBufferPrivate>*) = 0;
+    virtual AddStatus addSourceBuffer(const ContentType&, RefPtr<SourceBufferPrivate>&) = 0;
     virtual double duration() = 0;
     virtual void setDuration(double) = 0;
     enum EndOfStreamStatus { EosNoError, EosNetworkError, EosDecodeError };
     virtual void markEndOfStream(EndOfStreamStatus) = 0;
     virtual void unmarkEndOfStream() = 0;
+
+    virtual MediaPlayer::ReadyState readyState() const = 0;
+    virtual void setReadyState(MediaPlayer::ReadyState) = 0;
 };
 
 }

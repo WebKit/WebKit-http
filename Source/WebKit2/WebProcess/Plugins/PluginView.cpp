@@ -883,9 +883,9 @@ void PluginView::handleEvent(Event* event)
         // FIXME: Clicking in a scroll bar should not change focus.
         if (currentEvent->type() == WebEvent::MouseDown) {
             focusPluginElement();
-            frame()->eventHandler().setCapturingMouseEventsNode(m_pluginElement.get());
+            frame()->eventHandler().setCapturingMouseEventsElement(m_pluginElement.get());
         } else if (currentEvent->type() == WebEvent::MouseUp)
-            frame()->eventHandler().setCapturingMouseEventsNode(0);
+            frame()->eventHandler().setCapturingMouseEventsElement(nullptr);
 
         didHandleEvent = m_plugin->handleMouseEvent(static_cast<const WebMouseEvent&>(*currentEvent));
         if (event->type() != eventNames().mousemoveEvent)
@@ -1365,7 +1365,7 @@ NPObject* PluginView::windowScriptNPObject()
         return 0;
     }
 
-    return m_npRuntimeObjectMap.getOrCreateNPObject(*pluginWorld()->vm(), frame()->script().windowShell(pluginWorld())->window());
+    return m_npRuntimeObjectMap.getOrCreateNPObject(*pluginWorld().vm(), frame()->script().windowShell(pluginWorld())->window());
 }
 
 NPObject* PluginView::pluginElementNPObject()
@@ -1381,7 +1381,7 @@ NPObject* PluginView::pluginElementNPObject()
     JSObject* object = frame()->script().jsObjectForPluginElement(m_pluginElement.get());
     ASSERT(object);
 
-    return m_npRuntimeObjectMap.getOrCreateNPObject(*pluginWorld()->vm(), object);
+    return m_npRuntimeObjectMap.getOrCreateNPObject(*pluginWorld().vm(), object);
 }
 
 bool PluginView::evaluate(NPObject* npObject, const String& scriptString, NPVariant* result, bool allowPopups)

@@ -26,14 +26,17 @@
 #ifndef RemoteLayerTreeContext_h
 #define RemoteLayerTreeContext_h
 
+#include "LayerTreeContext.h"
+#include "RemoteLayerTreeTransaction.h"
+#include "WebPage.h"
 #include <WebCore/GraphicsLayerFactory.h>
+#include <WebCore/PlatformCALayer.h>
 #include <WebCore/Timer.h>
 #include <wtf/Vector.h>
 
 namespace WebKit {
 
-class RemoteGraphicsLayer;
-class RemoteLayerTreeTransaction;
+class PlatformCALayerRemote;
 class WebPage;
 
 class RemoteLayerTreeContext : public WebCore::GraphicsLayerFactory {
@@ -42,11 +45,16 @@ public:
     ~RemoteLayerTreeContext();
 
     void setRootLayer(WebCore::GraphicsLayer*);
-    void layerWillBeDestroyed(RemoteGraphicsLayer*);
 
     void scheduleLayerFlush();
 
-    RemoteLayerTreeTransaction& currentTransaction();
+    void layerWasCreated(PlatformCALayerRemote*, WebCore::PlatformCALayer::LayerType);
+    void layerWillBeDestroyed(PlatformCALayerRemote*);
+
+    void outOfTreeLayerWasAdded(WebCore::GraphicsLayer*);
+    void outOfTreeLayerWillBeRemoved(WebCore::GraphicsLayer*);
+
+    LayerHostingMode layerHostingMode() const { return m_webPage->layerHostingMode(); }
 
 private:
     // WebCore::GraphicsLayerFactory
@@ -58,9 +66,11 @@ private:
     WebPage* m_webPage;
     WebCore::Timer<RemoteLayerTreeContext> m_layerFlushTimer;
 
-    uint64_t m_rootLayerID;
-    Vector<uint64_t> m_destroyedLayers;
-    RemoteLayerTreeTransaction* m_currentTransaction;
+    RefPtr<PlatformCALayerRemote> m_rootLayer;
+    Vector<WebCore::GraphicsLayer*> m_outOfTreeLayers;
+
+    Vector<RemoteLayerTreeTransaction::LayerCreationProperties> m_createdLayers;
+    Vector<RemoteLayerTreeTransaction::LayerID> m_destroyedLayers;
 };
 
 } // namespace WebKit

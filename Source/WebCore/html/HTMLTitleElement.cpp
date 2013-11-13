@@ -47,7 +47,7 @@ PassRefPtr<HTMLTitleElement> HTMLTitleElement::create(const QualifiedName& tagNa
     return adoptRef(new HTMLTitleElement(tagName, document));
 }
 
-Node::InsertionNotificationRequest HTMLTitleElement::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest HTMLTitleElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
     if (inDocument() && !isInShadowTree())
@@ -55,10 +55,10 @@ Node::InsertionNotificationRequest HTMLTitleElement::insertedInto(ContainerNode*
     return InsertionDone;
 }
 
-void HTMLTitleElement::removedFrom(ContainerNode* insertionPoint)
+void HTMLTitleElement::removedFrom(ContainerNode& insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
-    if (insertionPoint->inDocument() && !insertionPoint->isInShadowTree())
+    if (insertionPoint.inDocument() && !insertionPoint.isInShadowTree())
         document().removeTitle(this);
 }
 
@@ -82,10 +82,12 @@ String HTMLTitleElement::text() const
 StringWithDirection HTMLTitleElement::textWithDirection()
 {
     TextDirection direction = LTR;
-    if (RenderStyle* style = computedStyle())
-        direction = style->direction();
-    else if (RefPtr<RenderStyle> style = styleForRenderer())
-        direction = style->direction();
+    if (RenderStyle* computedStyle = this->computedStyle())
+        direction = computedStyle->direction();
+    else {
+        Ref<RenderStyle> style(styleForRenderer());
+        direction = style.get().direction();
+    }
     return StringWithDirection(text(), direction);
 }
 

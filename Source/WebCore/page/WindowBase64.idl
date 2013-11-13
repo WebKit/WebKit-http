@@ -26,7 +26,7 @@
  */
 
 [
-    NoInterfaceObject
+    NoInterfaceObject,
 ] interface WindowBase64 {
     [RaisesException] DOMString atob(DOMString string);
     [RaisesException] DOMString btoa(DOMString string);

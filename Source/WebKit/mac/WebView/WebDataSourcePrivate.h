@@ -28,6 +28,12 @@
 
 #import <WebKit/WebDataSource.h>
 
+@protocol WebDataSourcePrivateDelegate
+@required
+- (void)dataSourceMemoryMapped;
+- (void)dataSourceMemoryMapFailed;
+@end
+
 @interface WebDataSource (WebPrivate)
 
 - (NSFileWrapper *)_fileWrapperForURL:(NSURL *)URL;
@@ -38,5 +44,9 @@
 - (BOOL)_transferApplicationCache:(NSString*)destinationBundleIdentifier;
 
 - (void)_setDeferMainResourceDataLoad:(BOOL)flag;
+
+- (void)_setAllowToBeMemoryMapped;
+- (void)setDataSourceDelegate:(NSObject<WebDataSourcePrivateDelegate> *)dataSourceDelegate;
+- (NSObject<WebDataSourcePrivateDelegate> *)dataSourceDelegate;
 
 @end

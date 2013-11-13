@@ -29,10 +29,7 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
-
-typedef struct HWND__* HWND;
-typedef struct HDC__* HDC;
-typedef struct HBITMAP__* HBITMAP;
+#include <wtf/win/GDIObject.h>
 
 namespace WebCore {
 
@@ -105,6 +102,7 @@ private:
     virtual int visibleWidth() const OVERRIDE;
     virtual IntSize contentsSize() const OVERRIDE;
     virtual IntRect scrollableAreaBoundingBox() const OVERRIDE;
+    virtual bool updatesScrollLayerPositionOnMainThread() const OVERRIDE { return true; }
 
     // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.
     void scrollTo(int offset);
@@ -127,6 +125,7 @@ private:
     int m_scrollOffset;
     int m_wheelDelta;
     int m_focusedIndex;
+    int m_hoveredIndex;
     bool m_scrollbarCapturingMouse;
     bool m_showPopup;
 };

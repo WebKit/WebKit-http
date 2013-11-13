@@ -35,7 +35,6 @@
 #include "ConsoleAPITypes.h"
 #include "ConsoleTypes.h"
 #include "Element.h"
-#include "EventContext.h"
 #include "FormData.h"
 #include "Frame.h"
 #include "HitTestResult.h"
@@ -56,7 +55,6 @@ class DOMWrapperWorld;
 class Database;
 class Document;
 class Element;
-class EventContext;
 class DocumentLoader;
 class DocumentStyleSheetCollection;
 class DeviceOrientationData;
@@ -115,12 +113,13 @@ private:
 
 class InspectorInstrumentation {
 public:
-    static void didClearWindowObjectInWorld(Frame*, DOMWrapperWorld*);
+    static void didClearWindowObjectInWorld(Frame*, DOMWrapperWorld&);
     static bool isDebuggerPaused(Frame*);
 
     static void willInsertDOMNode(Document*, Node* parent);
     static void didInsertDOMNode(Document*, Node*);
     static void willRemoveDOMNode(Document*, Node*);
+    static void didRemoveDOMNode(Document*, Node*);
     static void willModifyDOMAttr(Document*, Element*, const AtomicString& oldValue, const AtomicString& newValue);
     static void didModifyDOMAttr(Document*, Element*, const AtomicString& name, const AtomicString& value);
     static void didRemoveDOMAttr(Document*, Element*, const AtomicString& name);
@@ -134,6 +133,8 @@ public:
     static void willRemoveNamedFlow(Document*, WebKitNamedFlow*);
     static void didUpdateRegionLayout(Document*, WebKitNamedFlow*);
     static void didChangeRegionOverset(Document*, WebKitNamedFlow*);
+    static void didRegisterNamedFlowContentElement(Document*, WebKitNamedFlow*, Node* contentElement, Node* nextContentElement = nullptr);
+    static void didUnregisterNamedFlowContentElement(Document*, WebKitNamedFlow*, Node* contentElement);
 
     static void mouseDidMoveOverElement(Page*, const HitTestResult&, unsigned modifierFlags);
     static bool handleMousePress(Page*);
@@ -149,7 +150,7 @@ public:
     static void didCallFunction(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willDispatchXHRReadyStateChangeEvent(ScriptExecutionContext*, XMLHttpRequest*);
     static void didDispatchXHRReadyStateChangeEvent(const InspectorInstrumentationCookie&);
-    static InspectorInstrumentationCookie willDispatchEvent(Document*, const Event&, DOMWindow*, Node*, const EventPath&);
+    static InspectorInstrumentationCookie willDispatchEvent(Document*, const Event&, bool hasEventListeners);
     static void didDispatchEvent(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willHandleEvent(ScriptExecutionContext*, Event*);
     static void didHandleEvent(const InspectorInstrumentationCookie&);
@@ -204,7 +205,7 @@ public:
     static void documentThreadableLoaderStartedLoadingForClient(ScriptExecutionContext*, unsigned long identifier, ThreadableLoaderClient*);
     static void willLoadXHR(ScriptExecutionContext*, ThreadableLoaderClient*, const String&, const URL&, bool, PassRefPtr<FormData>, const HTTPHeaderMap&, bool);
     static void didFailXHRLoading(ScriptExecutionContext*, ThreadableLoaderClient*);
-    static void didFinishXHRLoading(ScriptExecutionContext*, ThreadableLoaderClient*, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber);
+    static void didFinishXHRLoading(ScriptExecutionContext*, ThreadableLoaderClient*, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber);
     static void didReceiveXHRResponse(ScriptExecutionContext*, unsigned long identifier);
     static void willLoadXHRSynchronously(ScriptExecutionContext*);
     static void didLoadXHRSynchronously(ScriptExecutionContext*);
@@ -231,11 +232,11 @@ public:
     // FIXME: Remove once we no longer generate stacks outside of Inspector.
     static void addMessageToConsole(Page*, MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier = 0);
     static void addMessageToConsole(Page*, MessageSource, MessageType, MessageLevel, const String& message, JSC::ExecState*, PassRefPtr<ScriptArguments>, unsigned long requestIdentifier = 0);
-    static void addMessageToConsole(Page*, MessageSource, MessageType, MessageLevel, const String& message, const String& scriptId, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
+    static void addMessageToConsole(Page*, MessageSource, MessageType, MessageLevel, const String& message, const String& scriptID, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
 #if ENABLE(WORKERS)
     // FIXME: Convert to ScriptArguments to match non-worker context.
     static void addMessageToConsole(WorkerGlobalScope*, MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier = 0);
-    static void addMessageToConsole(WorkerGlobalScope*, MessageSource, MessageType, MessageLevel, const String& message, const String& scriptId, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
+    static void addMessageToConsole(WorkerGlobalScope*, MessageSource, MessageType, MessageLevel, const String& message, const String& scriptID, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
 #endif
     static void consoleCount(Page*, JSC::ExecState*, PassRefPtr<ScriptArguments>);
     static void startConsoleTiming(Frame*, const String& title);
@@ -319,7 +320,7 @@ public:
 
 private:
 #if ENABLE(INSPECTOR)
-    static void didClearWindowObjectInWorldImpl(InstrumentingAgents*, Frame*, DOMWrapperWorld*);
+    static void didClearWindowObjectInWorldImpl(InstrumentingAgents*, Frame*, DOMWrapperWorld&);
     static bool isDebuggerPausedImpl(InstrumentingAgents*);
 
     static void willInsertDOMNodeImpl(InstrumentingAgents*, Node* parent);
@@ -339,6 +340,8 @@ private:
     static void willRemoveNamedFlowImpl(InstrumentingAgents*, Document*, WebKitNamedFlow*);
     static void didUpdateRegionLayoutImpl(InstrumentingAgents*, Document*, WebKitNamedFlow*);
     static void didChangeRegionOversetImpl(InstrumentingAgents*, Document*, WebKitNamedFlow*);
+    static void didRegisterNamedFlowContentElementImpl(InstrumentingAgents*, Document*, WebKitNamedFlow*, Node* contentElement, Node* nextContentElement = nullptr);
+    static void didUnregisterNamedFlowContentElementImpl(InstrumentingAgents*, Document*, WebKitNamedFlow*, Node* contentElement);
 
     static void mouseDidMoveOverElementImpl(InstrumentingAgents*, const HitTestResult&, unsigned modifierFlags);
     static bool handleTouchEventImpl(InstrumentingAgents*, Node*);
@@ -354,7 +357,7 @@ private:
     static void didCallFunctionImpl(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willDispatchXHRReadyStateChangeEventImpl(InstrumentingAgents*, XMLHttpRequest*, ScriptExecutionContext*);
     static void didDispatchXHRReadyStateChangeEventImpl(const InspectorInstrumentationCookie&);
-    static InspectorInstrumentationCookie willDispatchEventImpl(InstrumentingAgents*, const Event&, DOMWindow*, Node*, const EventPath&, Document*);
+    static InspectorInstrumentationCookie willDispatchEventImpl(InstrumentingAgents*, const Event&, bool hasEventListeners, Document*);
     static InspectorInstrumentationCookie willHandleEventImpl(InstrumentingAgents*, Event*);
     static void didHandleEventImpl(const InspectorInstrumentationCookie&);
     static void didDispatchEventImpl(const InspectorInstrumentationCookie&);
@@ -408,7 +411,7 @@ private:
     static void documentThreadableLoaderStartedLoadingForClientImpl(InstrumentingAgents*, unsigned long identifier, ThreadableLoaderClient*);
     static void willLoadXHRImpl(InstrumentingAgents*, ThreadableLoaderClient*, const String&, const URL&, bool, PassRefPtr<FormData>, const HTTPHeaderMap&, bool);
     static void didFailXHRLoadingImpl(InstrumentingAgents*, ThreadableLoaderClient*);
-    static void didFinishXHRLoadingImpl(InstrumentingAgents*, ThreadableLoaderClient*, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber);
+    static void didFinishXHRLoadingImpl(InstrumentingAgents*, ThreadableLoaderClient*, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber);
     static void didReceiveXHRResponseImpl(InstrumentingAgents*, unsigned long identifier);
     static void willLoadXHRSynchronouslyImpl(InstrumentingAgents*);
     static void didLoadXHRSynchronouslyImpl(InstrumentingAgents*);
@@ -433,7 +436,7 @@ private:
     static void didWriteHTMLImpl(const InspectorInstrumentationCookie&, unsigned endLine);
 
     static void addMessageToConsoleImpl(InstrumentingAgents*, MessageSource, MessageType, MessageLevel, const String& message, JSC::ExecState*, PassRefPtr<ScriptArguments>, unsigned long requestIdentifier);
-    static void addMessageToConsoleImpl(InstrumentingAgents*, MessageSource, MessageType, MessageLevel, const String& message, const String& scriptId, unsigned lineNumber, unsigned columnNumber, JSC::ExecState*, unsigned long requestIdentifier);
+    static void addMessageToConsoleImpl(InstrumentingAgents*, MessageSource, MessageType, MessageLevel, const String& message, const String& scriptID, unsigned lineNumber, unsigned columnNumber, JSC::ExecState*, unsigned long requestIdentifier);
 
     // FIXME: Remove once we no longer generate stacks outside of Inspector.
     static void addMessageToConsoleImpl(InstrumentingAgents*, MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier);
@@ -512,7 +515,7 @@ private:
 #endif
 };
 
-inline void InspectorInstrumentation::didClearWindowObjectInWorld(Frame* frame, DOMWrapperWorld* world)
+inline void InspectorInstrumentation::didClearWindowObjectInWorld(Frame* frame, DOMWrapperWorld& world)
 {
 #if ENABLE(INSPECTOR)
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
@@ -563,10 +566,20 @@ inline void InspectorInstrumentation::willRemoveDOMNode(Document* document, Node
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document)) {
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
         willRemoveDOMNodeImpl(instrumentingAgents, node);
+#else
+    UNUSED_PARAM(document);
+    UNUSED_PARAM(node);
+#endif
+}
+
+inline void InspectorInstrumentation::didRemoveDOMNode(Document* document, Node* node)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
         didRemoveDOMNodeImpl(instrumentingAgents, node);
-    }
 #else
     UNUSED_PARAM(document);
     UNUSED_PARAM(node);
@@ -717,6 +730,33 @@ inline void InspectorInstrumentation::didChangeRegionOverset(Document* document,
 #else
     UNUSED_PARAM(document);
     UNUSED_PARAM(namedFlow);
+#endif
+}
+
+inline void InspectorInstrumentation::didRegisterNamedFlowContentElement(Document* document, WebKitNamedFlow* namedFlow, Node* contentElement, Node* nextContentElement)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
+        didRegisterNamedFlowContentElementImpl(instrumentingAgents, document, namedFlow, contentElement, nextContentElement);
+#else
+    UNUSED_PARAM(document);
+    UNUSED_PARAM(namedFlow);
+    UNUSED_PARAM(contentElement);
+    UNUSED_PARAM(nextContentElement);
+#endif
+}
+
+inline void InspectorInstrumentation::didUnregisterNamedFlowContentElement(Document* document, WebKitNamedFlow* namedFlow, Node* contentElement)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
+        didUnregisterNamedFlowContentElementImpl(instrumentingAgents, document, namedFlow, contentElement);
+#else
+    UNUSED_PARAM(document);
+    UNUSED_PARAM(namedFlow);
+    UNUSED_PARAM(contentElement);
 #endif
 }
 
@@ -883,18 +923,16 @@ inline void InspectorInstrumentation::didDispatchXHRReadyStateChangeEvent(const 
 #endif
 }
 
-inline InspectorInstrumentationCookie InspectorInstrumentation::willDispatchEvent(Document* document, const Event& event, DOMWindow* window, Node* node, const EventPath& eventPath)
+inline InspectorInstrumentationCookie InspectorInstrumentation::willDispatchEvent(Document* document, const Event& event, bool hasEventListeners)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(InspectorInstrumentationCookie());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
-        return willDispatchEventImpl(instrumentingAgents, event, window, node, eventPath, document);
+        return willDispatchEventImpl(instrumentingAgents, event, hasEventListeners, document);
 #else
     UNUSED_PARAM(document);
     UNUSED_PARAM(event);
-    UNUSED_PARAM(window);
-    UNUSED_PARAM(node);
-    UNUSED_PARAM(eventPath);
+    UNUSED_PARAM(hasEventListeners);
 #endif
     return InspectorInstrumentationCookie();
 }
@@ -1533,11 +1571,11 @@ inline void InspectorInstrumentation::didFailXHRLoading(ScriptExecutionContext* 
 }
 
 
-inline void InspectorInstrumentation::didFinishXHRLoading(ScriptExecutionContext* context, ThreadableLoaderClient* client, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber)
+inline void InspectorInstrumentation::didFinishXHRLoading(ScriptExecutionContext* context, ThreadableLoaderClient* client, unsigned long identifier, const String& sourceString, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber)
 {
 #if ENABLE(INSPECTOR)
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        didFinishXHRLoadingImpl(instrumentingAgents, client, identifier, sourceString, url, sendURL, sendLineNumber);
+        didFinishXHRLoadingImpl(instrumentingAgents, client, identifier, sourceString, url, sendURL, sendLineNumber, sendColumnNumber);
 #else
     UNUSED_PARAM(context);
     UNUSED_PARAM(client);

@@ -28,7 +28,7 @@
     CustomDeleteProperty,
     CustomEnumerateProperty,
     CustomNamedSetter,
-    SkipVTableValidation
+    SkipVTableValidation,
 ] interface DOMStringMap {
     getter DOMString (DOMString name);
 };

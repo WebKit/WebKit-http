@@ -108,7 +108,7 @@ void InjectedBundlePageFormClient::willSendSubmitEvent(WebPage* page, HTMLFormEl
     m_client.willSendSubmitEvent(toAPI(page), toAPI(nodeHandle.get()), toAPI(frame), toAPI(sourceFrame), toAPI(textFieldsMap.get()), m_client.clientInfo);
 }
 
-void InjectedBundlePageFormClient::willSubmitForm(WebPage* page, HTMLFormElement* formElement, WebFrame* frame, WebFrame* sourceFrame, const Vector<std::pair<String, String>>& values, RefPtr<APIObject>& userData)
+void InjectedBundlePageFormClient::willSubmitForm(WebPage* page, HTMLFormElement* formElement, WebFrame* frame, WebFrame* sourceFrame, const Vector<std::pair<String, String>>& values, RefPtr<API::Object>& userData)
 {
     if (!m_client.willSubmitForm)
         return;
@@ -130,15 +130,13 @@ void InjectedBundlePageFormClient::didAssociateFormControls(WebPage* page, const
     if (!m_client.didAssociateFormControls)
         return;
 
-    size_t size = elements.size();
+    Vector<RefPtr<API::Object>> elementHandles;
+    elementHandles.reserveInitialCapacity(elements.size());
 
-    Vector<RefPtr<APIObject>> elementHandles;
-    elementHandles.reserveCapacity(size);
+    for (const auto& element : elements)
+        elementHandles.uncheckedAppend(InjectedBundleNodeHandle::getOrCreate(element.get()));
 
-    for (size_t i = 0; i < size; ++i)
-        elementHandles.uncheckedAppend(InjectedBundleNodeHandle::getOrCreate(elements[i].get()).get());
-
-    m_client.didAssociateFormControls(toAPI(page), toAPI(ImmutableArray::adopt(elementHandles).get()), m_client.clientInfo);
+    m_client.didAssociateFormControls(toAPI(page), toAPI(ImmutableArray::create(std::move(elementHandles)).get()), m_client.clientInfo);
 }
 
 bool InjectedBundlePageFormClient::shouldNotifyOnFormChanges(WebPage* page)

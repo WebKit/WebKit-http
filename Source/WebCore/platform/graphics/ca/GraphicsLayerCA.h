@@ -31,6 +31,7 @@
 #include "GraphicsLayer.h"
 #include "Image.h"
 #include "PlatformCAAnimation.h"
+#include "PlatformCALayer.h"
 #include "PlatformCALayerClient.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -43,7 +44,6 @@
 
 namespace WebCore {
 
-class PlatformCALayer;
 class TransformState;
 
 class GraphicsLayerCA : public GraphicsLayer, public PlatformCALayerClient {
@@ -55,6 +55,8 @@ public:
 
     GraphicsLayerCA(GraphicsLayerClient*);
     virtual ~GraphicsLayerCA();
+
+    virtual void initialize() OVERRIDE;
 
     virtual void setName(const String&);
 
@@ -98,6 +100,7 @@ public:
 
 #if ENABLE(CSS_FILTERS)
     virtual bool setFilters(const FilterOperations&);
+    virtual bool filtersCanBeComposited(const FilterOperations&);
 #endif
 
     virtual void setNeedsDisplay();
@@ -164,16 +167,18 @@ private:
 
     virtual void platformCALayerAnimationStarted(CFTimeInterval beginTime);
     virtual CompositingCoordinatesOrientation platformCALayerContentsOrientation() const { return contentsOrientation(); }
-    virtual void platformCALayerPaintContents(GraphicsContext&, const IntRect& clip);
+    virtual void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const IntRect& clip);
     virtual bool platformCALayerShowDebugBorders() const { return isShowingDebugBorder(); }
     virtual bool platformCALayerShowRepaintCounter(PlatformCALayer*) const;
-    virtual int platformCALayerIncrementRepaintCount() { return incrementRepaintCount(); }
+    virtual int platformCALayerIncrementRepaintCount(PlatformCALayer*) { return incrementRepaintCount(); }
 
     virtual bool platformCALayerContentsOpaque() const { return contentsOpaque(); }
     virtual bool platformCALayerDrawsContent() const { return drawsContent(); }
     virtual void platformCALayerLayerDidDisplay(PlatformLayer* layer) { return layerDidDisplay(layer); }
     virtual void platformCALayerSetNeedsToRevalidateTiles() OVERRIDE;
-    virtual float platformCALayerDeviceScaleFactor() OVERRIDE;
+    virtual float platformCALayerDeviceScaleFactor() const OVERRIDE;
+    virtual float platformCALayerContentsScaleMultiplierForNewTiles(PlatformCALayer*) const OVERRIDE;
+
     virtual bool isCommittingChanges() const OVERRIDE { return m_isCommittingChanges; }
 
     virtual double backingStoreMemoryEstimate() const;
@@ -185,6 +190,9 @@ private:
 #if ENABLE(CSS_FILTERS)
     void updateFilters();
 #endif
+    
+    virtual PassRefPtr<PlatformCALayer> createPlatformCALayer(PlatformCALayer::LayerType, PlatformCALayerClient* owner);
+    virtual PassRefPtr<PlatformCALayer> createPlatformCALayer(PlatformLayer*, PlatformCALayerClient* owner);
 
     PlatformCALayer* primaryLayer() const { return m_structuralLayer.get() ? m_structuralLayer.get() : m_layer.get(); }
     PlatformCALayer* hostLayerForSublayers() const;
@@ -497,12 +505,12 @@ private:
     AnimationsToProcessMap m_animationsToProcess;
 
     // Map of animation names to their associated lists of property animations, so we can remove/pause them.
-    typedef HashMap<String, Vector<LayerPropertyAnimation> > AnimationsMap;
+    typedef HashMap<String, Vector<LayerPropertyAnimation>> AnimationsMap;
     AnimationsMap m_runningAnimations;
 
     // Map from animation key to TransformationMatrices for animations of transform. The vector contains a matrix for
     // the two endpoints, or each keyframe. Used for contentsScale adjustment.
-    typedef HashMap<String, Vector<TransformationMatrix> > TransformsMap;
+    typedef HashMap<String, Vector<TransformationMatrix>> TransformsMap;
     TransformsMap m_animationTransforms;
 
     Vector<FloatRect> m_dirtyRects;

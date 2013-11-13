@@ -66,7 +66,6 @@
 #include "PluginView.h"
 #include "PointerLockController.h"
 #include "ProgressTracker.h"
-#include "RenderArena.h"
 #include "RenderLayerCompositor.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
@@ -237,16 +236,13 @@ Page::~Page()
 #endif
 }
 
-ArenaSize Page::renderTreeSize() const
+uint64_t Page::renderTreeSize() const
 {
-    ArenaSize total(0, 0);
+    uint64_t total = 0;
     for (const Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
+        if (!frame->document() || !frame->document()->renderView())
             continue;
-        if (RenderArena* arena = frame->document()->renderArena()) {
-            total.treeSize += arena->totalRenderArenaSize();
-            total.allocated += arena->totalRenderArenaAllocatedBytes();
-        }
+        total += frame->document()->renderView()->rendererCount();
     }
     return total;
 }
@@ -434,7 +430,7 @@ void Page::setGroupName(const String& name)
     if (m_group && !m_group->name().isEmpty()) {
         ASSERT(m_group != m_singlePageGroup.get());
         ASSERT(!m_singlePageGroup);
-        m_group->removePage(this);
+        m_group->removePage(*this);
     }
 
     if (name.isEmpty())
@@ -442,7 +438,7 @@ void Page::setGroupName(const String& name)
     else {
         m_singlePageGroup = nullptr;
         m_group = PageGroup::pageGroup(name);
-        m_group->addPage(this);
+        m_group->addPage(*this);
     }
 }
 
@@ -547,11 +543,6 @@ static Frame* incrementFrame(Frame* curr, bool forward, bool wrapFlag)
         : curr->tree().traversePreviousWithWrap(wrapFlag);
 }
 
-bool Page::findString(const String& target, TextCaseSensitivity caseSensitivity, FindDirection direction, bool shouldWrap)
-{
-    return findString(target, (caseSensitivity == TextCaseInsensitive ? CaseInsensitive : 0) | (direction == FindDirectionBackward ? Backwards : 0) | (shouldWrap ? WrapAround : 0));
-}
-
 bool Page::findString(const String& target, FindOptions options)
 {
     if (target.isEmpty())
@@ -581,7 +572,7 @@ bool Page::findString(const String& target, FindOptions options)
     return false;
 }
 
-void Page::findStringMatchingRanges(const String& target, FindOptions options, int limit, Vector<RefPtr<Range> >* matchRanges, int& indexForSelection)
+void Page::findStringMatchingRanges(const String& target, FindOptions options, int limit, Vector<RefPtr<Range>>* matchRanges, int& indexForSelection)
 {
     indexForSelection = 0;
 
@@ -751,7 +742,7 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
 
     if (scale == m_pageScaleFactor) {
         if (view && (view->scrollPosition() != origin || view->delegatesScrolling())) {
-            if (!m_settings->applyPageScaleFactorInCompositor())
+            if (!m_settings->delegatesPageScaling())
                 document->updateLayoutIgnorePendingStylesheets();
             view->setScrollPosition(origin);
         }
@@ -760,9 +751,9 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
 
     m_pageScaleFactor = scale;
 
-    if (!m_settings->applyPageScaleFactorInCompositor()) {
+    if (!m_settings->delegatesPageScaling()) {
         if (document->renderView())
-            document->renderView()->setNeedsLayout(true);
+            document->renderView()->setNeedsLayout();
 
         document->recalcStyle(Style::Force);
 
@@ -778,7 +769,7 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
         view->setViewportConstrainedObjectsNeedLayout();
 
     if (view && view->scrollPosition() != origin) {
-        if (!m_settings->applyPageScaleFactorInCompositor() && document->renderView() && document->renderView()->needsLayout() && view->didFirstLayout())
+        if (!m_settings->delegatesPageScaling() && document->renderView() && document->renderView()->needsLayout() && view->didFirstLayout())
             view->layout();
         view->setScrollPosition(origin);
     }
@@ -802,6 +793,7 @@ void Page::setDeviceScaleFactor(float scaleFactor)
         frame->editor().deviceScaleFactorChanged();
 
     pageCache()->markPagesForFullStyleRecalc(this);
+    GraphicsContext::updateDocumentMarkerResources();
 }
 
 void Page::setShouldSuppressScrollbarAnimations(bool suppressAnimations)
@@ -835,34 +827,6 @@ void Page::lockAllOverlayScrollbarsToHidden(bool lockOverlayScrollbars)
             scrollableArea->lockOverlayScrollbarStateToHidden(lockOverlayScrollbars);
         }
     }
-}
-
-bool Page::rubberBandsAtBottom()
-{
-    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
-        return scrollingCoordinator->rubberBandsAtBottom();
-
-    return false;
-}
-
-void Page::setRubberBandsAtBottom(bool rubberBandsAtBottom)
-{
-    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
-        scrollingCoordinator->setRubberBandsAtBottom(rubberBandsAtBottom);
-}
-
-bool Page::rubberBandsAtTop()
-{
-    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
-        return scrollingCoordinator->rubberBandsAtTop();
-
-    return false;
-}
-
-void Page::setRubberBandsAtTop(bool rubberBandsAtTop)
-{
-    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
-        scrollingCoordinator->setRubberBandsAtTop(rubberBandsAtTop);
 }
 
 void Page::setPagination(const Pagination& pagination)
@@ -923,6 +887,9 @@ void Page::setIsInWindow(bool isInWindow)
         if (FrameView* frameView = frame->view())
             frameView->setIsInWindow(isInWindow);
     }
+
+    if (isInWindow)
+        resumeAnimatingImages();
 }
 
 void Page::suspendScriptedAnimations()
@@ -1066,15 +1033,6 @@ void Page::visitedStateChanged(PageGroup* group, LinkHash linkHash)
         for (Frame* frame = page->m_mainFrame.get(); frame; frame = frame->tree().traverseNext())
             frame->document()->visitedLinkState().invalidateStyleForLink(linkHash);
     }
-}
-
-void Page::setDebuggerForAllPages(JSC::Debugger* debugger)
-{
-    ASSERT(allPages);
-
-    HashSet<Page*>::iterator end = allPages->end();
-    for (HashSet<Page*>::iterator it = allPages->begin(); it != end; ++it)
-        (*it)->setDebugger(debugger);
 }
 
 void Page::setDebugger(JSC::Debugger* debugger)
@@ -1246,6 +1204,15 @@ void Page::unthrottleTimers()
 #endif
 }
 
+void Page::resumeAnimatingImages()
+{
+    // Drawing models which cache painted content while out-of-window (WebKit2's composited drawing areas, etc.)
+    // require that we repaint animated images to kickstart the animation loop.
+
+    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree().traverseNext())
+        CachedImage::resumeAnimatingImagesForLoader(frame->document()->cachedResourceLoader());
+}
+
 #if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
 void Page::setVisibilityState(PageVisibilityState visibilityState, bool isInitialState)
 {
@@ -1265,7 +1232,7 @@ void Page::setVisibilityState(PageVisibilityState visibilityState, bool isInitia
             documents.append(*frame->document());
 
         for (size_t i = 0, size = documents.size(); i < size; ++i)
-            documents[i]->dispatchEvent(Event::create(eventNames().visibilitychangeEvent, false, false));
+            documents[i]->visibilityStateChanged();
     }
 #endif
 
@@ -1278,6 +1245,7 @@ void Page::setVisibilityState(PageVisibilityState visibilityState, bool isInitia
         unthrottleTimers();
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
             mainFrame().animation().resumeAnimations();
+        resumeAnimatingImages();
     }
 }
 #endif // ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
@@ -1461,6 +1429,8 @@ void Page::resumeActiveDOMObjectsAndAnimations()
 {
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
         frame->resumeActiveDOMObjectsAndAnimations();
+
+    resumeAnimatingImages();
 }
 
 bool Page::hasSeenAnyPlugin() const

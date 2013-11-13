@@ -34,7 +34,6 @@
 #include "FrameLoaderTypes.h"
 #include "FrameSelection.h"
 #include "HTMLImageElement.h"
-#include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "KeyboardEvent.h"
 #include "MouseEvent.h"
@@ -95,7 +94,7 @@ bool HTMLAnchorElement::supportsFocus() const
 
 bool HTMLAnchorElement::isMouseFocusable() const
 {
-#if !(PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT))
+#if !(PLATFORM(EFL) || PLATFORM(GTK))
     // Only allow links with tabIndex or contentEditable to be mouse focusable.
     // This is our rule for the Mac platform; on many other platforms we focus any link you click on.
     if (isLink())
@@ -605,6 +604,7 @@ bool shouldProhibitLinks(Element* element)
 #if ENABLE(SVG)
     return isInSVGImage(element);
 #else
+    UNUSED_PARAM(element);
     return false;
 #endif
 }
@@ -614,7 +614,7 @@ bool HTMLAnchorElement::willRespondToMouseClickEvents()
     return isLink() || HTMLElement::willRespondToMouseClickEvents();
 }
 
-typedef HashMap<const HTMLAnchorElement*, RefPtr<Element> > RootEditableElementMap;
+typedef HashMap<const HTMLAnchorElement*, RefPtr<Element>> RootEditableElementMap;
 
 static RootEditableElementMap& rootEditableElementMap()
 {

@@ -24,7 +24,7 @@
  */
 
 [
-    Conditional=TOUCH_EVENTS
+    Conditional=TOUCH_EVENTS,
 ] interface TouchEvent : UIEvent {
     readonly attribute TouchList touches;
     readonly attribute TouchList targetTouches;

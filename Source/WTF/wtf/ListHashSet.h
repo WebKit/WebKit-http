@@ -40,9 +40,6 @@ namespace WTF {
 
 template<typename Value, size_t inlineCapacity, typename HashFunctions> class ListHashSet;
 
-template<typename Value, size_t inlineCapacity, typename HashFunctions>
-void deleteAllValues(const ListHashSet<Value, inlineCapacity, HashFunctions>&);
-
 template<typename ValueArg, size_t inlineCapacity, typename HashArg> class ListHashSetIterator;
 template<typename ValueArg, size_t inlineCapacity, typename HashArg> class ListHashSetConstIterator;
 
@@ -155,12 +152,10 @@ private:
     iterator makeIterator(Node*);
     const_iterator makeConstIterator(Node*) const;
 
-    friend void deleteAllValues<>(const ListHashSet&);
-
     HashTable<Node*, Node*, IdentityExtractor, NodeHash, NodeTraits, NodeTraits> m_impl;
     Node* m_head;
     Node* m_tail;
-    OwnPtr<NodeAllocator> m_allocator;
+    std::unique_ptr<NodeAllocator> m_allocator;
 };
 
 template<typename ValueArg, size_t inlineCapacity> struct ListHashSetNodeAllocator {
@@ -405,7 +400,7 @@ template<typename T, size_t inlineCapacity, typename U>
 inline ListHashSet<T, inlineCapacity, U>::ListHashSet()
     : m_head(0)
     , m_tail(0)
-    , m_allocator(createOwned<NodeAllocator>())
+    , m_allocator(std::make_unique<NodeAllocator>())
 {
 }
 
@@ -413,7 +408,7 @@ template<typename T, size_t inlineCapacity, typename U>
 inline ListHashSet<T, inlineCapacity, U>::ListHashSet(const ListHashSet& other)
     : m_head(0)
     , m_tail(0)
-    , m_allocator(createOwned<NodeAllocator>())
+    , m_allocator(std::make_unique<NodeAllocator>())
 {
     for (auto it = other.begin(), end = other.end(); it != end; ++it)
         add(*it);
@@ -574,7 +569,7 @@ template<typename ValueType, size_t inlineCapacity, typename U>
 template<typename T, typename HashTranslator>
 inline bool ListHashSet<ValueType, inlineCapacity, U>::contains(const T& value) const
 {
-    return m_impl.template contains<ListHashSetTranslatorAdapter<HashTranslator> >(value);
+    return m_impl.template contains<ListHashSetTranslatorAdapter<HashTranslator>>(value);
 }
 
 template<typename T, size_t inlineCapacity, typename U>
@@ -798,19 +793,6 @@ template<typename T, size_t inlineCapacity, typename U>
 inline auto ListHashSet<T, inlineCapacity, U>::makeConstIterator(Node* position) const -> const_iterator
 { 
     return const_iterator(this, position);
-}
-
-template<bool, typename ValueType, typename HashTableType>
-void deleteAllValues(HashTableType& collection)
-{
-    for (auto it = collection.begin(), end = collection.end(); it != end; ++it)
-        delete (*it)->m_value;
-}
-
-template<typename T, size_t inlineCapacity, typename U>
-inline void deleteAllValues(const ListHashSet<T, inlineCapacity, U>& collection)
-{
-    deleteAllValues<true, typename ListHashSet<T, inlineCapacity, U>::ValueType>(collection.m_impl);
 }
 
 } // namespace WTF

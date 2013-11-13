@@ -1,6 +1,7 @@
 # Copyright (C) 2009 Google Inc. All rights reserved.
 # Copyright (C) 2010 Chris Jerdonek (chris.jerdonek@gmail.com)
 # Copyright (C) 2010 ProFUSION embedded systems
+# Copyright (C) 2013 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -134,36 +135,12 @@ _PATH_RULES_SPECIFIER = [
       # The API test harnesses have no config.h and use funny macros like
       # TEST_CLASS_NAME.
       "Tools/WebKitAPITest/",
-      "Tools/TestWebKitAPI/",
-      "Source/WebKit/qt/tests/qdeclarativewebview"],
+      "Tools/TestWebKitAPI/"],
      ["-build/include",
       "-readability/naming"]),
     ([# There is no clean way to avoid "yy_*" names used by flex.
-      "Source/WebCore/css/CSSParser.cpp",
-      # Qt code uses '_' in some places (such as private slots
-      # and on test xxx_data methos on tests)
-      "Source/JavaScriptCore/qt/",
-      "Source/WebKit/qt/tests/",
-      "Source/WebKit/qt/declarative/",
-      "Source/WebKit/qt/examples/"],
+      "Source/WebCore/css/CSSParser.cpp"],
      ["-readability/naming"]),
-
-    ([# The Qt APIs use Qt declaration style, it puts the * to
-      # the variable name, not to the class.
-      "Source/WebKit/qt/Api/",
-      "Source/WebKit/qt/WidgetApi/"],
-     ["-readability/naming",
-      "-whitespace/declaration"]),
-
-     ([# Qt's MiniBrowser has no config.h
-       "Tools/MiniBrowser/qt",
-       "Tools/MiniBrowser/qt/raw"],
-      ["-build/include"]),
-
-    ([# The Qt APIs use Qt/QML naming style, which includes
-      # naming parameters in h files.
-      "Source/WebKit2/UIProcess/API/qt"],
-     ["-readability/parameter_name"]),
 
     ([# The GTK+ port uses the autotoolsconfig.h header in some C sources
       # to serve the same purpose of config.h.
@@ -174,6 +151,8 @@ _PATH_RULES_SPECIFIER = [
       # lower-cased, underscore-separated values, whitespace before
       # parens for function calls, and always having variable names.
       # Also, GTK+ allows the use of NULL.
+      "Source/WebCore/bindings/gobject/WebKitDOMCustom.h",
+      "Source/WebCore/bindings/gobject/WebKitDOMEventTarget.h",
       "Source/WebCore/bindings/scripts/test/GObject",
       "Source/WebKit/gtk/webkit/",
       "Tools/DumpRenderTree/gtk/"],
@@ -191,7 +170,11 @@ _PATH_RULES_SPECIFIER = [
 
     ([# Header files in ForwardingHeaders have no header guards or
       # exceptional header guards (e.g., WebCore_FWD_Debugger_h).
-      "/ForwardingHeaders/"],
+      "/ForwardingHeaders/",
+      # Nix platform API classes uses common names under Nix namespace
+      # so the include guards should also include the namespace to avoid
+      # name clashes.
+       "Source/Platform/nix"],
      ["-build/header_guard"]),
     ([# assembler has lots of opcodes that use underscores, so
       # we don't check for underscores in that directory.
@@ -239,7 +222,7 @@ _PATH_RULES_SPECIFIER = [
     ([# These files define GObjects, which implies some definitions of
       # variables and functions containing underscores.
       "Source/WebCore/bindings/gobject/WebKitDOMCustom.cpp",
-      "Source/WebCore/bindings/gobject/WebKitDOMCustom.h",
+      "Source/WebCore/bindings/gobject/WebKitDOMEventTarget.cpp",
       "Source/WebCore/platform/graphics/gstreamer/VideoSinkGStreamer1.cpp",
       "Source/WebCore/platform/graphics/gstreamer/VideoSinkGStreamer.cpp",
       "Source/WebCore/platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp",

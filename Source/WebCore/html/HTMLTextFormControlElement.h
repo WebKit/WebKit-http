@@ -31,6 +31,7 @@ namespace WebCore {
 
 class Position;
 class RenderTextControl;
+class TextControlInnerTextElement;
 class VisiblePosition;
 
 enum TextFieldSelectionDirection { SelectionHasNoDirection, SelectionHasForwardDirection, SelectionHasBackwardDirection };
@@ -45,8 +46,7 @@ public:
 
     void forwardEvent(Event*);
 
-
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
 
     // The derived class should return true if placeholder processing is needed.
     virtual bool supportsPlaceholder() const = 0;
@@ -76,7 +76,7 @@ public:
     virtual int maxLength() const = 0;
     virtual String value() const = 0;
 
-    virtual HTMLElement* innerTextElement() const = 0;
+    virtual TextControlInnerTextElement* innerTextElement() const = 0;
 
     void selectionChanged(bool userTriggered);
     bool lastChangeWasUserEdit() const;
@@ -104,7 +104,7 @@ protected:
     void restoreCachedSelection();
     bool hasCachedSelection() const { return m_cachedSelectionStart >= 0; }
 
-    virtual void defaultEventHandler(Event*);
+    virtual void defaultEventHandler(Event*) OVERRIDE;
     virtual void subtreeHasChanged() = 0;
 
     void setLastChangeWasNotUserEdit() { m_lastChangeWasUserEdit = false; }
@@ -118,7 +118,7 @@ private:
 
     virtual void dispatchFocusEvent(PassRefPtr<Element> oldFocusedElement, FocusDirection) OVERRIDE FINAL;
     virtual void dispatchBlurEvent(PassRefPtr<Element> newFocusedElement) OVERRIDE FINAL;
-    virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
+    virtual bool childShouldCreateRenderer(const Node&) const OVERRIDE;
 
     // Returns true if user-editable value is empty. Used to check placeholder visibility.
     virtual bool isEmptyValue() const = 0;
@@ -137,25 +137,10 @@ private:
     TextFieldSelectionDirection m_cachedSelectionDirection;
 };
 
-inline bool isHTMLTextFormControlElement(const Node* node)
-{
-    return node->isElementNode() && toElement(node)->isTextFormControl();
-}
-
-inline HTMLTextFormControlElement& toHTMLTextFormControlElement(Node& node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(isHTMLTextFormControlElement(&node));
-    return static_cast<HTMLTextFormControlElement&>(node);
-}
-
-inline HTMLTextFormControlElement* toHTMLTextFormControlElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLTextFormControlElement(node));
-    return static_cast<HTMLTextFormControlElement*>(node);
-}
-
-void toHTMLTextFormControlElement(const HTMLTextFormControlElement&);
-void toHTMLTextFormControlElement(const HTMLTextFormControlElement*);
+void isHTMLTextFormControlElement(const HTMLTextFormControlElement&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isHTMLTextFormControlElement(const Element& element) { return element.isTextFormControl(); }
+inline bool isHTMLTextFormControlElement(const Node& node) { return node.isElementNode() && toElement(node).isTextFormControl(); }
+NODE_TYPE_CASTS(HTMLTextFormControlElement)
 
 HTMLTextFormControlElement* enclosingTextFormControl(const Position&);
 

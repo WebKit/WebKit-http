@@ -24,9 +24,6 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include <wtf/MathExtras.h>
-#include <wtf/text/WTFString.h>
-
-using namespace std;
 
 namespace WebCore {
 
@@ -83,7 +80,7 @@ Decimal StepRange::alignValueForStep(const Decimal& currentValue, const Decimal&
 
 Decimal StepRange::clampValue(const Decimal& value) const
 {
-    const Decimal inRangeValue = max(m_minimum, min(value, m_maximum));
+    const Decimal inRangeValue = std::max(m_minimum, std::min(value, m_maximum));
     if (!m_hasStep)
         return inRangeValue;
     // Rounds inRangeValue to minimum + N * step.
@@ -120,13 +117,13 @@ Decimal StepRange::parseStep(AnyStepHandling anyStepHandling, const StepDescript
         break;
     case ParsedStepValueShouldBeInteger:
         // For date, month, and week, the parsed value should be an integer for some types.
-        step = max(step.round(), Decimal(1));
+        step = std::max(step.round(), Decimal(1));
         step *= stepDescription.stepScaleFactor;
         break;
     case ScaledStepValueShouldBeInteger:
         // For datetime, datetime-local, time, the result should be an integer.
         step *= stepDescription.stepScaleFactor;
-        step = max(step.round(), Decimal(1));
+        step = std::max(step.round(), Decimal(1));
         break;
     default:
         ASSERT_NOT_REACHED();

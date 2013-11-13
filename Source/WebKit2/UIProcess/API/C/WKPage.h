@@ -470,10 +470,14 @@ WK_EXPORT bool WKPageIsPinnedToRightSide(WKPageRef page);
 WK_EXPORT bool WKPageIsPinnedToTopSide(WKPageRef page);
 WK_EXPORT bool WKPageIsPinnedToBottomSide(WKPageRef page);
 
-WK_EXPORT bool WKPageRubberBandsAtBottom(WKPageRef);
-WK_EXPORT void WKPageSetRubberBandsAtBottom(WKPageRef, bool rubberBandsAtBottom);
+WK_EXPORT bool WKPageRubberBandsAtLeft(WKPageRef);
+WK_EXPORT void WKPageSetRubberBandsAtLeft(WKPageRef, bool rubberBandsAtLeft);
+WK_EXPORT bool WKPageRubberBandsAtRight(WKPageRef);
+WK_EXPORT void WKPageSetRubberBandsAtRight(WKPageRef, bool rubberBandsAtRight);
 WK_EXPORT bool WKPageRubberBandsAtTop(WKPageRef);
 WK_EXPORT void WKPageSetRubberBandsAtTop(WKPageRef, bool rubberBandsAtTop);
+WK_EXPORT bool WKPageRubberBandsAtBottom(WKPageRef);
+WK_EXPORT void WKPageSetRubberBandsAtBottom(WKPageRef, bool rubberBandsAtBottom);
 
 WK_EXPORT bool WKPageCanDelete(WKPageRef page);
 WK_EXPORT bool WKPageHasSelectedRange(WKPageRef page);
@@ -506,17 +510,9 @@ WK_EXPORT void WKPageRunJavaScriptInMainFrame_b(WKPageRef page, WKStringRef scri
 
 typedef void (*WKPageGetSourceForFrameFunction)(WKStringRef, WKErrorRef, void*);
 WK_EXPORT void WKPageGetSourceForFrame(WKPageRef page, WKFrameRef frame, void* context, WKPageGetSourceForFrameFunction function);
-#ifdef __BLOCKS__
-typedef void (^WKPageGetSourceForFrameBlock)(WKStringRef, WKErrorRef);
-WK_EXPORT void WKPageGetSourceForFrame_b(WKPageRef page, WKFrameRef frame, WKPageGetSourceForFrameBlock block);
-#endif
 
 typedef void (*WKPageGetContentsAsStringFunction)(WKStringRef, WKErrorRef, void*);
 WK_EXPORT void WKPageGetContentsAsString(WKPageRef page, void* context, WKPageGetContentsAsStringFunction function);
-#ifdef __BLOCKS__
-typedef void (^WKPageGetContentsAsStringBlock)(WKStringRef, WKErrorRef);
-WK_EXPORT void WKPageGetContentsAsString_b(WKPageRef page, WKPageGetContentsAsStringBlock block);
-#endif
 
 typedef void (*WKPageGetContentsAsMHTMLDataFunction)(WKDataRef, WKErrorRef, void*);
 WK_EXPORT void WKPageGetContentsAsMHTMLData(WKPageRef page, bool useBinaryEncoding, void* context, WKPageGetContentsAsMHTMLDataFunction function);

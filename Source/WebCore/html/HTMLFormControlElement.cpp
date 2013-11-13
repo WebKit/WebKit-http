@@ -39,14 +39,12 @@
 #include "RenderBox.h"
 #include "RenderTheme.h"
 #include "ValidationMessage.h"
-#include "ValidityState.h"
 #include <wtf/Ref.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
-using namespace std;
 
 HTMLFormControlElement::HTMLFormControlElement(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
     : LabelableElement(tagName, document)
@@ -138,7 +136,7 @@ void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const Ato
         if (wasReadOnly != m_isReadOnly) {
             setNeedsWillValidateCheck();
             setNeedsStyleRecalc();
-            if (renderer() && renderer()->style()->hasAppearance())
+            if (renderer() && renderer()->style().hasAppearance())
                 renderer()->theme()->stateChanged(renderer(), ReadOnlyState);
         }
     } else if (name == requiredAttr) {
@@ -158,7 +156,7 @@ void HTMLFormControlElement::disabledAttributeChanged()
 {
     setNeedsWillValidateCheck();
     didAffectSelector(AffectedSelectorDisabled | AffectedSelectorEnabled);
-    if (renderer() && renderer()->style()->hasAppearance())
+    if (renderer() && renderer()->style().hasAppearance())
         renderer()->theme()->stateChanged(renderer(), EnabledState);
 }
 
@@ -229,7 +227,7 @@ void HTMLFormControlElement::didMoveToNewDocument(Document* oldDocument)
     HTMLElement::didMoveToNewDocument(oldDocument);
 }
 
-Node::InsertionNotificationRequest HTMLFormControlElement::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest HTMLFormControlElement::insertedInto(ContainerNode& insertionPoint)
 {
     m_ancestorDisabledState = AncestorDisabledStateUnknown;
     m_dataListAncestorState = Unknown;
@@ -239,7 +237,7 @@ Node::InsertionNotificationRequest HTMLFormControlElement::insertedInto(Containe
     return InsertionDone;
 }
 
-void HTMLFormControlElement::removedFrom(ContainerNode* insertionPoint)
+void HTMLFormControlElement::removedFrom(ContainerNode& insertionPoint)
 {
     m_validationMessage = nullptr;
     m_ancestorDisabledState = AncestorDisabledStateUnknown;
@@ -327,7 +325,7 @@ bool HTMLFormControlElement::isKeyboardFocusable(KeyboardEvent* event) const
 
 bool HTMLFormControlElement::isMouseFocusable() const
 {
-#if PLATFORM(GTK) || PLATFORM(QT)
+#if PLATFORM(GTK)
     return HTMLElement::isMouseFocusable();
 #else
     return false;
@@ -406,7 +404,7 @@ void HTMLFormControlElement::hideVisibleValidationMessage()
         m_validationMessage->requestToHideMessage();
 }
 
-bool HTMLFormControlElement::checkValidity(Vector<RefPtr<FormAssociatedElement> >* unhandledInvalidControls)
+bool HTMLFormControlElement::checkValidity(Vector<RefPtr<FormAssociatedElement>>* unhandledInvalidControls)
 {
     if (!willValidate() || isValidFormControlElement())
         return true;
@@ -423,13 +421,13 @@ bool HTMLFormControlElement::isValidFormControlElement()
 {
     // If the following assertion fails, setNeedsValidityCheck() is not called
     // correctly when something which changes validity is updated.
-    ASSERT(m_isValid == validity()->valid());
+    ASSERT(m_isValid == valid());
     return m_isValid;
 }
 
 void HTMLFormControlElement::setNeedsValidityCheck()
 {
-    bool newIsValid = validity()->valid();
+    bool newIsValid = valid();
     if (willValidate() && newIsValid != m_isValid) {
         // Update style for pseudo classes such as :valid :invalid.
         setNeedsStyleRecalc();
@@ -450,7 +448,7 @@ void HTMLFormControlElement::setCustomValidity(const String& error)
     setNeedsValidityCheck();
 }
 
-bool HTMLFormControlElement::validationMessageShadowTreeContains(const Node* node) const
+bool HTMLFormControlElement::validationMessageShadowTreeContains(const Node& node) const
 {
     return m_validationMessage && m_validationMessage->shadowTreeContains(node);
 }

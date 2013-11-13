@@ -21,19 +21,19 @@
  */
 
 #include "config.h"
-
 #include "AtomicString.h"
 
 #include "AtomicStringTable.h"
+#include "HashSet.h"
+#include "IntegerToStringConversion.h"
 #include "StringHash.h"
-#include <wtf/HashSet.h>
-#include <wtf/Threading.h>
-#include <wtf/WTFThreadData.h>
+#include "Threading.h"
+#include "WTFThreadData.h"
+#include "dtoa.h"
 #include <wtf/unicode/UTF8.h>
 
 #if USE(WEB_THREAD)
-#include <wtf/MainThread.h>
-#include <wtf/TCSpinLock.h>
+#include "TCSpinLock.h"
 #endif
 
 namespace WTF {
@@ -43,6 +43,7 @@ using namespace Unicode;
 static_assert(sizeof(AtomicString) == sizeof(String), "AtomicString and String must be same size!");
 
 #if USE(WEB_THREAD)
+
 class AtomicStringTableLocker : public SpinLockHolder {
     WTF_MAKE_NONCOPYABLE(AtomicStringTableLocker);
 
@@ -55,14 +56,15 @@ public:
 };
 
 SpinLock AtomicStringTableLocker::s_stringTableLock = SPINLOCK_INITIALIZER;
+
 #else
 
 class AtomicStringTableLocker {
     WTF_MAKE_NONCOPYABLE(AtomicStringTableLocker);
 public:
     AtomicStringTableLocker() { }
-    ~AtomicStringTableLocker() { }
 };
+
 #endif // USE(WEB_THREAD)
 
 static ALWAYS_INLINE HashSet<StringImpl*>& stringTable()
@@ -95,7 +97,7 @@ struct CStringTranslator {
 
     static void translate(StringImpl*& location, const LChar* const& c, unsigned hash)
     {
-        location = StringImpl::create(c).leakRef();
+        location = &StringImpl::create(c).leakRef();
         location->setHash(hash);
         location->setIsAtomic(true);
     }
@@ -131,7 +133,7 @@ struct UCharBufferTranslator {
 
     static void translate(StringImpl*& location, const UCharBuffer& buf, unsigned hash)
     {
-        location = StringImpl::create8BitIfPossible(buf.s, buf.length).leakRef();
+        location = &StringImpl::create8BitIfPossible(buf.s, buf.length).leakRef();
         location->setHash(hash);
         location->setIsAtomic(true);
     }
@@ -159,7 +161,7 @@ struct HashAndCharactersTranslator {
 
     static void translate(StringImpl*& location, const HashAndCharacters<CharacterType>& buffer, unsigned hash)
     {
-        location = StringImpl::create(buffer.characters, buffer.length).leakRef();
+        location = &StringImpl::create(buffer.characters, buffer.length).leakRef();
         location->setHash(hash);
         location->setIsAtomic(true);
     }
@@ -253,7 +255,7 @@ PassRefPtr<StringImpl> AtomicString::add(const UChar* s, unsigned length, unsign
         return StringImpl::empty();
 
     HashAndCharacters<UChar> buffer = { existingHash, s, length };
-    return addToStringTable<HashAndCharacters<UChar>, HashAndCharactersTranslator<UChar> >(buffer);
+    return addToStringTable<HashAndCharacters<UChar>, HashAndCharactersTranslator<UChar>>(buffer);
 }
 
 PassRefPtr<StringImpl> AtomicString::add(const UChar* s)
@@ -291,7 +293,7 @@ struct SubstringTranslator {
 
     static void translate(StringImpl*& location, const SubstringLocation& buffer, unsigned hash)
     {
-        location = StringImpl::create(buffer.baseString, buffer.start, buffer.length).leakRef();
+        location = &StringImpl::create(buffer.baseString, buffer.start, buffer.length).leakRef();
         location->setHash(hash);
         location->setIsAtomic(true);
     }
@@ -330,7 +332,7 @@ struct LCharBufferTranslator {
 
     static void translate(StringImpl*& location, const LCharBuffer& buf, unsigned hash)
     {
-        location = StringImpl::create(buf.s, buf.length).leakRef();
+        location = &StringImpl::create(buf.s, buf.length).leakRef();
         location->setHash(hash);
         location->setIsAtomic(true);
     }
@@ -350,7 +352,7 @@ struct CharBufferFromLiteralDataTranslator {
 
     static void translate(StringImpl*& location, const CharBuffer& buf, unsigned hash)
     {
-        location = StringImpl::createFromLiteral(buf.s, buf.length).leakRef();
+        location = &StringImpl::createFromLiteral(buf.s, buf.length).leakRef();
         location->setHash(hash);
         location->setIsAtomic(true);
     }
@@ -399,7 +401,7 @@ template<typename CharacterType>
 static inline HashSet<StringImpl*>::iterator findString(const StringImpl* stringImpl)
 {
     HashAndCharacters<CharacterType> buffer = { stringImpl->existingHash(), stringImpl->getCharacters<CharacterType>(), stringImpl->length() };
-    return stringTable().find<HashAndCharactersTranslator<CharacterType> >(buffer);
+    return stringTable().find<HashAndCharactersTranslator<CharacterType>>(buffer);
 }
 
 AtomicStringImpl* AtomicString::find(const StringImpl* stringImpl)
@@ -459,6 +461,22 @@ AtomicString AtomicString::fromUTF8Internal(const char* charactersStart, const c
     AtomicString atomicString;
     atomicString.m_string = addToStringTable<HashAndUTF8Characters, HashAndUTF8CharactersTranslator>(buffer);
     return atomicString;
+}
+
+AtomicString AtomicString::number(int number)
+{
+    return numberToStringSigned<AtomicString>(number);
+}
+
+AtomicString AtomicString::number(unsigned number)
+{
+    return numberToStringUnsigned<AtomicString>(number);
+}
+
+AtomicString AtomicString::number(double number)
+{
+    NumberToStringBuffer buffer;
+    return String(numberToFixedPrecisionString(number, 6, buffer, true));
 }
 
 #if !ASSERT_DISABLED

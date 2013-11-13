@@ -26,7 +26,6 @@
 #include "ElementTraversal.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
-#include "HTMLDivElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "ProgressShadowElement.h"
@@ -59,15 +58,15 @@ PassRefPtr<HTMLProgressElement> HTMLProgressElement::create(const QualifiedName&
     return progress.release();
 }
 
-RenderElement* HTMLProgressElement::createRenderer(RenderArena& arena, RenderStyle& style)
+RenderElement* HTMLProgressElement::createRenderer(PassRef<RenderStyle> style)
 {
-    if (!style.hasAppearance() || hasAuthorShadowRoot())
-        return RenderElement::createFor(*this, style);
+    if (!style.get().hasAppearance() || hasAuthorShadowRoot())
+        return RenderElement::createFor(*this, std::move(style));
 
-    return new (arena) RenderProgress(this);
+    return new RenderProgress(*this, std::move(style));
 }
 
-bool HTMLProgressElement::childShouldCreateRenderer(const Node* child) const
+bool HTMLProgressElement::childShouldCreateRenderer(const Node& child) const
 {
     return hasShadowRootParent(child) && HTMLElement::childShouldCreateRenderer(child);
 }
@@ -107,7 +106,7 @@ void HTMLProgressElement::setValue(double value, ExceptionCode& ec)
         ec = NOT_SUPPORTED_ERR;
         return;
     }
-    setAttribute(valueAttr, String::number(value >= 0 ? value : 0));
+    setAttribute(valueAttr, AtomicString::number(value >= 0 ? value : 0));
 }
 
 double HTMLProgressElement::max() const
@@ -122,7 +121,7 @@ void HTMLProgressElement::setMax(double max, ExceptionCode& ec)
         ec = NOT_SUPPORTED_ERR;
         return;
     }
-    setAttribute(maxAttr, String::number(max > 0 ? max : 1));
+    setAttribute(maxAttr, AtomicString::number(max > 0 ? max : 1));
 }
 
 double HTMLProgressElement::position() const

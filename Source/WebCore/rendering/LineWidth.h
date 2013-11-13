@@ -31,12 +31,11 @@
 #define LineWidth_h
 
 #include "LayoutUnit.h"
-#include <wtf/HashMap.h>
 
 namespace WebCore {
 
 class FloatingObject;
-class RenderBlock;
+class RenderBlockFlow;
 class RenderObject;
 class RenderRubyRun;
 
@@ -46,7 +45,7 @@ enum IndentTextOrNot { DoNotIndentText, IndentText };
 
 class LineWidth {
 public:
-    LineWidth(RenderBlock&, bool isFirstLine, IndentTextOrNot shouldIndentText);
+    LineWidth(RenderBlockFlow&, bool isFirstLine, IndentTextOrNot shouldIndentText);
 
     bool fitsOnLine(bool ignoringTrailingSpace = false) const;
     bool fitsOnLineIncludingExtraWidth(float extra) const;
@@ -55,13 +54,12 @@ public:
     float currentWidth() const { return m_committedWidth + m_uncommittedWidth; }
     // FIXME: We should eventually replace these three functions by ones that work on a higher abstraction.
     float uncommittedWidth() const { return m_uncommittedWidth; }
-    float uncommittedWidthForObject(const RenderObject&) const;
     float committedWidth() const { return m_committedWidth; }
     float availableWidth() const { return m_availableWidth; }
 
     void updateAvailableWidth(LayoutUnit minimumHeight = 0);
     void shrinkAvailableWidthForNewFloatIfNeeded(FloatingObject*);
-    void addUncommittedWidth(float delta, const RenderObject&);
+    void addUncommittedWidth(float delta) { m_uncommittedWidth += delta; }
     void commit();
     void applyOverhang(RenderRubyRun*, RenderObject* startRenderer, RenderObject* endRenderer);
     void fitBelowFloats();
@@ -77,7 +75,7 @@ private:
     void computeAvailableWidthFromLeftAndRight();
     bool fitsOnLineExcludingTrailingCollapsedWhitespace() const;
 
-    RenderBlock& m_block;
+    RenderBlockFlow& m_block;
     float m_uncommittedWidth;
     float m_committedWidth;
     float m_overhangWidth; // The amount by which |m_availableWidth| has been inflated to account for possible contraction due to ruby overhang.
@@ -91,7 +89,6 @@ private:
 #endif
     bool m_isFirstLine;
     IndentTextOrNot m_shouldIndentText;
-    HashMap<const RenderObject*, float> m_uncommittedWidthMap;
 };
 
 }

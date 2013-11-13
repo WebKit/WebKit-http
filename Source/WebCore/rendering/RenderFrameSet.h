@@ -55,7 +55,7 @@ private:
 
 class RenderFrameSet FINAL : public RenderBox {
 public:
-    explicit RenderFrameSet(HTMLFrameSetElement&);
+    RenderFrameSet(HTMLFrameSetElement&, PassRef<RenderStyle>);
     virtual ~RenderFrameSet();
 
     HTMLFrameSetElement& frameSetElement() const;
@@ -97,7 +97,7 @@ private:
     virtual void layout() OVERRIDE;
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
     virtual bool canHaveChildren() const OVERRIDE { return true; }
-    virtual bool isChildAllowed(RenderObject*, RenderStyle*) const OVERRIDE;
+    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const OVERRIDE;
     virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const OVERRIDE;
 
     bool flattenFrameSet() const;
@@ -126,15 +126,8 @@ private:
     bool m_isChildResizing;
 };
 
-
-inline RenderFrameSet* toRenderFrameSet(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isFrameSet());
-    return static_cast<RenderFrameSet*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderFrameSet(const RenderFrameSet*);
+template<> inline bool isRendererOfType<const RenderFrameSet>(const RenderObject& renderer) { return renderer.isFrameSet(); }
+RENDER_OBJECT_TYPE_CASTS(RenderFrameSet, isFrameSet())
 
 } // namespace WebCore
 

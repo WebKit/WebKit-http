@@ -74,6 +74,10 @@ private:
     virtual bool shouldTerminate() OVERRIDE;
     void platformInitializeProcess(const ChildProcessInitializationParameters&);
 
+#if PLATFORM(MAC)
+    virtual void stopRunLoop() OVERRIDE;
+#endif
+
     // CoreIPC::Connection::Client
     virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
     virtual void didClose(CoreIPC::Connection*) OVERRIDE;
@@ -105,7 +109,7 @@ private:
     
     bool m_supportsAsynchronousPluginInitialization;
 
-    WebCore::RunLoop::Timer<PluginProcess> m_minimumLifetimeTimer;
+    RunLoop::Timer<PluginProcess> m_minimumLifetimeTimer;
 
 #if USE(ACCELERATED_COMPOSITING) && PLATFORM(MAC)
     // The Mach port used for accelerated compositing.

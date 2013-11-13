@@ -55,6 +55,11 @@
 #import <wtf/PassOwnPtr.h>
 #import <wtf/text/Base64.h>
 
+#if ENABLE(REMOTE_INSPECTOR)
+#import "WebInspectorClientRegistry.h"
+#import "WebInspectorRemoteChannel.h"
+#endif
+
 SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
 
 // The margin from the top and right of the dock button (same as the full screen button).
@@ -130,11 +135,23 @@ WebInspectorClient::WebInspectorClient(WebView *webView)
     , m_highlighter(adoptNS([[WebNodeHighlighter alloc] initWithInspectedWebView:webView]))
     , m_frontendPage(0)
     , m_frontendClient(0)
+#if ENABLE(REMOTE_INSPECTOR)
+    , m_remoteChannel(0)
+    , m_pageId(0)
+#endif
 {
+#if ENABLE(REMOTE_INSPECTOR)
+    [[WebInspectorClientRegistry sharedRegistry] registerClient:this];
+#endif
 }
 
 void WebInspectorClient::inspectorDestroyed()
 {
+#if ENABLE(REMOTE_INSPECTOR)
+    [[WebInspectorClientRegistry sharedRegistry] unregisterClient:this];
+    teardownRemoteConnection(true);
+#endif
+
     closeInspectorFrontend();
     delete this;
 }
@@ -180,11 +197,96 @@ void WebInspectorClient::hideHighlight()
     [m_highlighter.get() hideHighlight];
 }
 
+void WebInspectorClient::didSetSearchingForNode(bool enabled)
+{
+    WebInspector *inspector = [m_webView inspector];
+
+    ASSERT(isMainThread());
+
+    if (enabled)
+        [[NSNotificationCenter defaultCenter] postNotificationName:WebInspectorDidStartSearchingForNode object:inspector];
+    else
+        [[NSNotificationCenter defaultCenter] postNotificationName:WebInspectorDidStopSearchingForNode object:inspector];
+}
+
 void WebInspectorClient::releaseFrontend()
 {
     m_frontendClient = 0;
     m_frontendPage = 0;
 }
+
+#if ENABLE(REMOTE_INSPECTOR)
+bool WebInspectorClient::sendMessageToFrontend(const String& message)
+{
+    if (m_remoteChannel) {
+        [m_remoteChannel sendMessageToFrontend:message];
+        return true;
+    }
+
+    return doDispatchMessageOnFrontendPage(m_frontendPage, message);
+}
+
+void WebInspectorClient::sendMessageToBackend(const String& message)
+{
+    ASSERT(m_remoteChannel);
+
+    Page* page = core(m_webView);
+    page->inspectorController()->dispatchMessageFromFrontend(message);
+}
+
+bool WebInspectorClient::setupRemoteConnection(WebInspectorRemoteChannel *remoteChannel)
+{
+    // There is already a local session, do not allow a remote session.
+    if (hasLocalSession())
+        return false;
+
+    // There is already a remote session, do not allow a new remote session.
+    if (m_remoteChannel)
+        return false;
+
+    ASSERT([[m_webView preferences] developerExtrasEnabled]);
+
+    m_remoteChannel = remoteChannel;
+
+    Page* page = core(m_webView);
+    page->inspectorController()->connectFrontend(this);
+
+    return true;
+}
+
+void WebInspectorClient::teardownRemoteConnection(bool fromLocalSide)
+{
+    if (!m_remoteChannel)
+        return;
+
+    if (fromLocalSide)
+        [m_remoteChannel closeFromLocalSide];
+
+    if (Page* page = core(m_webView))
+        page->inspectorController()->disconnectFrontend();
+
+    if (fromLocalSide)
+        [m_remoteChannel release];
+
+    m_remoteChannel = 0;
+}
+
+bool WebInspectorClient::hasLocalSession() const
+{
+    return m_frontendPage != 0;
+}
+
+bool WebInspectorClient::canBeRemotelyInspected() const
+{
+    return [m_webView canBeRemotelyInspected];
+}
+
+WebView *WebInspectorClient::inspectedWebView()
+{
+    return m_webView;
+}
+#endif
+
 
 WebInspectorFrontendClient::WebInspectorFrontendClient(WebView* inspectedWebView, WebInspectorWindowController* windowController, InspectorController* inspectorController, Page* frontendPage, WTF::PassOwnPtr<Settings> settings)
     : InspectorFrontendClientLocal(inspectorController,  frontendPage, settings)
@@ -219,24 +321,12 @@ void WebInspectorFrontendClient::frontendLoaded()
     setAttachedWindow(attached ? DOCKED_TO_BOTTOM : UNDOCKED);
 }
 
-static bool useWebKitWebInspector()
+String WebInspectorFrontendClient::localizedStringsURL()
 {
     // Call the soft link framework function to dlopen it, then [NSBundle bundleWithIdentifier:] will work.
     WebInspectorUILibrary();
 
-    if (![[NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"] pathForResource:@"Main" ofType:@"html"])
-        return true;
-
-    if (![[NSBundle bundleWithIdentifier:@"com.apple.WebCore"] pathForResource:@"inspector" ofType:@"html" inDirectory:@"inspector"])
-        return false;
-
-    return [[NSUserDefaults standardUserDefaults] boolForKey:@"UseWebKitWebInspector"];
-}
-
-String WebInspectorFrontendClient::localizedStringsURL()
-{
-    NSBundle *bundle = useWebKitWebInspector() ? [NSBundle bundleWithIdentifier:@"com.apple.WebCore"] : [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
-    NSString *path = [bundle pathForResource:@"localizedStrings" ofType:@"js"];
+    NSString *path = [[NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"] pathForResource:@"localizedStrings" ofType:@"js"];
     if ([path length])
         return [[NSURL fileURLWithPath:path] absoluteString];
     return String();
@@ -436,12 +526,10 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 - (NSString *)inspectorPagePath
 {
-    NSString *path;
-    if (useWebKitWebInspector())
-        path = [[NSBundle bundleWithIdentifier:@"com.apple.WebCore"] pathForResource:@"inspector" ofType:@"html" inDirectory:@"inspector"];
-    else
-        path = [[NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"] pathForResource:@"Main" ofType:@"html"];
+    // Call the soft link framework function to dlopen it, then [NSBundle bundleWithIdentifier:] will work.
+    WebInspectorUILibrary();
 
+    NSString *path = [[NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"] pathForResource:@"Main" ofType:@"html"];
     ASSERT([path length]);
     return path;
 }
@@ -790,6 +878,5 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
     return YES;
 }
-
 
 @end

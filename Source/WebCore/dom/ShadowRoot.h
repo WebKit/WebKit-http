@@ -76,7 +76,7 @@ public:
     ContentDistributor& distributor() { return m_distributor; }
     void invalidateDistribution() { m_distributor.invalidateDistribution(hostElement()); }
 
-    void removeAllEventListeners();
+    virtual void removeAllEventListeners() OVERRIDE;
 
 private:
     ShadowRoot(Document&, ShadowRootType);
@@ -102,7 +102,7 @@ private:
 
 inline Element* ShadowRoot::activeElement() const
 {
-    return treeScope()->focusedElement();
+    return treeScope().focusedElement();
 }
 
 inline const ShadowRoot* toShadowRoot(const Node* node)
@@ -131,9 +131,9 @@ inline ContainerNode* Node::parentOrShadowHostNode() const
     return parentNode();
 }
 
-inline bool hasShadowRootParent(const Node* node)
+inline bool hasShadowRootParent(const Node& node)
 {
-    return node->parentNode() && node->parentNode()->isShadowRoot();
+    return node.parentNode() && node.parentNode()->isShadowRoot();
 }
 
 } // namespace

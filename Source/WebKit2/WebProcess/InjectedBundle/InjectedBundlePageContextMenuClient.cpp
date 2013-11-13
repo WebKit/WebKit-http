@@ -32,7 +32,6 @@
 #include "ImmutableArray.h"
 #include "InjectedBundleHitTestResult.h"
 #include "Logging.h"
-#include "MutableArray.h"
 #include "WebContextMenuItem.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
@@ -42,19 +41,19 @@ using namespace WebCore;
 
 namespace WebKit {
 
-bool InjectedBundlePageContextMenuClient::getCustomMenuFromDefaultItems(WebPage* page, InjectedBundleHitTestResult* hitTestResult, const Vector<WebContextMenuItemData>& defaultMenu, Vector<WebContextMenuItemData>& newMenu, RefPtr<APIObject>& userData)
+bool InjectedBundlePageContextMenuClient::getCustomMenuFromDefaultItems(WebPage* page, InjectedBundleHitTestResult* hitTestResult, const Vector<WebContextMenuItemData>& defaultMenu, Vector<WebContextMenuItemData>& newMenu, RefPtr<API::Object>& userData)
 {
     if (!m_client.getContextMenuFromDefaultMenu)
         return false;
 
-    RefPtr<MutableArray> defaultMenuArray = MutableArray::create();
-    defaultMenuArray->reserveCapacity(defaultMenu.size());
-    for (unsigned i = 0; i < defaultMenu.size(); ++i)
-        defaultMenuArray->append(WebContextMenuItem::create(defaultMenu[i]).get());
+    Vector<RefPtr<API::Object>> defaultMenuItems;
+    defaultMenuItems.reserveInitialCapacity(defaultMenu.size());
+    for (const auto& item : defaultMenu)
+        defaultMenuItems.uncheckedAppend(WebContextMenuItem::create(item));
 
     WKArrayRef newMenuWK = 0;
     WKTypeRef userDataToPass = 0;
-    m_client.getContextMenuFromDefaultMenu(toAPI(page), toAPI(hitTestResult), toAPI(defaultMenuArray.get()), &newMenuWK, &userDataToPass, m_client.clientInfo);
+    m_client.getContextMenuFromDefaultMenu(toAPI(page), toAPI(hitTestResult), toAPI(ImmutableArray::create(std::move(defaultMenuItems)).get()), &newMenuWK, &userDataToPass, m_client.clientInfo);
     RefPtr<ImmutableArray> array = adoptRef(toImpl(newMenuWK));
     userData = adoptRef(toImpl(userDataToPass));
     

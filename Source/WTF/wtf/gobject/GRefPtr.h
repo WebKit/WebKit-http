@@ -85,6 +85,12 @@ public:
         return ptr;
     }
 
+    T*& outPtr()
+    {
+        ASSERT(!m_ptr);
+        return m_ptr;
+    }
+
     // Hash table deleted values, which are only constructed and never copied or destroyed.
     GRefPtr(HashTableDeletedValueType) : m_ptr(hashTableDeletedValue()) { }
     bool isHashTableDeletedValue() const { return m_ptr == hashTableDeletedValue(); }
@@ -213,6 +219,8 @@ template <> GByteArray* refGPtr(GByteArray*);
 template <> void derefGPtr(GByteArray*);
 template <> GBytes* refGPtr(GBytes*);
 template <> void derefGPtr(GBytes*);
+template <> GClosure* refGPtr(GClosure*);
+template <> void derefGPtr(GClosure*);
 
 template <typename T> inline T* refGPtr(T* ptr)
 {

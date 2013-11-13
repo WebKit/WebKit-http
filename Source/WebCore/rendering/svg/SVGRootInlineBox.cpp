@@ -36,12 +36,23 @@
 
 namespace WebCore {
 
+SVGRootInlineBox::SVGRootInlineBox(RenderSVGText& renderSVGText)
+    : RootInlineBox(renderSVGText)
+    , m_logicalHeight(0)
+{
+}
+
+RenderSVGText& SVGRootInlineBox::renderSVGText()
+{
+    return toRenderSVGText(blockFlow());
+}
+
 void SVGRootInlineBox::paint(PaintInfo& paintInfo, const LayoutPoint&, LayoutUnit, LayoutUnit)
 {
     ASSERT(paintInfo.phase == PaintPhaseForeground || paintInfo.phase == PaintPhaseSelection);
     ASSERT(!paintInfo.context->paintingDisabled());
 
-    bool isPrinting = renderer().document().printing();
+    bool isPrinting = renderSVGText().document().printing();
     bool hasSelection = !isPrinting && selectionState() != RenderObject::SelectionNone;
 
     PaintInfo childPaintInfo(paintInfo);
@@ -54,7 +65,7 @@ void SVGRootInlineBox::paint(PaintInfo& paintInfo, const LayoutPoint&, LayoutUni
         }
     }
 
-    SVGRenderingContext renderingContext(&renderer(), paintInfo, SVGRenderingContext::SaveGraphicsContext);
+    SVGRenderingContext renderingContext(renderSVGText(), paintInfo, SVGRenderingContext::SaveGraphicsContext);
     if (renderingContext.isRenderingPrepared()) {
         for (InlineBox* child = firstChild(); child; child = child->nextOnLine()) {
             if (child->isSVGInlineTextBox())
@@ -67,7 +78,7 @@ void SVGRootInlineBox::paint(PaintInfo& paintInfo, const LayoutPoint&, LayoutUni
 
 void SVGRootInlineBox::computePerCharacterLayoutInformation()
 {
-    RenderSVGText* textRoot = toRenderSVGText(&block());
+    RenderSVGText* textRoot = toRenderSVGText(&blockFlow());
     ASSERT(textRoot);
 
     Vector<SVGTextLayoutAttributes*>& layoutAttributes = textRoot->layoutAttributes();
@@ -162,7 +173,7 @@ void SVGRootInlineBox::layoutChildBoxes(InlineFlowBox* start, FloatRect* childRe
 
 void SVGRootInlineBox::layoutRootBox(const FloatRect& childRect)
 {
-    RenderBlock& parentBlock = block();
+    RenderSVGText& parentBlock = renderSVGText();
 
     // Finally, assign the root block position, now that all content is laid out.
     LayoutRect boundingRect = enclosingLayoutRect(childRect);
@@ -242,9 +253,9 @@ static inline void findFirstAndLastAttributesInVector(Vector<SVGTextLayoutAttrib
     unsigned attributesSize = attributes.size();
     for (unsigned i = 0; i < attributesSize; ++i) {
         SVGTextLayoutAttributes* current = attributes[i];
-        if (!first && firstContext == current->context())
+        if (!first && firstContext == &current->context())
             first = current;
-        if (!last && lastContext == current->context())
+        if (!last && lastContext == &current->context())
             last = current;
         if (first && last)
             break;

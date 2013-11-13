@@ -30,7 +30,7 @@
 
 #include "DFGFailedFinalizer.h"
 #include "FTLJITCode.h"
-#include <wtf/LLVMHeaders.h>
+#include "LLVMAPI.h"
 
 namespace JSC { namespace FTL {
 
@@ -40,7 +40,8 @@ void fail(State& state)
 {
     state.graph.m_plan.finalizer = adoptPtr(new FailedFinalizer(state.graph.m_plan));
     
-    LLVMDisposeModule(state.module);
+    if (state.module)
+        llvm->DisposeModule(state.module);
 }
 
 } } // namespace JSC::FTL

@@ -38,10 +38,12 @@
 #include "WebFrame.h"
 #include "WebFrameLoaderClient.h"
 #include "WebFrameNetworkingContext.h"
+#include "WebIDBFactoryBackend.h"
 #include "WebPage.h"
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
 #include <WebCore/Color.h>
+#include <WebCore/IDBFactoryBackendInterface.h>
 #include <WebCore/LoaderStrategy.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/NetworkStorageSession.h>
@@ -210,9 +212,20 @@ void WebPlatformStrategies::deleteCookie(const NetworkStorageSession& session, c
 #if ENABLE(SQL_DATABASE)
 AbstractDatabaseServer* WebPlatformStrategies::getDatabaseServer()
 {
-    return DatabaseStrategy::getDatabaseServer(); // Use the default for now.
+    return DatabaseStrategy::getDatabaseServer();
 }
+#endif // ENABLE(SQL_DATABASE)
+
+#if ENABLE(INDEXED_DATABASE)
+PassRefPtr<IDBFactoryBackendInterface> WebPlatformStrategies::createIDBFactoryBackend(const String& databaseDirectoryIdentifier)
+{
+#if !ENABLE(DATABASE_PROCESS)
+    return DatabaseStrategy::createIDBFactoryBackend(databaseDirectoryIdentifier);
 #endif
+
+    return WebIDBFactoryBackend::create(databaseDirectoryIdentifier);
+}
+#endif // ENABLE(INDEXED_DATABASE)
 
 // LoaderStrategy
 
@@ -245,8 +258,6 @@ void WebPlatformStrategies::loadResourceSynchronously(NetworkingContext* context
     WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
     WebPage* webPage = webFrame ? webFrame->page() : 0;
 
-    CoreIPC::DataReference dataReference;
-
     NetworkResourceLoadParameters loadParameters;
     loadParameters.identifier = resourceLoadIdentifier;
     loadParameters.webPageID = webPage ? webPage->pageID() : 0;
@@ -259,16 +270,14 @@ void WebPlatformStrategies::loadResourceSynchronously(NetworkingContext* context
     loadParameters.inPrivateBrowsingMode = context->storageSession().isPrivateBrowsingSession();
     loadParameters.shouldClearReferrerOnHTTPSToHTTPRedirect = context->shouldClearReferrerOnHTTPSToHTTPRedirect();
 
-    if (!WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad(loadParameters), Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::Reply(error, response, dataReference), 0)) {
+    data.resize(0);
+
+    if (!WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad(loadParameters), Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::Reply(error, response, data), 0)) {
         response = ResourceResponse();
         error = internalError(request.url());
-        data.resize(0);
 
         return;
     }
-
-    data.resize(dataReference.size());
-    memcpy(data.data(), dataReference.data(), dataReference.size());
 }
 
 #if ENABLE(BLOB)

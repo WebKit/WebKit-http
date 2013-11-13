@@ -65,7 +65,7 @@ AffineTransform SVGGraphicsElement::getScreenCTM(StyleUpdateStrategy styleUpdate
 AffineTransform SVGGraphicsElement::animatedLocalTransform() const
 {
     AffineTransform matrix;
-    RenderStyle* style = renderer() ? renderer()->style() : 0;
+    RenderStyle* style = renderer() ? &renderer()->style() : nullptr;
 
     // If CSS property was set, use that, otherwise fallback to attribute (if set).
     if (style && style->hasTransform()) {
@@ -162,10 +162,10 @@ FloatRect SVGGraphicsElement::getBBox(StyleUpdateStrategy styleUpdateStrategy)
     return SVGTransformable::getBBox(this, styleUpdateStrategy);
 }
 
-RenderElement* SVGGraphicsElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGGraphicsElement::createRenderer(PassRef<RenderStyle> style)
 {
     // By default, any subclass is expected to do path-based drawing
-    return new (arena) RenderSVGPath(*this);
+    return new RenderSVGPath(*this, std::move(style));
 }
 
 void SVGGraphicsElement::toClipPath(Path& path)

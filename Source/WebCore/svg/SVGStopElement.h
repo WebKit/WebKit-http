@@ -42,7 +42,7 @@ private:
 
     virtual bool isGradientStop() const OVERRIDE { return true; }
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGStopElement)
@@ -50,11 +50,7 @@ private:
     END_DECLARE_ANIMATED_PROPERTIES
 };
 
-inline SVGStopElement* toSVGStopElement(SVGElement* element)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!element || element->isGradientStop());
-    return static_cast<SVGStopElement*>(element);
-}
+NODE_TYPE_CASTS(SVGStopElement)
 
 } // namespace WebCore
 

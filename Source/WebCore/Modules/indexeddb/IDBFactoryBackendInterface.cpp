@@ -30,20 +30,14 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#if USE(LEVELDB)
-#include "IDBFactoryBackendLevelDB.h"
-#endif
+#include "DatabaseStrategy.h"
+#include "PlatformStrategies.h"
 
 namespace WebCore {
 
-PassRefPtr<IDBFactoryBackendInterface> IDBFactoryBackendInterface::create()
+PassRefPtr<IDBFactoryBackendInterface> IDBFactoryBackendInterface::create(const String& databaseDirectoryIdentifier)
 {
-    // FIXME: Need a better platform abstraction here, but this stop gap will work for now.
-#if USE(LEVELDB)
-    return IDBFactoryBackendLevelDB::create();
-#else
-    return 0;
-#endif
+    return platformStrategies()->databaseStrategy()->createIDBFactoryBackend(databaseDirectoryIdentifier);
 }
 
 } // namespace WebCore

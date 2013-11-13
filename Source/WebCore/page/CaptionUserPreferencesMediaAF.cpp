@@ -32,7 +32,6 @@
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
 #include "CoreText/CoreText.h"
 #endif
-#include "DOMWrapperWorld.h"
 #include "FloatConversion.h"
 #include "HTMLMediaElement.h"
 #include "URL.h"
@@ -40,7 +39,6 @@
 #include "LocalizedStrings.h"
 #include "Logging.h"
 #include "MediaControlElements.h"
-#include "PageGroup.h"
 #include "SoftLinking.h"
 #include "TextTrackCue.h"
 #include "TextTrackList.h"
@@ -53,7 +51,7 @@
 #endif
 
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
-#include "MediaAccessibility/MediaAccessibility.h"
+#include <MediaAccessibility/MediaAccessibility.h>
 #endif
 
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
@@ -124,8 +122,6 @@ SOFT_LINK_AVF_POINTER(CoreText, kCTFontNameAttribute, CFStringRef)
 #define kCTFontNameAttribute getkCTFontNameAttribute()
 #endif
 
-using namespace std;
-
 namespace WebCore {
 
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
@@ -141,7 +137,7 @@ static void userCaptionPreferencesChangedNotificationCallback(CFNotificationCent
 }
 #endif
 
-CaptionUserPreferencesMediaAF::CaptionUserPreferencesMediaAF(PageGroup* group)
+CaptionUserPreferencesMediaAF::CaptionUserPreferencesMediaAF(PageGroup& group)
     : CaptionUserPreferences(group)
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
     , m_listeningForPreferenceChanges(false)
@@ -763,11 +759,11 @@ static bool textTrackCompare(const RefPtr<TextTrack>& a, const RefPtr<TextTrack>
     return codePointCompare(trackDisplayName(a.get()), trackDisplayName(b.get())) < 0;
 }
 
-Vector<RefPtr<TextTrack> > CaptionUserPreferencesMediaAF::sortedTrackListForMenu(TextTrackList* trackList)
+Vector<RefPtr<TextTrack>> CaptionUserPreferencesMediaAF::sortedTrackListForMenu(TextTrackList* trackList)
 {
     ASSERT(trackList);
 
-    Vector<RefPtr<TextTrack> > tracksForMenu;
+    Vector<RefPtr<TextTrack>> tracksForMenu;
     HashSet<String> languagesIncluded;
     bool prefersAccessibilityTracks = userPrefersCaptions();
     bool filterTrackList = shouldFilterTrackMenu();

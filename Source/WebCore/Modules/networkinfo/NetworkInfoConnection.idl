@@ -24,7 +24,7 @@
     NoInterfaceObject,
     Conditional=NETWORK_INFO,
     ActiveDOMObject,
-    EventTarget
+    EventTarget,
 ] interface NetworkInfoConnection {
     readonly attribute double bandwidth;
     readonly attribute boolean metered;

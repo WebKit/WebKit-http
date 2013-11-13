@@ -99,8 +99,20 @@ const FontData* FontGlyphs::realizeFontDataAt(const FontDescription& description
     // Make sure we're not passing in some crazy value here.
     ASSERT(realizedFontIndex == m_realizedFontData.size());
 
-    if (m_familyIndex == cAllFamiliesScanned)
-        return 0;
+    if (m_familyIndex <= cAllFamiliesScanned) {
+        if (!m_fontSelector)
+            return 0;
+
+        size_t index = cAllFamiliesScanned - m_familyIndex;
+        if (index == m_fontSelector->fallbackFontDataCount())
+            return 0;
+
+        m_familyIndex--;
+        RefPtr<FontData> fallback = m_fontSelector->getFallbackFontData(description, index);
+        if (fallback)
+            m_realizedFontData.append(fallback);
+        return fallback.get();
+    }
 
     // Ask the font cache for the font data.
     // We are obtaining this font for the first time. We keep track of the families we've looked at before
@@ -178,7 +190,7 @@ static bool shouldIgnoreRotation(UChar32 character)
         return true;
 
     if (isInRange(character, 0x0FF01, 0x0FF07) || isInRange(character, 0x0FF0A, 0x0FF0C)
-        || isInRange(character, 0x0FF0E, 0x0FF19) || isInRange(character, 0x0FF1F, 0x0FF3A))
+        || isInRange(character, 0x0FF0E, 0x0FF19) || character == 0x0FF1B || isInRange(character, 0x0FF1F, 0x0FF3A))
         return true;
 
     if (character == 0x0FF3C || character == 0x0FF3E)
@@ -253,7 +265,7 @@ std::pair<GlyphData, GlyphPage*> FontGlyphs::glyphDataAndPageForCharacter(const 
 
     if (variant == AutoVariant) {
         if (description.smallCaps() && !primarySimpleFontData(description)->isSVGFont()) {
-            UChar32 upperC = WTF::Unicode::toUpper(c);
+            UChar32 upperC = u_toupper(c);
             if (upperC != c) {
                 c = upperC;
                 variant = SmallCapsVariant;
@@ -264,7 +276,7 @@ std::pair<GlyphData, GlyphPage*> FontGlyphs::glyphDataAndPageForCharacter(const 
     }
 
     if (mirror)
-        c = WTF::Unicode::mirroredChar(c);
+        c = u_charMirror(c);
 
     unsigned pageNumber = (c / GlyphPage::size);
 

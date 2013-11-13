@@ -1,5 +1,5 @@
 # Copyright (c) 2010 Google Inc. All rights reserved.
-# Copyright (c) 2009 Apple Inc. All rights reserved.
+# Copyright (c) 2009, 2013 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -33,10 +33,10 @@ from optparse import make_option
 import os
 import threading
 
+from webkitpy.common.config.ports import DeprecatedPort
 from webkitpy.common.host import Host
 from webkitpy.common.net.irc import ircproxy
 from webkitpy.common.net.statusserver import StatusServer
-from webkitpy.port.factory import PortFactory
 from webkitpy.tool.multicommandtool import MultiCommandTool
 from webkitpy.tool import commands
 
@@ -49,7 +49,7 @@ class WebKitPatch(MultiCommandTool, Host):
         make_option("--bot-id", action="store", dest="bot_id", type="string", help="Identifier for this bot (if multiple bots are running for a queue)"),
         make_option("--irc-password", action="store", dest="irc_password", type="string", help="Password to use when communicating via IRC."),
         make_option("--seconds-to-sleep", action="store", default=120, type="int", help="Number of seconds to sleep in the task queue."),
-        make_option("--port", action="store", dest="port", default=None, help="Specify a port (e.g., mac, qt, gtk, ...)."),
+        make_option("--port", action="store", dest="port", default=None, help="Specify a port (e.g., mac, gtk, ...)."),
     ]
 
     def __init__(self, path):
@@ -60,10 +60,10 @@ class WebKitPatch(MultiCommandTool, Host):
 
         self.wakeup_event = threading.Event()
         self._irc = None
-        self._port = None
+        self._deprecated_port = None
 
-    def port(self):
-        return self._port
+    def deprecated_port(self):
+        return self._deprecated_port
 
     def path(self):
         return self._path
@@ -99,7 +99,7 @@ class WebKitPatch(MultiCommandTool, Host):
         if options.irc_password:
             self.irc_password = options.irc_password
         # If options.port is None, we'll get the default port for this platform.
-        self._port = self.port_factory.get(options.port)
+        self._deprecated_port = DeprecatedPort.port(options.port)
 
     def should_execute_command(self, command):
         if command.requires_local_commits and not self.scm().supports_local_commits():

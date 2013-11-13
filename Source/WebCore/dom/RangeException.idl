@@ -19,7 +19,7 @@
 
 [
     DoNotCheckConstants,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] exception RangeException {
 
     readonly attribute unsigned short   code;

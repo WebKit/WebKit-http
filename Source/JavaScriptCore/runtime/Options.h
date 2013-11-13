@@ -89,13 +89,17 @@ private:
 typedef OptionRange optionRange;
 
 #define JSC_OPTIONS(v) \
+    v(bool, useLLInt,  true) \
     v(bool, useJIT,    true) \
     v(bool, useDFGJIT, true) \
     v(bool, useRegExpJIT, true) \
     \
+    v(bool, crashIfCantAllocateJITMemory, false) \
+    \
     v(bool, forceDFGCodeBlockLiveness, false) \
     \
     v(bool, dumpGeneratedBytecodes, false) \
+    v(bool, dumpBytecodeLivenessResults, false) \
     \
     /* showDisassembly implies showDFGDisassembly. */ \
     v(bool, showDisassembly, false) \
@@ -121,11 +125,10 @@ typedef OptionRange optionRange;
     v(bool, useFTLTBAA, true) \
     v(bool, enableLLVMFastISel, false) \
     v(bool, useLLVMSmallCodeModel, false) \
-    v(bool, ftlTrapsOnOSRExit, false) \
-    v(bool, ftlOSRExitOmitsMarshalling, false) \
-    v(bool, useLLVMOSRExitIntrinsic, false) \
     v(bool, dumpLLVMIR, false) \
-    v(bool, llvmAlwaysFails, false) \
+    v(bool, llvmAlwaysFailsBeforeCompile, false) \
+    v(bool, llvmAlwaysFailsBeforeLink, false) \
+    v(bool, llvmSimpleOpt, true) \
     v(unsigned, llvmBackendOptimizationLevel, 2) \
     v(unsigned, llvmOptimizationLevel, 2) \
     v(unsigned, llvmSizeLevel, 0) \
@@ -205,9 +208,7 @@ typedef OptionRange optionRange;
     v(bool, logGC, false) \
     v(unsigned, gcMaxHeapSize, 0) \
     v(bool, recordGCPauseTimes, false) \
-    v(bool, logHeapStatisticsAtExit, false) \
-    \
-    v(bool, neverDeleteVMInCommandLine, false)
+    v(bool, logHeapStatisticsAtExit, false)
 
 class Options {
 public:

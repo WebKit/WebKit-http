@@ -21,7 +21,7 @@
 // Introduced in DOM Level 2:
 [
     JSCustomMarkFunction,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface NodeIterator {
     readonly attribute Node root;
     readonly attribute unsigned long whatToShow;

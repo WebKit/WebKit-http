@@ -77,13 +77,9 @@ public:
     CoreIPC::Connection* downloadProxyConnection();
     AuthenticationManager& downloadsAuthenticationManager();
 
-#if PLATFORM(QT)
-    void startTransfer(uint64_t downloadID, const String& destination);
-#endif
-
 private:
     Client* m_client;
-    HashMap<uint64_t, Download*> m_downloads;
+    HashMap<uint64_t, std::unique_ptr<Download>> m_downloads;
 };
 
 } // namespace WebKit

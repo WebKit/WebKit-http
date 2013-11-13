@@ -37,8 +37,6 @@
 #include "RenderTableCell.h"
 #include "RenderTableRow.h"
 
-using namespace std;
-
 namespace WebCore {
     
 using namespace HTMLNames;
@@ -128,7 +126,7 @@ AccessibilityObject* AccessibilityTableRow::headerObject()
     if (!cell->isTableCell())
         return 0;
     
-    RenderObject* cellRenderer = static_cast<AccessibilityTableCell*>(cell)->renderer();
+    RenderObject* cellRenderer = toAccessibilityTableCell(cell)->renderer();
     if (!cellRenderer)
         return 0;
     

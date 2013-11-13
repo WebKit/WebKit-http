@@ -33,8 +33,8 @@
 
 namespace WebCore {
 
-StyleKeyframe::StyleKeyframe(PassRefPtr<StylePropertySet> properties)
-    : m_properties(properties)
+StyleKeyframe::StyleKeyframe(PassRef<StylePropertySet> properties)
+    : m_properties(std::move(properties))
 {
 }
 
@@ -42,11 +42,11 @@ StyleKeyframe::~StyleKeyframe()
 {
 }
 
-MutableStylePropertySet* StyleKeyframe::mutableProperties()
+MutableStylePropertySet& StyleKeyframe::mutableProperties()
 {
     if (!m_properties->isMutable())
         m_properties = m_properties->mutableCopy();
-    return static_cast<MutableStylePropertySet*>(m_properties.get());
+    return static_cast<MutableStylePropertySet&>(m_properties.get());
 }
 
 /* static */
@@ -108,7 +108,7 @@ WebKitCSSKeyframeRule::~WebKitCSSKeyframeRule()
 CSSStyleDeclaration* WebKitCSSKeyframeRule::style()
 {
     if (!m_propertiesCSSOMWrapper)
-        m_propertiesCSSOMWrapper = StyleRuleCSSStyleDeclaration::create(m_keyframe->mutableProperties(), this);
+        m_propertiesCSSOMWrapper = StyleRuleCSSStyleDeclaration::create(m_keyframe->mutableProperties(), *this);
     return m_propertiesCSSOMWrapper.get();
 }
 

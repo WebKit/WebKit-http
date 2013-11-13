@@ -38,6 +38,7 @@
 #include "Page.h"
 #include "RenderElement.h"
 #include "ResourceBuffer.h"
+#include "SecurityOrigin.h"
 #include "Settings.h"
 #include "SubresourceLoader.h"
 #include <wtf/CurrentTime.h>
@@ -52,7 +53,9 @@
 #include "SVGImage.h"
 #endif
 
-using std::max;
+#if ENABLE(DISK_IMAGE_CACHE)
+#include "DiskImageCacheIOS.h"
+#endif
 
 namespace WebCore {
 
@@ -254,17 +257,26 @@ LayoutSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float
     if (!m_image)
         return IntSize();
 
-    LayoutSize imageSize;
+    LayoutSize imageSize(m_image->size());
 
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+    if (renderer && m_image->isBitmapImage()) {
+        ImageOrientationDescription orientationDescription(renderer->shouldRespectImageOrientation(), renderer->style().imageOrientation());
+        if (orientationDescription.respectImageOrientation() == RespectImageOrientation)
+            imageSize = static_cast<BitmapImage*>(m_image.get())->sizeRespectingOrientation(orientationDescription);
+    }
+#else
     if (m_image->isBitmapImage() && (renderer && renderer->shouldRespectImageOrientation() == RespectImageOrientation))
         imageSize = static_cast<BitmapImage*>(m_image.get())->sizeRespectingOrientation();
+#endif
+
 #if ENABLE(SVG)
     else if (m_image->isSVGImage() && sizeType == UsedSize) {
         imageSize = m_svgImageCache->imageSizeForRenderer(renderer);
     }
+#else
+    UNUSED_PARAM(sizeType);
 #endif
-    else
-        imageSize = m_image->size();
 
     if (multiplier == 1.0f)
         return imageSize;
@@ -530,6 +542,52 @@ bool CachedImage::currentFrameKnownToBeOpaque(const RenderElement* renderer)
     if (image->isBitmapImage())
         image->nativeImageForCurrentFrame(); // force decode
     return image->currentFrameKnownToBeOpaque();
+}
+
+#if ENABLE(DISK_IMAGE_CACHE)
+bool CachedImage::canUseDiskImageCache() const
+{
+    if (isLoading() || errorOccurred())
+        return false;
+
+    if (!m_data)
+        return false;
+
+    if (isPurgeable())
+        return false;
+
+    if (m_data->size() < diskImageCache().minimumImageSize())
+        return false;
+
+    // "Cache-Control: no-store" resources may be marked as such because they may
+    // contain sensitive information. We should not write these resources to disk.
+    if (m_response.cacheControlContainsNoStore())
+        return false;
+
+    // Testing shows that PDF images did not work when memory mapped.
+    // However, SVG images and Bitmap images were fine. See:
+    // <rdar://problem/8591834> Disk Image Cache should support PDF Images
+    if (m_response.mimeType() == "application/pdf")
+        return false;
+
+    return true;
+}
+
+void CachedImage::useDiskImageCache()
+{
+    ASSERT(canUseDiskImageCache());
+    ASSERT(!isUsingDiskImageCache());
+    m_data->sharedBuffer()->allowToBeMemoryMapped();
+}
+#endif
+
+bool CachedImage::isOriginClean(SecurityOrigin* securityOrigin)
+{
+    if (!image()->hasSingleSecurityOrigin())
+        return false;
+    if (passesAccessControlCheck(securityOrigin))
+        return true;
+    return !securityOrigin->taintsCanvas(response().url());
 }
 
 } // namespace WebCore

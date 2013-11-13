@@ -36,10 +36,10 @@
 #import <JavaScriptCore/InitializeThreading.h>
 #import <WebCore/ArchiveResource.h>
 #import <WebCore/LegacyWebArchive.h>
-#import <WebCore/RunLoop.h>
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <wtf/MainThread.h>
+#import <wtf/RunLoop.h>
 
 using namespace WebCore;
 
@@ -69,7 +69,7 @@ static NSString * const WebSubframeArchivesKey = @"WebSubframeArchives";
 {
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
-    WebCore::RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMainRunLoop();
     WebCoreObjCFinalizeOnMainThread(self);
 }
 
@@ -176,13 +176,13 @@ static BOOL isArrayOfClass(id object, Class elementClass)
     
     RefPtr<ArchiveResource> coreMainResource = mainResource ? [mainResource _coreResource] : 0;
 
-    Vector<PassRefPtr<ArchiveResource> > coreResources;
+    Vector<PassRefPtr<ArchiveResource>> coreResources;
     NSEnumerator *enumerator = [subresources objectEnumerator];
     WebResource *subresource;
     while ((subresource = [enumerator nextObject]) != nil)
         coreResources.append([subresource _coreResource]);
 
-    Vector<PassRefPtr<LegacyWebArchive> > coreArchives;
+    Vector<PassRefPtr<LegacyWebArchive>> coreArchives;
     enumerator = [subframeArchives objectEnumerator];
     WebArchive *subframeArchive;
     while ((subframeArchive = [enumerator nextObject]) != nil)
@@ -295,7 +295,7 @@ static BOOL isArrayOfClass(id object, Class elementClass)
         if (!coreArchive)
             _private->cachedSubresources = [[NSArray alloc] init];
         else {
-            const Vector<RefPtr<ArchiveResource> >& subresources(coreArchive->subresources());
+            const Vector<RefPtr<ArchiveResource>>& subresources(coreArchive->subresources());
             NSMutableArray *mutableArray = [[NSMutableArray alloc] initWithCapacity:subresources.size()];
             _private->cachedSubresources = mutableArray;
             for (unsigned i = 0; i < subresources.size(); ++i) {
@@ -323,7 +323,7 @@ static BOOL isArrayOfClass(id object, Class elementClass)
         if (!coreArchive)
             _private->cachedSubframeArchives = [[NSArray alloc] init];
         else {
-            const Vector<RefPtr<Archive> >& subframeArchives(coreArchive->subframeArchives());
+            const Vector<RefPtr<Archive>>& subframeArchives(coreArchive->subframeArchives());
             NSMutableArray *mutableArray = [[NSMutableArray alloc] initWithCapacity:subframeArchives.size()];
             _private->cachedSubframeArchives = mutableArray;
             for (unsigned i = 0; i < subframeArchives.size(); ++i) {

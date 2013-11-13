@@ -27,8 +27,10 @@
 // MarkedArgumentBuffer of property names, passed to a macro so we can do set them up various
 // ways without repeating the list.
 #define JSC_COMMON_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
+    macro(ArgumentsIterator) \
     macro(Array) \
     macro(ArrayBuffer) \
+    macro(ArrayIterator) \
     macro(BYTES_PER_ELEMENT) \
     macro(Boolean) \
     macro(Date) \
@@ -37,6 +39,8 @@
     macro(Function) \
     macro(Infinity) \
     macro(JSON) \
+    macro(Map)\
+    macro(MapIterator)\
     macro(Math) \
     macro(NaN) \
     macro(Number) \
@@ -46,15 +50,19 @@
     macro(RangeError) \
     macro(ReferenceError) \
     macro(RegExp) \
+    macro(Set)\
+    macro(SetIterator)\
     macro(String) \
     macro(SyntaxError) \
     macro(TypeError) \
     macro(URIError) \
     macro(UTC) \
+    macro(WeakMap)\
     macro(__defineGetter__) \
     macro(__defineSetter__) \
     macro(__lookupGetter__) \
     macro(__lookupSetter__) \
+    macro(add) \
     macro(anonymous) \
     macro(apply) \
     macro(arguments) \
@@ -69,6 +77,7 @@
     macro(call) \
     macro(callee) \
     macro(caller) \
+    macro(clear) \
     macro(compilationKind) \
     macro(compilations) \
     macro(compile) \
@@ -80,14 +89,18 @@
     macro(descriptions) \
     macro(displayName) \
     macro(document) \
+    macro(done) \
+    macro(entries) \
     macro(enumerable) \
     macro(eval) \
     macro(exec) \
     macro(executionCount) \
     macro(exitKind) \
+    macro(forEach) \
     macro(fromCharCode) \
     macro(get) \
     macro(global) \
+    macro(has) \
     macro(hasOwnProperty) \
     macro(hash) \
     macro(header) \
@@ -101,15 +114,18 @@
     macro(isPrototypeOf) \
     macro(isWatchpoint) \
     macro(join) \
+    macro(keys) \
     macro(lastIndex) \
     macro(length) \
     macro(message) \
     macro(multiline) \
     macro(name) \
+    macro(next) \
     macro(now) \
     macro(numInlinedCalls) \
     macro(numInlinedGetByIds) \
     macro(numInlinedPutByIds) \
+    macro(of) \
     macro(opcode) \
     macro(origin) \
     macro(osrExitSites) \
@@ -119,6 +135,7 @@
     macro(propertyIsEnumerable) \
     macro(prototype) \
     macro(set) \
+    macro(size) \
     macro(slice) \
     macro(source) \
     macro(sourceCode) \
@@ -134,64 +151,57 @@
     macro(toPrecision) \
     macro(toString) \
     macro(value) \
+    macro(values) \
     macro(valueOf) \
     macro(window) \
-    macro(writable) \
-    macro(has) \
-    macro(forEach) \
-    macro(clear) \
-    macro(size) \
-    macro(Map)\
-    macro(Set)\
-    macro(WeakMap)\
-    macro(add)
+    macro(writable)
 
 #define JSC_COMMON_IDENTIFIERS_EACH_KEYWORD(macro) \
-    macro(null) \
-    macro(undefined) \
-    macro(true) \
-    macro(false) \
     macro(break) \
     macro(case) \
     macro(catch) \
-    macro(const) \
-    macro(default) \
-    macro(finally) \
-    macro(for) \
-    macro(instanceof) \
-    macro(new) \
-    macro(var) \
-    macro(continue) \
-    macro(function) \
-    macro(return) \
-    macro(void) \
-    macro(delete) \
-    macro(if) \
-    macro(this) \
-    macro(do) \
-    macro(while) \
-    macro(else) \
-    macro(in) \
-    macro(switch) \
-    macro(throw) \
-    macro(try) \
-    macro(typeof) \
-    macro(with) \
-    macro(debugger) \
     macro(class) \
+    macro(const) \
+    macro(continue) \
+    macro(debugger) \
+    macro(default) \
+    macro(delete) \
+    macro(do) \
+    macro(else) \
     macro(enum) \
     macro(export) \
     macro(extends) \
-    macro(import) \
-    macro(super) \
+    macro(false) \
+    macro(finally) \
+    macro(for) \
+    macro(function) \
+    macro(if) \
     macro(implements) \
+    macro(import) \
+    macro(in) \
+    macro(instanceof) \
     macro(interface) \
     macro(let) \
+    macro(new) \
+    macro(null) \
     macro(package) \
     macro(private) \
     macro(protected) \
     macro(public) \
+    macro(return) \
     macro(static) \
+    macro(super) \
+    macro(switch) \
+    macro(this) \
+    macro(throw) \
+    macro(true) \
+    macro(try) \
+    macro(typeof) \
+    macro(undefined) \
+    macro(var) \
+    macro(void) \
+    macro(while) \
+    macro(with) \
     macro(yield)
 
 namespace JSC {
@@ -208,6 +218,9 @@ namespace JSC {
         const Identifier underscoreProto;
         const Identifier thisIdentifier;
         const Identifier useStrictIdentifier;
+        const Identifier iteratorPrivateName;
+        const Identifier iteratorNextPrivateName;
+        const Identifier hasNextIdentifier;
 
         
 #define JSC_IDENTIFIER_DECLARE_KEYWORD_NAME_GLOBAL(name) const Identifier name##Keyword;

@@ -28,11 +28,9 @@
 
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
-#include "HTMLParserOptions.h"
 #include "HTMLTokenizer.h"
 #include "TextCodec.h"
 #include "TextEncodingRegistry.h"
-#include <wtf/text/WTFString.h>
 
 using namespace WTF;
 
@@ -41,7 +39,7 @@ namespace WebCore {
 using namespace HTMLNames;
 
 HTMLMetaCharsetParser::HTMLMetaCharsetParser()
-    : m_tokenizer(HTMLTokenizer::create(HTMLParserOptions(0)))
+    : m_tokenizer(HTMLTokenizer::create(HTMLParserOptions()))
     , m_assumedCodec(newTextCodec(Latin1Encoding()))
     , m_inHeadSection(true)
     , m_doneChecking(false)

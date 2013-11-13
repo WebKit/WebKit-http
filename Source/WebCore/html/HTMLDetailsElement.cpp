@@ -22,13 +22,11 @@
 #include "HTMLDetailsElement.h"
 
 #if ENABLE(DETAILS_ELEMENT)
-#include "HTMLNames.h"
 #include "HTMLSummaryElement.h"
 #include "InsertionPoint.h"
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "RenderBlockFlow.h"
-#include "ShadowRoot.h"
 #include "Text.h"
 
 namespace WebCore {
@@ -112,9 +110,9 @@ HTMLDetailsElement::HTMLDetailsElement(const QualifiedName& tagName, Document& d
     ASSERT(hasTagName(detailsTag));
 }
 
-RenderElement* HTMLDetailsElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* HTMLDetailsElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderBlockFlow(this);
+    return new RenderBlockFlow(*this, std::move(style));
 }
 
 void HTMLDetailsElement::didAddUserAgentShadowRoot(ShadowRoot* root)
@@ -144,9 +142,9 @@ void HTMLDetailsElement::parseAttribute(const QualifiedName& name, const AtomicS
         HTMLElement::parseAttribute(name, value);
 }
 
-bool HTMLDetailsElement::childShouldCreateRenderer(const Node* child) const
+bool HTMLDetailsElement::childShouldCreateRenderer(const Node& child) const
 {
-    if (child->isPseudoElement())
+    if (child.isPseudoElement())
         return HTMLElement::childShouldCreateRenderer(child);
 
     if (!hasShadowRootOrActiveInsertionPointParent(child))
@@ -155,10 +153,10 @@ bool HTMLDetailsElement::childShouldCreateRenderer(const Node* child) const
     if (m_isOpen)
         return HTMLElement::childShouldCreateRenderer(child);
 
-    if (!child->hasTagName(summaryTag))
+    if (!child.hasTagName(summaryTag))
         return false;
 
-    return child == findMainSummary() && HTMLElement::childShouldCreateRenderer(child);
+    return &child == findMainSummary() && HTMLElement::childShouldCreateRenderer(child);
 }
 
 void HTMLDetailsElement::toggleOpen()

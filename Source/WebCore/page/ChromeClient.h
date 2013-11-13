@@ -176,7 +176,6 @@ public:
     virtual void setToolTip(const String&, TextDirection) = 0;
 
     virtual void print(Frame*) = 0;
-    virtual bool shouldRubberBandInDirection(ScrollDirection) const = 0;
 
     virtual Color underlayColor() const { return Color(); }
 
@@ -305,6 +304,11 @@ public:
     virtual void makeFirstResponder() { }
 #endif
 
+#if PLATFORM(IOS)
+    // FIXME: Come up with a more descriptive name for this function and make it platform independent (if possible).
+    virtual bool isStopping() = 0;
+#endif
+
     virtual void enableSuddenTermination() { }
     virtual void disableSuddenTermination() { }
 
@@ -359,7 +363,7 @@ public:
     virtual String plugInExtraStyleSheet() const { return String(); }
     virtual String plugInExtraScript() const { return String(); }
 
-    virtual void didAssociateFormControls(const Vector<RefPtr<Element> >&) { };
+    virtual void didAssociateFormControls(const Vector<RefPtr<Element>>&) { };
     virtual bool shouldNotifyOnFormChanges() { return false; };
 
     virtual void didAddHeaderLayer(GraphicsLayer*) { }

@@ -44,8 +44,6 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/Ref.h>
 
-using namespace std;
-
 namespace WebCore {
 
 // The epsilon value we pass to UnitBezier::solve given that the animation is going to run over |dur| seconds. The longer the
@@ -66,7 +64,7 @@ static inline double solveCubicBezierFunction(double p1x, double p1y, double p2x
 static inline double solveStepsFunction(int numSteps, bool stepAtStart, double t)
 {
     if (stepAtStart)
-        return min(1.0, (floor(numSteps * t) + 1) / numSteps);
+        return std::min(1.0, (floor(numSteps * t) + 1) / numSteps);
     return floor(numSteps * t) / numSteps;
 }
 
@@ -91,11 +89,11 @@ AnimationBase::AnimationBase(const Animation& transition, RenderElement* rendere
         m_totalDuration = m_animation->duration() * m_animation->iterationCount();
 }
 
-void AnimationBase::setNeedsStyleRecalc(Node* node)
+void AnimationBase::setNeedsStyleRecalc(Element* element)
 {
-    ASSERT(!node || !node->document().inPageCache());
-    if (node)
-        node->setNeedsStyleRecalc(SyntheticStyleChange);
+    ASSERT(!element || !element->document().inPageCache());
+    if (element)
+        element->setNeedsStyleRecalc(SyntheticStyleChange);
 }
 
 double AnimationBase::duration() const
@@ -222,8 +220,8 @@ void AnimationBase::updateStateMachine(AnimStateInput input, double param)
                 m_compAnim->animationController()->addToAnimationsWaitingForStyle(this);
 
                 // Trigger a render so we can start the animation
-                if (m_object)
-                    m_compAnim->animationController()->addNodeChangeToDispatch(m_object->element());
+                if (m_object && m_object->element())
+                    m_compAnim->animationController()->addElementChangeToDispatch(*m_object->element());
             } else {
                 ASSERT(!paused());
                 // We're waiting for the start timer to fire and we got a pause. Cancel the timer, pause and wait
@@ -287,8 +285,8 @@ void AnimationBase::updateStateMachine(AnimStateInput input, double param)
                 goIntoEndingOrLoopingState();
 
                 // Dispatch updateStyleIfNeeded so we can start the animation
-                if (m_object)
-                    m_compAnim->animationController()->addNodeChangeToDispatch(m_object->element());
+                if (m_object && m_object->element())
+                    m_compAnim->animationController()->addElementChangeToDispatch(*m_object->element());
             } else {
                 // We are pausing while waiting for a start response. Cancel the animation and wait. When 
                 // we unpause, we will act as though the start timer just fired
@@ -338,7 +336,8 @@ void AnimationBase::updateStateMachine(AnimStateInput input, double param)
                         resumeOverriddenAnimations();
 
                     // Fire off another style change so we can set the final value
-                    m_compAnim->animationController()->addNodeChangeToDispatch(m_object->element());
+                    if (m_object->element())
+                        m_compAnim->animationController()->addElementChangeToDispatch(*m_object->element());
                 }
             } else {
                 // We are pausing while running. Cancel the animation and wait
@@ -468,7 +467,7 @@ void AnimationBase::fireAnimationEventsIfNeeded()
     // FIXME: we need to ensure that elapsedDuration is never < 0. If it is, this suggests that
     // we had a recalcStyle() outside of beginAnimationUpdate()/endAnimationUpdate().
     // Also check in getTimeToNextEvent().
-    elapsedDuration = max(elapsedDuration, 0.0);
+    elapsedDuration = std::max(elapsedDuration, 0.0);
     
     // Check for end timeout
     if (m_totalDuration >= 0 && elapsedDuration >= m_totalDuration) {
@@ -524,7 +523,7 @@ double AnimationBase::timeToNextService()
     
     if (m_animState == AnimationStateStartWaitTimer) {
         double timeFromNow = m_animation->delay() - (beginAnimationUpdateTime() - m_requestedStartTime);
-        return max(timeFromNow, 0.0);
+        return std::max(timeFromNow, 0.0);
     }
     
     fireAnimationEventsIfNeeded();
@@ -552,7 +551,7 @@ double AnimationBase::fractionalTime(double scale, double elapsedTime, double of
     const int integralIterationCount = static_cast<int>(m_animation->iterationCount());
     const bool iterationCountHasFractional = m_animation->iterationCount() - integralIterationCount;
     if (m_animation->iterationCount() != Animation::IterationCountInfinite && !iterationCountHasFractional)
-        integralTime = min(integralTime, integralIterationCount - 1);
+        integralTime = std::min(integralTime, integralIterationCount - 1);
 
     fractionalTime -= integralTime;
 
@@ -612,7 +611,7 @@ double AnimationBase::progress(double scale, double offset, const TimingFunction
 void AnimationBase::getTimeToNextEvent(double& time, bool& isLooping) const
 {
     // Decide when the end or loop event needs to fire
-    const double elapsedDuration = max(beginAnimationUpdateTime() - m_startTime, 0.0);
+    const double elapsedDuration = std::max(beginAnimationUpdateTime() - m_startTime, 0.0);
     double durationLeft = 0;
     double nextIterationTime = m_totalDuration;
 

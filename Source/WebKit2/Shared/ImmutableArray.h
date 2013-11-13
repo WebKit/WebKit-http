@@ -27,6 +27,7 @@
 #define ImmutableArray_h
 
 #include "APIObject.h"
+#include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
@@ -34,44 +35,34 @@ namespace WebKit {
 
 // ImmutableArray - An immutable array type suitable for vending to an API.
 
-class ImmutableArray : public TypedAPIObject<APIObject::TypeArray> {
+class ImmutableArray FINAL : public API::TypedObject<API::Object::TypeArray> {
 public:
-    enum AdoptTag { Adopt };
+    static PassRefPtr<ImmutableArray> create();
+    static PassRefPtr<ImmutableArray> create(Vector<RefPtr<API::Object>> elements);
 
-    static PassRefPtr<ImmutableArray> create()
-    {
-        return adoptRef(new ImmutableArray);
-    }
-    static PassRefPtr<ImmutableArray> create(APIObject** entries, size_t size)
-    {
-        return adoptRef(new ImmutableArray(entries, size));
-    }
-    static PassRefPtr<ImmutableArray> adopt(APIObject** entries, size_t size)
-    {
-        return adoptRef(new ImmutableArray(Adopt, entries, size));
-    }
-    static PassRefPtr<ImmutableArray> adopt(Vector<RefPtr<APIObject>>& entries)
-    {
-        return adoptRef(new ImmutableArray(entries));
-    }
+    static PassRefPtr<ImmutableArray> createStringArray(const Vector<String>&);
 
     virtual ~ImmutableArray();
 
     template<typename T>
-    T* at(size_t i) { if (m_entries[i]->type() != T::APIType) return 0; return static_cast<T*>(m_entries[i].get()); }
+    T* at(size_t i) const
+    {
+        if (m_elements[i]->type() != T::APIType)
+            return nullptr;
 
-    APIObject* at(size_t i) { return m_entries[i].get(); }
-    size_t size() { return m_entries.size(); }
+        return static_cast<T*>(m_elements[i].get());
+    }
 
-    virtual bool isMutable() { return false; }
+    API::Object* at(size_t i) const { return m_elements[i].get(); }
+    size_t size() const { return m_elements.size(); }
+
+    const Vector<RefPtr<API::Object>>& elements() const { return m_elements; }
+    Vector<RefPtr<API::Object>>& elements() { return m_elements; }
 
 protected:
-    ImmutableArray();
-    ImmutableArray(AdoptTag, APIObject** entries, size_t);
-    ImmutableArray(APIObject** entries, size_t);
-    ImmutableArray(Vector<RefPtr<APIObject>>& entries);
+    ImmutableArray(Vector<RefPtr<API::Object>> elements);
 
-    Vector<RefPtr<APIObject>> m_entries;
+    Vector<RefPtr<API::Object>> m_elements;
 };
 
 } // namespace WebKit

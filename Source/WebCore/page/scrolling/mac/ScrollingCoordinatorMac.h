@@ -32,6 +32,7 @@
 
 namespace WebCore {
 
+class Scrollbar;
 class ScrollingStateNode;
 class ScrollingStateScrollingNode;
 class ScrollingStateTree;
@@ -73,10 +74,6 @@ public:
     virtual String scrollingStateTreeAsText() const OVERRIDE;
 
     virtual bool isRubberBandInProgress() const OVERRIDE;
-    virtual bool rubberBandsAtBottom() const OVERRIDE;
-    virtual void setRubberBandsAtBottom(bool) OVERRIDE;
-    virtual bool rubberBandsAtTop() const OVERRIDE;
-    virtual void setRubberBandsAtTop(bool) OVERRIDE;
     
     virtual void setScrollPinningBehavior(ScrollPinningBehavior) OVERRIDE;
 
@@ -126,6 +123,7 @@ private:
     void setCounterScrollingLayerForNode(GraphicsLayer*, ScrollingStateScrollingNode*);
     void setHeaderLayerForNode(GraphicsLayer*, ScrollingStateScrollingNode*);
     void setFooterLayerForNode(GraphicsLayer*, ScrollingStateScrollingNode*);
+    void setScrollbarPaintersFromScrollbarsForNode(Scrollbar* verticalScrollbar, Scrollbar* horizontalScrollbar, ScrollingStateScrollingNode*);
     void setNonFastScrollableRegionForNode(const Region&, ScrollingStateScrollingNode*);
     void setWheelEventHandlerCountForNode(unsigned, ScrollingStateScrollingNode*);
 

@@ -55,7 +55,7 @@ WebInspector.ContentView = function(representedObject)
             return new WebInspector.ApplicationCacheFrameContentView(representedObject);
 
         if (representedObject instanceof WebInspector.DOMTree)
-            return new WebInspector.DOMTreeContentView(representedObject);
+            return new WebInspector.FrameDOMTreeContentView(representedObject);
 
         if (representedObject instanceof WebInspector.LogObject)
             return new WebInspector.LogContentView(representedObject);
@@ -71,6 +71,9 @@ WebInspector.ContentView = function(representedObject)
 
         if (representedObject instanceof WebInspector.CanvasProfileObject)
             return new WebInspector.CanvasProfileView(representedObject);
+
+        if (representedObject instanceof WebInspector.ContentFlow)
+            return new WebInspector.ContentFlowDOMTreeContentView(representedObject);
 
         if (typeof representedObject === "string" || representedObject instanceof String)
             return new WebInspector.TextContentView(representedObject);
@@ -125,6 +128,8 @@ WebInspector.ContentView.isViewable = function(representedObject)
     if (representedObject instanceof WebInspector.CSSSelectorProfileObject)
         return true;
     if (representedObject instanceof WebInspector.CanvasProfileObject)
+        return true;
+    if (representedObject instanceof WebInspector.ContentFlow)
         return true;
     if (typeof representedObject === "string" || representedObject instanceof String)
         return true;
@@ -229,6 +234,16 @@ WebInspector.ContentView.prototype = {
     },
 
     closed: function()
+    {
+        // Implemented by subclasses.
+    },
+
+    saveToCookie: function(cookie)
+    {
+        // Implemented by subclasses.
+    },
+
+    restoreFromCookie: function(cookie)
     {
         // Implemented by subclasses.
     },

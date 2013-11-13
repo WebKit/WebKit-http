@@ -32,6 +32,7 @@ namespace WebCore {
 
 struct CompositionUnderline;
 class DocumentMarker;
+class TextPainter;
 
 const unsigned short cNoTruncation = USHRT_MAX;
 const unsigned short cFullTruncation = USHRT_MAX - 1;
@@ -40,10 +41,6 @@ class BufferForAppendingHyphen : public StringBuilder {
 public:
     BufferForAppendingHyphen() { reserveCapacity(256); }
 };
-
-// Helper functions shared by InlineTextBox / SVGRootInlineBox
-void updateGraphicsContext(GraphicsContext*, const Color& fillColor, const Color& strokeColor, float strokeThickness, ColorSpace);
-Color correctedTextColor(Color textColor, Color backgroundColor);
 
 class InlineTextBox : public InlineBox {
 public:
@@ -55,12 +52,13 @@ public:
         , m_len(0)
         , m_truncation(cNoTruncation)
     {
+        setBehavesLikeText(true);
     }
 
-    RenderText& renderer() const { return toRenderText(InlineBox::renderer()); }
-    const RenderStyle& lineStyle() const { return isFirstLine() ? *renderer().firstLineStyle() : *renderer().style(); }
+    virtual ~InlineTextBox();
 
-    virtual void destroy(RenderArena&) OVERRIDE FINAL;
+    RenderText& renderer() const { return toRenderText(InlineBox::renderer()); }
+    const RenderStyle& lineStyle() const { return isFirstLine() ? renderer().firstLineStyle() : renderer().style(); }
 
     InlineTextBox* prevTextBox() const { return m_prevTextBox; }
     InlineTextBox* nextTextBox() const { return m_nextTextBox; }
@@ -77,7 +75,7 @@ public:
 
     void offsetRun(int d) { ASSERT(!isDirty()); m_start += d; }
 
-    unsigned short truncation() { return m_truncation; }
+    unsigned short truncation() const { return m_truncation; }
 
     virtual void markDirty(bool dirty = true) OVERRIDE FINAL;
 
@@ -106,9 +104,9 @@ public:
 #endif
 
 private:
-    LayoutUnit selectionTop();
-    LayoutUnit selectionBottom();
-    LayoutUnit selectionHeight();
+    LayoutUnit selectionTop() const;
+    LayoutUnit selectionBottom() const;
+    LayoutUnit selectionHeight() const;
 
     TextRun constructTextRun(const RenderStyle&, const Font&, BufferForAppendingHyphen* = 0) const;
     TextRun constructTextRun(const RenderStyle&, const Font&, String, int maximumLength, BufferForAppendingHyphen* = 0) const;
@@ -116,7 +114,7 @@ private:
 public:
     virtual FloatRect calculateBoundaries() const { return FloatRect(x(), y(), width(), height()); }
 
-    virtual LayoutRect localSelectionRect(int startPos, int endPos);
+    virtual LayoutRect localSelectionRect(int startPos, int endPos) const;
     bool isSelected(int startPos, int endPos) const;
     void selectionStartEnd(int& sPos, int& ePos);
 
@@ -125,7 +123,7 @@ protected:
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) OVERRIDE;
 
 private:
-    virtual void deleteLine(RenderArena&) OVERRIDE FINAL;
+    virtual void deleteLine() OVERRIDE FINAL;
     virtual void extractLine() OVERRIDE FINAL;
     virtual void attachLine() OVERRIDE FINAL;
 
@@ -160,20 +158,8 @@ public:
     virtual int offsetForPosition(float x, bool includePartialGlyphs = true) const;
     virtual float positionForOffset(int offset) const;
 
-    bool containsCaretOffset(int offset) const; // false for offset after line break
-
     // Needs to be public, so the static paintTextWithShadows() function can use it.
     static FloatSize applyShadowToGraphicsContext(GraphicsContext*, const ShadowData*, const FloatRect& textRect, bool stroked, bool opaque, bool horizontal);
-
-private:
-    InlineTextBox* m_prevTextBox; // The previous box that also uses our RenderObject
-    InlineTextBox* m_nextTextBox; // The next box that also uses our RenderObject
-
-    int m_start;
-    unsigned short m_len;
-
-    unsigned short m_truncation; // Where to truncate when text overflow is applied.  We use special constants to
-                      // denote no truncation (the whole run paints) and full truncation (nothing paints at all).
 
 protected:
     void paintCompositionBackground(GraphicsContext*, const FloatPoint& boxOrigin, const RenderStyle&, const Font&, int startPos, int endPos);
@@ -184,7 +170,7 @@ protected:
 #endif
 
 private:
-    void paintDecoration(GraphicsContext*, const FloatPoint& boxOrigin, TextDecoration, TextDecorationStyle, const ShadowData*);
+    void paintDecoration(GraphicsContext&, const FloatPoint& boxOrigin, TextDecoration, TextDecorationStyle, const ShadowData*, TextPainter&);
     void paintSelection(GraphicsContext*, const FloatPoint& boxOrigin, const RenderStyle&, const Font&, Color textColor);
     void paintDocumentMarker(GraphicsContext*, const FloatPoint& boxOrigin, DocumentMarker*, const RenderStyle&, const Font&, bool grammar);
     void paintTextMatchMarker(GraphicsContext*, const FloatPoint& boxOrigin, DocumentMarker*, const RenderStyle&, const Font&);
@@ -195,22 +181,21 @@ private:
         return (canHaveLeadingExpansion() ? TextRun::AllowLeadingExpansion : TextRun::ForbidLeadingExpansion)
             | (expansion() && nextLeafChild() ? TextRun::AllowTrailingExpansion : TextRun::ForbidTrailingExpansion);
     }
+
+    void behavesLikeText() const WTF_DELETED_FUNCTION;
+
+    InlineTextBox* m_prevTextBox; // The previous box that also uses our RenderObject
+    InlineTextBox* m_nextTextBox; // The next box that also uses our RenderObject
+
+    int m_start;
+    unsigned short m_len;
+
+    // Where to truncate when text overflow is applied. We use special constants to
+    // denote no truncation (the whole run paints) and full truncation (nothing paints at all).
+    unsigned short m_truncation;
 };
 
-inline InlineTextBox* toInlineTextBox(InlineBox* inlineBox)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!inlineBox || inlineBox->isInlineTextBox());
-    return static_cast<InlineTextBox*>(inlineBox);
-}
-
-inline const InlineTextBox* toInlineTextBox(const InlineBox* inlineBox)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!inlineBox || inlineBox->isInlineTextBox());
-    return static_cast<const InlineTextBox*>(inlineBox);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toInlineTextBox(const InlineTextBox*);
+INLINE_BOX_OBJECT_TYPE_CASTS(InlineTextBox, isInlineTextBox())
 
 void alignSelectionRectToDevicePixels(FloatRect&);
 

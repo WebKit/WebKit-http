@@ -34,8 +34,8 @@
 
 namespace WebCore {
 
-RenderSVGViewportContainer::RenderSVGViewportContainer(SVGSVGElement& element)
-    : RenderSVGContainer(element)
+RenderSVGViewportContainer::RenderSVGViewportContainer(SVGSVGElement& element, PassRef<RenderStyle> style)
+    : RenderSVGContainer(element, std::move(style))
     , m_didTransformToRootUpdate(false)
     , m_isLayoutSizeChanged(false)
     , m_needsTransformUpdate(true)
@@ -54,7 +54,7 @@ void RenderSVGViewportContainer::determineIfLayoutSizeChanged()
 
 void RenderSVGViewportContainer::applyViewportClip(PaintInfo& paintInfo)
 {
-    if (SVGRenderSupport::isOverflowHidden(this))
+    if (SVGRenderSupport::isOverflowHidden(*this))
         paintInfo.context->clip(m_viewport);
 }
 
@@ -137,7 +137,7 @@ AffineTransform RenderSVGViewportContainer::viewportTransform() const
 bool RenderSVGViewportContainer::pointIsInsideViewportClip(const FloatPoint& pointInParent)
 {
     // Respect the viewport clip (which is in parent coords)
-    if (!SVGRenderSupport::isOverflowHidden(this))
+    if (!SVGRenderSupport::isOverflowHidden(*this))
         return true;
     
     return m_viewport.contains(pointInParent);

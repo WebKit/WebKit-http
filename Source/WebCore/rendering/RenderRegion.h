@@ -32,12 +32,14 @@
 
 #include "RenderBlockFlow.h"
 #include "StyleInheritedData.h"
+#include "VisiblePosition.h"
 
 namespace WebCore {
 
-class Element;
 struct LayerFragment;
 typedef Vector<LayerFragment, 1> LayerFragments;
+
+class Element;
 class RenderBox;
 class RenderBoxRegionInfo;
 class RenderFlowThread;
@@ -45,8 +47,6 @@ class RenderNamedFlowThread;
 
 class RenderRegion : public RenderBlockFlow {
 public:
-    explicit RenderRegion(Element*, RenderFlowThread*);
-
     virtual bool isRenderRegion() const OVERRIDE FINAL { return true; }
 
     virtual bool hitTestContents(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
@@ -91,14 +91,14 @@ public:
     // height of a single column or page in the set.
     virtual LayoutUnit pageLogicalWidth() const;
     virtual LayoutUnit pageLogicalHeight() const;
-    LayoutUnit maxPageLogicalHeight() const;
+    virtual LayoutUnit maxPageLogicalHeight() const;
 
     LayoutUnit logicalTopOfFlowThreadContentRect(const LayoutRect&) const;
     LayoutUnit logicalBottomOfFlowThreadContentRect(const LayoutRect&) const;
     LayoutUnit logicalTopForFlowThreadContent() const { return logicalTopOfFlowThreadContentRect(flowThreadPortionRect()); };
     LayoutUnit logicalBottomForFlowThreadContent() const { return logicalBottomOfFlowThreadContentRect(flowThreadPortionRect()); };
 
-    void getRanges(Vector<RefPtr<Range> >&) const;
+    void getRanges(Vector<RefPtr<Range>>&) const;
 
     // This method represents the logical height of the entire flow thread portion used by the region or set.
     // For RenderRegions it matches logicalPaginationHeight(), but for sets it is the height of all the pages
@@ -139,10 +139,7 @@ public:
 
     virtual void collectLayerFragments(LayerFragments&, const LayoutRect&, const LayoutRect&) { }
 
-#if USE(ACCELERATED_COMPOSITING)
-    void setRequiresLayerForCompositing(bool);
-    virtual bool requiresLayer() const { return m_requiresLayerForCompositing || RenderBlock::requiresLayer(); }
-#endif
+    virtual void adjustRegionBoundsFromFlowThreadPortionRect(const IntPoint& layerOffset, IntRect& regionBounds); // layerOffset is needed for multi-column.
 
     void addLayoutOverflowForBox(const RenderBox*, const LayoutRect&);
     void addVisualOverflowForBox(const RenderBox*, const LayoutRect&);
@@ -153,7 +150,14 @@ public:
 
     LayoutRect rectFlowPortionForBox(const RenderBox*, const LayoutRect&) const;
 
+    virtual bool canHaveChildren() const OVERRIDE { return false; }
+    virtual bool canHaveGeneratedChildren() const OVERRIDE { return true; }
+    virtual VisiblePosition positionForPoint(const LayoutPoint&) OVERRIDE;
+
 protected:
+    RenderRegion(Element&, PassRef<RenderStyle>, RenderFlowThread*);
+    RenderRegion(Document&, PassRef<RenderStyle>, RenderFlowThread*);
+
     RenderOverflow* ensureOverflowForBox(const RenderBox*);
 
     void setRegionObjectsRegionStyle();
@@ -178,9 +182,6 @@ protected:
 private:
     virtual const char* renderName() const { return "RenderRegion"; }
 
-    virtual bool canHaveChildren() const OVERRIDE { return false; }
-    virtual bool canHaveGeneratedChildren() const OVERRIDE { return true; }
-
     virtual void insertedIntoTree() OVERRIDE;
     virtual void willBeRemovedFromTree() OVERRIDE;
 
@@ -199,6 +200,8 @@ private:
     void incrementAutoLogicalHeightCount();
     void decrementAutoLogicalHeightCount();
 
+    LayoutPoint mapRegionPointIntoFlowThreadCoordinates(const LayoutPoint&);
+
 protected:
     RenderFlowThread* m_flowThread;
 
@@ -213,7 +216,7 @@ private:
     // A RenderBoxRegionInfo* tells us about any layout information for a RenderBox that
     // is unique to the region. For now it just holds logical width information for RenderBlocks, but eventually
     // it will also hold a custom style for any box (for region styling).
-    typedef HashMap<const RenderBox*, OwnPtr<RenderBoxRegionInfo> > RenderBoxRegionInfoMap;
+    typedef HashMap<const RenderBox*, OwnPtr<RenderBoxRegionInfo>> RenderBoxRegionInfoMap;
     RenderBoxRegionInfoMap m_renderBoxRegionInfo;
 
     struct ObjectRegionStyleInfo {
@@ -232,28 +235,12 @@ private:
     bool m_isValid : 1;
     bool m_hasCustomRegionStyle : 1;
     bool m_hasAutoLogicalHeight : 1;
-#if USE(ACCELERATED_COMPOSITING)
-    bool m_requiresLayerForCompositing : 1;
-#endif
     bool m_hasComputedAutoHeight : 1;
 
     LayoutUnit m_computedAutoHeight;
 };
 
-inline RenderRegion* toRenderRegion(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderRegion());
-    return static_cast<RenderRegion*>(object);
-}
-
-inline const RenderRegion* toRenderRegion(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderRegion());
-    return static_cast<const RenderRegion*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderRegion(const RenderRegion*);
+RENDER_OBJECT_TYPE_CASTS(RenderRegion, isRenderRegion())
 
 } // namespace WebCore
 

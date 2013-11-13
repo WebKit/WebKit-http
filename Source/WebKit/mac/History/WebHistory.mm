@@ -39,7 +39,7 @@
 using namespace WebCore;
 
 typedef int64_t WebHistoryDateKey;
-typedef HashMap<WebHistoryDateKey, RetainPtr<NSMutableArray> > DateToEntriesMap;
+typedef HashMap<WebHistoryDateKey, RetainPtr<NSMutableArray>> DateToEntriesMap;
 
 NSString *WebHistoryItemsAddedNotification = @"WebHistoryItemsAddedNotification";
 NSString *WebHistoryItemsRemovedNotification = @"WebHistoryItemsRemovedNotification";
@@ -74,7 +74,7 @@ private:
 @interface WebHistoryPrivate : NSObject {
 @private
     NSMutableDictionary *_entriesByURL;
-    DateToEntriesMap* _entriesByDate;
+    std::unique_ptr<DateToEntriesMap> _entriesByDate;
     NSMutableArray *_orderedLastVisitedDays;
     BOOL itemLimitSet;
     int itemLimit;
@@ -132,7 +132,7 @@ private:
         return nil;
     
     _entriesByURL = [[NSMutableDictionary alloc] init];
-    _entriesByDate = new DateToEntriesMap;
+    _entriesByDate = std::make_unique<DateToEntriesMap>();
 
     return self;
 }
@@ -141,13 +141,11 @@ private:
 {
     [_entriesByURL release];
     [_orderedLastVisitedDays release];
-    delete _entriesByDate;
     [super dealloc];
 }
 
 - (void)finalize
 {
-    delete _entriesByDate;
     [super finalize];
 }
 
@@ -353,7 +351,7 @@ static inline WebHistoryDateKey dateKey(NSTimeInterval date)
 {
     // We clear all the values to present a consistent state when sending the notifications.
     // We keep a reference to the entries for rebuilding the history after the notification.
-    Vector <RetainPtr<NSMutableArray> > entryArrays;
+    Vector <RetainPtr<NSMutableArray>> entryArrays;
     copyValuesToVector(*_entriesByDate, entryArrays);
     _entriesByDate->clear();
     
@@ -636,7 +634,7 @@ static inline WebHistoryDateKey dateKey(NSTimeInterval date)
     
     // Ignores the date and item count limits; these are respected when loading instead of when saving, so
     // that clients can learn of discarded items by listening to WebHistoryItemsDiscardedWhileLoadingNotification.
-    WebHistoryWriter writer(_entriesByDate);
+    WebHistoryWriter writer(_entriesByDate.get());
     writer.writePropertyList();
     return [[(NSData *)writer.releaseData().get() retain] autorelease];
 }

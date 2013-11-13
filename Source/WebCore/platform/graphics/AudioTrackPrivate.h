@@ -26,10 +26,7 @@
 #ifndef AudioTrackPrivate_h
 #define AudioTrackPrivate_h
 
-#include <wtf/Forward.h>
-#include <wtf/Noncopyable.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/AtomicString.h>
+#include "TrackPrivateBase.h"
 
 #if ENABLE(VIDEO_TRACK)
 
@@ -37,45 +34,38 @@ namespace WebCore {
 
 class AudioTrackPrivate;
 
-class AudioTrackPrivateClient {
+class AudioTrackPrivateClient : public TrackPrivateBaseClient {
 public:
-    virtual ~AudioTrackPrivateClient() { }
-    virtual void willRemoveAudioTrackPrivate(AudioTrackPrivate*) = 0;
+    virtual void enabledChanged(AudioTrackPrivate*, bool) = 0;
 };
 
-class AudioTrackPrivate : public RefCounted<AudioTrackPrivate> {
-    WTF_MAKE_NONCOPYABLE(AudioTrackPrivate); WTF_MAKE_FAST_ALLOCATED;
+class AudioTrackPrivate : public TrackPrivateBase {
 public:
     static PassRefPtr<AudioTrackPrivate> create()
     {
         return adoptRef(new AudioTrackPrivate());
     }
-    virtual ~AudioTrackPrivate() { }
 
     void setClient(AudioTrackPrivateClient* client) { m_client = client; }
-    AudioTrackPrivateClient* client() { return m_client; }
+    virtual AudioTrackPrivateClient* client() const OVERRIDE { return m_client; }
 
-    virtual void setEnabled(bool enabled) { m_enabled = enabled; };
+    virtual void setEnabled(bool enabled)
+    {
+        if (m_enabled == enabled)
+            return;
+        m_enabled = enabled;
+        if (m_client)
+            m_client->enabledChanged(this, enabled);
+    };
     virtual bool enabled() const { return m_enabled; }
 
     enum Kind { Alternative, Description, Main, MainDesc, Translation, Commentary, None };
     virtual Kind kind() const { return None; }
 
-    virtual AtomicString id() const { return emptyAtom; }
-    virtual AtomicString label() const { return emptyAtom; }
-    virtual AtomicString language() const { return emptyAtom; }
-
-    virtual int audioTrackIndex() const { return 0; }
-
-    void willBeRemoved()
-    {
-        if (m_client)
-            m_client->willRemoveAudioTrackPrivate(this);
-    }
-
 protected:
     AudioTrackPrivate()
-        : m_enabled(false)
+        : m_client(0)
+        , m_enabled(false)
     {
     }
 

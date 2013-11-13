@@ -28,6 +28,8 @@
 #include "PlatformUtilities.h"
 #include "PlatformWebView.h"
 #include <WebKit2/WKRetainPtr.h>
+#include <WebKit2/WKPage.h>
+#include <WebKit2/WKPreferencesPrivate.h>
 
 namespace TestWebKitAPI {
 
@@ -41,7 +43,14 @@ static void didFinishLoadForFrame(WKPageRef, WKFrameRef, WKTypeRef, const void*)
 TEST(WebKit2, ScrollByLineCommands)
 {
     WKRetainPtr<WKContextRef> context(AdoptWK, Util::createContextWithInjectedBundle());
-    PlatformWebView webView(context.get());
+
+    // Turn off threaded scrolling; synchronously waiting for the main thread scroll position to
+    // update using WKPageForceRepaint would be better, but for some reason the test still fails occasionally.
+    WKRetainPtr<WKPageGroupRef> pageGroup(AdoptWK, WKPageGroupCreateWithIdentifier(Util::toWK("NoThreadedScrollingPageGroup").get()));
+    WKPreferencesRef preferences = WKPageGroupGetPreferences(pageGroup.get());
+    WKPreferencesSetThreadedScrollingEnabled(preferences, false);
+
+    PlatformWebView webView(context.get(), pageGroup.get());
 
     WKPageLoaderClient loaderClient;
     memset(&loaderClient, 0, sizeof(loaderClient));

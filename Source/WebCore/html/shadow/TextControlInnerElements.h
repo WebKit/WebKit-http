@@ -33,6 +33,7 @@
 
 namespace WebCore {
 
+class RenderTextControlInnerBlock;
 class SpeechInput;
 
 class TextControlInnerContainer FINAL : public HTMLDivElement {
@@ -40,7 +41,7 @@ public:
     static PassRefPtr<TextControlInnerContainer> create(Document&);
 protected:
     TextControlInnerContainer(Document&);
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 };
 
 class TextControlInnerElement FINAL : public HTMLDivElement {
@@ -59,25 +60,32 @@ class TextControlInnerTextElement FINAL : public HTMLDivElement {
 public:
     static PassRefPtr<TextControlInnerTextElement> create(Document&);
 
-    virtual void defaultEventHandler(Event*);
+    virtual void defaultEventHandler(Event*) OVERRIDE;
+
+    RenderTextControlInnerBlock* renderer() const;
 
 private:
     TextControlInnerTextElement(Document&);
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
     virtual bool isMouseFocusable() const OVERRIDE { return false; }
+    virtual bool isTextControlInnerTextElement() const OVERRIDE { return true; }
 };
+
+inline bool isTextControlInnerTextElement(const HTMLElement& element) { return element.isTextControlInnerTextElement(); }
+inline bool isTextControlInnerTextElement(const Node& node) { return node.isHTMLElement() && isTextControlInnerTextElement(toHTMLElement(node)); }
+NODE_TYPE_CASTS(TextControlInnerTextElement)
 
 class SearchFieldResultsButtonElement FINAL : public HTMLDivElement {
 public:
     static PassRefPtr<SearchFieldResultsButtonElement> create(Document&);
 
-    virtual void defaultEventHandler(Event*);
+    virtual void defaultEventHandler(Event*) OVERRIDE;
     virtual bool willRespondToMouseClickEvents() OVERRIDE;
 
 private:
     SearchFieldResultsButtonElement(Document&);
-    virtual const AtomicString& shadowPseudoId() const;
+    virtual const AtomicString& shadowPseudoId() const OVERRIDE;
     virtual bool isMouseFocusable() const OVERRIDE { return false; }
 };
 
@@ -85,13 +93,13 @@ class SearchFieldCancelButtonElement FINAL : public HTMLDivElement {
 public:
     static PassRefPtr<SearchFieldCancelButtonElement> create(Document&);
 
-    virtual void defaultEventHandler(Event*);
+    virtual void defaultEventHandler(Event*) OVERRIDE;
     virtual bool isSearchFieldCancelButtonElement() const OVERRIDE { return true; }
     virtual bool willRespondToMouseClickEvents() OVERRIDE;
 
 private:
     SearchFieldCancelButtonElement(Document&);
-    virtual const AtomicString& shadowPseudoId() const;
+    virtual const AtomicString& shadowPseudoId() const OVERRIDE;
     virtual void willDetachRenderers() OVERRIDE;
     virtual bool isMouseFocusable() const OVERRIDE { return false; }
 

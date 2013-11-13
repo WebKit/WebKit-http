@@ -33,10 +33,11 @@
 #include "CodeBlockWithJITType.h"
 #include "DFGCommon.h"
 #include "FTLJITCode.h"
+#include "JITOperations.h"
 #include "JITStubs.h"
+#include "LLVMAPI.h"
 #include "LinkBuffer.h"
 #include "VirtualRegister.h"
-#include <wtf/LLVMHeaders.h>
 
 namespace JSC { namespace FTL {
 
@@ -45,7 +46,7 @@ using namespace DFG;
 static void compileEntry(CCallHelpers& jit)
 {
     jit.preserveReturnAddressAfterCall(GPRInfo::regT2);
-    jit.emitPutToCallFrameHeader(GPRInfo::regT2, JSStack::ReturnPC);
+    jit.emitPutReturnPCToCallFrameHeader(GPRInfo::regT2);
     jit.emitPutImmediateToCallFrameHeader(jit.codeBlock(), JSStack::CodeBlock);
 }
 
@@ -55,6 +56,9 @@ void link(State& state)
     
     // LLVM will create its own jump tables as needed.
     codeBlock->clearSwitchJumpTables();
+    
+    if (!state.graph.m_inlineCallFrames->isEmpty())
+        state.jitCode->common.inlineCallFrames = std::move(state.graph.m_inlineCallFrames);
     
     // Create the entrypoint. Note that we use this entrypoint totally differently
     // depending on whether we're doing OSR entry or not.
@@ -89,24 +93,27 @@ void link(State& state)
             CCallHelpers::TrustedImmPtr(reinterpret_cast<void*>(state.generatedFunction)),
             GPRInfo::nonArgGPR0);
         jit.call(GPRInfo::nonArgGPR0);
-        jit.emitGetFromCallFrameHeaderPtr(JSStack::ReturnPC, GPRInfo::regT1);
-        jit.emitGetFromCallFrameHeaderPtr(JSStack::CallerFrame, GPRInfo::callFrameRegister);
+        jit.emitGetReturnPCFromCallFrameHeaderPtr(GPRInfo::regT1);
+        jit.emitGetCallerFrameFromCallFrameHeaderPtr(GPRInfo::callFrameRegister);
         jit.restoreReturnAddressBeforeReturn(GPRInfo::regT1);
         jit.ret();
         
         stackCheck.link(&jit);
-        jit.move(CCallHelpers::stackPointerRegister, GPRInfo::argumentGPR0);
-        jit.poke(
-            GPRInfo::callFrameRegister,
-            OBJECT_OFFSETOF(struct JITStackFrame, callFrame) / sizeof(void*));
-        
+        jit.move(CCallHelpers::TrustedImmPtr(codeBlock), GPRInfo::argumentGPR1);
+        jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
         jit.store32(
             CCallHelpers::TrustedImm32(CallFrame::Location::encodeAsBytecodeOffset(0)),
             CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+        jit.storePtr(GPRInfo::callFrameRegister, &state.graph.m_vm.topCallFrame);
         CCallHelpers::Call callStackCheck = jit.call();
+#if !ASSERT_DISABLED
         // FIXME: need to make this call register with exception handling somehow. This is
         // part of a bigger problem: FTL should be able to handle exceptions.
         // https://bugs.webkit.org/show_bug.cgi?id=113622
+        // Until then, use a JIT ASSERT.
+        jit.load64(state.graph.m_vm.addressOfException(), GPRInfo::regT0);
+        jit.jitAssertIsNull(GPRInfo::regT0);
+#endif
         jit.jump(fromStackCheck);
         
         arityCheck = jit.label();
@@ -118,24 +125,29 @@ void link(State& state)
             CCallHelpers::AboveOrEqual, GPRInfo::regT1,
             CCallHelpers::TrustedImm32(codeBlock->numParameters()))
             .linkTo(fromArityCheck, &jit);
-        jit.move(CCallHelpers::stackPointerRegister, GPRInfo::argumentGPR0);
-        jit.poke(
-            GPRInfo::callFrameRegister,
-            OBJECT_OFFSETOF(struct JITStackFrame, callFrame) / sizeof(void*));
+        jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
         jit.store32(
             CCallHelpers::TrustedImm32(CallFrame::Location::encodeAsBytecodeOffset(0)),
             CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+        jit.storePtr(GPRInfo::callFrameRegister, &state.graph.m_vm.topCallFrame);
         CCallHelpers::Call callArityCheck = jit.call();
+#if !ASSERT_DISABLED
         // FIXME: need to make this call register with exception handling somehow. This is
         // part of a bigger problem: FTL should be able to handle exceptions.
         // https://bugs.webkit.org/show_bug.cgi?id=113622
+        // Until then, use a JIT ASSERT.
+        jit.load64(state.graph.m_vm.addressOfException(), GPRInfo::regT1);
+        jit.jitAssertIsNull(GPRInfo::regT1);
+#endif
+        if (GPRInfo::returnValueGPR != GPRInfo::regT0)
+            jit.move(GPRInfo::returnValueGPR, GPRInfo::regT0);
         jit.branchTest32(CCallHelpers::Zero, GPRInfo::regT0).linkTo(fromArityCheck, &jit);
         CCallHelpers::Call callArityFixup = jit.call();
         jit.jump(fromArityCheck);
         
         linkBuffer = adoptPtr(new LinkBuffer(state.graph.m_vm, &jit, codeBlock, JITCompilationMustSucceed));
-        linkBuffer->link(callStackCheck, cti_stack_check);
-        linkBuffer->link(callArityCheck, codeBlock->m_isConstructor ? cti_op_construct_arityCheck : cti_op_call_arityCheck);
+        linkBuffer->link(callStackCheck, operationStackCheck);
+        linkBuffer->link(callArityCheck, codeBlock->m_isConstructor ? operationConstructArityCheck : operationCallArityCheck);
         linkBuffer->link(callArityFixup, FunctionPtr((state.graph.m_vm.getCTIStub(arityFixup)).code().executableAddress()));
         break;
     }
@@ -150,8 +162,8 @@ void link(State& state)
             CCallHelpers::TrustedImmPtr(reinterpret_cast<void*>(state.generatedFunction)),
             GPRInfo::nonArgGPR0);
         jit.call(GPRInfo::nonArgGPR0);
-        jit.emitGetFromCallFrameHeaderPtr(JSStack::ReturnPC, GPRInfo::regT1);
-        jit.emitGetFromCallFrameHeaderPtr(JSStack::CallerFrame, GPRInfo::callFrameRegister);
+        jit.emitGetReturnPCFromCallFrameHeaderPtr(GPRInfo::regT1);
+        jit.emitGetCallerFrameFromCallFrameHeaderPtr(GPRInfo::callFrameRegister);
         jit.restoreReturnAddressBeforeReturn(GPRInfo::regT1);
         jit.ret();
         
@@ -165,10 +177,10 @@ void link(State& state)
         break;
     }
     
-    state.finalizer->initializeEntrypointLinkBuffer(linkBuffer.release());
-    state.finalizer->initializeFunction(state.generatedFunction);
-    state.finalizer->initializeArityCheck(arityCheck);
-    state.finalizer->initializeJITCode(state.jitCode);
+    state.finalizer->entrypointLinkBuffer = linkBuffer.release();
+    state.finalizer->function = state.generatedFunction;
+    state.finalizer->arityCheck = arityCheck;
+    state.finalizer->jitCode = state.jitCode;
 }
 
 } } // namespace JSC::FTL

@@ -149,7 +149,7 @@ static void SIGSYSHandler(int signal, siginfo_t* info, void* data)
     // syscall locally without sending it to the broker process. In this case,
     // we just return. Examples of locally resolved syscalls are the ones
     // with cached resources and invalid arguments.
-    OwnPtr<Syscall> syscall = Syscall::createFromContext(ucontext);
+    std::unique_ptr<Syscall> syscall = Syscall::createFromContext(ucontext);
     if (!syscall)
         return;
 
@@ -196,7 +196,7 @@ SeccompBrokerClient::~SeccompBrokerClient()
 
 void SeccompBrokerClient::dispatch(Syscall* syscall) const
 {
-    OwnPtr<CoreIPC::ArgumentEncoder> encoder = CoreIPC::ArgumentEncoder::create();
+    auto encoder = std::make_unique<CoreIPC::ArgumentEncoder>();
     encoder->encode(*syscall);
 
     char buffer[messageMaxSize];
@@ -219,8 +219,8 @@ void SeccompBrokerClient::dispatch(Syscall* syscall) const
 
     m_socketLock.unlock();
 
-    OwnPtr<CoreIPC::ArgumentDecoder> decoder = CoreIPC::ArgumentDecoder::create((const uint8_t*) buffer, receivedBytes);
-    OwnPtr<SyscallResult> result = SyscallResult::createFromDecoder(decoder.get(), fd);
+    auto decoder = std::make_unique<CoreIPC::ArgumentDecoder>((const uint8_t*) buffer, receivedBytes);
+    std::unique_ptr<SyscallResult> result = SyscallResult::createFromDecoder(decoder.get(), fd);
     if (!result)
         CRASH();
 
@@ -324,16 +324,16 @@ NO_RETURN void SeccompBroker::runLoop(int socket)
         if (receivedBytes <= 0)
             exit(receivedBytes ? EXIT_FAILURE : EXIT_SUCCESS);
 
-        OwnPtr<CoreIPC::ArgumentDecoder> decoder = CoreIPC::ArgumentDecoder::create((const uint8_t*) buffer, receivedBytes);
-        OwnPtr<Syscall> syscall = Syscall::createFromDecoder(decoder.get());
+        auto decoder = std::make_unique<CoreIPC::ArgumentDecoder>((const uint8_t*) buffer, receivedBytes);
+        std::unique_ptr<Syscall> syscall = Syscall::createFromDecoder(decoder.get());
         if (!syscall)
             exit(EXIT_FAILURE);
 
-        OwnPtr<SyscallResult> result = syscall->execute(m_policy);
+        std::unique_ptr<SyscallResult> result = syscall->execute(m_policy);
         if (!result)
             exit(EXIT_FAILURE);
 
-        OwnPtr<CoreIPC::ArgumentEncoder> encoder = CoreIPC::ArgumentEncoder::create();
+        auto encoder = std::make_unique<CoreIPC::ArgumentEncoder>();
         encoder->encode(*result);
 
         Vector<CoreIPC::Attachment> attachments = encoder->releaseAttachments();

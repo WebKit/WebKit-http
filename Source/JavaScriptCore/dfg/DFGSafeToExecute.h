@@ -129,7 +129,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PhantomLocal:
     case GetLocalUnlinked:
     case SetArgument:
-    case InlineStart:
     case BitAnd:
     case BitOr:
     case BitXor:
@@ -151,6 +150,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArithMin:
     case ArithMax:
     case ArithSqrt:
+    case ArithSin:
+    case ArithCos:
     case ValueAdd:
     case GetById:
     case GetByIdFlush:
@@ -240,6 +241,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case LoopHint:
     case Int52ToDouble:
     case Int52ToValue:
+    case InvalidationPoint:
         return true;
         
     case GetByVal:
@@ -253,7 +255,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
         
     case GetTypedArrayByteOffset:
         return !(state.forNode(node->child1()).m_type & ~(SpecTypedArrayView));
-        
+            
+    case PutByValDirect:
     case PutByVal:
     case PutByValAlias:
         return node->arrayMode().modeForPut().alreadyChecked(

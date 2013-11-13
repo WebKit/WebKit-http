@@ -56,7 +56,7 @@ bool HTMLIFrameElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLFrameElementBase::isPresentationAttribute(name);
 }
 
-void HTMLIFrameElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLIFrameElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, value);
@@ -95,9 +95,9 @@ bool HTMLIFrameElement::rendererIsNeeded(const RenderStyle& style)
     return isURLAllowed() && style.display() != NONE;
 }
 
-RenderElement* HTMLIFrameElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* HTMLIFrameElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderIFrame(*this);
+    return new RenderIFrame(*this, std::move(style));
 }
 
 bool HTMLIFrameElement::shouldDisplaySeamlessly() const

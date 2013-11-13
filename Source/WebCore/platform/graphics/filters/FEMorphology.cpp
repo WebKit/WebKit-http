@@ -27,15 +27,11 @@
 #include "FEMorphology.h"
 
 #include "Filter.h"
-#include "RenderTreeAsText.h"
 #include "TextStream.h"
 
 #include <runtime/Uint8ClampedArray.h>
 #include <wtf/ParallelJobs.h>
 #include <wtf/Vector.h>
-
-using std::min;
-using std::max;
 
 namespace WebCore {
 
@@ -116,8 +112,8 @@ void FEMorphology::platformApplyGeneric(PaintingData* paintingData, int yStart, 
 
     Vector<unsigned char> extrema;
     for (int y = yStart; y < yEnd; ++y) {
-        int extremaStartY = max(0, y - radiusY);
-        int extremaEndY = min(height - 1, y + radiusY);
+        int extremaStartY = std::max(0, y - radiusY);
+        int extremaEndY = std::min(height - 1, y + radiusY);
         for (unsigned int clrChannel = 0; clrChannel < 4; ++clrChannel) {
             extrema.clear();
             // Compute extremas for each columns
@@ -136,7 +132,7 @@ void FEMorphology::platformApplyGeneric(PaintingData* paintingData, int yStart, 
 
             // Kernel is filled, get extrema of next column
             for (int x = 0; x < width; ++x) {
-                const int endX = min(x + radiusX, width - 1);
+                const int endX = std::min(x + radiusX, width - 1);
                 unsigned char columnExtrema = srcPixelArray->item(extremaStartY * effectWidth + endX * 4 + clrChannel);
                 for (int i = extremaStartY + 1; i <= extremaEndY; ++i) {
                     unsigned char pixel = srcPixelArray->item(i * effectWidth + endX * 4 + clrChannel);
@@ -222,8 +218,8 @@ void FEMorphology::platformApplySoftware()
     paintingData.dstPixelArray = dstPixelArray;
     paintingData.width = effectDrawingRect.width();
     paintingData.height = effectDrawingRect.height();
-    paintingData.radiusX = min(effectDrawingRect.width() - 1, radiusX);
-    paintingData.radiusY = min(effectDrawingRect.height() - 1, radiusY);
+    paintingData.radiusX = std::min(effectDrawingRect.width() - 1, radiusX);
+    paintingData.radiusY = std::min(effectDrawingRect.height() - 1, radiusY);
 
     platformApply(&paintingData);
 }

@@ -107,12 +107,13 @@ WebArchiveResource* WebArchive::mainResource()
 ImmutableArray* WebArchive::subresources()
 {
     if (!m_cachedSubresources) {
-        Vector<RefPtr<APIObject>> subresources;
-        subresources.reserveCapacity(m_legacyWebArchive->subresources().size());
-        for (unsigned i = 0; i < m_legacyWebArchive->subresources().size(); ++i)
-            subresources.append(WebArchiveResource::create(m_legacyWebArchive->subresources()[i].get()));
+        Vector<RefPtr<API::Object>> subresources;
+        subresources.reserveInitialCapacity(m_legacyWebArchive->subresources().size());
 
-        m_cachedSubresources = ImmutableArray::adopt(subresources);
+        for (const auto& subresource : m_legacyWebArchive->subresources())
+            subresources.uncheckedAppend(WebArchiveResource::create(subresource));
+
+        m_cachedSubresources = ImmutableArray::create(std::move(subresources));
     }
 
     return m_cachedSubresources.get();
@@ -121,12 +122,13 @@ ImmutableArray* WebArchive::subresources()
 ImmutableArray* WebArchive::subframeArchives()
 {
     if (!m_cachedSubframeArchives) {
-        Vector<RefPtr<APIObject>> subframeWebArchives;
-        subframeWebArchives.reserveCapacity(m_legacyWebArchive->subframeArchives().size());
-        for (unsigned i = 0; i < m_legacyWebArchive->subframeArchives().size(); ++i)
-            subframeWebArchives.append(WebArchive::create(static_cast<LegacyWebArchive*>(m_legacyWebArchive->subframeArchives()[i].get())));
+        Vector<RefPtr<API::Object>> subframeWebArchives;
+        subframeWebArchives.reserveInitialCapacity(m_legacyWebArchive->subframeArchives().size());
 
-        m_cachedSubframeArchives = ImmutableArray::adopt(subframeWebArchives);
+        for (const auto& subframeArchive : m_legacyWebArchive->subframeArchives())
+            subframeWebArchives.uncheckedAppend(WebArchive::create(static_cast<LegacyWebArchive*>(subframeArchive.get())));
+
+        m_cachedSubframeArchives = ImmutableArray::create(std::move(subframeWebArchives));
     }
 
     return m_cachedSubframeArchives.get();

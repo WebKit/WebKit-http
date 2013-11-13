@@ -50,6 +50,7 @@ public:
     ElementIterator& traversePrevious();
     ElementIterator& traverseNextSibling();
     ElementIterator& traversePreviousSibling();
+    ElementIterator& traverseNextSkippingChildren();
     ElementIterator& traverseAncestor();
 
 private:
@@ -77,6 +78,7 @@ public:
     ElementConstIterator& traversePrevious();
     ElementConstIterator& traverseNextSibling();
     ElementConstIterator& traversePreviousSibling();
+    ElementConstIterator& traverseNextSkippingChildren();
     ElementConstIterator& traverseAncestor();
 
 private:
@@ -163,16 +165,26 @@ inline ElementIterator<ElementType>& ElementIterator<ElementType>::traversePrevi
     return *this;
 }
 
-template <typename ElementTypeWithConst>
-inline ElementTypeWithConst* findElementAncestorOfType(const Element& current)
+template <typename ElementType>
+inline ElementIterator<ElementType>& ElementIterator<ElementType>::traverseNextSkippingChildren()
 {
-    ContainerNode* ancestor = current.parentNode();
-    while (ancestor && ancestor->isElementNode()) {
-        // Non-root containers are always Elements.
-        Element* element = toElement(ancestor);
-        if (isElementOfType<ElementTypeWithConst>(element))
-            return static_cast<ElementTypeWithConst*>(element);
-        ancestor = ancestor->parentNode();
+    ASSERT(m_current);
+    ASSERT(!m_assertions.domTreeHasMutated());
+    m_current = Traversal<ElementType>::nextSkippingChildren(m_current, m_root);
+#if !ASSERT_DISABLED
+    // Drop the assertion when the iterator reaches the end.
+    if (!m_current)
+        m_assertions.dropEventDispatchAssertion();
+#endif
+    return *this;
+}
+
+template <typename ElementType>
+inline ElementType* findElementAncestorOfType(const Element& current)
+{
+    for (Element* ancestor = current.parentElement(); ancestor; ancestor = ancestor->parentElement()) {
+        if (isElementOfType<const ElementType>(*ancestor))
+            return static_cast<ElementType*>(ancestor);
     }
     return nullptr;
 }
@@ -183,9 +195,7 @@ inline ElementIterator<ElementType>& ElementIterator<ElementType>::traverseAnces
     ASSERT(m_current);
     ASSERT(m_current != m_root);
     ASSERT(!m_assertions.domTreeHasMutated());
-
     m_current = findElementAncestorOfType<ElementType>(*m_current);
-
 #if !ASSERT_DISABLED
     // Drop the assertion when the iterator reaches the end.
     if (!m_current)
@@ -300,14 +310,26 @@ inline ElementConstIterator<ElementType>& ElementConstIterator<ElementType>::tra
 }
 
 template <typename ElementType>
+inline ElementConstIterator<ElementType>& ElementConstIterator<ElementType>::traverseNextSkippingChildren()
+{
+    ASSERT(m_current);
+    ASSERT(!m_assertions.domTreeHasMutated());
+    m_current = Traversal<ElementType>::nextSkippingChildren(m_current, m_root);
+#if !ASSERT_DISABLED
+    // Drop the assertion when the iterator reaches the end.
+    if (!m_current)
+        m_assertions.dropEventDispatchAssertion();
+#endif
+    return *this;
+}
+
+template <typename ElementType>
 inline ElementConstIterator<ElementType>& ElementConstIterator<ElementType>::traverseAncestor()
 {
     ASSERT(m_current);
     ASSERT(m_current != m_root);
     ASSERT(!m_assertions.domTreeHasMutated());
-
     m_current = findElementAncestorOfType<const ElementType>(*m_current);
-
 #if !ASSERT_DISABLED
     // Drop the assertion when the iterator reaches the end.
     if (!m_current)

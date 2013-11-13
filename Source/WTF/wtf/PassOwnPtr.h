@@ -145,8 +145,8 @@ namespace WTF {
 
     template<typename T> inline PassOwnPtr<T> adoptPtr(T* ptr)
     {
-        static_assert(!std::is_convertible<T*, RefCountedBase*>::value, "Do not use adoptPtr with RefCounted, use adoptPtr!");
-        static_assert(!std::is_convertible<T*, ThreadSafeRefCountedBase*>::value, "Do not use adoptPtr with ThreadSafeRefCounted, use adoptPtr!");
+        static_assert(!std::is_convertible<T*, RefCountedBase*>::value, "Do not use adoptPtr with RefCounted, use adoptRef!");
+        static_assert(!std::is_convertible<T*, ThreadSafeRefCountedBase*>::value, "Do not use adoptPtr with ThreadSafeRefCounted, use adoptRef!");
 
         return PassOwnPtr<T>(ptr);
     }
@@ -154,11 +154,6 @@ namespace WTF {
     template<typename T, typename U> inline PassOwnPtr<T> static_pointer_cast(const PassOwnPtr<U>& p) 
     {
         return adoptPtr(static_cast<T*>(p.leakPtr()));
-    }
-
-    template<typename T, typename U> inline PassOwnPtr<T> const_pointer_cast(const PassOwnPtr<U>& p) 
-    {
-        return adoptPtr(const_cast<T*>(p.leakPtr()));
     }
 
     template<typename T> inline T* getPtr(const PassOwnPtr<T>& p)
@@ -170,7 +165,6 @@ namespace WTF {
 
 using WTF::PassOwnPtr;
 using WTF::adoptPtr;
-using WTF::const_pointer_cast;
 using WTF::static_pointer_cast;
 
 #endif // WTF_PassOwnPtr_h

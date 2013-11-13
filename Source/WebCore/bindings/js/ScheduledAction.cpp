@@ -49,7 +49,7 @@ using namespace JSC;
 
 namespace WebCore {
 
-PassOwnPtr<ScheduledAction> ScheduledAction::create(ExecState* exec, DOMWrapperWorld* isolatedWorld, ContentSecurityPolicy* policy)
+PassOwnPtr<ScheduledAction> ScheduledAction::create(ExecState* exec, DOMWrapperWorld& isolatedWorld, ContentSecurityPolicy* policy)
 {
     JSValue v = exec->argument(0);
     CallData callData;
@@ -65,9 +65,9 @@ PassOwnPtr<ScheduledAction> ScheduledAction::create(ExecState* exec, DOMWrapperW
     return adoptPtr(new ScheduledAction(exec, v, isolatedWorld));
 }
 
-ScheduledAction::ScheduledAction(ExecState* exec, JSValue function, DOMWrapperWorld* isolatedWorld)
+ScheduledAction::ScheduledAction(ExecState* exec, JSValue function, DOMWrapperWorld& isolatedWorld)
     : m_function(exec->vm(), function)
-    , m_isolatedWorld(isolatedWorld)
+    , m_isolatedWorld(&isolatedWorld)
 {
     // setTimeout(function, interval, arg0, arg1...).
     // Start at 2 to skip function and interval.
@@ -81,7 +81,7 @@ void ScheduledAction::execute(ScriptExecutionContext* context)
         execute(toDocument(context));
 #if ENABLE(WORKERS)
     else {
-        ASSERT(context->isWorkerGlobalScope());
+        ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerGlobalScope());
         execute(static_cast<WorkerGlobalScope*>(context));
     }
 #else
@@ -121,18 +121,18 @@ void ScheduledAction::executeFunctionInContext(JSGlobalObject* globalObject, JSV
 
 void ScheduledAction::execute(Document* document)
 {
-    JSDOMWindow* window = toJSDOMWindow(document->frame(), m_isolatedWorld.get());
+    JSDOMWindow* window = toJSDOMWindow(document->frame(), *m_isolatedWorld);
     if (!window)
         return;
 
-    RefPtr<Frame> frame = window->impl()->frame();
+    RefPtr<Frame> frame = window->impl().frame();
     if (!frame || !frame->script().canExecuteScripts(AboutToExecuteScript))
         return;
 
     if (m_function)
         executeFunctionInContext(window, window->shell(), document);
     else
-        frame->script().executeScriptInWorld(m_isolatedWorld.get(), m_code);
+        frame->script().executeScriptInWorld(*m_isolatedWorld, m_code);
 }
 
 #if ENABLE(WORKERS)

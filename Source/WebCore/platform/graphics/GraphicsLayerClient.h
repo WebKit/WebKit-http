@@ -88,7 +88,12 @@ public:
     // Page scale factor.
     virtual float pageScaleFactor() const { return 1; }
 
+    virtual float contentsScaleMultiplierForNewTiles(const GraphicsLayer*) const { return 1; }
+
     virtual bool isTrackingRepaints() const { return false; }
+
+    virtual bool shouldSkipLayerInDump(const GraphicsLayer*) const { return false; }
+    virtual bool shouldDumpPropertyForLayer(const GraphicsLayer*, const char*) const { return true; }
 
 #ifndef NDEBUG
     // RenderLayerBacking overrides this to verify that it is not

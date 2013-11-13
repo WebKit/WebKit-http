@@ -58,8 +58,8 @@ public:
     void requestTermination(DatabaseTaskSynchronizer* cleanupSync);
     bool terminationRequested(DatabaseTaskSynchronizer* taskSynchronizer = 0) const;
 
-    void scheduleTask(PassOwnPtr<DatabaseTask>);
-    void scheduleImmediateTask(PassOwnPtr<DatabaseTask>); // This just adds the task to the front of the queue - the caller needs to be extremely careful not to create deadlocks when waiting for completion.
+    void scheduleTask(std::unique_ptr<DatabaseTask>);
+    void scheduleImmediateTask(std::unique_ptr<DatabaseTask>); // This just adds the task to the front of the queue - the caller needs to be extremely careful not to create deadlocks when waiting for completion.
     void unscheduleDatabaseTasks(DatabaseBackend*);
 
     void recordDatabaseOpen(DatabaseBackend*);
@@ -82,7 +82,7 @@ private:
     MessageQueue<DatabaseTask> m_queue;
 
     // This set keeps track of the open databases that have been used on this thread.
-    typedef HashSet<RefPtr<DatabaseBackend> > DatabaseSet;
+    typedef HashSet<RefPtr<DatabaseBackend>> DatabaseSet;
     DatabaseSet m_openDatabaseSet;
 
     OwnPtr<SQLTransactionClient> m_transactionClient;

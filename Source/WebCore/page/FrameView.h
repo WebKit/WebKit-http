@@ -106,7 +106,7 @@ public:
     bool didFirstLayout() const;
     void layoutTimerFired(Timer<FrameView>*);
     void scheduleRelayout();
-    void scheduleRelayoutOfSubtree(RenderObject&);
+    void scheduleRelayoutOfSubtree(RenderElement&);
     void unscheduleRelayout();
     bool layoutPending() const;
     bool isInLayout() const { return m_inLayout; }
@@ -198,7 +198,6 @@ public:
     void scrollPositionChangedViaPlatformWidget();
     virtual void repaintFixedElementsAfterScrolling() OVERRIDE;
     virtual void updateFixedElementsAfterScrolling() OVERRIDE;
-    virtual bool shouldRubberBandInDirection(ScrollDirection) const OVERRIDE;
     virtual bool requestScrollPositionUpdate(const IntPoint&) OVERRIDE;
     virtual bool isRubberBandInProgress() const OVERRIDE;
     virtual IntPoint minimumScrollPosition() const OVERRIDE;
@@ -247,10 +246,6 @@ public:
 
     void updateLayerFlushThrottlingInAllFrames();
     void adjustTiledBackingCoverage();
-
-    void beginDisableRepaints();
-    void endDisableRepaints();
-    bool repaintsDisabled() { return m_disableRepaints > 0; }
 
 #if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
     void updateAnnotatedRegions();
@@ -406,6 +401,7 @@ public:
 #endif
 
     virtual bool isActive() const OVERRIDE;
+    virtual bool updatesScrollLayerPositionOnMainThread() const OVERRIDE;
 
 #if ENABLE(RUBBER_BANDING)
     GraphicsLayer* setWantsLayerForTopOverHangArea(bool) const;
@@ -427,13 +423,13 @@ public:
     bool visualUpdatesAllowedByClient() const { return m_visualUpdatesAllowedByClient; }
     void setVisualUpdatesAllowedByClient(bool);
 
-    void resumeAnimatingImages();
-    
     void setScrollPinningBehavior(ScrollPinningBehavior);
 
     void updateWidgetPositions();
     void didAddWidgetToRenderTree(Widget&);
     void willRemoveWidgetFromRenderTree(Widget&);
+
+    void addTrackedRepaintRect(const IntRect&);
 
 protected:
     virtual bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) OVERRIDE;
@@ -512,7 +508,7 @@ private:
 
     void updateScrollableAreaSet();
 
-    virtual void notifyPageThatContentAreaWillPaint() const;
+    virtual void notifyPageThatContentAreaWillPaint() const OVERRIDE;
 
     bool shouldUseLoadTimeDeferredRepaintDelay() const;
     void deferredRepaintTimerFired(Timer<FrameView>*);
@@ -566,7 +562,7 @@ private:
 
     Timer<FrameView> m_layoutTimer;
     bool m_delayedLayout;
-    RenderObject* m_layoutRoot;
+    RenderElement* m_layoutRoot;
     
     bool m_layoutSchedulingEnabled;
     bool m_inLayout;
@@ -603,8 +599,6 @@ private:
     Timer<FrameView> m_deferredRepaintTimer;
     double m_deferredRepaintDelay;
     double m_lastPaintTime;
-
-    unsigned m_disableRepaints;
 
     bool m_isTrackingRepaints; // Used for testing.
     Vector<IntRect> m_trackedRepaintRects;
@@ -694,20 +688,7 @@ inline void FrameView::incrementVisuallyNonEmptyPixelCount(const IntSize& size)
     updateIsVisuallyNonEmpty();
 }
 
-inline FrameView* toFrameView(Widget* widget)
-{
-    ASSERT(!widget || widget->isFrameView());
-    return static_cast<FrameView*>(widget);
-}
-
-inline const FrameView* toFrameView(const Widget* widget)
-{
-    ASSERT(!widget || widget->isFrameView());
-    return static_cast<const FrameView*>(widget);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toFrameView(const FrameView*);
+WIDGET_TYPE_CASTS(FrameView, isFrameView());
 
 } // namespace WebCore
 

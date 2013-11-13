@@ -57,25 +57,25 @@ WebKeyValueStorageManager::~WebKeyValueStorageManager()
 
 void WebKeyValueStorageManager::refWebContextSupplement()
 {
-    APIObject::ref();
+    API::Object::ref();
 }
 
 void WebKeyValueStorageManager::derefWebContextSupplement()
 {
-    APIObject::deref();
+    API::Object::deref();
 }
 
 static void didGetKeyValueStorageOrigins(const Vector<RefPtr<WebCore::SecurityOrigin>>& securityOrigins, void* context)
 {
     RefPtr<ArrayCallback> callback = adoptRef(static_cast<ArrayCallback*>(context));
 
-    Vector<RefPtr<APIObject>> webSecurityOrigins;
+    Vector<RefPtr<API::Object>> webSecurityOrigins;
     webSecurityOrigins.reserveInitialCapacity(securityOrigins.size());
 
     for (unsigned i = 0; i < securityOrigins.size(); ++i)
         webSecurityOrigins.uncheckedAppend(WebSecurityOrigin::create(securityOrigins[i]));
 
-    callback->performCallbackWithReturnValue(ImmutableArray::adopt(webSecurityOrigins).get());
+    callback->performCallbackWithReturnValue(ImmutableArray::create(std::move(webSecurityOrigins)).get());
 }
 
 void WebKeyValueStorageManager::getKeyValueStorageOrigins(PassRefPtr<ArrayCallback> prpCallback)

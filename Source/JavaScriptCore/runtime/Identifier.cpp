@@ -62,7 +62,7 @@ struct IdentifierASCIIStringTranslator {
     static void translate(StringImpl*& location, const LChar* c, unsigned hash)
     {
         size_t length = strlen(reinterpret_cast<const char*>(c));
-        location = StringImpl::createFromLiteral(reinterpret_cast<const char*>(c), length).leakRef();
+        location = &StringImpl::createFromLiteral(reinterpret_cast<const char*>(c), length).leakRef();
         location->setHash(hash);
     }
 };
@@ -81,10 +81,10 @@ struct IdentifierLCharFromUCharTranslator {
     static void translate(StringImpl*& location, const CharBuffer<UChar>& buf, unsigned hash)
     {
         LChar* d;
-        StringImpl* r = StringImpl::createUninitialized(buf.length, d).leakRef();
+        StringImpl& r = StringImpl::createUninitialized(buf.length, d).leakRef();
         WTF::copyLCharsFromUCharSource(d, buf.s, buf.length);
-        r->setHash(hash);
-        location = r; 
+        r.setHash(hash);
+        location = &r;
     }
 };
 
@@ -132,6 +132,8 @@ PassRefPtr<StringImpl> Identifier::add8(VM* vm, const UChar* s, int length)
 
 PassRefPtr<StringImpl> Identifier::addSlowCase(VM* vm, StringImpl* r)
 {
+    if (r->isEmptyUnique())
+        return r;
     ASSERT(!r->isIdentifier());
     // The empty & null strings are static singletons, and static strings are handled
     // in ::add() in the header, so we should never get here with a zero length string.

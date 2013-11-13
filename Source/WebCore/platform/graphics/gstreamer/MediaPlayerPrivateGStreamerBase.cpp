@@ -27,8 +27,6 @@
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
 #include "ColorSpace.h"
-#include "FullscreenVideoControllerGStreamer.h"
-#include "GStreamerGWorld.h"
 #include "GStreamerUtilities.h"
 #include "GStreamerVersioning.h"
 #include "GraphicsContext.h"
@@ -36,13 +34,11 @@
 #include "ImageGStreamer.h"
 #include "ImageOrientation.h"
 #include "IntRect.h"
-#include "Logging.h"
 #include "MediaPlayer.h"
 #include "NotImplemented.h"
 #include "VideoSinkGStreamer.h"
 #include "WebKitWebSourceGStreamer.h"
 #include <gst/gst.h>
-#include <gst/video/video.h>
 #include <wtf/text/CString.h>
 
 #ifdef GST_API_VERSION_1
@@ -157,11 +153,6 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
         g_signal_handler_disconnect(m_volumeElement.get(), m_muteSignalHandler);
         m_muteSignalHandler = 0;
     }
-
-#if USE(NATIVE_FULLSCREEN_VIDEO)
-    if (m_fullscreenVideoController)
-        exitFullscreen();
-#endif
 }
 
 // Returns the size of the video
@@ -267,7 +258,7 @@ void MediaPlayerPrivateGStreamerBase::volumeChanged()
 {
     if (m_volumeTimerHandler)
         g_source_remove(m_volumeTimerHandler);
-    m_volumeTimerHandler = g_timeout_add(0, reinterpret_cast<GSourceFunc>(mediaPlayerPrivateVolumeChangeTimeoutCallback), this);
+    m_volumeTimerHandler = g_idle_add_full(G_PRIORITY_DEFAULT, reinterpret_cast<GSourceFunc>(mediaPlayerPrivateVolumeChangeTimeoutCallback), this, 0);
 }
 
 MediaPlayer::NetworkState MediaPlayerPrivateGStreamerBase::networkState() const
@@ -319,7 +310,7 @@ void MediaPlayerPrivateGStreamerBase::muteChanged()
 {
     if (m_muteTimerHandler)
         g_source_remove(m_muteTimerHandler);
-    m_muteTimerHandler = g_timeout_add(0, reinterpret_cast<GSourceFunc>(mediaPlayerPrivateMuteChangeTimeoutCallback), this);
+    m_muteTimerHandler = g_idle_add_full(G_PRIORITY_DEFAULT, reinterpret_cast<GSourceFunc>(mediaPlayerPrivateMuteChangeTimeoutCallback), this, 0);
 }
 
 
@@ -465,24 +456,6 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper* textur
 }
 #endif
 
-#if USE(NATIVE_FULLSCREEN_VIDEO)
-void MediaPlayerPrivateGStreamerBase::enterFullscreen()
-{
-    ASSERT(!m_fullscreenVideoController);
-    m_fullscreenVideoController = FullscreenVideoControllerGStreamer::create(this);
-    if (m_fullscreenVideoController)
-        m_fullscreenVideoController->enterFullscreen();
-}
-
-void MediaPlayerPrivateGStreamerBase::exitFullscreen()
-{
-    if (!m_fullscreenVideoController)
-        return;
-    m_fullscreenVideoController->exitFullscreen();
-    m_fullscreenVideoController.release();
-}
-#endif
-
 bool MediaPlayerPrivateGStreamerBase::supportsFullscreen() const
 {
     return true;
@@ -490,14 +463,7 @@ bool MediaPlayerPrivateGStreamerBase::supportsFullscreen() const
 
 PlatformMedia MediaPlayerPrivateGStreamerBase::platformMedia() const
 {
-#if USE(NATIVE_FULLSCREEN_VIDEO)
-    PlatformMedia p;
-    p.type = PlatformMedia::GStreamerGWorldType;
-    p.media.gstreamerGWorld = m_gstGWorld.get();
-    return p;
-#else
     return NoPlatformMedia;
-#endif
 }
 
 MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamerBase::movieLoadType() const
@@ -516,51 +482,24 @@ GRefPtr<GstCaps> MediaPlayerPrivateGStreamerBase::currentVideoSinkCaps() const
     if (!m_webkitVideoSink)
         return 0;
 
-    GstCaps* currentCaps = 0;
-    g_object_get(G_OBJECT(m_webkitVideoSink.get()), "current-caps", &currentCaps, NULL);
-    return adoptGRef(currentCaps);
+    GRefPtr<GstCaps> currentCaps;
+    g_object_get(G_OBJECT(m_webkitVideoSink.get()), "current-caps", &currentCaps.outPtr(), NULL);
+    return currentCaps;
 }
 
-// This function creates and initializes some internal variables, and returns a
-// pointer to the element that should receive the data flow first
-GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink(GstElement* pipeline)
+void MediaPlayerPrivateGStreamerBase::createVideoSink(GstElement* pipeline)
 {
     if (!initializeGStreamer())
-        return 0;
+        return;
 
-#if USE(NATIVE_FULLSCREEN_VIDEO)
-    m_gstGWorld = GStreamerGWorld::createGWorld(pipeline);
-    m_webkitVideoSink = webkitVideoSinkNew(m_gstGWorld.get());
-#else
     UNUSED_PARAM(pipeline);
     m_webkitVideoSink = webkitVideoSinkNew();
-#endif
 
     m_repaintHandler = g_signal_connect(m_webkitVideoSink.get(), "repaint-requested", G_CALLBACK(mediaPlayerPrivateRepaintCallback), this);
 
-#if USE(NATIVE_FULLSCREEN_VIDEO)
-    // Build a new video sink consisting of a bin containing a tee
-    // (meant to distribute data to multiple video sinks) and our
-    // internal video sink. For fullscreen we create an autovideosink
-    // and initially block the data flow towards it and configure it
+    m_videoSinkBin = gst_bin_new(nullptr);
 
-    m_videoSinkBin = gst_bin_new("video-sink");
-
-    GstElement* videoTee = gst_element_factory_make("tee", "videoTee");
-    GstElement* queue = gst_element_factory_make("queue", 0);
-
-#ifdef GST_API_VERSION_1
-    GRefPtr<GstPad> sinkPad = adoptGRef(gst_element_get_static_pad(videoTee, "sink"));
-    GST_OBJECT_FLAG_SET(GST_OBJECT(sinkPad.get()), GST_PAD_FLAG_PROXY_ALLOCATION);
-#endif
-
-    gst_bin_add_many(GST_BIN(m_videoSinkBin.get()), videoTee, queue, NULL);
-
-    // Link a new src pad from tee to queue1.
-    gst_element_link_pads_full(videoTee, 0, queue, "sink", GST_PAD_LINK_CHECK_NOTHING);
-#endif
-
-    GstElement* actualVideoSink = 0;
+    GstElement* videoSink = nullptr;
     m_fpsSink = gst_element_factory_make("fpsdisplaysink", "sink");
     if (m_fpsSink) {
         // The verbose property has been added in -bad 0.10.22. Making
@@ -568,51 +507,37 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink(GstElement* pipelin
         // fpsdiplaysink to spit data on stdout.
         GstElementFactory* factory = GST_ELEMENT_FACTORY(GST_ELEMENT_GET_CLASS(m_fpsSink)->elementfactory);
         if (gst_plugin_feature_check_version(GST_PLUGIN_FEATURE(factory), 0, 10, 22)) {
-            g_object_set(m_fpsSink, "silent", TRUE , NULL);
+            g_object_set(m_fpsSink, "silent", TRUE , nullptr);
 
             // Turn off text overlay unless logging is enabled.
 #if LOG_DISABLED
-            g_object_set(m_fpsSink, "text-overlay", FALSE , NULL);
+            g_object_set(m_fpsSink, "text-overlay", FALSE , nullptr);
 #else
             WTFLogChannel* channel = logChannelByName("Media");
             if (channel->state != WTFLogChannelOn)
-                g_object_set(m_fpsSink, "text-overlay", FALSE , NULL);
+                g_object_set(m_fpsSink, "text-overlay", FALSE , nullptr);
 #endif // LOG_DISABLED
 
             if (g_object_class_find_property(G_OBJECT_GET_CLASS(m_fpsSink), "video-sink")) {
-                g_object_set(m_fpsSink, "video-sink", m_webkitVideoSink.get(), NULL);
-#if USE(NATIVE_FULLSCREEN_VIDEO)
+                g_object_set(m_fpsSink, "video-sink", m_webkitVideoSink.get(), nullptr);
                 gst_bin_add(GST_BIN(m_videoSinkBin.get()), m_fpsSink);
-#endif
-                actualVideoSink = m_fpsSink;
+                videoSink = m_fpsSink;
             } else
-                m_fpsSink = 0;
+                m_fpsSink = nullptr;
         } else
-            m_fpsSink = 0;
+            m_fpsSink = nullptr;
     }
 
     if (!m_fpsSink) {
-#if USE(NATIVE_FULLSCREEN_VIDEO)
         gst_bin_add(GST_BIN(m_videoSinkBin.get()), m_webkitVideoSink.get());
-#endif
-        actualVideoSink = m_webkitVideoSink.get();
+        videoSink = m_webkitVideoSink.get();
     }
 
-    ASSERT(actualVideoSink);
+    ASSERT(videoSink);
 
-#if USE(NATIVE_FULLSCREEN_VIDEO)
-    // Faster elements linking.
-    gst_element_link_pads_full(queue, "src", actualVideoSink, "sink", GST_PAD_LINK_CHECK_NOTHING);
-
-    // Add a ghostpad to the bin so it can proxy to tee.
-    GRefPtr<GstPad> pad = adoptGRef(gst_element_get_static_pad(videoTee, "sink"));
+    GstElement* firstChild = videoSink;
+    GRefPtr<GstPad> pad = adoptGRef(gst_element_get_static_pad(firstChild, "sink"));
     gst_element_add_pad(m_videoSinkBin.get(), gst_ghost_pad_new("sink", pad.get()));
-
-    // Set the bin as video sink of playbin.
-    return m_videoSinkBin.get();
-#else
-    return actualVideoSink;
-#endif
 }
 
 void MediaPlayerPrivateGStreamerBase::setStreamVolumeElement(GstStreamVolume* volume)

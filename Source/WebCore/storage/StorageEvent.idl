@@ -24,7 +24,7 @@
  */
 
 [
-    ConstructorTemplate=Event
+    ConstructorTemplate=Event,
 ] interface StorageEvent : Event {
     [InitializedByEventConstructor] readonly attribute DOMString key;
     [InitializedByEventConstructor, TreatReturnedNullStringAs=Null] readonly attribute DOMString oldValue;

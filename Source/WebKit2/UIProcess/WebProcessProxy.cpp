@@ -41,10 +41,10 @@
 #include "WebPluginSiteDataManager.h"
 #include "WebProcessMessages.h"
 #include "WebProcessProxyMessages.h"
-#include <WebCore/URL.h>
-#include <WebCore/RunLoop.h>
 #include <WebCore/SuddenTermination.h>
+#include <WebCore/URL.h>
 #include <stdio.h>
+#include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -318,6 +318,8 @@ void WebProcessProxy::getPlugins(bool refresh, Vector<PluginInfo>& plugins, Vect
         plugins.append(PDFPlugin::pluginInfo());
         applicationPlugins.append(PDFPlugin::pluginInfo());
     }
+#else
+    UNUSED_PARAM(applicationPlugins);
 #endif
 }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
@@ -335,6 +337,13 @@ void WebProcessProxy::getNetworkProcessConnection(PassRefPtr<Messages::WebProces
     m_context->getNetworkProcessConnection(reply);
 }
 #endif // ENABLE(NETWORK_PROCESS)
+
+#if ENABLE(DATABASE_PROCESS)
+void WebProcessProxy::getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply> reply)
+{
+    m_context->getDatabaseProcessConnection(reply);
+}
+#endif // ENABLE(DATABASE_PROCESS)
 
 void WebProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
 {

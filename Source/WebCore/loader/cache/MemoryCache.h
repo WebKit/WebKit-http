@@ -82,7 +82,7 @@ public:
 
 #if ENABLE(CACHE_PARTITIONING)
     typedef HashMap<String, CachedResource*> CachedResourceItem;
-    typedef HashMap<String, OwnPtr<CachedResourceItem> > CachedResourceMap;
+    typedef HashMap<String, OwnPtr<CachedResourceItem>> CachedResourceMap;
 #else
     typedef HashMap<String, CachedResource*> CachedResourceMap;
 #endif
@@ -100,7 +100,12 @@ public:
         int decodedSize;
         int purgeableSize;
         int purgedSize;
+#if ENABLE(DISK_IMAGE_CACHE)
+        int mappedSize;
+        TypeStatistic() : count(0), size(0), liveSize(0), decodedSize(0), purgeableSize(0), purgedSize(0), mappedSize(0) { }
+#else
         TypeStatistic() : count(0), size(0), liveSize(0), decodedSize(0), purgeableSize(0), purgedSize(0) { }
+#endif
         void addResource(CachedResource*);
     };
     
@@ -160,6 +165,10 @@ public:
 
     static bool shouldMakeResourcePurgeableOnEviction();
 
+#if ENABLE(DISK_IMAGE_CACHE)
+    void flushCachedImagesToDisk(); // Flush encoded data from resources still referenced by web pages.
+#endif
+
     static void removeUrlFromCache(ScriptExecutionContext*, const String& urlString);
     static void removeRequestFromCache(ScriptExecutionContext*, const ResourceRequest&);
 
@@ -168,7 +177,7 @@ public:
     
     void resourceAccessed(CachedResource*);
 
-    typedef HashSet<RefPtr<SecurityOrigin> > SecurityOriginSet;
+    typedef HashSet<RefPtr<SecurityOrigin>> SecurityOriginSet;
     void removeResourcesWithOrigin(SecurityOrigin*);
     void getOriginsWithCache(SecurityOriginSet& origins);
 

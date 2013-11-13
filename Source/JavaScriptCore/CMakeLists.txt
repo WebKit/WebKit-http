@@ -46,10 +46,13 @@ set(JavaScriptCore_SOURCES
 
     bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
+    bytecode/BytecodeBasicBlock.cpp
+    bytecode/BytecodeLivenessAnalysis.cpp
     bytecode/CallLinkInfo.cpp
     bytecode/CallLinkStatus.cpp
     bytecode/CodeBlock.cpp
     bytecode/CodeBlockHash.cpp
+    bytecode/CodeBlockJettisoningWatchpoint.cpp
     bytecode/CodeOrigin.cpp
     bytecode/CodeType.cpp
     bytecode/DFGExitProfile.cpp
@@ -64,6 +67,7 @@ set(JavaScriptCore_SOURCES
     bytecode/Opcode.cpp
     bytecode/PolymorphicPutByIdList.cpp
     bytecode/PreciseJumpTargets.cpp
+    bytecode/ProfiledCodeBlockJettisoningWatchpoint.cpp
     bytecode/PutByIdStatus.cpp
     bytecode/ReduceWhitespace.cpp
     bytecode/SamplingTool.cpp
@@ -121,11 +125,14 @@ set(JavaScriptCore_SOURCES
     dfg/DFGFixupPhase.cpp
     dfg/DFGFlushFormat.cpp
     dfg/DFGFlushLivenessAnalysisPhase.cpp
+    dfg/DFGFlushedAt.cpp
     dfg/DFGGraph.cpp
     dfg/DFGInPlaceAbstractState.cpp
+    dfg/DFGInvalidationPointInjectionPhase.cpp
     dfg/DFGJITCode.cpp
     dfg/DFGJITCompiler.cpp
     dfg/DFGJITFinalizer.cpp
+    dfg/DFGJumpReplacement.cpp
     dfg/DFGLICMPhase.cpp
     dfg/DFGLazyJSValue.cpp
     dfg/DFGLivenessAnalysisPhase.cpp
@@ -155,6 +162,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGSpeculativeJIT.cpp
     dfg/DFGSpeculativeJIT32_64.cpp
     dfg/DFGSpeculativeJIT64.cpp
+    dfg/DFGStackLayoutPhase.cpp
     dfg/DFGThunks.cpp
     dfg/DFGTierUpCheckInjectionPhase.cpp
     dfg/DFGTypeCheckHoistingPhase.cpp
@@ -166,6 +174,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGVariableEvent.cpp
     dfg/DFGVariableEventStream.cpp
     dfg/DFGVirtualRegisterAllocationPhase.cpp
+    dfg/DFGWatchpointCollectionPhase.cpp
     dfg/DFGWorklist.cpp
 
     disassembler/ARMv7Disassembler.cpp
@@ -179,6 +188,7 @@ set(JavaScriptCore_SOURCES
     heap/ConservativeRoots.cpp
     heap/CopiedSpace.cpp
     heap/CopyVisitor.cpp
+    heap/DeferGC.cpp
     heap/GCThread.cpp
     heap/GCThreadSharedData.cpp
     heap/HandleSet.cpp
@@ -223,6 +233,7 @@ set(JavaScriptCore_SOURCES
     jit/JITCode.cpp
     jit/JITDisassembler.cpp
     jit/JITExceptions.cpp
+    jit/JITInlineCacheGenerator.cpp
     jit/JITOpcodes.cpp
     jit/JITOpcodes32_64.cpp
     jit/JITOperations.cpp
@@ -232,8 +243,9 @@ set(JavaScriptCore_SOURCES
     jit/JITStubs.cpp
     jit/JITThunks.cpp
     jit/JITToDFGDeferredCompilationCallback.cpp
-    jit/JumpReplacementWatchpoint.cpp
+    jit/RegisterSet.cpp
     jit/Repatch.cpp
+    jit/TempRegisterSet.cpp
     jit/ThunkGenerators.cpp
 
     parser/Lexer.cpp
@@ -263,9 +275,13 @@ set(JavaScriptCore_SOURCES
 
     runtime/ArgList.cpp
     runtime/Arguments.cpp
+    runtime/ArgumentsIteratorConstructor.cpp
+    runtime/ArgumentsIteratorPrototype.cpp
     runtime/ArrayBuffer.cpp
     runtime/ArrayBufferView.cpp
     runtime/ArrayConstructor.cpp
+    runtime/ArrayIteratorConstructor.cpp
+    runtime/ArrayIteratorPrototype.cpp
     runtime/ArrayPrototype.cpp
     runtime/BooleanConstructor.cpp
     runtime/BooleanObject.cpp
@@ -304,11 +320,13 @@ set(JavaScriptCore_SOURCES
     runtime/InternalFunction.cpp
     runtime/JSAPIValueWrapper.cpp
     runtime/JSActivation.cpp
+    runtime/JSArgumentsIterator.cpp
     runtime/JSArray.cpp
     runtime/JSArrayBuffer.cpp
     runtime/JSArrayBufferConstructor.cpp
     runtime/JSArrayBufferPrototype.cpp
     runtime/JSArrayBufferView.cpp
+    runtime/JSArrayIterator.cpp
     runtime/JSBoundFunction.cpp
     runtime/JSCJSValue.cpp
     runtime/JSCell.cpp
@@ -321,6 +339,7 @@ set(JavaScriptCore_SOURCES
     runtime/JSGlobalObjectFunctions.cpp
     runtime/JSLock.cpp
     runtime/JSMap.cpp
+    runtime/JSMapIterator.cpp
     runtime/JSNameScope.cpp
     runtime/JSNotAnObject.cpp
     runtime/JSONObject.cpp
@@ -337,6 +356,7 @@ set(JavaScriptCore_SOURCES
     runtime/JSScope.cpp
     runtime/JSSegmentedVariableObject.cpp
     runtime/JSSet.cpp
+    runtime/JSSetIterator.cpp
     runtime/JSStaticScopeObject.cpp
     runtime/JSString.cpp
     runtime/JSStringJoiner.cpp
@@ -352,6 +372,8 @@ set(JavaScriptCore_SOURCES
     runtime/Lookup.cpp
     runtime/MapConstructor.cpp
     runtime/MapData.cpp
+    runtime/MapIteratorConstructor.cpp
+    runtime/MapIteratorPrototype.cpp
     runtime/MapPrototype.cpp
     runtime/MathObject.cpp
     runtime/MemoryStatistics.cpp
@@ -381,6 +403,8 @@ set(JavaScriptCore_SOURCES
     runtime/RegExpPrototype.cpp
     runtime/SamplingCounter.cpp
     runtime/SetConstructor.cpp
+    runtime/SetIteratorConstructor.cpp
+    runtime/SetIteratorPrototype.cpp
     runtime/SetPrototype.cpp
     runtime/SimpleTypedArrayController.cpp
     runtime/SmallStrings.cpp
@@ -635,6 +659,7 @@ if (WTF_CPU_ARM)
         list(APPEND JavaScriptCore_SOURCES ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.obj)
     endif ()
 elseif (WTF_CPU_MIPS)
+elseif (WTF_CPU_SH4)
 elseif (WTF_CPU_X86)
     list(APPEND JavaScriptCore_SOURCES
         assembler/MacroAssemblerX86Common.cpp

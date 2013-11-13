@@ -38,6 +38,7 @@
 
 namespace WebCore {
 
+class MediaDescription;
 class VideoTrack;
 
 class VideoTrackClient {
@@ -53,9 +54,6 @@ public:
         return adoptRef(new VideoTrack(client, trackPrivate));
     }
     virtual ~VideoTrack();
-
-    AtomicString id() const { return m_id; }
-    void setId(const AtomicString& id) { m_id = id; }
 
     static const AtomicString& alternativeKeyword();
     static const AtomicString& captionsKeyword();
@@ -73,14 +71,27 @@ public:
 
     size_t inbandTrackIndex();
 
+#if ENABLE(MEDIA_SOURCE)
+    virtual void setKind(const AtomicString&) OVERRIDE;
+    virtual void setLanguage(const AtomicString&) OVERRIDE;
+#endif
+
+    const MediaDescription& description() const;
+
 protected:
     VideoTrack(VideoTrackClient*, PassRefPtr<VideoTrackPrivate> privateTrack);
 
 private:
     virtual bool isValidKind(const AtomicString&) const OVERRIDE;
-    virtual void willRemoveVideoTrackPrivate(VideoTrackPrivate*) OVERRIDE;
 
-    AtomicString m_id;
+    virtual void selectedChanged(VideoTrackPrivate*, bool) OVERRIDE;
+    virtual void idChanged(TrackPrivateBase*, const String&) OVERRIDE;
+    virtual void labelChanged(TrackPrivateBase*, const String&) OVERRIDE;
+    virtual void languageChanged(TrackPrivateBase*, const String&) OVERRIDE;
+    virtual void willRemove(TrackPrivateBase*) OVERRIDE;
+
+    virtual bool enabled() const OVERRIDE { return selected(); }
+
     bool m_selected;
     VideoTrackClient* m_client;
 
@@ -89,7 +100,7 @@ private:
 
 inline VideoTrack* toVideoTrack(TrackBase* track)
 {
-    ASSERT(track->type() == TrackBase::VideoTrack);
+    ASSERT_WITH_SECURITY_IMPLICATION(track->type() == TrackBase::VideoTrack);
     return static_cast<VideoTrack*>(track);
 }
 

@@ -44,6 +44,7 @@ VPATH = \
     $(WebCore)/bindings/generic \
     $(WebCore)/bindings/js \
     $(WebCore)/bindings/objc \
+    $(WebCore)/crypto \
     $(WebCore)/css \
     $(WebCore)/dom \
     $(WebCore)/editing \
@@ -92,21 +93,29 @@ BINDING_IDLS = \
     $(WebCore)/Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl \
     $(WebCore)/Modules/indieui/UIRequestEvent.idl \
     $(WebCore)/Modules/mediacontrols/MediaControlsHost.idl \
+	$(WebCore)/Modules/mediasource/DOMURLMediaSource.idl \
+	$(WebCore)/Modules/mediasource/AudioTrackMediaSource.idl \
 	$(WebCore)/Modules/mediasource/MediaSource.idl \
 	$(WebCore)/Modules/mediasource/SourceBuffer.idl \
 	$(WebCore)/Modules/mediasource/SourceBufferList.idl \
-	$(WebCore)/Modules/mediasource/URLMediaSource.idl \
-    $(WebCore)/Modules/mediasource/WebKitMediaSource.idl \
-    $(WebCore)/Modules/mediasource/WebKitSourceBuffer.idl \
-    $(WebCore)/Modules/mediasource/WebKitSourceBufferList.idl \
     $(WebCore)/Modules/mediasource/SourceBuffer.idl \
     $(WebCore)/Modules/mediasource/SourceBufferList.idl \
+	$(WebCore)/Modules/mediasource/TextTrackMediaSource.idl \
+	$(WebCore)/Modules/mediasource/VideoTrackMediaSource.idl \
+	$(WebCore)/Modules/mediastream/AllVideoCapabilities.idl \
+	$(WebCore)/Modules/mediastream/AllAudioCapabilities.idl \
 	$(WebCore)/Modules/mediastream/AudioStreamTrack.idl \
+    $(WebCore)/Modules/mediastream/CapabilityRange.idl \
+    $(WebCore)/Modules/mediastream/MediaSourceStates.idl \
 	$(WebCore)/Modules/mediastream/MediaStream.idl \
+	$(WebCore)/Modules/mediastream/MediaStreamCapabilities.idl \
     $(WebCore)/Modules/mediastream/MediaStreamEvent.idl \
     $(WebCore)/Modules/mediastream/MediaStreamTrack.idl \
     $(WebCore)/Modules/mediastream/MediaStreamTrackEvent.idl \
     $(WebCore)/Modules/mediastream/MediaStreamTrackSourcesCallback.idl \
+    $(WebCore)/Modules/mediastream/MediaTrackConstraint.idl \
+    $(WebCore)/Modules/mediastream/MediaTrackConstraints.idl \
+    $(WebCore)/Modules/mediastream/MediaTrackConstraintSet.idl \
     $(WebCore)/Modules/mediastream/NavigatorMediaStream.idl \
     $(WebCore)/Modules/mediastream/NavigatorUserMediaError.idl \
     $(WebCore)/Modules/mediastream/NavigatorUserMediaErrorCallback.idl \
@@ -189,6 +198,9 @@ BINDING_IDLS = \
     $(WebCore)/Modules/webdatabase/WorkerGlobalScopeWebDatabase.idl \
     $(WebCore)/Modules/websockets/CloseEvent.idl \
     $(WebCore)/Modules/websockets/WebSocket.idl \
+    $(WebCore)/crypto/CryptoKey.idl \
+    $(WebCore)/crypto/CryptoKeyPair.idl \
+    $(WebCore)/crypto/SubtleCrypto.idl \
     $(WebCore)/css/CSSCharsetRule.idl \
     $(WebCore)/css/CSSFontFaceLoadEvent.idl \
     $(WebCore)/css/CSSFontFaceRule.idl \
@@ -237,7 +249,6 @@ BINDING_IDLS = \
     $(WebCore)/dom/Clipboard.idl \
     $(WebCore)/dom/Comment.idl \
     $(WebCore)/dom/CompositionEvent.idl \
-    $(WebCore)/dom/CustomElementConstructor.idl \
     $(WebCore)/dom/CustomEvent.idl \
     $(WebCore)/dom/DOMCoreException.idl \
     $(WebCore)/dom/DOMError.idl \
@@ -829,9 +840,9 @@ ifeq ($(findstring ENABLE_FULLSCREEN_API,$(FEATURE_DEFINES)), ENABLE_FULLSCREEN_
     USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/css/fullscreen.css
 endif
 
-# ifeq ($(findstring ENABLE_MEDIA_CONTROLS_SCRIPT,$(FEATURE_DEFINES)), ENABLE_MEDIA_CONTROLS_SCRIPT)
+ifeq ($(findstring ENABLE_MEDIA_CONTROLS_SCRIPT,$(FEATURE_DEFINES)), ENABLE_MEDIA_CONTROLS_SCRIPT)
 	USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/Modules/mediacontrols/mediaControlsApple.css
-# endif
+endif
 
 UserAgentStyleSheets.h : css/make-css-file-arrays.pl bindings/scripts/preprocessor.pm $(USER_AGENT_STYLE_SHEETS) $(PLATFORM_FEATURE_DEFINES)
 	perl -I$(WebCore)/bindings/scripts $< --defines "$(FEATURE_DEFINES)" $@ UserAgentStyleSheetsData.cpp $(USER_AGENT_STYLE_SHEETS)
@@ -1045,14 +1056,9 @@ JS%.h : %.idl $(JS_BINDINGS_SCRIPTS) $(IDL_ATTRIBUTES_FILE) $(WINDOW_CONSTRUCTOR
 
 # Inspector interfaces generator
 
-all : InspectorProtocolVersion.h
-
-InspectorProtocolVersion.h : Inspector.json inspector/generate-inspector-protocol-version
-	python $(WebCore)/inspector/generate-inspector-protocol-version -o InspectorProtocolVersion.h $(WebCore)/inspector/Inspector.json
-
 all : InspectorFrontend.h
 
-INSPECTOR_GENERATOR_SCRIPTS = inspector/CodeGeneratorInspector.py
+INSPECTOR_GENERATOR_SCRIPTS = inspector/CodeGeneratorInspector.py inspector/CodeGeneratorInspectorStrings.py
 
 InspectorFrontend.h : Inspector.json $(INSPECTOR_GENERATOR_SCRIPTS)
 	python $(WebCore)/inspector/CodeGeneratorInspector.py $(WebCore)/inspector/Inspector.json --output_h_dir . --output_cpp_dir . --output_js_dir .

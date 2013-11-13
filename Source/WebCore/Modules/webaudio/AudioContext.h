@@ -76,7 +76,7 @@ class PeriodicWave;
 class AudioContext : public ActiveDOMObject, public ThreadSafeRefCounted<AudioContext>, public EventTargetWithInlineData, public MediaCanStartListener {
 public:
     // Create an AudioContext for rendering to the audio hardware.
-    static PassRefPtr<AudioContext> create(Document*, ExceptionCode&);
+    static PassRefPtr<AudioContext> create(Document&, ExceptionCode&);
 
     // Create an AudioContext for offline (non-realtime) rendering.
     static PassRefPtr<AudioContext> createOfflineContext(Document*, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate, ExceptionCode&);
@@ -93,7 +93,7 @@ public:
     HRTFDatabaseLoader* hrtfDatabaseLoader() const { return m_hrtfDatabaseLoader.get(); }
 
     // Document notification
-    virtual void stop();
+    virtual void stop() OVERRIDE;
 
     Document* document() const; // ASSERTs if document no longer exists.
     bool hasDocument();
@@ -265,8 +265,8 @@ public:
     void removeBehaviorRestriction(BehaviorRestrictions restriction) { m_restrictions &= ~restriction; }
 
 protected:
-    explicit AudioContext(Document*);
-    AudioContext(Document*, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
+    explicit AudioContext(Document&);
+    AudioContext(Document&, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
     
     static bool isSampleRateRangeGood(float sampleRate);
     
@@ -350,8 +350,8 @@ private:
     RefPtr<HRTFDatabaseLoader> m_hrtfDatabaseLoader;
 
     // EventTarget
-    virtual void refEventTarget() { ref(); }
-    virtual void derefEventTarget() { deref(); }
+    virtual void refEventTarget() OVERRIDE { ref(); }
+    virtual void derefEventTarget() OVERRIDE { deref(); }
 
     RefPtr<AudioBuffer> m_renderTarget;
     

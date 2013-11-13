@@ -1,4 +1,4 @@
-// Copyright (C) 2009, 2010 Apple Inc. All rights reserved.
+// Copyright (C) 2009, 2010, 2013 Apple Inc. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -40,7 +40,10 @@ GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 GCC_ENABLE_OBJC_GC = $(GCC_ENABLE_OBJC_GC_$(PLATFORM_NAME));
 GCC_ENABLE_OBJC_GC_iphoneos = NO;
 GCC_ENABLE_OBJC_GC_iphonesimulator = NO;
-GCC_ENABLE_OBJC_GC_macosx = supported;
+GCC_ENABLE_OBJC_GC_macosx = $(GCC_ENABLE_OBJC_GC_macosx_$(MAC_OS_X_VERSION_MAJOR));
+GCC_ENABLE_OBJC_GC_macosx_1080 = supported;
+GCC_ENABLE_OBJC_GC_macosx_1090 = supported;
+GCC_ENABLE_OBJC_GC_macosx_101000 = NO;
 GCC_ENABLE_SYMBOL_SEPARATION = NO;
 GCC_FAST_OBJC_DISPATCH = YES;
 GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
@@ -95,19 +98,12 @@ DEAD_CODE_STRIPPING = YES;
 
 SECTORDER_FLAGS = -Wl,-order_file,mac/WebKit.order;
 
-TARGETING_SAME_OS_X_VERSION = $(TARGETING_SAME_OS_X_VERSION_$(MAC_OS_X_VERSION_MAJOR)_$(TARGET_MAC_OS_X_VERSION_MAJOR));
-TARGETING_SAME_OS_X_VERSION_1070_1070 = YES;
-TARGETING_SAME_OS_X_VERSION_1080_1080 = YES;
-TARGETING_SAME_OS_X_VERSION_1090_1090 = YES;
-
-// Don't build against an SDK unless we're targeting an older OS version.
-SDKROOT = $(SDKROOT_TARGETING_SAME_OS_X_VERSION_$(TARGETING_SAME_OS_X_VERSION));
-SDKROOT_TARGETING_SAME_OS_X_VERSION_ = macosx;
+SDKROOT = macosx.internal;
 
 TOOLCHAINS = $(TOOLCHAINS_$(PLATFORM_NAME));
 TOOLCHAINS_iphoneos = $(TOOLCHAINS);
 TOOLCHAINS_iphonesimulator = $(TOOLCHAINS);
 TOOLCHAINS_macosx = $(TOOLCHAINS_macosx_$(MAC_OS_X_VERSION_MAJOR));
-TOOLCHAINS_macosx_1070 = $(TOOLCHAINS);
 TOOLCHAINS_macosx_1080 = default;
 TOOLCHAINS_macosx_1090 = $(TOOLCHAINS);
+TOOLCHAINS_macosx_101000 = $(TOOLCHAINS_macosx_1090);

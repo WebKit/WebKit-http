@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-ScrollingTreeNode::ScrollingTreeNode(ScrollingTree* scrollingTree, ScrollingNodeID nodeID)
+ScrollingTreeNode::ScrollingTreeNode(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
     : m_scrollingTree(scrollingTree)
     , m_nodeID(nodeID)
     , m_parent(0)
@@ -48,7 +48,7 @@ void ScrollingTreeNode::appendChild(PassOwnPtr<ScrollingTreeNode> childNode)
     childNode->setParent(this);
 
     if (!m_children)
-        m_children = adoptPtr(new Vector<OwnPtr<ScrollingTreeNode> >);
+        m_children = adoptPtr(new Vector<OwnPtr<ScrollingTreeNode>>);
 
     m_children->append(childNode);
 }

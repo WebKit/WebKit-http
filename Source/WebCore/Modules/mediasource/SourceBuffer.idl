@@ -33,7 +33,8 @@
     NoInterfaceObject,
     ActiveDOMObject,
     EventTarget,
-    JSGenerateToNativeObject
+    JSGenerateToJSObject,
+    JSGenerateToNativeObject,
 ] interface SourceBuffer : EventTarget {
 
     readonly attribute boolean updating;
@@ -50,5 +51,10 @@
 
     // Abort the current segment append sequence.
     [RaisesException] void abort();
+    
+    // Track support
+    [Conditional=VIDEO_TRACK] readonly attribute AudioTrackList audioTracks;
+    [Conditional=VIDEO_TRACK] readonly attribute VideoTrackList videoTracks;
+    [Conditional=VIDEO_TRACK] readonly attribute TextTrackList textTracks;
 };
 

@@ -58,7 +58,6 @@ class InspectorClient;
 class InspectorFrontend;
 class InspectorObject;
 class InspectorPageAgent;
-class InspectorState;
 class InstrumentingAgents;
 class URL;
 class NetworkResourcesData;
@@ -80,16 +79,15 @@ typedef String ErrorString;
 
 class InspectorResourceAgent : public InspectorBaseAgent<InspectorResourceAgent>, public InspectorBackendDispatcher::NetworkCommandHandler {
 public:
-    static PassOwnPtr<InspectorResourceAgent> create(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InspectorClient* client, InspectorCompositeState* state)
+    static PassOwnPtr<InspectorResourceAgent> create(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InspectorClient* client)
     {
-        return adoptPtr(new InspectorResourceAgent(instrumentingAgents, pageAgent, client, state));
+        return adoptPtr(new InspectorResourceAgent(instrumentingAgents, pageAgent, client));
     }
 
     virtual void setFrontend(InspectorFrontend*);
     virtual void clearFrontend();
-    virtual void restore();
 
-    static PassRefPtr<InspectorResourceAgent> restore(Page*, InspectorCompositeState*, InspectorFrontend*);
+    static PassRefPtr<InspectorResourceAgent> restore(Page*, InspectorFrontend*);
 
     ~InspectorResourceAgent();
 
@@ -152,7 +150,7 @@ public:
     virtual void setCacheDisabled(ErrorString*, bool cacheDisabled);
 
 private:
-    InspectorResourceAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorClient*, InspectorCompositeState*);
+    InspectorResourceAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorClient*);
 
     void enable();
 
@@ -161,9 +159,12 @@ private:
     InspectorFrontend::Network* m_frontend;
     String m_userAgentOverride;
     OwnPtr<NetworkResourcesData> m_resourcesData;
+    bool m_enabled;
+    bool m_cacheDisabled;
     bool m_loadingXHRSynchronously;
+    RefPtr<InspectorObject> m_extraRequestHeaders;
 
-    typedef HashMap<ThreadableLoaderClient*, RefPtr<XHRReplayData> > PendingXHRReplayDataMap;
+    typedef HashMap<ThreadableLoaderClient*, RefPtr<XHRReplayData>> PendingXHRReplayDataMap;
     PendingXHRReplayDataMap m_pendingXHRReplayData;
     // FIXME: InspectorResourceAgent should now be aware of style recalculation.
     RefPtr<TypeBuilder::Network::Initiator> m_styleRecalculationInitiator;

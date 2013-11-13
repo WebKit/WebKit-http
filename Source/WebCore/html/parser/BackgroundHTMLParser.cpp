@@ -31,10 +31,7 @@
 
 #include "HTMLDocumentParser.h"
 #include "HTMLParserThread.h"
-#include "HTMLTokenizer.h"
-#include "XSSAuditor.h"
 #include <wtf/MainThread.h>
-#include <wtf/text/TextPosition.h>
 
 namespace WebCore {
 
@@ -74,7 +71,7 @@ static void checkThatPreloadsAreSafeToSendToAnotherThread(const PreloadRequestSt
 
 #endif
 
-BackgroundHTMLParser::BackgroundHTMLParser(PassRefPtr<WeakReference<BackgroundHTMLParser> > reference, OwnPtr<Configuration> config)
+BackgroundHTMLParser::BackgroundHTMLParser(PassRefPtr<WeakReference<BackgroundHTMLParser>> reference, OwnPtr<Configuration> config)
     : m_weakFactory(reference, this)
     , m_token(adoptPtr(new HTMLToken))
     , m_tokenizer(HTMLTokenizer::create(config->options))

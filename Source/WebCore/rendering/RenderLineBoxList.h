@@ -54,10 +54,10 @@ public:
 
     void checkConsistency() const;
 
-    void appendLineBox(InlineFlowBox*);
+    void appendLineBox(std::unique_ptr<InlineFlowBox>);
 
-    void deleteLineBoxTree(RenderArena&);
-    void deleteLineBoxes(RenderArena&);
+    void deleteLineBoxTree();
+    void deleteLineBoxes();
 
     void extractLineBox(InlineFlowBox*);
     void attachLineBox(InlineFlowBox*);

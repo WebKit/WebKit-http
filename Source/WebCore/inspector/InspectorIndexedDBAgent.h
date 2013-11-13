@@ -46,14 +46,13 @@ typedef String ErrorString;
 
 class InspectorIndexedDBAgent : public InspectorBaseAgent<InspectorIndexedDBAgent>, public InspectorBackendDispatcher::IndexedDBCommandHandler {
 public:
-    static PassOwnPtr<InspectorIndexedDBAgent> create(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* state, InjectedScriptManager* injectedScriptManager, InspectorPageAgent* pageAgent)
+    static PassOwnPtr<InspectorIndexedDBAgent> create(InstrumentingAgents* instrumentingAgents, InjectedScriptManager* injectedScriptManager, InspectorPageAgent* pageAgent)
     {
-        return adoptPtr(new InspectorIndexedDBAgent(instrumentingAgents, state, injectedScriptManager, pageAgent));
+        return adoptPtr(new InspectorIndexedDBAgent(instrumentingAgents, injectedScriptManager, pageAgent));
     }
     ~InspectorIndexedDBAgent();
 
     virtual void clearFrontend();
-    virtual void restore();
 
     // Called from the front-end.
     virtual void enable(ErrorString*);
@@ -64,7 +63,7 @@ public:
     virtual void clearObjectStore(ErrorString*, const String& in_securityOrigin, const String& in_databaseName, const String& in_objectStoreName, PassRefPtr<ClearObjectStoreCallback>);
 
 private:
-    InspectorIndexedDBAgent(InstrumentingAgents*, InspectorCompositeState*, InjectedScriptManager*, InspectorPageAgent*);
+    InspectorIndexedDBAgent(InstrumentingAgents*, InjectedScriptManager*, InspectorPageAgent*);
 
     InjectedScriptManager* m_injectedScriptManager;
     InspectorPageAgent* m_pageAgent;

@@ -127,17 +127,17 @@ void SVGTextPathElement::svgAttributeChanged(const QualifiedName& attrName)
         RenderSVGResource::markForLayoutAndParentResourceInvalidation(object);
 }
 
-RenderElement* SVGTextPathElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGTextPathElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderSVGTextPath(*this);
+    return new RenderSVGTextPath(*this, std::move(style));
 }
 
-bool SVGTextPathElement::childShouldCreateRenderer(const Node* child) const
+bool SVGTextPathElement::childShouldCreateRenderer(const Node& child) const
 {
-    if (child->isTextNode()
-        || child->hasTagName(SVGNames::aTag)
-        || child->hasTagName(SVGNames::trefTag)
-        || child->hasTagName(SVGNames::tspanTag))
+    if (child.isTextNode()
+        || child.hasTagName(SVGNames::aTag)
+        || child.hasTagName(SVGNames::trefTag)
+        || child.hasTagName(SVGNames::tspanTag))
         return true;
 
     return false;
@@ -177,17 +177,17 @@ void SVGTextPathElement::buildPendingResource()
     }
 }
 
-Node::InsertionNotificationRequest SVGTextPathElement::insertedInto(ContainerNode* rootParent)
+Node::InsertionNotificationRequest SVGTextPathElement::insertedInto(ContainerNode& rootParent)
 {
     SVGTextContentElement::insertedInto(rootParent);
     buildPendingResource();
     return InsertionDone;
 }
 
-void SVGTextPathElement::removedFrom(ContainerNode* rootParent)
+void SVGTextPathElement::removedFrom(ContainerNode& rootParent)
 {
     SVGTextContentElement::removedFrom(rootParent);
-    if (rootParent->inDocument())
+    if (rootParent.inDocument())
         clearResourceReferences();
 }
 

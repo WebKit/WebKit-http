@@ -25,7 +25,7 @@
  */
 
 [
-    Conditional=SVG
+    Conditional=SVG,
 ] interface SVGTransformList {
     readonly attribute unsigned long numberOfItems;
 

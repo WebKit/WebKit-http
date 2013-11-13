@@ -46,10 +46,8 @@ class RenderFlowThread;
 // FIXME: For now we derive from RenderRegion, but this may change at some point.
 
 class RenderRegionSet : public RenderRegion {
-public:
-    RenderRegionSet(Element*, RenderFlowThread*);
-    
 protected:
+    RenderRegionSet(Document&, PassRef<RenderStyle>, RenderFlowThread&);
     virtual bool shouldHaveAutoLogicalHeight() const OVERRIDE { return false; }
 
 private:

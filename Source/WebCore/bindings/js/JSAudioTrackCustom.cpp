@@ -43,8 +43,36 @@ void JSAudioTrack::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT(jsAudioTrack->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(jsAudioTrack, visitor);
 
-    AudioTrack* audioTrack = jsAudioTrack->impl();
-    visitor.addOpaqueRoot(root(audioTrack));
+    AudioTrack& audioTrack = jsAudioTrack->impl();
+    visitor.addOpaqueRoot(root(&audioTrack));
+}
+
+void JSAudioTrack::setKind(ExecState* exec, JSValue value)
+{
+    UNUSED_PARAM(exec);
+#if ENABLE(MEDIA_SOURCE)
+    const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
+    if (exec->hadException())
+        return;
+    impl().setKind(nativeValue);
+#else
+    UNUSED_PARAM(value);
+    return;
+#endif
+}
+
+void JSAudioTrack::setLanguage(ExecState* exec, JSValue value)
+{
+    UNUSED_PARAM(exec);
+#if ENABLE(MEDIA_SOURCE)
+    const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
+    if (exec->hadException())
+        return;
+    impl().setLanguage(nativeValue);
+#else
+    UNUSED_PARAM(value);
+    return;
+#endif
 }
 
 } // namespace WebCore

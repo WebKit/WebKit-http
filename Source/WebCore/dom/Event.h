@@ -36,7 +36,6 @@ namespace WebCore {
 
 class Clipboard;
 class EventTarget;
-class EventDispatcher;
 class HTMLIFrameElement;
 
 struct EventInit {
@@ -171,6 +170,8 @@ public:
     bool isBeingDispatched() const { return eventPhase(); }
 
     virtual PassRefPtr<Event> cloneFor(HTMLIFrameElement*) const;
+
+    virtual EventTarget* relatedTarget() const { return nullptr; }
 
 protected:
     Event();

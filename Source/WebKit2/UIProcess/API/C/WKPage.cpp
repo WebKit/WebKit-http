@@ -454,15 +454,24 @@ bool WKPageIsPinnedToBottomSide(WKPageRef pageRef)
     return toImpl(pageRef)->isPinnedToBottomSide();
 }
 
-
-bool WKPageRubberBandsAtBottom(WKPageRef pageRef)
+bool WKPageRubberBandsAtLeft(WKPageRef pageRef)
 {
-    return toImpl(pageRef)->rubberBandsAtBottom();
+    return toImpl(pageRef)->rubberBandsAtLeft();
 }
 
-void WKPageSetRubberBandsAtBottom(WKPageRef pageRef, bool rubberBandsAtBottom)
+void WKPageSetRubberBandsAtLeft(WKPageRef pageRef, bool rubberBandsAtLeft)
 {
-    toImpl(pageRef)->setRubberBandsAtBottom(rubberBandsAtBottom);
+    toImpl(pageRef)->setRubberBandsAtLeft(rubberBandsAtLeft);
+}
+
+bool WKPageRubberBandsAtRight(WKPageRef pageRef)
+{
+    return toImpl(pageRef)->rubberBandsAtRight();
+}
+
+void WKPageSetRubberBandsAtRight(WKPageRef pageRef, bool rubberBandsAtRight)
+{
+    toImpl(pageRef)->setRubberBandsAtRight(rubberBandsAtRight);
 }
 
 bool WKPageRubberBandsAtTop(WKPageRef pageRef)
@@ -473,6 +482,16 @@ bool WKPageRubberBandsAtTop(WKPageRef pageRef)
 void WKPageSetRubberBandsAtTop(WKPageRef pageRef, bool rubberBandsAtTop)
 {
     toImpl(pageRef)->setRubberBandsAtTop(rubberBandsAtTop);
+}
+
+bool WKPageRubberBandsAtBottom(WKPageRef pageRef)
+{
+    return toImpl(pageRef)->rubberBandsAtBottom();
+}
+
+void WKPageSetRubberBandsAtBottom(WKPageRef pageRef, bool rubberBandsAtBottom)
+{
+    toImpl(pageRef)->setRubberBandsAtBottom(rubberBandsAtBottom);
 }
 
 void WKPageSetPaginationMode(WKPageRef pageRef, WKPaginationMode paginationMode)
@@ -670,57 +689,15 @@ void WKPageRenderTreeExternalRepresentation(WKPageRef pageRef, void* context, WK
     toImpl(pageRef)->getRenderTreeExternalRepresentation(StringCallback::create(context, callback));
 }
 
-#ifdef __BLOCKS__
-static void callRenderTreeExternalRepresentationBlockAndDispose(WKStringRef resultValue, WKErrorRef error, void* context)
-{
-    WKPageRenderTreeExternalRepresentationBlock block = (WKPageRenderTreeExternalRepresentationBlock)context;
-    block(resultValue, error);
-    Block_release(block);
-}
-
-void WKPageRenderTreeExternalRepresentation_b(WKPageRef pageRef, WKPageRenderTreeExternalRepresentationBlock block)
-{
-    WKPageRenderTreeExternalRepresentation(pageRef, Block_copy(block), callRenderTreeExternalRepresentationBlockAndDispose);
-}
-#endif
-
 void WKPageGetSourceForFrame(WKPageRef pageRef, WKFrameRef frameRef, void* context, WKPageGetSourceForFrameFunction callback)
 {
     toImpl(pageRef)->getSourceForFrame(toImpl(frameRef), StringCallback::create(context, callback));
 }
 
-#ifdef __BLOCKS__
-static void callGetSourceForFrameBlockBlockAndDispose(WKStringRef resultValue, WKErrorRef error, void* context)
-{
-    WKPageGetSourceForFrameBlock block = (WKPageGetSourceForFrameBlock)context;
-    block(resultValue, error);
-    Block_release(block);
-}
-
-void WKPageGetSourceForFrame_b(WKPageRef pageRef, WKFrameRef frameRef, WKPageGetSourceForFrameBlock block)
-{
-    WKPageGetSourceForFrame(pageRef, frameRef, Block_copy(block), callGetSourceForFrameBlockBlockAndDispose);
-}
-#endif
-
 void WKPageGetContentsAsString(WKPageRef pageRef, void* context, WKPageGetContentsAsStringFunction callback)
 {
     toImpl(pageRef)->getContentsAsString(StringCallback::create(context, callback));
 }
-
-#ifdef __BLOCKS__
-static void callContentsAsStringBlockBlockAndDispose(WKStringRef resultValue, WKErrorRef error, void* context)
-{
-    WKPageGetContentsAsStringBlock block = (WKPageGetContentsAsStringBlock)context;
-    block(resultValue, error);
-    Block_release(block);
-}
-
-void WKPageGetContentsAsString_b(WKPageRef pageRef, WKPageGetSourceForFrameBlock block)
-{
-    WKPageGetContentsAsString(pageRef, Block_copy(block), callContentsAsStringBlockBlockAndDispose);
-}
-#endif
 
 void WKPageGetSelectionAsWebArchiveData(WKPageRef pageRef, void* context, WKPageGetSelectionAsWebArchiveDataFunction callback)
 {
@@ -764,16 +741,6 @@ WKURLRef WKPageCopyProvisionalURL(WKPageRef pageRef)
 WKURLRef WKPageCopyCommittedURL(WKPageRef pageRef)
 {
     return toCopiedURLAPI(toImpl(pageRef)->committedURL());
-}
-
-void WKPageSetDebugPaintFlags(WKPageDebugPaintFlags flags)
-{
-    WebPageProxy::setDebugPaintFlags(flags);
-}
-
-WKPageDebugPaintFlags WKPageGetDebugPaintFlags()
-{
-    return WebPageProxy::debugPaintFlags();
 }
 
 WKStringRef WKPageCopyStandardUserAgentWithApplicationName(WKStringRef applicationName)

@@ -38,6 +38,7 @@
 #include "DFGWorklist.h"
 #include "DebuggerActivation.h"
 #include "ErrorInstance.h"
+#include "FTLThunks.h"
 #include "FunctionConstructor.h"
 #include "GCActivityCallback.h"
 #include "GetterSetter.h"
@@ -122,8 +123,14 @@ extern const HashTable promiseResolverPrototypeTable;
 #if ENABLE(ASSEMBLER)
 static bool enableAssembler(ExecutableAllocator& executableAllocator)
 {
-    if (!executableAllocator.isValid() || (!Options::useJIT() && !Options::useRegExpJIT()))
+    if (!Options::useJIT() && !Options::useRegExpJIT())
         return false;
+
+    if (!executableAllocator.isValid()) {
+        if (Options::crashIfCantAllocateJITMemory())
+            CRASH();
+        return false;
+    }
 
 #if USE(CF)
 #if COMPILER(GCC) && !COMPILER(CLANG)
@@ -156,7 +163,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , heap(this, heapType)
     , vmType(vmType)
     , clientData(0)
-    , topCallFrame(CallFrame::noCaller()->removeHostCallFrameFlag())
+    , topCallFrame(CallFrame::noCaller())
     , arrayConstructorTable(adoptPtr(new HashTable(JSC::arrayConstructorTable)))
     , arrayPrototypeTable(adoptPtr(new HashTable(JSC::arrayPrototypeTable)))
     , booleanPrototypeTable(adoptPtr(new HashTable(JSC::booleanPrototypeTable)))
@@ -183,13 +190,11 @@ VM::VM(VMType vmType, HeapType heapType)
     , propertyNames(new CommonIdentifiers(this))
     , emptyList(new MarkedArgumentBuffer)
     , parserArena(adoptPtr(new ParserArena))
-    , keywords(adoptPtr(new Keywords(this)))
+    , keywords(adoptPtr(new Keywords(*this)))
     , interpreter(0)
     , jsArrayClassInfo(JSArray::info())
     , jsFinalObjectClassInfo(JSFinalObject::info())
-#if ENABLE(DFG_JIT)
     , sizeOfLastScratchBuffer(0)
-#endif
     , dynamicGlobalObject(0)
     , m_enabledProfiler(0)
     , m_regExpCache(new RegExpCache(this))
@@ -245,15 +250,20 @@ VM::VM(VMType vmType, HeapType heapType)
     propertyTableStructure.set(*this, PropertyTable::createStructure(*this, 0, jsNull()));
     mapDataStructure.set(*this, MapData::createStructure(*this, 0, jsNull()));
     weakMapDataStructure.set(*this, WeakMapData::createStructure(*this, 0, jsNull()));
-
+    iterationTerminator.set(*this, JSFinalObject::create(*this, JSFinalObject::createStructure(*this, 0, jsNull(), 1)));
     smallStrings.initializeCommonStrings(*this);
 
     wtfThreadData().setCurrentIdentifierTable(existingEntryIdentifierTable);
 
 #if ENABLE(JIT)
     jitStubs = adoptPtr(new JITThunks());
-    performPlatformSpecificJITAssertions(this);
+
+    callJavaScriptJITFunction = reinterpret_cast<CallJavaScriptJITFunction>(getCTIStub(callToJavaScript).code().executableAddress());
 #endif
+
+#if ENABLE(FTL_JIT)
+    ftlThunks = std::make_unique<FTL::Thunks>();
+#endif // ENABLE(FTL_JIT)
     
     interpreter->initialize(this->canUseJIT());
     
@@ -420,6 +430,10 @@ static ThunkGenerator thunkGeneratorForIntrinsic(Intrinsic intrinsic)
         return logThunkGenerator;
     case IMulIntrinsic:
         return imulThunkGenerator;
+    case ArrayIteratorNextKeyIntrinsic:
+        return arrayIteratorNextKeyThunkGenerator;
+    case ArrayIteratorNextValueIntrinsic:
+        return arrayIteratorNextValueThunkGenerator;
     default:
         return 0;
     }
@@ -638,8 +652,10 @@ JSValue VM::throwException(ExecState* exec, JSValue error)
     if (exception->isErrorInstance() && static_cast<ErrorInstance*>(exception)->appendSourceToMessage()) {
         unsigned stackIndex = 0;
         CallFrame* callFrame;
-        for (callFrame = exec; callFrame && !callFrame->codeBlock(); callFrame = callFrame->callerFrame()->removeHostCallFrameFlag())
+        for (callFrame = exec; callFrame && !callFrame->codeBlock(); ) {
             stackIndex++;
+            callFrame = callFrame->callerFrameSkippingVMEntrySentinel();
+        }
         if (callFrame && callFrame->codeBlock()) {
             stackFrame = stackTrace.at(stackIndex);
             bytecodeOffset = stackFrame.bytecodeOffset;

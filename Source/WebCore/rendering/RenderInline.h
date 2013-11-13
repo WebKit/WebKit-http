@@ -33,9 +33,8 @@ class Position;
 
 class RenderInline : public RenderBoxModelObject {
 public:
-    explicit RenderInline(Element*);
-
-    static RenderInline* createAnonymous(Document&);
+    RenderInline(Element&, PassRef<RenderStyle>);
+    RenderInline(Document&, PassRef<RenderStyle>);
 
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) OVERRIDE;
 
@@ -59,7 +58,7 @@ public:
     InlineFlowBox* createAndAppendInlineFlowBox();
 
     void dirtyLineBoxes(bool fullLayout);
-    void deleteLineBoxTree();
+    void deleteLines();
 
     RenderLineBoxList& lineBoxes() { return m_lineBoxes; }
     const RenderLineBoxList& lineBoxes() const { return m_lineBoxes; }
@@ -82,8 +81,8 @@ public:
     using RenderBoxModelObject::continuation;
     using RenderBoxModelObject::setContinuation;
 
-    bool alwaysCreateLineBoxes() const { return m_alwaysCreateLineBoxes; }
-    void setAlwaysCreateLineBoxes() { m_alwaysCreateLineBoxes = true; }
+    bool alwaysCreateLineBoxes() const { return renderInlineAlwaysCreatesLineBoxes(); }
+    void setAlwaysCreateLineBoxes() { setRenderInlineAlwaysCreatesLineBoxes(true); }
     void updateAlwaysCreateLineBoxes(bool fullLayout);
 
     virtual LayoutRect localCaretRect(InlineBox*, int, LayoutUnit* extraWidthToEndOfLine) OVERRIDE FINAL;
@@ -98,7 +97,6 @@ protected:
 private:
     virtual const char* renderName() const OVERRIDE;
 
-    virtual bool isRenderInline() const OVERRIDE FINAL { return true; }
     virtual bool canHaveChildren() const OVERRIDE FINAL { return true; }
 
     LayoutRect culledInlineVisualOverflowBoundingBox() const;
@@ -148,7 +146,7 @@ private:
         return IntRect(0, 0, boundingBox.width(), boundingBox.height());
     }
 
-    virtual InlineFlowBox* createInlineFlowBox(); // Subclassed by SVG and Ruby
+    virtual std::unique_ptr<InlineFlowBox> createInlineFlowBox(); // Subclassed by RenderSVGInline
 
     virtual void dirtyLinesFromChangedChild(RenderObject* child) OVERRIDE FINAL { m_lineBoxes.dirtyLinesFromChangedChild(this, child); }
 
@@ -174,37 +172,9 @@ private:
     RenderBoxModelObject* continuationBefore(RenderObject* beforeChild);
 
     RenderLineBoxList m_lineBoxes;   // All of the line boxes created for this inline flow.  For example, <i>Hello<br>world.</i> will have two <i> line boxes.
-
-    bool m_alwaysCreateLineBoxes : 1;
 };
 
-inline RenderInline& toRenderInline(RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isRenderInline());
-    return static_cast<RenderInline&>(object);
-}
-
-inline const RenderInline& toRenderInline(const RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isRenderInline());
-    return static_cast<const RenderInline&>(object);
-}
-
-inline RenderInline* toRenderInline(RenderObject* object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderInline());
-    return static_cast<RenderInline*>(object);
-}
-
-inline const RenderInline* toRenderInline(const RenderObject* object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderInline());
-    return static_cast<const RenderInline*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderInline(const RenderInline*);
-void toRenderInline(const RenderInline&);
+RENDER_OBJECT_TYPE_CASTS(RenderInline, isRenderInline())
 
 } // namespace WebCore
 

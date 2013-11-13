@@ -101,6 +101,7 @@ public:
         CSS_DPPX = 30,
         CSS_DPI = 31,
         CSS_DPCM = 32,
+        CSS_FR = 33,
         CSS_PAIR = 100, // We envision this being exposed as a means of getting computed style values for pairs (border-spacing/radius, background-position, etc.)
 #if ENABLE(DASHBOARD_SUPPORT)
         CSS_DASHBOARD_REGION = 101, // FIXME: Dashboard region should not be a primitive value.
@@ -208,30 +209,31 @@ public:
     bool isViewportPercentageMax() const { return m_primitiveUnitType == CSS_VMAX; }
     bool isViewportPercentageMin() const { return m_primitiveUnitType == CSS_VMIN; }
     bool isValueID() const { return m_primitiveUnitType == CSS_VALUE_ID; }
+    bool isFlex() const { return primitiveType() == CSS_FR; }
 
-    static PassRefPtr<CSSPrimitiveValue> createIdentifier(CSSValueID valueID) { return adoptRef(new CSSPrimitiveValue(valueID)); }
-    static PassRefPtr<CSSPrimitiveValue> createIdentifier(CSSPropertyID propertyID) { return adoptRef(new CSSPrimitiveValue(propertyID)); }
-    static PassRefPtr<CSSPrimitiveValue> createParserOperator(int parserOperator) { return adoptRef(new CSSPrimitiveValue(parserOperator)); }
+    static PassRef<CSSPrimitiveValue> createIdentifier(CSSValueID valueID) { return adoptRef(*new CSSPrimitiveValue(valueID)); }
+    static PassRef<CSSPrimitiveValue> createIdentifier(CSSPropertyID propertyID) { return adoptRef(*new CSSPrimitiveValue(propertyID)); }
+    static PassRef<CSSPrimitiveValue> createParserOperator(int parserOperator) { return adoptRef(*new CSSPrimitiveValue(parserOperator)); }
 
-    static PassRefPtr<CSSPrimitiveValue> createColor(unsigned rgbValue) { return adoptRef(new CSSPrimitiveValue(rgbValue)); }
-    static PassRefPtr<CSSPrimitiveValue> create(double value, UnitTypes type) { return adoptRef(new CSSPrimitiveValue(value, type)); }
-    static PassRefPtr<CSSPrimitiveValue> create(const String& value, UnitTypes type) { return adoptRef(new CSSPrimitiveValue(value, type)); }
-    static PassRefPtr<CSSPrimitiveValue> create(const Length& value, const RenderStyle* style) { return adoptRef(new CSSPrimitiveValue(value, style)); }
+    static PassRef<CSSPrimitiveValue> createColor(unsigned rgbValue) { return adoptRef(*new CSSPrimitiveValue(rgbValue)); }
+    static PassRef<CSSPrimitiveValue> create(double value, UnitTypes type) { return adoptRef(*new CSSPrimitiveValue(value, type)); }
+    static PassRef<CSSPrimitiveValue> create(const String& value, UnitTypes type) { return adoptRef(*new CSSPrimitiveValue(value, type)); }
+    static PassRef<CSSPrimitiveValue> create(const Length& value, const RenderStyle* style) { return adoptRef(*new CSSPrimitiveValue(value, style)); }
 
-    template<typename T> static PassRefPtr<CSSPrimitiveValue> create(T value)
+    template<typename T> static PassRef<CSSPrimitiveValue> create(T value)
     {
-        return adoptRef(new CSSPrimitiveValue(value));
+        return adoptRef(*new CSSPrimitiveValue(value));
     }
 
     // This value is used to handle quirky margins in reflow roots (body, td, and th) like WinIE.
     // The basic idea is that a stylesheet can use the value __qem (for quirky em) instead of em.
     // When the quirky value is used, if you're in quirks mode, the margin will collapse away
     // inside a table cell.
-    static PassRefPtr<CSSPrimitiveValue> createAllowingMarginQuirk(double value, UnitTypes type)
+    static PassRef<CSSPrimitiveValue> createAllowingMarginQuirk(double value, UnitTypes type)
     {
         CSSPrimitiveValue* quirkValue = new CSSPrimitiveValue(value, type);
         quirkValue->m_isQuirkValue = true;
-        return adoptRef(quirkValue);
+        return adoptRef(*quirkValue);
     }
 
     ~CSSPrimitiveValue();
@@ -401,17 +403,7 @@ private:
     } m_value;
 };
 
-inline CSSPrimitiveValue* toCSSPrimitiveValue(CSSValue* value)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isPrimitiveValue());
-    return static_cast<CSSPrimitiveValue*>(value);
-}
-
-inline const CSSPrimitiveValue* toCSSPrimitiveValue(const CSSValue* value)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isPrimitiveValue());
-    return static_cast<const CSSPrimitiveValue*>(value);
-}
+CSS_VALUE_TYPE_CASTS(CSSPrimitiveValue, isPrimitiveValue())
 
 } // namespace WebCore
 

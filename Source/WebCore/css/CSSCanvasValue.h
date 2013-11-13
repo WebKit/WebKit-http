@@ -35,7 +35,7 @@ class Document;
 
 class CSSCanvasValue : public CSSImageGeneratorValue {
 public:
-    static PassRefPtr<CSSCanvasValue> create(const String& name) { return adoptRef(new CSSCanvasValue(name)); }
+    static PassRef<CSSCanvasValue> create(const String& name) { return adoptRef(*new CSSCanvasValue(name)); }
     ~CSSCanvasValue();
 
     String customCSSText() const;
@@ -50,9 +50,9 @@ public:
     bool equals(const CSSCanvasValue&) const;
 
 private:
-    CSSCanvasValue(const String& name)
+    explicit CSSCanvasValue(const String& name)
         : CSSImageGeneratorValue(CanvasClass)
-        , m_canvasObserver(this)
+        , m_canvasObserver(*this)
         , m_name(name)
         , m_element(0)
     {
@@ -60,29 +60,37 @@ private:
 
     // NOTE: We put the CanvasObserver in a member instead of inheriting from it
     // to avoid adding a vptr to CSSCanvasValue.
-    class CanvasObserverProxy : public CanvasObserver {
+    class CanvasObserverProxy FINAL : public CanvasObserver {
     public:
-        CanvasObserverProxy(CSSCanvasValue* ownerValue) : m_ownerValue(ownerValue) { }
-        virtual ~CanvasObserverProxy() { }
-        virtual void canvasChanged(HTMLCanvasElement* canvas, const FloatRect& changedRect)
+        explicit CanvasObserverProxy(CSSCanvasValue& ownerValue)
+            : m_ownerValue(ownerValue)
         {
-            m_ownerValue->canvasChanged(canvas, changedRect);
         }
-        virtual void canvasResized(HTMLCanvasElement* canvas)
+
+        virtual ~CanvasObserverProxy()
         {
-            m_ownerValue->canvasResized(canvas);
         }
-        virtual void canvasDestroyed(HTMLCanvasElement* canvas)
-        {
-            m_ownerValue->canvasDestroyed(canvas);
-        }
+
     private:
-        CSSCanvasValue* m_ownerValue;
+        virtual void canvasChanged(HTMLCanvasElement& canvas, const FloatRect& changedRect) OVERRIDE
+        {
+            m_ownerValue.canvasChanged(canvas, changedRect);
+        }
+        virtual void canvasResized(HTMLCanvasElement& canvas) OVERRIDE
+        {
+            m_ownerValue.canvasResized(canvas);
+        }
+        virtual void canvasDestroyed(HTMLCanvasElement& canvas) OVERRIDE
+        {
+            m_ownerValue.canvasDestroyed(canvas);
+        }
+
+        CSSCanvasValue& m_ownerValue;
     };
 
-    void canvasChanged(HTMLCanvasElement*, const FloatRect& changedRect);
-    void canvasResized(HTMLCanvasElement*);
-    void canvasDestroyed(HTMLCanvasElement*);
+    void canvasChanged(HTMLCanvasElement&, const FloatRect& changedRect);
+    void canvasResized(HTMLCanvasElement&);
+    void canvasDestroyed(HTMLCanvasElement&);
 
     HTMLCanvasElement* element(Document&);
 
@@ -94,7 +102,7 @@ private:
     HTMLCanvasElement* m_element;
 };
 
-CSS_VALUE_TYPE_CASTS(CanvasValue)
+CSS_VALUE_TYPE_CASTS(CSSCanvasValue, isCanvasValue())
 
 } // namespace WebCore
 

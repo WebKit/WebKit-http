@@ -40,12 +40,10 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/DateMath.h>
 #include <wtf/MathExtras.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
-using namespace std;
 
 static const int msecPerMinute = 60 * 1000;
 static const int msecPerSecond = 1000;

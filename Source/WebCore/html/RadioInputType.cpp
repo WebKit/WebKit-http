@@ -33,16 +33,10 @@
 #include "NodeTraversal.h"
 #include "Settings.h"
 #include "SpatialNavigation.h"
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
-
-OwnPtr<InputType> RadioInputType::create(HTMLInputElement& element)
-{
-    return adoptPtr(new RadioInputType(element));
-}
 
 const AtomicString& RadioInputType::formControlType() const
 {
@@ -145,33 +139,29 @@ bool RadioInputType::shouldSendChangeEventAfterCheckedChanged()
     return element().checked();
 }
 
-OwnPtr<ClickHandlingState> RadioInputType::willDispatchClick()
+void RadioInputType::willDispatchClick(InputElementClickState& state)
 {
     // An event handler can use preventDefault or "return false" to reverse the selection we do here.
-    // The ClickHandlingState object contains what we need to undo what we did here in didDispatchClick.
+    // The InputElementClickState object contains what we need to undo what we did here in didDispatchClick.
 
     // We want radio groups to end up in sane states, i.e., to have something checked.
     // Therefore if nothing is currently selected, we won't allow the upcoming action to be "undone", since
     // we want some object in the radio group to actually get selected.
 
-    OwnPtr<ClickHandlingState> state = adoptPtr(new ClickHandlingState);
-
-    state->checked = element().checked();
-    state->checkedRadioButton = element().checkedRadioButtonForGroup();
+    state.checked = element().checked();
+    state.checkedRadioButton = element().checkedRadioButtonForGroup();
 
 #if PLATFORM(IOS)
-    state->indeterminate = element().indeterminate();
+    state.indeterminate = element().indeterminate();
 
     if (element().indeterminate())
         element().setIndeterminate(false);
 #endif
 
     element().setChecked(true, DispatchChangeEvent);
-
-    return state.release();
 }
 
-void RadioInputType::didDispatchClick(Event* event, const ClickHandlingState& state)
+void RadioInputType::didDispatchClick(Event* event, const InputElementClickState& state)
 {
     if (event->defaultPrevented() || event->defaultHandled()) {
         // Restore the original selected radio button if possible.

@@ -57,9 +57,9 @@ public:
 
     static bool typeUsesSpaceSeparator(FilterOperationType);
 
-    static PassRefPtr<WebKitCSSFilterValue> create(FilterOperationType type)
+    static PassRef<WebKitCSSFilterValue> create(FilterOperationType type)
     {
-        return adoptRef(new WebKitCSSFilterValue(type));
+        return adoptRef(*new WebKitCSSFilterValue(type));
     }
 
     String customCSSText() const;
@@ -77,11 +77,7 @@ private:
     FilterOperationType m_type;
 };
 
-inline WebKitCSSFilterValue* toWebKitCSSFilterValue(CSSValue* value)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isWebKitCSSFilterValue());
-    return static_cast<WebKitCSSFilterValue*>(value);
-}
+CSS_VALUE_TYPE_CASTS(WebKitCSSFilterValue, isWebKitCSSFilterValue())
 
 }
 

@@ -82,19 +82,11 @@ http/tests/navigation/ping-cross-origin-from-https.html
 http/tests/ssl
 http/tests/security/cross-frame-access-protocol-explicit-domain.html
 http/tests/security/cross-frame-access-protocol.html
-http/tests/inspector/console-websocket-error.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=55372
-http/tests/inspector/network/network-size.html
-http/tests/inspector/network/network-timing.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=19793
-http/tests/inspector/network/network-size-chunked.html
-http/tests/inspector/network/network-size-sync.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=64097
-http/tests/inspector/network/network-disable-cache-memory.html
-http/tests/inspector/network/network-disable-cache-xhrs.html
+# Skipping the tests for the old inspector UI
+inspector [ Skip ]
+http/tests/inspector [ Skip ]
+http/tests/inspector-enabled [ Skip ]
 
 # Fails <rdar://problem/5674289>
 media/video-seek-past-end-paused.html
@@ -172,6 +164,7 @@ fast/events/drop-with-file-paths.html
 fast/events/dropzone-004.html
 fast/events/only-valid-drop-targets-receive-file-drop.html
 fast/events/standalone-image-drag-to-editable.html
+fast/events/drag-and-drop-autoscroll-inner-frame.html
 http/tests/security/clipboard/clipboard-file-access.html
 http/tests/security/drag-drop-same-unique-origin.html
 
@@ -274,7 +267,6 @@ editing/pasteboard/file-input-files-access.html
 fast/files
 http/tests/fileapi
 fast/dom/DOMURL/check-instanceof-domurl-functions.html
-fast/forms/file/input-file-entries.html
 fast/forms/file/recover-file-input-in-unposted-form.html
 http/tests/security/contentSecurityPolicy/blob-urls-match-self.html
 fast/workers/worker-domurl.html
@@ -388,9 +380,6 @@ http/tests/xmlhttprequest/xmlhttprequest-sync-vs-async-assertion-failure.html
 # Failing in Release builds http://webkit.org/b/46976
 sputnik/Conformance/11_Expressions/11.7_Bitwise_Shift_Operators/11.7.3_The_Unsigned_Right_Shift_Operator/S11.7.3_A2.3_T1.html
 
-# Sometimes fails https://webkit.org/b/49412
-inspector/timeline/timeline-network-resource.html
-
 # Sometimes fails http://webkit.org/b/46998
 svg/dom/SVGScriptElement/script-load-and-error-events.svg
 
@@ -475,12 +464,6 @@ http/tests/websocket
 
 # Timing out http://webkit.org/b/58654
 media/video-controls-in-media-document.html
-
-# Sometimes fails http://webkit.org/b/58367
-http/tests/inspector/resource-tree/resource-tree-document-url.html
-http/tests/inspector/resource-tree/resource-tree-frame-navigate.html
-http/tests/inspector/resource-tree/resource-tree-reload.html
-http/tests/inspector/resource-tree/resource-tree-frame-add.html
 
 # Flaky http://webkit.org/b/62561
 animations/animation-direction-normal.html
@@ -1052,9 +1035,6 @@ media/media-document-audio-size.html
 # https://bugs.webkit.org/show_bug.cgi?id=38794 - contains an ALERT message, indicating a failure
 fast/css/display-none-inline-style-change-crash.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=38795 - doesn't print PaintEvent instrumentation output
-inspector/timeline/timeline-paint.html
-
 # New canvas test suite from http://philip.html5.org/tests/canvas/suite/tests/
 canvas/philip
 
@@ -1082,7 +1062,6 @@ editing/spelling/spelling-marker-description.html
 
 # IndexedDB is not yet enabled.
 storage/indexeddb
-http/tests/inspector/indexeddb
 http/tests/security/cross-origin-indexeddb-allowed.html
 http/tests/security/cross-origin-indexeddb.html
 http/tests/security/cross-origin-worker-indexeddb-allowed.html
@@ -1120,7 +1099,6 @@ fast/text/hyphens.html
 fast/events/show-modal-dialog-onblur-onfocus.html
 fast/harness/show-modal-dialog.html
 fast/events/scroll-event-during-modal-dialog.html
-inspector/console/console-long-eval-crash.html
 fast/dom/Window/open-window-min-size.html
 js/dom/function-length.html
 
@@ -1270,41 +1248,6 @@ perf/
 http/tests/appcache/origin-quota.html
 http/tests/appcache/origin-quota-continued-download.html
 http/tests/appcache/origin-quota-continued-download-multiple-manifests.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=43332
-inspector/debugger/dom-breakpoints.html
-inspector/debugger/event-listener-breakpoints.html
-inspector/debugger/step-through-event-listeners.html
-inspector/debugger/xhr-breakpoints.html
-
-# JSC doesn't support heap profiling
-# https://bugs.webkit.org/show_bug.cgi?id=50485
-inspector/profiler/heap-snapshot-inspect-dom-wrapper.html
-inspector/profiler/heap-snapshot-comparison-dom-groups-change.html
-inspector/profiler/heap-snapshot-comparison-expansion-preserved-when-sorting.html
-inspector/profiler/heap-snapshot-comparison-show-all.html
-inspector/profiler/heap-snapshot-loader.html
-inspector/profiler/heap-snapshot-reveal-in-dominators-view.html
-inspector/profiler/heap-snapshot-summary-retainers.html
-inspector/profiler/heap-snapshot-summary-show-ranges.html
-inspector/profiler/heap-snapshot-summary-sorting-fields.html
-inspector/profiler/heap-snapshot-summary-sorting.html
-inspector/profiler/heap-snapshot-summary-sorting-instances.html
-webkit.org/b/50485 inspector-protocol/heap-profiler
-
-webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
-webkit.org/b/73936 inspector/profiler/canvas2d/canvas-stack-trace.html
-webkit.org/b/73936 inspector/profiler/canvas2d/canvas-replay-log-grid.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=40300
-inspector/debugger/live-edit.html
-inspector/debugger/live-edit-breakpoints.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=89652
-inspector/debugger/debugger-compile-and-run.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=53003
-http/tests/inspector/compiler-source-mapping-debug.html
 
 # <https://bugs.webkit.org/show_bug.cgi?id=44484>
 svg/batik/paints/patternRegions-positioned-objects.svg
@@ -1498,7 +1441,6 @@ fast/events/constructors/webgl-context-event-constructor.html
 http/tests/security/webgl-remote-read-remote-image-allowed.html
 http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
 http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
-inspector/profiler/webgl
 fast/images/webgl-teximage2d.html
 webgl
 
@@ -1511,10 +1453,7 @@ fast/css-grid-layout
 # <style scoped> is not yet enabled. http://webkit.org/b/49142
 fast/css/style-scoped
 # CSS Regions tests for region styling and scoped styles
-fast/regions/style-scoped-in-flow-override-container-style.html
-fast/regions/style-scoped-in-flow-override-region-styling-multiple-regions.html
-fast/regions/style-scoped-in-flow-override-region-styling.html
-fast/regions/style-scoped-in-flow.html
+fast/regions/style-scoped
 
 # ENABLE(SHADOW_DOM) is disabled.
 editing/shadow
@@ -1803,16 +1742,9 @@ http/tests/security/video-cross-origin-readback.html
 # Requires ENABLE(MEDIA_CAPTURE)
 fast/forms/file/file-input-capture.html
 
-# http://webkit.org/b/82886
-inspector/styles/override-screen-size.html
-
 # Interferes with the other requestAnimationFrame tests
 # https://bugs.webkit.org/show_bug.cgi?id=85689
 fast/animation/request-animation-frame-disabled.html
-
-# Inspector only supports evaluation in content script world with v8, see https://bugs.webkit.org/show_bug.cgi?id=85709
-inspector/extensions/extensions-eval-content-script.html
-inspector/extensions/extensions-audits-content-script.html
 
 # Rebaseline required after https://bugs.webkit.org/show_bug.cgi?id=84167
 editing/pasteboard/innerText-inline-table.html
@@ -1952,7 +1884,6 @@ fast/table/027.html
 fast/table/027-vertical.html
 fast/table/max-width-integer-overflow.html
 fast/writing-mode/fallback-orientation.html
-inspector/styles/svg-style.xhtml
 media/controls-after-reload.html
 media/controls-strict.html
 media/controls-without-preload.html
@@ -2156,6 +2087,7 @@ fast/forms/control-clip-overflow.html
 fast/forms/select-baseline.html
 fast/repaint/control-clip.html
 fast/selectors/064.html
+fast/selectors/166.html [ ImageOnlyFailure ]
 fast/table/append-cells2.html
 fast/table/remove-td-display-none.html
 fast/writing-mode/broken-ideograph-small-caps.html
@@ -2202,19 +2134,6 @@ fast/css/nested-layers-with-hover.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=95795
 editing/style/apply-style-atomic.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=94374
-inspector/timeline/timeline-decode-resize.html
-
-# Flaky inspector tests
-# https://bugs.webkit.org/show_bug.cgi?id=95802
-http/tests/inspector/console-resource-errors.html
-http/tests/inspector/resource-tree/resource-request-content-while-loading.html
-http/tests/inspector/search/resources-search-match-index.html
-http/tests/inspector/network/network-initiator-from-console.html
-inspector/profiler/heap-snapshot.html
-inspector/styles/media-queries.html
-inspector/styles/region-style-crash.html
 
 # Flaky http/tests/security tests
 # https://bugs.webkit.org/show_bug.cgi?id=95803
@@ -2294,12 +2213,6 @@ fast/dom/constructed-objects-prototypes.html
 fast/forms/state-restore-broken-state.html
 fast/html/progress-user-modify.html
 fast/multicol/shrink-to-column-height-for-pagination.html
-inspector/device-orientation-success.html
-inspector/geolocation-error.html
-inspector/geolocation-success.html
-inspector/geolocation-watchPosition.html
-inspector/styles/variables/css-variables.html
-inspector/timeline/timeline-receive-response-event.html
 media/audio-controls-rendering.html
 media/audio-repaint.html
 media/controls-styling-strict.html
@@ -2320,11 +2233,6 @@ tables/mozilla_expected_failures/marvin/table_overflow_hidden_tr.html
 http/tests/fullscreen/fullscreenelement-different-origin.html
 http/tests/fullscreen/fullscreenelement-same-origin.html
 http/tests/history/back-with-fragment-change.php
-http/tests/inspector/console-cross-origin-iframe-logging.html
-http/tests/inspector/inspect-element.html
-http/tests/inspector/resource-har-conversion.html
-http/tests/inspector/resource-parameters.html
-http/tests/inspector/websocket/web-socket-frame.html
 http/tests/loading/pdf-commit-load-callbacks.html
 http/tests/loading/post-in-iframe-with-back-navigation.html
 http/tests/media/media-document.html
@@ -2348,9 +2256,6 @@ http/tests/xmlhttprequest/range-test.html
 http/tests/security/sandboxed-iframe-origin-add.html
 http/tests/security/sandboxed-iframe-origin-remove.html
 
-#https://bugs.webkit.org/show_bug.cgi?id=96942
-http/tests/inspector/network/network-xhr-replay.html
-
 #AX role needs to be updated on Windows, many test cases involve AX role crash or fail
 accessibility/svg-bounds.html
 accessibility/html-html-element-is-ignored.html
@@ -2368,9 +2273,6 @@ http/tests/security/cross-origin-local-storage-wk1.html
 #Skipped on other platforms here: http://trac.webkit.org/changeset/129897
 svg/custom/clip-mask-negative-scale.svg
 
-#https://bugs.webkit.org/show_bug.cgi?id=98095
-inspector/debugger/dynamic-script-tag.html
-
 #https://bugs.webkit.org/show_bug.cgi?id=98306
 css3/flexbox/flexbox-baseline.html
 #https://bugs.webkit.org/show_bug.cgi?id=99878
@@ -2384,9 +2286,6 @@ css3/supports-dom-api.html
 # MHTML is not yet enabled
 mhtml
 
-# https://bugs.webkit.org/show_bug.cgi?id=98169
-http/tests/inspector/stacktraces
-
 # HIDDEN_PAGE_DOM_TIMER_THROTTLING is disabled
 fast/dom/timer-throttling-hidden-page.html
 
@@ -2399,10 +2298,6 @@ transitions/blendmode-transitions.html
 
 webkit.org/b/100424 editing/selection/user-select-all-selection.html [ Failure ]
 webkit.org/b/100424 editing/selection/user-select-all-with-shift.html [ Failure ]
-
-# https://bugs.webkit.org/show_bug.cgi?id=99567
-# Not supported on Mac or Windows ports
-inspector/elements/update-shadowdom.html
 
 # Not supported in CFNetwork yet. https://bugs.webkit.org/show_bug.cgi?id=100349
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-aborted.html
@@ -2482,6 +2377,7 @@ media/video-controls-captions-trackmenu-hide-on-click.html
 media/video-controls-captions-trackmenu-hide-on-click-outside.html
 media/video-controls-visible-exiting-fullscreen.html
 media/video-controls-captions-trackmenu-includes-enabled-track.html
+media/video-controls-captions-trackmenu-only-captions-descriptions-and-subtitles.html
 
 # Fails on JSC platforms due to gc timing issues
 # https://bugs.webkit.org/show_bug.cgi?id=106957
@@ -2489,10 +2385,6 @@ svg/dom/SVGViewSpec-invalid-ref-crash.html
 
 # Enable when support drag-and-drop autoscrolling
 webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html
-
-# Temporarily skip inspector tests which are now failing on the bots due to some configuration problem
-inspector
-http/tests/inspector
 
 # Temporarily skip a bunch of failing tests on Windows bots until
 # https://bugs.webkit.org/show_bug.cgi?id=108249
@@ -2521,12 +2413,6 @@ svg/text/font-size-below-point-five.svg
 tables/mozilla/bugs/bug1188.html
 tables/mozilla/bugs/bug1318.html
 tables/mozilla/bugs/bug113235-3.html
-http/tests/inspector-enabled/console-log-before-frame-navigation.html
-http/tests/inspector-enabled/database-open.html
-http/tests/inspector-enabled/dedicated-workers-list.html
-http/tests/inspector-enabled/dom-storage-open.html
-http/tests/inspector-enabled/dynamic-scripts.html
-http/tests/inspector-enabled/injected-script-discard.html
 http/tests/misc/favicon-loads-with-icon-loading-override.html
 http/tests/security/cookies/first-party-cookie-allow-xslt.xml
 http/tests/security/cookies/third-party-cookie-blocking-main-frame.html
@@ -2552,12 +2438,12 @@ jquery/attributes.html
 media/W3C/video/events/event_canplaythrough.html
 
 # Spellchecker behavior tests.
+webkit.org/b/108370 editing/spelling/context-menu-suggestions-multiword-selection.html
+webkit.org/b/108370 editing/spelling/context-menu-suggestions-subword-selection.html
 webkit.org/b/108370 editing/spelling/spelling-double-clicked-word.html
 webkit.org/b/108370 editing/spelling/spelling-exactly-selected-multiple-words.html
 webkit.org/b/108370 editing/spelling/spelling-exactly-selected-word.html
-webkit.org/b/108370 editing/spelling/spelling-multiword-selection.html
 webkit.org/b/108370 editing/spelling/spelling-should-select-multiple-words.html
-webkit.org/b/108370 editing/spelling/spelling-subword-selection.html
 webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html
 webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html
 webkit.org/b/108370 editing/spelling/spellcheck-async-mutation.html
@@ -2639,6 +2525,8 @@ fast/loader/url-selected-user-gesture.html
 
 # Don't run ogv and mkv tests on mac
 media/track/in-band [ WontFix ]
+media/track/video [ WontFix ]
+media/track/audio [ WontFix ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=113946
 compositing/contents-opaque/control-layer.html
@@ -2701,7 +2589,6 @@ webkit.org/b/117200 mathml/presentation/mo-stretch.html
 webkit.org/b/117200 mathml/presentation/roots.xhtml
 webkit.org/b/117200 mathml/presentation/row.xhtml
 webkit.org/b/119002 mathml/presentation/bug97990.html
-webkit.org/b/118856 mathml/presentation/fenced-mi.html
 webkit.org/b/118900 mathml/presentation/mspace-units.html
 webkit.org/b/119002 mathml/presentation/scripts-subsup.html
 
@@ -2863,6 +2750,7 @@ webkit.org/b/121509 fast/events/page-visibility-transition-test.html	[ Skip ]
 webkit.org/b/121509 fast/events/page-visibility-iframe-move-test.html	[ Skip ]
 webkit.org/b/121509 fast/history/go-back-to-iframe-with-plugin.html	[ Skip ]
 webkit.org/b/121509 loader/go-back-to-different-window-size.html	[ Skip ]
+webkit.org/b/121509 fast/events/drag-and-drop-autoscroll-inner-frame.html [ Skip ]
 
 # The following test cases are crashing:
 webkit.org/b/121510 fast/parser/residual-style-hang.html	[ Skip ]
@@ -2891,6 +2779,9 @@ webkit.org/b/121510 media/track/track-remove-crash.html	[ Skip ]
 webkit.org/b/121510 media/track/track-cue-nothing-to-render.html	[ Skip ]
 webkit.org/b/121510 media/track/track-delete-during-setup.html	[ Skip ]
 webkit.org/b/121510 svg/W3C-SVG-1.1/animate-elem-02-t.svg	[ Skip ] 
+webkit.org/b/121510 fast/frames/seamless/seamless-nested-crash.html [ Skip ]
+webkit.org/b/121510 js/dom/function-constructor-this-value.html [ Skip ]
+
 
 # More skipped tests
 editing/selection/caret-ltr-right.html [ Skip ]
@@ -2945,3 +2836,49 @@ js/dom/random-array-gc-stress.html [ Skip ]
 # https://bugs.webkit.org/show_bug.cgi?id=118810
 fast/shapes
 csswg/contributors/adobe/submitted/shapes
+
+# The following tests fail due to the new CSS/JS-based media controls.
+# They need to be rebaselined.
+# REGRESSION(r156730): 18 media tests broken (122021)
+webkit.org/b/122021 media/track/track-cue-mutable-text.html [ Failure ]
+webkit.org/b/122021 media/track/track-cue-rendering-mode-changed.html [ Failure ]
+webkit.org/b/122021 media/track/track-in-band-mode.html [ Failure ]
+webkit.org/b/122021 media/video-controls-captions-trackmenu-localized.html [ Failure ]
+webkit.org/b/122021 media/video-controls-captions-trackmenu-sorted.html [ Failure ]
+webkit.org/b/122021 media/video-controls-captions-trackmenu.html [ Failure ]
+webkit.org/b/122021 media/video-controls-fullscreen-volume.html [ Failure ]
+webkit.org/b/122021 media/video-controls-no-scripting.html [ Failure ]
+webkit.org/b/122021 media/video-controls-rendering.html [ Failure ]
+webkit.org/b/122021 media/video-controls-toggling.html [ Failure ]
+webkit.org/b/122021 media/video-controls-visible-exiting-fullscreen.html [ Failure ]
+webkit.org/b/122021 media/video-display-toggle.html [ Failure ]
+webkit.org/b/122021 media/video-empty-source.html [ Failure ]
+webkit.org/b/122021 media/video-rtl.html [ Failure ]
+webkit.org/b/122021 media/video-volume-slider.html [ Failure ]
+webkit.org/b/122021 media/volume-bar-empty-when-muted.html [ Failure ]
+webkit.org/b/122021 media/track/track-cue-rendering-vertical.html [ Pass Failure ]
+
+# The following tests also seem affected by r156730
+webkit.org/b/122166 media/track/audio-track.html [ Failure ]
+webkit.org/b/122166 media/track/video-track.html [ Failure ]
+webkit.org/b/122166 media/audio-controls-do-not-fade-out.html [ Failure ]
+webkit.org/b/122166 media/controls-drag-timebar.html [ Failure ]
+webkit.org/b/122166 media/controls-right-click-on-timebar.html [ Failure ]
+webkit.org/b/122166 media/media-captions-no-controls.html [ Failure ]
+webkit.org/b/122166 media/media-controls-invalid-url.html [ Failure ]
+webkit.org/b/122166 media/media-volume-slider-rendered-normal.html [ Failure ]
+webkit.org/b/122166 media/nodesFromRect-shadowContent.html [ Failure ]
+webkit.org/b/122166 media/video-controls-visible-audio-only.html [ Failure ]
+webkit.org/b/122166 media/track/track-cue-rendering-tree-is-removed-properly.html [ Failure ]
+
+# Flaky test fails on only certain machine configurations
+printing/print-close-crash.html
+
+# Test introduced in r157133 fails. State of colorspace management on Windows is unclear.
+media/video-canvas-drawing-output.html
+
+# crypto.subtle is not yet enabled
+crypto/subtle [ Skip ]
+
+# Mock media source does not work on Windows
+media/media-source [ Failure ]

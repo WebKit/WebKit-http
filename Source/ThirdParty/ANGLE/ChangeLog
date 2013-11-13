@@ -1,3 +1,72 @@
+2013-11-06  Dean Jackson  <dino@apple.com>
+
+        kTraceBufferLen is unused in default builds
+        https://bugs.webkit.org/show_bug.cgi?id=123941
+        <rdar://problem/15409804>
+
+        Reviewed by Tim Horton.
+
+        kTraceBufferLen is not used in debug.cpp if TRACE_ENABLED is
+        not defined. This causes a warning in newer builds of clang.
+        For now, skip warnings on unused variables until we
+        update from ANGLE.
+
+        * src/compiler/debug.cpp: Add unused-variable ignore pragma.
+
+2013-10-24  Mark Rowe  <mrowe@apple.com>
+
+        Remove references to OS X 10.7 from Xcode configuration settings.
+
+        Now that we're not building for OS X 10.7 they're no longer needed.
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2013-10-24  Mark Rowe  <mrowe@apple.com>
+
+        <rdar://problem/15312643> Prepare for the mysterious future.
+
+        Reviewed by David Kilzer.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2013-10-10  Mark Rowe  <mrowe@apple.com>
+
+        <rdar://problem/13341666> WebKit should always build against an SDK.
+
+        Have all projects default to building against the OS X Internal SDK for the Production
+        configuration. For the Debug and Release configurations, look for UseInternalSDK.xcconfig
+        to determine whether the OS X Internal SDK should be used. If not, use the normal OS X SDK.
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2013-10-08  Alex Christensen  <achristensen@webkit.org>
+
+        Generate pdb files for debugging ANGLE DLLs.
+        https://bugs.webkit.org/show_bug.cgi?id=122530
+
+        Reviewed by Brent Fulgham.
+
+        * ANGLE.vcxproj/libEGLCommon.props:
+        * ANGLE.vcxproj/libGLESv2Common.props:
+        Generate debug information.
+
+2013-10-03  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/15116673> [mac] Build failure when the source directory is not named ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=122307
+
+        Reviewed by Mark Rowe.
+
+        * ANGLE.xcodeproj/project.pbxproj: Ensure that the symlink to SRCROOT in
+        DerivedSources/ANGLE is named ANGLE.
+
 2013-09-29  Darin Adler  <darin@apple.com>
 
         Take some Xcode advice about turning on additional warnings in ANGLE and gtest

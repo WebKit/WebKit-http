@@ -26,6 +26,8 @@
 #import <WebKit2/WKBrowsingContextController.h>
 #import <WebKit2/WKBrowsingContextGroup.h>
 #import <WebKit2/WKBrowsingContextLoadDelegate.h>
+#import <WebKit2/WKBrowsingContextPolicyDelegate.h>
 #import <WebKit2/WKConnection.h>
+#import <WebKit2/WKFoundation.h>
 #import <WebKit2/WKProcessGroup.h>
 #import <WebKit2/WKView.h>

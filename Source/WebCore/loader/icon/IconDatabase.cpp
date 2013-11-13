@@ -52,7 +52,7 @@
 #define IS_ICON_SYNC_THREAD() (m_syncThread == currentThread())
 #define ASSERT_ICON_SYNC_THREAD() ASSERT(IS_ICON_SYNC_THREAD())
 
-#if PLATFORM(QT) || PLATFORM(GTK)
+#if PLATFORM(GTK)
 #define CAN_THEME_URL_ICON
 #endif
 
@@ -261,9 +261,10 @@ Image* IconDatabase::synchronousIconForPageURL(const String& pageURLOriginal, co
     // we can just bail now
     if (!m_iconURLImportComplete && !iconRecord)
         return 0;
-    
-    // The only way we should *not* have an icon record is if this pageURL is retained but has no icon yet - make sure of that
-    ASSERT(iconRecord || m_retainedPageURLs.contains(pageURLOriginal));
+
+    // Assuming we're done initializing and cleanup is allowed,
+    // the only way we should *not* have an icon record is if this pageURL is retained but has no icon yet.
+    ASSERT(iconRecord || databaseCleanupCounter || m_retainedPageURLs.contains(pageURLOriginal));
     
     if (!iconRecord)
         return 0;
@@ -823,8 +824,8 @@ void IconDatabase::notifyPendingLoadDecisions()
     ASSERT(m_iconURLImportComplete);
     LOG(IconDatabase, "Notifying all DocumentLoaders that were waiting on a load decision for their icons");
     
-    HashSet<RefPtr<DocumentLoader> >::iterator i = m_loadersPendingDecision.begin();
-    HashSet<RefPtr<DocumentLoader> >::iterator end = m_loadersPendingDecision.end();
+    HashSet<RefPtr<DocumentLoader>>::iterator i = m_loadersPendingDecision.begin();
+    HashSet<RefPtr<DocumentLoader>>::iterator end = m_loadersPendingDecision.end();
     
     for (; i != end; ++i)
         if ((*i)->refCount() > 1)

@@ -26,24 +26,25 @@
 
 namespace WebCore {
 
+class InlineElementBox;
 class HTMLElement;
 class Position;
 
 class RenderLineBreak FINAL : public RenderBoxModelObject {
 public:
-    explicit RenderLineBreak(HTMLElement&);
+    RenderLineBreak(HTMLElement&, PassRef<RenderStyle>);
     virtual ~RenderLineBreak();
 
     // FIXME: The lies here keep render tree dump based test results unchanged.
-    virtual const char* renderName() const { return m_isWBR ? "RenderWordBreak" : "RenderBR"; }
+    virtual const char* renderName() const OVERRIDE { return m_isWBR ? "RenderWordBreak" : "RenderBR"; }
 
     virtual bool isWBR() const OVERRIDE { return m_isWBR; }
 
-    InlineBox* createInlineBox();
-    InlineBox* inlineBoxWrapper() const { return m_inlineBoxWrapper; }
-    void setInlineBoxWrapper(InlineBox*);
+    std::unique_ptr<InlineElementBox> createInlineBox();
+    InlineElementBox* inlineBoxWrapper() const { return m_inlineBoxWrapper; }
+    void setInlineBoxWrapper(InlineElementBox*);
     void deleteInlineBoxWrapper();
-    void replaceInlineBoxWrapper(InlineBox*);
+    void replaceInlineBoxWrapper(InlineElementBox&);
     void dirtyLineBoxes(bool fullLayout);
 
     IntRect linesBoundingBox() const;
@@ -55,6 +56,7 @@ private:
     void node() const WTF_DELETED_FUNCTION;
 
     virtual bool canHaveChildren() const OVERRIDE { return false; }
+    virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE FINAL { }
 
     virtual VisiblePosition positionForPoint(const LayoutPoint&) OVERRIDE;
     virtual int caretMinOffset() const OVERRIDE;
@@ -83,37 +85,12 @@ private:
     virtual void updateFromStyle() OVERRIDE;
     virtual bool requiresLayer() const OVERRIDE { return false; }
 
-    InlineBox* m_inlineBoxWrapper;
+    InlineElementBox* m_inlineBoxWrapper;
     mutable int m_cachedLineHeight;
     bool m_isWBR;
 };
 
-inline RenderLineBreak& toRenderLineBreak(RenderObject& object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isLineBreak());
-    return static_cast<RenderLineBreak&>(object);
-}
-
-inline const RenderLineBreak& toRenderLineBreak(const RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isLineBreak());
-    return static_cast<const RenderLineBreak&>(object);
-}
-
-inline RenderLineBreak* toRenderLineBreak(RenderObject* object)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(object->isLineBreak());
-    return static_cast<RenderLineBreak*>(object);
-}
-
-inline const RenderLineBreak* toRenderLineBreak(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object->isLineBreak());
-    return static_cast<const RenderLineBreak*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderLineBreak(const RenderLineBreak&);
+RENDER_OBJECT_TYPE_CASTS(RenderLineBreak, isLineBreak())
 
 } // namespace WebCore
 

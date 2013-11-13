@@ -23,7 +23,6 @@ endif ()
 
 list(APPEND WebCore_SOURCES
     bindings/js/ArrayValue.cpp
-    bindings/js/BindingState.cpp
     bindings/js/CallbackFunction.cpp
     bindings/js/DOMObjectHashTableMap.cpp
     bindings/js/DOMWrapperWorld.cpp
@@ -126,7 +125,6 @@ list(APPEND WebCore_SOURCES
     bindings/js/ScriptController.cpp
     bindings/js/ScriptDebugServer.cpp
     bindings/js/ScriptFunctionCall.cpp
-    bindings/js/ScriptGCEvent.cpp
     bindings/js/ScriptObject.cpp
     bindings/js/ScriptProfile.cpp
     bindings/js/ScriptProfiler.cpp
@@ -243,6 +241,9 @@ endif ()
 
 if (ENABLE_MEDIA_STREAM)
     list(APPEND WebCore_SOURCES
+        bindings/js/JSMediaSourceStatesCustom.cpp
+        bindings/js/JSMediaStreamCapabilitiesCustom.cpp
+        bindings/js/JSRTCPeerConnectionCustom.cpp
         bindings/js/JSRTCStatsResponseCustom.cpp
     )
 endif ()

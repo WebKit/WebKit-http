@@ -71,7 +71,7 @@ static bool parseFontSize(const CharacterType* characters, unsigned length, int&
     // Step 4
     if (position == end)
         return false;
-    ASSERT(position < end);
+    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
 
     // Step 5
     enum {
@@ -186,7 +186,7 @@ bool HTMLFontElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLFontElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLFontElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == sizeAttr) {
         CSSValueID size = CSSValueInvalid;
@@ -196,7 +196,7 @@ void HTMLFontElement::collectStyleForPresentationAttribute(const QualifiedName& 
         addHTMLColorToStyle(style, CSSPropertyColor, value);
     else if (name == faceAttr) {
         if (RefPtr<CSSValueList> fontFaceValue = cssValuePool().createFontFaceValue(value))
-            style->setProperty(CSSProperty(CSSPropertyFontFamily, fontFaceValue.release()));
+            style.setProperty(CSSProperty(CSSPropertyFontFamily, fontFaceValue.release()));
     } else
         HTMLElement::collectStyleForPresentationAttribute(name, value, style);
 }

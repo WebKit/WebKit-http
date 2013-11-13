@@ -8,6 +8,8 @@ wtf_sources += \
     Source/WTF/wtf/Atomics.cpp \
     Source/WTF/wtf/Atomics.h \
     Source/WTF/wtf/AutodrainedPool.h \
+    Source/WTF/wtf/Bag.h \
+    Source/WTF/wtf/BagToHashMap.h \
     Source/WTF/wtf/BitArray.h \
     Source/WTF/wtf/BitVector.cpp \
     Source/WTF/wtf/BitVector.h \
@@ -74,7 +76,6 @@ wtf_sources += \
     Source/WTF/wtf/Insertion.h \
     Source/WTF/wtf/ListDump.h \
     Source/WTF/wtf/ListHashSet.h \
-    Source/WTF/wtf/LLVMHeaders.h \
     Source/WTF/wtf/Locker.h \
     Source/WTF/wtf/MD5.cpp \
     Source/WTF/wtf/MD5.h \
@@ -117,6 +118,7 @@ wtf_sources += \
     Source/WTF/wtf/ParallelJobsLibdispatch.h \
     Source/WTF/wtf/ParallelJobsOpenMP.h \
     Source/WTF/wtf/PassOwnPtr.h \
+    Source/WTF/wtf/PassRef.h \
     Source/WTF/wtf/PassRefPtr.h \
     Source/WTF/wtf/Platform.h \
     Source/WTF/wtf/PossiblyNull.h \
@@ -135,6 +137,8 @@ wtf_sources += \
     Source/WTF/wtf/RefPtr.h \
     Source/WTF/wtf/RefPtrHashMap.h \
     Source/WTF/wtf/RetainPtr.h \
+    Source/WTF/wtf/RunLoop.cpp \
+    Source/WTF/wtf/RunLoop.h \
     Source/WTF/wtf/SHA1.cpp \
     Source/WTF/wtf/SHA1.h \
     Source/WTF/wtf/SaturatedArithmetic.h \
@@ -214,6 +218,7 @@ wtf_sources += \
     Source/WTF/wtf/gobject/GlibUtilities.cpp \
     Source/WTF/wtf/gobject/GlibUtilities.h \
     Source/WTF/wtf/gtk/MainThreadGtk.cpp \
+    Source/WTF/wtf/gtk/RunLoopGtk.cpp \
     Source/WTF/wtf/text/ASCIIFastPath.h \
     Source/WTF/wtf/text/AtomicString.cpp \
     Source/WTF/wtf/text/AtomicString.h \

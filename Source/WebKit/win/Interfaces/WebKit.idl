@@ -121,8 +121,6 @@ import "AccessibleApplication.idl";
 #include "IWebResourceLoadDelegatePrivate.idl"
 #include "IWebResourceLoadDelegatePrivate2.idl"
 #include "IWebScriptWorld.idl"
-#include "IWebScrollBarDelegatePrivate.idl"
-#include "IWebScrollBarPrivate.idl"
 #include "IWebSecurityOrigin.idl"
 #include "IWebSerializedJSValue.idl"
 #include "IWebSerializedJSValuePrivate.idl"
@@ -241,11 +239,6 @@ library WebKit
     [uuid(F366A6E8-E43C-4fd4-AAB0-8E6E79C73E6E)]
     coclass WebURLProtectionSpace {
         [default] interface IWebURLProtectionSpace;
-    }
-
-    [uuid(24A53AD5-AA9F-44e6-AA22-2C7C250B661A)]
-    coclass WebScrollBar {
-        [default] interface IWebScrollBarPrivate;
     }
 
     [uuid(AB201196-8DD2-4d45-AEBD-029B6A37AA27)]

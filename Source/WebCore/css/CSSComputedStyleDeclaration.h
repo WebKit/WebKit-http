@@ -57,8 +57,8 @@ public:
     PassRefPtr<CSSValue> propertyValue(CSSPropertyID, EUpdateLayout = UpdateLayout) const;
 
     // Helper methods for HTML editing.
-    PassRefPtr<MutableStylePropertySet> copyPropertiesInSet(const CSSPropertyID* set, unsigned length) const;
-    PassRefPtr<MutableStylePropertySet> copyProperties() const;
+    PassRef<MutableStylePropertySet> copyPropertiesInSet(const CSSPropertyID* set, unsigned length) const;
+    PassRef<MutableStylePropertySet> copyProperties() const;
     PassRefPtr<CSSPrimitiveValue> getFontSizeCSSValuePreferringKeyword() const;
     bool useFixedFontDefaultSize() const;
     bool propertyMatches(CSSPropertyID, const CSSValue*) const;
@@ -109,22 +109,22 @@ private:
     CSSComputedStyleDeclaration(PassRefPtr<Node>, bool allowVisitedStyle, const String&);
 
     // CSSOM functions. Don't make these public.
-    virtual CSSRule* parentRule() const;
-    virtual unsigned length() const;
-    virtual String item(unsigned index) const;
-    virtual PassRefPtr<CSSValue> getPropertyCSSValue(const String& propertyName);
-    virtual String getPropertyValue(const String& propertyName);
-    virtual String getPropertyPriority(const String& propertyName);
-    virtual String getPropertyShorthand(const String& propertyName);
-    virtual bool isPropertyImplicit(const String& propertyName);
-    virtual void setProperty(const String& propertyName, const String& value, const String& priority, ExceptionCode&);
-    virtual String removeProperty(const String& propertyName, ExceptionCode&);
-    virtual String cssText() const;
-    virtual void setCssText(const String&, ExceptionCode&);
-    virtual PassRefPtr<CSSValue> getPropertyCSSValueInternal(CSSPropertyID);
-    virtual String getPropertyValueInternal(CSSPropertyID);
-    virtual void setPropertyInternal(CSSPropertyID, const String& value, bool important, ExceptionCode&);
-    virtual PassRefPtr<MutableStylePropertySet> copyProperties() const OVERRIDE;
+    virtual CSSRule* parentRule() const OVERRIDE;
+    virtual unsigned length() const OVERRIDE;
+    virtual String item(unsigned index) const OVERRIDE;
+    virtual PassRefPtr<CSSValue> getPropertyCSSValue(const String& propertyName) OVERRIDE;
+    virtual String getPropertyValue(const String& propertyName) OVERRIDE;
+    virtual String getPropertyPriority(const String& propertyName) OVERRIDE;
+    virtual String getPropertyShorthand(const String& propertyName) OVERRIDE;
+    virtual bool isPropertyImplicit(const String& propertyName) OVERRIDE;
+    virtual void setProperty(const String& propertyName, const String& value, const String& priority, ExceptionCode&) OVERRIDE;
+    virtual String removeProperty(const String& propertyName, ExceptionCode&) OVERRIDE;
+    virtual String cssText() const OVERRIDE;
+    virtual void setCssText(const String&, ExceptionCode&) OVERRIDE;
+    virtual PassRefPtr<CSSValue> getPropertyCSSValueInternal(CSSPropertyID) OVERRIDE;
+    virtual String getPropertyValueInternal(CSSPropertyID) OVERRIDE;
+    virtual void setPropertyInternal(CSSPropertyID, const String& value, bool important, ExceptionCode&) OVERRIDE;
+    virtual PassRef<MutableStylePropertySet> copyProperties() const OVERRIDE;
 
     PassRefPtr<CSSValue> getPropertyCSSValue(CSSPropertyID, EUpdateLayout = UpdateLayout) const;
 

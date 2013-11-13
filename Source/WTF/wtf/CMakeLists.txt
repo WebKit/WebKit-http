@@ -3,6 +3,8 @@ set(WTF_HEADERS
     AVLTree.h
     Assertions.h
     Atomics.h
+    Bag.h
+    BagToHashMap.h
     BitArray.h
     BitVector.h
     Bitmap.h
@@ -67,6 +69,7 @@ set(WTF_HEADERS
     ParallelJobsLibdispatch.h
     ParallelJobsOpenMP.h
     PassOwnPtr.h
+    PassRef.h
     PassRefPtr.h
     Platform.h
     PossiblyNull.h
@@ -83,6 +86,7 @@ set(WTF_HEADERS
     RefPtr.h
     RefPtrHashMap.h
     RetainPtr.h
+    RunLoop.h
     SHA1.h
     SaturatedArithmetic.h
     SegmentedVector.h
@@ -170,6 +174,7 @@ set(WTF_SOURCES
     RAMSize.cpp
     RandomNumber.cpp
     RefCountedLeakCounter.cpp
+    RunLoop.cpp
     SHA1.cpp
     SixCharacterHash.cpp
     StackBounds.cpp

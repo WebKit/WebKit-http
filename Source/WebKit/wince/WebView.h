@@ -27,8 +27,8 @@
 
 #include "IntRect.h"
 #include <windows.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/PassRefPtr.h>
+#include <wtf/win/GDIObject.h>
 
 namespace WTF {
 class String;
@@ -69,7 +69,8 @@ public:
 
     void frameRect(RECT* rect) const;
 
-    PassRefPtr<WebCore::Frame> createFrame(const WebCore::URL&, const WTF::String&, WebCore::HTMLFrameOwnerElement*, const WTF::String&, bool, int, int);
+    PassRefPtr<WebCore::Frame> createFrame(const WebCore::URL&, const WTF::String& name, WebCore::HTMLFrameOwnerElement*, 
+        const WTF::String& referrer, bool allowScrolling, int marginWidth, int marginHeight, WebCore::Frame* parentFrame);
 
     // JavaScript Dialog
     void runJavaScriptAlert(const WTF::String& message);
@@ -94,8 +95,8 @@ private:
     HWND m_parentWindowHandle;
     HWND m_windowHandle;
     bool m_enableDoubleBuffer;
-    OwnPtr<HDC> m_doubleBufferDC;
-    OwnPtr<HBITMAP> m_doubleBufferBitmap;
+    GDIObject<HDC> m_doubleBufferDC;
+    GDIObject<HBITMAP> m_doubleBufferBitmap;
 };
 
 #endif // WebView_h

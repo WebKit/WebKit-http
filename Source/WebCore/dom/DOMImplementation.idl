@@ -20,7 +20,7 @@
 
 [
     GenerateIsReachable=ImplDocument,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface DOMImplementation {
 
     // DOM Level 1

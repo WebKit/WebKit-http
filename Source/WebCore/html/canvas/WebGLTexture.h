@@ -66,6 +66,9 @@ public:
     // Determine if texture sampling should always return [0, 0, 0, 1] (OpenGL ES 2.0 Sec 3.8.2).
     bool needToUseBlackTexture() const;
 
+    bool isCompressed() const;
+    void setCompressed();
+
     bool hasEverBeenBound() const { return object() && m_target; }
 
     static GC3Dint computeLevelCount(GC3Dsizei width, GC3Dsizei height);
@@ -118,11 +121,12 @@ private:
     GC3Denum m_wrapS;
     GC3Denum m_wrapT;
 
-    Vector<Vector<LevelInfo> > m_info;
+    Vector<Vector<LevelInfo>> m_info;
 
     bool m_isNPOT;
     bool m_isComplete;
     bool m_needToUseBlackTexture;
+    bool m_isCompressed;
 };
 
 } // namespace WebCore

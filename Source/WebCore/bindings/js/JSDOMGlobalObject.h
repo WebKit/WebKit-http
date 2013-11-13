@@ -38,8 +38,8 @@ namespace WebCore {
     class DOMWrapperWorld;
     class ScriptExecutionContext;
 
-    typedef HashMap<const JSC::ClassInfo*, JSC::WriteBarrier<JSC::Structure> > JSDOMStructureMap;
-    typedef HashMap<const JSC::ClassInfo*, JSC::WriteBarrier<JSC::JSObject> > JSDOMConstructorMap;
+    typedef HashMap<const JSC::ClassInfo*, JSC::WriteBarrier<JSC::Structure>> JSDOMStructureMap;
+    typedef HashMap<const JSC::ClassInfo*, JSC::WriteBarrier<JSC::JSObject>> JSDOMConstructorMap;
 
     class JSDOMGlobalObject : public JSC::JSGlobalObject {
         typedef JSC::JSGlobalObject Base;
@@ -65,10 +65,11 @@ namespace WebCore {
 
         static void visitChildren(JSC::JSCell*, JSC::SlotVisitor&);
 
-        DOMWrapperWorld* world() { return m_world.get(); }
+        DOMWrapperWorld& world() { return *m_world; }
 
     protected:
         static WEBKIT_EXPORTDATA const JSC::ClassInfo s_info;
+
     public:
         static const JSC::ClassInfo* info() { return &s_info; }
 
@@ -100,8 +101,8 @@ namespace WebCore {
     JSDOMGlobalObject* toJSDOMGlobalObject(Document*, JSC::ExecState*);
     JSDOMGlobalObject* toJSDOMGlobalObject(ScriptExecutionContext*, JSC::ExecState*);
 
-    JSDOMGlobalObject* toJSDOMGlobalObject(Document*, DOMWrapperWorld*);
-    JSDOMGlobalObject* toJSDOMGlobalObject(ScriptExecutionContext*, DOMWrapperWorld*);
+    JSDOMGlobalObject* toJSDOMGlobalObject(Document*, DOMWrapperWorld&);
+    JSDOMGlobalObject* toJSDOMGlobalObject(ScriptExecutionContext*, DOMWrapperWorld&);
 
 } // namespace WebCore
 

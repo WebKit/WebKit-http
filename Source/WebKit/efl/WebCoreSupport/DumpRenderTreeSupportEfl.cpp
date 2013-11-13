@@ -488,7 +488,7 @@ void DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld(const Evas_Object* 
         anyWorldGlobalObject = static_cast<WebCore::JSDOMWindowShell*>(globalObjectObj)->window();
 
     // Comment from mac: Get the frame from the global object we've settled on.
-    WebCore::Frame* globalFrame = anyWorldGlobalObject->impl()->frame();
+    WebCore::Frame* globalFrame = anyWorldGlobalObject->impl().frame();
     if (!globalFrame)
         return;
 
@@ -511,7 +511,7 @@ void DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld(const Evas_Object* 
 
     // The code below is only valid for JSC, V8 specific code is to be added
     // when V8 will be supported in EFL port. See Qt implemenation.
-    proxy.executeScriptInWorld(scriptWorld.get(), script, true);
+    proxy.executeScriptInWorld(*scriptWorld, script, true);
 }
 
 JSGlobalContextRef DumpRenderTreeSupportEfl::globalContextRefForFrame(const Evas_Object* ewkFrame)
@@ -647,7 +647,7 @@ bool DumpRenderTreeSupportEfl::selectedRange(Evas_Object* ewkView, int* start, i
     WebCore::Element* selectionRoot = frame.selection().rootEditableElement();
     WebCore::Element* scope = selectionRoot ? selectionRoot : frame.document()->documentElement();
 
-    RefPtr<WebCore::Range> testRange = WebCore::Range::create(&scope->document(), scope, 0, range->startContainer(), range->startOffset());
+    RefPtr<WebCore::Range> testRange = WebCore::Range::create(scope->document(), scope, 0, range->startContainer(), range->startOffset());
     *start = WebCore::TextIterator::rangeLength(testRange.get());
 
     WebCore::ExceptionCode ec;

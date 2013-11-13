@@ -89,7 +89,7 @@ bool HTMLObjectElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLPlugInImageElement::isPresentationAttribute(name);
 }
 
-void HTMLObjectElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLObjectElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == borderAttr)
         applyBorderAttributeToStyle(value, style);
@@ -154,7 +154,7 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
     
     // Scan the PARAM children and store their name/value pairs.
     // Get the URL and type from the params if we don't already have them.
-    auto paramChildren = childrenOfType<HTMLParamElement>(this);
+    auto paramChildren = childrenOfType<HTMLParamElement>(*this);
     for (auto param = paramChildren.begin(), end = paramChildren.end(); param != end; ++param) {
         String name = param->name();
         if (name.isEmpty())
@@ -243,7 +243,7 @@ bool HTMLObjectElement::shouldAllowQuickTimeClassIdQuirk()
     RefPtr<NodeList> metaElements = document().getElementsByTagName(HTMLNames::metaTag.localName());
     unsigned length = metaElements->length();
     for (unsigned i = 0; i < length; ++i) {
-        ASSERT(metaElements->item(i)->isHTMLElement());
+        ASSERT_WITH_SECURITY_IMPLICATION(metaElements->item(i)->isHTMLElement());
         HTMLMetaElement* metaElement = static_cast<HTMLMetaElement*>(metaElements->item(i));
         if (equalIgnoringCase(metaElement->name(), "generator") && metaElement->content().startsWith("Mac OS X Server Web Services Server", false))
             return true;
@@ -254,11 +254,6 @@ bool HTMLObjectElement::shouldAllowQuickTimeClassIdQuirk()
     
 bool HTMLObjectElement::hasValidClassId()
 {
-#if PLATFORM(QT)
-    if (equalIgnoringCase(serviceType(), "application/x-qt-plugin") || equalIgnoringCase(serviceType(), "application/x-qt-styled-widget"))
-        return true;
-#endif
-
     if (MIMETypeRegistry::isJavaAppletMIMEType(serviceType()) && classId().startsWith("java:", false))
         return true;
     
@@ -299,9 +294,6 @@ void HTMLObjectElement::updateWidget(PluginCreationOption pluginCreationOption)
     if (!allowedToLoadFrameURL(url))
         return;
 
-    bool fallbackContent = hasFallbackContent();
-    renderEmbeddedObject()->setHasFallbackContent(fallbackContent);
-
     // FIXME: It's sadness that we have this special case here.
     //        See http://trac.webkit.org/changeset/25128 and
     //        plugins/netscape-plugin-setwindow-size.html
@@ -317,19 +309,19 @@ void HTMLObjectElement::updateWidget(PluginCreationOption pluginCreationOption)
         return;
 
     SubframeLoader& loader = document().frame()->loader().subframeLoader();
-    bool success = beforeLoadAllowedLoad && hasValidClassId() && loader.requestObject(this, url, getNameAttribute(), serviceType, paramNames, paramValues);
-    if (!success && fallbackContent)
+    bool success = beforeLoadAllowedLoad && hasValidClassId() && loader.requestObject(*this, url, getNameAttribute(), serviceType, paramNames, paramValues);
+    if (!success && hasFallbackContent())
         renderFallbackContent();
 }
 
-Node::InsertionNotificationRequest HTMLObjectElement::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest HTMLObjectElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLPlugInImageElement::insertedInto(insertionPoint);
     FormAssociatedElement::insertedInto(insertionPoint);
     return InsertionDone;
 }
 
-void HTMLObjectElement::removedFrom(ContainerNode* insertionPoint)
+void HTMLObjectElement::removedFrom(ContainerNode& insertionPoint)
 {
     HTMLPlugInImageElement::removedFrom(insertionPoint);
     FormAssociatedElement::removedFrom(insertionPoint);
@@ -432,17 +424,17 @@ void HTMLObjectElement::updateDocNamedItem()
         const AtomicString& id = getIdAttribute();
         if (!id.isEmpty()) {
             if (isNamedItem)
-                document->addDocumentNamedItem(id, this);
+                document->addDocumentNamedItem(*id.impl(), *this);
             else
-                document->removeDocumentNamedItem(id, this);
+                document->removeDocumentNamedItem(*id.impl(), *this);
         }
 
         const AtomicString& name = getNameAttribute();
         if (!name.isEmpty() && id != name) {
             if (isNamedItem)
-                document->addDocumentNamedItem(name, this);
+                document->addDocumentNamedItem(*name.impl(), *this);
             else
-                document->removeDocumentNamedItem(name, this);
+                document->removeDocumentNamedItem(*name.impl(), *this);
         }
     }
     m_docNamedItem = isNamedItem;
@@ -453,7 +445,8 @@ bool HTMLObjectElement::containsJavaApplet() const
     if (MIMETypeRegistry::isJavaAppletMIMEType(getAttribute(typeAttr)))
         return true;
 
-    for (auto child = elementChildren(this).begin(), end = elementChildren(this).end(); child != end; ++child) {
+    auto children = elementChildren(*this);
+    for (auto child = children.begin(), end = children.end(); child != end; ++child) {
         if (child->hasTagName(paramTag) && equalIgnoringCase(child->getNameAttribute(), "type")
             && MIMETypeRegistry::isJavaAppletMIMEType(child->getAttribute(valueAttr).string()))
             return true;

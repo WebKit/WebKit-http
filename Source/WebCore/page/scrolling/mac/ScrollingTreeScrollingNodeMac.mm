@@ -23,24 +23,26 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "ScrollingTreeScrollingNodeMac.h"
+#import "config.h"
+#import "ScrollingTreeScrollingNodeMac.h"
 
 #if ENABLE(THREADED_SCROLLING)
 
-#include "FrameView.h"
-#include "PlatformWheelEvent.h"
-#include "ScrollingCoordinator.h"
-#include "ScrollingTree.h"
-#include "ScrollingStateTree.h"
-#include "Settings.h"
-#include "TileController.h"
-#include "WebTileLayer.h"
+#import "FrameView.h"
+#import "NSScrollerImpDetails.h"
+#import "PlatformWheelEvent.h"
+#import "ScrollingCoordinator.h"
+#import "ScrollingTree.h"
+#import "ScrollingStateTree.h"
+#import "Settings.h"
+#import "TileController.h"
+#import "WebLayer.h"
 
-#include <wtf/CurrentTime.h>
-#include <wtf/Deque.h>
-#include <wtf/text/StringBuilder.h>
-#include <wtf/text/CString.h>
+#import <QuartzCore/QuartzCore.h>
+#import <wtf/CurrentTime.h>
+#import <wtf/Deque.h>
+#import <wtf/text/StringBuilder.h>
+#import <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -48,14 +50,16 @@ static void logThreadedScrollingMode(unsigned mainThreadScrollingReasons);
 static void logWheelEventHandlerCountChanged(unsigned);
 
 
-PassOwnPtr<ScrollingTreeScrollingNode> ScrollingTreeScrollingNode::create(ScrollingTree* scrollingTree, ScrollingNodeID nodeID)
+PassOwnPtr<ScrollingTreeScrollingNode> ScrollingTreeScrollingNode::create(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
 {
     return adoptPtr(new ScrollingTreeScrollingNodeMac(scrollingTree, nodeID));
 }
 
-ScrollingTreeScrollingNodeMac::ScrollingTreeScrollingNodeMac(ScrollingTree* scrollingTree, ScrollingNodeID nodeID)
+ScrollingTreeScrollingNodeMac::ScrollingTreeScrollingNodeMac(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
     : ScrollingTreeScrollingNode(scrollingTree, nodeID)
     , m_scrollElasticityController(this)
+    , m_verticalScrollbarPainter(0)
+    , m_horizontalScrollbarPainter(0)
     , m_lastScrollHadUnfilledPixels(false)
 {
 }
@@ -83,6 +87,11 @@ void ScrollingTreeScrollingNodeMac::updateBeforeChildren(ScrollingStateNode* sta
     if (scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::FooterLayer))
         m_footerLayer = scrollingStateNode->footerPlatformLayer();
 
+    if (scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::PainterForScrollbar)) {
+        m_verticalScrollbarPainter = scrollingStateNode->verticalScrollbarPainter();
+        m_horizontalScrollbarPainter = scrollingStateNode->horizontalScrollbarPainter();
+    }
+
     if (scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::ShouldUpdateScrollLayerPositionOnMainThread)) {
         unsigned mainThreadScrollingReasons = this->shouldUpdateScrollLayerPositionOnMainThread();
 
@@ -97,12 +106,12 @@ void ScrollingTreeScrollingNodeMac::updateBeforeChildren(ScrollingStateNode* sta
             }
         }
 
-        if (scrollingTree()->scrollingPerformanceLoggingEnabled())
+        if (scrollingTree().scrollingPerformanceLoggingEnabled())
             logThreadedScrollingMode(mainThreadScrollingReasons);
     }
 
     if (scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::WheelEventHandlerCount)) {
-        if (scrollingTree()->scrollingPerformanceLoggingEnabled())
+        if (scrollingTree().scrollingPerformanceLoggingEnabled())
             logWheelEventHandlerCountChanged(scrollingStateNode->wheelEventHandlerCount());
     }
 }
@@ -127,7 +136,7 @@ void ScrollingTreeScrollingNodeMac::handleWheelEvent(const PlatformWheelEvent& w
         return;
 
     m_scrollElasticityController.handleWheelEvent(wheelEvent);
-    scrollingTree()->handleWheelEventPhase(wheelEvent.phase());
+    scrollingTree().handleWheelEventPhase(wheelEvent.phase());
 }
 
 bool ScrollingTreeScrollingNodeMac::allowsHorizontalStretching()
@@ -174,11 +183,11 @@ IntSize ScrollingTreeScrollingNodeMac::stretchAmount()
     else if (scrollPosition().x() > maximumScrollPosition().x())
         stretch.setWidth(scrollPosition().x() - maximumScrollPosition().x());
 
-    if (scrollingTree()->rootNode() == this) {
+    if (scrollingTree().rootNode() == this) {
         if (stretch.isZero())
-            scrollingTree()->setMainFrameIsRubberBanding(false);
+            scrollingTree().setMainFrameIsRubberBanding(false);
         else
-            scrollingTree()->setMainFrameIsRubberBanding(true);
+            scrollingTree().setMainFrameIsRubberBanding(true);
     }
 
     return stretch;
@@ -222,15 +231,9 @@ bool ScrollingTreeScrollingNodeMac::canScrollVertically()
     return hasEnabledVerticalScrollbar();
 }
 
-bool ScrollingTreeScrollingNodeMac::shouldRubberBandInDirection(ScrollDirection direction)
+bool ScrollingTreeScrollingNodeMac::shouldRubberBandInDirection(ScrollDirection)
 {
-    if (direction == ScrollLeft)
-        return !scrollingTree()->canGoBack();
-    if (direction == ScrollRight)
-        return !scrollingTree()->canGoForward();
-
-    ASSERT_NOT_REACHED();
-    return false;
+    return true;
 }
 
 IntPoint ScrollingTreeScrollingNodeMac::absoluteScrollPosition()
@@ -265,7 +268,10 @@ void ScrollingTreeScrollingNodeMac::stopSnapRubberbandTimer()
     if (!m_snapRubberbandTimer)
         return;
 
-    scrollingTree()->setMainFrameIsRubberBanding(false);
+    scrollingTree().setMainFrameIsRubberBanding(false);
+
+    // Since the rubberband timer has stopped, totalContentsSizeForRubberBand can be synchronized with totalContentsSize.
+    setTotalContentsSizeForRubberBand(totalContentsSize());
 
     CFRunLoopTimerInvalidate(m_snapRubberbandTimer.get());
     m_snapRubberbandTimer = nullptr;
@@ -288,7 +294,7 @@ void ScrollingTreeScrollingNodeMac::setScrollPosition(const IntPoint& scrollPosi
 
     setScrollPositionWithoutContentEdgeConstraints(newScrollPosition);
 
-    if (scrollingTree()->scrollingPerformanceLoggingEnabled())
+    if (scrollingTree().scrollingPerformanceLoggingEnabled())
         logExposedUnfilledArea();
 }
 
@@ -298,12 +304,12 @@ void ScrollingTreeScrollingNodeMac::setScrollPositionWithoutContentEdgeConstrain
 
     if (shouldUpdateScrollLayerPositionOnMainThread()) {
         m_probableMainThreadScrollPosition = scrollPosition;
-        scrollingTree()->updateMainFrameScrollPosition(scrollPosition, SetScrollingLayerPosition);
+        scrollingTree().updateMainFrameScrollPosition(scrollPosition, SetScrollingLayerPosition);
         return;
     }
 
     setScrollLayerPosition(scrollPosition);
-    scrollingTree()->updateMainFrameScrollPosition(scrollPosition);
+    scrollingTree().updateMainFrameScrollPosition(scrollPosition);
 }
 
 void ScrollingTreeScrollingNodeMac::setScrollLayerPosition(const IntPoint& position)
@@ -329,10 +335,34 @@ void ScrollingTreeScrollingNodeMac::setScrollLayerPosition(const IntPoint& posit
     if (m_footerLayer)
         m_footerLayer.get().position = FloatPoint(horizontalScrollOffsetForBanner, totalContentsSize().height() - footerHeight());
 
+    IntRect viewportRect = this->viewportRect();
+
+    if (m_verticalScrollbarPainter || m_horizontalScrollbarPainter) {
+        [CATransaction begin];
+        [CATransaction lock];
+
+        if (m_verticalScrollbarPainter) {
+            [m_verticalScrollbarPainter setUsePresentationValue:YES];
+            float presentationValue;
+            float overhangAmount;
+            ScrollableArea::computeScrollbarValueAndOverhang(position.y(), totalContentsSize().height(), viewportRect.height(), presentationValue, overhangAmount);
+            [m_verticalScrollbarPainter setPresentationValue:presentationValue];
+        }
+
+        if (m_horizontalScrollbarPainter) {
+            [m_horizontalScrollbarPainter setUsePresentationValue:YES];
+            float presentationValue;
+            float overhangAmount;
+            ScrollableArea::computeScrollbarValueAndOverhang(position.x(), totalContentsSize().width(), viewportRect.width(), presentationValue, overhangAmount);
+            [m_horizontalScrollbarPainter setPresentationValue:presentationValue];
+        }
+        [CATransaction unlock];
+        [CATransaction commit];
+    }
+
     if (!m_children)
         return;
 
-    IntRect viewportRect = this->viewportRect();
     viewportRect.setLocation(IntPoint(scrollOffsetForFixedChildren));
 
     size_t size = m_children->size();
@@ -344,7 +374,7 @@ IntPoint ScrollingTreeScrollingNodeMac::minimumScrollPosition() const
 {
     IntPoint position;
     
-    if (scrollingTree()->rootNode() == this && scrollingTree()->scrollPinningBehavior() == PinToBottom)
+    if (scrollingTree().rootNode() == this && scrollingTree().scrollPinningBehavior() == PinToBottom)
         position.setY(maximumScrollPosition().y());
 
     return position;
@@ -352,12 +382,12 @@ IntPoint ScrollingTreeScrollingNodeMac::minimumScrollPosition() const
 
 IntPoint ScrollingTreeScrollingNodeMac::maximumScrollPosition() const
 {
-    IntPoint position(totalContentsSize().width() - viewportRect().width(),
-                      totalContentsSize().height() - viewportRect().height());
+    IntPoint position(totalContentsSizeForRubberBand().width() - viewportRect().width(),
+                      totalContentsSizeForRubberBand().height() - viewportRect().height());
 
     position.clampNegativeToZero();
 
-    if (scrollingTree()->rootNode() == this && scrollingTree()->scrollPinningBehavior() == PinToTop)
+    if (scrollingTree().rootNode() == this && scrollingTree().scrollPinningBehavior() == PinToTop)
         position.setY(minimumScrollPosition().y());
 
     return position;
@@ -380,7 +410,7 @@ void ScrollingTreeScrollingNodeMac::updateMainFramePinState(const IntPoint& scro
     bool pinnedToTheTop = scrollPosition.y() <= minimumScrollPosition().y();
     bool pinnedToTheBottom = scrollPosition.y() >= maximumScrollPosition().y();
 
-    scrollingTree()->setMainFramePinState(pinnedToTheLeft, pinnedToTheRight, pinnedToTheTop, pinnedToTheBottom);
+    scrollingTree().setMainFramePinState(pinnedToTheLeft, pinnedToTheRight, pinnedToTheTop, pinnedToTheBottom);
 }
 
 void ScrollingTreeScrollingNodeMac::logExposedUnfilledArea()
@@ -389,18 +419,16 @@ void ScrollingTreeScrollingNodeMac::logExposedUnfilledArea()
 
     Deque<CALayer*> layerQueue;
     layerQueue.append(m_scrollLayer.get());
-    WebTileLayerList tiles;
+    PlatformLayerList tiles;
 
     while (!layerQueue.isEmpty() && tiles.isEmpty()) {
         CALayer* layer = layerQueue.takeFirst();
         NSArray* sublayers = [[layer sublayers] copy];
 
         // If this layer is the parent of a tile, it is the parent of all of the tiles and nothing else.
-        if ([[sublayers objectAtIndex:0] isKindOfClass:[WebTileLayer class]]) {
-            for (CALayer* sublayer in sublayers) {
-                ASSERT([sublayer isKindOfClass:[WebTileLayer class]]);
-                tiles.append(static_cast<WebTileLayer*>(sublayer));
-            }
+        if ([[[sublayers objectAtIndex:0] valueForKey:@"isTile"] boolValue]) {
+            for (CALayer* sublayer in sublayers)
+                tiles.append(sublayer);
         } else {
             for (CALayer* sublayer in sublayers)
                 layerQueue.append(sublayer);

@@ -25,6 +25,8 @@
 
 #import <JavaScriptCore/JavaScriptCore.h>
 
+#import "CurrentThisInsideBlockGetterTest.h"
+
 extern "C" void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
 extern "C" bool _Block_has_signature(id);
@@ -50,6 +52,7 @@ extern "C" void testObjectiveCAPI(void);
 @end
 
 @protocol TestObject <JSExport>
+- (id)init;
 @property int variable;
 @property (readonly) int six;
 @property CGPoint point;
@@ -101,6 +104,7 @@ JSExportAs(testArgumentTypes,
 bool testXYZTested = false;
 
 @protocol TextXYZ <JSExport>
+- (id)initWithString:(NSString*)string;
 @property int x;
 @property (readonly) int y;
 @property (assign) JSValue *onclick;
@@ -122,6 +126,16 @@ bool testXYZTested = false;
 @synthesize x;
 @synthesize y;
 @synthesize z;
+- (id)initWithString:(NSString*)string
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    NSLog(@"%@", string);
+
+    return self;
+}
 - (void)test:(NSString *)message
 {
     testXYZTested = [message isEqual:@"test"] && x == 13 & y == 4 && z == 5;
@@ -241,6 +255,175 @@ static JSVirtualMachine *sharedInstance = nil;
 
 @end
 
+@interface JSCollection : NSObject
+- (void)setValue:(JSValue *)value forKey:(NSString *)key;
+- (JSValue *)valueForKey:(NSString *)key;
+@end
+
+@implementation JSCollection {
+    NSMutableDictionary *_dict;
+}
+- (id)init
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    _dict = [[NSMutableDictionary alloc] init];
+
+    return self;
+}
+
+- (void)setValue:(JSValue *)value forKey:(NSString *)key
+{
+    JSManagedValue *oldManagedValue = [_dict objectForKey:key];
+    if (oldManagedValue) {
+        JSValue* oldValue = [oldManagedValue value];
+        if (oldValue)
+            [oldValue.context.virtualMachine removeManagedReference:oldManagedValue withOwner:self];
+    }
+    JSManagedValue *managedValue = [JSManagedValue managedValueWithValue:value];
+    [value.context.virtualMachine addManagedReference:managedValue withOwner:self];
+    [_dict setObject:managedValue forKey:key];
+}
+
+- (JSValue *)valueForKey:(NSString *)key
+{
+    JSManagedValue *managedValue = [_dict objectForKey:key];
+    if (!managedValue)
+        return nil;
+    return [managedValue value];
+}
+@end
+
+@protocol InitA <JSExport>
+- (id)initWithA:(int)a;
+- (int)initialize;
+@end
+
+@protocol InitB <JSExport>
+- (id)initWithA:(int)a b:(int)b;
+@end
+
+@protocol InitC <JSExport>
+- (id)_init;
+@end
+
+@interface ClassA : NSObject<InitA>
+@end
+
+@interface ClassB : ClassA<InitB>
+@end
+
+@interface ClassC : ClassB<InitA, InitB>
+@end
+
+@interface ClassCPrime : ClassB<InitA, InitC>
+@end
+
+@interface ClassD : NSObject<InitA>
+- (id)initWithA:(int)a;
+@end
+
+@interface ClassE : ClassD
+- (id)initWithA:(int)a;
+@end
+
+@implementation ClassA {
+    int _a;
+}
+- (id)initWithA:(int)a
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    _a = a;
+
+    return self;
+}
+- (int)initialize
+{
+    return 42;
+}
+@end
+
+@implementation ClassB {
+    int _b;
+}
+- (id)initWithA:(int)a b:(int)b
+{
+    self = [super initWithA:a];
+    if (!self)
+        return nil;
+
+    _b = b;
+
+    return self;
+}
+@end
+
+@implementation ClassC {
+    int _c;
+}
+- (id)initWithA:(int)a
+{
+    return [self initWithA:a b:0];
+}
+- (id)initWithA:(int)a b:(int)b
+{
+    self = [super initWithA:a b:b];
+    if (!self)
+        return nil;
+
+    _c = a + b;
+
+    return self;
+}
+@end
+
+@implementation ClassCPrime
+- (id)initWithA:(int)a
+{
+    self = [super initWithA:a b:0];
+    if (!self)
+        return nil;
+    return self;
+}
+- (id)_init
+{
+    return [self initWithA:42];
+}
+@end
+
+@implementation ClassD
+
+- (id)initWithA:(int)a
+{
+    self = nil;
+    return [[ClassE alloc] initWithA:a];
+}
+- (int)initialize
+{
+    return 0;
+}
+@end
+
+@implementation ClassE {
+    int _a;
+}
+
+- (id)initWithA:(int)a
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    _a = a;
+
+    return self;
+}
+@end
 static void checkResult(NSString *description, bool passed)
 {
     NSLog(@"TEST: \"%@\": %@", description, passed ? @"PASSED" : @"FAILED");
@@ -288,6 +471,41 @@ void testObjectiveCAPI()
         checkResult(@"Check dictionary literal", [obj isKindOfClass:[NSDictionary class]]);
         id num = (NSDictionary *)obj[@"x"];
         checkResult(@"Check numeric literal", [num isKindOfClass:[NSNumber class]]);
+    }
+
+    @autoreleasepool {
+        JSCollection* myPrivateProperties = [[JSCollection alloc] init];
+
+        @autoreleasepool {
+            JSContext* context = [[JSContext alloc] init];
+            TestObject* rootObject = [TestObject testObject];
+            context[@"root"] = rootObject;
+            [context.virtualMachine addManagedReference:myPrivateProperties withOwner:rootObject];
+            [myPrivateProperties setValue:[JSValue valueWithBool:true inContext:context] forKey:@"is_ham"];
+            [myPrivateProperties setValue:[JSValue valueWithObject:@"hello!" inContext:context] forKey:@"message"];
+            [myPrivateProperties setValue:[JSValue valueWithInt32:42 inContext:context] forKey:@"my_number"];
+            [myPrivateProperties setValue:[JSValue valueWithNullInContext:context] forKey:@"definitely_null"];
+            [myPrivateProperties setValue:[JSValue valueWithUndefinedInContext:context] forKey:@"not_sure_if_undefined"];
+
+            JSSynchronousGarbageCollectForDebugging([context JSGlobalContextRef]);
+
+            JSValue *isHam = [myPrivateProperties valueForKey:@"is_ham"];
+            JSValue *message = [myPrivateProperties valueForKey:@"message"];
+            JSValue *myNumber = [myPrivateProperties valueForKey:@"my_number"];
+            JSValue *definitelyNull = [myPrivateProperties valueForKey:@"definitely_null"];
+            JSValue *notSureIfUndefined = [myPrivateProperties valueForKey:@"not_sure_if_undefined"];
+            checkResult(@"is_ham is true", [isHam isBoolean] && [isHam toBool]);
+            checkResult(@"message is hello!", [message isString] && [@"hello!" isEqualToString:[message toString]]);
+            checkResult(@"my_number is 42", [myNumber isNumber] && [myNumber toInt32] == 42);
+            checkResult(@"definitely_null is null", [definitelyNull isNull]);
+            checkResult(@"not_sure_if_undefined is undefined", [notSureIfUndefined isUndefined]);
+        }
+
+        checkResult(@"is_ham is nil", ![myPrivateProperties valueForKey:@"is_ham"]);
+        checkResult(@"message is nil", ![myPrivateProperties valueForKey:@"message"]);
+        checkResult(@"my_number is 42", ![myPrivateProperties valueForKey:@"my_number"]);
+        checkResult(@"definitely_null is null", ![myPrivateProperties valueForKey:@"definitely_null"]);
+        checkResult(@"not_sure_if_undefined is undefined", ![myPrivateProperties valueForKey:@"not_sure_if_undefined"]);
     }
 
     @autoreleasepool {
@@ -403,7 +621,10 @@ void testObjectiveCAPI()
         [array setValue:value2 atIndex:(maxLength + 1)];
         checkResult(@"array.length after put to maxLength + 1", [[array[@"length"] toNumber] unsignedIntegerValue] == maxLength);
 
-        checkResult(@"valueAtIndex:0 is undefined", [[array valueAtIndex:0] isUndefined]);
+        if (sizeof(NSUInteger) == 8)
+            checkResult(@"valueAtIndex:0 is undefined", [[array valueAtIndex:0] isUndefined]);
+        else
+            checkResult(@"valueAtIndex:0", [[array valueAtIndex:0] toInt32] == 24);
         checkResult(@"valueAtIndex:lowIndex", [[array valueAtIndex:lowIndex] toInt32] == 42);
         checkResult(@"valueAtIndex:maxLength - 1", [[array valueAtIndex:(maxLength - 1)] toInt32] == 42);
         checkResult(@"valueAtIndex:maxLength", [[array valueAtIndex:maxLength] toInt32] == 24);
@@ -495,7 +716,7 @@ void testObjectiveCAPI()
         JSContext *context = [[JSContext alloc] init];
         context[@"TestObject"] = [TestObject class];
         JSValue *result = [context evaluateScript:@"String(TestObject)"];
-        checkResult(@"String(TestObject)", [result isEqualToObject:@"[object TestObjectConstructor]"]);
+        checkResult(@"String(TestObject)", [result isEqualToObject:@"function TestObject() {\n    [native code]\n}"]);
     }
 
     @autoreleasepool {
@@ -830,6 +1051,117 @@ void testObjectiveCAPI()
             [context.virtualMachine addManagedReference:managedTestObject withOwner:testObject];
         }
     }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        context[@"MyClass"] = ^{
+            JSValue *newThis = [JSValue valueWithNewObjectInContext:[JSContext currentContext]];
+            JSGlobalContextRef contextRef = [[JSContext currentContext] JSGlobalContextRef];
+            JSObjectRef newThisRef = JSValueToObject(contextRef, [newThis JSValueRef], NULL);
+            JSObjectSetPrototype(contextRef, newThisRef, [[JSContext currentContext][@"MyClass"][@"prototype"] JSValueRef]);
+            return newThis;
+        };
+
+        context[@"MyOtherClass"] = ^{
+            JSValue *newThis = [JSValue valueWithNewObjectInContext:[JSContext currentContext]];
+            JSGlobalContextRef contextRef = [[JSContext currentContext] JSGlobalContextRef];
+            JSObjectRef newThisRef = JSValueToObject(contextRef, [newThis JSValueRef], NULL);
+            JSObjectSetPrototype(contextRef, newThisRef, [[JSContext currentContext][@"MyOtherClass"][@"prototype"] JSValueRef]);
+            return newThis;
+        };
+
+        context.exceptionHandler = ^(JSContext *context, JSValue *exception) {
+            NSLog(@"EXCEPTION: %@", [exception toString]);
+            context.exception = nil;
+        };
+
+        JSValue *constructor1 = context[@"MyClass"];
+        JSValue *constructor2 = context[@"MyOtherClass"];
+
+        JSValue *value1 = [context evaluateScript:@"new MyClass()"];
+        checkResult(@"value1 instanceof MyClass", [value1 isInstanceOf:constructor1]);
+        checkResult(@"!(value1 instanceof MyOtherClass)", ![value1 isInstanceOf:constructor2]);
+        checkResult(@"MyClass.prototype.constructor === MyClass", [[context evaluateScript:@"MyClass.prototype.constructor === MyClass"] toBool]);
+        checkResult(@"MyClass instanceof Function", [[context evaluateScript:@"MyClass instanceof Function"] toBool]);
+
+        JSValue *value2 = [context evaluateScript:@"new MyOtherClass()"];
+        checkResult(@"value2 instanceof MyOtherClass", [value2 isInstanceOf:constructor2]);
+        checkResult(@"!(value2 instanceof MyClass)", ![value2 isInstanceOf:constructor1]);
+        checkResult(@"MyOtherClass.prototype.constructor === MyOtherClass", [[context evaluateScript:@"MyOtherClass.prototype.constructor === MyOtherClass"] toBool]);
+        checkResult(@"MyOtherClass instanceof Function", [[context evaluateScript:@"MyOtherClass instanceof Function"] toBool]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        context[@"MyClass"] = ^{
+            NSLog(@"I'm intentionally not returning anything.");
+        };
+        JSValue *result = [context evaluateScript:@"new MyClass()"];
+        checkResult(@"result === undefined", [result isUndefined]);
+        checkResult(@"exception.message is correct'", context.exception 
+            && [@"Objective-C blocks called as constructors must return an object." isEqualToString:[context.exception[@"message"] toString]]);
+    }
+
+    @autoreleasepool {
+        checkResult(@"[JSContext currentThis] == nil outside of callback", ![JSContext currentThis]);
+        checkResult(@"[JSContext currentArguments] == nil outside of callback", ![JSContext currentArguments]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        context[@"TestObject"] = [TestObject class];
+        JSValue *testObject = [context evaluateScript:@"(new TestObject())"];
+        checkResult(@"testObject instanceof TestObject", [testObject isInstanceOf:context[@"TestObject"]]);
+
+        context[@"TextXYZ"] = [TextXYZ class];
+        JSValue *textObject = [context evaluateScript:@"(new TextXYZ(\"Called TextXYZ constructor!\"))"];
+        checkResult(@"textObject instanceof TextXYZ", [textObject isInstanceOf:context[@"TextXYZ"]]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        context[@"ClassA"] = [ClassA class];
+        context[@"ClassB"] = [ClassB class];
+        context[@"ClassC"] = [ClassC class]; // Should print error message about too many inits found.
+        context[@"ClassCPrime"] = [ClassCPrime class]; // Ditto.
+
+        JSValue *a = [context evaluateScript:@"(new ClassA(42))"];
+        checkResult(@"a instanceof ClassA", [a isInstanceOf:context[@"ClassA"]]);
+        checkResult(@"a.initialize() is callable", [[a invokeMethod:@"initialize" withArguments:@[]] toInt32] == 42);
+
+        JSValue *b = [context evaluateScript:@"(new ClassB(42, 53))"];
+        checkResult(@"b instanceof ClassB", [b isInstanceOf:context[@"ClassB"]]);
+
+        JSValue *canConstructClassC = [context evaluateScript:@"(function() { \
+            try { \
+                (new ClassC(1, 2)); \
+                return true; \
+            } catch(e) { \
+                return false; \
+            } \
+        })()"];
+        checkResult(@"shouldn't be able to construct ClassC", ![canConstructClassC toBool]);
+        JSValue *canConstructClassCPrime = [context evaluateScript:@"(function() { \
+            try { \
+                (new ClassCPrime(1)); \
+                return true; \
+            } catch(e) { \
+                return false; \
+            } \
+        })()"];
+        checkResult(@"shouldn't be able to construct ClassCPrime", ![canConstructClassCPrime toBool]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        context[@"ClassD"] = [ClassD class];
+        context[@"ClassE"] = [ClassE class];
+       
+        JSValue *d = [context evaluateScript:@"(new ClassD())"];
+        checkResult(@"Returning instance of ClassE from ClassD's init has correct class", [d isInstanceOf:context[@"ClassE"]]);
+    }
+
+    currentThisInsideBlockGetterTest();
 }
 
 #else
@@ -838,4 +1170,4 @@ void testObjectiveCAPI()
 {
 }
 
-#endif
+#endif // JSC_OBJC_API_ENABLED

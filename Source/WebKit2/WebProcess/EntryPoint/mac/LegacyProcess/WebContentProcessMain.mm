@@ -31,12 +31,12 @@
 #import "StringUtilities.h"
 #import "WKBase.h"
 #import "WebProcess.h"
-#import <WebCore/RunLoop.h>
 #import <mach/mach_error.h>
 #import <servers/bootstrap.h>
 #import <spawn.h>
 #import <stdio.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/RunLoop.h>
 #import <wtf/text/CString.h>
 #import <wtf/text/WTFString.h>
 
@@ -66,8 +66,6 @@ public:
         EnvironmentUtilities::stripValuesEndingWithString("DYLD_INSERT_LIBRARIES", "/WebProcessShim.dylib");
     
 #if USE(APPKIT)
-        RunLoop::setUseApplicationRunLoopOnMainRunLoop();
-
         // Initialize AppKit.
         [NSApplication sharedApplication];
 
@@ -165,6 +163,12 @@ public:
         if (clientProcessName.isEmpty())
             return false;
         return true;
+    }
+
+    virtual void startRunLoop() OVERRIDE
+    {
+        ASSERT(NSApp);
+        [NSApp run];
     }
 };
 

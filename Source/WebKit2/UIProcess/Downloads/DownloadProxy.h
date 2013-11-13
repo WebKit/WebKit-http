@@ -46,7 +46,7 @@ class WebContext;
 class WebData;
 class WebPageProxy;
 
-class DownloadProxy : public TypedAPIObject<APIObject::TypeDownload>, public CoreIPC::MessageReceiver {
+class DownloadProxy : public API::TypedObject<API::Object::TypeDownload>, public CoreIPC::MessageReceiver {
 public:
     static PassRefPtr<DownloadProxy> create(DownloadProxyMap&, WebContext*);
     ~DownloadProxy();
@@ -62,10 +62,6 @@ public:
 
     void didReceiveDownloadProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
     void didReceiveSyncDownloadProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&);
-
-#if PLATFORM(QT)
-    void startTransfer(const String& filename);
-#endif
 
 private:
     explicit DownloadProxy(DownloadProxyMap&, WebContext*);

@@ -62,9 +62,9 @@ public:
         return adoptRef(new LinearTimingFunction);
     }
     
-    ~LinearTimingFunction() { }
+    virtual ~LinearTimingFunction() { }
     
-    virtual bool operator==(const TimingFunction& other)
+    virtual bool operator==(const TimingFunction& other) OVERRIDE
     {
         return other.isLinearTimingFunction();
     }
@@ -113,9 +113,9 @@ public:
         }
     }
 
-    ~CubicBezierTimingFunction() { }
+    virtual ~CubicBezierTimingFunction() { }
     
-    virtual bool operator==(const TimingFunction& other)
+    virtual bool operator==(const TimingFunction& other) OVERRIDE
     {
         if (other.isCubicBezierTimingFunction()) {
             const CubicBezierTimingFunction* ctf = static_cast<const CubicBezierTimingFunction*>(&other);
@@ -138,6 +138,11 @@ public:
     {
         static const CubicBezierTimingFunction* dtf = create().leakRef();
         return dtf;
+    }
+
+    PassRefPtr<CubicBezierTimingFunction> createReversed() const
+    {
+        return create(1.0 - m_x2, 1.0 - m_y2, 1.0 - m_x1, 1.0 - m_y1);
     }
     
 private:
@@ -165,9 +170,9 @@ public:
         return adoptRef(new StepsTimingFunction(steps, stepAtStart));
     }
     
-    ~StepsTimingFunction() { }
+    virtual ~StepsTimingFunction() { }
     
-    virtual bool operator==(const TimingFunction& other)
+    virtual bool operator==(const TimingFunction& other) OVERRIDE
     {
         if (other.isStepsTimingFunction()) {
             const StepsTimingFunction* stf = static_cast<const StepsTimingFunction*>(&other);

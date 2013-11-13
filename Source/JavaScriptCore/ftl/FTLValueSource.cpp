@@ -37,16 +37,16 @@ void ValueSource::dump(PrintStream& out) const
         out.print("SourceNotSet");
         return;
     case ValueInJSStack:
-        out.print("ValueInJSStack");
+        out.print("ValueInJSStack:", virtualRegister());
         return;
     case Int32InJSStack:
-        out.print("Int32InJSStack");
+        out.print("Int32InJSStack:", virtualRegister());
         return;
     case Int52InJSStack:
-        out.print("Int52InJSStack");
+        out.print("Int52InJSStack:", virtualRegister());
         return;
     case DoubleInJSStack:
-        out.print("DoubleInJSStack");
+        out.print("DoubleInJSStack:", virtualRegister());
         return;
     case SourceIsDead:
         out.print("SourceIsDead");

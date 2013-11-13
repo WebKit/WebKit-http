@@ -36,7 +36,7 @@ class VerticalPositionCache;
 
 struct GlyphOverflow;
 
-typedef HashMap<const InlineTextBox*, pair<Vector<const SimpleFontData*>, GlyphOverflow> > GlyphOverflowAndFallbackFontsMap;
+typedef HashMap<const InlineTextBox*, pair<Vector<const SimpleFontData*>, GlyphOverflow>> GlyphOverflowAndFallbackFontsMap;
 
 class InlineFlowBox : public InlineBox {
 public:
@@ -52,6 +52,7 @@ public:
         , m_baselineType(AlphabeticBaseline)
         , m_hasAnnotationsBefore(false)
         , m_hasAnnotationsAfter(false)
+        , m_isFirstAfterPageBreak(false)
 #ifndef NDEBUG
         , m_hasBadChildList(false)
 #endif
@@ -61,19 +62,19 @@ public:
         // an invisible marker exists.  The side effect of having an invisible marker is that the quirks mode behavior of shrinking lines with no
         // text children must not apply.  This change also means that gaps will exist between image bullet list items.  Even when the list bullet
         // is an image, the line is still considered to be immune from the quirk.
-        m_hasTextChildren = renderer.style()->display() == LIST_ITEM;
+        m_hasTextChildren = renderer.style().display() == LIST_ITEM;
         m_hasTextDescendants = m_hasTextChildren;
     }
 
 #ifndef NDEBUG
     virtual ~InlineFlowBox();
     
-    virtual void showLineTreeAndMark(const InlineBox* = 0, const char* = 0, const InlineBox* = 0, const char* = 0, const RenderObject* = 0, int = 0) const;
-    virtual const char* boxName() const;
+    virtual void showLineTreeAndMark(const InlineBox* = 0, const char* = 0, const InlineBox* = 0, const char* = 0, const RenderObject* = 0, int = 0) const OVERRIDE;
+    virtual const char* boxName() const OVERRIDE;
 #endif
 
     RenderBoxModelObject& renderer() const { return toRenderBoxModelObject(InlineBox::renderer()); }
-    const RenderStyle& lineStyle() const { return isFirstLine() ? *renderer().firstLineStyle() : *renderer().style(); }
+    const RenderStyle& lineStyle() const { return isFirstLine() ? renderer().firstLineStyle() : renderer().style(); }
 
     InlineFlowBox* prevLineBox() const { return m_prevLineBox; }
     InlineFlowBox* nextLineBox() const { return m_nextLineBox; }
@@ -99,10 +100,10 @@ public:
     }
 
     void addToLine(InlineBox* child);
-    virtual void deleteLine(RenderArena&) OVERRIDE FINAL;
+    virtual void deleteLine() OVERRIDE FINAL;
     virtual void extractLine() OVERRIDE FINAL;
     virtual void attachLine() OVERRIDE FINAL;
-    virtual void adjustPosition(float dx, float dy);
+    virtual void adjustPosition(float dx, float dy) OVERRIDE;
 
     virtual void extractLineBoxFromRenderObject();
     virtual void attachLineBoxToRenderObject();
@@ -117,12 +118,10 @@ public:
     void paintFillLayers(const PaintInfo&, const Color&, const FillLayer*, const LayoutRect&, CompositeOperator = CompositeSourceOver);
     void paintFillLayer(const PaintInfo&, const Color&, const FillLayer*, const LayoutRect&, CompositeOperator = CompositeSourceOver);
     void paintBoxShadow(const PaintInfo&, const RenderStyle&, ShadowStyle, const LayoutRect&);
-    virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom);
+    virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom) OVERRIDE;
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) OVERRIDE;
 
     bool boxShadowCanBeAppliedToBackground(const FillLayer&) const;
-
-    virtual RenderLineBoxList& rendererLineBoxes() const;
 
     // logicalLeft = left in a horizontal line and top in a vertical line.
     LayoutUnit marginBorderPaddingLogicalLeft() const { return marginLogicalLeft() + borderLogicalLeft() + paddingLogicalLeft(); }
@@ -131,13 +130,13 @@ public:
     {
         if (!includeLogicalLeftEdge())
             return 0;
-        return isHorizontal() ? boxModelObject()->marginLeft() : boxModelObject()->marginTop();
+        return isHorizontal() ? renderer().marginLeft() : renderer().marginTop();
     }
     LayoutUnit marginLogicalRight() const
     {
         if (!includeLogicalRightEdge())
             return 0;
-        return isHorizontal() ? boxModelObject()->marginRight() : boxModelObject()->marginBottom();
+        return isHorizontal() ? renderer().marginRight() : renderer().marginBottom();
     }
     int borderLogicalLeft() const
     {
@@ -155,13 +154,13 @@ public:
     {
         if (!includeLogicalLeftEdge())
             return 0;
-        return isHorizontal() ? boxModelObject()->paddingLeft() : boxModelObject()->paddingTop();
+        return isHorizontal() ? renderer().paddingLeft() : renderer().paddingTop();
     }
     int paddingLogicalRight() const
     {
         if (!includeLogicalRightEdge())
             return 0;
-        return isHorizontal() ? boxModelObject()->paddingRight() : boxModelObject()->paddingBottom();
+        return isHorizontal() ? renderer().paddingRight() : renderer().paddingBottom();
     }
 
     bool includeLogicalLeftEdge() const { return m_includeLogicalLeftEdge; }
@@ -202,7 +201,7 @@ public:
     
     void removeChild(InlineBox* child);
 
-    virtual RenderObject::SelectionState selectionState();
+    virtual RenderObject::SelectionState selectionState() OVERRIDE;
 
     virtual bool canAccommodateEllipsis(bool ltr, int blockEdge, int ellipsisWidth) const OVERRIDE FINAL;
     virtual float placeEllipsisBox(bool ltr, float blockLeftEdge, float blockRightEdge, float ellipsisWidth, float &truncatedWidth, bool&) OVERRIDE;
@@ -293,6 +292,9 @@ public:
     }
 
 private:
+    virtual bool isInlineFlowBox() const OVERRIDE FINAL { return true; }
+    void boxModelObject() const WTF_DELETED_FUNCTION;
+
     void addBoxShadowVisualOverflow(LayoutRect& logicalVisualOverflow);
     void addBorderOutsetVisualOverflow(LayoutRect& logicalVisualOverflow);
     void addTextBoxVisualOverflow(InlineTextBox*, GlyphOverflowAndFallbackFontsMap&, LayoutRect& logicalVisualOverflow);
@@ -302,19 +304,17 @@ private:
 protected:
     OwnPtr<RenderOverflow> m_overflow;
 
-    virtual bool isInlineFlowBox() const OVERRIDE FINAL { return true; }
-
     InlineBox* m_firstChild;
     InlineBox* m_lastChild;
     
     InlineFlowBox* m_prevLineBox; // The previous box that also uses our RenderObject
     InlineFlowBox* m_nextLineBox; // The next box that also uses our RenderObject
 
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     // Maximum logicalTop among all children of an InlineFlowBox. Used to
     // calculate the offset for TextUnderlinePositionUnder.
     void computeMaxLogicalTop(float& maxLogicalTop) const;
-#endif // CSS3_TEXT
+#endif
 private:
     unsigned m_includeLogicalLeftEdge : 1;
     unsigned m_includeLogicalRightEdge : 1;
@@ -332,9 +332,11 @@ protected:
     unsigned m_hasAnnotationsBefore : 1;
     unsigned m_hasAnnotationsAfter : 1;
 
-    unsigned m_lineBreakBidiStatusEor : 5; // WTF::Unicode::Direction
-    unsigned m_lineBreakBidiStatusLastStrong : 5; // WTF::Unicode::Direction
-    unsigned m_lineBreakBidiStatusLast : 5; // WTF::Unicode::Direction
+    unsigned m_lineBreakBidiStatusEor : 5; // UCharDirection
+    unsigned m_lineBreakBidiStatusLastStrong : 5; // UCharDirection
+    unsigned m_lineBreakBidiStatusLast : 5; // UCharDirection
+
+    unsigned m_isFirstAfterPageBreak : 1;
 
     // End of RootInlineBox-specific members.
 
@@ -344,20 +346,7 @@ private:
 #endif
 };
 
-inline InlineFlowBox* toInlineFlowBox(InlineBox* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isInlineFlowBox());
-    return static_cast<InlineFlowBox*>(object);
-}
-
-inline const InlineFlowBox* toInlineFlowBox(const InlineBox* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isInlineFlowBox());
-    return static_cast<const InlineFlowBox*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toInlineFlowBox(const InlineFlowBox*);
+INLINE_BOX_OBJECT_TYPE_CASTS(InlineFlowBox, isInlineFlowBox())
 
 #ifdef NDEBUG
 inline void InlineFlowBox::checkConsistency() const

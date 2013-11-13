@@ -32,12 +32,6 @@
 #include <objc/objc.h>
 #endif
 
-#if PLATFORM(QT)
-QT_BEGIN_NAMESPACE
-class QString;
-QT_END_NAMESPACE
-#endif
-
 #if PLATFORM(HAIKU)
 class BString;
 #endif
@@ -132,6 +126,8 @@ public:
     // Construct a string referencing an existing StringImpl.
     String(StringImpl* impl) : m_impl(impl) { }
     String(PassRefPtr<StringImpl> impl) : m_impl(impl) { }
+    String(PassRef<StringImpl> impl) : m_impl(std::move(impl)) { }
+    String(RefPtr<StringImpl>&& impl) : m_impl(impl) { }
 
     // Construct a string from a constant string literal.
     WTF_EXPORT_STRING_API String(ASCIILiteral characters);
@@ -142,14 +138,12 @@ public:
     template<unsigned charactersCount>
     String(const char (&characters)[charactersCount], ConstructFromLiteralTag) : m_impl(StringImpl::createFromLiteral<charactersCount>(characters)) { }
 
-#if COMPILER_SUPPORTS(CXX_RVALUE_REFERENCES)
     // We have to declare the copy constructor and copy assignment operator as well, otherwise
     // they'll be implicitly deleted by adding the move constructor and move assignment operator.
     String(const String& other) : m_impl(other.m_impl) { }
     String(String&& other) : m_impl(other.m_impl.release()) { }
     String& operator=(const String& other) { m_impl = other.m_impl; return *this; }
     String& operator=(String&& other) { m_impl = other.m_impl.release(); return *this; }
-#endif
 
     // Inline the destructor.
     ALWAYS_INLINE ~String() { }
@@ -328,8 +322,6 @@ public:
         return *this;
     }
 
-    void makeLower() { if (m_impl) m_impl = m_impl->lower(); }
-    void makeUpper() { if (m_impl) m_impl = m_impl->upper(); }
     void fill(UChar c) { if (m_impl) m_impl = m_impl->fill(c); }
 
     WTF_EXPORT_STRING_API void truncate(unsigned len);
@@ -344,6 +336,9 @@ public:
     WTF_EXPORT_STRING_API String lower() const;
     WTF_EXPORT_STRING_API String upper() const;
 
+    WTF_EXPORT_STRING_API String lower(const AtomicString& localeIdentifier) const;
+    WTF_EXPORT_STRING_API String upper(const AtomicString& localeIdentifier) const;
+
     WTF_EXPORT_STRING_API String stripWhiteSpace() const;
     WTF_EXPORT_STRING_API String stripWhiteSpace(IsWhiteSpaceFunctionPtr) const;
     WTF_EXPORT_STRING_API String simplifyWhiteSpace() const;
@@ -355,11 +350,7 @@ public:
     // Return the string with case folded for case insensitive comparison.
     WTF_EXPORT_STRING_API String foldCase() const;
 
-#if !PLATFORM(QT)
     WTF_EXPORT_STRING_API static String format(const char *, ...) WTF_ATTRIBUTE_PRINTF(1, 2);
-#else
-    WTF_EXPORT_STRING_API static String format(const char *, ...);
-#endif
 
     // Returns an uninitialized string. The characters needs to be written
     // into the buffer returned in data before the returned string is used.
@@ -415,22 +406,16 @@ public:
     operator UnspecifiedBoolTypeB() const;
 
 #if USE(CF)
-    String(CFStringRef);
-    RetainPtr<CFStringRef> createCFString() const;
+    WTF_EXPORT_STRING_API String(CFStringRef);
+    WTF_EXPORT_STRING_API RetainPtr<CFStringRef> createCFString() const;
 #endif
 
 #ifdef __OBJC__
-    String(NSString*);
+    WTF_EXPORT_STRING_API String(NSString*);
     
-    // This conversion maps NULL to "", which loses the meaning of NULL, but we 
+    // This conversion maps NULL to "", which loses the meaning of NULL, but we
     // need this mapping because AppKit crashes when passed nil NSStrings.
     operator NSString*() const { if (!m_impl) return @""; return *m_impl; }
-#endif
-
-#if PLATFORM(QT)
-    WTF_EXPORT_STRING_API String(const QString&);
-    WTF_EXPORT_STRING_API String(const QStringRef&);
-    WTF_EXPORT_STRING_API operator QString() const;
 #endif
 
 #if PLATFORM(HAIKU)
@@ -465,13 +450,13 @@ public:
     static String fromUTF8WithLatin1Fallback(const char* s, size_t length) { return fromUTF8WithLatin1Fallback(reinterpret_cast<const LChar*>(s), length); };
     
     // Determines the writing direction using the Unicode Bidi Algorithm rules P2 and P3.
-    WTF::Unicode::Direction defaultWritingDirection(bool* hasStrongDirectionality = 0) const
+    UCharDirection defaultWritingDirection(bool* hasStrongDirectionality = nullptr) const
     {
         if (m_impl)
             return m_impl->defaultWritingDirection(hasStrongDirectionality);
         if (hasStrongDirectionality)
             *hasStrongDirectionality = false;
-        return WTF::Unicode::LeftToRight;
+        return U_LEFT_TO_RIGHT;
     }
 
     bool containsOnlyASCII() const;
@@ -549,7 +534,7 @@ inline void swap(String& a, String& b) { a.swap(b); }
 
 template<size_t inlineCapacity, typename OverflowHandler>
 String::String(const Vector<UChar, inlineCapacity, OverflowHandler>& vector)
-    : m_impl(vector.size() ? StringImpl::create(vector.data(), vector.size()) : StringImpl::empty())
+    : m_impl(vector.size() ? StringImpl::create(vector.data(), vector.size()) : *StringImpl::empty())
 {
 }
 

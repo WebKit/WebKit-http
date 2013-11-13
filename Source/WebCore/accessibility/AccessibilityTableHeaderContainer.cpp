@@ -32,8 +32,6 @@
 #include "AXObjectCache.h"
 #include "AccessibilityTable.h"
 
-using namespace std;
-
 namespace WebCore {
 
 AccessibilityTableHeaderContainer::AccessibilityTableHeaderContainer()
@@ -60,7 +58,7 @@ bool AccessibilityTableHeaderContainer::computeAccessibilityIsIgnored() const
     if (!m_parent)
         return true;
     
-#if PLATFORM(IOS) || PLATFORM(GTK)
+#if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(EFL)
     return true;
 #endif
 
@@ -75,7 +73,7 @@ void AccessibilityTableHeaderContainer::addChildren()
     if (!m_parent || !m_parent->isAccessibilityTable())
         return;
     
-    static_cast<AccessibilityTable*>(m_parent)->columnHeaders(m_children);
+    toAccessibilityTable(m_parent)->columnHeaders(m_children);
     
     unsigned length = m_children.size();
     for (unsigned k = 0; k < length; ++k)

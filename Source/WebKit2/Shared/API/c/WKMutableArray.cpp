@@ -26,29 +26,29 @@
 #include "config.h"
 #include "WKMutableArray.h"
 
-#include "MutableArray.h"
+#include "ImmutableArray.h"
 #include "WKAPICast.h"
 
 using namespace WebKit;
 
 WKMutableArrayRef WKMutableArrayCreate()
 {
-    RefPtr<MutableArray> array = MutableArray::create();
-    return toAPI(array.release().leakRef());
+    return const_cast<WKMutableArrayRef>(toAPI(ImmutableArray::create().leakRef()));
 }
 
 bool WKArrayIsMutable(WKArrayRef arrayRef)
 {
-    return toImpl(arrayRef)->isMutable();
+    // FIXME: This function should be removed.
+    return false;
 }
 
 void WKArrayAppendItem(WKMutableArrayRef arrayRef, WKTypeRef itemRef)
 {
-    toImpl(arrayRef)->append(toImpl(itemRef));
+    toImpl(arrayRef)->elements().append(toImpl(itemRef));
 }
 
 void WKArrayRemoveItemAtIndex(WKMutableArrayRef arrayRef, size_t index)
 {
-    toImpl(arrayRef)->removeItemAtIndex(index);
+    toImpl(arrayRef)->elements().remove(index);
 }
 

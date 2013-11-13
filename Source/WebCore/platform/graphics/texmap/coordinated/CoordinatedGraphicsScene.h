@@ -30,7 +30,6 @@
 #include "GraphicsSurface.h"
 #include "IntRect.h"
 #include "IntSize.h"
-#include "RunLoop.h"
 #include "TextureMapper.h"
 #include "TextureMapperBackingStore.h"
 #include "TextureMapperFPSCounter.h"
@@ -182,9 +181,9 @@ private:
     CoordinatedGraphicsSceneClient* m_client;
     bool m_isActive;
 
-    OwnPtr<TextureMapperLayer> m_rootLayer;
+    std::unique_ptr<TextureMapperLayer> m_rootLayer;
 
-    typedef HashMap<CoordinatedLayerID, OwnPtr<TextureMapperLayer> > LayerMap;
+    typedef HashMap<CoordinatedLayerID, std::unique_ptr<TextureMapperLayer>> LayerMap;
     LayerMap m_layers;
     typedef HashMap<CoordinatedLayerID, TextureMapperLayer*> LayerRawPtrMap;
     LayerRawPtrMap m_fixedLayers;

@@ -28,62 +28,78 @@
 
 #if ENABLE(MATHML)
 
+#include "MathMLElement.h"
 #include "RenderMathMLBlock.h"
 #include <wtf/unicode/CharacterNames.h>
 
 namespace WebCore {
     
-class RenderMathMLOperator : public RenderMathMLBlock {
+class RenderMathMLOperator FINAL : public RenderMathMLBlock {
 public:
-    RenderMathMLOperator(Element*);
-    RenderMathMLOperator(Element*, UChar operatorChar);
+    RenderMathMLOperator(MathMLElement&, PassRef<RenderStyle>);
+    RenderMathMLOperator(MathMLElement&, PassRef<RenderStyle>, UChar operatorChar);
 
-    virtual bool isRenderMathMLOperator() const { return true; }
-    
-    virtual bool isChildAllowed(RenderObject*, RenderStyle*) const;
-    virtual void updateFromElement() OVERRIDE;
-    
-    virtual RenderMathMLOperator* unembellishedOperator() OVERRIDE { return this; }
+    MathMLElement& element() { return toMathMLElement(nodeForNonAnonymous()); }
+
     void stretchToHeight(int pixelHeight);
-    
-    virtual int firstLineBoxBaseline() const OVERRIDE;
+    int stretchHeight() { return m_stretchHeight; }
+    float expandedStretchHeight() const;
     
     enum OperatorType { Default, Separator, Fence };
     void setOperatorType(OperatorType type) { m_operatorType = type; }
     OperatorType operatorType() const { return m_operatorType; }
-    
-protected:
-    virtual void computePreferredLogicalWidths() OVERRIDE;
-    PassRefPtr<RenderStyle> createStackableStyle(int maxHeightForRenderer);
-    RenderBlock* createGlyph(UChar glyph, int maxHeightForRenderer, int charRelative);
-    
+    void updateStyle();
+
+    void paint(PaintInfo&, const LayoutPoint&);
+
+    struct StretchyCharacter {
+        UChar character;
+        UChar topGlyph;
+        UChar extensionGlyph;
+        UChar bottomGlyph;
+        UChar middleGlyph;
+    };
+
+    virtual void updateFromElement() OVERRIDE;
+
 private:
-    virtual const char* renderName() const { return isAnonymous() ? "RenderMathMLOperator (anonymous)" : "RenderMathMLOperator"; }
-
-    int glyphHeightForCharacter(UChar);
-
+    virtual const char* renderName() const OVERRIDE { return isAnonymous() ? "RenderMathMLOperator (anonymous)" : "RenderMathMLOperator"; }
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE;
+    virtual void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect) OVERRIDE;
+    virtual bool isRenderMathMLOperator() const OVERRIDE { return true; }
+    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const OVERRIDE;
+    virtual void computePreferredLogicalWidths() OVERRIDE;
+    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const OVERRIDE;
+    virtual int firstLineBaseline() const OVERRIDE;
+    virtual RenderMathMLOperator* unembellishedOperator() OVERRIDE { return this; }
+
+    bool shouldAllowStretching(UChar& characterForStretching);
+    StretchyCharacter* findAcceptableStretchyCharacter(UChar);
+
+    FloatRect glyphBoundsForCharacter(UChar);
+    float glyphHeightForCharacter(UChar);
+    float advanceForCharacter(UChar);
+
+    enum CharacterPaintTrimming {
+        TrimTop,
+        TrimBottom,
+        TrimTopAndBottom,
+    };
+
+    LayoutRect paintCharacter(PaintInfo&, UChar, const LayoutPoint& origin, CharacterPaintTrimming);
+    void fillWithExtensionGlyph(PaintInfo&, const LayoutPoint& from, const LayoutPoint& to);
 
     int m_stretchHeight;
-    bool m_isStacked;
+    bool m_isStretched;
+
     UChar m_operator;
     OperatorType m_operatorType;
+    StretchyCharacter* m_stretchyCharacter;
 };
 
-inline RenderMathMLOperator* toRenderMathMLOperator(RenderMathMLBlock* block)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(!block || block->isRenderMathMLOperator());
-    return static_cast<RenderMathMLOperator*>(block);
-}
+RENDER_OBJECT_TYPE_CASTS(RenderMathMLOperator, isRenderMathMLOperator());
 
-inline const RenderMathMLOperator* toRenderMathMLOperator(const RenderMathMLBlock* block)
-{ 
-    ASSERT_WITH_SECURITY_IMPLICATION(!block || block->isRenderMathMLOperator());
-    return static_cast<const RenderMathMLOperator*>(block);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderMathMLOperator(const RenderMathMLOperator*);
+template<> inline bool isRendererOfType<const RenderMathMLOperator>(const RenderObject& renderer) { return renderer.isRenderMathMLOperator(); }
 
 inline UChar convertHyphenMinusToMinusSign(UChar glyph)
 {

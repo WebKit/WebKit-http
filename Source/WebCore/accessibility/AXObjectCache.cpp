@@ -118,8 +118,8 @@ AXObjectCache::~AXObjectCache()
 {
     m_notificationPostTimer.stop();
 
-    HashMap<AXID, RefPtr<AccessibilityObject> >::iterator end = m_objects.end();
-    for (HashMap<AXID, RefPtr<AccessibilityObject> >::iterator it = m_objects.begin(); it != end; ++it) {
+    HashMap<AXID, RefPtr<AccessibilityObject>>::iterator end = m_objects.end();
+    for (HashMap<AXID, RefPtr<AccessibilityObject>>::iterator it = m_objects.begin(); it != end; ++it) {
         AccessibilityObject* obj = (*it).value.get();
         detachWrapper(obj);
         obj->detach();
@@ -149,7 +149,7 @@ AccessibilityObject* AXObjectCache::focusedImageMapUIElement(HTMLAreaElement* ar
         if (!child->isImageMapLink())
             continue;
         
-        if (static_cast<AccessibilityImageMapLink*>(child)->areaElement() == areaElement)
+        if (toAccessibilityImageMapLink(child)->areaElement() == areaElement)
             return child;
     }    
     
@@ -329,9 +329,9 @@ AccessibilityObject* AXObjectCache::getOrCreate(Widget* widget)
     
     RefPtr<AccessibilityObject> newObj = 0;
     if (widget->isFrameView())
-        newObj = AccessibilityScrollView::create(static_cast<ScrollView*>(widget));
+        newObj = AccessibilityScrollView::create(toScrollView(widget));
     else if (widget->isScrollbar())
-        newObj = AccessibilityScrollbar::create(static_cast<Scrollbar*>(widget));
+        newObj = AccessibilityScrollbar::create(toScrollbar(widget));
 
     // Will crash later if we have two objects for the same widget.
     ASSERT(!get(widget));
@@ -657,7 +657,7 @@ void AXObjectCache::notificationPostTimerFired(Timer<AXObjectCache>*)
         // Make sure none of the render views are in the process of being layed out.
         // Notifications should only be sent after the renderer has finished
         if (obj->isAccessibilityRenderObject()) {
-            AccessibilityRenderObject* renderObj = static_cast<AccessibilityRenderObject*>(obj);
+            AccessibilityRenderObject* renderObj = toAccessibilityRenderObject(obj);
             RenderObject* renderer = renderObj->renderer();
             if (renderer)
                 ASSERT(!renderer->view().layoutState());

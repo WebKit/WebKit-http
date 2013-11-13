@@ -43,7 +43,7 @@ class WebInspectorFrontendClient;
 class WebPage;
 struct WebPageCreationParameters;
 
-class WebInspector : public TypedAPIObject<APIObject::TypeBundleInspector> {
+class WebInspector : public API::TypedObject<API::Object::TypeBundleInspector> {
 public:
     static PassRefPtr<WebInspector> create(WebPage*, WebCore::InspectorFrontendChannel*);
 
@@ -76,10 +76,6 @@ public:
     void dispatchMessageFromRemoteFrontend(const String& message);
     void remoteFrontendConnected();
     void remoteFrontendDisconnected();
-#endif
-
-#if PLATFORM(MAC)
-    void setInspectorUsesWebKitUserInterface(bool);
 #endif
 
 private:
@@ -133,7 +129,6 @@ private:
 #if PLATFORM(MAC)
     mutable String m_localizedStringsURL;
     mutable bool m_hasLocalizedStringsURL;
-    bool m_usesWebKitUserInterface;
 #endif
 #if ENABLE(INSPECTOR_SERVER)
     bool m_remoteFrontendConnected;

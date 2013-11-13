@@ -92,10 +92,6 @@
 #include "DatabaseManager.h"
 #endif
 
-#if ENABLE(VIDEO) && USE(NATIVE_FULLSCREEN_VIDEO)
-#include "HTMLMediaElement.h"
-#endif
-
 #if PLATFORM(X11) && defined(GDK_WINDOWING_X11)
 #include "WidgetBackingStoreGtkX11.h"
 #endif
@@ -203,6 +199,11 @@ void ChromeClient::unfocus()
 Page* ChromeClient::createWindow(Frame* frame, const FrameLoadRequest& frameLoadRequest, const WindowFeatures& coreFeatures, const NavigationAction&)
 {
     WebKitWebView* webView = 0;
+
+#if ENABLE(FULLSCREEN_API)
+    if (frame->document() && frame->document()->webkitCurrentFullScreenElement())
+        frame->document()->webkitCancelFullScreen();
+#endif
 
     g_signal_emit_by_name(m_webView, "create-web-view", kit(frame), &webView);
 
@@ -330,7 +331,7 @@ void ChromeClient::closeWindowSoon()
     // onload handler, it will need to call FrameLoaderClient::dispatchDidHandleOnloadEvents.
     // Instead of firing the close-web-view signal now, fire it after the caller finishes.
     // This seems to match the Mac/Windows port behavior.
-    m_closeSoonTimer = g_timeout_add(0, reinterpret_cast<GSourceFunc>(emitCloseWebViewSignalLater), m_webView);
+    m_closeSoonTimer = g_idle_add_full(G_PRIORITY_DEFAULT, reinterpret_cast<GSourceFunc>(emitCloseWebViewSignalLater), m_webView, 0);
 }
 
 bool ChromeClient::canTakeFocus(FocusDirection)
@@ -514,7 +515,7 @@ void ChromeClient::widgetSizeChanged(const IntSize& oldWidgetSize, IntSize newSi
     // WebCore timers by default have a lower priority which leads to more artifacts when opaque
     // resize is on, thus we use g_timeout_add here to force a higher timeout priority.
     if (!m_repaintSoonSourceId)
-        m_repaintSoonSourceId = g_timeout_add(0, reinterpret_cast<GSourceFunc>(repaintEverythingSoonTimeout), this);
+        m_repaintSoonSourceId = g_idle_add_full(G_PRIORITY_DEFAULT, reinterpret_cast<GSourceFunc>(repaintEverythingSoonTimeout), this, 0);
 }
 
 static void coalesceRectsIfPossible(const IntRect& clipRect, Vector<IntRect>& rects)
@@ -925,39 +926,6 @@ PassRefPtr<WebCore::SearchPopupMenu> ChromeClient::createSearchPopupMenu(WebCore
     return adoptRef(new SearchPopupMenuGtk(client));
 }
 
-#if ENABLE(VIDEO) && USE(NATIVE_FULLSCREEN_VIDEO)
-bool ChromeClient::supportsFullscreenForNode(const Node* node)
-{
-    return isHTMLVideoElement(node);
-}
-
-void ChromeClient::enterFullscreenForNode(Node* node)
-{
-    if (!node)
-        return;
-
-    HTMLElement* element = static_cast<HTMLElement*>(node);
-    if (element && element->isMediaElement()) {
-        HTMLMediaElement* mediaElement = toHTMLMediaElement(element);
-        if (mediaElement->player() && mediaElement->player()->canEnterFullscreen())
-            mediaElement->player()->enterFullscreen();
-    }
-}
-
-void ChromeClient::exitFullscreenForNode(Node* node)
-{
-    if (!node)
-        return;
-
-    HTMLElement* element = static_cast<HTMLElement*>(node);
-    if (element && element->isMediaElement()) {
-        HTMLMediaElement* mediaElement = toHTMLMediaElement(element);
-        if (mediaElement->player())
-            mediaElement->player()->exitFullscreen();
-    }
-}
-#endif
-
 #if ENABLE(FULLSCREEN_API)
 bool ChromeClient::supportsFullScreenForElement(const WebCore::Element* element, bool withKeyboard)
 {
@@ -993,19 +961,6 @@ void ChromeClient::enterFullScreenForElement(WebCore::Element* element)
     if (returnValue)
         return;
 
-#if ENABLE(VIDEO) && USE(NATIVE_FULLSCREEN_VIDEO)
-    if (element && element->isMediaElement()) {
-        HTMLMediaElement* mediaElement = toHTMLMediaElement(element);
-        if (mediaElement->player() && mediaElement->player()->canEnterFullscreen()) {
-            element->document().webkitWillEnterFullScreenForElement(element);
-            mediaElement->player()->enterFullscreen();
-            m_fullScreenElement = element;
-            element->document().webkitDidEnterFullScreenForElement(element);
-        }
-        return;
-    }
-#endif
-
     GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(m_webView));
     if (!widgetIsOnscreenToplevelWindow(window))
         return;
@@ -1032,19 +987,6 @@ void ChromeClient::exitFullScreenForElement(WebCore::Element*)
     g_signal_emit_by_name(m_webView, "leaving-fullscreen", kitElement.get(), &returnValue);
     if (returnValue)
         return;
-
-#if ENABLE(VIDEO) && USE(NATIVE_FULLSCREEN_VIDEO)
-    if (m_fullScreenElement && m_fullScreenElement->isMediaElement()) {
-        m_fullScreenElement->document().webkitWillExitFullScreenForElement(m_fullScreenElement.get());
-        HTMLMediaElement* mediaElement = toHTMLMediaElement(m_fullScreenElement.get());
-        if (mediaElement->player()) {
-            mediaElement->player()->exitFullscreen();
-            m_fullScreenElement->document().webkitDidExitFullScreenForElement(m_fullScreenElement.get());
-            m_fullScreenElement.clear();
-        }
-        return;
-    }
-#endif
 
     GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(m_webView));
     ASSERT(widgetIsOnscreenToplevelWindow(window));

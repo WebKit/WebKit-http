@@ -61,8 +61,8 @@ public:
     bool isOpen() const;
 
     // HTMLMediaSource
-    virtual bool attachToElement() OVERRIDE;
-    virtual void setPrivateAndOpen(PassOwnPtr<MediaSourcePrivate>) OVERRIDE;
+    virtual bool attachToElement(HTMLMediaElement*) OVERRIDE;
+    virtual void setPrivateAndOpen(PassRef<MediaSourcePrivate>) OVERRIDE;
     virtual void close() OVERRIDE;
     virtual bool isClosed() const OVERRIDE;
     virtual double duration() const OVERRIDE;
@@ -75,6 +75,7 @@ public:
     void setReadyState(const AtomicString&);
     void endOfStream(const AtomicString& error, ExceptionCode&);
 
+    HTMLMediaElement* mediaElement() const { return m_mediaElement; }
 
     // ActiveDOMObject interface
     virtual bool hasPendingActivity() const OVERRIDE;
@@ -92,20 +93,19 @@ public:
     using RefCounted<MediaSourceBase>::deref;
 
 protected:
-    explicit MediaSourceBase(ScriptExecutionContext*);
+    explicit MediaSourceBase(ScriptExecutionContext&);
 
     virtual void onReadyStateChange(const AtomicString& oldState, const AtomicString& newState) = 0;
-    virtual Vector<RefPtr<TimeRanges> > activeRanges() const = 0;
+    virtual Vector<RefPtr<TimeRanges>> activeRanges() const = 0;
 
-    PassOwnPtr<SourceBufferPrivate> createSourceBufferPrivate(const String& type, const MediaSourcePrivate::CodecsArray&, ExceptionCode&);
+    RefPtr<SourceBufferPrivate> createSourceBufferPrivate(const ContentType&, ExceptionCode&);
     void scheduleEvent(const AtomicString& eventName);
     GenericEventQueue& asyncEventQueue() { return m_asyncEventQueue; }
 
-private:
-    OwnPtr<MediaSourcePrivate> m_private;
+    RefPtr<MediaSourcePrivate> m_private;
+    HTMLMediaElement* m_mediaElement;
     AtomicString m_readyState;
     GenericEventQueue m_asyncEventQueue;
-    bool m_attached;
 };
 
 }

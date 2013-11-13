@@ -190,10 +190,8 @@ static inline bool isObservable(JSTestNamedConstructor* jsTestNamedConstructor)
 bool JSTestNamedConstructorOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
 {
     JSTestNamedConstructor* jsTestNamedConstructor = jsCast<JSTestNamedConstructor*>(handle.get().asCell());
-    if (jsTestNamedConstructor->impl()->hasPendingActivity())
+    if (jsTestNamedConstructor->impl().hasPendingActivity())
         return true;
-    if (!isObservable(jsTestNamedConstructor))
-        return false;
     UNUSED_PARAM(visitor);
     return false;
 }
@@ -201,8 +199,8 @@ bool JSTestNamedConstructorOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Un
 void JSTestNamedConstructorOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
     JSTestNamedConstructor* jsTestNamedConstructor = jsCast<JSTestNamedConstructor*>(handle.get().asCell());
-    DOMWrapperWorld* world = static_cast<DOMWrapperWorld*>(context);
-    uncacheWrapper(world, jsTestNamedConstructor->impl(), jsTestNamedConstructor);
+    DOMWrapperWorld& world = *static_cast<DOMWrapperWorld*>(context);
+    uncacheWrapper(world, &jsTestNamedConstructor->impl(), jsTestNamedConstructor);
     jsTestNamedConstructor->releaseImpl();
 }
 
@@ -245,7 +243,7 @@ JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestNam
 
 TestNamedConstructor* toTestNamedConstructor(JSC::JSValue value)
 {
-    return value.inherits(JSTestNamedConstructor::info()) ? jsCast<JSTestNamedConstructor*>(asObject(value))->impl() : 0;
+    return value.inherits(JSTestNamedConstructor::info()) ? &jsCast<JSTestNamedConstructor*>(asObject(value))->impl() : 0;
 }
 
 }

@@ -35,14 +35,14 @@ public:
 
     virtual ~SVGFontFaceUriElement();
 
-    PassRefPtr<CSSFontFaceSrcValue> srcValue() const;
+    PassRef<CSSFontFaceSrcValue> srcValue() const;
 
 private:
     SVGFontFaceUriElement(const QualifiedName&, Document&);
     
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
     virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE { return false; }
 
     void loadFont();
@@ -50,7 +50,7 @@ private:
     CachedResourceHandle<CachedFont> m_cachedFont;
 };
 
-ELEMENT_TYPE_CASTS(SVGFontFaceUriElement)
+NODE_TYPE_CASTS(SVGFontFaceUriElement)
 
 } // namespace WebCore
 

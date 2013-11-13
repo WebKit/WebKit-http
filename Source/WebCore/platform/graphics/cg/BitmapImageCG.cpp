@@ -67,7 +67,6 @@ BitmapImage::BitmapImage(CGImageRef cgImage, ImageObserver* observer)
     : Image(observer)
     , m_currentFrame(0)
     , m_frames(0)
-    , m_frameTimer(0)
     , m_repetitionCount(cAnimationNone)
     , m_repetitionCountStatus(Unknown)
     , m_repetitionsComplete(0)
@@ -92,7 +91,7 @@ BitmapImage::BitmapImage(CGImageRef cgImage, ImageObserver* observer)
     m_sizeRespectingOrientation = IntSize(width, height);
 
     m_frames.grow(1);
-    m_frames[0].m_frame = cgImage;
+    m_frames[0].m_frame = CGImageRetain(cgImage);
     m_frames[0].m_hasAlpha = true;
     m_frames[0].m_haveMetadata = true;
 
@@ -159,11 +158,6 @@ RetainPtr<CFArrayRef> BitmapImage::getCGImageArray()
             CFArrayAppendValue(array, currFrame);
     }
     return adoptCF(array);
-}
-
-void BitmapImage::draw(GraphicsContext* ctx, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator op, BlendMode blendMode)
-{
-    draw(ctx, dstRect, srcRect, styleColorSpace, op, blendMode, ImageOrientationDescription());
 }
 
 void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& destRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator compositeOp, BlendMode blendMode, ImageOrientationDescription description)

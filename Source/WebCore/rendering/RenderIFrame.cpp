@@ -39,8 +39,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
     
-RenderIFrame::RenderIFrame(HTMLIFrameElement& element)
-    : RenderFrameBase(element)
+RenderIFrame::RenderIFrame(HTMLIFrameElement& element, PassRef<RenderStyle> style)
+    : RenderFrameBase(element, std::move(style))
 {
 }
 
@@ -91,14 +91,12 @@ bool RenderIFrame::isSeamless() const
 
 bool RenderIFrame::requiresLayer() const
 {
-    return RenderFrameBase::requiresLayer() || style()->resize() != RESIZE_NONE;
+    return RenderFrameBase::requiresLayer() || style().resize() != RESIZE_NONE;
 }
 
 RenderView* RenderIFrame::contentRootRenderer() const
 {
-    // FIXME: Is this always a valid cast? What about plugins?
-    ASSERT(!widget() || widget()->isFrameView());
-    FrameView* childFrameView = toFrameView(widget());
+    FrameView* childFrameView = childView();
     return childFrameView ? childFrameView->frame().contentRenderer() : 0;
 }
 
@@ -114,11 +112,11 @@ bool RenderIFrame::flattenFrame() const
     if (!enabled || !frame->page())
         return false;
 
-    if (style()->width().isFixed() && style()->height().isFixed()) {
+    if (style().width().isFixed() && style().height().isFixed()) {
         // Do not flatten iframes with scrolling="no".
         if (iframeElement().scrollingMode() == ScrollbarAlwaysOff)
             return false;
-        if (style()->width().value() <= 0 || style()->height().value() <= 0)
+        if (style().width().value() <= 0 || style().height().value() <= 0)
             return false;
     }
 
@@ -139,7 +137,7 @@ void RenderIFrame::layoutSeamlessly()
     // Laying out our kids is normally responsible for adjusting our height, so we set it here.
     // Replaced elements normally do not respect padding, but seamless elements should: we'll add
     // both padding and border to the child's logical height here.
-    FrameView* childFrameView = toFrameView(widget());
+    FrameView* childFrameView = childView();
     if (childFrameView) // Widget should never be null during layout(), but just in case.
         setLogicalHeight(childFrameView->contentsHeight() + borderTop() + borderBottom() + paddingTop() + paddingBottom());
     updateLogicalHeight();
@@ -166,14 +164,14 @@ void RenderIFrame::layout()
         updateLogicalHeight();
 
         if (flattenFrame())
-            layoutWithFlattening(style()->width().isFixed(), style()->height().isFixed());
+            layoutWithFlattening(style().width().isFixed(), style().height().isFixed());
     }
 
     clearOverflow();
     addVisualEffectOverflow();
     updateLayerTransform();
 
-    setNeedsLayout(false);
+    clearNeedsLayout();
 }
 
 }

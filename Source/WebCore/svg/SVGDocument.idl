@@ -20,7 +20,7 @@
  */
 
 [
-    Conditional=SVG
+    Conditional=SVG,
 ] interface SVGDocument : Document {
     readonly attribute SVGSVGElement        rootElement;
 

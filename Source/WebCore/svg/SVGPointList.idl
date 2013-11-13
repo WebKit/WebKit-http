@@ -24,7 +24,7 @@
  */
 
 [
-    Conditional=SVG
+    Conditional=SVG,
 ] interface SVGPointList {
     readonly attribute unsigned long numberOfItems;
 

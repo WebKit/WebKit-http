@@ -28,12 +28,10 @@
 
 #include "HTMLDocumentParser.h"
 #include "HTMLNames.h"
-#include "HTMLParserOptions.h"
-#include "HTMLViewSourceDocument.h"
 
 namespace WebCore {
 
-HTMLViewSourceParser::HTMLViewSourceParser(HTMLViewSourceDocument* document)
+HTMLViewSourceParser::HTMLViewSourceParser(HTMLViewSourceDocument& document)
     : DecodedDataDocumentParser(document)
     , m_tokenizer(HTMLTokenizer::create(HTMLParserOptions(document)))
 {

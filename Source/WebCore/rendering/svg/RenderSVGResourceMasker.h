@@ -40,15 +40,15 @@ struct MaskerData {
 
 class RenderSVGResourceMasker FINAL : public RenderSVGResourceContainer {
 public:
-    explicit RenderSVGResourceMasker(SVGMaskElement&);
+    RenderSVGResourceMasker(SVGMaskElement&, PassRef<RenderStyle>);
     virtual ~RenderSVGResourceMasker();
 
     SVGMaskElement& maskElement() const { return toSVGMaskElement(RenderSVGResourceContainer::element()); }
 
     virtual void removeAllClientsFromCache(bool markForInvalidation = true);
     virtual void removeClientFromCache(RenderObject*, bool markForInvalidation = true);
-    virtual bool applyResource(RenderObject*, RenderStyle*, GraphicsContext*&, unsigned short resourceMode);
-    virtual FloatRect resourceBoundingBox(RenderObject*);
+    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, unsigned short resourceMode) OVERRIDE;
+    virtual FloatRect resourceBoundingBox(const RenderObject&) OVERRIDE;
 
     SVGUnitTypes::SVGUnitType maskUnits() const { return maskElement().maskUnits(); }
     SVGUnitTypes::SVGUnitType maskContentUnits() const { return maskElement().maskContentUnits(); }
@@ -65,7 +65,7 @@ private:
     void calculateMaskContentRepaintRect();
 
     FloatRect m_maskContentBoundaries;
-    HashMap<RenderObject*, OwnPtr<MaskerData>> m_masker;
+    HashMap<RenderObject*, std::unique_ptr<MaskerData>> m_masker;
 };
 
 }

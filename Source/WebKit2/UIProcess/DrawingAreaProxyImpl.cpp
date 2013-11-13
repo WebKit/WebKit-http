@@ -36,10 +36,6 @@
 #include "WebProcessProxy.h"
 #include <WebCore/Region.h>
 
-#if USE(COORDINATED_GRAPHICS)
-#include "CoordinatedLayerTreeHostProxy.h"
-#endif
-
 using namespace WebCore;
 
 namespace WebKit {
@@ -53,11 +49,6 @@ DrawingAreaProxyImpl::DrawingAreaProxyImpl(WebPageProxy* webPageProxy)
     , m_isBackingStoreDiscardable(true)
     , m_discardBackingStoreTimer(RunLoop::current(), this, &DrawingAreaProxyImpl::discardBackingStore)
 {
-#if USE(COORDINATED_GRAPHICS)
-    // Construct the proxy early to allow messages to be sent to the web process while AC is entered there.
-    if (webPageProxy->pageGroup()->preferences()->forceCompositingMode())
-        m_coordinatedLayerTreeHostProxy = adoptPtr(new CoordinatedLayerTreeHostProxy(this));
-#endif
 }
 
 DrawingAreaProxyImpl::~DrawingAreaProxyImpl()
@@ -125,27 +116,6 @@ void DrawingAreaProxyImpl::deviceScaleFactorDidChange()
 void DrawingAreaProxyImpl::layerHostingModeDidChange()
 {
     m_webPageProxy->process()->send(Messages::DrawingArea::SetLayerHostingMode(m_webPageProxy->layerHostingMode()), m_webPageProxy->pageID());
-}
-
-void DrawingAreaProxyImpl::visibilityDidChange()
-{
-    if (!m_webPageProxy->suppressVisibilityUpdates()) {
-        if (!m_webPageProxy->isViewVisible()) {
-            // Suspend painting.
-            m_webPageProxy->process()->send(Messages::DrawingArea::SuspendPainting(), m_webPageProxy->pageID());
-            return;
-        }
-
-        // Resume painting.
-        m_webPageProxy->process()->send(Messages::DrawingArea::ResumePainting(), m_webPageProxy->pageID());
-    }
-
-#if USE(ACCELERATED_COMPOSITING)
-    // If we don't have a backing store, go ahead and mark the backing store as being changed so
-    // that when paint we'll actually wait for something to paint and not flash white.
-    if (!m_backingStore && m_layerTreeContext.isEmpty())
-        backingStoreStateDidChange(DoNotRespondImmediately);
-#endif
 }
 
 void DrawingAreaProxyImpl::setBackingStoreIsDiscardable(bool isBackingStoreDiscardable)
@@ -284,9 +254,6 @@ void DrawingAreaProxyImpl::incorporateUpdate(const UpdateInfo& updateInfo)
         for (size_t i = 0; i < updateInfo.updateRects.size(); ++i)
             m_webPageProxy->setViewNeedsDisplay(updateInfo.updateRects[i]);
     }
-    
-    if (WebPageProxy::debugPaintFlags() & kWKDebugFlashBackingStoreUpdates)
-        m_webPageProxy->flashBackingStoreUpdates(updateInfo.updateRects);
 
     if (shouldScroll)
         m_webPageProxy->displayView();
@@ -360,19 +327,7 @@ void DrawingAreaProxyImpl::enterAcceleratedCompositingMode(const LayerTreeContex
     m_backingStore = nullptr;
     m_layerTreeContext = layerTreeContext;
     m_webPageProxy->enterAcceleratedCompositingMode(layerTreeContext);
-#if USE(COORDINATED_GRAPHICS)
-    if (!m_coordinatedLayerTreeHostProxy)
-        m_coordinatedLayerTreeHostProxy = adoptPtr(new CoordinatedLayerTreeHostProxy(this));
-#endif
 }
-
-#if USE(COORDINATED_GRAPHICS)
-void DrawingAreaProxyImpl::setVisibleContentsRect(const WebCore::FloatRect& visibleContentsRect, const WebCore::FloatPoint& trajectoryVector)
-{
-    if (m_coordinatedLayerTreeHostProxy)
-        m_coordinatedLayerTreeHostProxy->setVisibleContentsRect(visibleContentsRect, trajectoryVector);
-}
-#endif
 
 void DrawingAreaProxyImpl::exitAcceleratedCompositingMode()
 {

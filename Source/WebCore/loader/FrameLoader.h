@@ -94,7 +94,7 @@ public:
 
     PolicyChecker& policyChecker() const { return *m_policyChecker; }
     HistoryController& history() const { return *m_history; }
-    ResourceLoadNotifier* notifier() const { return &m_notifer; }
+    ResourceLoadNotifier& notifier() const { return m_notifier; }
     SubframeLoader& subframeLoader() const { return *m_subframeLoader; }
     IconController& icon() const { return *m_icon; }
     MixedContentChecker& mixedContentChecker() const { return m_mixedContentChecker; }
@@ -209,7 +209,7 @@ public:
     void handledOnloadEvents();
     String userAgent(const URL&) const;
 
-    void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld*);
+    void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&);
     void dispatchDidClearWindowObjectsInAllWorlds();
     void dispatchDocumentElementAvailable();
 
@@ -382,19 +382,16 @@ private:
     Frame& m_frame;
     FrameLoaderClient& m_client;
 
-    // FIXME: These should be OwnPtr<T> to reduce build times and simplify
-    // header dependencies unless performance testing proves otherwise.
-    // Some of these could be lazily created for memory savings on devices.
-    const OwnPtr<PolicyChecker> m_policyChecker;
-    const OwnPtr<HistoryController> m_history;
-    mutable ResourceLoadNotifier m_notifer;
-    const OwnPtr<SubframeLoader> m_subframeLoader;
+    const std::unique_ptr<PolicyChecker> m_policyChecker;
+    const std::unique_ptr<HistoryController> m_history;
+    mutable ResourceLoadNotifier m_notifier;
+    const std::unique_ptr<SubframeLoader> m_subframeLoader;
     mutable FrameLoaderStateMachine m_stateMachine;
-    const OwnPtr<IconController> m_icon;
+    const std::unique_ptr<IconController> m_icon;
     mutable MixedContentChecker m_mixedContentChecker;
 
     class FrameProgressTracker;
-    OwnPtr<FrameProgressTracker> m_progressTracker;
+    std::unique_ptr<FrameProgressTracker> m_progressTracker;
 
     FrameState m_state;
     FrameLoadType m_loadType;

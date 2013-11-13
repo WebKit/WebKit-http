@@ -159,7 +159,7 @@ bool SVGFontData::applySVGGlyphSelection(WidthIterator& iterator, GlyphData& gly
 
     RenderObject* renderObject = 0;
     if (TextRun::RenderingContext* renderingContext = run.renderingContext())
-        renderObject = static_cast<SVGTextRunRenderingContext*>(renderingContext)->renderer();
+        renderObject = &static_cast<SVGTextRunRenderingContext*>(renderingContext)->renderer();
 
     String language;
     bool isVerticalText = false;
@@ -169,7 +169,7 @@ bool SVGFontData::applySVGGlyphSelection(WidthIterator& iterator, GlyphData& gly
         RenderElement* parentRenderer = renderObject->isRenderElement() ? toRenderElement(renderObject) : renderObject->parent();
         ASSERT(parentRenderer);
 
-        isVerticalText = parentRenderer->style()->svgStyle()->isVerticalWritingMode();
+        isVerticalText = parentRenderer->style().svgStyle().isVerticalWritingMode();
         if (Element* parentRendererElement = parentRenderer->element()) {
             language = parentRendererElement->getAttribute(XMLNames::langAttr);
 
@@ -297,7 +297,7 @@ String SVGFontData::createStringWithMirroredCharacters(const UChar* characters, 
     while (i < length) {
         UChar32 character;
         U16_NEXT(characters, i, length, character);
-        mirroredCharacters.append(mirroredChar(character));
+        mirroredCharacters.append(u_charMirror(character));
     }
 
     return mirroredCharacters.toString();

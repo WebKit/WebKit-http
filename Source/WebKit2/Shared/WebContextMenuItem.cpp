@@ -66,24 +66,21 @@ PassRefPtr<ImmutableArray> WebContextMenuItem::submenuItemsAsImmutableArray() co
     if (m_webContextMenuItemData.type() != WebCore::SubmenuType)
         return ImmutableArray::create();
 
-    const Vector<WebContextMenuItemData>& submenuVector(m_webContextMenuItemData.submenu());
-    unsigned size = submenuVector.size();
-    
-    Vector<RefPtr<APIObject>> result;
-    result.reserveCapacity(size);
-    
-    for (unsigned i = 0; i < size; ++i)
-        result.append(WebContextMenuItem::create(submenuVector[i]));
-    
-    return ImmutableArray::adopt(result);
+    Vector<RefPtr<API::Object>> submenuItems;
+    submenuItems.reserveInitialCapacity(m_webContextMenuItemData.submenu().size());
+
+    for (const auto& item : m_webContextMenuItemData.submenu())
+        submenuItems.uncheckedAppend(WebContextMenuItem::create(item));
+
+    return ImmutableArray::create(std::move(submenuItems));
 }
 
-APIObject* WebContextMenuItem::userData() const
+API::Object* WebContextMenuItem::userData() const
 {
     return m_webContextMenuItemData.userData();
 }
 
-void WebContextMenuItem::setUserData(APIObject* userData)
+void WebContextMenuItem::setUserData(API::Object* userData)
 {
     m_webContextMenuItemData.setUserData(userData);
 }

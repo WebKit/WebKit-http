@@ -33,8 +33,6 @@
 #include "AccessibilityTable.h"
 #include "AccessibilityTableRow.h"
 
-using namespace std;
-
 namespace WebCore {
     
 AccessibilityARIAGridCell::AccessibilityARIAGridCell(RenderObject* renderer)
@@ -78,11 +76,11 @@ void AccessibilityARIAGridCell::rowIndexRange(pair<unsigned, unsigned>& rowRange
 
     if (parent->isTableRow()) {
         // We already got a table row, use its API.
-        rowRange.first = static_cast<AccessibilityTableRow*>(parent)->rowIndex();
+        rowRange.first = toAccessibilityTableRow(parent)->rowIndex();
     } else if (parent->isAccessibilityTable()) {
         // We reached the parent table, so we need to inspect its
         // children to determine the row index for the cell in it.
-        unsigned columnCount = static_cast<AccessibilityTable*>(parent)->columnCount();
+        unsigned columnCount = toAccessibilityTable(parent)->columnCount();
         if (!columnCount)
             return;
 

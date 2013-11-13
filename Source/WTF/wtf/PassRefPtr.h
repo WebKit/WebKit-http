@@ -21,32 +21,27 @@
 #ifndef WTF_PassRefPtr_h
 #define WTF_PassRefPtr_h
 
-#include <cstddef>
-#include <wtf/Assertions.h>
+#include "PassRef.h"
 
 namespace WTF {
 
-    template<typename T> class RefPtr;
-    template<typename T> class PassRefPtr;
     template<typename T> PassRefPtr<T> adoptRef(T*);
-
-    inline void adopted(const void*) { }
 
     template<typename T> ALWAYS_INLINE void refIfNotNull(T* ptr)
     {
-        if (LIKELY(ptr != 0))
+        if (LIKELY(ptr != nullptr))
             ptr->ref();
     }
 
     template<typename T> ALWAYS_INLINE void derefIfNotNull(T* ptr)
     {
-        if (LIKELY(ptr != 0))
+        if (LIKELY(ptr != nullptr))
             ptr->deref();
     }
 
     template<typename T> class PassRefPtr {
     public:
-        PassRefPtr() : m_ptr(0) { }
+        PassRefPtr() : m_ptr(nullptr) { }
         PassRefPtr(T* ptr) : m_ptr(ptr) { refIfNotNull(ptr); }
         // It somewhat breaks the type system to allow transfer of ownership out of
         // a const PassRefPtr. However, it makes it much easier to work with PassRefPtr
@@ -57,7 +52,8 @@ namespace WTF {
         ALWAYS_INLINE ~PassRefPtr() { derefIfNotNull(m_ptr); }
 
         template<typename U> PassRefPtr(const RefPtr<U>&);
-        
+        template<typename U> PassRefPtr(PassRef<U> reference) : m_ptr(&reference.leakRef()) { }
+
         T* get() const { return m_ptr; }
 
         T* leakRef() const WARN_UNUSED_RETURN;
@@ -69,15 +65,15 @@ namespace WTF {
 
         // This conversion operator allows implicit conversion to bool but not to other integer types.
         typedef T* (PassRefPtr::*UnspecifiedBoolType);
-        operator UnspecifiedBoolType() const { return m_ptr ? &PassRefPtr::m_ptr : 0; }
-
-        PassRefPtr& operator=(const PassRefPtr&) { COMPILE_ASSERT(!sizeof(T*), PassRefPtr_should_never_be_assigned_to); return *this; }
+        operator UnspecifiedBoolType() const { return m_ptr ? &PassRefPtr::m_ptr : nullptr; }
 
         friend PassRefPtr adoptRef<T>(T*);
 
     private:
-        // adopting constructor
-        PassRefPtr(T* ptr, bool) : m_ptr(ptr) { }
+        PassRefPtr& operator=(const PassRefPtr&) WTF_DELETED_FUNCTION;
+
+        enum AdoptTag { Adopt };
+        PassRefPtr(T* ptr, AdoptTag) : m_ptr(ptr) { }
 
         mutable T* m_ptr;
     };
@@ -92,7 +88,7 @@ namespace WTF {
     template<typename T> inline T* PassRefPtr<T>::leakRef() const
     {
         T* ptr = m_ptr;
-        m_ptr = 0;
+        m_ptr = nullptr;
         return ptr;
     }
 
@@ -149,17 +145,12 @@ namespace WTF {
     template<typename T> inline PassRefPtr<T> adoptRef(T* p)
     {
         adopted(p);
-        return PassRefPtr<T>(p, true);
+        return PassRefPtr<T>(p, PassRefPtr<T>::Adopt);
     }
 
     template<typename T, typename U> inline PassRefPtr<T> static_pointer_cast(const PassRefPtr<U>& p) 
     { 
         return adoptRef(static_cast<T*>(p.leakRef())); 
-    }
-
-    template<typename T, typename U> inline PassRefPtr<T> const_pointer_cast(const PassRefPtr<U>& p) 
-    { 
-        return adoptRef(const_cast<T*>(p.leakRef())); 
     }
 
     template<typename T> inline T* getPtr(const PassRefPtr<T>& p)
@@ -172,6 +163,5 @@ namespace WTF {
 using WTF::PassRefPtr;
 using WTF::adoptRef;
 using WTF::static_pointer_cast;
-using WTF::const_pointer_cast;
 
 #endif // WTF_PassRefPtr_h

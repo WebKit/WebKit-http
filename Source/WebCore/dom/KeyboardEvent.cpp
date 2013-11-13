@@ -24,9 +24,7 @@
 #include "KeyboardEvent.h"
 
 #include "Document.h"
-#include "DOMWindow.h"
 #include "EventDispatcher.h"
-#include "EventNames.h"
 #include "EventHandler.h"
 #include "Frame.h"
 #include "PlatformKeyboardEvent.h"
@@ -211,22 +209,6 @@ KeyboardEvent* findKeyboardEvent(Event* event)
         if (e->isKeyboardEvent())
             return static_cast<KeyboardEvent*>(e);
     return 0;
-}
-
-PassRefPtr<KeyboardEventDispatchMediator> KeyboardEventDispatchMediator::create(PassRefPtr<KeyboardEvent> event)
-{
-    return adoptRef(new KeyboardEventDispatchMediator(event));
-}
-
-KeyboardEventDispatchMediator::KeyboardEventDispatchMediator(PassRefPtr<KeyboardEvent> event)
-    : EventDispatchMediator(event)
-{
-}
-
-bool KeyboardEventDispatchMediator::dispatchEvent(EventDispatcher* dispatcher) const
-{
-    // Make sure not to return true if we already took default action while handling the event.
-    return EventDispatchMediator::dispatchEvent(dispatcher) && !event()->defaultHandled();
 }
 
 } // namespace WebCore

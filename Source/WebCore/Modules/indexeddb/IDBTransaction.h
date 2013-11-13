@@ -44,14 +44,13 @@ namespace WebCore {
 
 class IDBCursor;
 class IDBDatabase;
-class IDBDatabaseBackendInterface;
+class IDBDatabaseBackend;
 class IDBDatabaseError;
 class IDBObjectStore;
 class IDBOpenDBRequest;
 struct IDBObjectStoreMetadata;
 
-// FIXME: This class should be marked FINAL once <http://webkit.org/b/121747> is fixed.
-class IDBTransaction : public ScriptWrappable, public RefCounted<IDBTransaction>, public EventTargetWithInlineData, public ActiveDOMObject {
+class IDBTransaction FINAL : public ScriptWrappable, public RefCounted<IDBTransaction>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
     static PassRefPtr<IDBTransaction> create(ScriptExecutionContext*, int64_t, const Vector<String>& objectStoreNames, IndexedDB::TransactionMode, IDBDatabase*);
     static PassRefPtr<IDBTransaction> create(ScriptExecutionContext*, int64_t, IDBDatabase*, IDBOpenDBRequest*, const IDBDatabaseMetadata& previousMetadata);
@@ -66,7 +65,7 @@ public:
     static IndexedDB::TransactionMode stringToMode(const String&, ExceptionCode&);
     static const AtomicString& modeToString(IndexedDB::TransactionMode);
 
-    IDBDatabaseBackendInterface* backendDB() const;
+    IDBDatabaseBackend* backendDB() const;
 
     int64_t id() const { return m_id; }
     bool isActive() const { return m_state == Active; }
@@ -102,15 +101,15 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(complete);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
 
-    virtual void onAbort(PassRefPtr<IDBDatabaseError>);
-    virtual void onComplete();
+    void onAbort(PassRefPtr<IDBDatabaseError>);
+    void onComplete();
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL { return IDBTransactionEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL { return ActiveDOMObject::scriptExecutionContext(); }
+    virtual EventTargetInterface eventTargetInterface() const OVERRIDE { return IDBTransactionEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE { return ActiveDOMObject::scriptExecutionContext(); }
 
     using EventTarget::dispatchEvent;
-    virtual bool dispatchEvent(PassRefPtr<Event>) OVERRIDE FINAL;
+    virtual bool dispatchEvent(PassRefPtr<Event>) OVERRIDE;
 
     // ActiveDOMObject
     virtual bool hasPendingActivity() const OVERRIDE;
@@ -132,8 +131,8 @@ private:
     virtual void stop() OVERRIDE;
 
     // EventTarget
-    virtual void refEventTarget() OVERRIDE FINAL { ref(); }
-    virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
+    virtual void refEventTarget() OVERRIDE { ref(); }
+    virtual void derefEventTarget() OVERRIDE { deref(); }
 
     enum State {
         Inactive, // Created or started, but not in an event callback
@@ -153,12 +152,12 @@ private:
     RefPtr<DOMError> m_error;
     String m_errorMessage;
 
-    ListHashSet<RefPtr<IDBRequest> > m_requestList;
+    ListHashSet<RefPtr<IDBRequest>> m_requestList;
 
-    typedef HashMap<String, RefPtr<IDBObjectStore> > IDBObjectStoreMap;
+    typedef HashMap<String, RefPtr<IDBObjectStore>> IDBObjectStoreMap;
     IDBObjectStoreMap m_objectStoreMap;
 
-    typedef HashSet<RefPtr<IDBObjectStore> > IDBObjectStoreSet;
+    typedef HashSet<RefPtr<IDBObjectStore>> IDBObjectStoreSet;
     IDBObjectStoreSet m_deletedObjectStores;
 
     typedef HashMap<RefPtr<IDBObjectStore>, IDBObjectStoreMetadata> IDBObjectStoreMetadataMap;

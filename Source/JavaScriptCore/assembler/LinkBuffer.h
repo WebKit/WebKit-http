@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2010, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -83,6 +83,7 @@ public:
 #if ENABLE(BRANCH_COMPACTION)
         , m_initialSize(0)
 #endif
+        , m_didAllocate(false)
         , m_code(0)
         , m_assembler(masm)
         , m_vm(&vm)
@@ -93,13 +94,29 @@ public:
         linkCode(ownerUID, effort);
     }
 
+    LinkBuffer(VM& vm, MacroAssembler* masm, void* code, size_t size)
+        : m_size(size)
+#if ENABLE(BRANCH_COMPACTION)
+        , m_initialSize(0)
+#endif
+        , m_didAllocate(false)
+        , m_code(code)
+        , m_assembler(masm)
+        , m_vm(&vm)
+#ifndef NDEBUG
+        , m_completed(false)
+#endif
+    {
+        linkCode(0, JITCompilationCanFail);
+    }
+
     ~LinkBuffer()
     {
     }
     
     bool didFailToAllocate() const
     {
-        return !m_executableMemory;
+        return !m_didAllocate;
     }
 
     bool isValid() const
@@ -114,6 +131,11 @@ public:
         ASSERT(call.isFlagSet(Call::Linkable));
         call.m_label = applyOffset(call.m_label);
         MacroAssembler::linkCall(code(), call, function);
+    }
+    
+    void link(Call call, CodeLocationLabel label)
+    {
+        link(call, FunctionPtr(label.executableAddress()));
     }
     
     void link(Jump jump, CodeLocationLabel label)
@@ -241,8 +263,15 @@ private:
     {
         return m_code;
     }
+    
+    void allocate(size_t initialSize, void* ownerUID, JITCompilationEffort);
+    void shrink(size_t newSize);
 
     void linkCode(void* ownerUID, JITCompilationEffort);
+#if ENABLE(BRANCH_COMPACTION)
+    template <typename InstructionType>
+    void copyCompactAndLinkCode(void* ownerUID, JITCompilationEffort);
+#endif
 
     void performFinalization();
 
@@ -259,6 +288,7 @@ private:
 #if ENABLE(BRANCH_COMPACTION)
     size_t m_initialSize;
 #endif
+    bool m_didAllocate;
     void* m_code;
     MacroAssembler* m_assembler;
     VM* m_vm;

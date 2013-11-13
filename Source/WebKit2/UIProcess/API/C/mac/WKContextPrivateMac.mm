@@ -73,11 +73,13 @@ void WKContextGetInfoForInstalledPlugIns(WKContextRef contextRef, WKContextGetIn
 {
     Vector<PluginModuleInfo> plugins = toImpl(contextRef)->pluginInfoStore().plugins();
 
-    Vector<RefPtr<APIObject>> pluginInfoDictionaries;
-    for (const auto& plugin: plugins)
-        pluginInfoDictionaries.append(createPluginInformationDictionary(plugin));
+    Vector<RefPtr<API::Object>> pluginInfoDictionaries;
+    pluginInfoDictionaries.reserveInitialCapacity(plugins.size());
 
-    RefPtr<ImmutableArray> array = ImmutableArray::adopt(pluginInfoDictionaries);
+    for (const auto& plugin: plugins)
+        pluginInfoDictionaries.uncheckedAppend(createPluginInformationDictionary(plugin));
+
+    RefPtr<ImmutableArray> array = ImmutableArray::create(std::move(pluginInfoDictionaries));
 
     toImpl(contextRef)->ref();
     dispatch_async(dispatch_get_main_queue(), ^() {

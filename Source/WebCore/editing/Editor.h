@@ -325,8 +325,6 @@ public:
     String selectedText() const;
     String selectedTextForClipboard() const;
     bool findString(const String&, FindOptions);
-    // FIXME: Switch callers over to the FindOptions version and retire this one.
-    bool findString(const String&, bool forward, bool caseFlag, bool wrapFlag, bool startInSelection);
 
     PassRefPtr<Range> rangeOfString(const String&, Range*, FindOptions);
     PassRefPtr<Range> findStringAndScrollToVisible(const String&, Range*, FindOptions);
@@ -342,7 +340,7 @@ public:
 
     void respondToChangedSelection(const VisibleSelection& oldSelection, FrameSelection::SetSelectionOptions);
     bool shouldChangeSelection(const VisibleSelection& oldSelection, const VisibleSelection& newSelection, EAffinity, bool stillSelecting) const;
-    unsigned countMatchesForText(const String&, Range*, FindOptions, unsigned limit, bool markMatches, Vector<RefPtr<Range> >*);
+    unsigned countMatchesForText(const String&, Range*, FindOptions, unsigned limit, bool markMatches, Vector<RefPtr<Range>>*);
     bool markedTextMatchesAreHighlighted() const;
     void setMarkedTextMatchesAreHighlighted(bool);
 

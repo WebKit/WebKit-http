@@ -53,8 +53,8 @@ struct SVGKerningPair : public SVGKerning {
 typedef Vector<SVGKerning> SVGKerningVector;
 
 struct SVGKerningMap {
-    HashMap<String, OwnPtr<SVGKerningVector> > unicodeMap;
-    HashMap<String, OwnPtr<SVGKerningVector> > glyphMap;
+    HashMap<String, OwnPtr<SVGKerningVector>> unicodeMap;
+    HashMap<String, OwnPtr<SVGKerningVector>> glyphMap;
     Vector<SVGKerningPair> kerningUnicodeRangeMap;
 
     bool isEmpty() const { return unicodeMap.isEmpty() && glyphMap.isEmpty() && kerningUnicodeRangeMap.isEmpty(); }
@@ -80,12 +80,12 @@ public:
     SVGGlyph svgGlyphForGlyph(Glyph);
     Glyph missingGlyph();
 
-    SVGMissingGlyphElement* firstMissingGlyphElement() const;
+    const SVGMissingGlyphElement* firstMissingGlyphElement() const;
 
 private:
     SVGFontElement(const QualifiedName&, Document&);
 
-    virtual bool rendererIsNeeded(const RenderStyle&) { return false; }  
+    virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE { return false; }
 
     void ensureGlyphCache();
     void registerLigaturesInGlyphCache(Vector<String>&);
@@ -101,7 +101,7 @@ private:
     bool m_isGlyphCacheValid;
 };
 
-ELEMENT_TYPE_CASTS(SVGFontElement)
+NODE_TYPE_CASTS(SVGFontElement)
 
 } // namespace WebCore
 

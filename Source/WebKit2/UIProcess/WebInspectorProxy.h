@@ -69,7 +69,7 @@ enum AttachmentSide {
     AttachmentSideRight
 };
 
-class WebInspectorProxy : public TypedAPIObject<APIObject::TypeInspector>, public CoreIPC::MessageReceiver {
+class WebInspectorProxy : public API::TypedObject<API::Object::TypeInspector>, public CoreIPC::MessageReceiver {
 public:
     static PassRefPtr<WebInspectorProxy> create(WebPageProxy* page)
     {
@@ -190,7 +190,7 @@ private:
 
     void open();
 
-    static WebPageGroup* inspectorPageGroup();
+    WebPageGroup* inspectorPageGroup() const;
 
 #if PLATFORM(GTK) || PLATFORM(EFL)
     void createInspectorWindow();
@@ -216,6 +216,11 @@ private:
     bool m_showMessageSent;
     bool m_createdInspectorPage;
     bool m_ignoreFirstBringToFront;
+
+    // The debugger stops all the pages in the same PageGroup. Having
+    // all the inspectors in the same group will make it impossible to debug
+    // the inspector code, so we use the level to make different page groups.
+    unsigned m_level;
 
     AttachmentSide m_attachmentSide;
 

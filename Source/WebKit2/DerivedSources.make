@@ -22,6 +22,8 @@
 
 VPATH = \
     $(WebKit2) \
+    $(WebKit2)/DatabaseProcess \
+    $(WebKit2)/DatabaseProcess/IndexedDB \
     $(WebKit2)/NetworkProcess \
     $(WebKit2)/NetworkProcess/mac \
     $(WebKit2)/PluginProcess \
@@ -39,6 +41,7 @@ VPATH = \
     $(WebKit2)/WebProcess/MediaCache \
     $(WebKit2)/WebProcess/Network \
     $(WebKit2)/WebProcess/Notifications \
+    $(WebKit2)/WebProcess/OriginData \
     $(WebKit2)/WebProcess/Plugins \
     $(WebKit2)/WebProcess/ResourceCache \
     $(WebKit2)/WebProcess/Storage \
@@ -46,6 +49,7 @@ VPATH = \
     $(WebKit2)/WebProcess/WebPage \
     $(WebKit2)/WebProcess \
     $(WebKit2)/UIProcess \
+    $(WebKit2)/UIProcess/Databases \
     $(WebKit2)/UIProcess/Downloads \
     $(WebKit2)/UIProcess/Network \
     $(WebKit2)/UIProcess/Network/CustomProtocols \
@@ -59,6 +63,10 @@ MESSAGE_RECEIVERS = \
     AuthenticationManager \
     CustomProtocolManager \
     CustomProtocolManagerProxy \
+    DatabaseProcess \
+    DatabaseProcessIDBDatabaseBackend \
+    DatabaseProcessProxy \
+    DatabaseToWebProcessConnection \
     DrawingArea \
     DrawingAreaProxy \
     DownloadProxy \
@@ -99,6 +107,8 @@ MESSAGE_RECEIVERS = \
     WebMediaCacheManager \
     WebMediaCacheManagerProxy \
     WebNotificationManager \
+    WebOriginDataManager \
+    WebOriginDataManagerProxy \
     WebPage \
     WebPageGroupProxy \
     WebPageProxy \

@@ -50,6 +50,8 @@ public:
     bool isEnabled() const { return m_enabled; }
     void setEnabled(bool enabled) { m_enabled = enabled; }
 
+    static bool s_shouldCreateGCTimer;
+
 protected:
 #if USE(CF)
     GCActivityCallback(VM* vm, CFRunLoopRef runLoop)
@@ -80,17 +82,17 @@ public:
 
     DefaultGCActivityCallback(Heap*);
 
-    virtual void didAllocate(size_t);
-    virtual void willCollect();
-    virtual void cancel();
-    
-    virtual void doWork();
+    JS_EXPORT_PRIVATE virtual void didAllocate(size_t) OVERRIDE;
+    JS_EXPORT_PRIVATE virtual void willCollect() OVERRIDE;
+    JS_EXPORT_PRIVATE virtual void cancel() OVERRIDE;
+
+    JS_EXPORT_PRIVATE virtual void doWork() OVERRIDE;
 
 #if USE(CF)
 protected:
-    DefaultGCActivityCallback(Heap*, CFRunLoopRef);
+    JS_EXPORT_PRIVATE DefaultGCActivityCallback(Heap*, CFRunLoopRef);
 #endif
-#if USE(CF) || PLATFORM(QT) || PLATFORM(EFL)
+#if USE(CF) || PLATFORM(EFL)
 protected:
     void cancelTimer();
     void scheduleTimer(double);
@@ -102,7 +104,7 @@ private:
 
 inline PassOwnPtr<DefaultGCActivityCallback> DefaultGCActivityCallback::create(Heap* heap)
 {
-    return adoptPtr(new DefaultGCActivityCallback(heap));
+    return GCActivityCallback::s_shouldCreateGCTimer ? adoptPtr(new DefaultGCActivityCallback(heap)) : nullptr;
 }
 
 }

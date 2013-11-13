@@ -114,44 +114,10 @@ webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-dom-baseFrequency-
 webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-dom-stitchTiles-attr.html [ ImageOnlyFailure ]
 webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-svgdom-stitchTiles-prop.html [ ImageOnlyFailure ]
 
-webkit.org/b/117574 editing/selection/3690703-2.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/3690703.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/3690719.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/4397952.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/4895428-3.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/4975120.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/5007143-2.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/5007143.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/5057506.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/5195166-1.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/7152-2.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/caret-and-focus-ring.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/caret-before-select.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/caret-ltr-right.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/caret-rtl-2-left.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/caret-rtl-right.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-across-readonly-input-1.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-across-readonly-input-2.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-across-readonly-input-3.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-across-readonly-input-4.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-across-readonly-input-5.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-all-002.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-all-003.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-all-004.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-all-005.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-all-006.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-box.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-element-paragraph-boundary.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/select-from-textfield-outwards.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/selection-actions.html [ ImageOnlyFailure ]
-webkit.org/b/117574 editing/selection/selection-button-text.html [ ImageOnlyFailure ]
- 
 webkit.org/b/111984 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
-webkit.org/b/111987 accessibility/aria-link-supports-press.html [ Failure ]
 webkit.org/b/111988 accessibility/aria-readonly.html [ Failure ]
 webkit.org/b/111991 accessibility/aria-text-role.html [ Failure ]
 webkit.org/b/111992 accessibility/aria-used-on-image-maps.html [ Failure ]
-webkit.org/b/111993 accessibility/button-press-action.html [ Failure ]
 webkit.org/b/111994 accessibility/canvas-accessibilitynodeobject.html [ Failure ]
 webkit.org/b/111996 accessibility/canvas-fallback-content-2.html [ Failure ]
 webkit.org/b/111999 accessibility/disabled-controls-not-focusable.html [ Failure ]
@@ -162,13 +128,8 @@ webkit.org/b/112005 accessibility/onclick-handlers.html [ Failure ]
 webkit.org/b/112006 accessibility/secure-textfield-title-ui.html [ Failure ]
 webkit.org/b/112008 accessibility/spinbutton-value.html [ Failure ]
 webkit.org/b/112012 accessibility/svg-bounds.html [ Failure ]
-webkit.org/b/112013 accessibility/svg-remote-element.html [ Failure ]
 webkit.org/b/112014 accessibility/textarea-insertion-point-line-number.html [ Failure ]
-webkit.org/b/112015 accessibility/textarea-line-for-index.html [ Failure ]
-webkit.org/b/112016 accessibility/textarea-selected-text-range.html [ Failure ]
-webkit.org/b/112017 accessibility/textbox-role-reports-selection.html [ Failure ]
 webkit.org/b/112018 accessibility/th-as-title-ui.html [ Failure ]
-webkit.org/b/112019 accessibility/title-ui-element-correctness.html [ Failure ]
 webkit.org/b/112021 accessibility/visible-elements.html [ Failure Crash ]
 
 accessibility/aria-checkbox-sends-notification.html [ Skip ]
@@ -178,12 +139,10 @@ accessibility/internal-link-anchors2.html [ Skip ]
 accessibility/media-element.html [ Skip ]
 accessibility/multiselect-list-reports-active-option.html [ Skip ]
 accessibility/radio-button-group-members.html [ Skip ]
-accessibility/table-attributes.html [ Skip ]
 accessibility/table-cell-spans.html [ Skip ]
 accessibility/table-cells.html [ Skip ]
 accessibility/table-detection.html [ Skip ]
 accessibility/table-one-cell.html [ Skip ]
-accessibility/table-sections.html [ Skip ]
 accessibility/table-with-rules.html [ Skip ]
 
 # Frame flattening does not work properly for EFL port
@@ -319,8 +278,6 @@ webkit.org/b/96881 fast/frames/sandboxed-iframe-plugins.html [ Failure ]
 webkit.org/b/96881 http/tests/plugins [ Skip ]
 webkit.org/b/96881 plugins [ Skip ]
 webkit.org/b/96881 userscripts/user-script-plugin-document.html [ Failure ]
-webkit.org/b/96881 http/tests/inspector/network/network-embed.html [ Failure ]
-webkit.org/b/96881 http/tests/inspector/network/network-content-replacement-embed.html [ Failure ]
 
 # EFL WK1 does not support the spellchecker feature
 webkit.org/b/86633 editing/spelling [ Skip ]
@@ -474,9 +431,6 @@ webkit.org/b/109081 webgl/conformance/uniforms/uniform-default-values.html [ Ski
 webkit.org/b/109081 webgl/conformance/uniforms/uniform-location.html [ Skip ]
 webkit.org/b/109081 webgl/conformance/uniforms/uniform-samplers-test.html [ Skip ]
 
-webkit.org/b/84333 storage/indexeddb/structured-clone.html [ Failure ]
-webkit.org/b/84333 storage/indexeddb/noblobs.html [ Failure ]
-
 # css3 device adaptation does not work for EFL WK1 properly.
 webkit.org/b/114948 css3/device-adapt/viewport-width-check-window-innerwidth-correct.html [ Failure ]
 webkit.org/b/114948 css3/device-adapt/viewport-width-not-affecting-next-page.html [ Failure ]
@@ -489,3 +443,34 @@ webkit.org/b/87226 printing/width-overflow.html [ Failure ]
 
 # Failing tests after r155014
 webkit.org/b/120671 editing/selection/doubleclick-japanese-text.html [ Failure ]
+
+# eventSender related test fails (TEST-42)
+Bug(EFL) fast/harness/results.html [ Failure ]
+
+# EFL has not fully implemented about some SVG attributes
+Bug(EFL) svg/as-image/image-respects-deviceScaleFactor.html
+Bug(EFL) svg/hixie/data-types/002.xhtml
+Bug(EFL) svg/zoom/page/zoom-zoom-coords.xhtml [ Failure ]
+
+# Text selection does not work correctly in DumpRenderTree
+Bug(EFL) fast/events/selectstart-by-double-triple-clicks.html [ Failure ]
+Bug(EFL) fast/events/selectstart-by-drag.html [ Failure ]
+Bug(EFL) fast/text/offsetForPosition-complex-fallback.html [ Failure ]
+
+# shader errors, fails to render.
+webkit.org/b/105031 fast/canvas/webgl/drawingbuffer-test.html [ Failure ]
+
+# Need to have new baselines since upgrading new base OS(Ubuntu 12.04 -> 13.04)
+webkit.org/b/123696 accessibility/fieldset-element.html [ Missing ]
+webkit.org/b/123696 accessibility/negative-tabindex-does-not-expose-label.html [ Missing ]
+webkit.org/b/123696 editing/input/caret-at-the-edge-of-contenteditable.html [ Missing ]
+webkit.org/b/123696 editing/selection/5825350-1.html [ Missing ]
+webkit.org/b/123696 editing/selection/5825350-2.html [ Missing ]
+webkit.org/b/123696 editing/selection/caret-and-focus-ring.html [ Missing ]
+webkit.org/b/123696 editing/selection/mixed-editability-10.html [ Missing ]
+webkit.org/b/123696 fast/table/overflowHidden.html [ Missing ]
+webkit.org/b/123696 http/tests/misc/slow-loading-mask.html [ Missing ]
+webkit.org/b/123696 printing/media-queries-print.html [ Missing ]
+webkit.org/b/123696 printing/setPrinting.html [ Missing ]
+webkit.org/b/123696 printing/simultaneous-position-float-change.html [ Missing ]
+webkit.org/b/123696 printing/width-overflow.html [ Missing ]

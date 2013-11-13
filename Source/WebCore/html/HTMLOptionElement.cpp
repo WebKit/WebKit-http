@@ -43,8 +43,6 @@
 #include "StyleResolver.h"
 #include "Text.h"
 #include <wtf/Ref.h>
-#include <wtf/Vector.h>
-#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -196,7 +194,7 @@ void HTMLOptionElement::parseAttribute(const QualifiedName& name, const AtomicSt
         m_disabled = !value.isNull();
         if (oldDisabled != m_disabled) {
             didAffectSelector(AffectedSelectorDisabled | AffectedSelectorEnabled);
-            if (renderer() && renderer()->style()->hasAppearance())
+            if (renderer() && renderer()->style().hasAppearance())
                 renderer()->theme()->stateChanged(renderer(), EnabledState);
         }
     } else if (name == selectedAttr) {
@@ -350,7 +348,7 @@ bool HTMLOptionElement::isDisabledFormControl() const
     return isHTMLOptGroupElement(parentElement) && parentElement->isDisabledFormControl();
 }
 
-Node::InsertionNotificationRequest HTMLOptionElement::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest HTMLOptionElement::insertedInto(ContainerNode& insertionPoint)
 {
     if (HTMLSelectElement* select = ownerSelectElement()) {
         select->setRecalcListItems();

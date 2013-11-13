@@ -27,10 +27,8 @@
 #include "ImageBufferDataCG.h"
 #elif USE(CAIRO)
 #include "ImageBufferDataCairo.h"
-#elif OS(HAIKU)
+#elif PLATFORM(HAIKU)
 #include "ImageBufferDataHaiku.h"
-#elif PLATFORM(QT)
-#include "ImageBufferDataQt.h"
 #elif USE(WINGDI)
 #include "ImageBufferDataWince.h"
 #elif PLATFORM(BLACKBERRY)

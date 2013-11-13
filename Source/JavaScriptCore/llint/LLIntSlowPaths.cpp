@@ -37,6 +37,7 @@
 #include "HostCallReturnValue.h"
 #include "Interpreter.h"
 #include "JIT.h"
+#include "JITExceptions.h"
 #include "JSActivation.h"
 #include "JSCJSValue.h"
 #include "JSGlobalObjectFunctions.h"
@@ -277,7 +278,7 @@ inline bool shouldJIT(ExecState* exec)
 inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
 {
     VM& vm = exec->vm();
-    DeferGC deferGC(vm.heap);
+    DeferGCForAWhile deferGC(vm.heap); // My callers don't set top callframe, so we don't want to GC here at all.
     
     codeBlock->updateAllValueProfilePredictions();
     
@@ -426,8 +427,8 @@ LLINT_SLOW_PATH_DECL(stack_check)
     dataLogF("Num vars = %u.\n", exec->codeBlock()->m_numVars);
     dataLogF("Current end is at %p.\n", exec->vm().interpreter->stack().end());
 #endif
-    ASSERT(!exec->vm().interpreter->stack().containsAddress(&exec->registers()[-exec->codeBlock()->m_numCalleeRegisters]));
-    if (UNLIKELY(!vm.interpreter->stack().grow(&exec->registers()[-exec->codeBlock()->m_numCalleeRegisters]))) {
+    ASSERT(!exec->vm().interpreter->stack().containsAddress(&exec->registers()[virtualRegisterForLocal(exec->codeBlock()->m_numCalleeRegisters).offset()]));
+    if (UNLIKELY(!vm.interpreter->stack().grow(&exec->registers()[virtualRegisterForLocal(exec->codeBlock()->m_numCalleeRegisters).offset()]))) {
         exec = exec->callerFrame();
         CommonSlowPaths::interpreterThrowInCaller(exec, createStackOverflowError(exec));
         pc = returnToThrowForThrownException(exec);
@@ -595,7 +596,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
             && baseCell == slot.base()) {
             
             if (slot.type() == PutPropertySlot::NewProperty) {
-                ConcurrentJITLocker locker(codeBlock->m_lock);
+                GCSafeConcurrentJITLocker locker(codeBlock->m_lock, vm.heap);
             
                 if (!structure->isDictionary() && structure->previousID()->outOfLineCapacity() == structure->outOfLineCapacity()) {
                     ASSERT(structure->previousID()->transitionWatchpointSetHasBeenInvalidated());
@@ -741,6 +742,31 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_val)
     LLINT_CHECK_EXCEPTION();
     PutPropertySlot slot(exec->codeBlock()->isStrictMode());
     baseValue.put(exec, property, value, slot);
+    LLINT_END();
+}
+
+LLINT_SLOW_PATH_DECL(slow_path_put_by_val_direct)
+{
+    LLINT_BEGIN();
+    
+    JSValue baseValue = LLINT_OP_C(1).jsValue();
+    JSValue subscript = LLINT_OP_C(2).jsValue();
+    JSValue value = LLINT_OP_C(3).jsValue();
+    RELEASE_ASSERT(baseValue.isObject());
+    JSObject* baseObject = asObject(baseValue);
+    if (LIKELY(subscript.isUInt32())) {
+        uint32_t i = subscript.asUInt32();
+        baseObject->putDirectIndex(exec, i, value);
+    } else if (isName(subscript)) {
+        PutPropertySlot slot(exec->codeBlock()->isStrictMode());
+        baseObject->putDirect(exec->vm(), jsCast<NameInstance*>(subscript.asCell())->privateName(), value, slot);
+    } else {
+        Identifier property(exec, subscript.toString(exec)->value(exec));
+        if (!exec->vm().exception()) { // Don't put to an object if toString threw an exception.
+            PutPropertySlot slot(exec->codeBlock()->isStrictMode());
+            baseObject->putDirect(exec->vm(), property, value, slot);
+        }
+    }
     LLINT_END();
 }
 
@@ -936,6 +962,10 @@ LLINT_SLOW_PATH_DECL(slow_path_new_func_exp)
 
 static SlowPathReturnType handleHostCall(ExecState* execCallee, Instruction* pc, JSValue callee, CodeSpecializationKind kind)
 {
+#if LLINT_SLOW_PATH_TRACING
+    dataLog("Performing host call.\n");
+#endif
+    
     ExecState* exec = execCallee->callerFrame();
     VM& vm = exec->vm();
 
@@ -1265,6 +1295,14 @@ LLINT_SLOW_PATH_DECL(throw_from_native_call)
     LLINT_BEGIN();
     ASSERT(vm.exception());
     LLINT_END();
+}
+
+LLINT_SLOW_PATH_DECL(slow_path_handle_exception)
+{
+    LLINT_BEGIN_NO_SET_PC();
+    ASSERT(vm.exception());
+    genericUnwind(&vm, exec, vm.exception());
+    LLINT_END_IMPL();
 }
 
 LLINT_SLOW_PATH_DECL(slow_path_resolve_scope)

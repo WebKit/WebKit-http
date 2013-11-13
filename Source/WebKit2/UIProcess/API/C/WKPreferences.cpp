@@ -489,6 +489,16 @@ bool WKPreferencesGetMultithreadedWebGLEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->multithreadedWebGLEnabled();
 }
 
+void WKPreferencesSetForceSoftwareWebGLRendering(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setForceSoftwareWebGLRendering(flag);
+}
+
+bool WKPreferencesGetForceSoftwareWebGLRendering(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->forceSoftwareWebGLRendering();
+}
+
 void WKPreferencesSetAccelerated2DCanvasEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setAccelerated2dCanvasEnabled(flag);
@@ -798,14 +808,15 @@ bool WKPreferencesGetApplicationChromeModeEnabled(WKPreferencesRef preferencesRe
     return toImpl(preferencesRef)->applicationChromeMode();
 }
 
-void WKPreferencesSetInspectorUsesWebKitUserInterface(WKPreferencesRef preferencesRef, bool enabled)
+void WKPreferencesSetInspectorUsesWebKitUserInterface(WKPreferencesRef, bool)
 {
-    toImpl(preferencesRef)->setInspectorUsesWebKitUserInterface(enabled);
+    // FIXME: Remove once WebKit nightlies don't need to support Safari 6 thru 7.
 }
 
-bool WKPreferencesGetInspectorUsesWebKitUserInterface(WKPreferencesRef preferencesRef)
+bool WKPreferencesGetInspectorUsesWebKitUserInterface(WKPreferencesRef)
 {
-    return toImpl(preferencesRef)->inspectorUsesWebKitUserInterface();
+    // FIXME: Remove once WebKit nightlies don't need to support Safari 6 thru 7.
+    return false;
 }
 
 void WKPreferencesSetSuppressesIncrementalRendering(WKPreferencesRef preferencesRef, bool enabled)
@@ -1163,4 +1174,44 @@ void WKPreferencesSetThreadedScrollingEnabled(WKPreferencesRef preferencesRef, b
 bool WKPreferencesGetThreadedScrollingEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->threadedScrollingEnabled();
+}
+
+void WKPreferencesSetSimpleLineLayoutEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setSimpleLineLayoutEnabled(flag);
+}
+
+bool WKPreferencesGetSimpleLineLayoutEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->simpleLineLayoutEnabled();
+}
+
+void WKPreferencesSetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setSimpleLineLayoutDebugBordersEnabled(flag);
+}
+
+bool WKPreferencesGetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->simpleLineLayoutDebugBordersEnabled();
+}
+
+void WKPreferencesSetMediaStreamEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setMediaStreamEnabled(enabled);
+}
+
+bool WKPreferencesGetMediaStreamEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->mediaStreamEnabled();
+}
+
+void WKPreferencesSetVideoPluginProxyEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setVideoPluginProxyEnabled(enabled);
+}
+
+bool WKPreferencesGetVideoPluginProxyEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->isVideoPluginProxyEnabled();
 }

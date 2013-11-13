@@ -27,6 +27,7 @@
 
 #include "CallFrameInlines.h"
 #include "JSActivation.h"
+#include "JSArgumentsIterator.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
 #include "Operations.h"
@@ -50,6 +51,8 @@ void Arguments::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_callee);
     visitor.append(&thisObject->m_activation);
 }
+    
+static EncodedJSValue JSC_HOST_CALL argumentsFuncIterator(ExecState*);
 
 void Arguments::destroy(JSCell* cell)
 {
@@ -98,7 +101,7 @@ bool Arguments::getOwnPropertySlotByIndex(JSObject* object, ExecState* exec, uns
         return true;
     }
 
-    return JSObject::getOwnPropertySlot(thisObject, exec, Identifier(exec, String::number(i)), slot);
+    return JSObject::getOwnPropertySlot(thisObject, exec, Identifier::from(exec, i), slot);
 }
     
 void Arguments::createStrictModeCallerIfNecessary(ExecState* exec)
@@ -151,7 +154,16 @@ bool Arguments::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyNa
     if (propertyName == exec->propertyNames().caller && thisObject->m_isStrictMode)
         thisObject->createStrictModeCallerIfNecessary(exec);
 
-    return JSObject::getOwnPropertySlot(thisObject, exec, propertyName, slot);
+    if (JSObject::getOwnPropertySlot(thisObject, exec, propertyName, slot))
+        return true;
+    if (propertyName == exec->propertyNames().iteratorPrivateName) {
+        VM& vm = exec->vm();
+        JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+        thisObject->JSC_NATIVE_FUNCTION(exec->propertyNames().iteratorPrivateName, argumentsFuncIterator, DontEnum, 0);
+        if (JSObject::getOwnPropertySlot(thisObject, exec, propertyName, slot))
+            return true;
+    }
+    return false;
 }
 
 void Arguments::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
@@ -160,7 +172,7 @@ void Arguments::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyN
     for (unsigned i = 0; i < thisObject->m_numArguments; ++i) {
         if (!thisObject->isArgument(i))
             continue;
-        propertyNames.add(Identifier(exec, String::number(i)));
+        propertyNames.add(Identifier::from(exec, i));
     }
     if (mode == IncludeDontEnumProperties) {
         propertyNames.add(exec->propertyNames().callee);
@@ -176,7 +188,7 @@ void Arguments::putByIndex(JSCell* cell, ExecState* exec, unsigned i, JSValue va
         return;
 
     PutPropertySlot slot(shouldThrow);
-    JSObject::put(thisObject, exec, Identifier(exec, String::number(i)), value, slot);
+    JSObject::put(thisObject, exec, Identifier::from(exec, i), value, slot);
 }
 
 void Arguments::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
@@ -319,12 +331,12 @@ void Arguments::tearOff(CallFrame* callFrame)
     // If we have a captured argument that logically aliases activation storage,
     // but we optimize away the activation, the argument needs to tear off into
     // our storage. The simplest way to do this is to revert it to Normal status.
-    if (m_slowArguments && !m_activation) {
+    if (m_slowArgumentData && !m_activation) {
         for (size_t i = 0; i < m_numArguments; ++i) {
-            if (m_slowArguments[i].status != SlowArgument::Captured)
+            if (m_slowArgumentData->slowArguments[i].status != SlowArgument::Captured)
                 continue;
-            m_slowArguments[i].status = SlowArgument::Normal;
-            m_slowArguments[i].index = CallFrame::argumentOffset(i);
+            m_slowArgumentData->slowArguments[i].status = SlowArgument::Normal;
+            m_slowArgumentData->slowArguments[i].index = CallFrame::argumentOffset(i);
         }
     }
 
@@ -361,5 +373,15 @@ void Arguments::tearOff(CallFrame* callFrame, InlineCallFrame* inlineCallFrame)
         trySetArgument(callFrame->vm(), i, recovery.recover(callFrame));
     }
 }
+    
+EncodedJSValue JSC_HOST_CALL argumentsFuncIterator(ExecState* exec)
+{
+    JSObject* thisObj = exec->hostThisValue().toThis(exec, StrictMode).toObject(exec);
+    Arguments* arguments = jsDynamicCast<Arguments*>(thisObj);
+    if (!arguments)
+        return JSValue::encode(throwTypeError(exec, "Attempted to use Arguments iterator on non-Arguments object"));
+    return JSValue::encode(JSArgumentsIterator::create(exec->vm(), exec->callee()->globalObject()->argumentsIteratorStructure(), arguments));
+}
+
 
 } // namespace JSC

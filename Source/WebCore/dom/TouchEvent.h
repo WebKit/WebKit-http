@@ -29,7 +29,6 @@
 
 #if ENABLE(TOUCH_EVENTS)
 
-#include "EventDispatchMediator.h"
 #include "MouseRelatedEvent.h"
 #include "TouchList.h"
 
@@ -95,20 +94,16 @@ private:
 #endif
 };
 
-class TouchEventDispatchMediator : public EventDispatchMediator {
-public:
-    static PassRefPtr<TouchEventDispatchMediator> create(PassRefPtr<TouchEvent>);
-
-private:
-    explicit TouchEventDispatchMediator(PassRefPtr<TouchEvent>);
-    TouchEvent* event() const;
-    virtual bool dispatchEvent(EventDispatcher*) const OVERRIDE;
-};
-
 inline TouchEvent* toTouchEvent(Event* event)
 {
-    ASSERT(event && event->isTouchEvent());
+    ASSERT_WITH_SECURITY_IMPLICATION(event && event->isTouchEvent());
     return static_cast<TouchEvent*>(event);
+}
+
+inline TouchEvent& toTouchEvent(Event& event)
+{
+    ASSERT(event.isTouchEvent());
+    return static_cast<TouchEvent&>(event);
 }
 
 } // namespace WebCore

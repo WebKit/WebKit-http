@@ -29,7 +29,6 @@
 #import <WebKit/WebBasePluginPackage.h>
 
 #import <algorithm>
-#import <WebCore/RunLoop.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebKit/WebKitNSStringExtras.h>
 #import <WebKit/WebNetscapePluginPackage.h>
@@ -38,6 +37,7 @@
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
 #import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/RunLoop.h>
 #import <wtf/Vector.h>
 #import <wtf/text/CString.h>
 
@@ -68,7 +68,7 @@ using namespace WebCore;
 {
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
-    WebCore::RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMainRunLoop();
     WebCoreObjCFinalizeOnMainThread(self);
 }
 
@@ -162,12 +162,8 @@ static NSString *pathByResolvingSymlinksAndAliases(NSString *thePath)
     
     NSDictionary *pList = nil;
     NSData *data = [NSData dataWithContentsOfFile:pListPath];
-    if (data) {
-        pList = [NSPropertyListSerialization propertyListFromData:data
-                                                 mutabilityOption:NSPropertyListImmutable
-                                                           format:nil
-                                                 errorDescription:nil];
-    }
+    if (data)
+        pList = [NSPropertyListSerialization propertyListWithData:data options:kCFPropertyListImmutable format:nil error:nil];
     
     return pList;
 }

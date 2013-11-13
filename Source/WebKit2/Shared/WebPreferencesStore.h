@@ -42,7 +42,7 @@ namespace WebKit {
 #define DEFAULT_WEBKIT_TABSTOLINKS_ENABLED false
 #endif
 
-#if ENABLE(SMOOTH_SCROLLING) && !PLATFORM(QT)
+#if ENABLE(SMOOTH_SCROLLING)
 #define DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED true
 #else
 #define DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED false
@@ -62,6 +62,12 @@ namespace WebKit {
 #define DEFAULT_HIDDEN_PAGE_DOM_TIMER_THROTTLING_ENABLED false
 #define DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED false
 #define DEFAULT_PDFPLUGIN_ENABLED false
+#endif
+
+#if PLATFORM(IOS)
+#define DEFAULT_VIDEO_PLUGIN_PROXY_ENABLED true
+#else
+#define DEFAULT_VIDEO_PLUGIN_PROXY_ENABLED false
 #endif
 
 #define FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
@@ -94,6 +100,7 @@ namespace WebKit {
     macro(CSSCustomFilterEnabled, cssCustomFilterEnabled, Bool, bool, true) \
     macro(WebGLEnabled, webGLEnabled, Bool, bool, true) \
     macro(MultithreadedWebGLEnabled, multithreadedWebGLEnabled, Bool, bool, false) \
+    macro(ForceSoftwareWebGLRendering, forceSoftwareWebGLRendering, Bool, bool, false) \
     macro(Accelerated2dCanvasEnabled, accelerated2dCanvasEnabled, Bool, bool, false) \
     macro(CSSRegionsEnabled, cssRegionsEnabled, Bool, bool, true) \
     macro(CSSCompositingEnabled, cssCompositingEnabled, Bool, bool, true) \
@@ -120,7 +127,6 @@ namespace WebKit {
     macro(MediaPlaybackRequiresUserGesture, mediaPlaybackRequiresUserGesture, Bool, bool, false) \
     macro(MediaPlaybackAllowsInline, mediaPlaybackAllowsInline, Bool, bool, true) \
     macro(InspectorStartsAttached, inspectorStartsAttached, Bool, bool, true) \
-    macro(InspectorUsesWebKitUserInterface, inspectorUsesWebKitUserInterface, Bool, bool, false) \
     macro(ShowsToolTipOverTruncatedText, showsToolTipOverTruncatedText, Bool, bool, false) \
     macro(MockScrollbarsEnabled, mockScrollbarsEnabled, Bool, bool, false) \
     macro(WebAudioEnabled, webAudioEnabled, Bool, bool, false) \
@@ -165,6 +171,10 @@ namespace WebKit {
     macro(HiddenPageCSSAnimationSuspensionEnabled, hiddenPageCSSAnimationSuspensionEnabled, Bool, bool, DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED) \
     macro(LowPowerVideoAudioBufferSizeEnabled, lowPowerVideoAudioBufferSizeEnabled, Bool, bool, false) \
     macro(ThreadedScrollingEnabled, threadedScrollingEnabled, Bool, bool, true) \
+    macro(SimpleLineLayoutEnabled, simpleLineLayoutEnabled, Bool, bool, true) \
+    macro(SimpleLineLayoutDebugBordersEnabled, simpleLineLayoutDebugBordersEnabled, Bool, bool, false) \
+    macro(MediaStreamEnabled, mediaStreamEnabled, Bool, bool, false) \
+    macro(VideoPluginProxyEnabled, isVideoPluginProxyEnabled, Bool, bool, DEFAULT_VIDEO_PLUGIN_PROXY_ENABLED) \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
@@ -203,7 +213,7 @@ namespace WebKit {
     macro(PictographFontFamily, pictographFontFamily, String, String, "Apple Color Emoji") \
     \
 
-#elif PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
+#elif PLATFORM(GTK) || PLATFORM(EFL)
 
 #define FOR_EACH_WEBKIT_FONT_FAMILY_PREFERENCE(macro) \
     macro(StandardFontFamily, standardFontFamily, String, String, "Times") \

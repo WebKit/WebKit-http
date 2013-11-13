@@ -46,7 +46,7 @@ private:
 
     virtual bool selfHasRelativeLengths() const;
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGCircleElement)
         DECLARE_ANIMATED_LENGTH(Cx, cx)
@@ -56,7 +56,7 @@ private:
     END_DECLARE_ANIMATED_PROPERTIES
 };
 
-ELEMENT_TYPE_CASTS(SVGCircleElement)
+NODE_TYPE_CASTS(SVGCircleElement)
 
 } // namespace WebCore
 

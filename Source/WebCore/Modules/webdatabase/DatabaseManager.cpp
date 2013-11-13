@@ -49,6 +49,20 @@
 
 namespace WebCore {
 
+DatabaseManager::ProposedDatabase::ProposedDatabase(DatabaseManager& manager,
+    SecurityOrigin* origin, const String& name, const String& displayName, unsigned long estimatedSize)
+    : m_manager(manager)
+    , m_origin(origin->isolatedCopy())
+    , m_details(name.isolatedCopy(), displayName.isolatedCopy(), estimatedSize, 0)
+{
+    m_manager.addProposedDatabase(this);
+}
+
+DatabaseManager::ProposedDatabase::~ProposedDatabase()
+{
+    m_manager.removeProposedDatabase(this);
+}
+
 DatabaseManager& DatabaseManager::manager()
 {
     static DatabaseManager* dbManager = 0;
@@ -128,7 +142,7 @@ private:
 
 PassRefPtr<DatabaseContext> DatabaseManager::existingDatabaseContextFor(ScriptExecutionContext* context)
 {
-    MutexLocker locker(m_contextMapLock);
+    MutexLocker locker(m_lock);
 
     ASSERT(m_databaseContextRegisteredCount >= 0);
     ASSERT(m_databaseContextInstanceCount >= 0);
@@ -159,7 +173,7 @@ PassRefPtr<DatabaseContext> DatabaseManager::databaseContextFor(ScriptExecutionC
 
 void DatabaseManager::registerDatabaseContext(DatabaseContext* databaseContext)
 {
-    MutexLocker locker(m_contextMapLock);
+    MutexLocker locker(m_lock);
     ScriptExecutionContext* context = databaseContext->scriptExecutionContext();
     m_contextMap.set(context, databaseContext);
 #if !ASSERT_DISABLED
@@ -169,7 +183,7 @@ void DatabaseManager::registerDatabaseContext(DatabaseContext* databaseContext)
 
 void DatabaseManager::unregisterDatabaseContext(DatabaseContext* databaseContext)
 {
-    MutexLocker locker(m_contextMapLock);
+    MutexLocker locker(m_lock);
     ScriptExecutionContext* context = databaseContext->scriptExecutionContext();
     ASSERT(m_contextMap.get(context));
 #if !ASSERT_DISABLED
@@ -181,13 +195,13 @@ void DatabaseManager::unregisterDatabaseContext(DatabaseContext* databaseContext
 #if !ASSERT_DISABLED
 void DatabaseManager::didConstructDatabaseContext()
 {
-    MutexLocker lock(m_contextMapLock);
+    MutexLocker lock(m_lock);
     m_databaseContextInstanceCount++;
 }
 
 void DatabaseManager::didDestructDatabaseContext()
 {
-    MutexLocker lock(m_contextMapLock);
+    MutexLocker lock(m_lock);
     m_databaseContextInstanceCount--;
     ASSERT(m_databaseContextRegisteredCount <= m_databaseContextInstanceCount);
 }
@@ -248,9 +262,11 @@ PassRefPtr<DatabaseBackendBase> DatabaseManager::openDatabaseBackend(ScriptExecu
             // Notify the client that we've exceeded the database quota.
             // The client may want to increase the quota, and we'll give it
             // one more try after if that is the case.
-            databaseContext->databaseExceededQuota(name,
-                DatabaseDetails(name.isolatedCopy(), displayName.isolatedCopy(), estimatedSize, 0));
-
+            {
+                ProposedDatabase proposedDb(*this, context->securityOrigin(), name, displayName, estimatedSize);
+                databaseContext->databaseExceededQuota(name,
+                    DatabaseDetails(name.isolatedCopy(), displayName.isolatedCopy(), estimatedSize, 0));
+            }
             error = DatabaseError::None;
 
             backend = m_server->openDatabase(backendContext, type, name, expectedVersion,
@@ -276,6 +292,18 @@ PassRefPtr<DatabaseBackendBase> DatabaseManager::openDatabaseBackend(ScriptExecu
     }
 
     return backend.release();
+}
+
+void DatabaseManager::addProposedDatabase(ProposedDatabase* proposedDb)
+{
+    MutexLocker locker(m_lock);
+    m_proposedDatabases.add(proposedDb);
+}
+
+void DatabaseManager::removeProposedDatabase(ProposedDatabase* proposedDb)
+{
+    MutexLocker locker(m_lock);
+    m_proposedDatabases.remove(proposedDb);
 }
 
 PassRefPtr<Database> DatabaseManager::openDatabase(ScriptExecutionContext* context,
@@ -351,6 +379,12 @@ void DatabaseManager::stopDatabases(ScriptExecutionContext* context, DatabaseTas
 
 String DatabaseManager::fullPathForDatabase(SecurityOrigin* origin, const String& name, bool createIfDoesNotExist)
 {
+    {
+        MutexLocker locker(m_lock);
+        for (HashSet<ProposedDatabase*>::iterator iter = m_proposedDatabases.begin(); iter != m_proposedDatabases.end(); ++iter)
+            if ((*iter)->details().name() == name && (*iter)->origin()->equal(origin))
+                return String();
+    }
     return m_server->fullPathForDatabase(origin, name, createIfDoesNotExist);
 }
 
@@ -359,7 +393,7 @@ bool DatabaseManager::hasEntryForOrigin(SecurityOrigin* origin)
     return m_server->hasEntryForOrigin(origin);
 }
 
-void DatabaseManager::origins(Vector<RefPtr<SecurityOrigin> >& result)
+void DatabaseManager::origins(Vector<RefPtr<SecurityOrigin>>& result)
 {
     m_server->origins(result);
 }
@@ -371,6 +405,14 @@ bool DatabaseManager::databaseNamesForOrigin(SecurityOrigin* origin, Vector<Stri
 
 DatabaseDetails DatabaseManager::detailsForNameAndOrigin(const String& name, SecurityOrigin* origin)
 {
+    {
+        MutexLocker locker(m_lock);
+        for (HashSet<ProposedDatabase*>::iterator iter = m_proposedDatabases.begin(); iter != m_proposedDatabases.end(); ++iter)
+            if ((*iter)->details().name() == name && (*iter)->origin()->equal(origin)) {
+                ASSERT((*iter)->details().thread() == currentThread() || isMainThread());
+                return (*iter)->details();
+            }
+    }
     return m_server->detailsForNameAndOrigin(name, origin);
 }
 

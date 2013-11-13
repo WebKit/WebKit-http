@@ -29,7 +29,6 @@
 #import "DynamicLinkerEnvironmentExtractor.h"
 #import "EnvironmentVariables.h"
 #import "WebKitSystemInterface.h"
-#import <WebCore/RunLoop.h>
 #import <crt_externs.h>
 #import <mach-o/dyld.h>
 #import <mach/machine.h>
@@ -40,23 +39,17 @@
 #import <sys/stat.h>
 #import <wtf/PassRefPtr.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/RunLoop.h>
 #import <wtf/Threading.h>
 #import <wtf/text/CString.h>
 #import <wtf/text/WTFString.h>
-
-#if HAVE(XPC)
 #import <xpc/xpc.h>
-#endif
-
-using namespace WebCore;
 
 // FIXME: We should be doing this another way.
 extern "C" kern_return_t bootstrap_register2(mach_port_t, name_t, mach_port_t, uint64_t);
 
-#if HAVE(XPC)
 extern "C" void xpc_connection_set_instance(xpc_connection_t, uuid_t);
 extern "C" void xpc_dictionary_set_mach_send(xpc_object_t, const char*, mach_port_t);
-#endif
 
 namespace WebKit {
 
@@ -80,7 +73,6 @@ struct UUIDHolder : public RefCounted<UUIDHolder> {
 
 static void setUpTerminationNotificationHandler(pid_t pid)
 {
-#if HAVE(DISPATCH_H)
     dispatch_source_t processDiedSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_PROC, pid, DISPATCH_PROC_EXIT, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
     dispatch_source_set_event_handler(processDiedSource, ^{
         int status;
@@ -91,7 +83,6 @@ static void setUpTerminationNotificationHandler(pid_t pid)
         dispatch_release(processDiedSource);
     });
     dispatch_resume(processDiedSource);
-#endif
 }
 
 static void addDYLDEnvironmentAdditions(const ProcessLauncher::LaunchOptions& launchOptions, bool isWebKitDevelopmentBuild, EnvironmentVariables& environmentVariables)
@@ -141,8 +132,6 @@ static void addDYLDEnvironmentAdditions(const ProcessLauncher::LaunchOptions& la
 
 typedef void (ProcessLauncher::*DidFinishLaunchingProcessFunction)(PlatformProcessIdentifier, CoreIPC::Connection::Identifier);
 
-#if HAVE(XPC)
-
 static const char* serviceName(const ProcessLauncher::LaunchOptions& launchOptions, bool forDevelopment)
 {
     switch (launchOptions.processType) {
@@ -155,6 +144,12 @@ static const char* serviceName(const ProcessLauncher::LaunchOptions& launchOptio
         if (forDevelopment)
             return "com.apple.WebKit.Networking.Development";
         return "com.apple.WebKit.Networking";
+#endif
+#if ENABLE(NETWORK_PROCESS)
+    case ProcessLauncher::DatabaseProcess:
+        if (forDevelopment)
+            return "com.apple.WebKit.Databases.Development";
+        return "com.apple.WebKit.Databases";
 #endif
 #if ENABLE(NETSCAPE_PLUGIN_API)
     case ProcessLauncher::PluginProcess:
@@ -318,8 +313,6 @@ static void createService(const ProcessLauncher::LaunchOptions& launchOptions, b
     connectToService(launchOptions, false, that, didFinishLaunchingProcessFunction, instanceUUID.get());
 }
 
-#endif
-
 static bool tryPreexistingProcess(const ProcessLauncher::LaunchOptions& launchOptions, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
 {
     EnvironmentVariables environmentVariables;
@@ -393,6 +386,11 @@ static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, b
 #if ENABLE(NETWORK_PROCESS)
     case ProcessLauncher::NetworkProcess:
         processPath = [webKit2Bundle pathForAuxiliaryExecutable:@"NetworkProcess.app"];
+        break;
+#endif
+#if ENABLE(DATABASE_PROCESS)
+    case ProcessLauncher::DatabaseProcess:
+        processPath = [webKit2Bundle pathForAuxiliaryExecutable:@"DatabaseProcess.app"];
         break;
 #endif
     }
@@ -507,12 +505,10 @@ void ProcessLauncher::launchProcess()
 
     bool isWebKitDevelopmentBuild = ![[[[NSBundle bundleWithIdentifier:@"com.apple.WebKit2"] bundlePath] stringByDeletingLastPathComponent] hasPrefix:@"/System/"];
 
-#if HAVE(XPC)
     if (m_launchOptions.useXPC) {
         createService(m_launchOptions, isWebKitDevelopmentBuild, this, &ProcessLauncher::didFinishLaunchingProcess);
         return;
     }
-#endif
 
     createProcess(m_launchOptions, isWebKitDevelopmentBuild, this, &ProcessLauncher::didFinishLaunchingProcess);
 }

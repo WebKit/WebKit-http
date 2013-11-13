@@ -69,7 +69,7 @@ unsigned CSSGroupingRule::insertRule(const String& ruleString, unsigned index, E
 
     CSSParser parser(parserContext());
     CSSStyleSheet* styleSheet = parentStyleSheet();
-    RefPtr<StyleRuleBase> newRule = parser.parseRule(styleSheet ? styleSheet->contents() : 0, ruleString);
+    RefPtr<StyleRuleBase> newRule = parser.parseRule(styleSheet ? &styleSheet->contents() : nullptr, ruleString);
     if (!newRule) {
         // SYNTAX_ERR: Raised if the specified rule has a syntax error and is unparsable.
         ec = SYNTAX_ERR;
@@ -89,7 +89,7 @@ unsigned CSSGroupingRule::insertRule(const String& ruleString, unsigned index, E
     }
     CSSStyleSheet::RuleMutationScope mutationScope(this);
 
-    m_groupRule->wrapperInsertRule(index, newRule);
+    m_groupRule->wrapperInsertRule(index, newRule.releaseNonNull());
 
     m_childRuleCSSOMWrappers.insert(index, RefPtr<CSSRule>());
     return index;

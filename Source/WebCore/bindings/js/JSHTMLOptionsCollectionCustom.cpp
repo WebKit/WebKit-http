@@ -39,7 +39,6 @@ namespace WebCore {
 
 void JSHTMLOptionsCollection::setLength(ExecState* exec, JSValue value)
 {
-    HTMLOptionsCollection* imp = impl();
     ExceptionCode ec = 0;
     unsigned newLength = 0;
     double lengthValue = value.toNumber(exec);
@@ -52,29 +51,27 @@ void JSHTMLOptionsCollection::setLength(ExecState* exec, JSValue value)
             newLength = static_cast<unsigned>(lengthValue);
     }
     if (!ec)
-        imp->setLength(newLength, ec);
+        impl().setLength(newLength, ec);
     setDOMException(exec, ec);
 }
 
 void JSHTMLOptionsCollection::indexSetter(ExecState* exec, unsigned index, JSValue value)
 {
-    HTMLOptionsCollection* imp = impl();
-    HTMLSelectElement* base = toHTMLSelectElement(imp->ownerNode());
-    selectIndexSetter(base, exec, index, value);
+    selectIndexSetter(&impl().selectElement(), exec, index, value);
 }
 
 JSValue JSHTMLOptionsCollection::add(ExecState* exec)
 {
-    HTMLOptionsCollection* imp = impl();
+    HTMLOptionsCollection& imp = impl();
     HTMLOptionElement* option = toHTMLOptionElement(exec->argument(0));
     ExceptionCode ec = 0;
     if (exec->argumentCount() < 2)
-        imp->add(option, ec);
+        imp.add(option, ec);
     else {
         int index = exec->argument(1).toInt32(exec);
         if (exec->hadException())
             return jsUndefined();
-        imp->add(option, index, ec);
+        imp.add(option, index, ec);
     }
     setDOMException(exec, ec);
     return jsUndefined();
@@ -82,9 +79,13 @@ JSValue JSHTMLOptionsCollection::add(ExecState* exec)
 
 JSValue JSHTMLOptionsCollection::remove(ExecState* exec)
 {
-    HTMLOptionsCollection* imp = impl();
-    JSHTMLSelectElement* base = jsCast<JSHTMLSelectElement*>(asObject(toJS(exec, globalObject(), imp->ownerNode())));
-    return base->remove(exec);
+    // The argument can be an HTMLOptionElement or an index.
+    JSValue argument = exec->argument(0);
+    if (HTMLOptionElement* option = toHTMLOptionElement(argument))
+        impl().remove(option);
+    else
+        impl().remove(argument.toInt32(exec));
+    return jsUndefined();
 }
 
 }

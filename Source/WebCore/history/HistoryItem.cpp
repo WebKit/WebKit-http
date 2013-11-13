@@ -29,6 +29,7 @@
 #include "CachedPage.h"
 #include "Document.h"
 #include "IconDatabase.h"
+#include "KeyedCoding.h"
 #include "PageCache.h"
 #include "ResourceRequest.h"
 #include "SerializedScriptValue.h"
@@ -331,11 +332,11 @@ void HistoryItem::padDailyCountsForNewVisit(double time)
     int daysElapsed = timeToDay(time) - timeToDay(m_lastVisitedTime);
 
     if (daysElapsed < 0)
-      daysElapsed = 0;
+        daysElapsed = 0;
 
-    Vector<int> padding;
+    Vector<int, 32> padding;
     padding.fill(0, daysElapsed);
-    m_dailyVisitCounts.insert(0, padding);
+    m_dailyVisitCounts.insertVector(0, padding);
 }
 
 static const size_t daysPerWeek = 7;
@@ -670,7 +671,7 @@ Vector<String>* HistoryItem::redirectURLs() const
     return m_redirectURLs.get();
 }
 
-void HistoryItem::setRedirectURLs(PassOwnPtr<Vector<String> > redirectURLs)
+void HistoryItem::setRedirectURLs(PassOwnPtr<Vector<String>> redirectURLs)
 {
     m_redirectURLs = redirectURLs;
 }
@@ -680,6 +681,15 @@ void HistoryItem::encodeBackForwardTree(Encoder& encoder) const
     encoder.encodeUInt32(backForwardTreeEncodingVersion);
 
     encodeBackForwardTreeNode(encoder);
+}
+
+void HistoryItem::encodeBackForwardTree(KeyedEncoder& encoder) const
+{
+    encoder.encodeUInt32("version", backForwardTreeEncodingVersion);
+
+    encoder.encodeObject("root", *this, [](KeyedEncoder& encoder, const HistoryItem& item) {
+        item.encodeBackForwardTreeNode(encoder);
+    });
 }
 
 void HistoryItem::encodeBackForwardTreeNode(Encoder& encoder) const
@@ -723,6 +733,45 @@ void HistoryItem::encodeBackForwardTreeNode(Encoder& encoder) const
         encoder.encodeBytes(m_stateObject->data().data(), m_stateObject->data().size());
 
     encoder.encodeString(m_target);
+}
+
+void HistoryItem::encodeBackForwardTreeNode(KeyedEncoder& encoder) const
+{
+    encoder.encodeObjects("children", m_children.begin(), m_children.end(), [](KeyedEncoder& encoder, const RefPtr<HistoryItem>& child) {
+        encoder.encodeString("originalURLString", child->m_originalURLString);
+        encoder.encodeString("urlString", child->m_urlString);
+
+        child->encodeBackForwardTreeNode(encoder);
+    });
+
+    encoder.encodeInt64("documentSequenceNumber", m_documentSequenceNumber);
+
+    encoder.encodeObjects("documentState", m_documentState.begin(), m_documentState.end(), [](KeyedEncoder& encoder, const String& string) {
+        encoder.encodeString("string", string);
+    });
+
+    encoder.encodeString("formContentType", m_formContentType);
+
+    encoder.encodeConditionalObject("formData", m_formData.get(), [](KeyedEncoder&, const FormData&) {
+        // FIXME: Implement.
+    });
+
+    encoder.encodeInt64("itemSequenceNumber", m_itemSequenceNumber);
+
+    encoder.encodeString("referrer", m_referrer);
+
+    encoder.encodeObject("scrollPoint", m_scrollPoint, [](KeyedEncoder& encoder, const IntPoint& scrollPoint) {
+        encoder.encodeInt32("x", scrollPoint.x());
+        encoder.encodeInt32("y", scrollPoint.y());
+    });
+
+    encoder.encodeFloat("pageScaleFactor", m_pageScaleFactor);
+
+    encoder.encodeConditionalObject("stateObject", m_stateObject.get(), [](KeyedEncoder& encoder, const SerializedScriptValue& stateObject) {
+        encoder.encodeBytes("data", stateObject.data().data(), stateObject.data().size());
+    });
+
+    encoder.encodeString("target", m_target);
 }
 
 struct DecodeRecursionStackElement {

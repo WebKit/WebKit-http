@@ -31,7 +31,7 @@
     NoInterfaceObject,
     EventTarget,
     JSGenerateToJSObject,
-    GenerateIsReachable=ImplOwnerNodeRoot
+    GenerateIsReachable=ImplOwnerNodeRoot,
 ] interface WebKitNamedFlow {
     readonly attribute DOMString name;
     readonly attribute boolean overset;

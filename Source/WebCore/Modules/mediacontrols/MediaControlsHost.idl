@@ -26,7 +26,7 @@
 [
     NoInterfaceObject,
     Conditional=MEDIA_CONTROLS_SCRIPT,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface MediaControlsHost {
     TextTrack[] sortedTrackListForMenu(TextTrackList trackList);
     DOMString displayNameForTrack(TextTrack track);

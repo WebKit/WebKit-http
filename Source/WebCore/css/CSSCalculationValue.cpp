@@ -82,6 +82,7 @@ static CalculationCategory unitCategory(CSSPrimitiveValue::UnitTypes type)
 static bool hasDoubleValue(CSSPrimitiveValue::UnitTypes type)
 {
     switch (type) {
+    case CSSPrimitiveValue::CSS_FR:
     case CSSPrimitiveValue::CSS_NUMBER:
     case CSSPrimitiveValue::CSS_PARSER_INTEGER:
     case CSSPrimitiveValue::CSS_PERCENTAGE:
@@ -212,7 +213,7 @@ public:
     {
         if (std::isnan(value) || std::isinf(value))
             return 0;
-        return adoptRef(new CSSCalcPrimitiveValue(CSSPrimitiveValue::create(value, type).get(), isInteger));
+        return adoptRef(new CSSCalcPrimitiveValue(CSSPrimitiveValue::create(value, type), isInteger));
     }
 
     virtual bool isZero() const

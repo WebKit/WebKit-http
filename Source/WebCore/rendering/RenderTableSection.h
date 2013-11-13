@@ -64,7 +64,8 @@ class RenderTableRow;
 
 class RenderTableSection FINAL : public RenderBox {
 public:
-    explicit RenderTableSection(Element*);
+    RenderTableSection(Element&, PassRef<RenderStyle>);
+    RenderTableSection(Document&, PassRef<RenderStyle>);
     virtual ~RenderTableSection();
 
     RenderTableRow* firstRow() const;
@@ -72,7 +73,7 @@ public:
 
     virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0) OVERRIDE;
 
-    virtual int firstLineBoxBaseline() const OVERRIDE;
+    virtual int firstLineBaseline() const OVERRIDE;
 
     void addCell(RenderTableCell*, RenderTableRow* row);
 
@@ -122,17 +123,17 @@ public:
     const BorderValue& borderAdjoiningTableStart() const
     {
         if (hasSameDirectionAs(table()))
-            return style()->borderStart();
+            return style().borderStart();
 
-        return style()->borderEnd();
+        return style().borderEnd();
     }
 
     const BorderValue& borderAdjoiningTableEnd() const
     {
         if (hasSameDirectionAs(table()))
-            return style()->borderEnd();
+            return style().borderEnd();
 
-        return style()->borderStart();
+        return style().borderStart();
     }
 
     const BorderValue& borderAdjoiningStartCell(const RenderTableCell*) const;
@@ -164,6 +165,34 @@ public:
     int outerBorderAfter() const { return m_outerBorderAfter; }
     int outerBorderStart() const { return m_outerBorderStart; }
     int outerBorderEnd() const { return m_outerBorderEnd; }
+
+    int outerBorderLeft(const RenderStyle* styleForCellFlow) const
+    {
+    if (styleForCellFlow->isHorizontalWritingMode())
+        return styleForCellFlow->isLeftToRightDirection() ? outerBorderStart() : outerBorderEnd();
+    return styleForCellFlow->isFlippedBlocksWritingMode() ? outerBorderAfter() : outerBorderBefore();
+    }
+
+    int outerBorderRight(const RenderStyle* styleForCellFlow) const
+    {
+    if (styleForCellFlow->isHorizontalWritingMode())
+        return styleForCellFlow->isLeftToRightDirection() ? outerBorderEnd() : outerBorderStart();
+    return styleForCellFlow->isFlippedBlocksWritingMode() ? outerBorderBefore() : outerBorderAfter();
+    }
+
+    int outerBorderTop(const RenderStyle* styleForCellFlow) const
+    {
+    if (styleForCellFlow->isHorizontalWritingMode())
+        return styleForCellFlow->isFlippedBlocksWritingMode() ? outerBorderAfter() : outerBorderBefore();
+    return styleForCellFlow->isLeftToRightDirection() ? outerBorderStart() : outerBorderEnd();
+    }
+
+    int outerBorderBottom(const RenderStyle* styleForCellFlow) const
+    {
+    if (styleForCellFlow->isHorizontalWritingMode())
+        return styleForCellFlow->isFlippedBlocksWritingMode() ? outerBorderBefore() : outerBorderAfter();
+    return styleForCellFlow->isLeftToRightDirection() ? outerBorderEnd() : outerBorderStart();
+    }
 
     unsigned numRows() const { return m_grid.size(); }
     unsigned numColumns() const;
@@ -213,6 +242,13 @@ private:
 
     void paintCell(RenderTableCell*, PaintInfo&, const LayoutPoint&);
     virtual void paintObject(PaintInfo&, const LayoutPoint&) OVERRIDE;
+    void paintRowGroupBorder(const PaintInfo&, bool antialias, LayoutRect, BoxSide, CSSPropertyID borderColor, EBorderStyle, EBorderStyle tableBorderStyle);
+    void paintRowGroupBorderIfRequired(const PaintInfo&, const LayoutPoint& paintOffset, unsigned row, unsigned col, BoxSide, RenderTableCell* = 0);
+    int offsetLeftForRowGroupBorder(RenderTableCell*, const LayoutRect& rowGroupRect, unsigned row);
+
+    int offsetTopForRowGroupBorder(RenderTableCell*, BoxSide borderSide, unsigned row);
+    int verticalRowGroupBorderHeight(RenderTableCell*, const LayoutRect& rowGroupRect, unsigned row);
+    int horizontalRowGroupBorderWidth(RenderTableCell*, const LayoutRect& rowGroupRect, unsigned row, unsigned column);
 
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0) OVERRIDE;
 
@@ -273,20 +309,8 @@ private:
     HashMap<pair<const RenderTableCell*, int>, CollapsedBorderValue > m_cellsCollapsedBorders;
 };
 
-inline RenderTableSection* toRenderTableSection(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTableSection());
-    return static_cast<RenderTableSection*>(object);
-}
-
-inline const RenderTableSection* toRenderTableSection(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTableSection());
-    return static_cast<const RenderTableSection*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderTableSection(const RenderTableSection*);
+template<> inline bool isRendererOfType<const RenderTableSection>(const RenderObject& renderer) { return renderer.isTableSection(); }
+RENDER_OBJECT_TYPE_CASTS(RenderTableSection, isTableSection())
 
 } // namespace WebCore
 

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "RenderGeometryMap.h"
 
+#include "RenderFlowThread.h"
 #include "RenderLayer.h"
 #include "RenderView.h"
 #include "TransformState.h"
@@ -161,8 +162,8 @@ void RenderGeometryMap::pushMappingsToAncestor(const RenderObject* renderer, con
 static bool canMapBetweenRenderers(const RenderObject& renderer, const RenderObject& ancestor)
 {
     for (const RenderObject* current = &renderer; ; current = current->parent()) {
-        const RenderStyle* style = current->style();
-        if (style->position() == FixedPosition || style->isFlippedBlocksWritingMode())
+        const RenderStyle& style = current->style();
+        if (style.position() == FixedPosition || style.isFlippedBlocksWritingMode())
             return false;
         
         if (current->hasColumns() || current->hasTransform() || current->isRenderFlowThread())
@@ -249,6 +250,12 @@ void RenderGeometryMap::pushView(const RenderView* view, const LayoutSize& scrol
         step.m_transform = adoptPtr(new TransformationMatrix(*t));
     
     stepInserted(step);
+}
+
+void RenderGeometryMap::pushRenderFlowThread(const RenderFlowThread* flowThread)
+{
+    m_mapping.append(RenderGeometryMapStep(flowThread, false, false, false, false));
+    stepInserted(m_mapping.last());
 }
 
 void RenderGeometryMap::popMappingsToAncestor(const RenderLayerModelObject* ancestorRenderer)

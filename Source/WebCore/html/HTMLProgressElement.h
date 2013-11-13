@@ -44,7 +44,7 @@ public:
 
     double position() const;
 
-    virtual bool canContainRangeEndPoint() const { return false; }
+    virtual bool canContainRangeEndPoint() const OVERRIDE { return false; }
 
 private:
     HTMLProgressElement(const QualifiedName&, Document&);
@@ -54,8 +54,8 @@ private:
     virtual bool shouldAppearIndeterminate() const OVERRIDE;
     virtual bool supportLabels() const OVERRIDE { return true; }
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
-    virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
+    virtual bool childShouldCreateRenderer(const Node&) const OVERRIDE;
     RenderProgress* renderProgress() const;
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
@@ -69,7 +69,7 @@ private:
     ProgressValueElement* m_value;
 };
 
-ELEMENT_TYPE_CASTS(HTMLProgressElement)
+NODE_TYPE_CASTS(HTMLProgressElement)
 
 } // namespace
 

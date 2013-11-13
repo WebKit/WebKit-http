@@ -39,15 +39,13 @@
 
 namespace WebKit {
 
-typedef Vector<RefPtr<WebBackForwardListItem>> BackForwardListItemVector;
-
 /*
  *          Current
  *   |---------*--------------| Entries
  *      Back        Forward
  */
 
-class WebBackForwardList : public TypedAPIObject<APIObject::TypeBackForwardList> {
+class WebBackForwardList : public API::TypedObject<API::Object::TypeBackForwardList> {
 public:
     static PassRefPtr<WebBackForwardList> create(WebPageProxy* page)
     {

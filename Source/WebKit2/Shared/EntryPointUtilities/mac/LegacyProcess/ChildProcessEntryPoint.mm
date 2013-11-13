@@ -93,6 +93,11 @@ bool ChildProcessMainDelegate::getExtraInitializationData(HashMap<String, String
     return true;
 }
 
+void ChildProcessMainDelegate::startRunLoop()
+{
+    RunLoop::run();
+}
+
 void ChildProcessMainDelegate::doPostRunWork()
 {
 }

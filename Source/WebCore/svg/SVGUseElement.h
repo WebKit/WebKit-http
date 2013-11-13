@@ -51,7 +51,7 @@ public:
     void invalidateShadowTree();
     void invalidateDependentShadowTrees();
 
-    RenderObject* rendererClipChild() const;
+    RenderElement* rendererClipChild() const;
 
 private:
     SVGUseElement(const QualifiedName&, Document&, bool wasInsertedByParser);
@@ -59,8 +59,8 @@ private:
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool supportsFocus() const OVERRIDE { return true; }
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    virtual void removedFrom(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
+    virtual void removedFrom(ContainerNode&) OVERRIDE;
     virtual void buildPendingResource();
 
     bool isSupportedAttribute(const QualifiedName&);
@@ -69,7 +69,7 @@ private:
 
     virtual bool willRecalcStyle(Style::Change);
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual void toClipPath(Path&);
 
     void clearResourceReferences();
@@ -128,7 +128,7 @@ private:
     Timer<SVGElement> m_svgLoadEventTimer;
 };
 
-ELEMENT_TYPE_CASTS(SVGUseElement)
+NODE_TYPE_CASTS(SVGUseElement)
 
 }
 

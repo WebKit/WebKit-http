@@ -31,7 +31,7 @@
 #if ENABLE(JIT)
 
 #include "MacroAssembler.h"
-#include "RegisterSet.h"
+#include "TempRegisterSet.h"
 
 namespace JSC {
 
@@ -39,14 +39,26 @@ namespace JSC {
 
 class ScratchRegisterAllocator {
 public:
-    ScratchRegisterAllocator(const RegisterSet& usedRegisters)
+    ScratchRegisterAllocator(const TempRegisterSet& usedRegisters)
         : m_usedRegisters(usedRegisters)
         , m_didReuseRegisters(false)
     {
     }
-    
-    template<typename T>
-    void lock(T reg) { m_lockedRegisters.set(reg); }
+
+    void lock(GPRReg reg)
+    {
+        unsigned index = GPRInfo::toIndex(reg);
+        if (index == GPRInfo::InvalidIndex)
+            return;
+        m_lockedRegisters.setGPRByIndex(index);
+    }
+    void lock(FPRReg reg)
+    {
+        unsigned index = FPRInfo::toIndex(reg);
+        if (index == FPRInfo::InvalidIndex)
+            return;
+        m_lockedRegisters.setFPRByIndex(index);
+    }
     
     template<typename BankInfo>
     typename BankInfo::RegisterType allocateScratch()
@@ -93,14 +105,12 @@ public:
             return;
         
         for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {
-            if (m_scratchRegisters.getFPRByIndex(i) && m_usedRegisters.getFPRByIndex(i)) {
-                jit.subPtr(MacroAssembler::TrustedImm32(8), MacroAssembler::stackPointerRegister);
-                jit.storeDouble(FPRInfo::toRegister(i), MacroAssembler::stackPointerRegister);
-            }
+            if (m_scratchRegisters.getFPRByIndex(i) && m_usedRegisters.getFPRByIndex(i))
+                jit.pushToSave(FPRInfo::toRegister(i));
         }
         for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i) {
             if (m_scratchRegisters.getGPRByIndex(i) && m_usedRegisters.getGPRByIndex(i))
-                jit.push(GPRInfo::toRegister(i));
+                jit.pushToSave(GPRInfo::toRegister(i));
         }
     }
     
@@ -111,13 +121,11 @@ public:
         
         for (unsigned i = GPRInfo::numberOfRegisters; i--;) {
             if (m_scratchRegisters.getGPRByIndex(i) && m_usedRegisters.getGPRByIndex(i))
-                jit.pop(GPRInfo::toRegister(i));
+                jit.popToRestore(GPRInfo::toRegister(i));
         }
         for (unsigned i = FPRInfo::numberOfRegisters; i--;) {
-            if (m_scratchRegisters.getFPRByIndex(i) && m_usedRegisters.getFPRByIndex(i)) {
-                jit.loadDouble(MacroAssembler::stackPointerRegister, FPRInfo::toRegister(i));
-                jit.addPtr(MacroAssembler::TrustedImm32(8), MacroAssembler::stackPointerRegister);
-            }
+            if (m_scratchRegisters.getFPRByIndex(i) && m_usedRegisters.getFPRByIndex(i))
+                jit.popToRestore(FPRInfo::toRegister(i));
         }
     }
     
@@ -188,9 +196,9 @@ public:
     }
     
 private:
-    RegisterSet m_usedRegisters;
-    RegisterSet m_lockedRegisters;
-    RegisterSet m_scratchRegisters;
+    TempRegisterSet m_usedRegisters;
+    TempRegisterSet m_lockedRegisters;
+    TempRegisterSet m_scratchRegisters;
     bool m_didReuseRegisters;
 };
 

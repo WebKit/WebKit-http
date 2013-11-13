@@ -38,14 +38,8 @@
 #include "HTMLInputElement.h"
 #include "InputTypeNames.h"
 #include "LocalizedStrings.h"
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
-
-OwnPtr<InputType> SubmitInputType::create(HTMLInputElement& element)
-{
-    return adoptPtr(new SubmitInputType(element));
-}
 
 const AtomicString& SubmitInputType::formControlType() const
 {
@@ -67,7 +61,7 @@ bool SubmitInputType::supportsRequired() const
 
 void SubmitInputType::handleDOMActivateEvent(Event* event)
 {
-    RefPtr<HTMLInputElement> element = &this->element();
+    Ref<HTMLInputElement> element(this->element());
     if (element->isDisabledFormControl() || !element->form())
         return;
     element->setActivatedSubmit(true);

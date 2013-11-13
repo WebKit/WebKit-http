@@ -63,6 +63,7 @@ inline bool isCollapsibleWhitespace(UChar c)
 
 String plainText(const Range*, TextIteratorBehavior defaultBehavior = TextIteratorDefaultBehavior, bool isDisplayString = false);
 PassRefPtr<Range> findPlainText(const Range*, const String&, FindOptions);
+bool isRendererReplacedElement(RenderObject*);
 
 class BitStack {
 public:
@@ -187,7 +188,7 @@ private:
     bool m_handledFirstLetter;
     // Used when the visibility of the style should not affect text gathering.
     bool m_ignoresStyleVisibility;
-    // Used when emitting the special 0xFFFC character is required.
+    // Used when emitting the special 0xFFFC character is required. Children for replaced objects will be ignored.
     bool m_emitsObjectReplacementCharacters;
     // Used when the iteration should stop if form controls are reached.
     bool m_stopsOnFormControls;

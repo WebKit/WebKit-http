@@ -45,13 +45,13 @@ public:
     static PassRefPtr<AccessibilityTable> create(RenderObject*);
     virtual ~AccessibilityTable();
 
-    virtual void init();
+    virtual void init() OVERRIDE;
 
-    virtual AccessibilityRole roleValue() const;
+    virtual AccessibilityRole roleValue() const OVERRIDE;
     virtual bool isAriaTable() const { return false; }
     
-    virtual void addChildren();
-    virtual void clearChildren();
+    virtual void addChildren() OVERRIDE;
+    virtual void clearChildren() OVERRIDE;
     
     AccessibilityChildrenVector& columns();
     AccessibilityChildrenVector& rows();
@@ -59,9 +59,9 @@ public:
     virtual bool supportsSelectedRows() { return false; }
     unsigned columnCount();
     unsigned rowCount();
-    virtual int tableLevel() const;
+    virtual int tableLevel() const OVERRIDE;
     
-    virtual String title() const;
+    virtual String title() const OVERRIDE;
     
     // all the cells in the table
     void cells(AccessibilityChildrenVector&);
@@ -92,13 +92,12 @@ protected:
 
     virtual bool isTableExposableThroughAccessibility() const;
     virtual bool computeAccessibilityIsIgnored() const OVERRIDE;
+
+private:
+    virtual void titleElementText(Vector<AccessibilityText>&) const OVERRIDE;
 };
-    
-inline AccessibilityTable* toAccessibilityTable(AccessibilityObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTable());
-    return static_cast<AccessibilityTable*>(object);
-}
+
+ACCESSIBILITY_OBJECT_TYPE_CASTS(AccessibilityTable, isTable())
     
 } // namespace WebCore 
 

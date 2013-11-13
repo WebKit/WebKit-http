@@ -80,6 +80,7 @@ class HTMLAnchorElement;
 class HTMLAreaElement;
 class IntPoint;
 class IntSize;
+class MainFrame;
 class Node;
 class Page;
 class RenderObject;
@@ -99,7 +100,8 @@ enum AccessibilityRole {
     ApplicationLogRole,
     ApplicationMarqueeRole,
     ApplicationStatusRole,
-    ApplicationTimerRole, 
+    ApplicationTimerRole,
+    AudioRole,
     BrowserRole,
     BusyIndicatorRole,
     ButtonRole,
@@ -201,7 +203,8 @@ enum AccessibilityRole {
     ToolbarRole,
     UnknownRole,
     UserInterfaceTooltipRole,
-    ValueIndicatorRole,            
+    ValueIndicatorRole,
+    VideoRole,
     WebAreaRole,
     WebCoreLinkRole,
     WindowRole,
@@ -221,14 +224,14 @@ enum AccessibilityTextSource {
 struct AccessibilityText {
     String text;
     AccessibilityTextSource textSource;
-    Vector<RefPtr<AccessibilityObject> > textElements;
+    Vector<RefPtr<AccessibilityObject>> textElements;
     
     AccessibilityText(const String& t, const AccessibilityTextSource& s)
     : text(t)
     , textSource(s)
     { }
 
-    AccessibilityText(const String& t, const AccessibilityTextSource& s, const Vector<RefPtr<AccessibilityObject> > elements)
+    AccessibilityText(const String& t, const AccessibilityTextSource& s, const Vector<RefPtr<AccessibilityObject>> elements)
     : text(t)
     , textSource(s)
     , textElements(elements)
@@ -327,6 +330,11 @@ enum AccessibilitySearchKey {
     VisitedLinkSearchKey
 };
 
+enum AccessibilityVisiblePositionForBounds {
+    FirstVisiblePositionForBounds,
+    LastVisiblePositionForBounds
+};
+
 struct AccessibilitySearchCriteria {
     AccessibilityObject* startObject;
     AccessibilitySearchDirection searchDirection;
@@ -395,7 +403,7 @@ public:
     virtual void detach();
     virtual bool isDetached() const;
 
-    typedef Vector<RefPtr<AccessibilityObject> > AccessibilityChildrenVector;
+    typedef Vector<RefPtr<AccessibilityObject>> AccessibilityChildrenVector;
     
     virtual bool isAccessibilityNodeObject() const { return false; }    
     virtual bool isAccessibilityRenderObject() const { return false; }
@@ -420,6 +428,7 @@ public:
     virtual bool isCheckbox() const { return roleValue() == CheckBoxRole; }
     virtual bool isRadioButton() const { return roleValue() == RadioButtonRole; }
     virtual bool isListBox() const { return roleValue() == ListBoxRole; }
+    virtual bool isListBoxOption() const { return false; }
     virtual bool isMediaTimeline() const { return false; }
     virtual bool isMenuRelated() const { return false; }
     virtual bool isMenu() const { return false; }
@@ -430,6 +439,7 @@ public:
     virtual bool isInputImage() const { return false; }
     virtual bool isProgressIndicator() const { return false; }
     virtual bool isSlider() const { return false; }
+    virtual bool isSliderThumb() const { return false; }
     virtual bool isInputSlider() const { return false; }
     virtual bool isControl() const { return false; }
     virtual bool isList() const { return false; }
@@ -515,6 +525,7 @@ public:
     virtual bool canSetSelectedChildrenAttribute() const { return false; }
     virtual bool canSetExpandedAttribute() const { return false; }
     
+    Element* element() const;
     virtual Node* node() const { return 0; }
     virtual RenderObject* renderer() const { return 0; }
     virtual bool accessibilityIsIgnored() const;
@@ -598,6 +609,7 @@ public:
 
     // A programmatic way to set a name on an AccessibleObject.
     virtual void setAccessibleName(const AtomicString&) { }
+    virtual bool hasAttributesRequiredForInclusion() const;
 
     // Accessibility Text - (To be deprecated).
     virtual String accessibilityDescription() const { return String(); }
@@ -651,8 +663,9 @@ public:
     virtual Widget* widgetForAttachmentView() const { return 0; }
     Page* page() const;
     virtual Document* document() const;
-    virtual FrameView* topDocumentFrameView() const { return 0; }
     virtual FrameView* documentFrameView() const;
+    MainFrame* mainFrame() const;
+    Document* topDocument() const;
     String language() const;
     // 1-based, to match the aria-level spec.
     virtual unsigned hierarchicalLevel() const { return 0; }
@@ -725,6 +738,7 @@ public:
     int lengthForVisiblePositionRange(const VisiblePositionRange&) const;
     virtual void setSelectedVisiblePositionRange(const VisiblePositionRange&) const { }
 
+    VisiblePosition visiblePositionForBounds(const IntRect&, AccessibilityVisiblePositionForBounds) const;
     virtual VisiblePosition visiblePositionForPoint(const IntPoint&) const { return VisiblePosition(); }
     VisiblePosition nextVisiblePosition(const VisiblePosition& visiblePos) const { return visiblePos.next(); }
     VisiblePosition previousVisiblePosition(const VisiblePosition& visiblePos) const { return visiblePos.previous(); }
@@ -842,10 +856,15 @@ public:
     virtual int mathLineThickness() const { return 0; }
     
     // Multiscripts components.
-    typedef Vector<pair<AccessibilityObject*, AccessibilityObject*> > AccessibilityMathMultiscriptPairs;
+    typedef Vector<pair<AccessibilityObject*, AccessibilityObject*>> AccessibilityMathMultiscriptPairs;
     virtual void mathPrescripts(AccessibilityMathMultiscriptPairs&) { }
     virtual void mathPostscripts(AccessibilityMathMultiscriptPairs&) { }
-
+    
+    // Visibility.
+    bool isARIAHidden() const;
+    bool isDOMHidden() const;
+    bool isHidden() const { return isARIAHidden() || isDOMHidden(); }
+    
 #if HAVE(ACCESSIBILITY)
 #if PLATFORM(GTK) || PLATFORM(EFL)
     AccessibilityObjectWrapper* wrapper() const;
@@ -901,7 +920,6 @@ protected:
     static bool isAccessibilityTextSearchMatch(AccessibilityObject*, AccessibilitySearchCriteria*);
     static bool objectMatchesSearchCriteriaWithResultLimit(AccessibilityObject*, AccessibilitySearchCriteria*, AccessibilityChildrenVector&);
     virtual AccessibilityRole buttonRoleType() const;
-    bool ariaIsHidden() const;
     bool isOnscreen() const;
     
 #if PLATFORM(GTK) || (PLATFORM(EFL) && HAVE(ACCESSIBILITY))
@@ -927,6 +945,9 @@ inline const String& AccessibilityObject::actionVerb() const { return emptyStrin
 inline int AccessibilityObject::lineForPosition(const VisiblePosition&) const { return -1; }
 inline void AccessibilityObject::updateBackingStore() { }
 #endif
+
+#define ACCESSIBILITY_OBJECT_TYPE_CASTS(ToValueTypeName, predicate) \
+    TYPE_CASTS_BASE(ToValueTypeName, AccessibilityObject, object, object->predicate, object.predicate)
 
 } // namespace WebCore
 

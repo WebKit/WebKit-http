@@ -25,7 +25,7 @@
     CPPPureInterface,
     CustomToJSObject,
     JSCustomToNativeObject,
-    EventTarget
+    EventTarget,
 ] interface EventTarget {
     [ObjCLegacyUnnamedParameters] void addEventListener(DOMString type, 
                                          EventListener listener, 

@@ -38,6 +38,7 @@
 #import "WKAPICast.h"
 #import "WKStringCF.h"
 #import "WKViewInternal.h"
+#import "WKViewPrivate.h"
 #import "StringUtilities.h"
 #import "WebColorPickerMac.h"
 #import "WebContextMenuProxyMac.h"
@@ -139,28 +140,22 @@ std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy()
 
 void PageClientImpl::setViewNeedsDisplay(const WebCore::IntRect& rect)
 {
-    [m_wkView setNeedsDisplayInRect:rect];
+    ASSERT_NOT_REACHED();
 }
 
 void PageClientImpl::displayView()
 {
-    [m_wkView displayIfNeeded];
+    ASSERT_NOT_REACHED();
 }
 
 bool PageClientImpl::canScrollView()
 {
-    // -scrollRect:by: does nothing in layer-backed views <rdar://problem/12961719>.
-    return ![m_wkView layer];
+    return false;
 }
 
 void PageClientImpl::scrollView(const IntRect& scrollRect, const IntSize& scrollOffset)
 {
-    NSRect clippedScrollRect = NSIntersectionRect(scrollRect, NSOffsetRect(scrollRect, -scrollOffset.width(), -scrollOffset.height()));
-
-    [m_wkView _cacheWindowBottomCornerRect];
-
-    [m_wkView translateRectsNeedingDisplayInRect:clippedScrollRect by:scrollOffset];
-    [m_wkView scrollRect:clippedScrollRect by:scrollOffset];
+    ASSERT_NOT_REACHED();
 }
 
 IntSize PageClientImpl::viewSize()
@@ -201,10 +196,17 @@ bool PageClientImpl::isViewVisible()
     if ([m_wkView isHiddenOrHasHiddenAncestor])
         return false;
 
-    if ([m_wkView _isWindowOccluded])
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    if ([m_wkView windowOcclusionDetectionEnabled] && ([[m_wkView window] occlusionState] & NSWindowOcclusionStateVisible) != NSWindowOcclusionStateVisible)
         return false;
+#endif
 
     return true;
+}
+
+bool PageClientImpl::isWindowVisible()
+{
+    return [[m_wkView window] isVisible];
 }
 
 bool PageClientImpl::isViewInWindow()
@@ -352,7 +354,10 @@ FloatRect PageClientImpl::convertToUserSpace(const FloatRect& rect)
    
 IntPoint PageClientImpl::screenToWindow(const IntPoint& point)
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     NSPoint windowCoord = [[m_wkView window] convertScreenToBase:point];
+#pragma clang diagnostic pop
     return IntPoint([m_wkView convertPoint:windowCoord fromView:nil]);
 }
     
@@ -360,16 +365,12 @@ IntRect PageClientImpl::windowToScreen(const IntRect& rect)
 {
     NSRect tempRect = rect;
     tempRect = [m_wkView convertRect:tempRect toView:nil];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     tempRect.origin = [[m_wkView window] convertBaseToScreen:tempRect.origin];
+#pragma clang diagnostic pop
     return enclosingIntRect(tempRect);
 }
-
-#if ENABLE(GESTURE_EVENTS)
-void PageClientImpl::doneWithGestureEvent(const WebGestureEvent&, bool wasEventHandled)
-{
-    notImplemented();
-}
-#endif
 
 void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent& event, bool eventWasHandled)
 {
@@ -438,22 +439,6 @@ void PageClientImpl::pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextI
 void PageClientImpl::setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, PluginComplexTextInputState pluginComplexTextInputState)
 {
     [m_wkView _setPluginComplexTextInputState:pluginComplexTextInputState pluginComplexTextInputIdentifier:pluginComplexTextInputIdentifier];
-}
-
-CGContextRef PageClientImpl::containingWindowGraphicsContext()
-{
-    NSWindow *window = [m_wkView window];
-
-    // Don't try to get the graphics context if the NSWindow doesn't have a window device.
-    if ([window windowNumber] <= 0)
-        return 0;
-
-    return static_cast<CGContextRef>([[window graphicsContext] graphicsPort]);
-}
-
-void PageClientImpl::flashBackingStoreUpdates(const Vector<IntRect>&)
-{
-    notImplemented();
 }
 
 void PageClientImpl::didPerformDictionaryLookup(const AttributedString& text, const DictionaryPopupInfo& dictionaryPopupInfo)

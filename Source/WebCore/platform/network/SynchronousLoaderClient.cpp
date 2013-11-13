@@ -45,6 +45,7 @@ void SynchronousLoaderClient::willSendRequest(ResourceHandle* handle, ResourceRe
     ASSERT(m_error.isNull());
     m_error = platformBadResponseError();
     m_isDone = true;
+    request = ResourceRequest();
 }
 
 bool SynchronousLoaderClient::shouldUseCredentialStorage(ResourceHandle*)

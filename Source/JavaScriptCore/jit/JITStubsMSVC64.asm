@@ -23,77 +23,11 @@
 ; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ;*/
 
-EXTERN cti_vm_throw : near
-EXTERN cti_vm_handle_exception : near
 EXTERN getHostCallReturnValueWithExecState : near
 
-PUBLIC ctiTrampoline
-PUBLIC ctiVMThrowTrampoline
-PUBLIC ctiOpThrowNotCaught
 PUBLIC getHostCallReturnValue
 
 _TEXT   SEGMENT
-
-ctiTrampoline PROC
-    ; Dump register parameters to their home address
-    mov qword ptr[rsp+20h], r9
-    mov qword ptr[rsp+18h], r8
-    mov qword ptr[rsp+10h], rdx
-    mov qword ptr[rsp+8h], rcx
-
-    push rbp
-    mov rbp, rsp
-    push r12
-    push r13
-    push r14
-    push r15
-    push rbx
-
-    ; Decrease rsp to point to the start of our JITStackFrame
-    sub rsp, 58h
-    mov r12, 512
-    mov r14, 0FFFF000000000000h
-    mov r15, 0FFFF000000000002h
-    mov r13, r8
-    call rcx
-    add rsp, 58h
-    pop rbx
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop rbp
-    ret
-ctiTrampoline ENDP
-
-ctiVMThrowTrampoline PROC
-    mov rcx, rsp
-    call cti_vm_throw
-    int 3
-ctiVMThrowTrampoline ENDP
-
-ctiVMHandleException PROC
-	sub rsp, 16
-    mov rcx, rsp
-	mov rdx, r13
-	call cti_vm_handle_exception
-    ; When cti_vm_handle_exception returns, rax points to the memory we allocated on stack
-	; It contains the callFrame and handler address
-	pop rax		; callFrame
-	pop rdx		; handler
-    jmp rdx
-ctiVMHandleException ENDP
- 
-ctiOpThrowNotCaught PROC
-    add rsp, 58h
-    pop rbx
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop rbp
-    ret
-ctiOpThrowNotCaught ENDP
 
 getHostCallReturnValue PROC
     sub r13, 40

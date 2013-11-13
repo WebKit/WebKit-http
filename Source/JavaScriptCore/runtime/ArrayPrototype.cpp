@@ -31,6 +31,7 @@
 #include "Error.h"
 #include "Interpreter.h"
 #include "JIT.h"
+#include "JSArrayIterator.h"
 #include "JSStringBuilder.h"
 #include "JSStringJoiner.h"
 #include "Lookup.h"
@@ -64,6 +65,9 @@ static EncodedJSValue JSC_HOST_CALL arrayProtoFuncMap(ExecState*);
 static EncodedJSValue JSC_HOST_CALL arrayProtoFuncReduce(ExecState*);
 static EncodedJSValue JSC_HOST_CALL arrayProtoFuncReduceRight(ExecState*);
 static EncodedJSValue JSC_HOST_CALL arrayProtoFuncLastIndexOf(ExecState*);
+static EncodedJSValue JSC_HOST_CALL arrayProtoFuncValues(ExecState*);
+static EncodedJSValue JSC_HOST_CALL arrayProtoFuncKeys(ExecState*);
+static EncodedJSValue JSC_HOST_CALL arrayProtoFuncEntries(ExecState*);
 
 }
 
@@ -112,13 +116,15 @@ const ClassInfo ArrayPrototype::s_info = {"Array", &JSArray::s_info, 0, ExecStat
   reduce         arrayProtoFuncReduce         DontEnum|Function 1
   reduceRight    arrayProtoFuncReduceRight    DontEnum|Function 1
   map            arrayProtoFuncMap            DontEnum|Function 1
+  entries        arrayProtoFuncEntries        DontEnum|Function 0
+  keys           arrayProtoFuncKeys           DontEnum|Function 0
 @end
 */
 
-ArrayPrototype* ArrayPrototype::create(VM& vm, Structure* structure)
+ArrayPrototype* ArrayPrototype::create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
 {
     ArrayPrototype* prototype = new (NotNull, allocateCell<ArrayPrototype>(vm.heap)) ArrayPrototype(vm, structure);
-    prototype->finishCreation(vm);
+    prototype->finishCreation(vm, globalObject);
     return prototype;
 }
 
@@ -128,11 +134,12 @@ ArrayPrototype::ArrayPrototype(VM& vm, Structure* structure)
 {
 }
 
-void ArrayPrototype::finishCreation(VM& vm)
+void ArrayPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
     vm.prototypeMap.addPrototype(this);
+    JSC_NATIVE_FUNCTION(vm.propertyNames->iteratorPrivateName, arrayProtoFuncValues, DontEnum, 0);
 }
 
 bool ArrayPrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -1329,6 +1336,24 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncLastIndexOf(ExecState* exec)
     } while (index--);
 
     return JSValue::encode(jsNumber(-1));
+}
+
+EncodedJSValue JSC_HOST_CALL arrayProtoFuncValues(ExecState* exec)
+{
+    JSObject* thisObj = exec->hostThisValue().toThis(exec, StrictMode).toObject(exec);
+    return JSValue::encode(JSArrayIterator::create(exec, exec->callee()->globalObject()->arrayIteratorStructure(), ArrayIterateValue, thisObj));
+}
+
+EncodedJSValue JSC_HOST_CALL arrayProtoFuncEntries(ExecState* exec)
+{
+    JSObject* thisObj = exec->hostThisValue().toThis(exec, StrictMode).toObject(exec);
+    return JSValue::encode(JSArrayIterator::create(exec, exec->callee()->globalObject()->arrayIteratorStructure(), ArrayIterateKeyValue, thisObj));
+}
+    
+EncodedJSValue JSC_HOST_CALL arrayProtoFuncKeys(ExecState* exec)
+{
+    JSObject* thisObj = exec->hostThisValue().toThis(exec, StrictMode).toObject(exec);
+    return JSValue::encode(JSArrayIterator::create(exec, exec->callee()->globalObject()->arrayIteratorStructure(), ArrayIterateKey, thisObj));
 }
 
 } // namespace JSC

@@ -48,14 +48,12 @@
 #include "TextRun.h"
 #include <math.h>
 
-using namespace std;
-
 namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderMenuList::RenderMenuList(HTMLSelectElement& element)
-    : RenderFlexibleBox(&element)
+RenderMenuList::RenderMenuList(HTMLSelectElement& element, PassRef<RenderStyle> style)
+    : RenderFlexibleBox(element, std::move(style))
     , m_buttonText(nullptr)
     , m_innerBlock(nullptr)
     , m_needsOptionsWidthUpdate(true)
@@ -94,38 +92,38 @@ void RenderMenuList::createInnerBlock()
 
 void RenderMenuList::adjustInnerStyle()
 {
-    RenderStyle* innerStyle = m_innerBlock->style();
-    innerStyle->setFlexGrow(1);
-    innerStyle->setFlexShrink(1);
+    RenderStyle& innerStyle = m_innerBlock->style();
+    innerStyle.setFlexGrow(1);
+    innerStyle.setFlexShrink(1);
     // min-width: 0; is needed for correct shrinking.
     // FIXME: Remove this line when https://bugs.webkit.org/show_bug.cgi?id=111790 is fixed.
-    innerStyle->setMinWidth(Length(0, Fixed));
+    innerStyle.setMinWidth(Length(0, Fixed));
     // Use margin:auto instead of align-items:center to get safe centering, i.e.
     // when the content overflows, treat it the same as align-items: flex-start.
     // But we only do that for the cases where html.css would otherwise use center.
-    if (style()->alignItems() == AlignCenter) {
-        innerStyle->setMarginTop(Length());
-        innerStyle->setMarginBottom(Length());
-        innerStyle->setAlignSelf(AlignFlexStart);
+    if (style().alignItems() == AlignCenter) {
+        innerStyle.setMarginTop(Length());
+        innerStyle.setMarginBottom(Length());
+        innerStyle.setAlignSelf(AlignFlexStart);
     }
 
-    innerStyle->setPaddingLeft(Length(theme()->popupInternalPaddingLeft(style()), Fixed));
-    innerStyle->setPaddingRight(Length(theme()->popupInternalPaddingRight(style()), Fixed));
-    innerStyle->setPaddingTop(Length(theme()->popupInternalPaddingTop(style()), Fixed));
-    innerStyle->setPaddingBottom(Length(theme()->popupInternalPaddingBottom(style()), Fixed));
+    innerStyle.setPaddingLeft(Length(theme()->popupInternalPaddingLeft(&style()), Fixed));
+    innerStyle.setPaddingRight(Length(theme()->popupInternalPaddingRight(&style()), Fixed));
+    innerStyle.setPaddingTop(Length(theme()->popupInternalPaddingTop(&style()), Fixed));
+    innerStyle.setPaddingBottom(Length(theme()->popupInternalPaddingBottom(&style()), Fixed));
 
     if (document().page()->chrome().selectItemWritingDirectionIsNatural()) {
         // Items in the popup will not respect the CSS text-align and direction properties,
         // so we must adjust our own style to match.
-        innerStyle->setTextAlign(LEFT);
-        TextDirection direction = (m_buttonText && m_buttonText->text()->defaultWritingDirection() == WTF::Unicode::RightToLeft) ? RTL : LTR;
-        innerStyle->setDirection(direction);
+        innerStyle.setTextAlign(LEFT);
+        TextDirection direction = (m_buttonText && m_buttonText->text()->defaultWritingDirection() == U_RIGHT_TO_LEFT) ? RTL : LTR;
+        innerStyle.setDirection(direction);
     } else if (m_optionStyle && document().page()->chrome().selectItemAlignmentFollowsMenuWritingDirection()) {
-        if ((m_optionStyle->direction() != innerStyle->direction() || m_optionStyle->unicodeBidi() != innerStyle->unicodeBidi()))
+        if ((m_optionStyle->direction() != innerStyle.direction() || m_optionStyle->unicodeBidi() != innerStyle.unicodeBidi()))
             m_innerBlock->setNeedsLayoutAndPrefWidthsRecalc();
-        innerStyle->setTextAlign(style()->isLeftToRightDirection() ? LEFT : RIGHT);
-        innerStyle->setDirection(m_optionStyle->direction());
-        innerStyle->setUnicodeBidi(m_optionStyle->unicodeBidi());
+        innerStyle.setTextAlign(style().isLeftToRightDirection() ? LEFT : RIGHT);
+        innerStyle.setDirection(m_optionStyle->direction());
+        innerStyle.setUnicodeBidi(m_optionStyle->unicodeBidi());
     }
 }
 
@@ -144,9 +142,9 @@ void RenderMenuList::addChild(RenderObject* newChild, RenderObject* beforeChild)
         cache->childrenChanged(this);
 }
 
-void RenderMenuList::removeChild(RenderObject* oldChild)
+void RenderMenuList::removeChild(RenderObject& oldChild)
 {
-    if (oldChild == m_innerBlock || !m_innerBlock) {
+    if (&oldChild == m_innerBlock || !m_innerBlock) {
         RenderFlexibleBox::removeChild(oldChild);
         m_innerBlock = 0;
     } else
@@ -160,7 +158,7 @@ void RenderMenuList::styleDidChange(StyleDifference diff, const RenderStyle* old
     if (m_innerBlock) // RenderBlock handled updating the anonymous block's style.
         adjustInnerStyle();
 
-    bool fontChanged = !oldStyle || oldStyle->font() != style()->font();
+    bool fontChanged = !oldStyle || oldStyle->font() != style().font();
     if (fontChanged) {
         updateOptionsWidth();
         m_needsOptionsWidthUpdate = false;
@@ -187,10 +185,10 @@ void RenderMenuList::updateOptionsWidth()
             if (RenderStyle* optionStyle = element->renderStyle())
                 optionWidth += minimumValueForLength(optionStyle->textIndent(), 0);
             if (!text.isEmpty())
-                optionWidth += style()->font().width(text);
-            maxOptionWidth = max(maxOptionWidth, optionWidth);
+                optionWidth += style().font().width(text);
+            maxOptionWidth = std::max(maxOptionWidth, optionWidth);
         } else if (!text.isEmpty())
-            maxOptionWidth = max(maxOptionWidth, style()->font().width(text));
+            maxOptionWidth = std::max(maxOptionWidth, style().font().width(text));
     }
 
     int width = static_cast<int>(ceilf(maxOptionWidth));
@@ -241,7 +239,7 @@ void RenderMenuList::setText(const String& s)
     if (m_buttonText)
         m_buttonText->setText(textToUse.impl(), true);
     else {
-        m_buttonText = RenderText::createAnonymous(document(), textToUse);
+        m_buttonText = new RenderText(document(), textToUse);
         addChild(m_buttonText);
     }
     adjustInnerStyle();
@@ -272,8 +270,8 @@ LayoutRect RenderMenuList::controlClipRect(const LayoutPoint& additionalOffset) 
 
 void RenderMenuList::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
 {
-    maxLogicalWidth = max(m_optionsWidth, theme()->minimumMenuListSize(style())) + m_innerBlock->paddingLeft() + m_innerBlock->paddingRight();
-    if (!style()->width().isPercent())
+    maxLogicalWidth = std::max(m_optionsWidth, theme()->minimumMenuListSize(&style())) + m_innerBlock->paddingLeft() + m_innerBlock->paddingRight();
+    if (!style().width().isPercent())
         minLogicalWidth = maxLogicalWidth;
 }
 
@@ -282,19 +280,19 @@ void RenderMenuList::computePreferredLogicalWidths()
     m_minPreferredLogicalWidth = 0;
     m_maxPreferredLogicalWidth = 0;
     
-    if (style()->width().isFixed() && style()->width().value() > 0)
-        m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = adjustContentBoxLogicalWidthForBoxSizing(style()->width().value());
+    if (style().width().isFixed() && style().width().value() > 0)
+        m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = adjustContentBoxLogicalWidthForBoxSizing(style().width().value());
     else
         computeIntrinsicLogicalWidths(m_minPreferredLogicalWidth, m_maxPreferredLogicalWidth);
 
-    if (style()->minWidth().isFixed() && style()->minWidth().value() > 0) {
-        m_maxPreferredLogicalWidth = max(m_maxPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style()->minWidth().value()));
-        m_minPreferredLogicalWidth = max(m_minPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style()->minWidth().value()));
+    if (style().minWidth().isFixed() && style().minWidth().value() > 0) {
+        m_maxPreferredLogicalWidth = std::max(m_maxPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style().minWidth().value()));
+        m_minPreferredLogicalWidth = std::max(m_minPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style().minWidth().value()));
     }
 
-    if (style()->maxWidth().isFixed()) {
-        m_maxPreferredLogicalWidth = min(m_maxPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style()->maxWidth().value()));
-        m_minPreferredLogicalWidth = min(m_minPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style()->maxWidth().value()));
+    if (style().maxWidth().isFixed()) {
+        m_maxPreferredLogicalWidth = std::min(m_maxPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style().maxWidth().value()));
+        m_minPreferredLogicalWidth = std::min(m_minPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style().maxWidth().value()));
     }
 
     LayoutUnit toAdd = borderAndPaddingWidth();
@@ -375,7 +373,7 @@ void RenderMenuList::didUpdateActiveOption(int optionIndex)
     HTMLElement* listItem = selectElement().listItems()[listIndex];
     ASSERT(listItem);
     if (listItem->attached()) {
-        if (AccessibilityMenuList* menuList = static_cast<AccessibilityMenuList*>(document().axObjectCache()->get(this)))
+        if (AccessibilityMenuList* menuList = toAccessibilityMenuList(document().axObjectCache()->get(this)))
             menuList->didUpdateActiveOption(optionIndex);
     }
 }
@@ -473,7 +471,7 @@ void RenderMenuList::getItemBackgroundColor(unsigned listIndex, Color& itemBackg
 {
     const Vector<HTMLElement*>& listItems = selectElement().listItems();
     if (listIndex >= listItems.size()) {
-        itemBackgroundColor = style()->visitedDependentColor(CSSPropertyBackgroundColor);
+        itemBackgroundColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
         itemHasCustomBackgroundColor = false;
         return;
     }
@@ -490,7 +488,7 @@ void RenderMenuList::getItemBackgroundColor(unsigned listIndex, Color& itemBackg
     }
 
     // Otherwise, the item's background is overlayed on top of the menu background.
-    backgroundColor = style()->visitedDependentColor(CSSPropertyBackgroundColor).blend(backgroundColor);
+    backgroundColor = style().visitedDependentColor(CSSPropertyBackgroundColor).blend(backgroundColor);
     if (!backgroundColor.hasAlpha()) {
         itemBackgroundColor = backgroundColor;
         return;
@@ -502,9 +500,9 @@ void RenderMenuList::getItemBackgroundColor(unsigned listIndex, Color& itemBackg
 
 PopupMenuStyle RenderMenuList::menuStyle() const
 {
-    RenderStyle* s = m_innerBlock ? m_innerBlock->style() : style();
-    return PopupMenuStyle(s->visitedDependentColor(CSSPropertyColor), s->visitedDependentColor(CSSPropertyBackgroundColor), s->font(), s->visibility() == VISIBLE,
-        s->display() == NONE, s->textIndent(), style()->direction(), isOverride(style()->unicodeBidi()));
+    const RenderStyle& styleToUse = m_innerBlock ? m_innerBlock->style() : style();
+    return PopupMenuStyle(styleToUse.visitedDependentColor(CSSPropertyColor), styleToUse.visitedDependentColor(CSSPropertyBackgroundColor), styleToUse.font(), styleToUse.visibility() == VISIBLE,
+        styleToUse.display() == NONE, styleToUse.textIndent(), style().direction(), isOverride(style().unicodeBidi()));
 }
 
 HostWindow* RenderMenuList::hostWindow() const
@@ -515,7 +513,7 @@ HostWindow* RenderMenuList::hostWindow() const
 PassRefPtr<Scrollbar> RenderMenuList::createScrollbar(ScrollableArea* scrollableArea, ScrollbarOrientation orientation, ScrollbarControlSize controlSize)
 {
     RefPtr<Scrollbar> widget;
-    bool hasCustomScrollbarStyle = style()->hasPseudoStyle(SCROLLBAR);
+    bool hasCustomScrollbarStyle = style().hasPseudoStyle(SCROLLBAR);
     if (hasCustomScrollbarStyle)
         widget = RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, &selectElement());
     else
@@ -541,7 +539,7 @@ LayoutUnit RenderMenuList::clientPaddingLeft() const
 const int endOfLinePadding = 2;
 LayoutUnit RenderMenuList::clientPaddingRight() const
 {
-    if (style()->appearance() == MenulistPart || style()->appearance() == MenulistButtonPart) {
+    if (style().appearance() == MenulistPart || style().appearance() == MenulistButtonPart) {
         // For these appearance values, the theme applies padding to leave room for the
         // drop-down button. But leaving room for the button inside the popup menu itself
         // looks strange, so we return a small default padding to avoid having a large empty

@@ -120,8 +120,13 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
                 scratch1 = AssemblyHelpers::selectScratchGPR(usedRegister1, usedRegister2);
                 scratch2 = AssemblyHelpers::selectScratchGPR(usedRegister1, usedRegister2, scratch1);
                 
+#if CPU(ARM64)
+                m_jit.pushToSave(scratch1);
+                m_jit.pushToSave(scratch2);
+#else
                 m_jit.push(scratch1);
                 m_jit.push(scratch2);
+#endif
                 
                 GPRReg value;
                 if (exit.m_jsValueSource.isAddress()) {
@@ -137,8 +142,13 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
                 m_jit.lshift32(scratch1, scratch2);
                 m_jit.or32(scratch2, AssemblyHelpers::AbsoluteAddress(arrayProfile->addressOfArrayModes()));
                 
+#if CPU(ARM64)
+                m_jit.popToRestore(scratch2);
+                m_jit.popToRestore(scratch1);
+#else
                 m_jit.pop(scratch2);
                 m_jit.pop(scratch1);
+#endif
             }
         }
         
@@ -149,14 +159,22 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
                 // Save a register so we can use it.
                 GPRReg scratch = AssemblyHelpers::selectScratchGPR(exit.m_jsValueSource.base());
                 
+#if CPU(ARM64)
+                m_jit.pushToSave(scratch);
+#else
                 m_jit.push(scratch);
+#endif
 
                 m_jit.load32(exit.m_jsValueSource.asAddress(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag)), scratch);
                 m_jit.store32(scratch, &bitwise_cast<EncodedValueDescriptor*>(bucket)->asBits.tag);
                 m_jit.load32(exit.m_jsValueSource.asAddress(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload)), scratch);
                 m_jit.store32(scratch, &bitwise_cast<EncodedValueDescriptor*>(bucket)->asBits.payload);
                 
+#if CPU(ARM64)
+                m_jit.popToRestore(scratch);
+#else
                 m_jit.pop(scratch);
+#endif
             } else if (exit.m_jsValueSource.hasKnownTag()) {
                 m_jit.store32(AssemblyHelpers::TrustedImm32(exit.m_jsValueSource.tag()), &bitwise_cast<EncodedValueDescriptor*>(bucket)->asBits.tag);
                 m_jit.store32(exit.m_jsValueSource.payloadGPR(), &bitwise_cast<EncodedValueDescriptor*>(bucket)->asBits.payload);
@@ -212,7 +230,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         switch (recovery.technique()) {
         case InFPR:
             m_jit.move(AssemblyHelpers::TrustedImmPtr(scratch + index), GPRInfo::regT0);
-            m_jit.storeDouble(recovery.fpr(), GPRInfo::regT0);
+            m_jit.storeDouble(recovery.fpr(), MacroAssembler::Address(GPRInfo::regT0));
             break;
             
         default:
@@ -353,6 +371,12 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             
         case ArgumentsThatWereNotCreated:
             haveArguments = true;
+            m_jit.store32(
+                AssemblyHelpers::TrustedImm32(JSValue().tag()),
+                AssemblyHelpers::tagFor(operand));
+            m_jit.store32(
+                AssemblyHelpers::TrustedImm32(JSValue().payload()),
+                AssemblyHelpers::payloadFor(operand));
             break;
             
         default:
@@ -407,7 +431,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
     
     if (haveArguments) {
         HashSet<InlineCallFrame*, DefaultHash<InlineCallFrame*>::Hash,
-            NullableHashTraits<InlineCallFrame*> > didCreateArgumentsObject;
+            NullableHashTraits<InlineCallFrame*>> didCreateArgumentsObject;
 
         for (size_t index = 0; index < operands.size(); ++index) {
             const ValueRecovery& recovery = operands[index];
@@ -419,7 +443,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             for (InlineCallFrame* current = exit.m_codeOrigin.inlineCallFrame;
                  current;
                  current = current->caller.inlineCallFrame) {
-                if (current->stackOffset <= operand) {
+                if (current->stackOffset >= operand) {
                     inlineCallFrame = current;
                     break;
                 }
@@ -427,7 +451,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
 
             if (!m_jit.baselineCodeBlockFor(inlineCallFrame)->usesArguments())
                 continue;
-            VirtualRegister argumentsRegister = m_jit.argumentsRegisterFor(inlineCallFrame);
+            VirtualRegister argumentsRegister = m_jit.baselineArgumentsRegisterFor(inlineCallFrame);
             if (didCreateArgumentsObject.add(inlineCallFrame).isNewEntry) {
                 // We know this call frame optimized out an arguments object that
                 // the baseline JIT would have created. Do that creation now.
@@ -469,14 +493,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         }
     }
     
-    // 11) Load the result of the last bytecode operation into regT0.
-    
-    if (exit.m_lastSetOperand.isValid()) {
-        m_jit.load32(AssemblyHelpers::payloadFor(exit.m_lastSetOperand), GPRInfo::cachedResultRegister);
-        m_jit.load32(AssemblyHelpers::tagFor(exit.m_lastSetOperand), GPRInfo::cachedResultRegister2);
-    }
-    
-    // 12) And finish.
+    // 11) And finish.
     
     adjustAndJumpToTarget(m_jit, exit);
 }

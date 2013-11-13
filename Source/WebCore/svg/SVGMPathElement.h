@@ -49,8 +49,8 @@ private:
 
     void buildPendingResource();
     void clearResourceReferences();
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    void removedFrom(ContainerNode*);
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
+    virtual void removedFrom(ContainerNode&) OVERRIDE;
 
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
@@ -66,7 +66,7 @@ private:
     END_DECLARE_ANIMATED_PROPERTIES
 };
 
-ELEMENT_TYPE_CASTS(SVGMPathElement)
+NODE_TYPE_CASTS(SVGMPathElement)
 
 } // namespace WebCore
 

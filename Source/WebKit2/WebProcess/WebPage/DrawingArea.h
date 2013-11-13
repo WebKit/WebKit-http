@@ -86,6 +86,8 @@ public:
     virtual void setClipsToExposedRect(bool) { }
     virtual void mainFrameScrollabilityChanged(bool) { }
 
+    virtual bool supportsThreadedScrolling() { return false; }
+
     virtual void didChangeScrollOffsetForAnyFrame() { }
 
     virtual bool shouldUseTiledBackingForFrameView(const WebCore::FrameView*) { return false; }
@@ -102,6 +104,9 @@ public:
 
     virtual void dispatchAfterEnsuringUpdatedScrollPosition(const Function<void ()>&);
 
+    virtual void suspendPainting() { }
+    virtual void resumePainting() { }
+
 protected:
     DrawingArea(DrawingAreaType, WebPage*);
 
@@ -114,8 +119,6 @@ private:
     virtual void updateBackingStoreState(uint64_t /*backingStoreStateID*/, bool /*respondImmediately*/, float /*deviceScaleFactor*/, const WebCore::IntSize& /*size*/, 
                                          const WebCore::IntSize& /*scrollOffset*/) { }
     virtual void didUpdate() { }
-    virtual void suspendPainting() { }
-    virtual void resumePainting() { }
     virtual void setLayerHostingMode(uint32_t) { }
 
 #if PLATFORM(MAC)

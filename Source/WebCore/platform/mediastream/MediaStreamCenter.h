@@ -34,6 +34,7 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#include "MediaStreamSource.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -41,9 +42,7 @@ namespace WebCore {
 
 class MediaConstraints;
 class MediaStreamCreationClient;
-class MediaStreamCreationClient;
-class MediaStreamDescriptor;
-class MediaStreamSource;
+class MediaStreamSourceStates;
 class MediaStreamTrackSourcesRequestClient;
 
 class MediaStreamCenter {
@@ -59,18 +58,9 @@ public:
 
     virtual bool getMediaStreamTrackSources(PassRefPtr<MediaStreamTrackSourcesRequestClient>) = 0;
 
-    virtual void didSetMediaStreamTrackEnabled(MediaStreamSource*) = 0;
-
-    virtual bool didAddMediaStreamTrack(MediaStreamSource*) = 0;
-    virtual bool didRemoveMediaStreamTrack(MediaStreamSource*) = 0;
-
-    virtual void didStopLocalMediaStream(MediaStreamDescriptor*) = 0;
-    virtual void didCreateMediaStream(MediaStreamDescriptor*) = 0;
-
 protected:
     MediaStreamCenter();
 
-    void endLocalMediaStream(MediaStreamDescriptor*);
     static MediaStreamCenter& platformCenter();
 };
 

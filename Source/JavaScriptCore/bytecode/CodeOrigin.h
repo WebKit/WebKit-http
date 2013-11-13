@@ -28,9 +28,11 @@
 
 #include "CodeBlockHash.h"
 #include "CodeSpecializationKind.h"
+#include "JSFunction.h"
 #include "ValueRecovery.h"
 #include "WriteBarrier.h"
 #include <wtf/BitVector.h>
+#include <wtf/HashMap.h>
 #include <wtf/PrintStream.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
@@ -59,6 +61,12 @@ struct CodeOrigin {
     {
     }
     
+    CodeOrigin(WTF::HashTableDeletedValueType)
+        : bytecodeIndex(invalidBytecodeIndex)
+        , inlineCallFrame(bitwise_cast<InlineCallFrame*>(static_cast<uintptr_t>(1)))
+    {
+    }
+    
     explicit CodeOrigin(unsigned bytecodeIndex, InlineCallFrame* inlineCallFrame = 0)
         : bytecodeIndex(bytecodeIndex)
         , inlineCallFrame(inlineCallFrame)
@@ -67,6 +75,11 @@ struct CodeOrigin {
     }
     
     bool isSet() const { return bytecodeIndex != invalidBytecodeIndex; }
+    
+    bool isHashTableDeletedValue() const
+    {
+        return bytecodeIndex == invalidBytecodeIndex && !!inlineCallFrame;
+    }
     
     // The inline depth is the depth of the inline stack, so 1 = not inlined,
     // 2 = inlined one deep, etc.
@@ -80,8 +93,8 @@ struct CodeOrigin {
     
     static unsigned inlineDepthForCallFrame(InlineCallFrame*);
     
+    unsigned hash() const;
     bool operator==(const CodeOrigin& other) const;
-    
     bool operator!=(const CodeOrigin& other) const { return !(*this == other); }
     
     // Get the inline stack. This is slow, and is intended for debugging only.
@@ -94,11 +107,13 @@ struct CodeOrigin {
 struct InlineCallFrame {
     Vector<ValueRecovery> arguments;
     WriteBarrier<ScriptExecutable> executable;
-    WriteBarrier<JSFunction> callee; // This may be null, indicating that this is a closure call and that the JSFunction and JSScope are already on the stack.
+    ValueRecovery calleeRecovery;
     CodeOrigin caller;
     BitVector capturedVars; // Indexed by the machine call frame's variable numbering.
-    signed stackOffset : 31;
+    signed stackOffset : 30;
     bool isCall : 1;
+    bool isClosureCall : 1; // If false then we know that callee/scope are constants and the DFG won't treat them as variables, i.e. they have to be recovered manually.
+    VirtualRegister argumentsRegister; // This is only set if the code uses arguments. The unmodified arguments register follows the unmodifiedArgumentsRegister() convention (see CodeBlock.h).
     
     // There is really no good notion of a "default" set of values for
     // InlineCallFrame's fields. This constructor is here just to reduce confusion if
@@ -106,12 +121,18 @@ struct InlineCallFrame {
     InlineCallFrame()
         : stackOffset(0)
         , isCall(false)
+        , isClosureCall(false)
     {
     }
     
     CodeSpecializationKind specializationKind() const { return specializationFromIsCall(isCall); }
-    
-    bool isClosureCall() const { return !callee; }
+
+    JSFunction* calleeConstant() const
+    {
+        if (calleeRecovery.isConstant())
+            return jsCast<JSFunction*>(calleeRecovery.constant());
+        return 0;
+    }
     
     // Get the callee given a machine call frame to which this InlineCallFrame belongs.
     JSFunction* calleeForCallFrame(ExecState*) const;
@@ -121,6 +142,9 @@ struct InlineCallFrame {
     
     CodeBlock* baselineCodeBlock() const;
     
+    ptrdiff_t callerFrameOffset() const { return stackOffset * sizeof(Register) + CallFrame::callerFrameOffset(); }
+    ptrdiff_t returnPCOffset() const { return stackOffset * sizeof(Register) + CallFrame::returnPCOffset(); }
+
     void dumpBriefFunctionInformation(PrintStream&) const;
     void dump(PrintStream&) const;
     void dumpInContext(PrintStream&, DumpContext*) const;
@@ -136,6 +160,12 @@ inline int CodeOrigin::stackOffset() const
     return inlineCallFrame->stackOffset;
 }
 
+inline unsigned CodeOrigin::hash() const
+{
+    return WTF::IntHash<unsigned>::hash(bytecodeIndex) +
+        WTF::PtrHash<InlineCallFrame*>::hash(inlineCallFrame);
+}
+
 inline bool CodeOrigin::operator==(const CodeOrigin& other) const
 {
     return bytecodeIndex == other.bytecodeIndex
@@ -149,7 +179,27 @@ inline ScriptExecutable* CodeOrigin::codeOriginOwner() const
     return inlineCallFrame->executable.get();
 }
 
+struct CodeOriginHash {
+    static unsigned hash(const CodeOrigin& key) { return key.hash(); }
+    static bool equal(const CodeOrigin& a, const CodeOrigin& b) { return a == b; }
+    static const bool safeToCompareToEmptyOrDeleted = true;
+};
+
 } // namespace JSC
+
+namespace WTF {
+
+template<typename T> struct DefaultHash;
+template<> struct DefaultHash<JSC::CodeOrigin> {
+    typedef JSC::CodeOriginHash Hash;
+};
+
+template<typename T> struct HashTraits;
+template<> struct HashTraits<JSC::CodeOrigin> : SimpleClassHashTraits<JSC::CodeOrigin> {
+    static const bool emptyValueIsZero = false;
+};
+
+} // namespace WTF
 
 #endif // CodeOrigin_h
 

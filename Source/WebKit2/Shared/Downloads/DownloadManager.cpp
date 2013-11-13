@@ -44,7 +44,7 @@ void DownloadManager::startDownload(uint64_t downloadID, const ResourceRequest& 
     download->start();
 
     ASSERT(!m_downloads.contains(downloadID));
-    m_downloads.set(downloadID, download.release());
+    m_downloads.add(downloadID, std::move(download));
 }
 
 void DownloadManager::convertHandleToDownload(uint64_t downloadID, ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
@@ -53,7 +53,7 @@ void DownloadManager::convertHandleToDownload(uint64_t downloadID, ResourceHandl
 
     download->startWithHandle(handle, response);
     ASSERT(!m_downloads.contains(downloadID));
-    m_downloads.set(downloadID, download.release());
+    m_downloads.add(downloadID, std::move(download));
 }
 
 void DownloadManager::cancelDownload(uint64_t downloadID)
@@ -69,8 +69,6 @@ void DownloadManager::downloadFinished(Download* download)
 {
     ASSERT(m_downloads.contains(download->downloadID()));
     m_downloads.remove(download->downloadID());
-
-    delete download;
 }
 
 void DownloadManager::didCreateDownload()
@@ -92,14 +90,5 @@ AuthenticationManager& DownloadManager::downloadsAuthenticationManager()
 {
     return m_client->downloadsAuthenticationManager();
 }
-
-#if PLATFORM(QT)
-void DownloadManager::startTransfer(uint64_t downloadID, const String& destination)
-{
-    ASSERT(m_downloads.contains(downloadID));
-    Download* download = m_downloads.get(downloadID);
-    download->startTransfer(destination);
-}
-#endif
 
 } // namespace WebKit

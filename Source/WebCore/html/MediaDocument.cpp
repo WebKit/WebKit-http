@@ -50,21 +50,21 @@ namespace WebCore {
 using namespace HTMLNames;
 
 // FIXME: Share more code with PluginDocumentParser.
-class MediaDocumentParser : public RawDataDocumentParser {
+class MediaDocumentParser FINAL : public RawDataDocumentParser {
 public:
-    static PassRefPtr<MediaDocumentParser> create(MediaDocument* document)
+    static PassRefPtr<MediaDocumentParser> create(MediaDocument& document)
     {
         return adoptRef(new MediaDocumentParser(document));
     }
     
 private:
-    MediaDocumentParser(Document* document)
+    MediaDocumentParser(Document& document)
         : RawDataDocumentParser(document)
         , m_mediaElement(0)
     {
     }
 
-    virtual void appendBytes(DocumentWriter*, const char*, size_t);
+    virtual void appendBytes(DocumentWriter&, const char*, size_t);
 
     void createDocumentStructure();
 
@@ -109,7 +109,7 @@ void MediaDocumentParser::createDocumentStructure()
     frame->loader().activeDocumentLoader()->setMainResourceDataBufferingPolicy(DoNotBufferData);
 }
 
-void MediaDocumentParser::appendBytes(DocumentWriter*, const char*, size_t)
+void MediaDocumentParser::appendBytes(DocumentWriter&, const char*, size_t)
 {
     if (m_mediaElement)
         return;
@@ -133,17 +133,15 @@ MediaDocument::~MediaDocument()
 
 PassRefPtr<DocumentParser> MediaDocument::createParser()
 {
-    return MediaDocumentParser::create(this);
+    return MediaDocumentParser::create(*this);
 }
 
-static inline HTMLVideoElement* descendentVideoElement(Node* node)
+static inline HTMLVideoElement* descendentVideoElement(ContainerNode& node)
 {
-    ASSERT(node);
+    if (isHTMLVideoElement(node))
+        return toHTMLVideoElement(&node);
 
-    if (node->hasTagName(videoTag))
-        return toHTMLVideoElement(node);
-
-    RefPtr<NodeList> nodeList = node->getElementsByTagNameNS(videoTag.namespaceURI(), videoTag.localName());
+    RefPtr<NodeList> nodeList = node.getElementsByTagNameNS(videoTag.namespaceURI(), videoTag.localName());
    
     if (nodeList.get()->length() > 0)
         return toHTMLVideoElement(nodeList.get()->item(0));
@@ -181,8 +179,11 @@ void MediaDocument::defaultEventHandler(Event* event)
         }
     }
 
+    if (!targetNode->isContainerNode())
+        return;
+    ContainerNode& targetContainer = toContainerNode(*targetNode);
     if (event->type() == eventNames().keydownEvent && event->isKeyboardEvent()) {
-        HTMLVideoElement* video = descendentVideoElement(targetNode);
+        HTMLVideoElement* video = descendentVideoElement(targetContainer);
         if (!video)
             return;
 
@@ -218,7 +219,7 @@ void MediaDocument::replaceMediaElementTimerFired(Timer<MediaDocument>*)
     htmlBody->setAttribute(marginwidthAttr, "0");
     htmlBody->setAttribute(marginheightAttr, "0");
 
-    if (HTMLVideoElement* videoElement = descendentVideoElement(htmlBody)) {
+    if (HTMLVideoElement* videoElement = descendentVideoElement(*htmlBody)) {
         RefPtr<Element> element = Document::createElement(embedTag, false);
         HTMLEmbedElement* embedElement = static_cast<HTMLEmbedElement*>(element.get());
 
@@ -230,7 +231,7 @@ void MediaDocument::replaceMediaElementTimerFired(Timer<MediaDocument>*)
         DocumentLoader* documentLoader = loader();
         ASSERT(documentLoader);
         if (documentLoader)
-            embedElement->setAttribute(typeAttr, documentLoader->writer()->mimeType());
+            embedElement->setAttribute(typeAttr, documentLoader->writer().mimeType());
 
         videoElement->parentNode()->replaceChild(embedElement, videoElement, IGNORE_EXCEPTION);
     }

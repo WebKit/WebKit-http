@@ -87,7 +87,7 @@ void ScrollingStateNode::appendChild(PassOwnPtr<ScrollingStateNode> childNode)
     childNode->setParent(this);
 
     if (!m_children)
-        m_children = adoptPtr(new Vector<OwnPtr<ScrollingStateNode> >);
+        m_children = adoptPtr(new Vector<OwnPtr<ScrollingStateNode>>);
 
     m_children->append(childNode);
 }
@@ -124,12 +124,6 @@ void ScrollingStateNode::willBeRemovedFromStateTree()
     size_t size = m_children->size();
     for (size_t i = 0; i < size; ++i)
         m_children->at(i)->willBeRemovedFromStateTree();
-}
-
-void ScrollingStateNode::writeIndent(TextStream& ts, int indent)
-{
-    for (int i = 0; i != indent; ++i)
-        ts << "  ";
 }
 
 void ScrollingStateNode::dump(TextStream& ts, int indent) const

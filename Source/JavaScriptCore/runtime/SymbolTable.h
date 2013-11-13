@@ -343,13 +343,18 @@ struct SymbolTableIndexHashTraits : HashTraits<SymbolTableEntry> {
 
 class SymbolTable {
 public:
-    typedef HashMap<RefPtr<StringImpl>, SymbolTableEntry, IdentifierRepHash, HashTraits<RefPtr<StringImpl> >, SymbolTableIndexHashTraits> Map;
+    typedef HashMap<RefPtr<StringImpl>, SymbolTableEntry, IdentifierRepHash, HashTraits<RefPtr<StringImpl>>, SymbolTableIndexHashTraits> Map;
 
     JS_EXPORT_PRIVATE SymbolTable();
     JS_EXPORT_PRIVATE ~SymbolTable();
     
     // You must hold the lock until after you're done with the iterator.
     Map::iterator find(const ConcurrentJITLocker&, StringImpl* key)
+    {
+        return m_map.find(key);
+    }
+    
+    Map::iterator find(const GCSafeConcurrentJITLocker&, StringImpl* key)
     {
         return m_map.find(key);
     }
@@ -382,6 +387,11 @@ public:
     }
     
     Map::iterator end(const ConcurrentJITLocker&)
+    {
+        return m_map.end();
+    }
+    
+    Map::iterator end(const GCSafeConcurrentJITLocker&)
     {
         return m_map.end();
     }

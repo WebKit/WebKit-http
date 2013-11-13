@@ -33,8 +33,6 @@
 #import <limits>
 #import <wtf/StdLibExtras.h>
 
-using namespace std;
-
 @interface NSURLResponse (WebNSURLResponseDetails)
 - (NSTimeInterval)_calculatedExpiration;
 - (id)_initWithCFURLResponse:(CFURLResponseRef)response;
@@ -45,18 +43,13 @@ using namespace std;
 
 namespace WebCore {
 
-static NSString* const commonHeaderFields[] = {
-    @"Age", @"Cache-Control", @"Content-Type", @"Date", @"Etag", @"Expires", @"Last-Modified", @"Pragma"
-};
-static const int numCommonHeaderFields = sizeof(commonHeaderFields) / sizeof(AtomicString*);
-
 void ResourceResponse::initNSURLResponse() const
 {
     // Work around a mistake in the NSURLResponse class - <rdar://problem/6875219>.
     // The init function takes an NSInteger, even though the accessor returns a long long.
     // For values that won't fit in an NSInteger, pass -1 instead.
     NSInteger expectedContentLength;
-    if (m_expectedContentLength < 0 || m_expectedContentLength > numeric_limits<NSInteger>::max())
+    if (m_expectedContentLength < 0 || m_expectedContentLength > std::numeric_limits<NSInteger>::max())
         expectedContentLength = -1;
     else
         expectedContentLength = static_cast<NSInteger>(m_expectedContentLength);
@@ -96,6 +89,10 @@ ResourceResponse::ResourceResponse(NSURLResponse* nsResponse)
 
 #else
 
+static NSString* const commonHeaderFields[] = {
+    @"Age", @"Cache-Control", @"Content-Type", @"Date", @"Etag", @"Expires", @"Last-Modified", @"Pragma"
+};
+
 NSURLResponse *ResourceResponse::nsURLResponse() const
 {
     if (!m_nsResponse && !m_isNull)
@@ -132,7 +129,7 @@ void ResourceResponse::platformLazyInit(InitLevel initLevel)
 
             NSDictionary *headers = [httpResponse allHeaderFields];
             
-            for (int i = 0; i < numCommonHeaderFields; i++) {
+            for (unsigned i = 0; i < WTF_ARRAY_LENGTH(commonHeaderFields); ++i) {
                 if (NSString* headerValue = [headers objectForKey:commonHeaderFields[i]])
                     m_httpHeaderFields.set([commonHeaderFields[i] UTF8String], headerValue);
             }

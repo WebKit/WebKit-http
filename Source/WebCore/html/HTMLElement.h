@@ -25,8 +25,6 @@
 
 #include "StyledElement.h"
 
-#include "HTMLElementTypeHelpers.h"
-
 namespace WebCore {
 
 class DocumentFragment;
@@ -79,12 +77,12 @@ public:
 
     void click();
 
-    virtual void accessKeyAction(bool sendMouseEvents);
+    virtual void accessKeyAction(bool sendMouseEvents) OVERRIDE;
 
     bool ieForbidsInsertHTML() const;
 
-    virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     HTMLFormElement* form() const { return virtualForm(); }
 
@@ -92,6 +90,7 @@ public:
     TextDirection directionalityIfhasDirAutoAttribute(bool& isAuto) const;
 
     virtual bool isHTMLUnknownElement() const { return false; }
+    virtual bool isTextControlInnerTextElement() const { return false; }
 
     virtual bool isLabelable() const { return false; }
     virtual FormNamedItem* asFormNamedItem() { return 0; }
@@ -99,15 +98,15 @@ public:
 protected:
     HTMLElement(const QualifiedName& tagName, Document&, ConstructionType);
 
-    void addHTMLLengthToStyle(MutableStylePropertySet*, CSSPropertyID, const String& value);
-    void addHTMLColorToStyle(MutableStylePropertySet*, CSSPropertyID, const String& color);
+    void addHTMLLengthToStyle(MutableStylePropertySet&, CSSPropertyID, const String& value);
+    void addHTMLColorToStyle(MutableStylePropertySet&, CSSPropertyID, const String& color);
 
-    void applyAlignmentAttributeToStyle(const AtomicString&, MutableStylePropertySet*);
-    void applyBorderAttributeToStyle(const AtomicString&, MutableStylePropertySet*);
+    void applyAlignmentAttributeToStyle(const AtomicString&, MutableStylePropertySet&);
+    void applyBorderAttributeToStyle(const AtomicString&, MutableStylePropertySet&);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet&) OVERRIDE;
     unsigned parseBorderWidthAttribute(const AtomicString&) const;
 
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
@@ -118,7 +117,7 @@ protected:
 private:
     virtual String nodeName() const OVERRIDE FINAL;
 
-    void mapLanguageAttributeToLocale(const AtomicString&, MutableStylePropertySet*);
+    void mapLanguageAttributeToLocale(const AtomicString&, MutableStylePropertySet&);
 
     virtual HTMLFormElement* virtualForm() const;
 
@@ -139,11 +138,17 @@ inline HTMLElement::HTMLElement(const QualifiedName& tagName, Document& document
     ASSERT(tagName.localName().impl());
 }
 
-inline bool isHTMLElement(const Node& node) { return node.isHTMLElement(); }
-template <> inline bool isElementOfType<HTMLElement>(const Element* element) { return element->isHTMLElement(); }
+template <typename Type> bool isElementOfType(const HTMLElement&);
 
-ELEMENT_TYPE_CASTS(HTMLElement)
+void isHTMLElement(const HTMLElement&); // Catch unnecessary runtime check of type known at compile time.
+inline bool isHTMLElement(const Node& node) { return node.isHTMLElement(); }
+template <> inline bool isElementOfType<const HTMLElement>(const HTMLElement&) { return true; }
+template <> inline bool isElementOfType<const HTMLElement>(const Element& element) { return element.isHTMLElement(); }
+
+NODE_TYPE_CASTS(HTMLElement)
 
 } // namespace WebCore
+
+#include "HTMLElementTypeHelpers.h"
 
 #endif // HTMLElement_h

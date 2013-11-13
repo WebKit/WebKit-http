@@ -46,7 +46,7 @@ private:
 
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
     virtual void svgAttributeChanged(const QualifiedName&);
@@ -87,7 +87,7 @@ private:
     Timer<SVGElement> m_svgLoadEventTimer;
 };
 
-ELEMENT_TYPE_CASTS(SVGScriptElement)
+NODE_TYPE_CASTS(SVGScriptElement)
 
 } // namespace WebCore
 

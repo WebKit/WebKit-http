@@ -72,7 +72,6 @@ webkit.org/b/63706 editing/selection/4895428-1.html [ Failure ]
 webkit.org/b/63706 editing/selection/4895428-4.html [ Failure ]
 webkit.org/b/63706 editing/selection/contains-boundaries.html [ Failure ]
 webkit.org/b/63706 editing/selection/drag-text-delay.html [ Failure ]
-webkit.org/b/63706 editing/undo/undo-smart-delete-word.html [ Failure ]
 webkit.org/b/63706 fast/block/float/float-in-float-hit-testing.html [ Failure ]
 webkit.org/b/63706 fast/events/bogus-dropEffect-effectAllowed.html [ Failure ]
 webkit.org/b/63706 fast/events/content-changed-during-drop.html [ Failure ]
@@ -113,48 +112,20 @@ webkit.org/b/39485 fast/speech/speech-input-result-list-not-enough-arguments.htm
 webkit.org/b/39485 fast/speech/speech-input-scripting.html [ Skip ]
 
 # WebKit2 needs layoutTestController.setEditingBehaviour
-Bug(GTK) editing/selection/directionality-after-undo-replace.html [ Failure ]
 Bug(GTK) editing/selection/5354455-1.html [ Failure ]
 Bug(GTK) editing/selection/extend-after-mouse-selection.html [ Failure ]
 
 # WebKit2 needs textInputController.selectedRange
 Bug(GTK) editing/selection/mixed-editability-10.html [ Failure ]
 
-# Implement PageClientImpl::registerEditCommand and handling commands functions
-Bug(GTK) editing/deleting/delete-by-word-002.html [ Failure ]
-Bug(GTK) editing/deleting/delete-and-undo.html [ Failure ]
-Bug(GTK) editing/undo/undo-delete.html [ Failure ]
-Bug(GTK) editing/undo/undo-forward-delete.html [ Failure ]
-Bug(GTK) editing/undo/undo-combined-delete-boundary.html [ Failure ]
-Bug(GTK) editing/undo/undo-forward-delete-boundary.html [ Failure ]
-Bug(GTK) editing/undo/undo-delete-boundary.html [ Failure ]
-Bug(GTK) editing/undo/undo-combined-delete.html [ Failure ]
-Bug(GTK) editing/undo/undo-typing-001.html [ Failure ]
-Bug(GTK) editing/undo/4063751.html [ Failure ]
-Bug(GTK) editing/undo/redo-typing-001.html [ Failure ]
-Bug(GTK) editing/execCommand/format-block-multiple-paragraphs-in-pre.html [ Failure ]
-Bug(GTK) editing/inserting/redo.html [ Failure ]
-Bug(GTK) editing/pasteboard/undoable-fragment-removes.html [ Failure ]
-Bug(GTK) editing/style/stylewithcss-without-selection.html [ Failure ]
-Bug(GTK) editing/undo/5378473.html [ Failure ]
-Bug(GTK) editing/undo/redo-split-text-node.html [ Failure ]
-Bug(GTK) editing/undo/redo-split-text-with-removal.html [ Failure ]
-Bug(GTK) editing/undo/redo-style.html [ Failure ]
-Bug(GTK) editing/undo/remove-css-property-and-remove-style.html [ Failure ]
-Bug(GTK) editing/undo/replace-by-span-then-remove.html [ Failure ]
-Bug(GTK) editing/undo/undo-after-setting-value.html [ Failure ]
-Bug(GTK) editing/undo/undo-indent.html [ Failure ]
-Bug(GTK) editing/undo/undo-misspellings.html [ Failure ]
-Bug(GTK) fast/forms/plaintext-mode-1.html [ Failure ]
-
 # Implement testRunner.setAsynchronousSpellCheckingEnabled
 # http://webkit.org/b/81042
-webkit.org/b/81042 editing/spelling/spellcheck-paste.html [ Failure ]
+webkit.org/b/81042 editing/spelling/spellcheck-paste.html [ Timeout Failure ]
 webkit.org/b/81042 editing/spelling/spellcheck-paste-disabled.html [ Failure ]
 
 # Implement testRunner.numberOfPendingGeolocationPermissionRequests()
 # http://webkit.org/b/93977
-webkit.org/b/93977 fast/dom/Geolocation/page-reload-cancel-permission-requests.html [ Failure ]
+webkit.org/b/93977 fast/dom/Geolocation/page-reload-cancel-permission-requests.html [ Timeout ]
 
 # Fails because MutationObservers are not notified at end-of-task.
 webkit.org/b/78290 fast/dom/MutationObserver/end-of-task-delivery.html [ Failure Timeout ]
@@ -169,7 +140,6 @@ webkit.org/b/93982 storage/domstorage/storage-close-database-on-idle.html [ Time
 
 # WebKitTestRunner needs a more-complete implementation of eventSender
 # https://bugs.webkit.org/show_bug.cgi?id=42194
-webkit.org/b/42194 editing/undo/undo-smart-delete-reversed-selection.html [ Failure ]
 webkit.org/b/42194 fast/dom/vertical-scrollbar-in-rtl.html [ Failure ]
 webkit.org/b/42194 fast/events/5056619.html [ Failure ]
 webkit.org/b/42194 http/tests/security/drag-drop-same-unique-origin.html [ Failure ]
@@ -186,6 +156,8 @@ Bug(GTK) editing/spelling/spellcheck-sequencenum.html [ Skip ]
 Bug(GTK) editing/spelling/spelling-marker-description.html [ Skip ]
 
 # Spellcheck tests don't seem to work.
+Bug(GTK) editing/spelling/context-menu-suggestions-multiword-selection.html [ Skip ]
+Bug(GTK) editing/spelling/context-menu-suggestions-subword-selection.html [ Skip ]
 Bug(GTK) editing/spelling/spelling-backspace-between-lines.html [ Skip ]
 Bug(GTK) editing/spelling/design-mode-spellcheck-off.html [ Skip ]
 Bug(GTK) editing/spelling/spellcheck-attribute.html [ Skip ]
@@ -196,9 +168,7 @@ Bug(GTK) editing/spelling/spelling-exactly-selected-multiple-words.html [ Skip ]
 Bug(GTK) editing/spelling/spelling-exactly-selected-word.html [ Skip ]
 Bug(GTK) editing/spelling/spelling-hasspellingmarker.html [ Skip ]
 Bug(GTK) editing/spelling/spelling-linebreak.html [ Skip ]
-Bug(GTK) editing/spelling/spelling-multiword-selection.html [ Skip ]
 Bug(GTK) editing/spelling/spelling-should-select-multiple-words.html [ Skip ]
-Bug(GTK) editing/spelling/spelling-subword-selection.html [ Skip ]
 Bug(GTK) editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
 Bug(GTK) editing/spelling/spelling-with-whitespace-selection.html [ Skip ]
 Bug(GTK) editing/spelling/grammar.html [ Skip ]
@@ -216,6 +186,17 @@ webkit.org/b/85463 editing/inserting/smart-link-when-caret-is-moved-before-URL.h
 webkit.org/b/120401 fast/events [ Skip ]
 webkit.org/b/120401 editing/selection [ Skip ]
 
+# Several regions/selection tests are failing as ClickCounter is not reset between test runs
+webkit.org/b/120401 fast/regions/selection/selecting-text-ignoring-region-horiz-bt.html [ ImageOnlyFailure ]
+webkit.org/b/120401 fast/regions/selection/selecting-text-ignoring-region-vert-lr.html [ ImageOnlyFailure ]
+webkit.org/b/120401 fast/regions/selection/selecting-text-ignoring-region-vert-rl.html [ ImageOnlyFailure ]
+webkit.org/b/120401 fast/regions/selection/selecting-text-ignoring-region.html [ ImageOnlyFailure ]
+webkit.org/b/120401 fast/regions/selection/selecting-text-in-2-regions-horiz-bt.html [ ImageOnlyFailure ]
+webkit.org/b/120401 fast/regions/selection/selecting-text-in-2-regions-vert-lr.html [ ImageOnlyFailure ]
+webkit.org/b/120401 fast/regions/selection/selecting-text-in-2-regions-vert-rl.html [ ImageOnlyFailure ]
+webkit.org/b/120401 fast/regions/selection/selecting-text-in-2-regions.html [ ImageOnlyFailure ]
+webkit.org/b/120401 fast/regions/selection/selection-direction.html [ ImageOnlyFailure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -224,9 +205,7 @@ webkit.org/b/120401 editing/selection [ Skip ]
 # Crashing tests
 #////////////////////////////////////////////////////////////////////////////////////////
 
-Bug(GTK) plugins/document-open.html [ Crash ]
-
-webkit.org/b/116974 accessibility/title-ui-element-correctness.html [ Crash ]
+Bug(GTK) plugins/document-open.html [ Crash Timeout ]
 
 # Fix for https://bugs.webkit.org/show_bug.cgi?id=97192 introduces this regression
 webkit.org/b/102776 media/track/track-cue-container-rendering-position.html [ Crash ]
@@ -329,6 +308,8 @@ Bug(GTK) media/W3C/audio/networkState/networkState_during_loadstart.html [ Failu
 # Tests timing out
 #////////////////////////////////////////////////////////////////////////////////////////
 
+Bug(GTK) fast/dom/Window/window-postmessage-clone.html [ Timeout ]
+
 Bug(GTK) plugins/evaluate-js-after-removing-plugin-element.html [ Timeout ]
 Bug(GTK) plugins/reloadplugins-and-pages.html [ Timeout ]
 
@@ -361,7 +342,6 @@ webkit.org/b/106338 accessibility/aria-hidden-updates-alldescendants.html [ Fail
 webkit.org/b/106340 accessibility/img-fallsback-to-title.html [ Failure ]
 webkit.org/b/116970 accessibility/multiselect-list-reports-active-option.html [ Failure ]
 webkit.org/b/116971 accessibility/poorly-formed-aria-table.html [ Failure ]
-webkit.org/b/106346 accessibility/svg-remote-element.html [ Failure ]
 
 # svg/ failures
 webkit.org/b/42457 svg/custom/embedded-svg-allowed-in-dashboard.xml [ Failure ]
@@ -396,6 +376,11 @@ webkit.org/b/93981 media/video-display-toggle.html [ Failure ]
 webkit.org/b/93981 media/video-no-audio.html [ Failure ]
 webkit.org/b/93981 media/video-volume-slider.html [ Failure ]
 
+# Animations behave weirdly if AC is enabled.
+webkit.org/b/93984 animations/combo-transform-translate+scale.html [ Failure ]
+webkit.org/b/93984 animations/play-state-suspend.html [ Failure ]
+webkit.org/b/93984 animations/suspend-resume-animation.html [ Failure ]
+
 # Assertion failure in replaySavedEvents
 # http://webkit.org/b/21796
 webkit.org/b/21796 fast/forms/select-multiple-elements-with-mouse-drag-with-options-less-than-size.html [ Failure ]
@@ -409,9 +394,12 @@ webkit.org/b/95935 http/tests/security/cross-origin-plugin.html [ Failure ]
 webkit.org/b/39160 security/block-test-no-port.html [ Failure ]
 
 webkit.org/b/97655 fast/css/style-scoped [ Failure ]
-webkit.org/b/97655 fast/regions/style-scoped-in-flow-override-container-style.html [ ImageOnlyFailure ]
-webkit.org/b/97655 fast/regions/style-scoped-in-flow-override-region-styling.html [ ImageOnlyFailure ]
-webkit.org/b/97655 fast/regions/style-scoped-in-flow.html [ ImageOnlyFailure ]
+webkit.org/b/97655 fast/regions/style-scoped/style-scoped-in-flow-override-container-style.html [ ImageOnlyFailure ]
+webkit.org/b/97655 fast/regions/style-scoped/style-scoped-in-flow-override-region-styling.html [ ImageOnlyFailure ]
+webkit.org/b/97655 fast/regions/style-scoped/style-scoped-in-flow.html [ ImageOnlyFailure ]
+
+# Apparently our WebkitTestRunner is disregarding window features? We open the window sized 800x600.
+webkit.org/b/122535 fast/dom/Window/open-window-min-size.html [ Failure ]
 
 # Unexplained failures
 Bug(GTK) editing/deleting/delete-ligature-003.html [ Failure ]
@@ -422,10 +410,8 @@ Bug(GTK) editing/selection/5136696.html [ Failure ]
 Bug(GTK) editing/selection/inactive-selection.html [ Failure ]
 Bug(GTK) editing/selection/programmatic-selection-on-mac-is-directionless.html [ Failure ]
 Bug(GTK) editing/spelling/spelling-insert-html.html [ Failure ]
-Bug(GTK) editing/undo/undo-deleteWord.html [ Failure ]
 Bug(GTK) fast/css/bidi-override-in-anonymous-block.html [ Failure ]
 Bug(GTK) fast/css/disabled-author-styles.html [ Failure ]
-Bug(GTK) fast/css/relative-positioned-block-crash.html [ Failure ]
 Bug(GTK) fast/dom/rtl-scroll-to-leftmost-and-resize.html [ Failure ]
 Bug(GTK) fast/dom/Window/window-postmessage-clone.html [ Failure ]
 Bug(GTK) fast/dynamic/window-resize-scrollbars-test.html [ Failure ]
@@ -435,7 +421,6 @@ Bug(GTK) fast/events/keydown-numpad-keys.html [ Failure ]
 Bug(GTK) fast/events/remove-target-with-shadow-in-drag.html [ Failure ]
 Bug(GTK) fast/events/scroll-in-scaled-page-with-overflow-hidden.html [ Failure ]
 Bug(GTK) fast/events/selectionchange-iframe.html [ Failure ]
-Bug(GTK) fast/forms/input-paste-undo.html [ Failure ]
 Bug(GTK) fast/forms/listbox-deselect-scroll.html [ Failure ]
 Bug(GTK) fast/forms/listbox-selection.html [ Failure ]
 Bug(GTK) fast/forms/listbox-typeahead-cyrillic.html [ Failure ]
@@ -443,7 +428,6 @@ Bug(GTK) fast/forms/listbox-typeahead-greek.html [ Failure ]
 Bug(GTK) fast/forms/mailto/formenctype-attribute-button-html.html [ Failure ]
 Bug(GTK) fast/forms/mailto/formenctype-attribute-input-html.html [ Failure ]
 Bug(GTK) fast/forms/select-type-ahead-non-latin.html [ Failure ]
-Bug(GTK) fast/loader/submit-form-while-parsing-2.html [ Failure ]
 Bug(GTK) fast/repaint/fixed-move-after-keyboard-scroll.html [ Failure ]
 Bug(GTK) fast/ruby/nested-ruby.html [ Failure ]
 Bug(GTK) fast/ruby/ruby-beforeafter.html [ Failure ]
@@ -463,7 +447,6 @@ Bug(GTK) fast/ruby/ruby-runs-spans.html [ Failure ]
 Bug(GTK) fast/ruby/ruby-simple.html [ Failure ]
 Bug(GTK) fast/ruby/ruby-simple-rp.html [ Failure ]
 Bug(GTK) fast/ruby/ruby-trailing.html [ Failure ]
-Bug(GTK) fast/workers/shared-worker-load-error.html [ Failure ]
 Bug(GTK) fast/writing-mode/Kusa-Makura-background-canvas.html [ Failure ]
 Bug(GTK) http/tests/misc/object-embedding-svg-delayed-size-negotiation-2.htm [ Failure ]
 Bug(GTK) http/tests/security/cross-origin-xsl-BLOCKED.html [ Failure ]
@@ -489,11 +472,6 @@ Bug(GTK) editing/spelling/context-menu-suggestions.html [ Failure ]
 
 # An oncontextmenu attribute is not called.
 Bug(GTK) editing/spelling/spellcheck-input-search-crash.html [ Failure ]
-Bug(GTK) fast/events/contextmenu-scrolled-page-with-frame.html [ Failure ]
-
-Bug(GTK) animations/combo-transform-translate+scale.html [ Failure ]
-Bug(GTK) animations/play-state-suspend.html [ Failure ]
-Bug(GTK) animations/suspend-resume-animation.html [ Failure ]
 
 webkit.org/b/118416 [ Release ] storage/websql/sql-error-codes.html [ Failure ]
 
@@ -520,8 +498,6 @@ Bug(GTK) fast/backgrounds/background-position-parsing.html [ Failure ]
 Bug(GTK) fast/css/image-rendering.html [ Failure ]
 
 Bug(GTK) fast/css/sticky/sticky-top-zoomed.html [ ImageOnlyFailure ]
-
-Bug(GTK) fast/regions/selection-direction.html [ ImageOnlyFailure ]
 
 Bug(GTK) fast/text/descent-clip-in-scaled-page.html [ ImageOnlyFailure ]
 

@@ -20,7 +20,7 @@
 
 [
     GenerateIsReachable=ImplFrame,
-    InterfaceName=MimeTypeArray
+    InterfaceName=MimeTypeArray,
 ] interface DOMMimeTypeArray {
     readonly attribute unsigned long length;
     getter DOMMimeType item([Default=Undefined] optional unsigned long index);

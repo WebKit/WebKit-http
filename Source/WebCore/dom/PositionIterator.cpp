@@ -27,8 +27,9 @@
 #include "PositionIterator.h"
 
 #include "HTMLNames.h"
-#include "Node.h"
 #include "RenderBlock.h"
+#include "RenderText.h"
+#include "TextIterator.h"
 #include "htmlediting.h"
 
 namespace WebCore {
@@ -147,14 +148,14 @@ bool PositionIterator::isCandidate() const
     if (!renderer)
         return false;
     
-    if (renderer->style()->visibility() != VISIBLE)
+    if (renderer->style().visibility() != VISIBLE)
         return false;
 
     if (renderer->isBR())
         return !m_offsetInAnchor && !Position::nodeIsUserSelectNone(m_anchorNode->parentNode());
 
     if (renderer->isText())
-        return !Position::nodeIsUserSelectNone(m_anchorNode) && Position(*this).inRenderedText();
+        return !Position::nodeIsUserSelectNone(m_anchorNode) && toRenderText(renderer)->containsCaretOffset(m_offsetInAnchor);
 
     if (isTableElement(m_anchorNode) || editingIgnoresContent(m_anchorNode))
         return (atStartOfNode() || atEndOfNode()) && !Position::nodeIsUserSelectNone(m_anchorNode->parentNode());

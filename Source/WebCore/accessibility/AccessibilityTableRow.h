@@ -41,7 +41,7 @@ public:
     static PassRefPtr<AccessibilityTableRow> create(RenderObject*);
     virtual ~AccessibilityTableRow();
     
-    virtual bool isTableRow() const;
+    virtual bool isTableRow() const OVERRIDE;
 
     // retrieves the "row" header (a th tag in the rightmost column)
     virtual AccessibilityObject* headerObject();
@@ -55,14 +55,16 @@ public:
     void appendChild(AccessibilityObject*);
     
 protected:
-    virtual AccessibilityRole determineAccessibilityRole();
+    virtual AccessibilityRole determineAccessibilityRole() OVERRIDE;
 
 private:
     int m_rowIndex;
     
-    virtual AccessibilityObject* observableObject() const;
-    virtual bool computeAccessibilityIsIgnored() const;
+    virtual AccessibilityObject* observableObject() const OVERRIDE;
+    virtual bool computeAccessibilityIsIgnored() const OVERRIDE;
 }; 
+
+ACCESSIBILITY_OBJECT_TYPE_CASTS(AccessibilityTableRow, isTableRow())
    
 } // namespace WebCore 
 

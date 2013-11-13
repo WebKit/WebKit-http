@@ -32,9 +32,10 @@
     Conditional=MEDIA_SOURCE,
     ActiveDOMObject,
     EventTarget,
+    JSGenerateToJSObject,
     JSGenerateToNativeObject,
     Constructor,
-    ConstructorCallWith=ScriptExecutionContext
+    ConstructorCallWith=ScriptExecutionContext,
 ] interface MediaSource : EventTarget {
     // All the source buffers created by this object.
     readonly attribute SourceBufferList sourceBuffers;

@@ -74,7 +74,9 @@ public:
     bool isCanvasValue() const { return m_classType == CanvasClass; }
     bool isCrossfadeValue() const { return m_classType == CrossfadeClass; }
     bool isCursorImageValue() const { return m_classType == CursorImageClass; }
+    bool isFunctionValue() const { return m_classType == FunctionClass; }
     bool isFontFeatureValue() const { return m_classType == FontFeatureClass; }
+    bool isFontFaceSrcValue() const { return m_classType == FontFaceSrcClass; }
     bool isFontValue() const { return m_classType == FontClass; }
     bool isImageGeneratorValue() const { return m_classType >= CanvasClass && m_classType <= RadialGradientClass; }
     bool isGradientValue() const { return m_classType >= LinearGradientClass && m_classType <= RadialGradientClass; }
@@ -107,12 +109,14 @@ public:
 #if ENABLE(CSS_VARIABLES)
     bool isVariableValue() const { return m_classType == VariableClass; }
 #endif
+    bool isGridTemplateValue() const { return m_classType == GridTemplateClass; }
 #if ENABLE(SVG)
     bool isSVGColor() const { return m_classType == SVGColorClass || m_classType == SVGPaintClass; }
     bool isSVGPaint() const { return m_classType == SVGPaintClass; }
     bool isWebKitCSSSVGDocumentValue() const { return m_classType == WebKitCSSSVGDocumentClass; }
 #endif
-    
+    bool isUnicodeRangeValue() const { return m_classType == UnicodeRangeClass; }
+
     bool isCSSOMSafe() const { return m_isCSSOMSafe; }
     bool isSubtypeExposedToCSSOM() const
     { 
@@ -176,6 +180,7 @@ protected:
 #if ENABLE(CSS_VARIABLES)
         VariableClass,
 #endif
+        GridTemplateClass,
 #if ENABLE(SVG)
         SVGColorClass,
         SVGPaintClass,
@@ -245,7 +250,7 @@ private:
 };
 
 template<typename CSSValueType>
-inline bool compareCSSValueVector(const Vector<RefPtr<CSSValueType> >& firstVector, const Vector<RefPtr<CSSValueType> >& secondVector)
+inline bool compareCSSValueVector(const Vector<RefPtr<CSSValueType>>& firstVector, const Vector<RefPtr<CSSValueType>>& secondVector)
 {
     size_t size = firstVector.size();
     if (size != secondVector.size())
@@ -267,19 +272,14 @@ inline bool compareCSSValuePtr(const RefPtr<CSSValueType>& first, const RefPtr<C
     return first ? second && first->equals(*second) : !second;
 }
 
-#define CSS_VALUE_TYPE_CASTS(ValueTypeName) \
-inline const CSS##ValueTypeName* toCSS##ValueTypeName(const CSSValue* value) \
-{ \
-    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->is##ValueTypeName()); \
-    return static_cast<const CSS##ValueTypeName*>(value); \
-} \
-inline CSS##ValueTypeName* toCSS##ValueTypeName(CSSValue* value) \
-{ \
-    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->is##ValueTypeName()); \
-    return static_cast<CSS##ValueTypeName*>(value); \
-} \
-void toCSS##ValueTypeName(const CSS##ValueTypeName*); \
-void toCSS##ValueTypeName(const CSS##ValueTypeName&);
+template<typename CSSValueType>
+inline bool compareCSSValue(const Ref<CSSValueType>& first, const Ref<CSSValueType>& second)
+{
+    return first.get().equals(second.get());
+}
+
+#define CSS_VALUE_TYPE_CASTS(ToValueTypeName, predicate) \
+    TYPE_CASTS_BASE(ToValueTypeName, CSSValue, value, value->predicate, value.predicate)
 
 } // namespace WebCore
 

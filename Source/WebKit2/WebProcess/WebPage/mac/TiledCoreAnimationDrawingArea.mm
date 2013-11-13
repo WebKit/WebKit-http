@@ -64,7 +64,7 @@ TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage* webPage, c
     : DrawingArea(DrawingAreaTypeTiledCoreAnimation, webPage)
     , m_layerTreeStateIsFrozen(false)
     , m_layerFlushScheduler(this)
-    , m_isPaintingSuspended(!parameters.isVisible)
+    , m_isPaintingSuspended(!(parameters.viewState & ViewState::IsVisible))
     , m_clipsToExposedRect(false)
     , m_updateIntrinsicContentSizeTimer(this, &TiledCoreAnimationDrawingArea::updateIntrinsicContentSizeTimerFired)
 {
@@ -251,9 +251,8 @@ void TiledCoreAnimationDrawingArea::updatePreferences(const WebPreferencesStore&
         it->value->setShowRepaintCounter(settings.showRepaintCounter());
     }
 
-    // Soon we want pages with fixed positioned elements to be able to be scrolled by the ScrollingCoordinator.
-    // As a part of that work, we have to composite fixed position elements, and we have to allow those
-    // elements to create a stacking context.
+    // Fixed position elements need to be composited and create stacking contexts
+    // in order to be scrolled by the ScrollingCoordinator.
     settings.setAcceleratedCompositingForFixedPositionEnabled(true);
     settings.setFixedPositionCreatesStackingContext(true);
 
@@ -388,8 +387,6 @@ void TiledCoreAnimationDrawingArea::suspendPainting()
 
     [m_rootLayer.get() setValue:(id)kCFBooleanTrue forKey:@"NSCAViewRenderPaused"];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidPauseNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_rootLayer.get() forKey:@"layer"]];
-
-    m_webPage->corePage()->suspendScriptedAnimations();
 }
 
 void TiledCoreAnimationDrawingArea::resumePainting()
@@ -403,16 +400,6 @@ void TiledCoreAnimationDrawingArea::resumePainting()
 
     [m_rootLayer.get() setValue:(id)kCFBooleanFalse forKey:@"NSCAViewRenderPaused"];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidResumeNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_rootLayer.get() forKey:@"layer"]];
-
-    if (m_webPage->windowIsVisible()) {
-        m_webPage->corePage()->resumeScriptedAnimations();
-
-        FrameView* frameView = m_webPage->corePage()->mainFrame().view();
-        if (!frameView)
-            return;
-
-        frameView->resumeAnimatingImages();
-    }
 }
 
 void TiledCoreAnimationDrawingArea::setExposedRect(const FloatRect& exposedRect)
@@ -684,9 +671,11 @@ TiledBacking* TiledCoreAnimationDrawingArea::mainFrameTiledBacking() const
 void TiledCoreAnimationDrawingArea::updateDebugInfoLayer(bool showLayer)
 {
     if (showLayer) {
-        if (TiledBacking* tiledBacking = mainFrameTiledBacking())
-            m_debugInfoLayer = tiledBacking->tiledScrollingIndicatorLayer();
-        
+        if (TiledBacking* tiledBacking = mainFrameTiledBacking()) {
+            if (PlatformCALayer* indicatorLayer = tiledBacking->tiledScrollingIndicatorLayer())
+                m_debugInfoLayer = indicatorLayer->platformLayer();
+        }
+
         if (m_debugInfoLayer) {
 #ifndef NDEBUG
             [m_debugInfoLayer.get() setName:@"Debug Info"];

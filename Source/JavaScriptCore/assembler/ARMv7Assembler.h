@@ -45,11 +45,11 @@ namespace ARMRegisters {
         r4,
         r5,
         r6,
-        r7, wr = r7,   // thumb work register
+        r7, fp = r7,   // frame pointer
         r8,
         r9, sb = r9,   // static base
         r10, sl = r10, // stack limit
-        r11, fp = r11, // frame pointer
+        r11,
         r12, ip = r12,
         r13, sp = r13,
         r14, lr = r14,
@@ -489,6 +489,13 @@ public:
     typedef ARMRegisters::FPSingleRegisterID FPSingleRegisterID;
     typedef ARMRegisters::FPDoubleRegisterID FPDoubleRegisterID;
     typedef ARMRegisters::FPQuadRegisterID FPQuadRegisterID;
+    typedef FPDoubleRegisterID FPRegisterID;
+    
+    static RegisterID firstRegister() { return ARMRegisters::r0; }
+    static RegisterID lastRegister() { return ARMRegisters::r13; }
+    
+    static FPRegisterID firstFPRegister() { return ARMRegisters::d0; }
+    static FPRegisterID lastFPRegister() { return ARMRegisters::d31; }
 
     // (HS, LO, HI, LS) -> (AE, B, A, BE)
     // (VS, VC) -> (O, NO)

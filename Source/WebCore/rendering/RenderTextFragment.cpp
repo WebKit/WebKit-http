@@ -24,43 +24,38 @@
 #include "RenderTextFragment.h"
 
 #include "RenderBlock.h"
+#include "RenderIterator.h"
 #include "Text.h"
 
 namespace WebCore {
 
-RenderTextFragment::RenderTextFragment(Text* textNode, const String& text, int startOffset, int length)
+RenderTextFragment::RenderTextFragment(Text& textNode, const String& text, int startOffset, int length)
     : RenderText(textNode, text.substring(startOffset, length))
     , m_start(startOffset)
     , m_end(length)
-    , m_firstLetter(0)
+    , m_firstLetter(nullptr)
 {
 }
 
-RenderTextFragment::RenderTextFragment(Text* textNode, const String& text)
+RenderTextFragment::RenderTextFragment(Document& document, const String& text, int startOffset, int length)
+    : RenderText(document, text.substring(startOffset, length))
+    , m_start(startOffset)
+    , m_end(length)
+    , m_firstLetter(nullptr)
+{
+}
+
+RenderTextFragment::RenderTextFragment(Document& textNode, const String& text)
     : RenderText(textNode, text)
     , m_start(0)
     , m_end(text.length())
     , m_contentString(text)
-    , m_firstLetter(0)
+    , m_firstLetter(nullptr)
 {
 }
 
 RenderTextFragment::~RenderTextFragment()
 {
-}
-
-RenderTextFragment* RenderTextFragment::createAnonymous(Document& document, const String& text, int startOffset, int length)
-{
-    RenderTextFragment* fragment = new (*document.renderArena()) RenderTextFragment(nullptr, text, startOffset, length);
-    fragment->setDocumentForAnonymous(document);
-    return fragment;
-}
-
-RenderTextFragment* RenderTextFragment::createAnonymous(Document& document, const String& text)
-{
-    RenderTextFragment* fragment = new (*document.renderArena()) RenderTextFragment(nullptr, text);
-    fragment->setDocumentForAnonymous(document);
-    return fragment;
 }
 
 String RenderTextFragment::originalText() const
@@ -79,7 +74,7 @@ void RenderTextFragment::styleDidChange(StyleDifference diff, const RenderStyle*
     RenderText::styleDidChange(diff, oldStyle);
 
     if (RenderBlock* block = blockForAccompanyingFirstLetter()) {
-        block->style()->removeCachedPseudoStyle(FIRST_LETTER);
+        block->style().removeCachedPseudoStyle(FIRST_LETTER);
         block->updateFirstLetter();
     }
 }
@@ -127,15 +122,16 @@ UChar RenderTextFragment::previousCharacter() const
     return RenderText::previousCharacter();
 }
 
-RenderBlock* RenderTextFragment::blockForAccompanyingFirstLetter() const
+RenderBlock* RenderTextFragment::blockForAccompanyingFirstLetter()
 {
     if (!m_firstLetter)
-        return 0;
-    for (RenderObject* block = m_firstLetter->parent(); block; block = block->parent()) {
-        if (block->style()->hasPseudoStyle(FIRST_LETTER) && block->canHaveChildren() && block->isRenderBlock())
-            return toRenderBlock(block);
+        return nullptr;
+    auto ancestorBlocks = ancestorsOfType<RenderBlock>(*m_firstLetter);
+    for (auto block = ancestorBlocks.begin(), end = ancestorBlocks.end(); block != end; ++block) {
+        if (block->style().hasPseudoStyle(FIRST_LETTER) && block->canHaveChildren())
+            return &*block;
     }
-    return 0;
+    return nullptr;
 }
 
 } // namespace WebCore

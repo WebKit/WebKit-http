@@ -40,6 +40,7 @@ class FloatSize;
 class MemoryCache;
 class RenderElement;
 class RenderObject;
+class SecurityOrigin;
 
 struct Length;
 
@@ -78,6 +79,13 @@ public:
     void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio);
 
     static void resumeAnimatingImagesForLoader(CachedResourceLoader*);
+
+#if ENABLE(DISK_IMAGE_CACHE)
+    virtual bool canUseDiskImageCache() const OVERRIDE;
+    virtual void useDiskImageCache() OVERRIDE;
+#endif
+
+    bool isOriginClean(SecurityOrigin*);
 
 private:
     virtual void load(CachedResourceLoader*, const ResourceLoaderOptions&) OVERRIDE;

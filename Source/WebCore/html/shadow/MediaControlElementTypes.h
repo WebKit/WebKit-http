@@ -74,8 +74,8 @@ enum MediaControlElementType {
     MediaClosedCaptionsTrackList,
 };
 
-HTMLMediaElement* toParentMediaElement(Node*);
-inline HTMLMediaElement* toParentMediaElement(RenderObject* renderer) { return toParentMediaElement(renderer->node()); }
+HTMLMediaElement* parentMediaElement(Node*);
+inline HTMLMediaElement* parentMediaElement(RenderObject& renderer) { return parentMediaElement(renderer.node()); }
 
 MediaControlElementType mediaControlElementType(Node*);
 
@@ -169,7 +169,7 @@ protected:
     virtual bool isForwardButton() const = 0;
 
 private:
-    void setActive(bool /*flag*/ = true, bool /*pause*/ = false) OVERRIDE FINAL;
+    virtual void setActive(bool /*flag*/ = true, bool /*pause*/ = false) OVERRIDE FINAL;
 
     void startTimer();
     void stopTimer();

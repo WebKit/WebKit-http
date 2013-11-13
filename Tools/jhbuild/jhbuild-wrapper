@@ -23,7 +23,7 @@ import shlex
 import subprocess
 import sys
 
-jhbuild_revision = '496974221c3a8ac4fbbc3b0a577c71cac224130d'
+jhbuild_revision = '24a7dd8e2be84026bf3b303321adad371a694b23'
 
 dependencies_path = jhbuildutils.get_dependencies_path()
 installation_prefix = os.path.abspath(os.path.join(dependencies_path, 'Root'))
@@ -75,6 +75,8 @@ def clone_jhbuild():
 
 
 def install_jhbuild():
+    if "GREP_OPTIONS" in os.environ:
+        del os.environ['GREP_OPTIONS']
     process = subprocess.Popen(['bash', './autogen.sh', '--prefix=%s' % installation_prefix], cwd=jhbuild_source_path)
     process.wait()
     if process.returncode != 0:

@@ -58,9 +58,6 @@ class NativeWebKeyboardEvent;
 #if ENABLE(TOUCH_EVENTS)
 class NativeWebTouchEvent;
 #endif
-#if ENABLE(GESTURE_EVENTS)
-class WebGestureEvent;
-#endif
 class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebPopupMenuProxy;
@@ -102,6 +99,9 @@ public:
     // Return whether the view is visible.
     virtual bool isViewVisible() = 0;
 
+    // Return whether the window is visible.
+    virtual bool isWindowVisible() = 0;
+
     // Return whether the view is in a window.
     virtual bool isViewInWindow() = 0;
 
@@ -124,26 +124,20 @@ public:
 #if USE(COORDINATED_GRAPHICS)
     virtual void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&) = 0;
 #endif
-#if PLATFORM(QT)
-    virtual void handleAuthenticationRequiredRequest(const String& hostname, const String& realm, const String& prefilledUsername, String& username, String& password) = 0;
-    virtual void handleCertificateVerificationRequest(const String& hostname, bool& ignoreErrors) = 0;
-    virtual void handleProxyAuthenticationRequiredRequest(const String& hostname, uint16_t port, const String& prefilledUsername, String& username, String& password) = 0;
-    virtual void handleWillSetInputMethodState() = 0;
-#endif // PLATFORM(QT).
 
-#if PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(EFL) || PLATFORM(GTK)
     virtual void updateTextInputState() = 0;
-#endif // PLATFORM(QT) || PLATFORM(EFL) || PLATOFRM(GTK)
+#endif // PLATFORM(EFL) || PLATOFRM(GTK)
 
-#if PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(EFL) || PLATFORM(GTK)
     virtual void handleDownloadRequest(DownloadProxy*) = 0;
-#endif // PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(GTK)
+#endif // PLATFORM(EFL) || PLATFORM(GTK)
 
-#if PLATFORM(QT) || PLATFORM(EFL)
+#if PLATFORM(EFL)
     virtual void didChangeContentsSize(const WebCore::IntSize&) = 0;
 #endif
 
-#if PLATFORM(QT) || PLATFORM(GTK)
+#if PLATFORM(GTK)
     virtual void startDrag(const WebCore::DragData&, PassRefPtr<ShareableBitmap> dragImage) = 0;
 #endif
 
@@ -176,9 +170,6 @@ public:
     virtual WebCore::IntRect windowToScreen(const WebCore::IntRect&) = 0;
     
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled) = 0;
-#if ENABLE(GESTURE_EVENTS)
-    virtual void doneWithGestureEvent(const WebGestureEvent&, bool wasEventHandled) = 0;
-#endif
 #if ENABLE(TOUCH_EVENTS)
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) = 0;
 #endif
@@ -201,7 +192,6 @@ public:
 #if PLATFORM(MAC)
     virtual void pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus) = 0;
     virtual void setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, PluginComplexTextInputState) = 0;
-    virtual CGContextRef containingWindowGraphicsContext() = 0;
     virtual void didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&) = 0;
     virtual void dismissDictionaryLookupPanel() = 0;
     virtual void showCorrectionPanel(WebCore::AlternativeTextType, const WebCore::FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings) = 0;
@@ -224,8 +214,6 @@ public:
 #endif // USE(DICTATION_ALTERNATIVES)
 #endif // USE(APPKIT)
 #endif // PLATFORM(MAC)
-
-    virtual void flashBackingStoreUpdates(const Vector<WebCore::IntRect>& updateRects) = 0;
 };
 
 } // namespace WebKit

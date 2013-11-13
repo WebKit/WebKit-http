@@ -29,7 +29,6 @@
 #include <wtf/Functional.h>
 #include <wtf/HashSet.h>
 #include <wtf/MessageQueue.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Threading.h>
 
@@ -41,7 +40,7 @@ class StorageTask;
 class StorageThread {
     WTF_MAKE_NONCOPYABLE(StorageThread); WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassOwnPtr<StorageThread> create();
+    StorageThread();
     ~StorageThread();
 
     bool start();
@@ -52,8 +51,6 @@ public:
     static void releaseFastMallocFreeMemoryInAllThreads();
 
 private:
-    StorageThread();
-
     // Called on background thread.
     static void threadEntryPointCallback(void*);
     void threadEntryPoint();
@@ -62,7 +59,7 @@ private:
     void performTerminate();
 
     ThreadIdentifier m_threadID;
-    MessageQueue<Function<void ()> > m_queue;
+    MessageQueue<Function<void ()>> m_queue;
 };
 
 } // namespace WebCore

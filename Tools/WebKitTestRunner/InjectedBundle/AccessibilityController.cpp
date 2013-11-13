@@ -64,28 +64,18 @@ JSClassRef AccessibilityController::wrapperClass()
 #if !PLATFORM(GTK) && !PLATFORM(EFL)
 PassRefPtr<AccessibilityUIElement> AccessibilityController::rootElement()
 {
-    // FIXME: Make this work on Windows.
-#if PLATFORM(WIN)
-    return 0;
-#else
     WKBundlePageRef page = InjectedBundle::shared().page()->page();
     void* root = WKAccessibilityRootObject(page);
     
     return AccessibilityUIElement::create(static_cast<PlatformUIElement>(root));    
-#endif
 }
 
 PassRefPtr<AccessibilityUIElement> AccessibilityController::focusedElement()
 {
-    // FIXME: Make this work on Windows.
-#if PLATFORM(WIN)
-    return 0;
-#else    
     WKBundlePageRef page = InjectedBundle::shared().page()->page();
     void* root = WKAccessibilityFocusedObject(page);
     
     return AccessibilityUIElement::create(static_cast<PlatformUIElement>(root));    
-#endif
 }
 #endif
 
@@ -97,18 +87,17 @@ PassRefPtr<AccessibilityUIElement> AccessibilityController::elementAtPoint(int x
 
 // Unsupported methods on various platforms.
 // As they're implemented on other platforms this list should be modified.
-#if !PLATFORM(GTK) && !PLATFORM(MAC) && !PLATFORM(EFL)
+#if (!PLATFORM(GTK) && !PLATFORM(MAC) && !PLATFORM(EFL)) || !HAVE(ACCESSIBILITY)
 bool AccessibilityController::addNotificationListener(JSValueRef) { return false; }
 bool AccessibilityController::removeNotificationListener() { return false; }
-#endif
-
-#if !PLATFORM(MAC) && !PLATFORM(GTK) && !PLATFORM(EFL)
-PassRefPtr<AccessibilityUIElement> AccessibilityController::accessibleElementById(JSStringRef attribute) { return 0; }
-#endif
-
-#if !PLATFORM(GTK) && !PLATFORM(EFL) && !PLATFORM(MAC)
+PassRefPtr<AccessibilityUIElement> AccessibilityController::accessibleElementById(JSStringRef attribute) { return nullptr; }
 void AccessibilityController::logAccessibilityEvents() { }
 void AccessibilityController::resetToConsistentState() { }
+#endif
+
+#if !HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
+PassRefPtr<AccessibilityUIElement> AccessibilityController::rootElement() { return nullptr; }
+PassRefPtr<AccessibilityUIElement> AccessibilityController::focusedElement() { return nullptr; }
 #endif
 
 } // namespace WTR

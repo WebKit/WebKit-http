@@ -32,15 +32,13 @@
 #include "Element.h"
 #include "EventNames.h"
 #include "Frame.h"
-#include "FrameSelection.h"
 #include "NodeTraversal.h"
-#include "VisiblePosition.h"
 #include "htmlediting.h"
 
 namespace WebCore {
 
 EditCommand::EditCommand(Document& document)
-    : m_document(&document)
+    : m_document(document)
     , m_parent(0)
 {
     ASSERT(document.frame());
@@ -49,7 +47,7 @@ EditCommand::EditCommand(Document& document)
 }
 
 EditCommand::EditCommand(Document& document, const VisibleSelection& startingSelection, const VisibleSelection& endingSelection)
-    : m_document(&document)
+    : m_document(document)
     , m_parent(0)
 {
     ASSERT(document.frame());
@@ -61,7 +59,7 @@ EditCommand::~EditCommand()
 {
 }
 
-Frame& EditCommand::frame() const
+Frame& EditCommand::frame()
 {
     ASSERT(document().frame());
     return *document().frame();

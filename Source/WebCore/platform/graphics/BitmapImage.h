@@ -115,7 +115,7 @@ public:
     {
         return adoptRef(new BitmapImage(observer));
     }
-#if PLATFORM(WIN) || (PLATFORM(QT) && OS(WINDOWS))
+#if PLATFORM(WIN)
     static PassRefPtr<BitmapImage> create(HBITMAP);
 #endif
     virtual ~BitmapImage();
@@ -125,7 +125,7 @@ public:
     virtual bool hasSingleSecurityOrigin() const OVERRIDE;
 
     virtual IntSize size() const OVERRIDE;
-    IntSize sizeRespectingOrientation() const;
+    IntSize sizeRespectingOrientation(ImageOrientationDescription = ImageOrientationDescription()) const;
     IntSize currentFrameSize() const;
     virtual bool getHotSpot(IntPoint&) const OVERRIDE;
 
@@ -181,7 +181,7 @@ public:
     bool canAnimate();
 
 private:
-    void updateSize() const;
+    void updateSize(ImageOrientationDescription = ImageOrientationDescription()) const;
 
 protected:
     enum RepetitionCountStatus {
@@ -196,14 +196,11 @@ protected:
 #if PLATFORM(WIN)
     virtual void drawFrameMatchingSourceSize(GraphicsContext*, const FloatRect& dstRect, const IntSize& srcSize, ColorSpace styleColorSpace, CompositeOperator) OVERRIDE;
 #endif
-    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode) OVERRIDE;
-#if USE(CG) || USE(CAIRO) || PLATFORM(BLACKBERRY)
     virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, ImageOrientationDescription) OVERRIDE;
-#endif
 
 #if USE(WINGDI)
     virtual void drawPattern(GraphicsContext*, const FloatRect& srcRect, const AffineTransform& patternTransform,
-        const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator, const FloatRect& destRect) OVERRIDE;
+        const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator, const FloatRect& destRect);
 #endif
 
     size_t currentFrame() const { return m_currentFrame; }
@@ -277,11 +274,13 @@ private:
     ImageSource m_source;
     mutable IntSize m_size; // The size to use for the overall image (will just be the size of the first image).
     mutable IntSize m_sizeRespectingOrientation;
+    mutable unsigned m_imageOrientation : 4; // ImageOrientationEnum
+    mutable unsigned m_shouldRespectImageOrientation : 1; // RespectImageOrientationEnum
 
     size_t m_currentFrame; // The index of the current frame of animation.
     Vector<FrameData, 1> m_frames; // An array of the cached frames of the animation. We have to ref frames to pin them in the cache.
 
-    Timer<BitmapImage>* m_frameTimer;
+    std::unique_ptr<Timer<BitmapImage>> m_frameTimer;
     int m_repetitionCount; // How many total animation loops we should do.  This will be cAnimationNone if this image type is incapable of animation.
     RepetitionCountStatus m_repetitionCountStatus;
     int m_repetitionsComplete;  // How many repetitions we've finished.

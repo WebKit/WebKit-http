@@ -46,7 +46,6 @@
 // We either have to optimize that operator so it doesn't involve
 // so many allocations, or change this to use StringBuffer instead.
 
-using namespace std;
 using namespace WTF;
 
 namespace WebCore {
@@ -629,7 +628,7 @@ String URL::baseAsString() const
     return m_string.left(m_pathAfterLastSlash);
 }
 
-#if !PLATFORM(QT) && !USE(CF)
+#if !USE(CF)
 String URL::fileSystemPath() const
 {
     if (!isValid() || !isLocalFile())
@@ -1499,7 +1498,7 @@ static void appendEncodedHostname(UCharBuffer& buffer, const UChar* str, unsigne
 #endif
 }
 
-static void findHostnamesInMailToURL(const UChar* str, int strLen, Vector<pair<int, int> >& nameRanges)
+static void findHostnamesInMailToURL(const UChar* str, int strLen, Vector<pair<int, int>>& nameRanges)
 {
     // In a mailto: URL, host names come after a '@' character and end with a '>' or ',' or '?' or end of string character.
     // Skip quoted strings so that characters in them don't confuse us.
@@ -1532,7 +1531,7 @@ static void findHostnamesInMailToURL(const UChar* str, int strLen, Vector<pair<i
                 done = false;
             }
 
-            nameRanges.append(make_pair(hostnameStart, hostnameEnd));
+            nameRanges.append(std::make_pair(hostnameStart, hostnameEnd));
 
             if (done)
                 return;
@@ -1615,7 +1614,7 @@ static void encodeHostnames(const String& str, UCharBuffer& output)
     output.clear();
 
     if (protocolIs(str, "mailto")) {
-        Vector<pair<int, int> > hostnameRanges;
+        Vector<pair<int, int>> hostnameRanges;
         findHostnamesInMailToURL(str.characters(), str.length(), hostnameRanges);
         int n = hostnameRanges.size();
         int p = 0;
@@ -1877,7 +1876,7 @@ bool portAllowed(const URL& url)
 #endif
 
     // If the port is not in the blocked port list, allow it.
-    if (!binary_search(blockedPortList, blockedPortListEnd, port))
+    if (!std::binary_search(blockedPortList, blockedPortListEnd, port))
         return true;
 
     // Allow ports 21 and 22 for FTP URLs, as Mozilla does.

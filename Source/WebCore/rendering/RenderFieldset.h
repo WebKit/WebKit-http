@@ -33,7 +33,7 @@ class HTMLFieldSetElement;
 
 class RenderFieldset FINAL : public RenderBlockFlow {
 public:
-    explicit RenderFieldset(HTMLFieldSetElement&);
+    RenderFieldset(HTMLFieldSetElement&, PassRef<RenderStyle>);
 
     enum FindLegendOption { IgnoreFloatingOrOutOfFlow, IncludeFloatingOrOutOfFlow };
     RenderBox* findLegend(FindLegendOption = IgnoreFloatingOrOutOfFlow) const;
@@ -43,26 +43,19 @@ public:
 private:
     void element() const WTF_DELETED_FUNCTION;
 
-    virtual const char* renderName() const { return "RenderFieldSet"; }
-    virtual bool isFieldset() const { return true; }
+    virtual const char* renderName() const OVERRIDE { return "RenderFieldSet"; }
+    virtual bool isFieldset() const OVERRIDE { return true; }
 
-    virtual RenderObject* layoutSpecialExcludedChild(bool relayoutChildren);
+    virtual RenderObject* layoutSpecialExcludedChild(bool relayoutChildren) OVERRIDE;
 
-    virtual void computePreferredLogicalWidths();
-    virtual bool avoidsFloats() const { return true; }
+    virtual void computePreferredLogicalWidths() OVERRIDE;
+    virtual bool avoidsFloats() const OVERRIDE { return true; }
 
-    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&);
-    virtual void paintMask(PaintInfo&, const LayoutPoint&);
+    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&) OVERRIDE;
+    virtual void paintMask(PaintInfo&, const LayoutPoint&) OVERRIDE;
 };
 
-inline RenderFieldset* toRenderFieldset(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isFieldset());
-    return static_cast<RenderFieldset*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderFieldset(const RenderFieldset*);
+RENDER_OBJECT_TYPE_CASTS(RenderFieldset, isFieldset())
 
 } // namespace WebCore
 

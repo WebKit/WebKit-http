@@ -45,7 +45,7 @@ LineSegmentRange::LineSegmentRange(const InlineIterator& start, const InlineIter
 
 bool ShapeInsideInfo::isEnabledFor(const RenderBlock* renderer)
 {
-    ShapeValue* shapeValue = renderer->style()->resolvedShapeInside();
+    ShapeValue* shapeValue = renderer->style().resolvedShapeInside();
     if (!shapeValue)
         return false;
 
@@ -53,10 +53,35 @@ bool ShapeInsideInfo::isEnabledFor(const RenderBlock* renderer)
     case ShapeValue::Shape:
         return shapeValue->shape() && shapeValue->shape()->type() != BasicShape::BasicShapeInsetRectangleType;
     case ShapeValue::Image:
-        return shapeValue->isImageValid();
+        return shapeValue->isImageValid() && checkShapeImageOrigin(renderer->document(), *(shapeValue->image()->cachedImage()));
     default:
         return false;
     }
+}
+
+bool ShapeInsideInfo::updateSegmentsForLine(LayoutSize lineOffset, LayoutUnit lineHeight)
+{
+    m_segmentRanges.clear();
+    bool result = updateSegmentsForLine(lineOffset.height(), lineHeight);
+    for (size_t i = 0; i < m_segments.size(); i++) {
+        m_segments[i].logicalLeft -= lineOffset.width();
+        m_segments[i].logicalRight -= lineOffset.width();
+    }
+    return result;
+}
+
+bool ShapeInsideInfo::updateSegmentsForLine(LayoutUnit lineTop, LayoutUnit lineHeight)
+{
+    ASSERT(lineHeight >= 0);
+    m_shapeLineTop = lineTop - logicalTopOffset();
+    m_lineHeight = lineHeight;
+    m_segments.clear();
+    m_segmentRanges.clear();
+
+    if (lineOverlapsShapeBounds())
+        m_segments = computeSegmentsForLine(lineTop, lineHeight);
+
+    return m_segments.size();
 }
 
 bool ShapeInsideInfo::adjustLogicalLineTop(float minSegmentWidth)
@@ -78,7 +103,7 @@ bool ShapeInsideInfo::adjustLogicalLineTop(float minSegmentWidth)
 
 ShapeValue* ShapeInsideInfo::shapeValue() const
 {
-    return m_renderer->style()->resolvedShapeInside();
+    return m_renderer->style().resolvedShapeInside();
 }
 
 LayoutUnit ShapeInsideInfo::computeFirstFitPositionForFloat(const LayoutSize floatSize) const

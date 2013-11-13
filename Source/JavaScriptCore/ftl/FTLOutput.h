@@ -94,7 +94,7 @@ public:
     {
         m_block = block;
         
-        LLVMPositionBuilderAtEnd(m_builder, block);
+        llvm->PositionBuilderAtEnd(m_builder, block);
     }
     LBasicBlock newBlock(const char* name = "")
     {
@@ -294,9 +294,11 @@ public:
     LValue load32(LValue base, const AbstractField& field) { return load32(address(base, field)); }
     LValue load64(LValue base, const AbstractField& field) { return load64(address(base, field)); }
     LValue loadPtr(LValue base, const AbstractField& field) { return loadPtr(address(base, field)); }
+    LValue loadDouble(LValue base, const AbstractField& field) { return loadDouble(address(base, field)); }
     void store32(LValue value, LValue base, const AbstractField& field) { store32(value, address(base, field)); }
     void store64(LValue value, LValue base, const AbstractField& field) { store64(value, address(base, field)); }
     void storePtr(LValue value, LValue base, const AbstractField& field) { storePtr(value, address(base, field)); }
+    void storeDouble(LValue value, LValue base, const AbstractField& field) { storeDouble(value, address(base, field)); }
     
     LValue equal(LValue left, LValue right) { return buildICmp(m_builder, LLVMIntEQ, left, right); }
     LValue notEqual(LValue left, LValue right) { return buildICmp(m_builder, LLVMIntNE, left, right); }
@@ -348,17 +350,15 @@ public:
     LValue call(LValue function, LValue arg1, LValue arg2) { return buildCall(m_builder, function, arg1, arg2); }
     LValue call(LValue function, LValue arg1, LValue arg2, LValue arg3) { return buildCall(m_builder, function, arg1, arg2, arg3); }
     LValue call(LValue function, LValue arg1, LValue arg2, LValue arg3, LValue arg4) { return buildCall(m_builder, function, arg1, arg2, arg3, arg4); }
+    LValue call(LValue function, LValue arg1, LValue arg2, LValue arg3, LValue arg4, LValue arg5) { return buildCall(m_builder, function, arg1, arg2, arg3, arg4, arg5); }
+    LValue call(LValue function, LValue arg1, LValue arg2, LValue arg3, LValue arg4, LValue arg5, LValue arg6) { return buildCall(m_builder, function, arg1, arg2, arg3, arg4, arg5, arg6); }
+    LValue call(LValue function, LValue arg1, LValue arg2, LValue arg3, LValue arg4, LValue arg5, LValue arg6, LValue arg7) { return buildCall(m_builder, function, arg1, arg2, arg3, arg4, arg5, arg6, arg7); }
+    LValue call(LValue function, LValue arg1, LValue arg2, LValue arg3, LValue arg4, LValue arg5, LValue arg6, LValue arg7, LValue arg8) { return buildCall(m_builder, function, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8); }
     
     template<typename FunctionType>
     LValue operation(FunctionType function)
     {
         return intToPtr(constIntPtr(function), pointerType(operationType(function)));
-    }
-    
-    LValue convertToTailCall(LValue call)
-    {
-        setTailCall(call, IsTailCall);
-        return call;
     }
     
     void jump(LBasicBlock destination) { buildBr(m_builder, destination); }

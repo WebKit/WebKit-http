@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009, 2013 Apple Inc. All Rights Reserved.
  * Copyright (C) 2009 Brent Fulgham. All Rights Reserved.
+ * Copyright (C) 2013 Alex Christensen. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,6 +37,44 @@
 #include <wininet.h>
 
 static const int MARGIN = 20;
+
+HRESULT STDMETHODCALLTYPE PrintWebUIDelegate::runJavaScriptAlertPanelWithMessage(IWebView*, BSTR message)
+{
+    ::MessageBoxW(0, message, L"JavaScript Alert", MB_OK);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE PrintWebUIDelegate::runJavaScriptConfirmPanelWithMessage(IWebView*, BSTR message, BOOL* result)
+{
+    *result = ::MessageBoxW(0, message, L"JavaScript Confirm", MB_OKCANCEL) == IDOK;
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE PrintWebUIDelegate::createWebViewWithRequest(IWebView*, IWebURLRequest* request, IWebView**)
+{
+    if (!request)
+        return E_POINTER;
+
+    TCHAR executablePath[MAX_PATH];
+    DWORD length = ::GetModuleFileName(GetModuleHandle(0), executablePath, ARRAYSIZE(executablePath));
+    if (!length)
+        return E_FAIL;
+
+    _bstr_t url;
+    HRESULT hr = request->URL(&url.GetBSTR());
+    if (FAILED(hr))
+        return E_FAIL;
+
+    std::wstring command = std::wstring(L"\"") + executablePath + L"\" " + (const wchar_t*)url;
+
+    PROCESS_INFORMATION processInformation;
+    STARTUPINFOW startupInfo;
+    memset(&startupInfo, 0, sizeof(startupInfo));
+    if (!::CreateProcessW(0, (LPWSTR)command.c_str(), 0, 0, 0, 0, 0, 0, &startupInfo, &processInformation))
+        return E_FAIL;
+
+    return S_OK;
+}
 
 HRESULT PrintWebUIDelegate::QueryInterface(REFIID riid, void** ppvObject)
 {

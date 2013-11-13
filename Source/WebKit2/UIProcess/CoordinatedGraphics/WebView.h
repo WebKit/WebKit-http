@@ -46,7 +46,7 @@ class CoordinatedGraphicsScene;
 
 namespace WebKit {
 
-class WebView : public TypedAPIObject<APIObject::TypeView>, public PageClient {
+class WebView : public API::TypedObject<API::Object::TypeView>, public PageClient {
 public:
     virtual ~WebView();
 
@@ -136,6 +136,7 @@ protected:
     virtual bool isViewWindowActive() OVERRIDE;
     virtual bool isViewFocused() OVERRIDE;
     virtual bool isViewVisible() OVERRIDE;
+    virtual bool isWindowVisible() OVERRIDE;
     virtual bool isViewInWindow() OVERRIDE;
 
     virtual void processDidCrash() OVERRIDE;
@@ -185,8 +186,6 @@ protected:
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) OVERRIDE;
     virtual void exitAcceleratedCompositingMode() OVERRIDE;
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) OVERRIDE;
-
-    virtual void flashBackingStoreUpdates(const Vector<WebCore::IntRect>&) OVERRIDE;
 
 protected:
     WebViewClient m_client;

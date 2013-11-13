@@ -83,7 +83,7 @@ bool HTMLEmbedElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLPlugInImageElement::isPresentationAttribute(name);
 }
 
-void HTMLEmbedElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLEmbedElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == hiddenAttr) {
         if (equalIgnoringCase(value, "yes") || equalIgnoringCase(value, "true")) {
@@ -172,7 +172,7 @@ void HTMLEmbedElement::updateWidget(PluginCreationOption pluginCreationOption)
 
     SubframeLoader& loader = document().frame()->loader().subframeLoader();
     // FIXME: beforeLoad could have detached the renderer!  Just like in the <object> case above.
-    loader.requestObject(this, m_url, getNameAttribute(), m_serviceType, paramNames, paramValues);
+    loader.requestObject(*this, m_url, getNameAttribute(), m_serviceType, paramNames, paramValues);
 }
 
 bool HTMLEmbedElement::rendererIsNeeded(const RenderStyle& style)

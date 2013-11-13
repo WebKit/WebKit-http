@@ -24,7 +24,7 @@
 
 [
     Conditional=WEB_AUDIO,
-    JSGenerateToJSObject
+    JSGenerateToJSObject,
 ] interface BiquadFilterNode : AudioNode {
     // Filter type.
     const unsigned short LOWPASS = 0;

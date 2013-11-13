@@ -45,27 +45,27 @@ enum Braces { OpeningBraceChar = 0x28, ClosingBraceChar = 0x29 };
 static const float gSeparatorMarginEndEms = 0.25f;
 static const float gFenceMarginEms = 0.1f;
 
-RenderMathMLFenced::RenderMathMLFenced(Element* element)
-    : RenderMathMLRow(element)
+RenderMathMLFenced::RenderMathMLFenced(MathMLInlineContainerElement& element, PassRef<RenderStyle> style)
+    : RenderMathMLRow(element, std::move(style))
     , m_open(OpeningBraceChar)
     , m_close(ClosingBraceChar)
-    , m_closeFenceRenderer(0)
+    , m_closeFenceRenderer(nullptr)
 {
 }
 
 void RenderMathMLFenced::updateFromElement()
 {
-    Element* fenced = element();
+    const auto& fenced = element();
  
     // FIXME: Handle open/close values with more than one character (they should be treated like text).
-    AtomicString openValue = fenced->getAttribute(MathMLNames::openAttr);
+    AtomicString openValue = fenced.getAttribute(MathMLNames::openAttr);
     if (openValue.length() > 0)
         m_open = openValue[0];
-    AtomicString closeValue = fenced->getAttribute(MathMLNames::closeAttr);
+    AtomicString closeValue = fenced.getAttribute(MathMLNames::closeAttr);
     if (closeValue.length() > 0)
         m_close = closeValue[0];
     
-    AtomicString separators = fenced->getAttribute(MathMLNames::separatorsAttr);
+    AtomicString separators = fenced.getAttribute(MathMLNames::separatorsAttr);
     if (!separators.isNull()) {
         StringBuilder characters;
         for (unsigned int i = 0; i < separators.length(); i++) {
@@ -84,22 +84,25 @@ void RenderMathMLFenced::updateFromElement()
 
 RenderMathMLOperator* RenderMathMLFenced::createMathMLOperator(UChar uChar, RenderMathMLOperator::OperatorType operatorType)
 {
-    RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(style(), FLEX);
-    newStyle->setFlexDirection(FlowColumn);
-    newStyle->setMarginEnd(Length((operatorType == RenderMathMLOperator::Fence ? gFenceMarginEms : gSeparatorMarginEndEms) * style()->fontSize(), Fixed));
+    auto newStyle = RenderStyle::createAnonymousStyleWithDisplay(&style(), FLEX);
+    newStyle.get().setFlexDirection(FlowColumn);
+    newStyle.get().setMarginEnd(Length((operatorType == RenderMathMLOperator::Fence ? gFenceMarginEms : gSeparatorMarginEndEms) * style().fontSize(), Fixed));
     if (operatorType == RenderMathMLOperator::Fence)
-        newStyle->setMarginStart(Length(gFenceMarginEms * style()->fontSize(), Fixed));
-    RenderMathMLOperator* newOperator = new (renderArena()) RenderMathMLOperator(element(), uChar);
+        newStyle.get().setMarginStart(Length(gFenceMarginEms * style().fontSize(), Fixed));
+    RenderMathMLOperator* newOperator = new RenderMathMLOperator(element(), std::move(newStyle), uChar);
     newOperator->setOperatorType(operatorType);
-    newOperator->setStyle(newStyle.release());
+    newOperator->initializeStyle();
     return newOperator;
 }
 
 void RenderMathMLFenced::makeFences()
 {
-    RenderMathMLRow::addChild(createMathMLOperator(m_open, RenderMathMLOperator::Fence), firstChild());
+    RenderMathMLOperator* openFence = createMathMLOperator(m_open, RenderMathMLOperator::Fence);
+    RenderMathMLRow::addChild(openFence, firstChild());
     m_closeFenceRenderer = createMathMLOperator(m_close, RenderMathMLOperator::Fence);
     RenderMathMLRow::addChild(m_closeFenceRenderer);
+    openFence->updateFromElement();
+    m_closeFenceRenderer->updateFromElement();
 }
 
 void RenderMathMLFenced::addChild(RenderObject* child, RenderObject* beforeChild)
@@ -111,7 +114,7 @@ void RenderMathMLFenced::addChild(RenderObject* child, RenderObject* beforeChild
     // FIXME: Adding or removing a child should possibly cause all later separators to shift places if they're different,
     // as later child positions change by +1 or -1.
     
-    RenderObject* separatorRenderer = 0;
+    RenderMathMLOperator* separatorRenderer = nullptr;
     if (m_separators.get()) {
         unsigned int count = 0;
         for (Node* position = child->node(); position; position = position->previousSibling()) {
@@ -156,13 +159,16 @@ void RenderMathMLFenced::styleDidChange(StyleDifference diff, const RenderStyle*
     RenderMathMLBlock::styleDidChange(diff, oldStyle);
     
     for (RenderObject* child = firstChild(); child; child = child->nextSibling()) {
-        if (child->node() == element()) {
-            ASSERT(child->style()->refCount() == 1);
-            child->style()->inheritFrom(style());
+        if (child->node() == &element()) {
+            ASSERT(child->style().refCount() == 1);
+            child->style().inheritFrom(&style());
             bool isFence = child == firstChild() || child == lastChild();
-            child->style()->setMarginEnd(Length((isFence ? gFenceMarginEms : gSeparatorMarginEndEms) * style()->fontSize(), Fixed));
-            if (isFence)
-                child->style()->setMarginStart(Length(gFenceMarginEms * style()->fontSize(), Fixed));
+            child->style().setMarginEnd(Length((isFence ? gFenceMarginEms : gSeparatorMarginEndEms) * style().fontSize(), Fixed));
+            if (isFence) {
+                RenderMathMLBlock* block = toRenderMathMLBlock(child);
+                toRenderMathMLOperator(block)->updateFromElement();
+                child->style().setMarginStart(Length(gFenceMarginEms * style().fontSize(), Fixed));
+            }
         }
     }
 }

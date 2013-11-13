@@ -44,8 +44,8 @@ private:
     virtual void svgAttributeChanged(const QualifiedName&);
 
     virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
-    virtual bool childShouldCreateRenderer(const Node*) const;
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual bool childShouldCreateRenderer(const Node&) const OVERRIDE;
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     virtual bool selfHasRelativeLengths() const;
 
@@ -59,7 +59,7 @@ private:
     END_DECLARE_ANIMATED_PROPERTIES
 };
 
-ELEMENT_TYPE_CASTS(SVGForeignObjectElement)
+NODE_TYPE_CASTS(SVGForeignObjectElement)
 
 } // namespace WebCore
 

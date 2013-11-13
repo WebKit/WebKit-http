@@ -49,12 +49,12 @@ namespace WebCore {
 
     typedef int ExceptionCode;
 
-    class Worker : public AbstractWorker, private WorkerScriptLoaderClient {
+    class Worker FINAL : public AbstractWorker, private WorkerScriptLoaderClient {
     public:
-        static PassRefPtr<Worker> create(ScriptExecutionContext*, const String& url, ExceptionCode&);
+        static PassRefPtr<Worker> create(ScriptExecutionContext&, const String& url, ExceptionCode&);
         virtual ~Worker();
 
-        virtual EventTargetInterface eventTargetInterface() const OVERRIDE;
+        virtual EventTargetInterface eventTargetInterface() const OVERRIDE { return WorkerEventTargetInterfaceType; }
 
         void postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray*, ExceptionCode&);
         // Needed for Objective-C bindings (see bug 28774).
@@ -69,7 +69,7 @@ namespace WebCore {
         DEFINE_ATTRIBUTE_EVENT_LISTENER(message);
 
     private:
-        explicit Worker(ScriptExecutionContext*);
+        explicit Worker(ScriptExecutionContext&);
 
         void notifyNetworkStateChange(bool isOnline);
 

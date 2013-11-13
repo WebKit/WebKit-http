@@ -49,15 +49,15 @@ private:
     // FIXME: svgAttributeChanged missing.
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    virtual void removedFrom(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
+    virtual void removedFrom(ContainerNode&) OVERRIDE;
 
     virtual bool rendererIsNeeded(const RenderStyle&) { return false; }
 
     void invalidateGlyphCache();
 };
 
-ELEMENT_TYPE_CASTS(SVGGlyphElement)
+NODE_TYPE_CASTS(SVGGlyphElement)
 
 } // namespace WebCore
 

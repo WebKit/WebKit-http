@@ -30,6 +30,7 @@
 #include "ArgumentEncoder.h"
 #include "WebCoreArgumentCoders.h"
 #include <WebCore/ResourceRequest.h>
+#include <WebCore/ResourceResponse.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebKit {
@@ -40,6 +41,7 @@ struct WebNavigationDataStore {
         encoder << url;
         encoder << title;
         encoder << originalRequest;
+        encoder << response;
     }
 
     static bool decode(CoreIPC::ArgumentDecoder& decoder, WebNavigationDataStore& store)
@@ -50,6 +52,8 @@ struct WebNavigationDataStore {
             return false;
         if (!decoder.decode(store.originalRequest))
             return false;
+        if (!decoder.decode(store.response))
+            return false;
         return true;
     }
 
@@ -57,6 +61,7 @@ struct WebNavigationDataStore {
     String url;
     String title;
     WebCore::ResourceRequest originalRequest;
+    WebCore::ResourceResponse response;
 };
 
 } // namespace WebKit

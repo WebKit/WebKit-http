@@ -27,12 +27,8 @@
 #include "TreeScopeAdopter.h"
 
 #include "Attr.h"
-#include "Document.h"
 #include "ElementRareData.h"
-#include "NodeRareData.h"
 #include "NodeTraversal.h"
-#include "RenderStyle.h"
-#include "ShadowRoot.h"
 
 namespace WebCore {
 
@@ -40,14 +36,14 @@ void TreeScopeAdopter::moveTreeToNewScope(Node* root) const
 {
     ASSERT(needsScopeChange());
 
-    m_oldScope->selfOnlyRef();
+    m_oldScope.selfOnlyRef();
 
     // If an element is moved from a document and then eventually back again the collection cache for
     // that element may contain stale data as changes made to it will have updated the DOMTreeVersion
     // of the document it was moved to. By increasing the DOMTreeVersion of the donating document here
     // we ensure that the collection cache will be invalidated as needed when the element is moved back.
-    Document* oldDocument = m_oldScope->documentScope();
-    Document* newDocument = m_newScope->documentScope();
+    Document* oldDocument = m_oldScope.documentScope();
+    Document* newDocument = m_newScope.documentScope();
     bool willMoveToNewDocument = oldDocument != newDocument;
     if (oldDocument && willMoveToNewDocument)
         oldDocument->incDOMTreeVersion();
@@ -73,13 +69,13 @@ void TreeScopeAdopter::moveTreeToNewScope(Node* root) const
         }
 
         if (ShadowRoot* shadow = node->shadowRoot()) {
-            shadow->setParentTreeScope(m_newScope);
+            shadow->setParentTreeScope(&m_newScope);
             if (willMoveToNewDocument)
                 moveTreeToNewDocument(shadow, oldDocument, newDocument);
         }
     }
 
-    m_oldScope->selfOnlyDeref();
+    m_oldScope.selfOnlyDeref();
 }
 
 void TreeScopeAdopter::moveTreeToNewDocument(Node* root, Document* oldDocument, Document* newDocument) const
@@ -106,9 +102,9 @@ void TreeScopeAdopter::ensureDidMoveToNewDocumentWasCalled(Document* oldDocument
 inline void TreeScopeAdopter::updateTreeScope(Node* node) const
 {
     ASSERT(!node->isTreeScope());
-    ASSERT(node->treeScope() == m_oldScope);
-    m_newScope->selfOnlyRef();
-    m_oldScope->selfOnlyDeref();
+    ASSERT(&node->treeScope() == &m_oldScope);
+    m_newScope.selfOnlyRef();
+    m_oldScope.selfOnlyDeref();
     node->setTreeScope(m_newScope);
 }
 

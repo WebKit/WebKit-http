@@ -26,27 +26,18 @@
 #include "config.h"
 #include "HTMLDocumentParser.h"
 
-#include "AtomicHTMLToken.h"
 #include "BackgroundHTMLParser.h"
-#include "CompactHTMLToken.h"
 #include "ContentSecurityPolicy.h"
 #include "DocumentFragment.h"
 #include "DocumentLoader.h"
-#include "Element.h"
 #include "Frame.h"
-#include "HTMLIdentifier.h"
-#include "HTMLNames.h"
 #include "HTMLParserScheduler.h"
 #include "HTMLParserThread.h"
-#include "HTMLTokenizer.h"
-#include "HTMLPreloadScanner.h"
 #include "HTMLScriptRunner.h"
 #include "HTMLTreeBuilder.h"
 #include "HTMLDocument.h"
 #include "InspectorInstrumentation.h"
-#include "NestingLevelIncrementer.h"
 #include "Settings.h"
-#include <wtf/Functional.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -78,14 +69,14 @@ static HTMLTokenizer::State tokenizerStateForContextElement(Element* contextElem
     return HTMLTokenizer::DataState;
 }
 
-HTMLDocumentParser::HTMLDocumentParser(HTMLDocument* document, bool reportErrors)
+HTMLDocumentParser::HTMLDocumentParser(HTMLDocument& document, bool reportErrors)
     : ScriptableDocumentParser(document)
     , m_options(document)
     , m_token(m_options.useThreading ? nullptr : adoptPtr(new HTMLToken))
     , m_tokenizer(m_options.useThreading ? nullptr : HTMLTokenizer::create(m_options))
-    , m_scriptRunner(HTMLScriptRunner::create(document, this))
-    , m_treeBuilder(HTMLTreeBuilder::create(this, document, parserContentPolicy(), reportErrors, m_options))
-    , m_parserScheduler(HTMLParserScheduler::create(this))
+    , m_scriptRunner(HTMLScriptRunner::create(document, *this))
+    , m_treeBuilder(HTMLTreeBuilder::create(*this, document, parserContentPolicy(), reportErrors, m_options))
+    , m_parserScheduler(HTMLParserScheduler::create(*this))
     , m_xssAuditorDelegate(document)
 #if ENABLE(THREADED_HTML_PARSER)
     , m_weakFactory(this)
@@ -101,13 +92,13 @@ HTMLDocumentParser::HTMLDocumentParser(HTMLDocument* document, bool reportErrors
 
 // FIXME: Member variables should be grouped into self-initializing structs to
 // minimize code duplication between these constructors.
-HTMLDocumentParser::HTMLDocumentParser(DocumentFragment* fragment, Element* contextElement, ParserContentPolicy parserContentPolicy)
-    : ScriptableDocumentParser(&fragment->document(), parserContentPolicy)
-    , m_options(&fragment->document())
+HTMLDocumentParser::HTMLDocumentParser(DocumentFragment& fragment, Element* contextElement, ParserContentPolicy parserContentPolicy)
+    : ScriptableDocumentParser(fragment.document(), parserContentPolicy)
+    , m_options(fragment.document())
     , m_token(adoptPtr(new HTMLToken))
     , m_tokenizer(HTMLTokenizer::create(m_options))
-    , m_treeBuilder(HTMLTreeBuilder::create(this, fragment, contextElement, this->parserContentPolicy(), m_options))
-    , m_xssAuditorDelegate(&fragment->document())
+    , m_treeBuilder(HTMLTreeBuilder::create(*this, fragment, contextElement, this->parserContentPolicy(), m_options))
+    , m_xssAuditorDelegate(fragment.document())
 #if ENABLE(THREADED_HTML_PARSER)
     , m_weakFactory(this)
 #endif
@@ -666,7 +657,7 @@ void HTMLDocumentParser::startBackgroundParser()
 
     HTMLIdentifier::init();
 
-    RefPtr<WeakReference<BackgroundHTMLParser> > reference = WeakReference<BackgroundHTMLParser>::createUnbound();
+    RefPtr<WeakReference<BackgroundHTMLParser>> reference = WeakReference<BackgroundHTMLParser>::createUnbound();
     m_backgroundParser = WeakPtr<BackgroundHTMLParser>(reference);
 
     OwnPtr<BackgroundHTMLParser::Configuration> config = adoptPtr(new BackgroundHTMLParser::Configuration);
@@ -957,7 +948,7 @@ void HTMLDocumentParser::executeScriptsWaitingForStylesheets()
         resumeParsingAfterScriptExecution();
 }
 
-void HTMLDocumentParser::parseDocumentFragment(const String& source, DocumentFragment* fragment, Element* contextElement, ParserContentPolicy parserContentPolicy)
+void HTMLDocumentParser::parseDocumentFragment(const String& source, DocumentFragment& fragment, Element* contextElement, ParserContentPolicy parserContentPolicy)
 {
     RefPtr<HTMLDocumentParser> parser = HTMLDocumentParser::create(fragment, contextElement, parserContentPolicy);
     parser->insert(source); // Use insert() so that the parser will not yield.

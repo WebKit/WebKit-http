@@ -37,16 +37,11 @@
 #include <wtf/RetainPtr.h>
 #include <CoreFoundation/CFRunLoop.h>
 typedef RetainPtr<CFRunLoopTimerRef> PlatformTimerRef;
-#elif PLATFORM(WIN)
-typedef UINT_PTR PlatformTimerRef;
-#elif PLATFORM(QT)
-#include <QTimer>
-typedef QTimer PlatformTimerRef;
 #elif PLATFORM(GTK)
 typedef unsigned int PlatformTimerRef;
 #elif PLATFORM(EFL)
 #if USE(EO)
-typedef struct _Eo Ecore_Timer;
+typedef struct _Eo_Opaque Ecore_Timer;
 #else
 typedef struct _Ecore_Timer Ecore_Timer;
 #endif
@@ -146,7 +141,6 @@ public:
     void clearApplicationCacheForOrigin(JSStringRef origin);
     void setAppCacheMaximumSize(uint64_t);
     long long applicationCacheDiskUsageForOrigin(JSStringRef origin);
-    void setApplicationCacheOriginQuota(unsigned long long);
     void disallowIncreaseForApplicationCacheQuota();
     bool shouldDisallowIncreaseForApplicationCacheQuota() { return m_disallowIncreaseForApplicationCacheQuota; }
     JSValueRef originsWithApplicationCache();
@@ -224,6 +218,12 @@ public:
     
     bool globalFlag() const { return m_globalFlag; }
     void setGlobalFlag(bool value) { m_globalFlag = value; }
+
+    double databaseDefaultQuota() const { return m_databaseDefaultQuota; }
+    void setDatabaseDefaultQuota(double quota) { m_databaseDefaultQuota = quota; }
+
+    double databaseMaxQuota() const { return m_databaseMaxQuota; }
+    void setDatabaseMaxQuota(double quota) { m_databaseMaxQuota = quota; }
 
     void addChromeInputField(JSValueRef);
     void removeChromeInputField(JSValueRef);
@@ -325,6 +325,9 @@ private:
     bool m_customFullScreenBehavior;
 
     int m_timeout;
+
+    double m_databaseDefaultQuota;
+    double m_databaseMaxQuota;
 
     bool m_userStyleSheetEnabled;
     WKRetainPtr<WKStringRef> m_userStyleSheetLocation;

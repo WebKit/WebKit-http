@@ -32,17 +32,17 @@
 
 namespace WebCore {
     
-RenderSVGInline::RenderSVGInline(SVGGraphicsElement& element)
-    : RenderInline(&element)
+RenderSVGInline::RenderSVGInline(SVGGraphicsElement& element, PassRef<RenderStyle> style)
+    : RenderInline(element, std::move(style))
 {
     setAlwaysCreateLineBoxes();
 }
 
-InlineFlowBox* RenderSVGInline::createInlineFlowBox()
+std::unique_ptr<InlineFlowBox> RenderSVGInline::createInlineFlowBox()
 {
-    InlineFlowBox* box = new (renderArena()) SVGInlineFlowBox(*this);
+    auto box = std::make_unique<SVGInlineFlowBox>(*this);
     box->setHasVirtualLogicalHeight();
-    return box;
+    return std::move(box);
 }
 
 FloatRect RenderSVGInline::objectBoundingBox() const
@@ -71,22 +71,22 @@ FloatRect RenderSVGInline::repaintRectInLocalCoordinates() const
 
 LayoutRect RenderSVGInline::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
-    return SVGRenderSupport::clippedOverflowRectForRepaint(this, repaintContainer);
+    return SVGRenderSupport::clippedOverflowRectForRepaint(*this, repaintContainer);
 }
 
 void RenderSVGInline::computeFloatRectForRepaint(const RenderLayerModelObject* repaintContainer, FloatRect& repaintRect, bool fixed) const
 {
-    SVGRenderSupport::computeFloatRectForRepaint(this, repaintContainer, repaintRect, fixed);
+    SVGRenderSupport::computeFloatRectForRepaint(*this, repaintContainer, repaintRect, fixed);
 }
 
 void RenderSVGInline::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags, bool* wasFixed) const
 {
-    SVGRenderSupport::mapLocalToContainer(this, repaintContainer, transformState, wasFixed);
+    SVGRenderSupport::mapLocalToContainer(*this, repaintContainer, transformState, wasFixed);
 }
 
 const RenderObject* RenderSVGInline::pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
 {
-    return SVGRenderSupport::pushMappingToContainer(this, ancestorToStopAt, geometryMap);
+    return SVGRenderSupport::pushMappingToContainer(*this, ancestorToStopAt, geometryMap);
 }
 
 void RenderSVGInline::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
@@ -102,33 +102,28 @@ void RenderSVGInline::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) co
 
 void RenderSVGInline::willBeDestroyed()
 {
-    SVGResourcesCache::clientDestroyed(this);
+    SVGResourcesCache::clientDestroyed(*this);
     RenderInline::willBeDestroyed();
-}
-
-void RenderSVGInline::styleWillChange(StyleDifference diff, const RenderStyle* newStyle)
-{
-    if (diff == StyleDifferenceLayout)
-        setNeedsBoundariesUpdate();
-    RenderInline::styleWillChange(diff, newStyle);
 }
 
 void RenderSVGInline::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
+    if (diff == StyleDifferenceLayout)
+        setNeedsBoundariesUpdate();
     RenderInline::styleDidChange(diff, oldStyle);
-    SVGResourcesCache::clientStyleChanged(this, diff, style());
+    SVGResourcesCache::clientStyleChanged(*this, diff, style());
 }
 
 void RenderSVGInline::addChild(RenderObject* child, RenderObject* beforeChild)
 {
     RenderInline::addChild(child, beforeChild);
-    SVGResourcesCache::clientWasAddedToTree(child, child->style());
+    SVGResourcesCache::clientWasAddedToTree(*child);
 
     if (RenderSVGText* textRenderer = RenderSVGText::locateRenderSVGTextAncestor(this))
         textRenderer->subtreeChildWasAdded(child);
 }
 
-void RenderSVGInline::removeChild(RenderObject* child)
+void RenderSVGInline::removeChild(RenderObject& child)
 {
     SVGResourcesCache::clientWillBeRemovedFromTree(child);
 
@@ -138,7 +133,7 @@ void RenderSVGInline::removeChild(RenderObject* child)
         return;
     }
     Vector<SVGTextLayoutAttributes*, 2> affectedAttributes;
-    textRenderer->subtreeChildWillBeRemoved(child, affectedAttributes);
+    textRenderer->subtreeChildWillBeRemoved(&child, affectedAttributes);
     RenderInline::removeChild(child);
     textRenderer->subtreeChildWasRemoved(affectedAttributes);
 }

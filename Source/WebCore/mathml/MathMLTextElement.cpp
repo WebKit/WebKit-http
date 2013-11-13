@@ -41,6 +41,7 @@ using namespace MathMLNames;
 inline MathMLTextElement::MathMLTextElement(const QualifiedName& tagName, Document& document)
     : MathMLElement(tagName, document)
 {
+    setHasCustomStyleResolveCallbacks();
 }
 
 PassRefPtr<MathMLTextElement> MathMLTextElement::create(const QualifiedName& tagName, Document& document)
@@ -48,14 +49,33 @@ PassRefPtr<MathMLTextElement> MathMLTextElement::create(const QualifiedName& tag
     return adoptRef(new MathMLTextElement(tagName, document));
 }
 
-RenderElement* MathMLTextElement::createRenderer(RenderArena& arena, RenderStyle& style)
+void MathMLTextElement::didAttachRenderers()
+{
+    MathMLElement::didAttachRenderers();
+    if (renderer())
+        renderer()->updateFromElement();
+}
+
+void MathMLTextElement::childrenChanged(const ChildChange& change)
+{
+    MathMLElement::childrenChanged(change);
+    if (renderer())
+        renderer()->updateFromElement();
+}
+
+RenderElement* MathMLTextElement::createRenderer(PassRef<RenderStyle> style)
 {
     if (hasLocalName(MathMLNames::moTag))
-        return new (arena) RenderMathMLOperator(this);
+        return new RenderMathMLOperator(*this, std::move(style));
     if (hasLocalName(MathMLNames::mspaceTag))
-        return new (arena) RenderMathMLSpace(this);
+        return new RenderMathMLSpace(*this, std::move(style));
 
-    return MathMLElement::createRenderer(arena, style);
+    return MathMLElement::createRenderer(std::move(style));
+}
+
+bool MathMLTextElement::childShouldCreateRenderer(const Node& child) const
+{
+    return child.isTextNode();
 }
 
 }

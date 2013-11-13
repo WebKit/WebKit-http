@@ -23,32 +23,30 @@
 #ifndef WTF_RefPtr_h
 #define WTF_RefPtr_h
 
+#include "FastMalloc.h"
+#include "PassRefPtr.h"
 #include <algorithm>
 #include <utility>
-#include <wtf/FastMalloc.h>
-#include <wtf/PassRefPtr.h>
 
 namespace WTF {
-
-    template<typename T> class PassRefPtr;
 
     enum HashTableDeletedValueType { HashTableDeletedValue };
 
     template<typename T> class RefPtr {
         WTF_MAKE_FAST_ALLOCATED;
     public:
-        ALWAYS_INLINE RefPtr() : m_ptr(0) { }
+        ALWAYS_INLINE RefPtr() : m_ptr(nullptr) { }
         ALWAYS_INLINE RefPtr(T* ptr) : m_ptr(ptr) { refIfNotNull(ptr); }
         ALWAYS_INLINE RefPtr(const RefPtr& o) : m_ptr(o.m_ptr) { refIfNotNull(m_ptr); }
         template<typename U> RefPtr(const RefPtr<U>& o) : m_ptr(o.get()) { refIfNotNull(m_ptr); }
 
-#if COMPILER_SUPPORTS(CXX_RVALUE_REFERENCES)
         ALWAYS_INLINE RefPtr(RefPtr&& o) : m_ptr(o.release().leakRef()) { }
         template<typename U> RefPtr(RefPtr<U>&& o) : m_ptr(o.release().leakRef()) { }
-#endif
 
         // See comments in PassRefPtr.h for an explanation of why this takes a const reference.
         template<typename U> RefPtr(const PassRefPtr<U>&);
+
+        template<typename U> RefPtr(PassRef<U>);
 
         // Hash table deleted values, which are only constructed and never copied or destroyed.
         RefPtr(HashTableDeletedValueType) : m_ptr(hashTableDeletedValue()) { }
@@ -59,7 +57,8 @@ namespace WTF {
         T* get() const { return m_ptr; }
         
         void clear();
-        PassRefPtr<T> release() { PassRefPtr<T> tmp = adoptRef(m_ptr); m_ptr = 0; return tmp; }
+        PassRefPtr<T> release() { PassRefPtr<T> tmp = adoptRef(m_ptr); m_ptr = nullptr; return tmp; }
+        PassRef<T> releaseNonNull() { ASSERT(m_ptr); PassRef<T> tmp = adoptRef(*m_ptr); m_ptr = nullptr; return tmp; }
 
         T& operator*() const { return *m_ptr; }
         ALWAYS_INLINE T* operator->() const { return m_ptr; }
@@ -68,7 +67,7 @@ namespace WTF {
     
         // This conversion operator allows implicit conversion to bool but not to other integer types.
         typedef T* (RefPtr::*UnspecifiedBoolType);
-        operator UnspecifiedBoolType() const { return m_ptr ? &RefPtr::m_ptr : 0; }
+        operator UnspecifiedBoolType() const { return m_ptr ? &RefPtr::m_ptr : nullptr; }
         
         RefPtr& operator=(const RefPtr&);
         RefPtr& operator=(T*);
@@ -78,10 +77,10 @@ namespace WTF {
 #endif
         template<typename U> RefPtr& operator=(const RefPtr<U>&);
         template<typename U> RefPtr& operator=(const PassRefPtr<U>&);
-#if COMPILER_SUPPORTS(CXX_RVALUE_REFERENCES)
         RefPtr& operator=(RefPtr&&);
         template<typename U> RefPtr& operator=(RefPtr<U>&&);
-#endif
+        template<typename U> RefPtr& operator=(PassRef<U>);
+
         void swap(RefPtr&);
 
         static T* hashTableDeletedValue() { return reinterpret_cast<T*>(-1); }
@@ -95,10 +94,15 @@ namespace WTF {
     {
     }
 
+    template<typename T> template<typename U> inline RefPtr<T>::RefPtr(PassRef<U> reference)
+        : m_ptr(&reference.leakRef())
+    {
+    }
+
     template<typename T> inline void RefPtr<T>::clear()
     {
         T* ptr = m_ptr;
-        m_ptr = 0;
+        m_ptr = nullptr;
         derefIfNotNull(ptr);
     }
 
@@ -137,8 +141,6 @@ namespace WTF {
         return *this;
     }
 
-#if COMPILER_SUPPORTS(CXX_RVALUE_REFERENCES)
-
     template<typename T> inline RefPtr<T>& RefPtr<T>::operator=(RefPtr&& o)
     {
         RefPtr ptr = std::move(o);
@@ -153,7 +155,12 @@ namespace WTF {
         return *this;
     }
 
-#endif
+    template<typename T> template<typename U> inline RefPtr<T>& RefPtr<T>::operator=(PassRef<U> reference)
+    {
+        RefPtr ptr = std::move(reference);
+        swap(ptr);
+        return *this;
+    }
 
     template<class T> inline void RefPtr<T>::swap(RefPtr& o)
     {
@@ -200,11 +207,6 @@ namespace WTF {
         return RefPtr<T>(static_cast<T*>(p.get())); 
     }
 
-    template<typename T, typename U> inline RefPtr<T> const_pointer_cast(const RefPtr<U>& p)
-    { 
-        return RefPtr<T>(const_cast<T*>(p.get())); 
-    }
-
     template<typename T> inline T* getPtr(const RefPtr<T>& p)
     {
         return p.get();
@@ -214,6 +216,5 @@ namespace WTF {
 
 using WTF::RefPtr;
 using WTF::static_pointer_cast;
-using WTF::const_pointer_cast;
 
 #endif // WTF_RefPtr_h

@@ -90,15 +90,22 @@ using namespace JSC::LLInt;
 #define OFFLINE_ASM_BEGIN
 #define OFFLINE_ASM_END
 
+// To keep compilers happy in case of unused labels, force usage of the label:
+#define USE_LABEL(label) \
+    do { \
+        if (false) \
+            goto label; \
+    } while (false)
 
-#define OFFLINE_ASM_OPCODE_LABEL(opcode) DEFINE_OPCODE(opcode)
+#define OFFLINE_ASM_OPCODE_LABEL(opcode) DEFINE_OPCODE(opcode) USE_LABEL(opcode);
+
 #if ENABLE(COMPUTED_GOTO_OPCODES)
-    #define OFFLINE_ASM_GLUE_LABEL(label)  label:
+#define OFFLINE_ASM_GLUE_LABEL(label)  label: USE_LABEL(label);
 #else
-    #define OFFLINE_ASM_GLUE_LABEL(label)  case label: label:
+#define OFFLINE_ASM_GLUE_LABEL(label)  case label: label: USE_LABEL(label);
 #endif
 
-#define OFFLINE_ASM_LOCAL_LABEL(label)   label:
+#define OFFLINE_ASM_LOCAL_LABEL(label) label: USE_LABEL(label);
 
 
 //============================================================================
@@ -314,16 +321,7 @@ JSValue CLoop::execute(CallFrame* callFrame, OpcodeID bootstrapOpcodeId,
     t0.i = 0;
     t1.i = 0;
 
-    // Instantiate the pseudo JIT stack frame used by the LLINT C Loop backend:
-    JITStackFrame jitStackFrame;
-
-    // The llint expects the native stack pointer, sp, to be pointing to the
-    // jitStackFrame (which is the simulation of the native stack frame):
-    JITStackFrame* const sp = &jitStackFrame;
-    sp->vm = &callFrame->vm();
-
-    // Set up an alias for the vm ptr in the JITStackFrame:
-    VM* &vm = sp->vm;
+    VM* vm = &callFrame->vm();
 
     CodeBlock* codeBlock = callFrame->codeBlock();
     Instruction* vPC;
@@ -451,7 +449,7 @@ JSValue CLoop::execute(CallFrame* callFrame, OpcodeID bootstrapOpcodeId,
 
     doReturnHelper: {
         ASSERT(!!callFrame);
-        if (callFrame->hasHostCallFrameFlag()) {
+        if (callFrame->isVMEntrySentinel()) {
 #if USE(JSVALUE32_64)
             return JSValue(t1.i, t0.i); // returning JSValue(tag, payload);
 #else

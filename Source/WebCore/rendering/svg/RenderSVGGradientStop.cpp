@@ -33,8 +33,8 @@ namespace WebCore {
     
 using namespace SVGNames;
 
-RenderSVGGradientStop::RenderSVGGradientStop(SVGStopElement* element)
-    : RenderElement(element)
+RenderSVGGradientStop::RenderSVGGradientStop(SVGStopElement& element, PassRef<RenderStyle> style)
+    : RenderElement(element, std::move(style), 0)
 {
 }
 
@@ -66,7 +66,7 @@ void RenderSVGGradientStop::styleDidChange(StyleDifference diff, const RenderSty
 void RenderSVGGradientStop::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
-    setNeedsLayout(false);
+    clearNeedsLayout();
 }
 
 SVGGradientElement* RenderSVGGradientStop::gradientElement() const

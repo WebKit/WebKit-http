@@ -37,22 +37,18 @@
 #include "Editor.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
-#include "FeatureObserver.h"
 #include "FileInputType.h"
 #include "FileList.h"
 #include "FormController.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
-#include "HTMLCollection.h"
 #include "HTMLDataListElement.h"
 #include "HTMLFormElement.h"
 #include "HTMLImageLoader.h"
-#include "HTMLNames.h"
 #include "HTMLOptionElement.h"
 #include "HTMLParserIdioms.h"
 #include "IdTargetObserver.h"
-#include "InputType.h"
 #include "InsertionPoint.h"
 #include "KeyboardEvent.h"
 #include "Language.h"
@@ -64,7 +60,6 @@
 #include "RuntimeEnabledFeatures.h"
 #include "ScopedEventQueue.h"
 #include "SearchInputType.h"
-#include "ShadowRoot.h"
 #include "StyleResolver.h"
 #include <wtf/MathExtras.h>
 #include <wtf/Ref.h>
@@ -80,8 +75,6 @@
 #if ENABLE(TOUCH_EVENTS)
 #include "TouchEvent.h"
 #endif
-
-using namespace std;
 
 namespace WebCore {
 
@@ -190,7 +183,7 @@ HTMLElement* HTMLInputElement::containerElement() const
     return m_inputType->containerElement();
 }
 
-HTMLElement* HTMLInputElement::innerTextElement() const
+TextControlInnerTextElement* HTMLInputElement::innerTextElement() const
 {
     return m_inputType->innerTextElement();
 }
@@ -456,7 +449,7 @@ void HTMLInputElement::setType(const String& type)
 
 void HTMLInputElement::updateType()
 {
-    OwnPtr<InputType> newType = InputType::create(*this, fastGetAttribute(typeAttr));
+    auto newType = InputType::create(*this, fastGetAttribute(typeAttr));
     bool hadType = m_hasType;
     m_hasType = true;
     if (m_inputType->formControlType() == newType->formControlType())
@@ -481,7 +474,7 @@ void HTMLInputElement::updateType()
     if (wasAttached)
         Style::detachRenderTree(*this);
 
-    m_inputType = newType.release();
+    m_inputType = std::move(newType);
     m_inputType->createShadowSubtree();
 
 #if ENABLE(TOUCH_EVENTS)
@@ -600,7 +593,7 @@ bool HTMLInputElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLTextFormControlElement::isPresentationAttribute(name);
 }
 
-void HTMLInputElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLInputElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == vspaceAttr) {
         addHTMLLengthToStyle(style, CSSPropertyMarginTop, value);
@@ -791,9 +784,9 @@ bool HTMLInputElement::rendererIsNeeded(const RenderStyle& style)
     return m_inputType->rendererIsNeeded() && HTMLTextFormControlElement::rendererIsNeeded(style);
 }
 
-RenderElement* HTMLInputElement::createRenderer(RenderArena& arena, RenderStyle& style)
+RenderElement* HTMLInputElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return m_inputType->createRenderer(arena, style);
+    return m_inputType->createRenderer(std::move(style));
 }
 
 void HTMLInputElement::willAttachRenderers()
@@ -887,7 +880,7 @@ void HTMLInputElement::setChecked(bool nowChecked, TextFieldEventBehavior eventB
 
     if (CheckedRadioButtons* buttons = checkedRadioButtons())
             buttons->updateCheckedState(this);
-    if (renderer() && renderer()->style()->hasAppearance())
+    if (renderer() && renderer()->style().hasAppearance())
         renderer()->theme()->stateChanged(renderer(), CheckedState);
     setNeedsValidityCheck();
 
@@ -921,7 +914,7 @@ void HTMLInputElement::setIndeterminate(bool newValue)
 
     didAffectSelector(AffectedSelectorIndeterminate);
 
-    if (renderer() && renderer()->style()->hasAppearance())
+    if (renderer() && renderer()->style().hasAppearance())
         renderer()->theme()->stateChanged(renderer(), CheckedState);
 }
 
@@ -1110,26 +1103,19 @@ void HTMLInputElement::setValueFromRenderer(const String& value)
     setAutofilled(false);
 }
 
-void* HTMLInputElement::preDispatchEventHandler(Event* event)
+void HTMLInputElement::willDispatchEvent(Event& event, InputElementClickState& state)
 {
-    if (event->type() == eventNames().textInputEvent && m_inputType->shouldSubmitImplicitly(event)) {
-        event->stopPropagation();
-        return 0;
+    if (event.type() == eventNames().textInputEvent && m_inputType->shouldSubmitImplicitly(&event))
+        event.stopPropagation();
+    if (event.type() == eventNames().clickEvent && event.isMouseEvent() && toMouseEvent(&event)->button() == LeftButton) {
+        m_inputType->willDispatchClick(state);
+        state.stateful = true;
     }
-    if (event->type() != eventNames().clickEvent)
-        return 0;
-    if (!event->isMouseEvent() || static_cast<MouseEvent*>(event)->button() != LeftButton)
-        return 0;
-    // FIXME: Check whether there are any cases where this actually ends up leaking.
-    return m_inputType->willDispatchClick().leakPtr();
 }
 
-void HTMLInputElement::postDispatchEventHandler(Event* event, void* dataFromPreDispatch)
+void HTMLInputElement::didDispatchClickEvent(Event& event, const InputElementClickState& state)
 {
-    OwnPtr<ClickHandlingState> state = adoptPtr(static_cast<ClickHandlingState*>(dataFromPreDispatch));
-    if (!state)
-        return;
-    m_inputType->didDispatchClick(event, *state);
+    m_inputType->didDispatchClick(&event, state);
 }
 
 void HTMLInputElement::defaultEventHandler(Event* evt)
@@ -1319,7 +1305,7 @@ void HTMLInputElement::setMaxLength(int maxLength, ExceptionCode& ec)
     if (maxLength < 0)
         ec = INDEX_SIZE_ERR;
     else
-        setAttribute(maxlengthAttr, String::number(maxLength));
+        setIntegralAttribute(maxlengthAttr, maxLength);
 }
 
 bool HTMLInputElement::multiple() const
@@ -1329,7 +1315,7 @@ bool HTMLInputElement::multiple() const
 
 void HTMLInputElement::setSize(unsigned size)
 {
-    setAttribute(sizeAttr, String::number(size));
+    setUnsignedIntegralAttribute(sizeAttr, size);
 }
 
 void HTMLInputElement::setSize(unsigned size, ExceptionCode& ec)
@@ -1364,7 +1350,7 @@ void HTMLInputElement::setFiles(PassRefPtr<FileList> files)
     m_inputType->setFiles(files);
 }
 
-bool HTMLInputElement::receiveDroppedFiles(const DragData* dragData)
+bool HTMLInputElement::receiveDroppedFiles(const DragData& dragData)
 {
     return m_inputType->receiveDroppedFiles(dragData);
 }
@@ -1512,10 +1498,10 @@ void HTMLInputElement::didChangeForm()
     addToRadioButtonGroup();
 }
 
-Node::InsertionNotificationRequest HTMLInputElement::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest HTMLInputElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLTextFormControlElement::insertedInto(insertionPoint);
-    if (insertionPoint->inDocument() && !form())
+    if (insertionPoint.inDocument() && !form())
         addToRadioButtonGroup();
 #if ENABLE(DATALIST_ELEMENT)
     resetListAttributeTargetObserver();
@@ -1523,9 +1509,9 @@ Node::InsertionNotificationRequest HTMLInputElement::insertedInto(ContainerNode*
     return InsertionDone;
 }
 
-void HTMLInputElement::removedFrom(ContainerNode* insertionPoint)
+void HTMLInputElement::removedFrom(ContainerNode& insertionPoint)
 {
-    if (insertionPoint->inDocument() && !form())
+    if (insertionPoint.inDocument() && !form())
         removeFromRadioButtonGroup();
     HTMLTextFormControlElement::removedFrom(insertionPoint);
     ASSERT(!inDocument());
@@ -1606,7 +1592,7 @@ HTMLDataListElement* HTMLInputElement::dataList() const
     if (!m_inputType->shouldRespectListAttribute())
         return 0;
 
-    Element* element = treeScope()->getElementById(fastGetAttribute(listAttr));
+    Element* element = treeScope().getElementById(fastGetAttribute(listAttr));
     if (!element)
         return 0;
     if (!element->hasTagName(datalistTag))
@@ -1887,12 +1873,12 @@ unsigned HTMLInputElement::width() const
 
 void HTMLInputElement::setHeight(unsigned height)
 {
-    setAttribute(heightAttr, String::number(height));
+    setUnsignedIntegralAttribute(heightAttr, height);
 }
 
 void HTMLInputElement::setWidth(unsigned width)
 {
-    setAttribute(widthAttr, String::number(width));
+    setUnsignedIntegralAttribute(widthAttr, width);
 }
 
 #if ENABLE(DATALIST_ELEMENT)
@@ -1902,7 +1888,7 @@ OwnPtr<ListAttributeTargetObserver> ListAttributeTargetObserver::create(const At
 }
 
 ListAttributeTargetObserver::ListAttributeTargetObserver(const AtomicString& id, HTMLInputElement* element)
-    : IdTargetObserver(element->treeScope()->idTargetObserverRegistry(), id)
+    : IdTargetObserver(element->treeScope().idTargetObserverRegistry(), id)
     , m_element(element)
 {
 }

@@ -107,9 +107,7 @@
 #endif
 
 // Harden the pointers stored in the TCMalloc linked lists
-#if !PLATFORM(QT)
 #define ENABLE_TCMALLOC_HARDENING 1
-#endif
 
 // Use a background thread to periodically scavenge memory to release back to the system
 #if PLATFORM(IOS)
@@ -1660,7 +1658,7 @@ template <int BITS> class MapSelector {
 };
 
 #if defined(WTF_CHANGES)
-#if CPU(X86_64)
+#if CPU(X86_64) || CPU(ARM64)
 // On all known X86-64 platforms, the upper 16 bits are always unused and therefore 
 // can be excluded from the PageMap key.
 // See http://en.wikipedia.org/wiki/X86-64#Virtual_address_space_details
@@ -3801,7 +3799,7 @@ static void** DumpStackTraces() {
   SpinLockHolder h(&pageheap_lock);
   int used_slots = 0;
   for (Span* s = sampled_objects.next; s != &sampled_objects; s = s->next) {
-    ASSERT(used_slots < needed_slots);  // Need to leave room for terminator
+    ASSERT_WITH_SECURITY_IMPLICATION(used_slots < needed_slots); // Need to leave room for terminator
     StackTrace* stack = reinterpret_cast<StackTrace*>(s->objects);
     if (used_slots + 3 + stack->depth >= needed_slots) {
       // No more room
@@ -4165,7 +4163,7 @@ static void* do_memalign(size_t align, size_t size) {
   while ((((span->start+skip) << kPageShift) & (align - 1)) != 0) {
     skip++;
   }
-  ASSERT(skip < alloc);
+  ASSERT_WITH_SECURITY_IMPLICATION(skip < alloc);
   if (skip > 0) {
     Span* rest = pageheap->Split(span, skip);
     pageheap->Delete(span);

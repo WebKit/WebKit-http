@@ -46,12 +46,12 @@ list(APPEND WebCore_SOURCES
     platform/win/KeyEventWin.cpp
     platform/win/LanguageWin.cpp
     platform/win/LocalizedStringsWin.cpp
+    platform/win/LoggingWin.cpp
     platform/win/MIMETypeRegistryWin.cpp
     platform/win/PasteboardWin.cpp
     platform/win/PlatformMouseEventWin.cpp
     platform/win/PlatformScreenWin.cpp
     platform/win/PopupMenuWin.cpp
-    platform/win/RunLoopWin.cpp
     platform/win/SSLKeyGeneratorWin.cpp
     platform/win/ScrollbarThemeWin.cpp
     platform/win/SearchPopupMenuWin.cpp

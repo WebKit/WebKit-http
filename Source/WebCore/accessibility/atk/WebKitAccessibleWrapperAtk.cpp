@@ -172,7 +172,7 @@ static const gchar* webkitAccessibleGetDescription(AtkObject* object)
     Node* node = 0;
     if (coreObject->isAccessibilityRenderObject())
         node = coreObject->node();
-    if (!node || !node->isHTMLElement() || coreObject->ariaRoleAttribute() != UnknownRole)
+    if (!node || !node->isHTMLElement() || coreObject->ariaRoleAttribute() != UnknownRole || coreObject->isImage())
         return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, accessibilityDescription(coreObject));
 
     // atk_table_get_summary returns an AtkObject. We have no summary object, so expose summary here.
@@ -191,12 +191,26 @@ static const gchar* webkitAccessibleGetDescription(AtkObject* object)
     return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, accessibilityDescription(coreObject));
 }
 
+static void removeAtkRelationByType(AtkRelationSet* relationSet, AtkRelationType relationType)
+{
+    int count = atk_relation_set_get_n_relations(relationSet);
+    for (int i = 0; i < count; i++) {
+        AtkRelation* relation = atk_relation_set_get_relation(relationSet, i);
+        if (atk_relation_get_relation_type(relation) == relationType) {
+            atk_relation_set_remove(relationSet, relation);
+            break;
+        }
+    }
+}
+
 static void setAtkRelationSetFromCoreObject(AccessibilityObject* coreObject, AtkRelationSet* relationSet)
 {
     if (coreObject->isFieldset()) {
         AccessibilityObject* label = coreObject->titleUIElement();
-        if (label)
+        if (label) {
+            removeAtkRelationByType(relationSet, ATK_RELATION_LABELLED_BY);
             atk_relation_set_add_relation_by_type(relationSet, ATK_RELATION_LABELLED_BY, label->wrapper());
+        }
         return;
     }
 
@@ -212,8 +226,10 @@ static void setAtkRelationSetFromCoreObject(AccessibilityObject* coreObject, Atk
 
     if (coreObject->isControl()) {
         AccessibilityObject* label = coreObject->correspondingLabelForControlElement();
-        if (label)
+        if (label) {
+            removeAtkRelationByType(relationSet, ATK_RELATION_LABELLED_BY);
             atk_relation_set_add_relation_by_type(relationSet, ATK_RELATION_LABELLED_BY, label->wrapper());
+        }
     } else {
         AccessibilityObject* control = coreObject->correspondingControlForLabelElement();
         if (control)
@@ -505,10 +521,6 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     if (coreObject->ariaHasPopup())
         attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", "true");
 
-    String invalidStatus = coreObject->invalidStatus().string();
-    if (!invalidStatus.isEmpty() && invalidStatus != "false")
-        attributeSet = addToAtkAttributeSet(attributeSet, "aria-invalid", coreObject->invalidStatus().string().utf8().data());
-
     AccessibilitySortDirection sortDirection = coreObject->sortDirection();
     if (sortDirection != SortDirectionNone) {
         // WAI-ARIA spec says to translate the value as is from the attribute.
@@ -524,6 +536,9 @@ static AtkRole atkRole(AccessibilityRole role)
     switch (role) {
     case UnknownRole:
         return ATK_ROLE_UNKNOWN;
+    case AudioRole:
+    case VideoRole:
+        return ATK_ROLE_EMBEDDED;
     case ButtonRole:
         return ATK_ROLE_PUSH_BUTTON;
     case ToggleButtonRole:
@@ -728,6 +743,9 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
 
     if (coreObject->isIndeterminate())
         atk_state_set_add_state(stateSet, ATK_STATE_INDETERMINATE);
+
+    if (coreObject->invalidStatus() != "false")
+        atk_state_set_add_state(stateSet, ATK_STATE_INVALID_ENTRY);
 
     if (coreObject->isMultiSelectable())
         atk_state_set_add_state(stateSet, ATK_STATE_MULTISELECTABLE);
@@ -1126,7 +1144,7 @@ void webkitAccessibleDetach(WebKitAccessible* accessible)
     ASSERT(accessible->m_object);
 
     if (accessible->m_object->roleValue() == WebAreaRole)
-        g_signal_emit_by_name(accessible, "state-change", "defunct", true);
+        atk_object_notify_state_change(ATK_OBJECT(accessible), ATK_STATE_DEFUNCT, true);
 
     // We replace the WebCore AccessibilityObject with a fallback object that
     // provides default implementations to avoid repetitive null-checking after

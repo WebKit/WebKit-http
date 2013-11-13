@@ -46,6 +46,7 @@
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebKitSystemInterface.h>
 #import <wtf/text/StringConcatenate.h>
+#import <mach-o/dyld.h>
 
 @interface NSApplication (Details)
 - (void)speakString:(NSString *)string;
@@ -56,6 +57,17 @@
 using namespace WebCore;
 
 namespace WebKit {
+
+static bool shouldUseLegacyImplicitRubberBandControl()
+{
+    static bool linkedAgainstExecutableExpectingImplicitRubberBandControl = NSVersionOfLinkTimeLibrary("WebKit2") < 0x021A0200 /* 538.2.0 */;
+    return linkedAgainstExecutableExpectingImplicitRubberBandControl;
+}
+
+void WebPageProxy::platformInitialize()
+{
+    m_useLegacyImplicitRubberBandControl = shouldUseLegacyImplicitRubberBandControl();
+}
 
 #if defined(__ppc__) || defined(__ppc64__)
 #define PROCESSOR "PPC"
@@ -124,18 +136,6 @@ void WebPageProxy::searchTheWeb(const String& string)
     [pasteboard setString:string forType:NSStringPboardType];
     
     NSPerformService(@"Search With %WebSearchProvider@", pasteboard);
-}
-    
-CGContextRef WebPageProxy::containingWindowGraphicsContext()
-{
-    return m_pageClient->containingWindowGraphicsContext();
-}
-
-void WebPageProxy::updateWindowIsVisible(bool windowIsVisible)
-{
-    if (!isValid())
-        return;
-    process()->send(Messages::WebPage::SetWindowIsVisible(windowIsVisible), m_pageID);
 }
 
 void WebPageProxy::windowAndViewFramesChanged(const FloatRect& viewFrameInWindowCoordinates, const FloatPoint& accessibilityViewCoordinates)
@@ -499,9 +499,9 @@ void WebPageProxy::intrinsicContentSizeDidChange(const IntSize& intrinsicContent
     m_pageClient->intrinsicContentSizeDidChange(intrinsicContentSize);
 }
 
-void WebPageProxy::setAcceleratedCompositingRootLayer(const GraphicsLayer* rootLayer)
+void WebPageProxy::setAcceleratedCompositingRootLayer(PlatformLayer* rootLayer)
 {
-    m_pageClient->setAcceleratedCompositingRootLayer(rootLayer->platformLayer());
+    m_pageClient->setAcceleratedCompositingRootLayer(rootLayer);
 }
 
 static NSString *temporaryPDFDirectoryPath()

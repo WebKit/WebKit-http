@@ -21,7 +21,7 @@
 [
     Conditional=SVG,
     DoNotCheckConstants,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] exception SVGException {
 
     readonly attribute unsigned short   code;

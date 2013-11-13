@@ -26,6 +26,7 @@
 #ifndef FastBitVector_h
 #define FastBitVector_h
 
+#include <string.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/StdLibExtras.h>
 
@@ -101,10 +102,8 @@ public:
         bool changed = false;
         ASSERT(m_numBits == other.m_numBits);
         for (unsigned i = arrayLength(); i--;) {
-            if (m_array[i] == other.m_array[i])
-                continue;
+            changed |= m_array[i] != other.m_array[i];
             m_array[i] = other.m_array[i];
-            changed = true;
         }
         return changed;
     }

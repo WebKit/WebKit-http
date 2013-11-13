@@ -35,7 +35,7 @@ class RenderTableCell;
 
 class RenderTableCol FINAL : public RenderBox {
 public:
-    explicit RenderTableCol(Element&);
+    RenderTableCol(Element&, PassRef<RenderStyle>);
     Element& element() const { return toElement(nodeForNonAnonymous()); }
 
     void clearPreferredLogicalWidthsDirtyBits();
@@ -44,8 +44,8 @@ public:
     void setSpan(unsigned span) { m_span = span; }
 
     bool isTableColumnGroupWithColumnChildren() { return firstChild(); }
-    bool isTableColumn() const { return style()->display() == TABLE_COLUMN; }
-    bool isTableColumnGroup() const { return style()->display() == TABLE_COLUMN_GROUP; }
+    bool isTableColumn() const { return style().display() == TABLE_COLUMN; }
+    bool isTableColumnGroup() const { return style().display() == TABLE_COLUMN_GROUP; }
 
     RenderTableCol* enclosingColumnGroup() const;
     RenderTableCol* enclosingColumnGroupIfAdjacentBefore() const
@@ -80,7 +80,7 @@ private:
     virtual void insertedIntoTree() OVERRIDE;
     virtual void willBeRemovedFromTree() OVERRIDE;
 
-    virtual bool isChildAllowed(RenderObject*, RenderStyle*) const OVERRIDE;
+    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const OVERRIDE;
     virtual bool canHaveChildren() const OVERRIDE;
     virtual bool requiresLayer() const OVERRIDE { return false; }
 
@@ -88,26 +88,14 @@ private:
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0) OVERRIDE;
 
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE;
+    virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE { }
 
     RenderTable* table() const;
 
     unsigned m_span;
 };
 
-inline RenderTableCol* toRenderTableCol(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderTableCol());
-    return static_cast<RenderTableCol*>(object);
-}
-
-inline const RenderTableCol* toRenderTableCol(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderTableCol());
-    return static_cast<const RenderTableCol*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderTableCol(const RenderTableCol*);
+RENDER_OBJECT_TYPE_CASTS(RenderTableCol, isRenderTableCol())
 
 }
 

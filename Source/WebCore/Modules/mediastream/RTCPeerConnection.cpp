@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -114,7 +115,7 @@ PassRefPtr<RTCConfiguration> RTCPeerConnection::parseConfiguration(const Diction
     return rtcConfiguration.release();
 }
 
-PassRefPtr<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext* context, const Dictionary& rtcConfiguration, const Dictionary& mediaConstraints, ExceptionCode& ec)
+PassRefPtr<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& context, const Dictionary& rtcConfiguration, const Dictionary& mediaConstraints, ExceptionCode& ec)
 {
     RefPtr<RTCConfiguration> configuration = parseConfiguration(rtcConfiguration, ec);
     if (ec)
@@ -132,17 +133,17 @@ PassRefPtr<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext* 
     return peerConnection.release();
 }
 
-RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext* context, PassRefPtr<RTCConfiguration> configuration, PassRefPtr<MediaConstraints> constraints, ExceptionCode& ec)
-    : ActiveDOMObject(context)
+RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context, PassRefPtr<RTCConfiguration> configuration, PassRefPtr<MediaConstraints> constraints, ExceptionCode& ec)
+    : ActiveDOMObject(&context)
     , m_signalingState(SignalingStateStable)
     , m_iceGatheringState(IceGatheringStateNew)
     , m_iceConnectionState(IceConnectionStateNew)
     , m_scheduledEventTimer(this, &RTCPeerConnection::scheduledEventTimerFired)
     , m_stopped(false)
 {
-    Document* document = toDocument(m_scriptExecutionContext);
+    Document& document = toDocument(context);
 
-    if (!document->frame()) {
+    if (!document.frame()) {
         ec = NOT_SUPPORTED_ERR;
         return;
     }
@@ -153,7 +154,7 @@ RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext* context, PassRefPtr
         return;
     }
 
-    document->frame()->loader().client().dispatchWillStartUsingPeerConnectionHandler(m_peerHandler.get());
+    document.frame()->loader().client().dispatchWillStartUsingPeerConnectionHandler(m_peerHandler.get());
 
     if (!m_peerHandler->initialize(configuration, constraints)) {
         ec = NOT_SUPPORTED_ERR;
@@ -384,7 +385,7 @@ void RTCPeerConnection::addStream(PassRefPtr<MediaStream> prpStream, const Dicti
 
     m_localStreams.append(stream);
 
-    bool valid = m_peerHandler->addStream(stream->descriptor(), constraints);
+    bool valid = m_peerHandler->addStream(stream->privateStream(), constraints);
     if (!valid)
         ec = SYNTAX_ERR;
 }
@@ -409,7 +410,7 @@ void RTCPeerConnection::removeStream(PassRefPtr<MediaStream> prpStream, Exceptio
 
     m_localStreams.remove(pos);
 
-    m_peerHandler->removeStream(stream->descriptor());
+    m_peerHandler->removeStream(stream->privateStream());
 }
 
 MediaStreamVector RTCPeerConnection::getLocalStreams() const
@@ -541,26 +542,26 @@ void RTCPeerConnection::didChangeIceConnectionState(IceConnectionState newState)
     changeIceConnectionState(newState);
 }
 
-void RTCPeerConnection::didAddRemoteStream(PassRefPtr<MediaStreamDescriptor> streamDescriptor)
+void RTCPeerConnection::didAddRemoteStream(PassRefPtr<MediaStreamPrivate> privateStream)
 {
     ASSERT(scriptExecutionContext()->isContextThread());
 
     if (m_signalingState == SignalingStateClosed)
         return;
 
-    RefPtr<MediaStream> stream = MediaStream::create(scriptExecutionContext(), streamDescriptor);
+    RefPtr<MediaStream> stream = MediaStream::create(*scriptExecutionContext(), privateStream);
     m_remoteStreams.append(stream);
 
     scheduleDispatchEvent(MediaStreamEvent::create(eventNames().addstreamEvent, false, false, stream.release()));
 }
 
-void RTCPeerConnection::didRemoveRemoteStream(MediaStreamDescriptor* streamDescriptor)
+void RTCPeerConnection::didRemoveRemoteStream(MediaStreamPrivate* privateStream)
 {
     ASSERT(scriptExecutionContext()->isContextThread());
-    ASSERT(streamDescriptor->client());
+    ASSERT(privateStream->client());
 
-    // FIXME: this class shouldn't know that the descriptor client is a MediaStream!
-    RefPtr<MediaStream> stream = static_cast<MediaStream*>(streamDescriptor->client());
+    // FIXME: this class shouldn't know that the private stream client is a MediaStream!
+    RefPtr<MediaStream> stream = static_cast<MediaStream*>(privateStream->client());
     stream->setEnded();
 
     if (m_signalingState == SignalingStateClosed)
@@ -595,7 +596,7 @@ void RTCPeerConnection::stop()
     m_iceConnectionState = IceConnectionStateClosed;
     m_signalingState = SignalingStateClosed;
 
-    Vector<RefPtr<RTCDataChannel> >::iterator i = m_dataChannels.begin();
+    Vector<RefPtr<RTCDataChannel>>::iterator i = m_dataChannels.begin();
     for (; i != m_dataChannels.end(); ++i)
         (*i)->stop();
 }
@@ -634,10 +635,10 @@ void RTCPeerConnection::scheduledEventTimerFired(Timer<RTCPeerConnection>*)
     if (m_stopped)
         return;
 
-    Vector<RefPtr<Event> > events;
+    Vector<RefPtr<Event>> events;
     events.swap(m_scheduledEvents);
 
-    Vector<RefPtr<Event> >::iterator it = events.begin();
+    Vector<RefPtr<Event>>::iterator it = events.begin();
     for (; it != events.end(); ++it)
         dispatchEvent((*it).release());
 

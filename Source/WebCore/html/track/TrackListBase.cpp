@@ -32,7 +32,6 @@
 #include "EventNames.h"
 #include "HTMLMediaElement.h"
 #include "ScriptExecutionContext.h"
-#include "TrackBase.h"
 #include "TrackEvent.h"
 
 using namespace WebCore;
@@ -170,7 +169,7 @@ void TrackListBase::scheduleChangeEvent()
 
 void TrackListBase::asyncEventTimerFired(Timer<TrackListBase>*)
 {
-    Vector<RefPtr<Event> > pendingEvents;
+    Vector<RefPtr<Event>> pendingEvents;
 
     ++m_dispatchingEvents;
     m_pendingEvents.swap(pendingEvents);
@@ -178,6 +177,16 @@ void TrackListBase::asyncEventTimerFired(Timer<TrackListBase>*)
     for (size_t index = 0; index < count; ++index)
         dispatchEvent(pendingEvents[index].release(), IGNORE_EXCEPTION);
     --m_dispatchingEvents;
+}
+
+bool TrackListBase::isAnyTrackEnabled() const
+{
+    for (size_t i = 0; i < m_inbandTracks.size(); ++i) {
+        TrackBase* track = m_inbandTracks[i].get();
+        if (track->enabled())
+            return true;
+    }
+    return false;
 }
 
 #endif

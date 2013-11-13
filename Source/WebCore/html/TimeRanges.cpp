@@ -31,8 +31,7 @@
 #include "ExceptionCodePlaceholder.h"
 #include <math.h>
 
-using namespace WebCore;
-using namespace std;
+namespace WebCore {
 
 TimeRanges::TimeRanges(double start, double end)
 {
@@ -158,11 +157,16 @@ void TimeRanges::add(double start, double end)
 
 bool TimeRanges::contain(double time) const
 {
+    return find(time) != notFound;
+}
+
+size_t TimeRanges::find(double time) const
+{
     for (unsigned n = 0; n < length(); n++) {
         if (time >= start(n, IGNORE_EXCEPTION) && time <= end(n, IGNORE_EXCEPTION))
-            return true;
+            return n;
     }
-    return false;
+    return notFound;
 }
 
 double TimeRanges::nearest(double time) const
@@ -193,4 +197,6 @@ double TimeRanges::totalDuration() const
     for (unsigned n = 0; n < length(); n++)
         total += fabs(end(n, IGNORE_EXCEPTION) - start(n, IGNORE_EXCEPTION));
     return total;
+}
+
 }

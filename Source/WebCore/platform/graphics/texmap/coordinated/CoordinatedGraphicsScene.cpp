@@ -29,7 +29,6 @@
 #include "TextureMapperBackingStore.h"
 #include "TextureMapperGL.h"
 #include "TextureMapperLayer.h"
-#include <OpenGLShims.h>
 #include <wtf/Atomics.h>
 #include <wtf/MainThread.h>
 
@@ -84,13 +83,8 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
     if (!currentRootLayer)
         return;
 
-    TextureMapperLayer* layer = currentRootLayer;
-
-    if (!layer)
-        return;
-
-    layer->setTextureMapper(m_textureMapper.get());
-    layer->applyAnimationsRecursively();
+    currentRootLayer->setTextureMapper(m_textureMapper.get());
+    currentRootLayer->applyAnimationsRecursively();
     m_textureMapper->beginPainting(PaintFlags);
     m_textureMapper->beginClip(TransformationMatrix(), clipRect);
 
@@ -106,12 +100,12 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
         currentRootLayer->setTransform(matrix);
     }
 
-    layer->paint();
+    currentRootLayer->paint();
     m_fpsCounter.updateFPSAndDisplay(m_textureMapper.get(), clipRect.location(), matrix);
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
 
-    if (layer->descendantsOrSelfHaveRunningAnimations())
+    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations())
         dispatchOnMainThread(bind(&CoordinatedGraphicsScene::updateViewport, this));
 }
 
@@ -256,7 +250,7 @@ void CoordinatedGraphicsScene::injectCachedCustomFilterPrograms(const FilterOper
 {
     for (size_t i = 0; i < filters.size(); ++i) {
         FilterOperation* operation = filters.operations().at(i).get();
-        if (operation->getOperationType() != FilterOperation::CUSTOM)
+        if (operation->type() != FilterOperation::CUSTOM)
             continue;
 
         CoordinatedCustomFilterOperation* customOperation = static_cast<CoordinatedCustomFilterOperation*>(operation);
@@ -384,10 +378,10 @@ void CoordinatedGraphicsScene::createLayers(const Vector<CoordinatedLayerID>& id
 
 void CoordinatedGraphicsScene::createLayer(CoordinatedLayerID id)
 {
-    OwnPtr<TextureMapperLayer> newLayer = adoptPtr(new TextureMapperLayer);
+    std::unique_ptr<TextureMapperLayer> newLayer = std::make_unique<TextureMapperLayer>();
     newLayer->setID(id);
     newLayer->setScrollClient(this);
-    m_layers.add(id, newLayer.release());
+    m_layers.add(id, std::move(newLayer));
 }
 
 void CoordinatedGraphicsScene::deleteLayers(const Vector<CoordinatedLayerID>& layerIDs)
@@ -398,7 +392,7 @@ void CoordinatedGraphicsScene::deleteLayers(const Vector<CoordinatedLayerID>& la
 
 void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID)
 {
-    OwnPtr<TextureMapperLayer> layer = m_layers.take(layerID);
+    std::unique_ptr<TextureMapperLayer> layer = m_layers.take(layerID);
     ASSERT(layer);
 
     m_backingStores.remove(layer.get());
@@ -650,7 +644,7 @@ void CoordinatedGraphicsScene::ensureRootLayer()
     if (m_rootLayer)
         return;
 
-    m_rootLayer = adoptPtr(new TextureMapperLayer);
+    m_rootLayer = std::make_unique<TextureMapperLayer>();
     m_rootLayer->setMasksToBounds(false);
     m_rootLayer->setDrawsContent(false);
     m_rootLayer->setAnchorPoint(FloatPoint3D(0, 0, 0));
@@ -688,7 +682,7 @@ void CoordinatedGraphicsScene::purgeGLResources()
 #endif
     m_surfaces.clear();
 
-    m_rootLayer.clear();
+    m_rootLayer = nullptr;
     m_rootLayerID = InvalidCoordinatedLayerID;
     m_layers.clear();
     m_fixedLayers.clear();

@@ -26,7 +26,7 @@
 [
     NoInterfaceObject,
     Conditional=VIDEO_TRACK & WEBVTT_REGIONS,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface TextTrackRegionList {
     readonly attribute unsigned long length;
     getter TextTrackRegion item(unsigned long index);

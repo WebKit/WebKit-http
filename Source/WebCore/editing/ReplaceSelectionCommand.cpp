@@ -30,24 +30,20 @@
 #include "ApplyStyleCommand.h"
 #include "BeforeTextInsertedEvent.h"
 #include "BreakBlockquoteCommand.h"
-#include "CSSPropertyNames.h"
 #include "CSSStyleDeclaration.h"
-#include "CSSValueKeywords.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "Element.h"
+#include "ElementIterator.h"
 #include "EventNames.h"
 #include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
 #include "FrameSelection.h"
-#include "HTMLElement.h"
 #include "HTMLInputElement.h"
-#include "HTMLInterchange.h"
 #include "HTMLNames.h"
 #include "HTMLTitleElement.h"
 #include "NodeList.h"
 #include "NodeRenderStyle.h"
-#include "NodeTraversal.h"
 #include "RenderInline.h"
 #include "RenderObject.h"
 #include "RenderText.h"
@@ -60,7 +56,6 @@
 #include "htmlediting.h"
 #include "markup.h"
 #include <wtf/StdLibExtras.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -74,6 +69,8 @@ class ReplacementFragment {
     WTF_MAKE_NONCOPYABLE(ReplacementFragment);
 public:
     ReplacementFragment(Document&, DocumentFragment*, const VisibleSelection&);
+
+    DocumentFragment* fragment() { return m_fragment.get(); }
 
     Node* firstChild() const;
     Node* lastChild() const;
@@ -187,7 +184,11 @@ ReplacementFragment::ReplacementFragment(Document& document, DocumentFragment* f
     if (text != evt->text() || !editableRoot->rendererIsRichlyEditable()) {
         restoreAndRemoveTestRenderingNodesToFragment(holder.get());
 
-        m_fragment = createFragmentFromText(selection.toNormalizedRange().get(), evt->text());
+        RefPtr<Range> range = selection.toNormalizedRange();
+        if (!range)
+            return;
+
+        m_fragment = createFragmentFromText(*range, evt->text());
         if (!m_fragment->firstChild())
             return;
 
@@ -275,7 +276,7 @@ void ReplacementFragment::restoreAndRemoveTestRenderingNodesToFragment(StyledEle
 
 void ReplacementFragment::removeUnrenderedNodes(Node* holder)
 {
-    Vector<RefPtr<Node> > unrendered;
+    Vector<RefPtr<Node>> unrendered;
 
     for (Node* node = holder->firstChild(); node; node = NodeTraversal::next(node, holder))
         if (!isNodeRendered(node) && !isTableStructureNode(node))
@@ -553,7 +554,7 @@ void ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline(Insert
             // Mutate using the CSSOM wrapper so we get the same event behavior as a script.
             if (isBlock(element))
                 element->style()->setPropertyInternal(CSSPropertyDisplay, "inline", false, IGNORE_EXCEPTION);
-            if (element->renderer() && element->renderer()->style()->isFloating())
+            if (element->renderer() && element->renderer()->style().isFloating())
                 element->style()->setPropertyInternal(CSSPropertyFloat, "none", false, IGNORE_EXCEPTION);
         }
     }
@@ -660,9 +661,9 @@ void ReplaceSelectionCommand::moveNodeOutOfAncestor(PassRefPtr<Node> prpNode, Pa
         removeNode(ancestor.release());
 }
 
-static inline bool nodeHasVisibleRenderText(Text* text)
+static inline bool hasRenderedText(const Text& text)
 {
-    return text->renderer() && toRenderText(text->renderer())->renderedTextLength() > 0;
+    return text.renderer() && text.renderer()->hasRenderedText();
 }
 
 void ReplaceSelectionCommand::removeUnrenderedTextNodesAtEnds(InsertedNodes& insertedNodes)
@@ -670,7 +671,7 @@ void ReplaceSelectionCommand::removeUnrenderedTextNodesAtEnds(InsertedNodes& ins
     document().updateLayoutIgnorePendingStylesheets();
 
     Node* lastLeafInserted = insertedNodes.lastLeafInserted();
-    if (lastLeafInserted && lastLeafInserted->isTextNode() && !nodeHasVisibleRenderText(toText(lastLeafInserted))
+    if (lastLeafInserted && lastLeafInserted->isTextNode() && !hasRenderedText(toText(*lastLeafInserted))
         && !enclosingNodeWithTag(firstPositionInOrBeforeNode(lastLeafInserted), selectTag)
         && !enclosingNodeWithTag(firstPositionInOrBeforeNode(lastLeafInserted), scriptTag)) {
         insertedNodes.willRemoveNode(lastLeafInserted);
@@ -680,7 +681,7 @@ void ReplaceSelectionCommand::removeUnrenderedTextNodesAtEnds(InsertedNodes& ins
     // We don't have to make sure that firstNodeInserted isn't inside a select or script element
     // because it is a top level node in the fragment and the user can't insert into those elements.
     Node* firstNodeInserted = insertedNodes.firstNodeInserted();
-    if (firstNodeInserted && firstNodeInserted->isTextNode() && !nodeHasVisibleRenderText(toText(firstNodeInserted))) {
+    if (firstNodeInserted && firstNodeInserted->isTextNode() && !hasRenderedText(toText(*firstNodeInserted))) {
         insertedNodes.willRemoveNode(firstNodeInserted);
         removeNode(firstNodeInserted);
     }
@@ -700,18 +701,24 @@ VisiblePosition ReplaceSelectionCommand::positionAtStartOfInsertedContent() cons
 
 static void removeHeadContents(ReplacementFragment& fragment)
 {
-    Node* next = 0;
-    for (Node* node = fragment.firstChild(); node; node = next) {
-        if (node->hasTagName(baseTag)
-            || node->hasTagName(linkTag)
-            || node->hasTagName(metaTag)
-            || node->hasTagName(styleTag)
-            || isHTMLTitleElement(node)) {
-            next = NodeTraversal::nextSkippingChildren(node);
-            fragment.removeNode(node);
-        } else
-            next = NodeTraversal::next(node);
+    if (fragment.isEmpty())
+        return;
+
+    Vector<Element*> toRemove;
+
+    auto it = elementDescendants(*fragment.fragment()).begin();
+    auto end = elementDescendants(*fragment.fragment()).end();
+    while (it != end) {
+        if (it->hasTagName(baseTag) || it->hasTagName(linkTag) || it->hasTagName(metaTag) || it->hasTagName(styleTag) || isHTMLTitleElement(*it)) {
+            toRemove.append(&*it);
+            it.traverseNextSkippingChildren();
+            continue;
+        }
+        ++it;
     }
+
+    for (unsigned i = 0; i < toRemove.size(); ++i)
+        fragment.removeNode(toRemove[i]);
 }
 
 // Remove style spans before insertion if they are unnecessary.  It's faster because we'll 
@@ -897,8 +904,8 @@ void ReplaceSelectionCommand::doApply()
         return;
     
     // We can skip matching the style if the selection is plain text.
-    if ((selection.start().deprecatedNode()->renderer() && selection.start().deprecatedNode()->renderer()->style()->userModify() == READ_WRITE_PLAINTEXT_ONLY)
-        && (selection.end().deprecatedNode()->renderer() && selection.end().deprecatedNode()->renderer()->style()->userModify() == READ_WRITE_PLAINTEXT_ONLY))
+    if ((selection.start().deprecatedNode()->renderer() && selection.start().deprecatedNode()->renderer()->style().userModify() == READ_WRITE_PLAINTEXT_ONLY)
+        && (selection.end().deprecatedNode()->renderer() && selection.end().deprecatedNode()->renderer()->style().userModify() == READ_WRITE_PLAINTEXT_ONLY))
         m_matchStyle = false;
     
     if (m_matchStyle) {
@@ -1275,7 +1282,7 @@ void ReplaceSelectionCommand::addSpacesForSmartReplace()
 
     bool needsTrailingSpace = !isEndOfParagraph(endOfInsertedContent) && !isCharacterSmartReplaceExemptConsideringNonBreakingSpace(endOfInsertedContent.characterAfter(), false);
     if (needsTrailingSpace && endNode) {
-        bool collapseWhiteSpace = !endNode->renderer() || endNode->renderer()->style()->collapseWhiteSpace();
+        bool collapseWhiteSpace = !endNode->renderer() || endNode->renderer()->style().collapseWhiteSpace();
         if (endNode->isTextNode()) {
             insertTextIntoNode(toText(endNode), endOffset, collapseWhiteSpace ? nonBreakingSpaceString() : " ");
             if (m_endOfInsertedContent.containerNode() == endNode)
@@ -1299,7 +1306,7 @@ void ReplaceSelectionCommand::addSpacesForSmartReplace()
 
     bool needsLeadingSpace = !isStartOfParagraph(startOfInsertedContent) && !isCharacterSmartReplaceExemptConsideringNonBreakingSpace(startOfInsertedContent.previous().characterAfter(), true);
     if (needsLeadingSpace && startNode) {
-        bool collapseWhiteSpace = !startNode->renderer() || startNode->renderer()->style()->collapseWhiteSpace();
+        bool collapseWhiteSpace = !startNode->renderer() || startNode->renderer()->style().collapseWhiteSpace();
         if (startNode->isTextNode()) {
             insertTextIntoNode(toText(startNode), startOffset, collapseWhiteSpace ? nonBreakingSpaceString() : " ");
             if (m_endOfInsertedContent.containerNode() == startNode && m_endOfInsertedContent.offsetInContainerNode())

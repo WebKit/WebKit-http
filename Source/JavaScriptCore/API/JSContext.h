@@ -41,7 +41,11 @@
 // that reference a particular JSContext have been deallocated the JSContext 
 // will be deallocated unless it has been previously retained.
 
-NS_CLASS_AVAILABLE(10_9, NA)
+#ifndef JSC_OBJC_API_AVAILABLE_MAC_OS_X_1080
+NS_CLASS_AVAILABLE(10_9, 7_0)
+#else
+OBJC_VISIBLE
+#endif
 @interface JSContext : NSObject
 
 // Create a JSContext.

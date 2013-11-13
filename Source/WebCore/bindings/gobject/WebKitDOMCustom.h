@@ -29,7 +29,7 @@ G_BEGIN_DECLS
  * webkit_dom_html_text_area_element_is_edited:
  * @input: A #WebKitDOMHTMLTextAreaElement
  *
- * Returns:
+ * Returns: A #gboolean
  */
 WEBKIT_API gboolean webkit_dom_html_text_area_element_is_edited(WebKitDOMHTMLTextAreaElement* input);
 
@@ -37,7 +37,7 @@ WEBKIT_API gboolean webkit_dom_html_text_area_element_is_edited(WebKitDOMHTMLTex
  * webkit_dom_html_input_element_is_edited:
  * @input: A #WebKitDOMHTMLInputElement
  *
- * Returns:
+ * Returns: A #gboolean
  */
 WEBKIT_API gboolean webkit_dom_html_input_element_is_edited(WebKitDOMHTMLInputElement* input);
 
@@ -56,7 +56,7 @@ WEBKIT_API WebKitDOMBlob* webkit_dom_blob_webkit_slice(WebKitDOMBlob* self, gint
  * webkit_dom_html_element_get_class_name:
  * @element: A #WebKitDOMHTMLElement
  *
- * Returns:
+ * Returns: A #gchar
  *
  */
 WEBKIT_API gchar* webkit_dom_html_element_get_class_name(WebKitDOMHTMLElement* element);
@@ -98,7 +98,7 @@ WEBKIT_API void webkit_dom_html_form_element_dispatch_form_input(WebKitDOMHTMLFo
  *
  * This method is deprecated. Use webkit_dom_element_set_id() instead.
  *
- * Returns:
+ * Returns: A #gchar
  *
 **/
 WEBKIT_API gchar* webkit_dom_html_element_get_id(WebKitDOMHTMLElement* self);
@@ -110,8 +110,6 @@ WEBKIT_API gchar* webkit_dom_html_element_get_id(WebKitDOMHTMLElement* self);
  *
  * This method is deprecated. Use webkit_dom_element_set_id() instead.
  *
- * Returns:
- *
 **/
 WEBKIT_API void webkit_dom_html_element_set_id(WebKitDOMHTMLElement* self, const gchar* value);
 
@@ -119,7 +117,7 @@ WEBKIT_API void webkit_dom_html_element_set_id(WebKitDOMHTMLElement* self, const
  * webkit_dom_webkit_named_flow_get_overflow:
  * @flow: A #WebKitDOMWebKitNamedFlow
  *
- * Returns:
+ * Returns: A #gboolean
  *
  */
 WEBKIT_API gboolean webkit_dom_webkit_named_flow_get_overflow(WebKitDOMWebKitNamedFlow* flow);
@@ -128,7 +126,7 @@ WEBKIT_API gboolean webkit_dom_webkit_named_flow_get_overflow(WebKitDOMWebKitNam
  * webkit_dom_element_get_webkit_region_overflow:
  * @element: A #WebKitDOMElement
  *
- * Returns:
+ * Returns: A #gchar
  *
  */
 WEBKIT_API gchar* webkit_dom_element_get_webkit_region_overflow(WebKitDOMElement* element);
@@ -160,7 +158,7 @@ WEBKIT_API GType webkit_dom_bar_info_get_type(void);
  *
  * The BarInfo type has been removed from the DOM spec, this function does nothing.
  *
- * Returns:
+ * Returns: A #gboolean
  *
 **/
 WEBKIT_API gboolean webkit_dom_bar_info_get_visible(void* self);
@@ -194,7 +192,7 @@ WEBKIT_API WebKitDOMCSSValue* webkit_dom_css_style_declaration_get_property_css_
  *
  * This functionality has been removed from WebKit, this function does nothing.
  *
- * Returns:
+ * Returns: A #gboolean
  *
 **/
 WEBKIT_API gboolean webkit_dom_document_get_webkit_hidden(WebKitDOMDocument* self);
@@ -205,7 +203,7 @@ WEBKIT_API gboolean webkit_dom_document_get_webkit_hidden(WebKitDOMDocument* sel
  *
  * This functionality has been removed from WebKit, this function does nothing.
  *
- * Returns:
+ * Returns: A #gchar
  *
 **/
 WEBKIT_API gchar* webkit_dom_document_get_webkit_visibility_state(WebKitDOMDocument* self);
@@ -233,7 +231,7 @@ WEBKIT_API void webkit_dom_html_element_set_item_id(WebKitDOMHTMLElement* self, 
  *
  * This functionality has been removed from WebKit, this function does nothing.
  *
- * Returns:
+ * Returns: A #gchar
  *
 **/
 WEBKIT_API gchar* webkit_dom_html_element_get_item_id(WebKitDOMHTMLElement* self);
@@ -276,7 +274,7 @@ WEBKIT_API void webkit_dom_html_element_set_item_scope(WebKitDOMHTMLElement* sel
  *
  * This functionality has been removed from WebKit, this function does nothing.
  *
- * Returns:
+ * Returns: A #gboolean
  *
 **/
 WEBKIT_API gboolean webkit_dom_html_element_get_item_scope(WebKitDOMHTMLElement* self);
@@ -291,6 +289,29 @@ WEBKIT_API gboolean webkit_dom_html_element_get_item_scope(WebKitDOMHTMLElement*
  *
 **/
 WEBKIT_API void* webkit_dom_html_element_get_item_type(WebKitDOMHTMLElement* self);
+
+
+/**
+ * webkit_dom_html_style_element_set_scoped:
+ * @self: A #WebKitDOMHTMLStyleElement
+ * @value: A #gboolean
+ *
+ * This functionality has been removed from WebKit, this function does nothing.
+ *
+**/
+WEBKIT_API void webkit_dom_html_style_element_set_scoped(WebKitDOMHTMLStyleElement* self, gboolean value);
+
+/**
+ * webkit_dom_html_style_element_get_scoped:
+ * @self: A #WebKitDOMHTMLStyleElement
+ *
+ * This functionality has been removed from WebKit, this function does nothing.
+ *
+ * Returns: A #gboolean
+ *
+**/
+WEBKIT_API gboolean webkit_dom_html_style_element_get_scoped(WebKitDOMHTMLStyleElement* self);
+
 
 WEBKIT_API GType webkit_dom_html_properties_collection_get_type(void);
 
@@ -324,7 +345,7 @@ WEBKIT_API void* webkit_dom_html_properties_collection_named_item(void* self, co
  *
  * The PropertiesCollection object has been removed from WebKit, this function does nothing.
  *
- * Returns:
+ * Returns: A #gulong
  *
 **/
 WEBKIT_API gulong webkit_dom_html_properties_collection_get_length(void* self);
@@ -357,7 +378,7 @@ WEBKIT_API WebKitDOMNamedNodeMap* webkit_dom_node_get_attributes(WebKitDOMNode* 
  *
  * This functionality has been removed from WebKit, this function does nothing.
  *
- * Returns:
+ * Returns: A #gboolean
  *
 **/
 WEBKIT_API gboolean webkit_dom_node_has_attributes(WebKitDOMNode* self);
@@ -370,7 +391,7 @@ WEBKIT_API GType webkit_dom_memory_info_get_type(void);
  *
  * The MemoryInfo object has been removed from WebKit, this function does nothing.
  *
- * Returns:
+ * Returns: A #gulong
  *
 **/
 WEBKIT_API gulong webkit_dom_memory_info_get_total_js_heap_size(void* self);
@@ -381,7 +402,7 @@ WEBKIT_API gulong webkit_dom_memory_info_get_total_js_heap_size(void* self);
  *
  * The MemoryInfo object has been removed from WebKit, this function does nothing.
  *
- * Returns:
+ * Returns: A #gulong
  *
 **/
 WEBKIT_API gulong webkit_dom_memory_info_get_used_js_heap_size(void* self);
@@ -392,7 +413,7 @@ WEBKIT_API gulong webkit_dom_memory_info_get_used_js_heap_size(void* self);
  *
  * The MemoryInfo object has been removed from WebKit, this function does nothing.
  *
- * Returns:
+ * Returns: A #gulong
  *
 **/
 WEBKIT_API gulong webkit_dom_memory_info_get_js_heap_size_limit(void* self);
@@ -430,10 +451,75 @@ WEBKIT_API WebKitDOMNode* webkit_dom_property_node_list_item(void* self, gulong 
  *
  * The PropertyNodeList object has been removed from WebKit, this function does nothing.
  *
- * Returns:
+ * Returns: A #gulong
  *
 **/
 WEBKIT_API gulong webkit_dom_property_node_list_get_length(void* self);
+
+/**
+ * webkit_dom_html_media_element_get_start_time:
+ * @self: A #HTMLMediaElement
+ *
+ * The HTMLMediaElement:start-time property has been removed from WebKit, this function does nothing.
+ *
+ * Returns: A #gdouble
+ *
+**/
+WEBKIT_API gdouble webkit_dom_html_media_element_get_start_time(WebKitDOMHTMLMediaElement* self);
+
+/**
+ * webkit_dom_html_media_element_get_initial_time:
+ * @self: A #HTMLMediaElement
+ *
+ * The HTMLMediaElement:initial-time property has been removed from WebKit, this function does nothing.
+ *
+ * Returns: A #gdouble
+ *
+**/
+WEBKIT_API gdouble webkit_dom_html_media_element_get_initial_time(WebKitDOMHTMLMediaElement* self);
+
+/**
+ * webkit_dom_html_head_element_get_profile:
+ * @self: A #WebKitDOMHTMLHeadElement
+ *
+ * This functionality has been removed from WebKit, this function does nothing.
+ *
+ * Returns: A string
+ *
+**/
+WEBKIT_API gchar* webkit_dom_html_head_element_get_profile(WebKitDOMHTMLHeadElement* self);
+
+/**
+ * webkit_dom_html_head_element_set_profile:
+ * @self: A #WebKitDOMHTMLHeadElement
+ * @value: A #gchar
+ *
+ * This functionality has been removed from WebKit, this function does nothing.
+ *
+**/
+WEBKIT_API void webkit_dom_html_head_element_set_profile(WebKitDOMHTMLHeadElement* self, const gchar* value);
+
+/**
+ * webkit_dom_processing_instruction_get_data:
+ * @self: A #WebKitDOMProcessingInstruction
+ *
+ * This functionality has been removed from WebKit, this function does nothing.
+ *
+ * Returns: A string
+ *
+**/
+WEBKIT_API gchar* webkit_dom_processing_instruction_get_data(WebKitDOMProcessingInstruction* self);
+
+/**
+ * webkit_dom_processing_instruction_set_data:
+ * @self: A #WebKitDOMProcessingInstruction
+ * @value: A #gchar
+ * @error: #GError
+ *
+ * This functionality has been removed from WebKit, this function does nothing.
+ *
+**/
+WEBKIT_API void webkit_dom_processing_instruction_set_data(WebKitDOMProcessingInstruction* self, const gchar* value, GError** error);
 
 G_END_DECLS
 

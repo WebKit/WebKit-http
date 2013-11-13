@@ -43,88 +43,28 @@ namespace WebCore {
     
 using namespace MathMLNames;
     
-RenderMathMLBlock::RenderMathMLBlock(Element* container)
-    : RenderFlexibleBox(container)
+RenderMathMLBlock::RenderMathMLBlock(Element& container, PassRef<RenderStyle> style)
+    : RenderFlexibleBox(container, std::move(style))
     , m_ignoreInAccessibilityTree(false)
-    , m_preferredLogicalHeight(preferredLogicalHeightUnset)
 {
 }
 
-bool RenderMathMLBlock::isChildAllowed(RenderObject* child, RenderStyle*) const
+RenderMathMLBlock::RenderMathMLBlock(Document& document, PassRef<RenderStyle> style)
+    : RenderFlexibleBox(document, std::move(style))
+    , m_ignoreInAccessibilityTree(false)
 {
-    return child->node() && child->node()->nodeType() == Node::ELEMENT_NODE;
 }
 
-void RenderMathMLBlock::computePreferredLogicalWidths()
+bool RenderMathMLBlock::isChildAllowed(const RenderObject& child, const RenderStyle&) const
 {
-    ASSERT(preferredLogicalWidthsDirty());
-    m_preferredLogicalHeight = preferredLogicalHeightUnset;
-    RenderFlexibleBox::computePreferredLogicalWidths();
+    return child.node() && isElement(*child.node());
 }
 
 RenderMathMLBlock* RenderMathMLBlock::createAnonymousMathMLBlock(EDisplay display)
 {
-    RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(style(), display);
-    RenderMathMLBlock* newBlock = new (renderArena()) RenderMathMLBlock(0);
-    newBlock->setDocumentForAnonymous(document());
-    newBlock->setStyle(newStyle.release());
+    RenderMathMLBlock* newBlock = new RenderMathMLBlock(document(), RenderStyle::createAnonymousStyleWithDisplay(&style(), display));
+    newBlock->initializeStyle();
     return newBlock;
-}
-
-// An arbitrary large value, like RenderBlock.cpp BLOCK_MAX_WIDTH or FixedTableLayout.cpp TABLE_MAX_WIDTH.
-static const int cLargeLogicalWidth = 15000;
-
-void RenderMathMLBlock::computeChildrenPreferredLogicalHeights()
-{
-    ASSERT(needsLayout());
-
-    // This is ugly, but disable fragmentation when computing the preferred heights.
-    FragmentationDisabler fragmentationDisabler(this);
-
-    // Ensure a full repaint will happen after layout finishes.
-    setNeedsLayout(true, MarkOnlyThis);
-
-    bool hadLayoutState = view().layoutState();
-    if (!hadLayoutState)
-        view().pushLayoutState(this);
-
-    {
-        LayoutStateDisabler layoutStateDisabler(&view());
-        
-        LayoutUnit oldAvailableLogicalWidth = availableLogicalWidth();
-        setLogicalWidth(cLargeLogicalWidth);
-        
-        for (RenderObject* child = firstChild(); child; child = child->nextSibling()) {
-            if (!child->isBox())
-                continue;
-            
-            // Because our width changed, |child| may need layout.
-            if (child->maxPreferredLogicalWidth() > oldAvailableLogicalWidth)
-                child->setNeedsLayout(true, MarkOnlyThis);
-            
-            RenderMathMLBlock* childMathMLBlock = child->isRenderMathMLBlock() ? toRenderMathMLBlock(child) : 0;
-            if (childMathMLBlock && !childMathMLBlock->isPreferredLogicalHeightDirty())
-                continue;
-            // Layout our child to compute its preferred logical height.
-            child->layoutIfNeeded();
-            if (childMathMLBlock)
-                childMathMLBlock->setPreferredLogicalHeight(childMathMLBlock->logicalHeight());
-        }
-    }
-    if (!hadLayoutState)
-        view().popLayoutState(this);
-}
-
-LayoutUnit RenderMathMLBlock::preferredLogicalHeightAfterSizing(RenderObject* child)
-{
-    if (child->isRenderMathMLBlock())
-        return toRenderMathMLBlock(child)->preferredLogicalHeight();
-    if (child->isBox()) {
-        ASSERT(!child->needsLayout());
-        return toRenderBox(child)->logicalHeight();
-    }
-    // This currently ignores -webkit-line-box-contain:
-    return child->style()->fontSize();
 }
 
 int RenderMathMLBlock::baselinePosition(FontBaseline baselineType, bool firstLine, LineDirectionMode direction, LinePositionMode linePositionMode) const
@@ -134,7 +74,7 @@ int RenderMathMLBlock::baselinePosition(FontBaseline baselineType, bool firstLin
     if (linePositionMode == PositionOfInteriorLineBoxes)
         return 0;
     
-    LayoutUnit baseline = firstLineBoxBaseline(); // FIXME: This may be unnecessary after flex baselines are implemented (https://bugs.webkit.org/show_bug.cgi?id=96188).
+    LayoutUnit baseline = firstLineBaseline(); // FIXME: This may be unnecessary after flex baselines are implemented (https://bugs.webkit.org/show_bug.cgi?id=96188).
     if (baseline != -1)
         return baseline;
     
@@ -143,7 +83,7 @@ int RenderMathMLBlock::baselinePosition(FontBaseline baselineType, bool firstLin
 
 const char* RenderMathMLBlock::renderName() const
 {
-    EDisplay display = style()->display();
+    EDisplay display = style().display();
     if (display == FLEX)
         return isAnonymous() ? "RenderMathMLBlock (anonymous, flex)" : "RenderMathMLBlock (flex)";
     if (display == INLINE_FLEX)
@@ -361,12 +301,12 @@ bool parseMathMLNamedSpace(const String& string, LayoutUnit& lengthValue, const 
     return false;
 }
 
-int RenderMathMLTable::firstLineBoxBaseline() const
+int RenderMathMLTable::firstLineBaseline() const
 {
-    // In legal MathML, we'll have a MathML parent. That RenderFlexibleBox parent will use our firstLineBoxBaseline() for baseline alignment, per
+    // In legal MathML, we'll have a MathML parent. That RenderFlexibleBox parent will use our firstLineBaseline() for baseline alignment, per
     // http://dev.w3.org/csswg/css3-flexbox/#flex-baselines. We want to vertically center an <mtable>, such as a matrix. Essentially the whole <mtable> element fits on a
     // single line, whose baseline gives this centering. This is different than RenderTable::firstLineBoxBaseline, which returns the baseline of the first row of a <table>.
-    return (logicalHeight() + style()->fontMetrics().xHeight()) / 2;
+    return (logicalHeight() + style().fontMetrics().xHeight()) / 2;
 }
 
 }    

@@ -55,7 +55,6 @@
 #include "Settings.h"
 #include "SpatialNavigation.h"
 
-using namespace std;
 using namespace WTF::Unicode;
 
 namespace WebCore {
@@ -84,6 +83,14 @@ PassRefPtr<HTMLSelectElement> HTMLSelectElement::create(const QualifiedName& tag
 {
     ASSERT(tagName.matches(selectTag));
     return adoptRef(new HTMLSelectElement(tagName, document, form));
+}
+
+void HTMLSelectElement::didRecalcStyle(Style::Change styleChange)
+{
+    // Even though the options didn't necessarily change, we will call setOptionsChangedOnRenderer for its side effect
+    // of recomputing the width of the element. We need to do that if the style change included a change in zoom level.
+    setOptionsChangedOnRenderer();
+    HTMLFormControlElement::didRecalcStyle(styleChange);
 }
 
 const AtomicString& HTMLSelectElement::formControlType() const
@@ -218,7 +225,7 @@ void HTMLSelectElement::add(HTMLElement* element, HTMLElement* before, Exception
     setNeedsValidityCheck();
 }
 
-void HTMLSelectElement::remove(int optionIndex)
+void HTMLSelectElement::removeByIndex(int optionIndex)
 {
     int listIndex = optionToListIndex(optionIndex);
     if (listIndex < 0)
@@ -290,13 +297,13 @@ void HTMLSelectElement::parseAttribute(const QualifiedName& name, const AtomicSt
         // Set the attribute value to a number.
         // This is important since the style rules for this attribute can determine the appearance property.
         int size = value.toInt();
-        String attrSize = String::number(size);
+        AtomicString attrSize = AtomicString::number(size);
         if (attrSize != value) {
             // FIXME: This is horribly factored.
             if (Attribute* sizeAttribute = ensureUniqueElementData().findAttributeByName(sizeAttr))
                 sizeAttribute->setValue(attrSize);
         }
-        size = max(size, 1);
+        size = std::max(size, 1);
 
         // Ensure that we've determined selectedness of the items at least once prior to changing the size.
         if (oldSize != size)
@@ -336,14 +343,14 @@ bool HTMLSelectElement::canSelectAll() const
     return !usesMenuList();
 }
 
-RenderElement* HTMLSelectElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* HTMLSelectElement::createRenderer(PassRef<RenderStyle> style)
 {
     if (usesMenuList())
-        return new (arena) RenderMenuList(*this);
-    return new (arena) RenderListBox(*this);
+        return new RenderMenuList(*this, std::move(style));
+    return new RenderListBox(*this, std::move(style));
 }
 
-bool HTMLSelectElement::childShouldCreateRenderer(const Node* child) const
+bool HTMLSelectElement::childShouldCreateRenderer(const Node& child) const
 {
     if (!HTMLFormControlElementWithState::childShouldCreateRenderer(child))
         return false;
@@ -408,7 +415,7 @@ void HTMLSelectElement::setMultiple(bool multiple)
 
 void HTMLSelectElement::setSize(int size)
 {
-    setAttribute(sizeAttr, String::number(size));
+    setIntegralAttribute(sizeAttr, size);
 }
 
 Node* HTMLSelectElement::namedItem(const AtomicString& name)
@@ -434,7 +441,7 @@ void HTMLSelectElement::setOption(unsigned index, HTMLOptionElement* option, Exc
         // Replace an existing entry?
     } else if (diff < 0) {
         before = toHTMLElement(options()->item(index+1));
-        remove(index);
+        removeByIndex(index);
     }
     // Finally add the new element.
     if (!ec) {
@@ -464,7 +471,7 @@ void HTMLSelectElement::setLength(unsigned newLen, ExceptionCode& ec)
 
         // Removing children fires mutation events, which might mutate the DOM further, so we first copy out a list
         // of elements that we intend to remove then attempt to remove them one at a time.
-        Vector<RefPtr<Element> > itemsToRemove;
+        Vector<RefPtr<Element>> itemsToRemove;
         size_t optionIndex = 0;
         for (size_t i = 0; i < items.size(); ++i) {
             Element* item = items[i];
@@ -613,8 +620,8 @@ void HTMLSelectElement::updateListBoxSelection(bool deselectOtherOptions)
     ASSERT(renderer() && (renderer()->isListBox() || m_multiple));
     ASSERT(!listItems().size() || m_activeSelectionAnchorIndex >= 0);
 
-    unsigned start = min(m_activeSelectionAnchorIndex, m_activeSelectionEndIndex);
-    unsigned end = max(m_activeSelectionAnchorIndex, m_activeSelectionEndIndex);
+    unsigned start = std::min(m_activeSelectionAnchorIndex, m_activeSelectionEndIndex);
+    unsigned end = std::max(m_activeSelectionAnchorIndex, m_activeSelectionEndIndex);
 
     const Vector<HTMLElement*>& items = listItems();
     for (unsigned i = 0; i < items.size(); ++i) {
@@ -1479,7 +1486,7 @@ void HTMLSelectElement::defaultEventHandler(Event* event)
 
     if (event->type() == eventNames().keypressEvent && event->isKeyboardEvent()) {
         KeyboardEvent* keyboardEvent = static_cast<KeyboardEvent*>(event);
-        if (!keyboardEvent->ctrlKey() && !keyboardEvent->altKey() && !keyboardEvent->metaKey() && isPrintableChar(keyboardEvent->charCode())) {
+        if (!keyboardEvent->ctrlKey() && !keyboardEvent->altKey() && !keyboardEvent->metaKey() && u_isprint(keyboardEvent->charCode())) {
             typeAheadFind(keyboardEvent);
             event->setDefaultHandled();
             return;
@@ -1529,7 +1536,7 @@ void HTMLSelectElement::typeAheadFind(KeyboardEvent* event)
         listBoxOnChange();
 }
 
-Node::InsertionNotificationRequest HTMLSelectElement::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest HTMLSelectElement::insertedInto(ContainerNode& insertionPoint)
 {
     // When the element is created during document parsing, it won't have any
     // items yet - but for innerHTML and related methods, this method is called

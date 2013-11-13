@@ -44,7 +44,7 @@ Vector<BytecodeAndMachineOffset>& AssemblyHelpers::decodedCodeMapFor(CodeBlock* 
     ASSERT(codeBlock->jitType() == JITCode::BaselineJIT);
     ASSERT(codeBlock->jitCodeMap());
     
-    HashMap<CodeBlock*, Vector<BytecodeAndMachineOffset> >::AddResult result = m_decodedCodeMaps.add(codeBlock, Vector<BytecodeAndMachineOffset>());
+    HashMap<CodeBlock*, Vector<BytecodeAndMachineOffset>>::AddResult result = m_decodedCodeMaps.add(codeBlock, Vector<BytecodeAndMachineOffset>());
     
     if (result.isNewEntry)
         codeBlock->jitCodeMap()->decode(result.iterator->value);
@@ -152,6 +152,13 @@ void AssemblyHelpers::jitAssertHasValidCallFrame()
     Jump checkCFR = branchTestPtr(Zero, GPRInfo::callFrameRegister, TrustedImm32(7));
     breakpoint();
     checkCFR.link(this);
+}
+
+void AssemblyHelpers::jitAssertIsNull(GPRReg gpr)
+{
+    Jump checkNull = branchTestPtr(Zero, gpr);
+    breakpoint();
+    checkNull.link(this);
 }
 #endif // !ASSERT_DISABLED
 

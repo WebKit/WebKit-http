@@ -32,7 +32,7 @@
     NoInterfaceObject,
     Conditional=DATA_TRANSFER_ITEMS,
     JSGenerateToNativeObject,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface DataTransferItemList {
     readonly attribute long length;
     getter DataTransferItem item([Default=Undefined] optional unsigned long index);

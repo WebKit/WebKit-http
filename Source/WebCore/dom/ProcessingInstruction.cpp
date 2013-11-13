@@ -28,7 +28,6 @@
 #include "CachedResourceRequest.h"
 #include "CachedXSLStyleSheet.h"
 #include "Document.h"
-#include "DocumentStyleSheetCollection.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -198,14 +197,12 @@ void ProcessingInstruction::setCSSStyleSheet(const String& href, const URL& base
     ASSERT(m_isCSS);
     CSSParserContext parserContext(document(), baseURL, charset);
 
-    RefPtr<StyleSheetContents> newSheet = StyleSheetContents::create(href, parserContext);
+    auto cssSheet = CSSStyleSheet::create(StyleSheetContents::create(href, parserContext), this);
+    cssSheet.get().setDisabled(m_alternate);
+    cssSheet.get().setTitle(m_title);
+    cssSheet.get().setMediaQueries(MediaQuerySet::create(m_media));
 
-    RefPtr<CSSStyleSheet> cssSheet = CSSStyleSheet::create(newSheet, this);
-    cssSheet->setDisabled(m_alternate);
-    cssSheet->setTitle(m_title);
-    cssSheet->setMediaQueries(MediaQuerySet::create(m_media));
-
-    m_sheet = cssSheet.release();
+    m_sheet = std::move(cssSheet);
 
     // We don't need the cross-origin security check here because we are
     // getting the sheet text in "strict" mode. This enforces a valid CSS MIME
@@ -225,7 +222,7 @@ void ProcessingInstruction::setXSLStyleSheet(const String& href, const URL& base
 void ProcessingInstruction::parseStyleSheet(const String& sheet)
 {
     if (m_isCSS)
-        static_cast<CSSStyleSheet*>(m_sheet.get())->contents()->parseString(sheet);
+        static_cast<CSSStyleSheet*>(m_sheet.get())->contents().parseString(sheet);
 #if ENABLE(XSLT)
     else if (m_isXSL)
         static_cast<XSLStyleSheet*>(m_sheet.get())->parseString(sheet);
@@ -238,7 +235,7 @@ void ProcessingInstruction::parseStyleSheet(const String& sheet)
     m_loading = false;
 
     if (m_isCSS)
-        static_cast<CSSStyleSheet*>(m_sheet.get())->contents()->checkLoaded();
+        static_cast<CSSStyleSheet*>(m_sheet.get())->contents().checkLoaded();
 #if ENABLE(XSLT)
     else if (m_isXSL)
         static_cast<XSLStyleSheet*>(m_sheet.get())->checkLoaded();
@@ -262,20 +259,20 @@ void ProcessingInstruction::addSubresourceAttributeURLs(ListHashSet<URL>& urls) 
     addSubresourceURL(urls, sheet()->baseURL());
 }
 
-Node::InsertionNotificationRequest ProcessingInstruction::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest ProcessingInstruction::insertedInto(ContainerNode& insertionPoint)
 {
     CharacterData::insertedInto(insertionPoint);
-    if (!insertionPoint->inDocument())
+    if (!insertionPoint.inDocument())
         return InsertionDone;
     document().styleSheetCollection().addStyleSheetCandidateNode(*this, m_createdByParser);
     checkStyleSheet();
     return InsertionDone;
 }
 
-void ProcessingInstruction::removedFrom(ContainerNode* insertionPoint)
+void ProcessingInstruction::removedFrom(ContainerNode& insertionPoint)
 {
     CharacterData::removedFrom(insertionPoint);
-    if (!insertionPoint->inDocument())
+    if (!insertionPoint.inDocument())
         return;
     
     document().styleSheetCollection().removeStyleSheetCandidateNode(*this);

@@ -29,12 +29,10 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/RefPtr.h>
 
-using namespace std;
-
 namespace WebCore {
 
-RenderProgress::RenderProgress(HTMLElement* element)
-    : RenderBlockFlow(element)
+RenderProgress::RenderProgress(HTMLElement& element, PassRef<RenderStyle> style)
+    : RenderBlockFlow(element, std::move(style))
     , m_position(HTMLProgressElement::InvalidPosition)
     , m_animationStartTime(0)
     , m_animationRepeatInterval(0)
@@ -57,7 +55,7 @@ void RenderProgress::updateFromElement()
 
     updateAnimationState();
     repaint();
-    RenderBlock::updateFromElement();
+    RenderBlockFlow::updateFromElement();
 }
 
 void RenderProgress::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
@@ -101,7 +99,7 @@ void RenderProgress::updateAnimationState()
     m_animationDuration = theme()->animationDurationForProgressBar(this);
     m_animationRepeatInterval = theme()->animationRepeatIntervalForProgressBar(this);
 
-    bool animating = style()->hasAppearance() && m_animationDuration > 0;
+    bool animating = style().hasAppearance() && m_animationDuration > 0;
     if (animating == m_animating)
         return;
 

@@ -194,14 +194,18 @@ static COMPtr<IPropertyBag> createWindowFeaturesPropertyBag(const WindowFeatures
     return COMPtr<IPropertyBag>(AdoptCOM, COMPropertyBag<COMVariant>::adopt(map));
 }
 
-Page* WebChromeClient::createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures& features, const NavigationAction&)
+Page* WebChromeClient::createWindow(Frame* frame, const FrameLoadRequest&, const WindowFeatures& features, const NavigationAction& navigationAction)
 {
     COMPtr<IWebUIDelegate> delegate = uiDelegate();
     if (!delegate)
         return 0;
 
-    // Just create a blank request because createWindow() is only required to create window but not to load URL.
-    COMPtr<IWebMutableURLRequest> request(AdoptCOM, WebMutableURLRequest::createInstance());
+#if ENABLE(FULLSCREEN_API)
+    if (frame->document() && frame->document()->webkitCurrentFullScreenElement())
+        frame->document()->webkitCancelFullScreen();
+#endif
+
+    COMPtr<WebMutableURLRequest> request = adoptCOM(WebMutableURLRequest::createInstance(ResourceRequest(navigationAction.url())));
 
     COMPtr<IWebUIDelegatePrivate2> delegatePrivate(Query, delegate);
     if (delegatePrivate) {
@@ -794,12 +798,12 @@ void WebChromeClient::exitFullscreenForNode(Node*)
 
 bool WebChromeClient::selectItemWritingDirectionIsNatural()
 {
-    return true;
+    return false;
 }
 
 bool WebChromeClient::selectItemAlignmentFollowsMenuWritingDirection()
 {
-    return false;
+    return true;
 }
 
 bool WebChromeClient::hasOpenedPopup() const

@@ -12,6 +12,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
     "${WEBCORE_DIR}/platform/graphics/opengl"
+    "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/linux"
     "${WEBCORE_DIR}/platform/mediastream/gstreamer"
     "${WEBCORE_DIR}/platform/network/gtk"
@@ -97,18 +98,15 @@ list(APPEND WebCore_SOURCES
     platform/graphics/glx/GLContextGLX.cpp
 
     platform/graphics/gstreamer/GRefPtrGStreamer.cpp
-    platform/graphics/gstreamer/GStreamerGWorld.cpp
     platform/graphics/gstreamer/GStreamerUtilities.cpp
     platform/graphics/gstreamer/GStreamerVersioning.cpp
     platform/graphics/gstreamer/ImageGStreamerCairo.cpp
     platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp
     platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp
-    platform/graphics/gstreamer/PlatformVideoWindowGtk.cpp
     platform/graphics/gstreamer/VideoSinkGStreamer.cpp
     platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
 
     platform/graphics/gtk/ColorGtk.cpp
-    platform/graphics/gtk/FullscreenVideoControllerGtk.cpp
     platform/graphics/gtk/GdkCairoUtilities.cpp
     platform/graphics/gtk/IconGtk.cpp
     platform/graphics/gtk/ImageBufferGtk.cpp
@@ -125,6 +123,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/opengl/Extensions3DOpenGLES.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
+
+    platform/graphics/opentype/OpenTypeVerticalData.cpp
 
     platform/gtk/ClipboardUtilitiesGtk.cpp
     platform/gtk/ContextMenuGtk.cpp
@@ -164,7 +164,6 @@ list(APPEND WebCore_SOURCES
     platform/gtk/RenderThemeGtk.cpp
     platform/gtk/RenderThemeGtk2.cpp
     platform/gtk/RenderThemeGtk3.cpp
-    platform/gtk/RunLoopGtk.cpp
     platform/gtk/ScrollViewGtk.cpp
     platform/gtk/ScrollbarThemeGtk.cpp
     platform/gtk/ScrollbarThemeGtk2.cpp

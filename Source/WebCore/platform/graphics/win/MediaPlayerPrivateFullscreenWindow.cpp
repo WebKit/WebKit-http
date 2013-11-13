@@ -34,7 +34,7 @@
 #include <CoreGraphics/CGColor.h>
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
+#if USE(ACCELERATED_COMPOSITING) && USE(CA)
 #include "CACFLayerTreeHost.h"
 #include "PlatformCALayer.h"
 #endif
@@ -84,7 +84,7 @@ void MediaPlayerPrivateFullscreenWindow::createWindow(HWND parentHwnd)
         parentHwnd, 0, instanceHandle(), this);
     ASSERT(IsWindow(m_hwnd));
 
-#if USE(ACCELERATED_COMPOSITING)
+#if USE(ACCELERATED_COMPOSITING) && USE(CA)
     if (m_layerTreeHost)
         m_layerTreeHost->setWindow(m_hwnd);
 #endif
@@ -92,7 +92,7 @@ void MediaPlayerPrivateFullscreenWindow::createWindow(HWND parentHwnd)
     ::SetFocus(m_hwnd);
 }
 
-#if USE(ACCELERATED_COMPOSITING)
+#if USE(ACCELERATED_COMPOSITING) && USE(CA)
 void MediaPlayerPrivateFullscreenWindow::setRootChildLayer(PassRefPtr<PlatformCALayer> rootChild)
 {
     if (m_rootChild == rootChild)
@@ -119,7 +119,8 @@ void MediaPlayerPrivateFullscreenWindow::setRootChildLayer(PassRefPtr<PlatformCA
     m_layerTreeHost->setRootChildLayer(m_rootChild.get());
     PlatformCALayer* rootLayer = m_rootChild->rootLayer();
     CGRect rootBounds = m_rootChild->rootLayer()->bounds();
-    m_rootChild->setFrame(rootBounds);
+    m_rootChild->setPosition(rootBounds.origin);
+    m_rootChild->setBounds(FloatRect(FloatPoint(), FloatSize(rootBounds.size)));
     m_rootChild->setBackgroundColor(CGColorGetConstantColor(kCGColorBlack));
 #ifndef NDEBUG
     RetainPtr<CGColorRef> redColor = adoptCF(CGColorCreateGenericRGB(1, 0, 0, 1));
@@ -155,7 +156,7 @@ LRESULT MediaPlayerPrivateFullscreenWindow::wndProc(HWND hWnd, UINT message, WPA
         break;
     case WM_DESTROY:
         m_hwnd = 0;
-#if USE(ACCELERATED_COMPOSITING)
+#if USE(ACCELERATED_COMPOSITING) && USE(CA)
         if (m_layerTreeHost)
             m_layerTreeHost->setWindow(0);
 #endif
@@ -165,19 +166,20 @@ LRESULT MediaPlayerPrivateFullscreenWindow::wndProc(HWND hWnd, UINT message, WPA
             LPWINDOWPOS wp = reinterpret_cast<LPWINDOWPOS>(lParam);
             if (wp->flags & SWP_NOSIZE)
                 break;
-#if USE(ACCELERATED_COMPOSITING)
+#if USE(ACCELERATED_COMPOSITING) && USE(CA)
             if (m_layerTreeHost) {
                 m_layerTreeHost->resize();
                 PlatformCALayer* rootLayer = m_rootChild->rootLayer();
                 CGRect rootBounds = m_rootChild->rootLayer()->bounds();
-                m_rootChild->setFrame(rootBounds);
+                m_rootChild->setPosition(rootBounds.origin);
+                m_rootChild->setBounds(FloatRect(FloatPoint(), FloatSize(rootBounds.size)));
                 m_rootChild->setNeedsLayout();
             }
 #endif
         }
         break;
     case WM_PAINT:
-#if USE(ACCELERATED_COMPOSITING)
+#if USE(ACCELERATED_COMPOSITING) && USE(CA)
         if (m_layerTreeHost) {
             m_layerTreeHost->paint();
             ::ValidateRect(m_hwnd, 0);

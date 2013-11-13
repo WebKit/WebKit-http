@@ -32,15 +32,10 @@
 #include "ScopedEventQueue.h"
 
 #include "Event.h"
-#include "EventDispatchMediator.h"
 #include "EventDispatcher.h"
 #include "EventTarget.h"
-#include <wtf/OwnPtr.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
-
-ScopedEventQueue* ScopedEventQueue::s_instance = 0;
 
 ScopedEventQueue::ScopedEventQueue()
     : m_scopingLevel(0)
@@ -50,46 +45,36 @@ ScopedEventQueue::ScopedEventQueue()
 ScopedEventQueue::~ScopedEventQueue()
 {
     ASSERT(!m_scopingLevel);
-    ASSERT(!m_queuedEventDispatchMediators.size());
+    ASSERT(!m_queuedEvents.size());
 }
 
-void ScopedEventQueue::initialize()
+ScopedEventQueue& ScopedEventQueue::instance()
 {
-    ASSERT(!s_instance);
-    OwnPtr<ScopedEventQueue> instance = adoptPtr(new ScopedEventQueue);
-    s_instance = instance.leakPtr();
+    static NeverDestroyed<ScopedEventQueue> scopedEventQueue;
+    return scopedEventQueue;
 }
 
-void ScopedEventQueue::enqueueEventDispatchMediator(PassRefPtr<EventDispatchMediator> mediator)
+void ScopedEventQueue::enqueueEvent(PassRefPtr<Event> event)
 {
     if (m_scopingLevel)
-        m_queuedEventDispatchMediators.append(mediator);
+        m_queuedEvents.append(event);
     else
-        dispatchEvent(mediator);
+        dispatchEvent(event);
+}
+
+void ScopedEventQueue::dispatchEvent(PassRefPtr<Event> event) const
+{
+    ASSERT(event->target());
+    // Store the target in a local variable to avoid possibly dereferencing a nullified PassRefPtr after it's passed on.
+    Node* node = event->target()->toNode();
+    EventDispatcher::dispatchEvent(node, event);
 }
 
 void ScopedEventQueue::dispatchAllEvents()
 {
-    Vector<RefPtr<EventDispatchMediator> > queuedEventDispatchMediators;
-    queuedEventDispatchMediators.swap(m_queuedEventDispatchMediators);
-
-    for (size_t i = 0; i < queuedEventDispatchMediators.size(); i++)
-        dispatchEvent(queuedEventDispatchMediators[i].release());
-}
-
-void ScopedEventQueue::dispatchEvent(PassRefPtr<EventDispatchMediator> mediator) const
-{
-    ASSERT(mediator->event()->target());
-    Node* node = mediator->event()->target()->toNode();
-    EventDispatcher::dispatchEvent(node, mediator);
-}
-
-ScopedEventQueue* ScopedEventQueue::instance()
-{
-    if (!s_instance)
-        initialize();
-
-    return s_instance;
+    Vector<RefPtr<Event>> queuedEvents = std::move(m_queuedEvents);
+    for (size_t i = 0; i < queuedEvents.size(); i++)
+        dispatchEvent(queuedEvents[i].release());
 }
 
 void ScopedEventQueue::incrementScopingLevel()

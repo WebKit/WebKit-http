@@ -46,9 +46,6 @@ namespace WebCore {
 class PlatformContextCairo;
 }
 typedef WebCore::PlatformContextCairo PlatformGraphicsContext;
-#elif PLATFORM(QT)
-#include <QPainter>
-typedef QPainter PlatformGraphicsContext;
 #elif PLATFORM(HAIKU)
 class BView;
 typedef BView PlatformGraphicsContext;
@@ -77,10 +74,6 @@ typedef unsigned char UInt8;
 #endif
 #endif
 
-#if PLATFORM(QT) && OS(WINDOWS)
-#include <windows.h>
-#endif
-
 namespace WebCore {
 
 #if USE(WINGDI)
@@ -106,8 +99,11 @@ namespace WebCore {
     class TransformationMatrix;
 
     enum TextDrawingMode {
-        TextModeFill      = 1 << 0,
-        TextModeStroke    = 1 << 1,
+        TextModeFill = 1 << 0,
+        TextModeStroke = 1 << 1,
+#if ENABLE(LETTERPRESS)
+        TextModeLetterpress = 1 << 2,
+#endif
     };
     typedef unsigned TextDrawingModeFlags;
 
@@ -116,10 +112,10 @@ namespace WebCore {
         SolidStroke,
         DottedStroke,
         DashedStroke,
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
         DoubleStroke,
         WavyStroke,
-#endif // CSS3_TEXT
+#endif // CSS3_TEXT_DECORATION
     };
 
     enum InterpolationQuality {
@@ -341,6 +337,7 @@ namespace WebCore {
         };
         FloatRect roundToDevicePixels(const FloatRect&, RoundingMode = RoundAllSides);
 
+        FloatRect computeLineBoundsForText(const FloatPoint&, float width, bool printing);
         void drawLineForText(const FloatPoint&, float width, bool printing);
         enum DocumentMarkerLineStyle {
             DocumentMarkerSpellingLineStyle,
@@ -348,6 +345,7 @@ namespace WebCore {
             DocumentMarkerAutocorrectionReplacementLineStyle,
             DocumentMarkerDictationAlternativesLineStyle
         };
+        static void updateDocumentMarkerResources();
         void drawLineForDocumentMarker(const FloatPoint&, float width, DocumentMarkerLineStyle);
 
         bool paintingDisabled() const;
@@ -370,7 +368,7 @@ namespace WebCore {
         void clearShadow();
 
         bool hasBlurredShadow() const;
-#if PLATFORM(QT) || USE(CAIRO)
+#if USE(CAIRO)
         bool mustUseShadowBlur() const;
 #endif
 
@@ -488,11 +486,6 @@ namespace WebCore {
         bool shouldIncludeChildWindows() const { return false; }
 #endif // PLATFORM(WIN)
 #endif // OS(WINDOWS)
-
-#if PLATFORM(QT)
-        void pushTransparencyLayerInternal(const QRect&, qreal, QPixmap&);
-        void takeOwnershipOfPlatformContext();
-#endif
 
 #if USE(CAIRO)
         GraphicsContext(cairo_t*);

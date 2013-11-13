@@ -31,9 +31,12 @@
 
 #include "DOMStringList.h"
 #include "IDBBackingStoreLevelDB.h"
-#include "IDBDatabaseBackendLevelDB.h"
+#include "IDBCursorBackend.h"
+#include "IDBDatabaseBackend.h"
 #include "IDBDatabaseException.h"
-#include "IDBTransactionCoordinatorLevelDB.h"
+#include "IDBServerConnectionLevelDB.h"
+#include "IDBTransactionBackend.h"
+#include "IDBTransactionCoordinator.h"
 #include "Logging.h"
 #include "SecurityOrigin.h"
 
@@ -55,18 +58,19 @@ static void cleanWeakMap(HashMap<K, WeakPtr<M> >& map)
     }
 }
 
-static String computeFileIdentifier(SecurityOrigin* securityOrigin)
+static String computeFileIdentifier(const SecurityOrigin& securityOrigin)
 {
     static const char levelDBFileSuffix[] = "@1";
-    return securityOrigin->databaseIdentifier() + levelDBFileSuffix;
+    return securityOrigin.databaseIdentifier() + levelDBFileSuffix;
 }
 
-static String computeUniqueIdentifier(const String& name, SecurityOrigin* securityOrigin)
+static String computeUniqueIdentifier(const String& name, const SecurityOrigin& securityOrigin)
 {
     return computeFileIdentifier(securityOrigin) + name;
 }
 
-IDBFactoryBackendLevelDB::IDBFactoryBackendLevelDB()
+IDBFactoryBackendLevelDB::IDBFactoryBackendLevelDB(const String& databaseDirectory)
+    : m_databaseDirectory(databaseDirectory)
 {
 }
 
@@ -82,8 +86,9 @@ void IDBFactoryBackendLevelDB::removeIDBDatabaseBackend(const String& uniqueIden
 
 void IDBFactoryBackendLevelDB::getDatabaseNames(PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext*, const String& dataDirectory)
 {
+    ASSERT(securityOrigin);
     LOG(StorageAPI, "IDBFactoryBackendLevelDB::getDatabaseNames");
-    RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
+    RefPtr<IDBBackingStoreLevelDB> backingStore = openBackingStore(*securityOrigin, dataDirectory);
     if (!backingStore) {
         callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error opening backing store for indexedDB.webkitGetDatabaseNames."));
         return;
@@ -101,7 +106,7 @@ void IDBFactoryBackendLevelDB::getDatabaseNames(PassRefPtr<IDBCallbacks> callbac
 void IDBFactoryBackendLevelDB::deleteDatabase(const String& name, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext*, const String& dataDirectory)
 {
     LOG(StorageAPI, "IDBFactoryBackendLevelDB::deleteDatabase");
-    const String uniqueIdentifier = computeUniqueIdentifier(name, securityOrigin.get());
+    const String uniqueIdentifier = computeUniqueIdentifier(name, *securityOrigin);
 
     IDBDatabaseBackendMap::iterator it = m_databaseBackendMap.find(uniqueIdentifier);
     if (it != m_databaseBackendMap.end()) {
@@ -112,13 +117,14 @@ void IDBFactoryBackendLevelDB::deleteDatabase(const String& name, PassRefPtr<IDB
     }
 
     // FIXME: Everything from now on should be done on another thread.
-    RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
+    RefPtr<IDBBackingStoreLevelDB> backingStore = openBackingStore(*securityOrigin, dataDirectory);
     if (!backingStore) {
         callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error opening backing store for indexedDB.deleteDatabase."));
         return;
     }
 
-    RefPtr<IDBDatabaseBackendLevelDB> databaseBackend = IDBDatabaseBackendLevelDB::create(name, backingStore.get(), this, uniqueIdentifier);
+    RefPtr<IDBServerConnection> serverConnection = IDBServerConnectionLevelDB::create(backingStore.get());
+    RefPtr<IDBDatabaseBackend> databaseBackend = IDBDatabaseBackend::create(name, uniqueIdentifier, this, *serverConnection);
     if (databaseBackend) {
         m_databaseBackendMap.set(uniqueIdentifier, databaseBackend.get());
         databaseBackend->deleteDatabase(callbacks);
@@ -127,20 +133,20 @@ void IDBFactoryBackendLevelDB::deleteDatabase(const String& name, PassRefPtr<IDB
         callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error creating database backend for indexedDB.deleteDatabase."));
 }
 
-PassRefPtr<IDBBackingStore> IDBFactoryBackendLevelDB::openBackingStore(PassRefPtr<SecurityOrigin> securityOrigin, const String& dataDirectory)
+PassRefPtr<IDBBackingStoreLevelDB> IDBFactoryBackendLevelDB::openBackingStore(const SecurityOrigin& securityOrigin, const String& dataDirectory)
 {
-    const String fileIdentifier = computeFileIdentifier(securityOrigin.get());
+    const String fileIdentifier = computeFileIdentifier(securityOrigin);
     const bool openInMemory = dataDirectory.isEmpty();
 
-    IDBBackingStoreMap::iterator it2 = m_backingStoreMap.find(fileIdentifier);
+    IDBBackingStoreLevelDBMap::iterator it2 = m_backingStoreMap.find(fileIdentifier);
     if (it2 != m_backingStoreMap.end() && it2->value.get())
         return it2->value.get();
 
-    RefPtr<IDBBackingStore> backingStore;
+    RefPtr<IDBBackingStoreLevelDB> backingStore;
     if (openInMemory)
-        backingStore = IDBBackingStore::openInMemory(securityOrigin.get(), fileIdentifier);
+        backingStore = IDBBackingStoreLevelDB::openInMemory(fileIdentifier);
     else
-        backingStore = IDBBackingStore::open(securityOrigin.get(), dataDirectory, fileIdentifier);
+        backingStore = IDBBackingStoreLevelDB::open(securityOrigin, dataDirectory, fileIdentifier);
 
     if (backingStore) {
         cleanWeakMap(m_backingStoreMap);
@@ -158,22 +164,22 @@ PassRefPtr<IDBBackingStore> IDBFactoryBackendLevelDB::openBackingStore(PassRefPt
     return 0;
 }
 
-void IDBFactoryBackendLevelDB::open(const String& name, int64_t version, int64_t transactionId, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<IDBDatabaseCallbacks> databaseCallbacks, PassRefPtr<SecurityOrigin> prpSecurityOrigin, ScriptExecutionContext*, const String& dataDirectory)
+void IDBFactoryBackendLevelDB::open(const String& name, uint64_t version, int64_t transactionId, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<IDBDatabaseCallbacks> databaseCallbacks, const SecurityOrigin& openingOrigin, const SecurityOrigin&)
 {
     LOG(StorageAPI, "IDBFactoryBackendLevelDB::open");
-    RefPtr<SecurityOrigin> securityOrigin = prpSecurityOrigin;
-    const String uniqueIdentifier = computeUniqueIdentifier(name, securityOrigin.get());
+    const String uniqueIdentifier = computeUniqueIdentifier(name, openingOrigin);
 
-    RefPtr<IDBDatabaseBackendLevelDB> databaseBackend;
+    RefPtr<IDBDatabaseBackend> databaseBackend;
     IDBDatabaseBackendMap::iterator it = m_databaseBackendMap.find(uniqueIdentifier);
     if (it == m_databaseBackendMap.end()) {
-        RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
+        RefPtr<IDBBackingStoreLevelDB> backingStore = openBackingStore(openingOrigin, m_databaseDirectory);
         if (!backingStore) {
             callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error opening backing store for indexedDB.open."));
             return;
         }
 
-        databaseBackend = IDBDatabaseBackendLevelDB::create(name, backingStore.get(), this, uniqueIdentifier);
+        RefPtr<IDBServerConnection> serverConnection = IDBServerConnectionLevelDB::create(backingStore.get());
+        databaseBackend = IDBDatabaseBackend::create(name, uniqueIdentifier, this, *serverConnection);
         if (databaseBackend)
             m_databaseBackendMap.set(uniqueIdentifier, databaseBackend.get());
         else {
@@ -185,6 +191,20 @@ void IDBFactoryBackendLevelDB::open(const String& name, int64_t version, int64_t
 
     databaseBackend->openConnection(callbacks, databaseCallbacks, transactionId, version);
 }
+
+PassRefPtr<IDBTransactionBackend> IDBFactoryBackendLevelDB::maybeCreateTransactionBackend(IDBDatabaseBackend* backend, int64_t transactionId, PassRefPtr<IDBDatabaseCallbacks> databaseCallbacks, const Vector<int64_t>& objectStoreIds, IndexedDB::TransactionMode mode)
+{
+    if (!backend->isIDBDatabaseBackend())
+        return 0;
+
+    return IDBTransactionBackend::create(static_cast<IDBDatabaseBackend*>(backend), transactionId, databaseCallbacks, objectStoreIds, mode);
+}
+
+PassRefPtr<IDBCursorBackend> IDBFactoryBackendLevelDB::createCursorBackend(IDBTransactionBackend& transactionBackend, IDBBackingStoreCursorInterface& backingStoreCursor, IndexedDB::CursorType cursorType, IDBDatabaseBackend::TaskType taskType, int64_t objectStoreId)
+{
+    return IDBCursorBackend::create(&backingStoreCursor, cursorType, taskType, &transactionBackend, objectStoreId);
+}
+
 
 } // namespace WebCore
 

@@ -85,10 +85,6 @@ class Widget;
 
 struct DragState;
 
-#if ENABLE(GESTURE_EVENTS)
-class PlatformGestureEvent;
-#endif
-
 #if ENABLE(DRAG_SUPPORT)
 extern const int LinkDragHysteresis;
 extern const int ImageDragHysteresis;
@@ -138,7 +134,7 @@ public:
     bool mousePressed() const { return m_mousePressed; }
     void setMousePressed(bool pressed) { m_mousePressed = pressed; }
 
-    void setCapturingMouseEventsNode(PassRefPtr<Node>); // A caller is responsible for resetting capturing node to 0.
+    void setCapturingMouseEventsElement(PassRefPtr<Element>); // A caller is responsible for resetting capturing element to 0.
 
 #if ENABLE(DRAG_SUPPORT)
     bool updateDragAndDrop(const PlatformMouseEvent&, Clipboard*);
@@ -179,34 +175,15 @@ public:
     void defaultWheelEventHandler(Node*, WheelEvent*);
     bool handlePasteGlobalSelection(const PlatformMouseEvent&);
 
-#if ENABLE(GESTURE_EVENTS)
-    bool handleGestureEvent(const PlatformGestureEvent&);
-    bool handleGestureTap(const PlatformGestureEvent&);
-    bool handleGestureLongPress(const PlatformGestureEvent&);
-    bool handleGestureLongTap(const PlatformGestureEvent&);
-    bool handleGestureTwoFingerTap(const PlatformGestureEvent&);
-    bool handleGestureScrollUpdate(const PlatformGestureEvent&);
-    bool handleGestureScrollBegin(const PlatformGestureEvent&);
-    void clearGestureScrollNodes();
-    bool isScrollbarHandlingGestures() const;
-#endif
-
 #if ENABLE(TOUCH_ADJUSTMENT)
-    bool shouldApplyTouchAdjustment(const PlatformGestureEvent&) const;
-
     bool bestClickableNodeForTouchPoint(const IntPoint& touchCenter, const IntSize& touchRadius, IntPoint& targetPoint, Node*& targetNode);
     bool bestContextMenuNodeForTouchPoint(const IntPoint& touchCenter, const IntSize& touchRadius, IntPoint& targetPoint, Node*& targetNode);
     bool bestZoomableAreaForTouchPoint(const IntPoint& touchCenter, const IntSize& touchRadius, IntRect& targetArea, Node*& targetNode);
-
-    bool adjustGesturePosition(const PlatformGestureEvent&, IntPoint& adjustedPoint);
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
     bool sendContextMenuEvent(const PlatformMouseEvent&);
     bool sendContextMenuEventForKey();
-#if ENABLE(GESTURE_EVENTS)
-    bool sendContextMenuEventForGesture(const PlatformGestureEvent&);
-#endif
 #endif
 
     void setMouseDownMayStartAutoscroll() { m_mouseDownMayStartAutoscroll = true; }
@@ -328,7 +305,7 @@ private:
 
     bool dispatchMouseEvent(const AtomicString& eventType, Node* target, bool cancelable, int clickCount, const PlatformMouseEvent&, bool setUnder);
 #if ENABLE(DRAG_SUPPORT)
-    bool dispatchDragEvent(const AtomicString& eventType, Node* target, const PlatformMouseEvent&, Clipboard*);
+    bool dispatchDragEvent(const AtomicString& eventType, Element& target, const PlatformMouseEvent&, Clipboard*);
 
     void freeClipboard();
 
@@ -394,14 +371,6 @@ private:
     bool isKeyEventAllowedInFullScreen(const PlatformKeyboardEvent&) const;
 #endif
 
-#if ENABLE(GESTURE_EVENTS)
-    bool handleGestureTapDown();
-    bool handleGestureForTextSelectionOrContextMenu(const PlatformGestureEvent&);
-    bool passGestureEventToWidget(const PlatformGestureEvent&, Widget*);
-    bool passGestureEventToWidgetIfPossible(const PlatformGestureEvent&, RenderObject*);
-    bool sendScrollEventToView(const PlatformGestureEvent&, const FloatSize&);
-#endif
-
     void setLastKnownMousePosition(const PlatformMouseEvent&);
 
 #if ENABLE(CURSOR_VISIBILITY)
@@ -448,11 +417,11 @@ private:
 
     RenderLayer* m_resizeLayer;
 
-    RefPtr<Node> m_capturingMouseEventsNode;
-    bool m_eventHandlerWillResetCapturingMouseEventsNode;
+    RefPtr<Element> m_capturingMouseEventsElement;
+    bool m_eventHandlerWillResetCapturingMouseEventsElement;
     
-    RefPtr<Node> m_nodeUnderMouse;
-    RefPtr<Node> m_lastNodeUnderMouse;
+    RefPtr<Element> m_elementUnderMouse;
+    RefPtr<Element> m_lastElementUnderMouse;
     RefPtr<Frame> m_lastMouseMoveEventSubframe;
     RefPtr<Scrollbar> m_lastScrollbarUnderMouse;
     Cursor m_currentMouseCursor;
@@ -461,7 +430,7 @@ private:
     RefPtr<Node> m_clickNode;
 
 #if ENABLE(DRAG_SUPPORT)
-    RefPtr<Node> m_dragTarget;
+    RefPtr<Element> m_dragTarget;
     bool m_shouldOnlyFireDragOverEvent;
 #endif
     
@@ -489,18 +458,11 @@ private:
     int m_activationEventNumber;
 #endif
 #if ENABLE(TOUCH_EVENTS)
-    typedef HashMap<int, RefPtr<EventTarget> > TouchTargetMap;
+    typedef HashMap<int, RefPtr<EventTarget>> TouchTargetMap;
     TouchTargetMap m_originatingTouchPointTargets;
     RefPtr<Document> m_originatingTouchPointDocument;
     unsigned m_originatingTouchPointTargetKey;
     bool m_touchPressed;
-#endif
-
-#if ENABLE(GESTURE_EVENTS)
-    RefPtr<Node> m_scrollGestureHandlingNode;
-    bool m_lastHitTestResultOverWidget;
-    RefPtr<Element> m_previousGestureScrolledElement;
-    RefPtr<Scrollbar> m_scrollbarHandlingScrollGesture;
 #endif
 
     double m_maxMouseMovedDuration;

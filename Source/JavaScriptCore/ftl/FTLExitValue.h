@@ -32,6 +32,7 @@
 
 #include "FTLExitArgument.h"
 #include "JSCJSValue.h"
+#include "VirtualRegister.h"
 #include <wtf/PrintStream.h>
 
 namespace JSC { namespace FTL {
@@ -69,31 +70,35 @@ public:
         return result;
     }
     
-    static ExitValue inJSStack()
+    static ExitValue inJSStack(VirtualRegister reg)
     {
         ExitValue result;
         result.m_kind = ExitValueInJSStack;
+        result.u.virtualRegister = reg.offset();
         return result;
     }
     
-    static ExitValue inJSStackAsInt32()
+    static ExitValue inJSStackAsInt32(VirtualRegister reg)
     {
         ExitValue result;
         result.m_kind = ExitValueInJSStackAsInt32;
+        result.u.virtualRegister = reg.offset();
         return result;
     }
     
-    static ExitValue inJSStackAsInt52()
+    static ExitValue inJSStackAsInt52(VirtualRegister reg)
     {
         ExitValue result;
         result.m_kind = ExitValueInJSStackAsInt52;
+        result.u.virtualRegister = reg.offset();
         return result;
     }
     
-    static ExitValue inJSStackAsDouble()
+    static ExitValue inJSStackAsDouble(VirtualRegister reg)
     {
         ExitValue result;
         result.m_kind = ExitValueInJSStackAsDouble;
+        result.u.virtualRegister = reg.offset();
         return result;
     }
     
@@ -121,6 +126,7 @@ public:
         switch (kind()) {
         case ExitValueInJSStack:
         case ExitValueInJSStackAsInt32:
+        case ExitValueInJSStackAsInt52:
         case ExitValueInJSStackAsDouble:
             return true;
         default:
@@ -142,6 +148,45 @@ public:
         return JSValue::decode(u.constant);
     }
     
+    VirtualRegister virtualRegister() const
+    {
+        ASSERT(isInJSStackSomehow());
+        return VirtualRegister(u.virtualRegister);
+    }
+
+    // If it's in the JSStack somehow, this will tell you what format it's in, in a manner
+    // that is compatible with exitArgument().format(). If it's a constant or it's dead, it
+    // will claim to be a JSValue. If it's an argument then it will tell you the argument's
+    // format.
+    ValueFormat valueFormat() const
+    {
+        switch (kind()) {
+        case InvalidExitValue:
+            RELEASE_ASSERT_NOT_REACHED();
+            return InvalidValueFormat;
+            
+        case ExitValueDead:
+        case ExitValueConstant:
+        case ExitValueInJSStack:
+            return ValueFormatJSValue;
+            
+        case ExitValueArgument:
+            return exitArgument().format();
+            
+        case ExitValueInJSStackAsInt32:
+            return ValueFormatInt32;
+            
+        case ExitValueInJSStackAsInt52:
+            return ValueFormatInt52;
+            
+        case ExitValueInJSStackAsDouble:
+            return ValueFormatDouble;
+        }
+        
+        RELEASE_ASSERT_NOT_REACHED();
+        return InvalidValueFormat;
+    }
+
     void dump(PrintStream&) const;
     void dumpInContext(PrintStream&, DumpContext*) const;
     
@@ -150,6 +195,7 @@ private:
     union {
         ExitArgumentRepresentation argument;
         EncodedJSValue constant;
+        int virtualRegister;
     } u;
 };
 

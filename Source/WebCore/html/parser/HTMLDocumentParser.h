@@ -66,7 +66,7 @@ class PumpSession;
 class HTMLDocumentParser :  public ScriptableDocumentParser, HTMLScriptRunnerHost, CachedResourceClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassRefPtr<HTMLDocumentParser> create(HTMLDocument* document, bool reportErrors)
+    static PassRefPtr<HTMLDocumentParser> create(HTMLDocument& document, bool reportErrors)
     {
         return adoptRef(new HTMLDocumentParser(document, reportErrors));
     }
@@ -75,7 +75,7 @@ public:
     // Exposed for HTMLParserScheduler
     void resumeParsingAfterYield();
 
-    static void parseDocumentFragment(const String&, DocumentFragment*, Element* contextElement, ParserContentPolicy = AllowScriptingContent);
+    static void parseDocumentFragment(const String&, DocumentFragment&, Element* contextElement, ParserContentPolicy = AllowScriptingContent);
 
     HTMLTokenizer* tokenizer() const { return m_tokenizer.get(); }
 
@@ -103,15 +103,15 @@ protected:
     virtual void append(PassRefPtr<StringImpl>) OVERRIDE;
     virtual void finish() OVERRIDE;
 
-    HTMLDocumentParser(HTMLDocument*, bool reportErrors);
-    HTMLDocumentParser(DocumentFragment*, Element* contextElement, ParserContentPolicy);
+    HTMLDocumentParser(HTMLDocument&, bool reportErrors);
+    HTMLDocumentParser(DocumentFragment&, Element* contextElement, ParserContentPolicy);
 
     HTMLTreeBuilder* treeBuilder() const { return m_treeBuilder.get(); }
 
     void forcePlaintextForTextDocument();
 
 private:
-    static PassRefPtr<HTMLDocumentParser> create(DocumentFragment* fragment, Element* contextElement, ParserContentPolicy parserContentPolicy)
+    static PassRefPtr<HTMLDocumentParser> create(DocumentFragment& fragment, Element* contextElement, ParserContentPolicy parserContentPolicy)
     {
         return adoptRef(new HTMLDocumentParser(fragment, contextElement, parserContentPolicy));
     }
@@ -198,7 +198,7 @@ private:
     // FIXME: m_lastChunkBeforeScript, m_tokenizer, m_token, and m_input should be combined into a single state object
     // so they can be set and cleared together and passed between threads together.
     OwnPtr<ParsedChunk> m_lastChunkBeforeScript;
-    Deque<OwnPtr<ParsedChunk> > m_speculations;
+    Deque<OwnPtr<ParsedChunk>> m_speculations;
     WeakPtrFactory<HTMLDocumentParser> m_weakFactory;
     WeakPtr<BackgroundHTMLParser> m_backgroundParser;
 #endif

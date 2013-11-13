@@ -43,8 +43,6 @@
 #include <CoreMedia/CoreMedia.h>
 #include <wtf/MainThread.h>
 
-using namespace std;
-
 namespace WebCore {
 
 MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation(MediaPlayer* player)
@@ -196,6 +194,15 @@ void MediaPlayerPrivateAVFoundation::load(const String& url)
 
     setPreload(m_preload);
 }
+
+#if ENABLE(MEDIA_SOURCE)
+void MediaPlayerPrivateAVFoundation::load(const String&, PassRefPtr<HTMLMediaSource>)
+{
+    m_networkState = MediaPlayer::FormatError;
+    m_player->networkStateChanged();
+}
+#endif
+
 
 void MediaPlayerPrivateAVFoundation::playabilityKnown()
 {
@@ -799,7 +806,7 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
         
         if (!m_queuedNotifications.isEmpty() && !m_mainThreadCallPending)
             callOnMainThread(mainThreadCallback, this);
-        
+
         if (!notification.isValid())
             return;
     }
@@ -866,6 +873,9 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
         m_inbandTrackConfigurationPending = false;
         configureInbandTracks();
         break;
+    case Notification::FunctionType:
+        notification.function()();
+        break;
 
     case Notification::None:
         ASSERT_NOT_REACHED();
@@ -919,7 +929,7 @@ void MediaPlayerPrivateAVFoundation::clearTextTracks()
     m_textTracks.clear();
 }
 
-void MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(const Vector<RefPtr<InbandTextTrackPrivateAVF> >& removedTextTracks)
+void MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(const Vector<RefPtr<InbandTextTrackPrivateAVF>>& removedTextTracks)
 {
     if (removedTextTracks.size()) {
         for (unsigned i = 0; i < m_textTracks.size(); ++i) {

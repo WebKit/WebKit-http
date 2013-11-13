@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <WebKit2/WKBrowsingContextController.h>
+#import "WKBrowsingContextControllerPrivate.h"
 
 @interface WKBrowsingContextController (Internal)
 

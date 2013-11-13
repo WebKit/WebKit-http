@@ -31,9 +31,6 @@
 #include "TouchEvent.h"
 
 #include "EventDispatcher.h"
-#include "EventNames.h"
-#include "EventRetargeter.h"
-#include "TouchList.h"
 #include <wtf/CurrentTime.h>
 
 namespace WebCore {
@@ -100,27 +97,6 @@ EventInterface TouchEvent::eventInterface() const
 bool TouchEvent::isTouchEvent() const
 {
     return true;
-}
-
-PassRefPtr<TouchEventDispatchMediator> TouchEventDispatchMediator::create(PassRefPtr<TouchEvent> touchEvent)
-{
-    return adoptRef(new TouchEventDispatchMediator(touchEvent));
-}
-
-TouchEventDispatchMediator::TouchEventDispatchMediator(PassRefPtr<TouchEvent> touchEvent)
-    : EventDispatchMediator(touchEvent)
-{
-}
-
-TouchEvent* TouchEventDispatchMediator::event() const
-{
-    return static_cast<TouchEvent*>(EventDispatchMediator::event());
-}
-
-bool TouchEventDispatchMediator::dispatchEvent(EventDispatcher* dispatcher) const
-{
-    EventRetargeter::adjustForTouchEvent(dispatcher->node(), *event(), dispatcher->eventPath());
-    return dispatcher->dispatch();
 }
 
 } // namespace WebCore

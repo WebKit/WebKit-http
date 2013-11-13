@@ -25,13 +25,11 @@
 
 #import "config.h"
 
-#if HAVE(XPC)
-
 #import "EnvironmentUtilities.h"
 #import "PluginProcess.h"
 #import "WKBase.h"
 #import "XPCServiceEntryPoint.h"
-#import <WebCore/RunLoop.h>
+#import <wtf/RunLoop.h>
 
 namespace WebKit {
 
@@ -61,7 +59,6 @@ public:
 
 } // namespace WebKit
 
-using namespace WebCore;
 using namespace WebKit;
 
 extern "C" WK_EXPORT void PluginServiceInitializer(xpc_connection_t connection, xpc_object_t initializerMessage);
@@ -73,9 +70,6 @@ void PluginServiceInitializer(xpc_connection_t connection, xpc_object_t initiali
     // Remove the PluginProcess shim from the DYLD_INSERT_LIBRARIES environment variable so any processes
     // spawned by the PluginProcess don't try to insert the shim and crash.
     EnvironmentUtilities::stripValuesEndingWithString("DYLD_INSERT_LIBRARIES", "/PluginProcessShim.dylib");
-    RunLoop::setUseApplicationRunLoopOnMainRunLoop();
 
     XPCServiceInitializer<PluginProcess, PluginServiceInitializerDelegate>(connection, initializerMessage);
 }
-
-#endif // HAVE(XPC)

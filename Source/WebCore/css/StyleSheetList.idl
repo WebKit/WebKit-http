@@ -21,7 +21,7 @@
 // Introduced in DOM Level 2:
 [
     GenerateIsReachable=ImplDocument,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface StyleSheetList {
     readonly attribute unsigned long    length;
     getter StyleSheet         item([Default=Undefined] optional unsigned long index);

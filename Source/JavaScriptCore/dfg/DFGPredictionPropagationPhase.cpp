@@ -329,7 +329,9 @@ private:
             break;
         }
             
-        case ArithSqrt: {
+        case ArithSqrt:
+        case ArithSin:
+        case ArithCos: {
             changed |= setPrediction(SpecDouble);
             break;
         }
@@ -512,7 +514,8 @@ private:
         case ZombieHint:
         case CheckTierUpInLoop:
         case CheckTierUpAtReturn:
-        case CheckTierUpAndOSREnter: {
+        case CheckTierUpAndOSREnter:
+        case InvalidationPoint: {
             // This node should never be visible at this stage of compilation. It is
             // inserted by fixup(), which follows this phase.
             RELEASE_ASSERT_NOT_REACHED();
@@ -545,6 +548,7 @@ private:
 
 #ifndef NDEBUG
         // These get ignored because they don't return anything.
+        case PutByValDirect:
         case PutByVal:
         case PutClosureVar:
         case Return:
@@ -585,7 +589,6 @@ private:
             break;
             
         // These gets ignored because it doesn't do anything.
-        case InlineStart:
         case CountExecution:
         case PhantomLocal:
         case Flush:
@@ -713,6 +716,8 @@ private:
             break;
                 
         case ArithSqrt:
+        case ArithCos:
+        case ArithSin:
             m_graph.voteNode(node->child1(), VoteDouble);
             break;
                 
@@ -726,7 +731,8 @@ private:
                 node->variableAccessData()->vote(VoteValue);
             break;
         }
-                
+
+        case PutByValDirect:
         case PutByVal:
         case PutByValAlias: {
             Edge child1 = m_graph.varArgChild(node, 0);

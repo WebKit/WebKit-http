@@ -309,7 +309,7 @@ static PassRefPtr<DocumentFragment> documentFragmentWithRTF(Frame* frame, NSStri
     if (!wasDeferringCallbacks)
         frame->page()->setDefersLoading(true);
 
-    Vector<RefPtr<ArchiveResource> > resources;
+    Vector<RefPtr<ArchiveResource>> resources;
     RefPtr<DocumentFragment> fragment = frame->editor().client()->documentFragmentFromAttributedString(string.get(), resources);
 
     size_t size = resources.size();
@@ -361,7 +361,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragmentForPasteboardItemAtInde
                         if (DocumentLoader* loader = frame->loader().documentLoader())
                             loader->addAllArchiveResources(coreArchive.get());
 
-                        fragment = createFragmentFromMarkup(frame->document(), markupString.get(), mainResource->url(), DisallowScriptingContent);
+                        fragment = createFragmentFromMarkup(*frame->document(), markupString.get(), mainResource->url(), DisallowScriptingContent);
                     }
                 }
                 if (fragment)

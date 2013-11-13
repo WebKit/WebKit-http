@@ -56,8 +56,6 @@ extern "C" {
     CG_EXTERN CGAffineTransform CGContextGetBaseCTM(CGContextRef);
 };
 
-using namespace std;
-
 // FIXME: The following using declaration should be in <wtf/HashFunctions.h>.
 using WTF::pairIntHash;
 
@@ -308,10 +306,10 @@ void GraphicsContext::drawLine(const IntPoint& point1, const IntPoint& point2)
     switch (strokeStyle()) {
     case NoStroke:
     case SolidStroke:
-#if ENABLE(CSS3_TEXT)
+#if ENABLE(CSS3_TEXT_DECORATION)
     case DoubleStroke:
     case WavyStroke: // FIXME: https://bugs.webkit.org/show_bug.cgi?id=94112 - Needs platform support.
-#endif // CSS3_TEXT
+#endif // CSS3_TEXT_DECORATION
         break;
     case DottedStroke:
         patWidth = (int)width;
@@ -958,7 +956,7 @@ void GraphicsContext::setPlatformShadow(const FloatSize& offset, float blur, con
     }
 
     // Extreme "blur" values can make text drawing crash or take crazy long times, so clamp
-    blurRadius = min(blurRadius, narrowPrecisionToCGFloat(1000.0));
+    blurRadius = std::min(blurRadius, narrowPrecisionToCGFloat(1000.0));
 
     applyShadowOffsetWorkaroundIfNeeded(*this, xOffset, yOffset);
 
@@ -1235,6 +1233,42 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMo
     return FloatRect(roundedOrigin, roundedLowerRight - roundedOrigin);
 }
 
+static FloatRect computeLineBoundsAndAntialiasingModeForText(GraphicsContext& context, const FloatPoint& point, float width, bool printing, bool& shouldAntialias)
+{
+    shouldAntialias = true;
+
+    if (width <= 0)
+        return FloatRect();
+
+    // Use a minimum thickness of 0.5 in user space.
+    // See http://bugs.webkit.org/show_bug.cgi?id=4255 for details of why 0.5 is the right minimum thickness to use.
+    FloatRect initialBounds(point, FloatSize(width, std::max(context.strokeThickness(), 0.5f)));
+
+    if (printing || context.paintingDisabled() || !context.getCTM(GraphicsContext::DefinitelyIncludeDeviceScale).preservesAxisAlignment())
+        return initialBounds;
+
+    // On screen, use a minimum thickness of 1.0 in user space (later rounded to an integral number in device space).
+    FloatRect adjustedBounds = initialBounds;
+    adjustedBounds.setHeight(std::max(initialBounds.width(), 1.0f));
+
+    // FIXME: This should be done a better way.
+    // We try to round all parameters to integer boundaries in device space. If rounding pixels in device space
+    // makes our thickness more than double, then there must be a shrinking-scale factor and rounding to pixels
+    // in device space will make the underlines too thick.
+    FloatRect lineRect = context.roundToDevicePixels(adjustedBounds, GraphicsContext::RoundAllSides);
+    if (lineRect.height() < initialBounds.height() * 2) {
+        shouldAntialias = false;
+        return lineRect;
+    }
+    return initialBounds;
+}
+
+FloatRect GraphicsContext::computeLineBoundsForText(const FloatPoint& point, float width, bool printing)
+{
+    bool dummy;
+    return computeLineBoundsAndAntialiasingModeForText(*this, point, width, printing, dummy);
+}
+
 void GraphicsContext::drawLineForText(const FloatPoint& point, float width, bool printing)
 {
     if (paintingDisabled())
@@ -1243,42 +1277,21 @@ void GraphicsContext::drawLineForText(const FloatPoint& point, float width, bool
     if (width <= 0)
         return;
 
-    float x = point.x();
-    float y = point.y();
-    float lineLength = width;
+    bool shouldAntialiasLine;
+    FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(*this, point, width, printing, shouldAntialiasLine);
 
-    // Use a minimum thickness of 0.5 in user space.
-    // See http://bugs.webkit.org/show_bug.cgi?id=4255 for details of why 0.5 is the right minimum thickness to use.
-    float thickness = max(strokeThickness(), 0.5f);
+    bool savedShouldAntialias = shouldAntialias();
+    bool restoreAntialiasMode = savedShouldAntialias != shouldAntialiasLine;
 
-    bool restoreAntialiasMode = false;
-
-    if (!printing) {
-        // On screen, use a minimum thickness of 1.0 in user space (later rounded to an integral number in device space).
-        float adjustedThickness = max(thickness, 1.0f);
-
-        // FIXME: This should be done a better way.
-        // We try to round all parameters to integer boundaries in device space. If rounding pixels in device space
-        // makes our thickness more than double, then there must be a shrinking-scale factor and rounding to pixels
-        // in device space will make the underlines too thick.
-        CGRect lineRect = roundToDevicePixels(FloatRect(x, y, lineLength, adjustedThickness), RoundOriginAndDimensions);
-        if (lineRect.size.height < thickness * 2.0) {
-            x = lineRect.origin.x;
-            y = lineRect.origin.y;
-            lineLength = lineRect.size.width;
-            thickness = lineRect.size.height;
-            if (shouldAntialias()) {
-                CGContextSetShouldAntialias(platformContext(), false);
-                restoreAntialiasMode = true;
-            }
-        }
-    }
+    if (restoreAntialiasMode)
+        CGContextSetShouldAntialias(platformContext(), shouldAntialiasLine);
 
     if (fillColor() != strokeColor())
         setCGFillColor(platformContext(), strokeColor(), strokeColorSpace());
-    CGContextFillRect(platformContext(), CGRectMake(x, y, lineLength, thickness));
+    CGContextFillRect(platformContext(), bounds);
     if (fillColor() != strokeColor())
         setCGFillColor(platformContext(), fillColor(), fillColorSpace());
+    CGContextSetShouldAntialias(platformContext(), savedShouldAntialias);
 
     if (restoreAntialiasMode)
         CGContextSetShouldAntialias(platformContext(), true);

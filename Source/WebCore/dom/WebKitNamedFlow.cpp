@@ -30,11 +30,10 @@
 #include "config.h"
 #include "WebKitNamedFlow.h"
 
-#include "EventNames.h"
 #include "NamedFlowCollection.h"
+#include "RenderNamedFlowFragment.h"
 #include "RenderNamedFlowThread.h"
 #include "RenderRegion.h"
-#include "ScriptExecutionContext.h"
 #include "StaticNodeList.h"
 #include "UIEvent.h"
 
@@ -100,13 +99,13 @@ int WebKitNamedFlow::firstEmptyRegionIndex() const
         return -1;
 
     int countNonPseudoRegions = -1;
-    RenderRegionList::const_iterator iter = regionList.begin();
+    auto iter = regionList.begin();
     for (int index = 0; iter != regionList.end(); ++index, ++iter) {
-        const RenderRegion* renderRegion = *iter;
         // FIXME: Pseudo-elements are not included in the list.
         // They will be included when we will properly support the Region interface
         // http://dev.w3.org/csswg/css-regions/#the-region-interface
-        if (renderRegion->isPseudoElement())
+        const RenderNamedFlowFragment* renderRegion = toRenderNamedFlowFragment(*iter);
+        if (renderRegion->isPseudoElementRegion())
             continue;
         countNonPseudoRegions++;
         if (renderRegion->regionOversetState() == RegionEmpty)
@@ -133,11 +132,11 @@ PassRefPtr<NodeList> WebKitNamedFlow::getRegionsByContent(Node* contentNode)
     if (inFlowThread(contentNode->renderer(), m_parentFlowThread)) {
         const RenderRegionList& regionList = m_parentFlowThread->renderRegionList();
         for (auto iter = regionList.begin(), end = regionList.end(); iter != end; ++iter) {
-            const RenderRegion* renderRegion = *iter;
             // FIXME: Pseudo-elements are not included in the list.
             // They will be included when we will properly support the Region interface
             // http://dev.w3.org/csswg/css-regions/#the-region-interface
-            if (renderRegion->isPseudoElement())
+            const RenderNamedFlowFragment* renderRegion = toRenderNamedFlowFragment(*iter);
+            if (renderRegion->isPseudoElementRegion())
                 continue;
             if (m_parentFlowThread->objectInFlowRegion(contentNode->renderer(), renderRegion)) {
                 ASSERT(renderRegion->generatingElement());
@@ -163,11 +162,11 @@ PassRefPtr<NodeList> WebKitNamedFlow::getRegions()
 
     const RenderRegionList& regionList = m_parentFlowThread->renderRegionList();
     for (auto iter = regionList.begin(), end = regionList.end(); iter != end; ++iter) {
-        const RenderRegion* renderRegion = *iter;
         // FIXME: Pseudo-elements are not included in the list.
         // They will be included when we will properly support the Region interface
         // http://dev.w3.org/csswg/css-regions/#the-region-interface
-        if (renderRegion->isPseudoElement())
+        const RenderNamedFlowFragment* renderRegion = toRenderNamedFlowFragment(*iter);
+        if (renderRegion->isPseudoElementRegion())
             continue;
         ASSERT(renderRegion->generatingElement());
         regionElements.append(*renderRegion->generatingElement());

@@ -51,7 +51,7 @@ public:
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, JSC::JSGlobalObject*);
-    TestException* impl() const { return m_impl; }
+    TestException& impl() const { return *m_impl; }
     void releaseImpl() { m_impl->deref(); m_impl = 0; }
 
     void releaseImplIfNotNull()
@@ -76,15 +76,15 @@ public:
     virtual void finalize(JSC::Handle<JSC::Unknown>, void* context);
 };
 
-inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld*, TestException*)
+inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestException*)
 {
     DEFINE_STATIC_LOCAL(JSTestExceptionOwner, jsTestExceptionOwner, ());
     return &jsTestExceptionOwner;
 }
 
-inline void* wrapperContext(DOMWrapperWorld* world, TestException*)
+inline void* wrapperContext(DOMWrapperWorld& world, TestException*)
 {
-    return world;
+    return &world;
 }
 
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestException*);

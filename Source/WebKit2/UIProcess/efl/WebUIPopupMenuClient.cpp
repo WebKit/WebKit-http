@@ -39,14 +39,14 @@ void WebUIPopupMenuClient::showPopupMenu(WebPageProxy* pageProxy, WebPopupMenuPr
     if (!m_client.showPopupMenu)
         return;
 
-    Vector<RefPtr<APIObject> > webPopupItems;
+    Vector<RefPtr<API::Object> > webPopupItems;
     size_t size = items.size();
     for (size_t i = 0; i < size; ++i)
         webPopupItems.append(WebPopupItemEfl::create(items[i]));
 
     RefPtr<ImmutableArray> ItemsArray;
     if (!webPopupItems.isEmpty())
-        ItemsArray = ImmutableArray::adopt(webPopupItems);
+        ItemsArray = ImmutableArray::create(std::move(webPopupItems));
 
     m_client.showPopupMenu(toAPI(pageProxy), toAPI(static_cast<WebPopupMenuListenerEfl*>(popupMenuProxy)), toAPI(rect), toAPI(textDirection), pageScaleFactor, toAPI(ItemsArray.get()), selectedIndex, m_client.clientInfo);
 }

@@ -66,8 +66,6 @@
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
-using namespace std;
-
 namespace WebCore {
 
 const double TCPMaximumSegmentLifetime = 2 * 60.0;
@@ -577,7 +575,7 @@ bool WebSocketChannel::processFrame()
             // make sure that the member variables are in a consistent state before
             // the handler is invoked.
             // Vector<char>::swap() is used here to clear m_continuousFrameData.
-            OwnPtr<Vector<char> > continuousFrameData = adoptPtr(new Vector<char>);
+            OwnPtr<Vector<char>> continuousFrameData = adoptPtr(new Vector<char>);
             m_continuousFrameData.swap(*continuousFrameData);
             m_hasContinuousFrame = false;
             if (m_continuousFrameOpCode == WebSocketFrame::OpCodeText) {
@@ -618,7 +616,7 @@ bool WebSocketChannel::processFrame()
 
     case WebSocketFrame::OpCodeBinary:
         if (frame.final) {
-            OwnPtr<Vector<char> > binaryData = adoptPtr(new Vector<char>(frame.payloadLength));
+            OwnPtr<Vector<char>> binaryData = adoptPtr(new Vector<char>(frame.payloadLength));
             memcpy(binaryData->data(), frame.payload, frame.payloadLength);
             skipBuffer(frameEnd - m_buffer.data());
             m_client->didReceiveBinaryData(binaryData.release());

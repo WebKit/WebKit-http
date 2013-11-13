@@ -48,41 +48,46 @@ static CoordinatedLayerID toCoordinatedLayerID(GraphicsLayer* layer)
     return layer ? toCoordinatedGraphicsLayer(layer)->id() : 0;
 }
 
+bool CoordinatedGraphicsLayer::notifyFlushRequired()
+{
+    ASSERT(m_coordinator);
+    if (client() && !m_coordinator->isFlushingLayerChanges()) {
+        client()->notifyFlushRequired(this);
+        return true;
+    }
+    return false;
+}
+
 void CoordinatedGraphicsLayer::didChangeLayerState()
 {
     m_shouldSyncLayerState = true;
-    if (client())
-        client()->notifyFlushRequired(this);
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::didChangeAnimations()
 {
     m_shouldSyncAnimations = true;
-    if (client())
-        client()->notifyFlushRequired(this);
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::didChangeChildren()
 {
     m_shouldSyncChildren = true;
-    if (client())
-        client()->notifyFlushRequired(this);
+    notifyFlushRequired();
 }
 
 #if ENABLE(CSS_FILTERS)
 void CoordinatedGraphicsLayer::didChangeFilters()
 {
     m_shouldSyncFilters = true;
-    if (client())
-        client()->notifyFlushRequired(this);
+    notifyFlushRequired();
 }
 #endif
 
 void CoordinatedGraphicsLayer::didChangeImageBacking()
 {
     m_shouldSyncImageBacking = true;
-    if (client())
-        client()->notifyFlushRequired(this);
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setShouldUpdateVisibleRect()
@@ -382,9 +387,7 @@ void CoordinatedGraphicsLayer::setContentsNeedsDisplay()
         m_pendingCanvasOperation |= SyncCanvas;
 #endif
 
-    if (client())
-        client()->notifyFlushRequired(this);
-
+    notifyFlushRequired();
     addRepaintRect(contentsRect());
 }
 
@@ -411,8 +414,7 @@ void CoordinatedGraphicsLayer::setContentsToCanvas(PlatformLayer* platformLayer)
     m_canvasToken = m_canvasPlatformLayer ? m_canvasPlatformLayer->graphicsSurfaceToken() : GraphicsSurfaceToken();
     ASSERT(!(!m_canvasToken.isValid() && m_canvasPlatformLayer));
 
-    if (client())
-        client()->notifyFlushRequired(this);
+    notifyFlushRequired();
 #else
     UNUSED_PARAM(platformLayer);
 #endif
@@ -588,11 +590,8 @@ void CoordinatedGraphicsLayer::setFixedToViewport(bool isFixed)
 
 void CoordinatedGraphicsLayer::flushCompositingState(const FloatRect& rect)
 {
-    if (!m_coordinator->isFlushingLayerChanges()) {
-        if (client())
-            client()->notifyFlushRequired(this);
+    if (notifyFlushRequired())
         return;
-    }
 
     if (CoordinatedGraphicsLayer* mask = toCoordinatedGraphicsLayer(maskLayer()))
         mask->flushCompositingStateForThisLayerOnly();
@@ -886,7 +885,7 @@ void CoordinatedGraphicsLayer::adjustContentsScale()
     // we do not want to drop the previous one as that might result in
     // briefly seeing flickering as the old tiles may be dropped before
     // something replaces them.
-    m_previousBackingStore = m_mainBackingStore.release();
+    m_previousBackingStore = std::move(m_mainBackingStore);
 
     // No reason to save the previous backing store for non-visible areas.
     m_previousBackingStore->removeAllNonVisibleTiles();
@@ -894,7 +893,7 @@ void CoordinatedGraphicsLayer::adjustContentsScale()
 
 void CoordinatedGraphicsLayer::createBackingStore()
 {
-    m_mainBackingStore = adoptPtr(new TiledBackingStore(this, CoordinatedTileBackend::create(this)));
+    m_mainBackingStore = std::make_unique<TiledBackingStore>(this, CoordinatedTileBackend::create(this));
     m_mainBackingStore->setSupportsAlpha(!contentsOpaque());
     m_mainBackingStore->setContentsScale(effectiveContentsScale());
 }
@@ -918,8 +917,7 @@ void CoordinatedGraphicsLayer::tiledBackingStorePaintEnd(const Vector<IntRect>& 
 void CoordinatedGraphicsLayer::tiledBackingStoreHasPendingTileCreation()
 {
     setNeedsVisibleRectAdjustment();
-    if (client())
-        client()->notifyFlushRequired(this);
+    notifyFlushRequired();
 }
 
 IntRect CoordinatedGraphicsLayer::tiledBackingStoreContentsRect()
@@ -1016,8 +1014,8 @@ void CoordinatedGraphicsLayer::updateContentBuffersIncludingSubLayers()
 void CoordinatedGraphicsLayer::updateContentBuffers()
 {
     if (!shouldHaveBackingStore()) {
-        m_mainBackingStore.clear();
-        m_previousBackingStore.clear();
+        m_mainBackingStore = nullptr;
+        m_previousBackingStore = nullptr;
         return;
     }
 
@@ -1042,7 +1040,7 @@ void CoordinatedGraphicsLayer::updateContentBuffers()
     // removing the existing tiles and painting the new ones. The first time
     // the visibleRect is full painted we remove the previous backing store.
     if (m_mainBackingStore->visibleAreaIsCovered())
-        m_previousBackingStore.clear();
+        m_previousBackingStore = nullptr;
 }
 
 void CoordinatedGraphicsLayer::purgeBackingStores()
@@ -1050,8 +1048,8 @@ void CoordinatedGraphicsLayer::purgeBackingStores()
 #ifndef NDEBUG
     TemporaryChange<bool> updateModeProtector(m_isPurging, true);
 #endif
-    m_mainBackingStore.clear();
-    m_previousBackingStore.clear();
+    m_mainBackingStore = nullptr;
+    m_previousBackingStore = nullptr;
 
     releaseImageBackingIfNeeded();
 
@@ -1103,7 +1101,7 @@ void CoordinatedGraphicsLayer::computePixelAlignment(FloatPoint& position, Float
 
     // Round to integer boundaries.
     // NOTE: When using enclosingIntRect (as mac) it will have different sizes depending on position.
-    FloatRect alignedBounds = roundedIntRect(scaledBounds);
+    FloatRect alignedBounds = enclosingIntRect(scaledBounds);
 
     // Convert back to layer coordinates.
     alignedBounds.scale(1 / effectiveContentsScale());

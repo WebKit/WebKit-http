@@ -61,7 +61,7 @@ bool HTMLOListElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLOListElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLOListElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == typeAttr) {
         if (value == "a")
@@ -101,7 +101,7 @@ void HTMLOListElement::parseAttribute(const QualifiedName& name, const AtomicStr
 
 void HTMLOListElement::setStart(int start)
 {
-    setAttribute(startAttr, String::number(start));
+    setIntegralAttribute(startAttr, start);
 }
 
 void HTMLOListElement::updateItemValues()

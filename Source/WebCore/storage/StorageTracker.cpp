@@ -90,7 +90,7 @@ StorageTracker& StorageTracker::tracker()
 StorageTracker::StorageTracker(const String& storagePath)
     : m_storageDirectoryPath(storagePath.isolatedCopy())
     , m_client(0)
-    , m_thread(StorageThread::create())
+    , m_thread(std::make_unique<StorageThread>())
     , m_isActive(false)
     , m_needsInitialization(false)
     , m_StorageDatabaseIdleInterval(DefaultStorageDatabaseIdleInterval)
@@ -337,7 +337,7 @@ void StorageTracker::syncSetOriginDetails(const String& originIdentifier, const 
     }
 }
 
-void StorageTracker::origins(Vector<RefPtr<SecurityOrigin> >& result)
+void StorageTracker::origins(Vector<RefPtr<SecurityOrigin>>& result)
 {
     ASSERT(m_isActive);
     

@@ -33,8 +33,11 @@
 #include "FontCustomPlatformData.h"
 #include "FontPlatformData.h"
 #include "MemoryCache.h"
+#include "OpenTypeSanitizer.h"
 #include "ResourceBuffer.h"
+#include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
+#include "WOFFFileFormat.h"
 #include <wtf/Vector.h>
 
 #if ENABLE(SVG_FONTS)
@@ -50,7 +53,6 @@ namespace WebCore {
 
 CachedFont::CachedFont(const ResourceRequest& resourceRequest)
     : CachedResource(resourceRequest, FontResource)
-    , m_fontData(0)
     , m_loadInitiated(false)
     , m_hasCreatedFontData(false)
 {
@@ -58,7 +60,6 @@ CachedFont::CachedFont(const ResourceRequest& resourceRequest)
 
 CachedFont::~CachedFont()
 {
-    delete m_fontData;
 }
 
 void CachedFont::load(CachedResourceLoader*, const ResourceLoaderOptions& options)
@@ -94,13 +95,32 @@ void CachedFont::beginLoadIfNeeded(CachedResourceLoader* dl)
 bool CachedFont::ensureCustomFontData()
 {
     if (!m_fontData && !errorOccurred() && !isLoading() && m_data) {
-        m_fontData = createFontCustomPlatformData(m_data.get()->sharedBuffer());
+        SharedBuffer* buffer = m_data.get()->sharedBuffer();
+        ASSERT(buffer);
+
+#if USE(OPENTYPE_SANITIZER)
+        OpenTypeSanitizer sanitizer(buffer);
+        RefPtr<SharedBuffer> transcodeBuffer = sanitizer.sanitize();
+        buffer = transcodeBuffer.get();
+#else
+        RefPtr<SharedBuffer> sfntBuffer;
+        if (isWOFF(buffer)) {
+            Vector<char> sfnt;
+            if (convertWOFFToSfnt(buffer, sfnt)) {
+                sfntBuffer = SharedBuffer::adoptVector(sfnt);
+                buffer = sfntBuffer.get();
+            } else
+                buffer = nullptr;
+        }
+#endif
+
+        m_fontData = buffer ? createFontCustomPlatformData(*buffer) : nullptr;
         if (m_fontData)
             m_hasCreatedFontData = true;
         else
             setStatus(DecodeError);
     }
-    return m_fontData;
+    return m_fontData.get();
 }
 
 FontPlatformData CachedFont::platformDataFromCustomData(float size, bool bold, bool italic, FontOrientation orientation, FontWidthVariant widthVariant, FontRenderingMode renderingMode)
@@ -164,10 +184,7 @@ SVGFontElement* CachedFont::getSVGFontById(const String& fontName) const
 
 void CachedFont::allClientsRemoved()
 {
-    if (m_fontData) {
-        delete m_fontData;
-        m_fontData = 0;
-    }
+    m_fontData = nullptr;
 }
 
 void CachedFont::checkNotify()

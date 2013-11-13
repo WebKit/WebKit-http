@@ -167,7 +167,7 @@ void BidiRunList<Run>::replaceRunWithRuns(Run* toReplace, BidiRunList<Run>& newR
         m_logicallyLastRun = newRuns.logicallyLastRun();
     m_runCount += newRuns.runCount() - 1; // We added the new runs and removed toReplace.
 
-    toReplace->destroy();
+    delete toReplace;
     newRuns.clearWithoutDestroyingRuns();
 }
 
@@ -189,7 +189,7 @@ void BidiRunList<Run>::deleteRuns()
     Run* curr = m_firstRun;
     while (curr) {
         Run* s = curr->next();
-        curr->destroy();
+        delete curr;
         curr = s;
     }
 
@@ -204,7 +204,7 @@ void BidiRunList<Run>::reverseRuns(unsigned start, unsigned end)
     if (start >= end)
         return;
 
-    ASSERT(end < m_runCount);
+    ASSERT_WITH_SECURITY_IMPLICATION(end < m_runCount);
 
     // Get the item before the start of the runs to reverse and put it in
     // |beforeStart|. |curr| should point to the first run to reverse.

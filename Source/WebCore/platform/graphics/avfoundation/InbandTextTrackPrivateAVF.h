@@ -43,12 +43,11 @@ public:
 
 class InbandTextTrackPrivateAVF : public InbandTextTrackPrivate {
 public:
-
-    ~InbandTextTrackPrivateAVF();
+    virtual ~InbandTextTrackPrivateAVF();
 
     virtual void setMode(InbandTextTrackPrivate::Mode) OVERRIDE;
 
-    virtual int textTrackIndex() const OVERRIDE { return m_index; }
+    virtual int trackIndex() const OVERRIDE { return m_index; }
     void setTextTrackIndex(int index) { m_index = index; }
 
     virtual void disconnect();
@@ -73,7 +72,7 @@ protected:
     double m_currentCueStartTime;
     double m_currentCueEndTime;
 
-    Vector<RefPtr<GenericCueData> > m_cues;
+    Vector<RefPtr<GenericCueData>> m_cues;
     AVFInbandTrackParent* m_owner;
 
     enum PendingCueStatus {

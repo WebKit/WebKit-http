@@ -366,10 +366,8 @@ bool CachedResourceLoader::canRequest(CachedResource::Type type, const URL& url,
             return false;
 
         if (frame()) {
-            if (!frame()->loader().client().allowScriptFromSource(frame()->settings().isScriptEnabled(), url)) {
-                frame()->loader().client().didNotAllowScript();
+            if (!frame()->loader().client().allowScriptFromSource(frame()->settings().isScriptEnabled(), url))
                 return false;
-            }
         }
         break;
 #if ENABLE(CSS_SHADERS)
@@ -586,11 +584,8 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
     if (!existingResource->canReuse(request))
         return Reload;
 
-    // Certain requests (e.g., XHRs) might have manually set headers that require revalidation.
-    // FIXME: In theory, this should be a Revalidate case. In practice, the MemoryCache revalidation path assumes a whole bunch
-    // of things about how revalidation works that manual headers violate, so punt to Reload instead.
-    if (request.isConditional())
-        return Reload;
+    // Conditional requests should have failed canReuse check.
+    ASSERT(!request.isConditional());
 
     // Do not load from cache if images are not enabled. The load for this image will be blocked
     // in CachedImage::load.

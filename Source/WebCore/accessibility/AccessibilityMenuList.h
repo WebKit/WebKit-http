@@ -39,27 +39,23 @@ class AccessibilityMenuList : public AccessibilityRenderObject {
 public:
     static PassRefPtr<AccessibilityMenuList> create(RenderMenuList* renderer);
 
-    virtual bool isCollapsed() const;
-    virtual bool press() const;
+    virtual bool isCollapsed() const OVERRIDE;
+    virtual bool press() const OVERRIDE;
 
     void didUpdateActiveOption(int optionIndex);
 
 private:
     explicit AccessibilityMenuList(RenderMenuList*);
 
-    virtual bool isMenuList() const { return true; }
-    virtual AccessibilityRole roleValue() const { return PopUpButtonRole; }
-    virtual bool canSetFocusAttribute() const;
+    virtual bool isMenuList() const OVERRIDE { return true; }
+    virtual AccessibilityRole roleValue() const OVERRIDE { return PopUpButtonRole; }
+    virtual bool canSetFocusAttribute() const OVERRIDE;
 
-    virtual void addChildren();
-    virtual void childrenChanged();
+    virtual void addChildren() OVERRIDE;
+    virtual void childrenChanged() OVERRIDE;
 };
 
-inline AccessibilityMenuList* toAccessibilityMenuList(AccessibilityObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isMenuList());
-    return static_cast<AccessibilityMenuList*>(object);
-}
+ACCESSIBILITY_OBJECT_TYPE_CASTS(AccessibilityMenuList, isMenuList())
 
 } // namespace WebCore
 

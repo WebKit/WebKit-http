@@ -43,7 +43,7 @@ class StyleShader;
 
 class WebKitCSSShaderValue : public CSSValue {
 public:
-    static PassRefPtr<WebKitCSSShaderValue> create(const String& url) { return adoptRef(new WebKitCSSShaderValue(url)); }
+    static PassRef<WebKitCSSShaderValue> create(const String& url) { return adoptRef(*new WebKitCSSShaderValue(url)); }
     ~WebKitCSSShaderValue();
 
     const String& format() const { return m_format; }
@@ -58,7 +58,7 @@ public:
     bool equals(const WebKitCSSShaderValue&) const;
 
 private:
-    WebKitCSSShaderValue(const String& url);
+    explicit WebKitCSSShaderValue(const String& url);
 
     String m_url;
     String m_format;
@@ -66,14 +66,7 @@ private:
     bool m_accessedShader;
 };
 
-// This will catch anyone doing an unnecessary cast.
-WebKitCSSShaderValue* toWebKitCSSShaderValue(const WebKitCSSShaderValue*);
-
-inline WebKitCSSShaderValue* toWebKitCSSShaderValue(CSSValue* value)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isWebKitCSSShaderValue());
-    return static_cast<WebKitCSSShaderValue*>(value);
-}
+CSS_VALUE_TYPE_CASTS(WebKitCSSShaderValue, isWebKitCSSShaderValue())
 
 } // namespace WebCore
 

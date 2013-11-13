@@ -256,6 +256,7 @@ WebInspector.DOMTreeElement.prototype = {
 
         this.updateTitle();
         this.listItemElement.draggable = true;
+        this.listItemElement.addEventListener("dragstart", this);
     },
 
     onpopulate: function()
@@ -478,6 +479,11 @@ WebInspector.DOMTreeElement.prototype = {
             WebInspector.domTreeManager.highlightDOMNode(this.representedObject.id);
         this.updateSelection();
         this.treeOutline.suppressRevealAndSelect = false;
+    },
+
+    ondeselect: function(treeElement)
+    {
+        this.treeOutline.selectDOMNode(null);
     },
 
     ondelete: function()
@@ -1301,6 +1307,12 @@ WebInspector.DOMTreeElement.prototype = {
 
         this._highlightResult = [];
         highlightSearchResults(this.listItemElement, matchRanges, this._highlightResult);
+    },
+
+    handleEvent: function(event)
+    {
+        if (event.type === "dragstart" && this._editing)
+            event.preventDefault();
     }
 }
 

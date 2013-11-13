@@ -28,11 +28,8 @@
 
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSParser.h"
-#include "CSSPropertyNames.h"
-#include "CSSValueKeywords.h"
 #include "CSSValuePool.h"
 #include "Document.h"
-#include "EditingStyle.h"
 #include "Editor.h"
 #include "ElementIterator.h"
 #include "Frame.h"
@@ -41,13 +38,11 @@
 #include "HTMLNames.h"
 #include "NodeList.h"
 #include "NodeTraversal.h"
-#include "Range.h"
 #include "RenderObject.h"
 #include "RenderText.h"
 #include "StylePropertySet.h"
 #include "StyleResolver.h"
 #include "Text.h"
-#include "TextIterator.h"
 #include "TextNodeTraversal.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
@@ -264,13 +259,15 @@ void ApplyStyleCommand::applyBlockStyle(EditingStyle *style)
     // addBlockStyleIfNeeded may moveParagraphs, which can remove these endpoints.
     // Calculate start and end indices from the start of the tree that they're in.
     Node* scope = highestAncestor(visibleStart.deepEquivalent().deprecatedNode());
-    RefPtr<Range> startRange = Range::create(&document(), firstPositionInNode(scope), visibleStart.deepEquivalent().parentAnchoredEquivalent());
-    RefPtr<Range> endRange = Range::create(&document(), firstPositionInNode(scope), visibleEnd.deepEquivalent().parentAnchoredEquivalent());
+    RefPtr<Range> startRange = Range::create(document(), firstPositionInNode(scope), visibleStart.deepEquivalent().parentAnchoredEquivalent());
+    RefPtr<Range> endRange = Range::create(document(), firstPositionInNode(scope), visibleEnd.deepEquivalent().parentAnchoredEquivalent());
     int startIndex = TextIterator::rangeLength(startRange.get(), true);
     int endIndex = TextIterator::rangeLength(endRange.get(), true);
 
     VisiblePosition paragraphStart(startOfParagraph(visibleStart));
     VisiblePosition nextParagraphStart(endOfParagraph(paragraphStart).next());
+    if (visibleEnd != visibleStart && isStartOfParagraph(visibleEnd))
+        visibleEnd = visibleEnd.previous(CannotCrossEditingBoundary);
     VisiblePosition beyondEnd(endOfParagraph(visibleEnd).next());
     while (paragraphStart.isNotNull() && paragraphStart != beyondEnd) {
         StyleChange styleChange(style, paragraphStart.deepEquivalent());
@@ -377,7 +374,7 @@ void ApplyStyleCommand::applyRelativeFontStyleChange(EditingStyle* style)
         startingFontSizes.set(node, computedFontSize(node));
 
     // These spans were added by us. If empty after font size changes, they can be removed.
-    Vector<RefPtr<HTMLElement> > unstyledSpans;
+    Vector<RefPtr<HTMLElement>> unstyledSpans;
     
     Node* lastStyledNode = 0;
     for (Node* node = startNode; node != beyondEnd; node = NodeTraversal::next(node)) {
@@ -401,7 +398,7 @@ void ApplyStyleCommand::applyRelativeFontStyleChange(EditingStyle* style)
 
         RefPtr<MutableStylePropertySet> inlineStyle = copyStyleOrCreateEmpty(element->inlineStyle());
         float currentFontSize = computedFontSize(node);
-        float desiredFontSize = max(MinimumFontSize, startingFontSizes.get(node) + style->fontSizeDelta());
+        float desiredFontSize = std::max(MinimumFontSize, startingFontSizes.get(node) + style->fontSizeDelta());
         RefPtr<CSSValue> value = inlineStyle->getPropertyCSSValue(CSSPropertyFontSize);
         if (value) {
             element->removeInlineStyleProperty(CSSPropertyFontSize);
@@ -442,7 +439,8 @@ void ApplyStyleCommand::cleanupUnstyledAppleStyleSpans(ContainerNode* dummySpanA
     // all the children of the dummy's parent
 
     Vector<Element*> toRemove;
-    for (auto child = elementChildren(dummySpanAncestor).begin(), end = elementChildren(dummySpanAncestor).end(); child != end; ++child) {
+    auto children = elementChildren(*dummySpanAncestor);
+    for (auto child = children.begin(), end = children.end(); child != end; ++child) {
         if (isSpanWithoutAttributesOrUnstyledStyleSpan(&*child))
             toRemove.append(&*child);
     }
@@ -702,7 +700,7 @@ void ApplyStyleCommand::fixRangeAndApplyInlineStyle(EditingStyle* style, const P
     // Start from the highest fully selected ancestor so that we can modify the fully selected node.
     // e.g. When applying font-size: large on <font color="blue">hello</font>, we need to include the font element in our run
     // to generate <font color="blue" size="4">hello</font> instead of <font color="blue"><font size="4">hello</font></font>
-    RefPtr<Range> range = Range::create(&startNode->document(), start, end);
+    RefPtr<Range> range = Range::create(startNode->document(), start, end);
     Element* editableRoot = startNode->rootEditableElement();
     if (startNode != editableRoot) {
         while (editableRoot && startNode->parentNode() != editableRoot && isNodeVisiblyContainedWithin(startNode->parentNode(), range.get()))
@@ -1000,7 +998,7 @@ void ApplyStyleCommand::applyInlineStyleToPushDown(Node* node, EditingStyle* sty
 
     node->document().updateStyleIfNeeded();
 
-    if (!style || style->isEmpty() || !node->renderer())
+    if (!style || style->isEmpty() || !node->renderer() || node->hasTagName(iframeTag))
         return;
 
     RefPtr<EditingStyle> newInlineStyle = style;
@@ -1018,7 +1016,7 @@ void ApplyStyleCommand::applyInlineStyleToPushDown(Node* node, EditingStyle* sty
 
     if (node->renderer()->isText() && static_cast<RenderText*>(node->renderer())->isAllCollapsibleWhitespace())
         return;
-    if (node->renderer()->isBR() && !node->renderer()->style()->preserveNewline())
+    if (node->renderer()->isBR() && !node->renderer()->style().preserveNewline())
         return;
 
     // We can't wrap node with the styled element here because new styled element will never be removed if we did.
@@ -1323,8 +1321,8 @@ bool ApplyStyleCommand::mergeEndWithNextIfIdentical(const Position& start, const
 
     Node* nextSibling = endNode->nextSibling();
     if (nextSibling && areIdenticalElements(endNode, nextSibling)) {
-        Element* nextElement = static_cast<Element *>(nextSibling);
-        Element* element = static_cast<Element *>(endNode);
+        Element* nextElement = toElement(nextSibling);
+        Element* element = toElement(endNode);
         Node* nextChild = nextElement->firstChild();
 
         mergeIdenticalElements(element, nextElement);
@@ -1514,7 +1512,7 @@ float ApplyStyleCommand::computedFontSize(Node* node)
 
     RefPtr<CSSValue> value = ComputedStyleExtractor(node).propertyValue(CSSPropertyFontSize);
     ASSERT(value && value->isPrimitiveValue());
-    return static_cast<CSSPrimitiveValue*>(value.get())->getFloatValue(CSSPrimitiveValue::CSS_PX);
+    return toCSSPrimitiveValue(value.get())->getFloatValue(CSSPrimitiveValue::CSS_PX);
 }
 
 void ApplyStyleCommand::joinChildTextNodes(Node* node, const Position& start, const Position& end)

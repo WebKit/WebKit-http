@@ -21,7 +21,6 @@
 #include "config.h"
 #include "JSTestActiveDOMObject.h"
 
-#include "BindingSecurity.h"
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSNode.h"
@@ -75,8 +74,8 @@ bool JSTestActiveDOMObjectConstructor::getOwnPropertySlot(JSObject* object, Exec
 
 static const HashTableValue JSTestActiveDOMObjectPrototypeTableValues[] =
 {
-    { "excitingFunction", DontDelete | JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestActiveDOMObjectPrototypeFunctionExcitingFunction), (intptr_t)1 },
-    { "postMessage", DontDelete | JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestActiveDOMObjectPrototypeFunctionPostMessage), (intptr_t)1 },
+    { "excitingFunction", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestActiveDOMObjectPrototypeFunctionExcitingFunction), (intptr_t)1 },
+    { "postMessage", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestActiveDOMObjectPrototypeFunctionPostMessage), (intptr_t)1 },
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
@@ -137,8 +136,8 @@ JSValue jsTestActiveDOMObjectExcitingAttr(ExecState* exec, JSValue slotBase, Pro
     if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, castedThis->impl()))
         return jsUndefined();
     UNUSED_PARAM(exec);
-    TestActiveDOMObject* impl = castedThis->impl();
-    JSValue result = jsNumber(impl->excitingAttr());
+    TestActiveDOMObject& impl = castedThis->impl();
+    JSValue result = jsNumber(impl.excitingAttr());
     return result;
 }
 
@@ -165,13 +164,13 @@ EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionExcitingFunct
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestActiveDOMObject::info());
     if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, castedThis->impl()))
         return JSValue::encode(jsUndefined());
-    TestActiveDOMObject* impl = castedThis->impl();
+    TestActiveDOMObject& impl = castedThis->impl();
     if (exec->argumentCount() < 1)
         return throwVMError(exec, createNotEnoughArgumentsError(exec));
     Node* nextChild(toNode(exec->argument(0)));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
-    impl->excitingFunction(nextChild);
+    impl.excitingFunction(nextChild);
     return JSValue::encode(jsUndefined());
 }
 
@@ -182,13 +181,13 @@ EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionPostMessage(E
         return throwVMTypeError(exec);
     JSTestActiveDOMObject* castedThis = jsCast<JSTestActiveDOMObject*>(asObject(thisValue));
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestActiveDOMObject::info());
-    TestActiveDOMObject* impl = castedThis->impl();
+    TestActiveDOMObject& impl = castedThis->impl();
     if (exec->argumentCount() < 1)
         return throwVMError(exec, createNotEnoughArgumentsError(exec));
     const String& message(exec->argument(0).isEmpty() ? String() : exec->argument(0).toString(exec)->value(exec));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
-    impl->postMessage(message);
+    impl.postMessage(message);
     return JSValue::encode(jsUndefined());
 }
 
@@ -201,9 +200,7 @@ static inline bool isObservable(JSTestActiveDOMObject* jsTestActiveDOMObject)
 
 bool JSTestActiveDOMObjectOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
 {
-    JSTestActiveDOMObject* jsTestActiveDOMObject = jsCast<JSTestActiveDOMObject*>(handle.get().asCell());
-    if (!isObservable(jsTestActiveDOMObject))
-        return false;
+    UNUSED_PARAM(handle);
     UNUSED_PARAM(visitor);
     return false;
 }
@@ -211,8 +208,8 @@ bool JSTestActiveDOMObjectOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unk
 void JSTestActiveDOMObjectOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
     JSTestActiveDOMObject* jsTestActiveDOMObject = jsCast<JSTestActiveDOMObject*>(handle.get().asCell());
-    DOMWrapperWorld* world = static_cast<DOMWrapperWorld*>(context);
-    uncacheWrapper(world, jsTestActiveDOMObject->impl(), jsTestActiveDOMObject);
+    DOMWrapperWorld& world = *static_cast<DOMWrapperWorld*>(context);
+    uncacheWrapper(world, &jsTestActiveDOMObject->impl(), jsTestActiveDOMObject);
     jsTestActiveDOMObject->releaseImpl();
 }
 
@@ -255,7 +252,7 @@ JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestAct
 
 TestActiveDOMObject* toTestActiveDOMObject(JSC::JSValue value)
 {
-    return value.inherits(JSTestActiveDOMObject::info()) ? jsCast<JSTestActiveDOMObject*>(asObject(value))->impl() : 0;
+    return value.inherits(JSTestActiveDOMObject::info()) ? &jsCast<JSTestActiveDOMObject*>(asObject(value))->impl() : 0;
 }
 
 }

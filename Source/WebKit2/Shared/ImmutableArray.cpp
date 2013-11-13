@@ -26,29 +26,34 @@
 #include "config.h"
 #include "ImmutableArray.h"
 
+#include "WebString.h"
+
 namespace WebKit {
 
-ImmutableArray::ImmutableArray()
+PassRefPtr<ImmutableArray> ImmutableArray::create()
 {
+    return create(Vector<RefPtr<API::Object>>());
 }
 
-ImmutableArray::ImmutableArray(AdoptTag, APIObject** entries, size_t size)
-    : m_entries(size)
+PassRefPtr<ImmutableArray> ImmutableArray::create(Vector<RefPtr<API::Object>> elements)
 {
-    for (size_t i = 0; i < size; ++i)
-        m_entries[i] = adoptRef(entries[i]);
+    return adoptRef(new ImmutableArray(std::move(elements)));
 }
 
-ImmutableArray::ImmutableArray(APIObject** entries, size_t size)
-    : m_entries(size)
+PassRefPtr<ImmutableArray> ImmutableArray::createStringArray(const Vector<String>& strings)
 {
-    for (size_t i = 0; i < size; ++i)
-        m_entries[i] = entries[i];
+    Vector<RefPtr<API::Object>> elements;
+    elements.reserveInitialCapacity(strings.size());
+
+    for (const auto& string : strings)
+        elements.uncheckedAppend(WebString::create(string));
+
+    return create(std::move(elements));
 }
 
-ImmutableArray::ImmutableArray(Vector<RefPtr<APIObject>>& entries)
+ImmutableArray::ImmutableArray(Vector<RefPtr<API::Object>> elements)
+    : m_elements(std::move(elements))
 {
-    m_entries.swap(entries);
 }
 
 ImmutableArray::~ImmutableArray()

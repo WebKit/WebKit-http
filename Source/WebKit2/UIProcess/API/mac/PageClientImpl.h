@@ -58,6 +58,7 @@ private:
     virtual bool isViewWindowActive();
     virtual bool isViewFocused();
     virtual bool isViewVisible();
+    virtual bool isWindowVisible();
     virtual bool isViewInWindow();
     virtual LayerHostingMode viewLayerHostingMode() OVERRIDE;
     virtual ColorSpaceData colorSpace() OVERRIDE;
@@ -90,9 +91,6 @@ private:
     virtual WebCore::IntPoint screenToWindow(const WebCore::IntPoint&);
     virtual WebCore::IntRect windowToScreen(const WebCore::IntRect&);
 
-#if ENABLE(GESTURE_EVENTS)
-    virtual void doneWithGestureEvent(const WebGestureEvent&, bool wasEventHandled);
-#endif
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled);
 
     virtual PassRefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*);
@@ -115,10 +113,6 @@ private:
 
     virtual void makeFirstResponder();
     
-    virtual CGContextRef containingWindowGraphicsContext();
-
-    virtual void flashBackingStoreUpdates(const Vector<WebCore::IntRect>& updateRects);
-
     virtual void didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&);
     virtual void dismissDictionaryLookupPanel();
 

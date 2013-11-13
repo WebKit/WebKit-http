@@ -56,7 +56,6 @@
 #include <wtf/text/TextPosition.h>
 
 using namespace JSC;
-using namespace std;
 
 namespace WebCore {
 
@@ -92,30 +91,33 @@ ScriptController::~ScriptController()
     // It's likely that destroying m_windowShells will create a lot of garbage.
     if (!m_windowShells.isEmpty()) {
         while (!m_windowShells.isEmpty())
-            destroyWindowShell(m_windowShells.begin()->key.get());
+            destroyWindowShell(*m_windowShells.begin()->key);
         gcController().garbageCollectSoon();
     }
 }
 
-void ScriptController::destroyWindowShell(DOMWrapperWorld* world)
+void ScriptController::destroyWindowShell(DOMWrapperWorld& world)
 {
-    ASSERT(m_windowShells.contains(world));
-    m_windowShells.remove(world);
-    world->didDestroyWindowShell(this);
+    ASSERT(m_windowShells.contains(&world));
+    m_windowShells.remove(&world);
+    world.didDestroyWindowShell(this);
 }
 
-JSDOMWindowShell* ScriptController::createWindowShell(DOMWrapperWorld* world)
+JSDOMWindowShell* ScriptController::createWindowShell(DOMWrapperWorld& world)
 {
-    ASSERT(!m_windowShells.contains(world));
-    Structure* structure = JSDOMWindowShell::createStructure(*world->vm(), jsNull());
-    Strong<JSDOMWindowShell> windowShell(*world->vm(), JSDOMWindowShell::create(m_frame.document()->domWindow(), structure, world));
+    ASSERT(!m_windowShells.contains(&world));
+
+    VM& vm = *world.vm();
+
+    Structure* structure = JSDOMWindowShell::createStructure(vm, jsNull());
+    Strong<JSDOMWindowShell> windowShell(vm, JSDOMWindowShell::create(vm, m_frame.document()->domWindow(), structure, world));
     Strong<JSDOMWindowShell> windowShell2(windowShell);
-    m_windowShells.add(world, windowShell);
-    world->didCreateWindowShell(this);
+    m_windowShells.add(&world, windowShell);
+    world.didCreateWindowShell(this);
     return windowShell.get();
 }
 
-ScriptValue ScriptController::evaluateInWorld(const ScriptSourceCode& sourceCode, DOMWrapperWorld* world)
+ScriptValue ScriptController::evaluateInWorld(const ScriptSourceCode& sourceCode, DOMWrapperWorld& world)
 {
     const SourceCode& jsSourceCode = sourceCode.jsSourceCode();
     String sourceURL = jsSourceCode.provider()->url();
@@ -164,7 +166,7 @@ PassRefPtr<DOMWrapperWorld> ScriptController::createWorld()
     return DOMWrapperWorld::create(JSDOMWindow::commonVM());
 }
 
-void ScriptController::getAllWorlds(Vector<RefPtr<DOMWrapperWorld> >& worlds)
+void ScriptController::getAllWorlds(Vector<Ref<DOMWrapperWorld>>& worlds)
 {
     static_cast<WebCoreJSClientData*>(JSDOMWindow::commonVM()->clientData)->getAllWorlds(worlds);
 }
@@ -179,7 +181,7 @@ void ScriptController::clearWindowShell(DOMWindow* newDOMWindow, bool goingIntoP
     for (ShellMap::iterator iter = m_windowShells.begin(); iter != m_windowShells.end(); ++iter) {
         JSDOMWindowShell* windowShell = iter->value.get();
 
-        if (windowShell->window()->impl() == newDOMWindow)
+        if (&windowShell->window()->impl() == newDOMWindow)
             continue;
 
         // Clear the debugger from the current window before setting the new window.
@@ -205,11 +207,11 @@ void ScriptController::clearWindowShell(DOMWindow* newDOMWindow, bool goingIntoP
         gcController().garbageCollectSoon();
 }
 
-JSDOMWindowShell* ScriptController::initScript(DOMWrapperWorld* world)
+JSDOMWindowShell* ScriptController::initScript(DOMWrapperWorld& world)
 {
-    ASSERT(!m_windowShells.contains(world));
+    ASSERT(!m_windowShells.contains(&world));
 
-    JSLockHolder lock(world->vm());
+    JSLockHolder lock(world.vm());
 
     JSDOMWindowShell* windowShell = createWindowShell(world);
 
@@ -334,11 +336,11 @@ void ScriptController::setCaptureCallStackForUncaughtExceptions(bool)
 {
 }
 
-void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*, SecurityOrigin*> >& result)
+void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*, SecurityOrigin*>>& result)
 {
     for (ShellMap::iterator iter = m_windowShells.begin(); iter != m_windowShells.end(); ++iter) {
         JSC::ExecState* exec = iter->value->window()->globalExec();
-        SecurityOrigin* origin = iter->value->window()->impl()->document()->securityOrigin();
+        SecurityOrigin* origin = iter->value->window()->impl().document()->securityOrigin();
         result.append(std::pair<JSC::ExecState*, SecurityOrigin*>(exec, origin));
     }
 }
@@ -380,7 +382,7 @@ NPObject* ScriptController::createScriptObjectForPluginElement(HTMLPlugInElement
 
 #endif
 
-#if !PLATFORM(MAC) && !PLATFORM(QT) && !PLATFORM(HAIKU)
+#if !PLATFORM(MAC) && !PLATFORM(HAIKU)
 PassRefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(Widget* widget)
 {
     if (!widget->isPluginView())
@@ -456,7 +458,7 @@ void ScriptController::clearScriptObjects()
 #endif
 }
 
-ScriptValue ScriptController::executeScriptInWorld(DOMWrapperWorld* world, const String& script, bool forceUserGesture)
+ScriptValue ScriptController::executeScriptInWorld(DOMWrapperWorld& world, const String& script, bool forceUserGesture)
 {
     UserGestureIndicator gestureIndicator(forceUserGesture ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
     ScriptSourceCode sourceCode(script, m_frame.document()->url());
@@ -470,10 +472,10 @@ ScriptValue ScriptController::executeScriptInWorld(DOMWrapperWorld* world, const
 bool ScriptController::shouldBypassMainWorldContentSecurityPolicy()
 {
     CallFrame* callFrame = JSDOMWindow::commonVM()->topCallFrame;
-    if (!callFrame || callFrame == CallFrame::noCaller()) 
+    if (callFrame == CallFrame::noCaller()) 
         return false;
-    DOMWrapperWorld* domWrapperWorld = currentWorld(callFrame);
-    if (domWrapperWorld->isNormal())
+    DOMWrapperWorld& domWrapperWorld = currentWorld(callFrame);
+    if (domWrapperWorld.isNormal())
         return false;
     return true;
 }
@@ -495,10 +497,7 @@ bool ScriptController::canExecuteScripts(ReasonForCallingCanExecuteScripts reaso
     if (!m_frame.page())
         return false;
 
-    const bool allowed = m_frame.loader().client().allowScript(m_frame.settings().isScriptEnabled());
-    if (!allowed && reason == AboutToExecuteScript)
-        m_frame.loader().client().didNotAllowScript();
-    return allowed;
+    return m_frame.loader().client().allowScript(m_frame.settings().isScriptEnabled());
 }
 
 ScriptValue ScriptController::executeScript(const String& script, bool forceUserGesture)
@@ -556,7 +555,7 @@ bool ScriptController::executeIfJavaScriptURL(const URL& url, ShouldReplaceDocum
         // DocumentWriter::replaceDocument can cause the DocumentLoader to get deref'ed and possible destroyed,
         // so protect it with a RefPtr.
         if (RefPtr<DocumentLoader> loader = m_frame.document()->loader())
-            loader->writer()->replaceDocument(scriptResult, ownerDocument.get());
+            loader->writer().replaceDocument(scriptResult, ownerDocument.get());
     }
     return true;
 }

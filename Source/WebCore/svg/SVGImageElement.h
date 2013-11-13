@@ -47,13 +47,13 @@ private:
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&);
 
     virtual void didAttachRenderers() OVERRIDE;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
 
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
 
     virtual const AtomicString& imageSourceURL() const OVERRIDE;
     virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
@@ -76,7 +76,7 @@ private:
     SVGImageLoader m_imageLoader;
 };
 
-ELEMENT_TYPE_CASTS(SVGImageElement)
+NODE_TYPE_CASTS(SVGImageElement)
 
 } // namespace WebCore
 

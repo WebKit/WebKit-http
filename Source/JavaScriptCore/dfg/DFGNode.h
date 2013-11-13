@@ -411,6 +411,7 @@ struct Node {
         m_op = GetLocalUnlinked;
         m_flags &= ~(NodeMustGenerate | NodeMightClobber | NodeClobbersWorld);
         m_opInfo = local.offset();
+        m_opInfo2 = VirtualRegister().offset();
         children.reset();
     }
     
@@ -463,6 +464,7 @@ struct Node {
         ASSERT(m_op == GetLocalUnlinked);
         m_op = GetLocal;
         m_opInfo = bitwise_cast<uintptr_t>(variable);
+        m_opInfo2 = 0;
         children.setChild1(Edge(phi));
     }
     
@@ -547,6 +549,11 @@ struct Node {
         return variableAccessData()->local();
     }
     
+    VirtualRegister machineLocal()
+    {
+        return variableAccessData()->machineLocal();
+    }
+    
     bool hasUnlinkedLocal()
     {
         switch (op()) {
@@ -562,6 +569,23 @@ struct Node {
     {
         ASSERT(hasUnlinkedLocal());
         return static_cast<VirtualRegister>(m_opInfo);
+    }
+    
+    bool hasUnlinkedMachineLocal()
+    {
+        return op() == GetLocalUnlinked;
+    }
+    
+    void setUnlinkedMachineLocal(VirtualRegister reg)
+    {
+        ASSERT(hasUnlinkedMachineLocal());
+        m_opInfo2 = reg.offset();
+    }
+    
+    VirtualRegister unlinkedMachineLocal()
+    {
+        ASSERT(hasUnlinkedMachineLocal());
+        return VirtualRegister(m_opInfo2);
     }
     
     bool hasPhi()
@@ -1042,6 +1066,7 @@ struct Node {
         switch (op()) {
         case GetIndexedPropertyStorage:
         case GetArrayLength:
+        case PutByValDirect:
         case PutByVal:
         case PutByValAlias:
         case GetByVal:
@@ -1092,17 +1117,6 @@ struct Node {
         ASSERT(hasResult());
         ASSERT(!m_virtualRegister.isValid());
         m_virtualRegister = virtualRegister;
-    }
-    
-    bool hasArgumentPositionStart()
-    {
-        return op() == InlineStart;
-    }
-    
-    unsigned argumentPositionStart()
-    {
-        ASSERT(hasArgumentPositionStart());
-        return m_opInfo;
     }
     
     bool hasExecutionCounter()

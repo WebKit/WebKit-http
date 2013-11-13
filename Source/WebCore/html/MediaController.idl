@@ -28,7 +28,7 @@
     Constructor,
     ConstructorCallWith=ScriptExecutionContext,
     JSGenerateToJSObject,
-    EventTarget
+    EventTarget,
 ] interface MediaController {
     readonly attribute TimeRanges buffered;
     readonly attribute TimeRanges seekable;

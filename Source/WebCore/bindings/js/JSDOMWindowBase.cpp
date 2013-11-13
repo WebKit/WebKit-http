@@ -23,7 +23,6 @@
 #include "config.h"
 #include "JSDOMWindowBase.h"
 
-#include "BindingSecurity.h"
 #include "Chrome.h"
 #include "Console.h"
 #include "DOMWindow.h"
@@ -51,10 +50,10 @@ static bool shouldAllowAccessFrom(const JSGlobalObject* thisObject, ExecState* e
 
 const ClassInfo JSDOMWindowBase::s_info = { "Window", &JSDOMGlobalObject::s_info, 0, 0, CREATE_METHOD_TABLE(JSDOMWindowBase) };
 
-const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &shouldAllowAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled, &queueTaskToEventLoop };
+const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &shouldAllowAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled, &queueTaskToEventLoop, &shouldInterruptScriptBeforeTimeout };
 
 JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, PassRefPtr<DOMWindow> window, JSDOMWindowShell* shell)
-    : JSDOMGlobalObject(vm, structure, shell->world(), &s_globalObjectMethodTable)
+    : JSDOMGlobalObject(vm, structure, &shell->world(), &s_globalObjectMethodTable)
     , m_impl(window)
     , m_shell(shell)
 {
@@ -92,7 +91,7 @@ ScriptExecutionContext* JSDOMWindowBase::scriptExecutionContext() const
 
 void JSDOMWindowBase::printErrorMessage(const String& message) const
 {
-    printErrorMessageForFrame(impl()->frame(), message);
+    printErrorMessageForFrame(impl().frame(), message);
 }
 
 bool JSDOMWindowBase::supportsProfiling(const JSGlobalObject* object)
@@ -102,7 +101,7 @@ bool JSDOMWindowBase::supportsProfiling(const JSGlobalObject* object)
     return false;
 #else
     const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
-    Frame* frame = thisObject->impl()->frame();
+    Frame* frame = thisObject->impl().frame();
     if (!frame)
         return false;
 
@@ -121,7 +120,7 @@ bool JSDOMWindowBase::supportsRichSourceInfo(const JSGlobalObject* object)
     return false;
 #else
     const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
-    Frame* frame = thisObject->impl()->frame();
+    Frame* frame = thisObject->impl().frame();
     if (!frame)
         return false;
 
@@ -136,12 +135,8 @@ bool JSDOMWindowBase::supportsRichSourceInfo(const JSGlobalObject* object)
 #endif
 }
 
-bool JSDOMWindowBase::shouldInterruptScript(const JSGlobalObject* object)
+static inline bool shouldInterruptScriptToPreventInfiniteRecursionWhenClosingPage(Page* page)
 {
-    const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
-    ASSERT(thisObject->impl()->frame());
-    Page* page = thisObject->impl()->frame()->page();
-
     // See <rdar://problem/5479443>. We don't think that page can ever be NULL
     // in this case, but if it is, we've gotten into a state where we may have
     // hung the UI, with no way to ask the client whether to cancel execution.
@@ -149,16 +144,38 @@ bool JSDOMWindowBase::shouldInterruptScript(const JSGlobalObject* object)
     // ensuring that we never hang. We might want to consider other solutions
     // if we discover problems with this one.
     ASSERT(page);
-    if (!page)
+    return !page;
+}
+
+bool JSDOMWindowBase::shouldInterruptScript(const JSGlobalObject* object)
+{
+    const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
+    ASSERT(thisObject->impl().frame());
+    Page* page = thisObject->impl().frame()->page();
+    return shouldInterruptScriptToPreventInfiniteRecursionWhenClosingPage(page) || page->chrome().shouldInterruptJavaScript();
+}
+
+bool JSDOMWindowBase::shouldInterruptScriptBeforeTimeout(const JSGlobalObject* object)
+{
+    const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
+    ASSERT(thisObject->impl().frame());
+    Page* page = thisObject->impl().frame()->page();
+
+    if (shouldInterruptScriptToPreventInfiniteRecursionWhenClosingPage(page))
         return true;
 
-    return page->chrome().shouldInterruptJavaScript();
+#if PLATFORM(IOS)
+    if (page->chrome().client()->isStopping())
+        return true;
+#endif
+
+    return JSGlobalObject::shouldInterruptScriptBeforeTimeout(object);
 }
 
 bool JSDOMWindowBase::javaScriptExperimentsEnabled(const JSGlobalObject* object)
 {
     const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
-    Frame* frame = thisObject->impl()->frame();
+    Frame* frame = thisObject->impl().frame();
     if (!frame)
         return false;
     return frame->settings().javaScriptExperimentsEnabled();
@@ -212,7 +229,7 @@ JSValue toJS(ExecState* exec, DOMWindow* domWindow)
     return frame->script().windowShell(currentWorld(exec));
 }
 
-JSDOMWindow* toJSDOMWindow(Frame* frame, DOMWrapperWorld* world)
+JSDOMWindow* toJSDOMWindow(Frame* frame, DOMWrapperWorld& world)
 {
     if (!frame)
         return 0;

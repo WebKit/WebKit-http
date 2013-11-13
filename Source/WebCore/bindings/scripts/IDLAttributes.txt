@@ -57,7 +57,7 @@ EnabledAtRuntime=*
 EnabledBySetting=*
 EnforceRange
 EventTarget
-GenerateIsReachable=|Impl|ImplContext|ImplDocument|ImplElementRoot|ImplFrame|ImplOwnerNodeRoot
+GenerateIsReachable=|Impl|ImplWebGLRenderingContext|ImplDocument|ImplElementRoot|ImplFrame|ImplOwnerNodeRoot
 GetterRaisesException
 GlobalContext=DOMWindow|WorkerGlobalScope|SharedWorkerGlobalScope|DedicatedWorkerGlobalScope
 Immutable
@@ -86,10 +86,12 @@ MasqueradesAsUndefined
 NamedConstructor=*
 NoInterfaceObject
 NotEnumerable
+NotDeletable
 ObjCCustomImplementation
 ObjCLegacyUnnamedParameters
 ObjCPolymorphic
 ObjCProtocol
+OperationsNotDeletable
 PassContext
 RaisesException
 Reflect=*

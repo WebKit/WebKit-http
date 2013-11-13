@@ -38,9 +38,9 @@ class ImmutableArray;
 
 // ImmutableDictionary - An immutable dictionary type suitable for vending to an API.
 
-class ImmutableDictionary : public TypedAPIObject<APIObject::TypeDictionary> {
+class ImmutableDictionary : public API::TypedObject<API::Object::TypeDictionary> {
 public:
-    typedef HashMap<String, RefPtr<APIObject>> MapType;
+    typedef HashMap<String, RefPtr<API::Object>> MapType;
 
     static PassRefPtr<ImmutableDictionary> create()
     {
@@ -56,9 +56,9 @@ public:
     virtual bool isMutable() { return false; }
 
     template<typename T>
-    T* get(const String& key)
+    T* get(const String& key) const
     {
-        RefPtr<APIObject> item = m_map.get(key);
+        RefPtr<API::Object> item = m_map.get(key);
         if (!item)
             return 0;
 
@@ -68,20 +68,27 @@ public:
         return static_cast<T*>(item.get());
     }
 
-    APIObject* get(const String& key)
+    API::Object* get(const String& key) const
     {
         return m_map.get(key);
     }
 
+    API::Object* get(const String& key, bool& exists) const
+    {
+        auto it = m_map.find(key);
+        exists = it != m_map.end();
+        return it->value.get();
+    }
+
     PassRefPtr<ImmutableArray> keys() const;
 
-    size_t size() { return m_map.size(); }
+    size_t size() const { return m_map.size(); }
 
-    const MapType& map() { return m_map; }
+    const MapType& map() const { return m_map; }
 
 protected:
     ImmutableDictionary();
-    ImmutableDictionary(MapType& map);
+    explicit ImmutableDictionary(MapType&);
 
     MapType m_map;
 };

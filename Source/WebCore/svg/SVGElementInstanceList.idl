@@ -24,7 +24,7 @@
  */
 
 [
-    Conditional=SVG
+    Conditional=SVG,
 ] interface SVGElementInstanceList {
     readonly attribute unsigned long length;
 

@@ -42,6 +42,8 @@
 #include "IDBAny.h"
 #include "IDBCallbacks.h"
 #include "IDBCursor.h"
+#include "IDBDatabaseBackend.h"
+#include "IDBDatabaseCallbacks.h"
 #include "ScriptWrappable.h"
 
 namespace WebCore {
@@ -53,7 +55,7 @@ typedef int ExceptionCode;
 class IDBRequest : public ScriptWrappable, public IDBCallbacks, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
     static PassRefPtr<IDBRequest> create(ScriptExecutionContext*, PassRefPtr<IDBAny> source, IDBTransaction*);
-    static PassRefPtr<IDBRequest> create(ScriptExecutionContext*, PassRefPtr<IDBAny> source, IDBDatabaseBackendInterface::TaskType, IDBTransaction*);
+    static PassRefPtr<IDBRequest> create(ScriptExecutionContext*, PassRefPtr<IDBAny> source, IDBDatabaseBackend::TaskType, IDBTransaction*);
     virtual ~IDBRequest();
 
     PassRefPtr<IDBAny> result(ExceptionCode&) const;
@@ -84,14 +86,14 @@ public:
     // IDBCallbacks
     virtual void onError(PassRefPtr<IDBDatabaseError>);
     virtual void onSuccess(PassRefPtr<DOMStringList>);
-    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>);
+    virtual void onSuccess(PassRefPtr<IDBCursorBackend>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>);
     virtual void onSuccess(PassRefPtr<IDBKey>);
     virtual void onSuccess(PassRefPtr<SharedBuffer>);
     virtual void onSuccess(PassRefPtr<SharedBuffer>, PassRefPtr<IDBKey>, const IDBKeyPath&);
     virtual void onSuccess(int64_t);
     virtual void onSuccess();
     virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>);
-    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SharedBuffer> >&) { ASSERT_NOT_REACHED(); } // Not implemented. Callback should not reach the renderer side.
+    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey>>&, const Vector<RefPtr<IDBKey>>&, const Vector<RefPtr<SharedBuffer>>&) { ASSERT_NOT_REACHED(); } // Not implemented. Callback should not reach the renderer side.
 
     // ActiveDOMObject
     virtual bool hasPendingActivity() const OVERRIDE;
@@ -109,12 +111,12 @@ public:
     using RefCounted<IDBCallbacks>::ref;
     using RefCounted<IDBCallbacks>::deref;
 
-    IDBDatabaseBackendInterface::TaskType taskType() { return m_taskType; }
+    IDBDatabaseBackend::TaskType taskType() { return m_taskType; }
 
     DOMRequestState* requestState() { return &m_requestState; }
 
 protected:
-    IDBRequest(ScriptExecutionContext*, PassRefPtr<IDBAny> source, IDBDatabaseBackendInterface::TaskType, IDBTransaction*);
+    IDBRequest(ScriptExecutionContext*, PassRefPtr<IDBAny> source, IDBDatabaseBackend::TaskType, IDBTransaction*);
     void enqueueEvent(PassRefPtr<Event>);
     virtual bool shouldEnqueueEvent() const;
     void onSuccessInternal(PassRefPtr<SerializedScriptValue>);
@@ -141,10 +143,10 @@ private:
     void setResultCursor(PassRefPtr<IDBCursor>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, const ScriptValue&);
 
     RefPtr<IDBAny> m_source;
-    const IDBDatabaseBackendInterface::TaskType m_taskType;
+    const IDBDatabaseBackend::TaskType m_taskType;
 
     bool m_hasPendingActivity;
-    Vector<RefPtr<Event> > m_enqueuedEvents;
+    Vector<RefPtr<Event>> m_enqueuedEvents;
 
     // Only used if the result type will be a cursor.
     IndexedDB::CursorType m_cursorType;

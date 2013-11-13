@@ -71,7 +71,6 @@
 #include "HTMLFrameSetElement.h"
 #include "HTMLNames.h"
 #include "InspectorInstrumentation.h"
-#include "URL.h"
 #include "Page.h"
 #include "ScriptController.h"
 #include "Settings.h"
@@ -140,7 +139,7 @@ void HTMLDocument::setDesignMode(const String& value)
 
 Element* HTMLDocument::activeElement()
 {
-    if (Element* element = treeScope()->focusedElement())
+    if (Element* element = treeScope().focusedElement())
         return element;
     return body();
 }
@@ -280,7 +279,7 @@ void HTMLDocument::releaseEvents()
 PassRefPtr<DocumentParser> HTMLDocument::createParser()
 {
     bool reportErrors = InspectorInstrumentation::collectingHTMLParseErrors(this->page());
-    return HTMLDocumentParser::create(this, reportErrors);
+    return HTMLDocumentParser::create(*this, reportErrors);
 }
 
 // --------------------------------------------------------------------------
@@ -356,24 +355,24 @@ static HashSet<AtomicStringImpl*>* createHtmlCaseInsensitiveAttributesSet()
     return attrSet;
 }
 
-void HTMLDocument::addDocumentNamedItem(const AtomicString& name, Element* item)
+void HTMLDocument::addDocumentNamedItem(const AtomicStringImpl& name, Element& item)
 {
-    m_documentNamedItem.add(name.impl(), item);
+    m_documentNamedItem.add(name, item);
 }
 
-void HTMLDocument::removeDocumentNamedItem(const AtomicString& name, Element* item)
+void HTMLDocument::removeDocumentNamedItem(const AtomicStringImpl& name, Element& item)
 {
-    m_documentNamedItem.remove(name.impl(), item);
+    m_documentNamedItem.remove(name, item);
 }
 
-void HTMLDocument::addWindowNamedItem(const AtomicString& name, Element* item)
+void HTMLDocument::addWindowNamedItem(const AtomicStringImpl& name, Element& item)
 {
-    m_windowNamedItem.add(name.impl(), item);
+    m_windowNamedItem.add(name, item);
 }
 
-void HTMLDocument::removeWindowNamedItem(const AtomicString& name, Element* item)
+void HTMLDocument::removeWindowNamedItem(const AtomicStringImpl& name, Element& item)
 {
-    m_windowNamedItem.remove(name.impl(), item);
+    m_windowNamedItem.remove(name, item);
 }
 
 bool HTMLDocument::isCaseSensitiveAttribute(const QualifiedName& attributeName)

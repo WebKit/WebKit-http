@@ -27,14 +27,27 @@
 
 #import "TestController.h"
 
+static void setDefaultsToConsistentValuesForTesting()
+{
+    [[NSUserDefaults standardUserDefaults] removePersistentDomainForName:@"WebKitTestRunner"];
+
+    NSDictionary *dict = @{
+        @"AppleKeyboardUIMode": @1,
+        @"AppleMagnifiedMode": @YES,
+        @"WebKitKerningAndLigaturesEnabledByDefault": @NO,
+        // FIXME: This is likely insufficient, as tests change (and don't reset) these settings via Internals.
+        @"WebAutomaticQuoteSubstitutionEnabled": @NO,
+        @"WebAutomaticDashSubstitutionEnabled": @NO
+    };
+
+    [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:dict];
+}
+
 int main(int argc, const char* argv[])
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     [NSApplication sharedApplication];
-    [[NSUserDefaults standardUserDefaults] setVolatileDomain:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:NO] forKey:@"WebKitKerningAndLigaturesEnabledByDefault"] forName:NSArgumentDomain];
-
-    [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"WebAutomaticQuoteSubstitutionEnabled"];
-    [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"WebAutomaticDashSubstitutionEnabled"];
+    setDefaultsToConsistentValuesForTesting();
 
     {
         WTR::TestController controller(argc, argv);

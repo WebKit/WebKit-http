@@ -50,16 +50,15 @@ namespace WebCore {
 class Blob;
 class ThreadableWebSocketChannel;
 
-// FIXME: This class should be marked FINAL once <http://webkit.org/b/121747> is fixed.
-class WebSocket : public RefCounted<WebSocket>, public EventTargetWithInlineData, public ActiveDOMObject, public WebSocketChannelClient {
+class WebSocket FINAL : public RefCounted<WebSocket>, public EventTargetWithInlineData, public ActiveDOMObject, public WebSocketChannelClient {
 public:
     static void setIsAvailable(bool);
     static bool isAvailable();
     static const char* subProtocolSeperator();
-    static PassRefPtr<WebSocket> create(ScriptExecutionContext*);
-    static PassRefPtr<WebSocket> create(ScriptExecutionContext*, const String& url, ExceptionCode&);
-    static PassRefPtr<WebSocket> create(ScriptExecutionContext*, const String& url, const String& protocol, ExceptionCode&);
-    static PassRefPtr<WebSocket> create(ScriptExecutionContext*, const String& url, const Vector<String>& protocols, ExceptionCode&);
+    static PassRefPtr<WebSocket> create(ScriptExecutionContext&);
+    static PassRefPtr<WebSocket> create(ScriptExecutionContext&, const String& url, ExceptionCode&);
+    static PassRefPtr<WebSocket> create(ScriptExecutionContext&, const String& url, const String& protocol, ExceptionCode&);
+    static PassRefPtr<WebSocket> create(ScriptExecutionContext&, const String& url, const Vector<String>& protocols, ExceptionCode&);
     virtual ~WebSocket();
 
     enum State {
@@ -98,8 +97,8 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(close);
 
     // EventTarget functions.
-    virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL;
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL;
+    virtual EventTargetInterface eventTargetInterface() const OVERRIDE;
+    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE;
 
     using RefCounted<WebSocket>::ref;
     using RefCounted<WebSocket>::deref;
@@ -107,14 +106,14 @@ public:
     // WebSocketChannelClient functions.
     virtual void didConnect() OVERRIDE;
     virtual void didReceiveMessage(const String& message) OVERRIDE;
-    virtual void didReceiveBinaryData(PassOwnPtr<Vector<char> >) OVERRIDE;
+    virtual void didReceiveBinaryData(PassOwnPtr<Vector<char>>) OVERRIDE;
     virtual void didReceiveMessageError() OVERRIDE;
     virtual void didUpdateBufferedAmount(unsigned long bufferedAmount) OVERRIDE;
     virtual void didStartClosingHandshake() OVERRIDE;
     virtual void didClose(unsigned long unhandledBufferedAmount, ClosingHandshakeCompletionStatus, unsigned short code, const String& reason) OVERRIDE;
 
 private:
-    explicit WebSocket(ScriptExecutionContext*);
+    explicit WebSocket(ScriptExecutionContext&);
 
     // ActiveDOMObject functions.
     virtual void contextDestroyed() OVERRIDE;
@@ -123,8 +122,8 @@ private:
     virtual void resume() OVERRIDE;
     virtual void stop() OVERRIDE;
 
-    virtual void refEventTarget() OVERRIDE FINAL { ref(); }
-    virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
+    virtual void refEventTarget() OVERRIDE { ref(); }
+    virtual void derefEventTarget() OVERRIDE { deref(); }
 
     size_t getFramingOverhead(size_t payloadSize);
 

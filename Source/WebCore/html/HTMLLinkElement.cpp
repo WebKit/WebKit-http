@@ -162,11 +162,11 @@ void HTMLLinkElement::parseAttribute(const QualifiedName& name, const AtomicStri
 
 bool HTMLLinkElement::shouldLoadLink()
 {
-    RefPtr<Document> originalDocument = &document();
+    Ref<Document> originalDocument(document());
     if (!dispatchBeforeLoadEvent(getNonEmptyURLAttribute(hrefAttr)))
         return false;
     // A beforeload handler might have removed us from the document or changed the document.
-    if (!inDocument() || &document() != originalDocument)
+    if (!inDocument() || &document() != &originalDocument.get())
         return false;
     return true;
 }
@@ -206,7 +206,9 @@ void HTMLLinkElement::process()
 
         bool mediaQueryMatches = true;
         if (!m_media.isEmpty()) {
-            RefPtr<RenderStyle> documentStyle = Style::resolveForDocument(document());
+            RefPtr<RenderStyle> documentStyle;
+            if (document().hasLivingRenderTree())
+                documentStyle = Style::resolveForDocument(document());
             RefPtr<MediaQuerySet> media = MediaQuerySet::createAllowingDescriptionSyntax(m_media);
             MediaQueryEvaluator evaluator(document().frame()->view()->mediaType(), document().frame(), documentStyle.get());
             mediaQueryMatches = evaluator.eval(media.get());
@@ -245,10 +247,10 @@ void HTMLLinkElement::clearSheet()
     m_sheet = 0;
 }
 
-Node::InsertionNotificationRequest HTMLLinkElement::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest HTMLLinkElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
-    if (!insertionPoint->inDocument())
+    if (!insertionPoint.inDocument())
         return InsertionDone;
 
     m_isInShadowTree = isInShadowTree();
@@ -261,10 +263,10 @@ Node::InsertionNotificationRequest HTMLLinkElement::insertedInto(ContainerNode* 
     return InsertionDone;
 }
 
-void HTMLLinkElement::removedFrom(ContainerNode* insertionPoint)
+void HTMLLinkElement::removedFrom(ContainerNode& insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
-    if (!insertionPoint->inDocument())
+    if (!insertionPoint.inDocument())
         return;
 
     m_linkLoader.released();
@@ -306,7 +308,7 @@ void HTMLLinkElement::setCSSStyleSheet(const String& href, const URL& baseURL, c
         ASSERT(restoredSheet->isCacheable());
         ASSERT(!restoredSheet->isLoading());
 
-        m_sheet = CSSStyleSheet::create(restoredSheet.release(), this);
+        m_sheet = CSSStyleSheet::create(restoredSheet.releaseNonNull(), this);
         m_sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(m_media));
         m_sheet->setTitle(title());
 
@@ -316,20 +318,19 @@ void HTMLLinkElement::setCSSStyleSheet(const String& href, const URL& baseURL, c
         return;
     }
 
-    RefPtr<StyleSheetContents> styleSheet = StyleSheetContents::create(href, parserContext);
-
-    m_sheet = CSSStyleSheet::create(styleSheet, this);
+    Ref<StyleSheetContents> styleSheet(StyleSheetContents::create(href, parserContext));
+    m_sheet = CSSStyleSheet::create(styleSheet.get(), this);
     m_sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(m_media));
     m_sheet->setTitle(title());
 
-    styleSheet->parseAuthorStyleSheet(cachedStyleSheet, document().securityOrigin());
+    styleSheet.get().parseAuthorStyleSheet(cachedStyleSheet, document().securityOrigin());
 
     m_loading = false;
-    styleSheet->notifyLoadedSheet(cachedStyleSheet);
-    styleSheet->checkLoaded();
+    styleSheet.get().notifyLoadedSheet(cachedStyleSheet);
+    styleSheet.get().checkLoaded();
 
-    if (styleSheet->isCacheable())
-        const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->saveParsedStyleSheet(styleSheet.release());
+    if (styleSheet.get().isCacheable())
+        const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->saveParsedStyleSheet(styleSheet.get());
 }
 
 bool HTMLLinkElement::styleSheetIsLoading() const
@@ -338,7 +339,7 @@ bool HTMLLinkElement::styleSheetIsLoading() const
         return true;
     if (!m_sheet)
         return false;
-    return m_sheet->contents()->isLoading();
+    return m_sheet->contents().isLoading();
 }
 
 void HTMLLinkElement::linkLoaded()
@@ -441,7 +442,7 @@ void HTMLLinkElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
     
     // Walk the URLs linked by the linked-to stylesheet.
     if (CSSStyleSheet* styleSheet = const_cast<HTMLLinkElement*>(this)->sheet())
-        styleSheet->contents()->addSubresourceStyleURLs(urls);
+        styleSheet->contents().addSubresourceStyleURLs(urls);
 }
 
 void HTMLLinkElement::addPendingSheet(PendingSheetType type)

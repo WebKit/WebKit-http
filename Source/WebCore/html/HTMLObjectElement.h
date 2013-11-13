@@ -63,15 +63,17 @@ public:
 
     virtual bool canContainRangeEndPoint() const { return useFallbackContent(); }
 
+    bool hasFallbackContent() const;
+
 private:
     HTMLObjectElement(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet&) OVERRIDE;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    virtual void removedFrom(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
+    virtual void removedFrom(ContainerNode&) OVERRIDE;
 
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
@@ -87,8 +89,6 @@ private:
     virtual void updateWidget(PluginCreationOption);
     void updateDocNamedItem();
 
-    bool hasFallbackContent() const;
-    
     // FIXME: This function should not deal with url or serviceType
     // so that we can better share code between <object> and <embed>.
     void parametersForPlugin(Vector<String>& paramNames, Vector<String>& paramValues, String& url, String& serviceType);
@@ -101,14 +101,15 @@ private:
     virtual HTMLFormElement* virtualForm() const;
 
     virtual FormNamedItem* asFormNamedItem() OVERRIDE FINAL { return this; }
-    virtual HTMLElement* asHTMLElement() OVERRIDE FINAL { return this; }
+    virtual HTMLObjectElement& asHTMLElement() OVERRIDE FINAL { return *this; }
+    virtual const HTMLObjectElement& asHTMLElement() const OVERRIDE FINAL { return *this; }
 
     String m_classId;
     bool m_docNamedItem : 1;
     bool m_useFallbackContent : 1;
 };
 
-ELEMENT_TYPE_CASTS(HTMLObjectElement)
+NODE_TYPE_CASTS(HTMLObjectElement)
 
 }
 

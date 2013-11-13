@@ -41,6 +41,8 @@
 #include "FrameSelection.h"
 #include "HTMLNames.h"
 #include "LocalizedStrings.h"
+#include "MainFrame.h"
+#include "MathMLNames.h"
 #include "NodeList.h"
 #include "NodeTraversal.h"
 #include "NotImplemented.h"
@@ -65,8 +67,6 @@
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/unicode/CharacterNames.h>
-
-using namespace std;
 
 namespace WebCore {
 
@@ -513,6 +513,23 @@ void AccessibilityObject::findMatchingObjects(AccessibilitySearchCriteria* crite
     }
 }
 
+bool AccessibilityObject::hasAttributesRequiredForInclusion() const
+{
+    // These checks are simplified in the interest of execution speed.
+    if (!getAttribute(aria_helpAttr).isEmpty()
+        || !getAttribute(aria_describedbyAttr).isEmpty()
+        || !getAttribute(altAttr).isEmpty()
+        || !getAttribute(titleAttr).isEmpty())
+        return true;
+
+#if ENABLE(MATHML)
+    if (!getAttribute(MathMLNames::alttextAttr).isEmpty())
+        return true;
+#endif
+
+    return false;
+}
+
 bool AccessibilityObject::isARIAInput(AccessibilityRole ariaRole)
 {
     return ariaRole == RadioButtonRole || ariaRole == CheckBoxRole || ariaRole == TextFieldRole;
@@ -567,7 +584,7 @@ IntRect AccessibilityObject::boundingBoxForQuads(RenderObject* obj, const Vector
     for (size_t i = 0; i < count; ++i) {
         IntRect r = quads[i].enclosingBoundingBox();
         if (!r.isEmpty()) {
-            if (obj->style()->hasAppearance())
+            if (obj->style().hasAppearance())
                 obj->theme()->adjustRepaintRect(obj, r);
             result.unite(r);
         }
@@ -587,7 +604,27 @@ bool AccessibilityObject::press() const
     actionElem->accessKeyAction(true);
     return true;
 }
+
+MainFrame* AccessibilityObject::mainFrame() const
+{
+    Document* document = topDocument();
+    if (!document)
+        return 0;
     
+    Frame* frame = document->frame();
+    if (!frame)
+        return 0;
+    
+    return &frame->mainFrame();
+}
+
+Document* AccessibilityObject::topDocument() const
+{
+    if (!document())
+        return 0;
+    return document()->topDocument();
+}
+
 String AccessibilityObject::language() const
 {
     const AtomicString& lang = getAttribute(langAttr);
@@ -753,7 +790,7 @@ static VisiblePosition startOfStyleRange(const VisiblePosition& visiblePos)
 {
     RenderObject* renderer = visiblePos.deepEquivalent().deprecatedNode()->renderer();
     RenderObject* startRenderer = renderer;
-    RenderStyle* style = renderer->style();
+    RenderStyle* style = &renderer->style();
 
     // traverse backward by renderer to look for style change
     for (RenderObject* r = renderer->previousInPreOrder(); r; r = r->previousInPreOrder()) {
@@ -762,7 +799,7 @@ static VisiblePosition startOfStyleRange(const VisiblePosition& visiblePos)
             continue;
 
         // stop at style change
-        if (r->style() != style)
+        if (&r->style() != style)
             break;
 
         // remember match
@@ -776,7 +813,7 @@ static VisiblePosition endOfStyleRange(const VisiblePosition& visiblePos)
 {
     RenderObject* renderer = visiblePos.deepEquivalent().deprecatedNode()->renderer();
     RenderObject* endRenderer = renderer;
-    RenderStyle* style = renderer->style();
+    const RenderStyle& style = renderer->style();
 
     // traverse forward by renderer to look for style change
     for (RenderObject* r = renderer->nextInPreOrder(); r; r = r->nextInPreOrder()) {
@@ -785,7 +822,7 @@ static VisiblePosition endOfStyleRange(const VisiblePosition& visiblePos)
             continue;
 
         // stop at style change
-        if (r->style() != style)
+        if (&r->style() != &style)
             break;
 
         // remember match
@@ -820,7 +857,7 @@ static bool replacedNodeNeedsCharacter(Node* replacedNode)
 {
     // we should always be given a rendered node and a replaced node, but be safe
     // replaced nodes are either attachments (widgets) or images
-    if (!replacedNode || !replacedNode->renderer() || !replacedNode->renderer()->isReplaced() || replacedNode->isTextNode())
+    if (!replacedNode || !isRendererReplacedElement(replacedNode->renderer()) || replacedNode->isTextNode())
         return false;
 
     // create an AX object, but skip it if it is not supposed to be seen
@@ -915,6 +952,38 @@ int AccessibilityObject::lengthForVisiblePositionRange(const VisiblePositionRang
     }
     
     return length;
+}
+
+VisiblePosition AccessibilityObject::visiblePositionForBounds(const IntRect& rect, AccessibilityVisiblePositionForBounds visiblePositionForBounds) const
+{
+    if (rect.isEmpty())
+        return VisiblePosition();
+    
+    MainFrame* mainFrame = this->mainFrame();
+    if (!mainFrame)
+        return VisiblePosition();
+    
+    // FIXME: Add support for right-to-left languages.
+    IntPoint corner = (visiblePositionForBounds == FirstVisiblePositionForBounds) ? rect.minXMinYCorner() : rect.maxXMaxYCorner();
+    VisiblePosition position = mainFrame->visiblePositionForPoint(corner);
+    
+    if (rect.contains(position.absoluteCaretBounds().center()))
+        return position;
+    
+    // If the initial position is located outside the bounds adjust it incrementally as needed.
+    VisiblePosition nextPosition = position.next();
+    VisiblePosition previousPosition = position.previous();
+    while (nextPosition.isNotNull() || previousPosition.isNotNull()) {
+        if (rect.contains(nextPosition.absoluteCaretBounds().center()))
+            return nextPosition;
+        if (rect.contains(previousPosition.absoluteCaretBounds().center()))
+            return previousPosition;
+        
+        nextPosition = nextPosition.next();
+        previousPosition = previousPosition.previous();
+    }
+    
+    return VisiblePosition();
 }
 
 VisiblePosition AccessibilityObject::nextWordEnd(const VisiblePosition& visiblePos) const
@@ -1343,15 +1412,20 @@ bool AccessibilityObject::ariaIsMultiline() const
 const AtomicString& AccessibilityObject::invalidStatus() const
 {
     DEFINE_STATIC_LOCAL(const AtomicString, invalidStatusFalse, ("false", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(const AtomicString, invalidStatusTrue, ("true", AtomicString::ConstructFromLiteral));
     
     // aria-invalid can return false (default), grammer, spelling, or true.
     const AtomicString& ariaInvalid = getAttribute(aria_invalidAttr);
     
-    // If empty or not present, it should return false.
-    if (ariaInvalid.isEmpty())
+    // If 'false', empty or not present, it should return false.
+    if (ariaInvalid.isEmpty() || equalIgnoringCase(ariaInvalid, invalidStatusFalse))
         return invalidStatusFalse;
     
-    return ariaInvalid;
+    // Only 'true', 'grammar' and 'spelling' are values recognised by the WAI-ARIA
+    // specification. Any other non empty string should be treated as 'true'.
+    if (equalIgnoringCase(ariaInvalid, "spelling") || equalIgnoringCase(ariaInvalid, "grammar"))
+        return ariaInvalid;
+    return invalidStatusTrue;
 }
  
 bool AccessibilityObject::hasAttribute(const QualifiedName& attribute) const
@@ -1529,6 +1603,14 @@ bool AccessibilityObject::hasHighlighting() const
     }
     
     return false;
+}
+
+Element* AccessibilityObject::element() const
+{
+    Node* node = this->node();
+    if (node && node->isElementNode())
+        return toElement(node);
+    return 0;
 }
 
 const AtomicString& AccessibilityObject::placeholderValue() const
@@ -1955,7 +2037,7 @@ TextIteratorBehavior AccessibilityObject::textIteratorBehaviorForTextRange() con
 {
     TextIteratorBehavior behavior = TextIteratorIgnoresStyleVisibility;
     
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(EFL)
     // We need to emit replaced elements for GTK, and present
     // them with the 'object replacement character' (0xFFFC).
     behavior = static_cast<TextIteratorBehavior>(behavior | TextIteratorEmitsObjectReplacementCharacters);
@@ -1990,22 +2072,32 @@ bool AccessibilityObject::accessibilityIsIgnoredByDefault() const
     return defaultObjectInclusion() == IgnoreObject;
 }
 
-bool AccessibilityObject::ariaIsHidden() const
+// ARIA component of hidden definition.
+// http://www.w3.org/TR/wai-aria/terms#def_hidden
+bool AccessibilityObject::isARIAHidden() const
 {
-    if (equalIgnoringCase(getAttribute(aria_hiddenAttr), "true"))
-        return true;
-    
-    for (AccessibilityObject* object = parentObject(); object; object = object->parentObject()) {
+    for (const AccessibilityObject* object = this; object; object = object->parentObject()) {
         if (equalIgnoringCase(object->getAttribute(aria_hiddenAttr), "true"))
             return true;
     }
-    
     return false;
+}
+
+// DOM component of hidden definition.
+// http://www.w3.org/TR/wai-aria/terms#def_hidden
+bool AccessibilityObject::isDOMHidden() const
+{
+    RenderObject* renderer = this->renderer();
+    if (!renderer)
+        return true;
+    
+    const RenderStyle& style = renderer->style();
+    return style.display() == NONE || style.visibility() != VISIBLE;
 }
 
 AccessibilityObjectInclusion AccessibilityObject::defaultObjectInclusion() const
 {
-    if (ariaIsHidden())
+    if (isARIAHidden())
         return IgnoreObject;
     
     if (isPresentationalChildOfAriaRole())

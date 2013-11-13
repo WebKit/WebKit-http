@@ -1496,20 +1496,9 @@ Eina_Bool ewk_view_text_search(const Evas_Object* ewkView, const char* string, E
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(string, false);
-    WTF::TextCaseSensitivity sensitive;
-    WebCore::FindDirection direction;
 
-    if (caseSensitive)
-        sensitive = WTF::TextCaseSensitive;
-    else
-        sensitive = WTF::TextCaseInsensitive;
-
-    if (forward)
-        direction = WebCore::FindDirectionForward;
-    else
-        direction = WebCore::FindDirectionBackward;
-
-    return priv->page->findString(String::fromUTF8(string), sensitive, direction, wrap);
+    WebCore::FindOptions options = (caseSensitive ? 0 : WebCore::CaseInsensitive) | (forward ? 0 : WebCore::Backwards) | (wrap ? WebCore::WrapAround : 0);
+    return priv->page->findString(String::fromUTF8(string), options);
 }
 
 /**
@@ -4266,6 +4255,9 @@ Eina_Bool ewk_view_visibility_state_set(Evas_Object* ewkView, Ewk_Page_Visibilit
     return true;
 #else
     DBG("PAGE_VISIBILITY_API is disabled.");
+    UNUSED_PARAM(ewkView);
+    UNUSED_PARAM(pageVisibilityState);
+    UNUSED_PARAM(initialState);
     return false;
 #endif
 }
@@ -4279,6 +4271,7 @@ Ewk_Page_Visibility_State ewk_view_visibility_state_get(const Evas_Object* ewkVi
     return static_cast<Ewk_Page_Visibility_State>(priv->page->visibilityState());
 #else
     DBG("PAGE_VISIBILITY_API is disabled.");
+    UNUSED_PARAM(ewkView);
     return EWK_PAGE_VISIBILITY_STATE_VISIBLE;
 #endif
 }

@@ -45,9 +45,9 @@ void Collator::setOrderLowerFirst(bool)
 {
 }
 
-OwnPtr<Collator> Collator::userDefault()
+std::unique_ptr<Collator> Collator::userDefault()
 {
-    return createOwned<Collator>(nullptr);
+    return std::make_unique<Collator>(nullptr);
 }
 
 // A default implementation for platforms that lack Unicode-aware collation.

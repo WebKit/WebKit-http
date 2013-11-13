@@ -40,7 +40,6 @@ class AnimationControllerPrivate;
 class Document;
 class Element;
 class Frame;
-class Node;
 class RenderElement;
 class RenderStyle;
 
@@ -50,7 +49,7 @@ public:
     ~AnimationController();
 
     void cancelAnimations(RenderElement*);
-    PassRefPtr<RenderStyle> updateAnimations(RenderElement*, RenderStyle* newStyle);
+    PassRef<RenderStyle> updateAnimations(RenderElement&, PassRef<RenderStyle> newStyle);
     PassRefPtr<RenderStyle> getAnimatedStyleForRenderer(RenderElement*);
 
     // This is called when an accelerated animation or transition has actually started to animate.
@@ -83,7 +82,7 @@ public:
     static bool supportsAcceleratedAnimationOfProperty(CSSPropertyID);
 
 private:
-    const OwnPtr<AnimationControllerPrivate> m_data;
+    const std::unique_ptr<AnimationControllerPrivate> m_data;
     int m_beginAnimationUpdateCount;
 };
 

@@ -44,7 +44,7 @@ namespace WebCore {
         const String sheetText(bool enforceMIMEType = true, bool* hasValidMIMEType = 0) const;
 
         PassRefPtr<StyleSheetContents> restoreParsedStyleSheet(const CSSParserContext&);
-        void saveParsedStyleSheet(PassRefPtr<StyleSheetContents>);
+        void saveParsedStyleSheet(PassRef<StyleSheetContents>);
 
     private:
         bool canUseSheet(bool enforceMIMEType, bool* hasValidMIMEType) const;
@@ -59,7 +59,7 @@ namespace WebCore {
         virtual void destroyDecodedData() OVERRIDE;
 
     protected:
-        virtual void checkNotify();
+        virtual void checkNotify() OVERRIDE;
 
         RefPtr<TextResourceDecoder> m_decoder;
         String m_decodedSheetText;

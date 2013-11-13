@@ -43,8 +43,36 @@ void JSVideoTrack::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT(jsVideoTrack->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(jsVideoTrack, visitor);
 
-    VideoTrack* videoTrack = jsVideoTrack->impl();
-    visitor.addOpaqueRoot(root(videoTrack));
+    VideoTrack& videoTrack = jsVideoTrack->impl();
+    visitor.addOpaqueRoot(root(&videoTrack));
+}
+
+void JSVideoTrack::setKind(ExecState* exec, JSValue value)
+{
+    UNUSED_PARAM(exec);
+#if ENABLE(MEDIA_SOURCE)
+    const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
+    if (exec->hadException())
+        return;
+    impl().setKind(nativeValue);
+#else
+    UNUSED_PARAM(value);
+    return;
+#endif
+}
+
+void JSVideoTrack::setLanguage(ExecState* exec, JSValue value)
+{
+    UNUSED_PARAM(exec);
+#if ENABLE(MEDIA_SOURCE)
+    const String& nativeValue(value.isEmpty() ? String() : value.toString(exec)->value(exec));
+    if (exec->hadException())
+        return;
+    impl().setLanguage(nativeValue);
+#else
+    UNUSED_PARAM(value);
+    return;
+#endif
 }
 
 } // namespace WebCore

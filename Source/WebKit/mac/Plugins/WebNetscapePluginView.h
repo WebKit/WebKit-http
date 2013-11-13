@@ -88,14 +88,14 @@ typedef union PluginPort {
     BOOL shouldStopSoon;
 
     uint32_t currentTimerID;
-    HashMap<uint32_t, PluginTimer*>* timers;
+    std::unique_ptr<HashMap<uint32_t, std::unique_ptr<PluginTimer>>> timers;
 
     unsigned pluginFunctionCallDepth;
     
     int32_t specifiedHeight;
     int32_t specifiedWidth;
             
-    HashSet<RefPtr<WebNetscapePluginStream> > streams;
+    HashSet<RefPtr<WebNetscapePluginStream>> streams;
     RetainPtr<NSMapTable> _pendingFrameLoads;
     
     BOOL _isFlash;

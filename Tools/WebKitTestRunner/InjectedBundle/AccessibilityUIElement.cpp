@@ -54,7 +54,7 @@ bool AccessibilityUIElement::isValid() const
 }
 
 // Unsupported methods on various platforms. As they're implemented on other platforms this list should be modified.
-#if !PLATFORM(MAC) && !PLATFORM(GTK) && !PLATFORM(EFL)
+#if (!PLATFORM(MAC) && !PLATFORM(GTK) && !PLATFORM(EFL)) || !HAVE(ACCESSIBILITY)
 AccessibilityUIElement::AccessibilityUIElement(PlatformUIElement) { }
 AccessibilityUIElement::AccessibilityUIElement(const AccessibilityUIElement&) { }
 AccessibilityUIElement::~AccessibilityUIElement() { }
@@ -172,9 +172,13 @@ PassRefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::textMarkerRange
 PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::startTextMarkerForTextMarkerRange(AccessibilityTextMarkerRange*) { return 0; }
 PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::endTextMarkerForTextMarkerRange(AccessibilityTextMarkerRange*) { return 0; }
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::accessibilityElementForTextMarker(AccessibilityTextMarker*) { return 0; }
+PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::endTextMarkerForBounds(int x, int y, int width, int height) { return 0; }
+PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::startTextMarkerForBounds(int x, int y, int width, int height) { return 0; }
 PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::textMarkerForPoint(int, int) { return 0; }
 PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::previousTextMarker(AccessibilityTextMarker*) { return 0; }
 PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::nextTextMarker(AccessibilityTextMarker*) { return 0; }
+PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::startTextMarker() { return 0; }
+PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::endTextMarker() { return 0; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::stringForTextMarkerRange(AccessibilityTextMarkerRange*) { return 0; }
 bool AccessibilityUIElement::attributedStringForTextMarkerRangeContainsAttribute(JSStringRef, AccessibilityTextMarkerRange*) { return false; }
 int AccessibilityUIElement::indexForTextMarker(AccessibilityTextMarker*) { return -1; }

@@ -42,10 +42,6 @@ class WebEvent;
 class WebPage;
 class WebWheelEvent;
 
-#if ENABLE(GESTURE_EVENTS)
-class WebGestureEvent;
-#endif
-
 class EventDispatcher : public CoreIPC::Connection::WorkQueueMessageReceiver {
 public:
     static PassRefPtr<EventDispatcher> create();
@@ -65,16 +61,10 @@ private:
     virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     // Message handlers
-    void wheelEvent(uint64_t pageID, const WebWheelEvent&, bool canGoBack, bool canGoForward);
-#if ENABLE(GESTURE_EVENTS)
-    void gestureEvent(uint64_t pageID, const WebGestureEvent&);
-#endif
+    void wheelEvent(uint64_t pageID, const WebWheelEvent&, bool canRubberBandsAtLeft, bool canRubberBandsAtRight, bool canRubberBandsAtTop, bool canRubberBandsAtBottom);
 
     // This is called on the main thread.
     void dispatchWheelEvent(uint64_t pageID, const WebWheelEvent&);
-#if ENABLE(GESTURE_EVENTS)
-    void dispatchGestureEvent(uint64_t pageID, const WebGestureEvent&);
-#endif
 
 #if ENABLE(THREADED_SCROLLING)
     void sendDidReceiveEvent(uint64_t pageID, const WebEvent&, bool didHandleEvent);

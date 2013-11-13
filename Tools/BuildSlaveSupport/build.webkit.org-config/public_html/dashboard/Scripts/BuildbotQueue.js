@@ -33,7 +33,7 @@ BuildbotQueue = function(buildbot, id, info)
     this.buildbot = buildbot;
     this.id = id;
 
-    this.platform = info.platform || "unknown";
+    this.platform = info.platform.name || "unknown";
     this.debug = info.debug || false;
     this.builder = info.builder || false;
     this.tester = info.tester || false;
@@ -147,24 +147,38 @@ BuildbotQueue.prototype = {
                 if (!iteration) {
                     iteration = new BuildbotIteration(this, parseInt(data.cachedBuilds[i], 10), !(data.cachedBuilds[i] in currentBuilds));
                     newIterations.push(iteration);
+                    this.iterations.push(iteration);
+                    this._knownIterations[iteration.id] = iteration;
                 }
 
                 if (i >= loadingStop && (!iteration.finished || !iteration.loaded))
                     iteration.update();
-
-                this.iterations.push(iteration);
-                this._knownIterations[iteration.id] = iteration;
             }
 
-            function sortIterationsById(a, b)
-            {
-                return b.id > a.id;
-            }
+            if (!newIterations.length)
+                return;
 
-            this.iterations.sort(sortIterationsById);
+            this.sortIterations();
 
-            if (newIterations.length)
-                this.dispatchEventToListeners(BuildbotQueue.Event.IterationsAdded, {addedIterations: newIterations});
+            this.dispatchEventToListeners(BuildbotQueue.Event.IterationsAdded, {addedIterations: newIterations});
         }.bind(this));
+    },
+
+    sortIterations: function()
+    {
+        function compareIterations(a, b)
+        {
+            var result = b.openSourceRevision - a.openSourceRevision;
+            if (result)
+                return result;
+
+            result = b.internalRevision - a.internalRevision;
+            if (result)
+                return result;
+
+            return b.id - a.id;
+        }
+
+        this.iterations.sort(compareIterations);
     }
 };

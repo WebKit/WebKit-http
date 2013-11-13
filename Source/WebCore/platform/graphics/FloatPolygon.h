@@ -33,6 +33,7 @@
 #include "FloatPoint.h"
 #include "FloatRect.h"
 #include "PODIntervalTree.h"
+#include "ValueToString.h"
 #include "WindRule.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
@@ -42,14 +43,9 @@ namespace WebCore {
 
 class FloatPolygonEdge;
 
-// This class is used by PODIntervalTree for debugging.
-#ifndef NDEBUG
-template <class> struct ValueToString;
-#endif
-
 class FloatPolygon {
 public:
-    FloatPolygon(PassOwnPtr<Vector<FloatPoint> > vertices, WindRule fillRule);
+    FloatPolygon(PassOwnPtr<Vector<FloatPoint>> vertices, WindRule fillRule);
 
     const FloatPoint& vertexAt(unsigned index) const { return (*m_vertices)[index]; }
     unsigned numberOfVertices() const { return m_vertices->size(); }
@@ -71,7 +67,7 @@ private:
     bool containsNonZero(const FloatPoint&) const;
     bool containsEvenOdd(const FloatPoint&) const;
 
-    OwnPtr<Vector<FloatPoint> > m_vertices;
+    OwnPtr<Vector<FloatPoint>> m_vertices;
     WindRule m_fillRule;
     FloatRect m_boundingBox;
     bool m_empty;
@@ -137,12 +133,8 @@ private:
     const FloatPolygon* m_polygon;
 };
 
-// These structures are used by PODIntervalTree for debugging.
+// This structure is used by PODIntervalTree for debugging.
 #ifndef NDEBUG
-template <> struct ValueToString<float> {
-    static String string(const float value) { return String::number(value); }
-};
-
 template<> struct ValueToString<FloatPolygonEdge*> {
     static String string(const FloatPolygonEdge* edge) { return String::format("%p (%f,%f %f,%f)", edge, edge->vertex1().x(), edge->vertex1().y(), edge->vertex2().x(), edge->vertex2().y()); }
 };

@@ -24,7 +24,7 @@
     JSCustomToNativeObject,
     ObjCProtocol,
     CPPPureInterface,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
 ] interface NodeFilter {
     // Constants returned by acceptNode
     const short               FILTER_ACCEPT                  = 1;

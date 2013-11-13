@@ -93,6 +93,7 @@ public:
     void setVisibilityState(WKPageVisibilityState, bool isInitialState);
 
     bool resetStateToConsistentValues();
+    void resetPreferencesToConsistentValues();
 
     WorkQueueManager& workQueueManager() { return m_workQueueManager; }
 
@@ -218,11 +219,6 @@ private:
     bool m_shouldBlockAllPlugins;
 
     OwnPtr<EventSenderProxy> m_eventSenderProxy;
-
-#if PLATFORM(QT)
-    class RunLoop;
-    RunLoop* m_runLoop;
-#endif
 
     WorkQueueManager m_workQueueManager;
 };

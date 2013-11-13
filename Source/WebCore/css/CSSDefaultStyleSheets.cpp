@@ -59,7 +59,7 @@ StyleSheetContents* CSSDefaultStyleSheets::fullscreenStyleSheet;
 StyleSheetContents* CSSDefaultStyleSheets::plugInsStyleSheet;
 
 // FIXME: It would be nice to use some mechanism that guarantees this is in sync with the real UA stylesheet.
-static const char* simpleUserAgentStyleSheet = "html,body,div{display:block}head{display:none}body{margin:8px}div:focus,span:focus{outline:auto 5px -webkit-focus-ring-color}a:-webkit-any-link{color:-webkit-link;text-decoration:underline}a:-webkit-any-link:active{color:-webkit-activelink}";
+static const char* simpleUserAgentStyleSheet = "html,body,div{display:block}head{display:none}body{margin:8px}div:focus,span:focus,a:focus{outline:auto 5px -webkit-focus-ring-color}a:-webkit-any-link{color:-webkit-link;text-decoration:underline}a:-webkit-any-link:active{color:-webkit-activelink}";
 
 static inline bool elementCanUseSimpleDefaultStyle(Element* e)
 {
@@ -80,9 +80,9 @@ static const MediaQueryEvaluator& printEval()
 
 static StyleSheetContents* parseUASheet(const String& str)
 {
-    StyleSheetContents* sheet = StyleSheetContents::create().leakRef(); // leak the sheet on purpose
-    sheet->parseString(str);
-    return sheet;
+    StyleSheetContents& sheet = StyleSheetContents::create().leakRef(); // leak the sheet on purpose
+    sheet.parseString(str);
+    return &sheet;
 }
 
 static StyleSheetContents* parseUASheet(const char* characters, unsigned size)

@@ -32,31 +32,31 @@
 
 namespace WebCore {
 
-DecodedDataDocumentParser::DecodedDataDocumentParser(Document* document)
+DecodedDataDocumentParser::DecodedDataDocumentParser(Document& document)
     : DocumentParser(document)
 {
 }
 
-void DecodedDataDocumentParser::appendBytes(DocumentWriter* writer, const char* data, size_t length)
+void DecodedDataDocumentParser::appendBytes(DocumentWriter& writer, const char* data, size_t length)
 {
     if (!length)
         return;
 
-    String decoded = writer->createDecoderIfNeeded()->decode(data, length);
+    String decoded = writer.createDecoderIfNeeded()->decode(data, length);
     if (decoded.isEmpty())
         return;
 
-    writer->reportDataReceived();
+    writer.reportDataReceived();
     append(decoded.releaseImpl());
 }
 
-void DecodedDataDocumentParser::flush(DocumentWriter* writer)
+void DecodedDataDocumentParser::flush(DocumentWriter& writer)
 {
-    String remainingData = writer->createDecoderIfNeeded()->flush();
+    String remainingData = writer.createDecoderIfNeeded()->flush();
     if (remainingData.isEmpty())
         return;
 
-    writer->reportDataReceived();
+    writer.reportDataReceived();
     append(remainingData.releaseImpl());
 }
 

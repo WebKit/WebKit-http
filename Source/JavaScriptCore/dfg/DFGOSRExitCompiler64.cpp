@@ -113,8 +113,13 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
                 scratch1 = AssemblyHelpers::selectScratchGPR(usedRegister);
                 scratch2 = AssemblyHelpers::selectScratchGPR(usedRegister, scratch1);
                 
+#if CPU(ARM64)
+                m_jit.pushToSave(scratch1);
+                m_jit.pushToSave(scratch2);
+#else
                 m_jit.push(scratch1);
                 m_jit.push(scratch2);
+#endif
                 
                 GPRReg value;
                 if (exit.m_jsValueSource.isAddress()) {
@@ -130,8 +135,13 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
                 m_jit.lshift32(scratch1, scratch2);
                 m_jit.or32(scratch2, AssemblyHelpers::AbsoluteAddress(arrayProfile->addressOfArrayModes()));
                 
+#if CPU(ARM64)
+                m_jit.popToRestore(scratch2);
+                m_jit.popToRestore(scratch1);
+#else
                 m_jit.pop(scratch2);
                 m_jit.pop(scratch1);
+#endif
             }
         }
         
@@ -237,6 +247,8 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         
         switch (recovery.technique()) {
         case DisplacedInJSStack:
+        case CellDisplacedInJSStack:
+        case BooleanDisplacedInJSStack:
         case Int32DisplacedInJSStack:
         case DoubleDisplacedInJSStack:
         case Int52DisplacedInJSStack:
@@ -262,6 +274,8 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         case InGPR:
         case UnboxedCellInGPR:
         case DisplacedInJSStack:
+        case CellDisplacedInJSStack:
+        case BooleanDisplacedInJSStack:
             m_jit.load64(scratch + index, GPRInfo::regT0);
             m_jit.store64(GPRInfo::regT0, AssemblyHelpers::addressFor(operand));
             break;
@@ -313,6 +327,11 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             
         case ArgumentsThatWereNotCreated:
             haveArguments = true;
+            // We can't restore this yet but we can make sure that the stack appears
+            // sane.
+            m_jit.store64(
+                AssemblyHelpers::TrustedImm64(JSValue::encode(JSValue())),
+                AssemblyHelpers::addressFor(operand));
             break;
             
         default:
@@ -367,7 +386,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
     
     if (haveArguments) {
         HashSet<InlineCallFrame*, DefaultHash<InlineCallFrame*>::Hash,
-            NullableHashTraits<InlineCallFrame*> > didCreateArgumentsObject;
+            NullableHashTraits<InlineCallFrame*>> didCreateArgumentsObject;
 
         for (size_t index = 0; index < operands.size(); ++index) {
             const ValueRecovery& recovery = operands[index];
@@ -379,7 +398,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             for (InlineCallFrame* current = exit.m_codeOrigin.inlineCallFrame;
                  current;
                  current = current->caller.inlineCallFrame) {
-                if (current->stackOffset <= operand) {
+                if (current->stackOffset >= operand) {
                     inlineCallFrame = current;
                     break;
                 }
@@ -387,7 +406,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
 
             if (!m_jit.baselineCodeBlockFor(inlineCallFrame)->usesArguments())
                 continue;
-            VirtualRegister argumentsRegister = m_jit.argumentsRegisterFor(inlineCallFrame);
+            VirtualRegister argumentsRegister = m_jit.baselineArgumentsRegisterFor(inlineCallFrame);
             if (didCreateArgumentsObject.add(inlineCallFrame).isNewEntry) {
                 // We know this call frame optimized out an arguments object that
                 // the baseline JIT would have created. Do that creation now.
@@ -413,12 +432,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         }
     }
     
-    // 11) Load the result of the last bytecode operation into regT0.
-    
-    if (exit.m_lastSetOperand.isValid())
-        m_jit.load64(AssemblyHelpers::addressFor(exit.m_lastSetOperand), GPRInfo::cachedResultRegister);
-    
-    // 12) And finish.
+    // 11) And finish.
     
     adjustAndJumpToTarget(m_jit, exit);
 }

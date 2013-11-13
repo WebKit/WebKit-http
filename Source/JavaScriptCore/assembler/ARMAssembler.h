@@ -41,15 +41,15 @@ namespace JSC {
             r0 = 0,
             r1,
             r2,
-            r3, S0 = r3, /* Same as thumb assembler. */
+            r3,
             r4,
             r5,
-            r6,
+            r6, S0 = r6,
             r7,
             r8,
             r9,
             r10,
-            r11,
+            r11, fp = r11, // frame pointer
             r12, ip = r12, S1 = r12,
             r13, sp = r13,
             r14, lr = r14,
@@ -150,6 +150,14 @@ namespace JSC {
             : m_indexOfTailOfLastWatchpoint(1)
         {
         }
+
+        ARMBuffer& buffer() { return m_buffer; }
+
+        static RegisterID firstRegister() { return ARMRegisters::r0; }
+        static RegisterID lastRegister() { return ARMRegisters::r15; }
+
+        static FPRegisterID firstFPRegister() { return ARMRegisters::d0; }
+        static FPRegisterID lastFPRegister() { return ARMRegisters::d31; }
 
         // ARM conditional constants
         typedef enum {
@@ -806,7 +814,7 @@ namespace JSC {
             return loadBranchTarget(ARMRegisters::pc, cc, useConstantPool);
         }
 
-        PassRefPtr<ExecutableMemoryHandle> executableCopy(VM&, void* ownerUID, JITCompilationEffort);
+        void prepareExecutableCopy(void* to);
 
         unsigned debugOffset() { return m_buffer.debugOffset(); }
 

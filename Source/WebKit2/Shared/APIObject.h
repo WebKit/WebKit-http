@@ -28,9 +28,23 @@
 
 #include <wtf/RefCounted.h>
 
-namespace WebKit {
+#if PLATFORM(MAC)
+#include "WKFoundation.h"
+#endif
 
-class APIObject : public ThreadSafeRefCounted<APIObject> {
+#define DELEGATE_REF_COUNTING_TO_COCOA (PLATFORM(MAC) && WK_API_ENABLED)
+
+#if DELEGATE_REF_COUNTING_TO_COCOA
+OBJC_CLASS NSObject;
+#endif
+
+namespace API {
+
+class Object
+#if !DELEGATE_REF_COUNTING_TO_COCOA
+    : public ThreadSafeRefCounted<Object>
+#endif
+{
 public:
     enum Type {
         // Base types
@@ -103,6 +117,7 @@ public:
         TypeNotificationPermissionRequest,
         TypeOpenPanelParameters,
         TypeOpenPanelResultListener,
+        TypeOriginDataManager,
         TypePage,
         TypePageGroup,
         TypePluginSiteDataManager,
@@ -144,33 +159,56 @@ public:
 #endif
     };
 
-    virtual ~APIObject()
+    virtual ~Object()
     {
     }
 
     virtual Type type() const = 0;
 
+#if DELEGATE_REF_COUNTING_TO_COCOA
+    NSObject *wrapper() { return m_wrapper; }
+
+    void ref();
+    void deref();
+#endif // DELEGATE_REF_COUNTING_TO_COCOA
+
 protected:
-    APIObject();
+    Object();
+
+#if DELEGATE_REF_COUNTING_TO_COCOA
+    static void* newObject(size_t, Type);
+
+private:
+    // Derived classes must override operator new and call newObject().
+    void* operator new(size_t) = delete;
+
+    NSObject *m_wrapper;
+#endif // DELEGATE_REF_COUNTING_TO_COCOA
 };
 
-template <APIObject::Type ArgumentType>
-class TypedAPIObject : public APIObject {
+template <Object::Type ArgumentType>
+class TypedObject : public Object {
 public:
     static const Type APIType = ArgumentType;
 
-    virtual ~TypedAPIObject()
+    virtual ~TypedObject()
     {
     }
 
 protected:
-    TypedAPIObject()
+    TypedObject()
     {
     }
 
     virtual Type type() const OVERRIDE { return APIType; }
+
+#if DELEGATE_REF_COUNTING_TO_COCOA
+    void* operator new(size_t size) { return newObject(size, APIType); }
+#endif
 };
 
-} // namespace WebKit
+} // namespace Object
+
+#undef DELEGATE_REF_COUNTING_TO_COCOA
 
 #endif // APIObject_h

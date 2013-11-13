@@ -34,15 +34,15 @@ namespace WebCore {
     
 class RenderMathMLUnderOver : public RenderMathMLBlock {
 public:
-    RenderMathMLUnderOver(Element*);
+    RenderMathMLUnderOver(Element&, PassRef<RenderStyle>);
     
     virtual RenderMathMLOperator* unembellishedOperator();
 
-    virtual int firstLineBoxBaseline() const OVERRIDE;
+    virtual int firstLineBaseline() const OVERRIDE;
     
 private:
-    virtual bool isRenderMathMLUnderOver() const { return true; }
-    virtual const char* renderName() const { return "RenderMathMLUnderOver"; }
+    virtual bool isRenderMathMLUnderOver() const OVERRIDE { return true; }
+    virtual const char* renderName() const OVERRIDE { return "RenderMathMLUnderOver"; }
 
     enum UnderOverType { Under, Over, UnderOver };
     UnderOverType m_kind;

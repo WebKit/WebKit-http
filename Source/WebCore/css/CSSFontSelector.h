@@ -28,6 +28,7 @@
 
 #include "CachedResourceHandle.h"
 #include "FontSelector.h"
+#include "SimpleFontData.h"
 #include "Timer.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -57,6 +58,8 @@ public:
     virtual unsigned uniqueId() const OVERRIDE { return m_uniqueId; }
 
     virtual PassRefPtr<FontData> getFontData(const FontDescription&, const AtomicString&) OVERRIDE;
+    virtual size_t fallbackFontDataCount() OVERRIDE;
+    virtual PassRefPtr<FontData> getFallbackFontData(const FontDescription&, size_t) OVERRIDE;
     CSSSegmentedFontFace* getFontFace(const FontDescription&, const AtomicString& family);
 
     virtual bool resolvesFamilyFor(const FontDescription&) const OVERRIDE;
@@ -85,12 +88,12 @@ private:
     void beginLoadTimerFired(Timer<CSSFontSelector>*);
 
     Document* m_document;
-    HashMap<String, OwnPtr<Vector<RefPtr<CSSFontFace> > >, CaseFoldingHash> m_fontFaces;
-    HashMap<String, OwnPtr<Vector<RefPtr<CSSFontFace> > >, CaseFoldingHash> m_locallyInstalledFontFaces;
-    HashMap<String, OwnPtr<HashMap<unsigned, RefPtr<CSSSegmentedFontFace> > >, CaseFoldingHash> m_fonts;
+    HashMap<String, OwnPtr<Vector<RefPtr<CSSFontFace>>>, CaseFoldingHash> m_fontFaces;
+    HashMap<String, OwnPtr<Vector<RefPtr<CSSFontFace>>>, CaseFoldingHash> m_locallyInstalledFontFaces;
+    HashMap<String, OwnPtr<HashMap<unsigned, RefPtr<CSSSegmentedFontFace>>>, CaseFoldingHash> m_fonts;
     HashSet<FontSelectorClient*> m_clients;
 
-    Vector<CachedResourceHandle<CachedFont> > m_fontsToBeginLoading;
+    Vector<CachedResourceHandle<CachedFont>> m_fontsToBeginLoading;
     Timer<CSSFontSelector> m_beginLoadingTimer;
 
     unsigned m_uniqueId;

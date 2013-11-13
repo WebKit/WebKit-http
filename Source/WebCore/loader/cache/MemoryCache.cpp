@@ -44,7 +44,10 @@
 #include <wtf/TemporaryChange.h>
 #include <wtf/text/CString.h>
 
-using namespace std;
+#if ENABLE(DISK_IMAGE_CACHE)
+#include "DiskImageCacheIOS.h"
+#include "ResourceBuffer.h"
+#endif
 
 namespace WebCore {
 
@@ -195,9 +198,9 @@ CachedResource* MemoryCache::resourceForRequest(const ResourceRequest& request)
 unsigned MemoryCache::deadCapacity() const 
 {
     // Dead resource capacity is whatever space is not occupied by live resources, bounded by an independent minimum and maximum.
-    unsigned capacity = m_capacity - min(m_liveSize, m_capacity); // Start with available capacity.
-    capacity = max(capacity, m_minDeadCapacity); // Make sure it's above the minimum.
-    capacity = min(capacity, m_maxDeadCapacity); // Make sure it's below the maximum.
+    unsigned capacity = m_capacity - std::min(m_liveSize, m_capacity); // Start with available capacity.
+    capacity = std::max(capacity, m_minDeadCapacity); // Make sure it's above the minimum.
+    capacity = std::min(capacity, m_maxDeadCapacity); // Make sure it's below the maximum.
     return capacity;
 }
 
@@ -378,6 +381,45 @@ void MemoryCache::pruneDeadResourcesToSize(unsigned targetSize)
     }
 }
 
+#if ENABLE(DISK_IMAGE_CACHE)
+void MemoryCache::flushCachedImagesToDisk()
+{
+    if (!diskImageCache().isEnabled())
+        return;
+
+#ifndef NDEBUG
+    double start = WTF::currentTimeMS();
+    unsigned resourceCount = 0;
+    unsigned cachedSize = 0;
+#endif
+
+    for (size_t i = m_allResources.size(); i; ) {
+        --i;
+        CachedResource* current = m_allResources[i].m_tail;
+        while (current) {
+            CachedResource* previous = current->m_prevInAllResourcesList;
+
+            if (!current->isUsingDiskImageCache() && current->canUseDiskImageCache()) {
+                current->useDiskImageCache();
+                current->destroyDecodedData();
+#ifndef NDEBUG
+                LOG(DiskImageCache, "Cache::diskCacheResources(): attempting to save (%d) bytes", current->resourceBuffer()->sharedBuffer()->size());
+                ++resourceCount;
+                cachedSize += current->resourceBuffer()->sharedBuffer()->size();
+#endif
+            }
+
+            current = previous;
+        }
+    }
+
+#ifndef NDEBUG
+    double end = WTF::currentTimeMS();
+    LOG(DiskImageCache, "DiskImageCache: took (%f) ms to cache (%d) bytes for (%d) resources", end - start, cachedSize, resourceCount);
+#endif
+}
+#endif // ENABLE(DISK_IMAGE_CACHE)
+
 void MemoryCache::setCapacities(unsigned minDeadBytes, unsigned maxDeadBytes, unsigned totalBytes)
 {
     ASSERT(minDeadBytes <= maxDeadBytes);
@@ -451,7 +493,7 @@ void MemoryCache::evict(CachedResource* resource)
 
 MemoryCache::LRUList* MemoryCache::lruListFor(CachedResource* resource)
 {
-    unsigned accessCount = max(resource->accessCount(), 1U);
+    unsigned accessCount = std::max(resource->accessCount(), 1U);
     unsigned queueIndex = WTF::fastLog2(resource->size() / accessCount);
 #ifndef NDEBUG
     resource->m_lruIndex = queueIndex;
@@ -743,6 +785,10 @@ void MemoryCache::TypeStatistic::addResource(CachedResource* o)
     decodedSize += o->decodedSize();
     purgeableSize += purgeable ? pageSize : 0;
     purgedSize += purged ? pageSize : 0;
+#if ENABLE(DISK_IMAGE_CACHE)
+    // Only the data inside the resource was mapped, not the entire resource.
+    mappedSize += o->isUsingDiskImageCache() ? o->resourceBuffer()->sharedBuffer()->size() : 0;
+#endif
 }
 
 MemoryCache::Statistics MemoryCache::getStatistics()
@@ -814,7 +860,7 @@ void MemoryCache::evictResources()
 
 void MemoryCache::prune()
 {
-    if (m_liveSize + m_deadSize <= m_capacity && m_maxDeadCapacity && m_deadSize <= m_maxDeadCapacity) // Fast path.
+    if (m_liveSize + m_deadSize <= m_capacity && m_deadSize <= m_maxDeadCapacity) // Fast path.
         return;
         
     pruneDeadResources(); // Prune dead first, in case it was "borrowing" capacity from live.
@@ -832,9 +878,15 @@ void MemoryCache::pruneToPercentage(float targetPercentLive)
 void MemoryCache::dumpStats()
 {
     Statistics s = getStatistics();
+#if ENABLE(DISK_IMAGE_CACHE)
+    printf("%-13s %-13s %-13s %-13s %-13s %-13s %-13s %-13s %-13s\n", "", "Count", "Size", "LiveSize", "DecodedSize", "PurgeableSize", "PurgedSize", "Mapped", "\"Real\"");
+    printf("%-13s %-13s %-13s %-13s %-13s %-13s %-13s %-13s %-13s\n", "-------------", "-------------", "-------------", "-------------", "-------------", "-------------", "-------------", "-------------", "-------------");
+    printf("%-13s %13d %13d %13d %13d %13d %13d %13d %13d\n", "Images", s.images.count, s.images.size, s.images.liveSize, s.images.decodedSize, s.images.purgeableSize, s.images.purgedSize, s.images.mappedSize, s.images.size - s.images.mappedSize);
+#else
     printf("%-13s %-13s %-13s %-13s %-13s %-13s %-13s\n", "", "Count", "Size", "LiveSize", "DecodedSize", "PurgeableSize", "PurgedSize");
     printf("%-13s %-13s %-13s %-13s %-13s %-13s %-13s\n", "-------------", "-------------", "-------------", "-------------", "-------------", "-------------", "-------------");
     printf("%-13s %13d %13d %13d %13d %13d %13d\n", "Images", s.images.count, s.images.size, s.images.liveSize, s.images.decodedSize, s.images.purgeableSize, s.images.purgedSize);
+#endif
     printf("%-13s %13d %13d %13d %13d %13d %13d\n", "CSS", s.cssStyleSheets.count, s.cssStyleSheets.size, s.cssStyleSheets.liveSize, s.cssStyleSheets.decodedSize, s.cssStyleSheets.purgeableSize, s.cssStyleSheets.purgedSize);
 #if ENABLE(XSLT)
     printf("%-13s %13d %13d %13d %13d %13d %13d\n", "XSL", s.xslStyleSheets.count, s.xslStyleSheets.size, s.xslStyleSheets.liveSize, s.xslStyleSheets.decodedSize, s.xslStyleSheets.purgeableSize, s.xslStyleSheets.purgedSize);
@@ -846,7 +898,11 @@ void MemoryCache::dumpStats()
 
 void MemoryCache::dumpLRULists(bool includeLive) const
 {
+#if ENABLE(DISK_IMAGE_CACHE)
+    printf("LRU-SP lists in eviction order (Kilobytes decoded, Kilobytes encoded, Access count, Referenced, isPurgeable, wasPurged, isMemoryMapped):\n");
+#else
     printf("LRU-SP lists in eviction order (Kilobytes decoded, Kilobytes encoded, Access count, Referenced, isPurgeable, wasPurged):\n");
+#endif
 
     int size = m_allResources.size();
     for (int i = size - 1; i >= 0; i--) {
@@ -855,7 +911,11 @@ void MemoryCache::dumpLRULists(bool includeLive) const
         while (current) {
             CachedResource* prev = current->m_prevInAllResourcesList;
             if (includeLive || !current->hasClients())
+#if ENABLE(DISK_IMAGE_CACHE)
+                printf("(%.1fK, %.1fK, %uA, %dR, %d, %d, %d); ", current->decodedSize() / 1024.0f, (current->encodedSize() + current->overheadSize()) / 1024.0f, current->accessCount(), current->hasClients(), current->isPurgeable(), current->wasPurged(), current->isUsingDiskImageCache());
+#else
                 printf("(%.1fK, %.1fK, %uA, %dR, %d, %d); ", current->decodedSize() / 1024.0f, (current->encodedSize() + current->overheadSize()) / 1024.0f, current->accessCount(), current->hasClients(), current->isPurgeable(), current->wasPurged());
+#endif
 
             current = prev;
         }

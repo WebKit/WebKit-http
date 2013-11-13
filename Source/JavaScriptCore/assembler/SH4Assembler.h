@@ -325,6 +325,12 @@ public:
     static const RegisterID scratchReg2 = SH4Registers::r11;
     static const uint32_t maxInstructionSize = 16;
 
+    static RegisterID firstRegister() { return SH4Registers::r0; }
+    static RegisterID lastRegister() { return SH4Registers::r15; }
+
+    static FPRegisterID firstFPRegister() { return SH4Registers::dr0; }
+    static FPRegisterID lastFPRegister() { return SH4Registers::dr14; }
+
     enum {
         padForAlign8 = 0x00,
         padForAlign16 = 0x0009,
@@ -342,6 +348,8 @@ public:
         , m_indexOfTailOfLastWatchpoint(INT_MIN)
     {
     }
+
+    SH4Buffer& buffer() { return m_buffer; }
 
     // SH4 condition codes
     typedef enum {
@@ -459,7 +467,7 @@ public:
     void andlImm8r(int imm8, RegisterID dst)
     {
         ASSERT((imm8 <= 255) && (imm8 >= 0));
-        ASSERT(dst == SH4Registers::r0);
+        ASSERT_UNUSED(dst, dst == SH4Registers::r0);
 
         uint16_t opc = getOpcodeGroup5(ANDIMM_OPCODE, imm8);
         oneShortOp(opc);
@@ -492,7 +500,7 @@ public:
     void orlImm8r(int imm8, RegisterID dst)
     {
         ASSERT((imm8 <= 255) && (imm8 >= 0));
-        ASSERT(dst == SH4Registers::r0);
+        ASSERT_UNUSED(dst, dst == SH4Registers::r0);
 
         uint16_t opc = getOpcodeGroup5(ORIMM_OPCODE, imm8);
         oneShortOp(opc);
@@ -519,7 +527,7 @@ public:
     void xorlImm8r(int imm8, RegisterID dst)
     {
         ASSERT((imm8 <= 255) && (imm8 >= 0));
-        ASSERT(dst == SH4Registers::r0);
+        ASSERT_UNUSED(dst, dst == SH4Registers::r0);
 
         uint16_t opc = getOpcodeGroup5(XORIMM_OPCODE, imm8);
         oneShortOp(opc);
@@ -687,6 +695,7 @@ public:
 
     void cmpEqImmR0(int imm, RegisterID dst)
     {
+        ASSERT_UNUSED(dst, dst == SH4Registers::r0);
         uint16_t opc = getOpcodeGroup5(CMPEQIMM_OPCODE, imm);
         oneShortOp(opc);
     }
@@ -699,7 +708,8 @@ public:
 
     void testlImm8r(int imm, RegisterID dst)
     {
-        ASSERT((dst == SH4Registers::r0) && (imm <= 255) && (imm >= 0));
+        ASSERT((imm <= 255) && (imm >= 0));
+        ASSERT_UNUSED(dst, dst == SH4Registers::r0);
 
         uint16_t opc = getOpcodeGroup5(TSTIMM_OPCODE, imm);
         oneShortOp(opc);
@@ -1062,7 +1072,7 @@ public:
 
     void movwPCReg(int offset, RegisterID base, RegisterID dst)
     {
-        ASSERT(base == SH4Registers::pc);
+        ASSERT_UNUSED(base, base == SH4Registers::pc);
         ASSERT((offset <= 255) && (offset >= 0));
 
         uint16_t opc = getOpcodeGroup3(MOVW_READ_OFFPC_OPCODE, dst, offset);
@@ -1071,7 +1081,7 @@ public:
 
     void movwMemReg(int offset, RegisterID base, RegisterID dst)
     {
-        ASSERT(dst == SH4Registers::r0);
+        ASSERT_UNUSED(dst, dst == SH4Registers::r0);
 
         uint16_t opc = getOpcodeGroup11(MOVW_READ_OFFRM_OPCODE, base, offset);
         oneShortOp(opc);
@@ -1137,7 +1147,7 @@ public:
 
     void movbMemReg(int offset, RegisterID base, RegisterID dst)
     {
-        ASSERT(dst == SH4Registers::r0);
+        ASSERT_UNUSED(dst, dst == SH4Registers::r0);
 
         uint16_t opc = getOpcodeGroup11(MOVB_READ_OFFRM_OPCODE, base, offset);
         oneShortOp(opc);
@@ -1241,19 +1251,19 @@ public:
     {
         RegisterID scr = claimScratch();
         m_buffer.ensureSpace(maxInstructionSize + 4, sizeof(uint32_t));
-        AssemblerLabel label = m_buffer.label();
         loadConstantUnReusable(0x0, scr);
         branch(BRAF_OPCODE, scr);
         nop();
         releaseScratch(scr);
-        return label;
+        return m_buffer.label();
     }
 
-    void extraInstrForBranch(RegisterID dst)
+    AssemblerLabel extraInstrForBranch(RegisterID dst)
     {
         loadConstantUnReusable(0x0, dst);
+        branch(BRAF_OPCODE, dst);
         nop();
-        nop();
+        return m_buffer.label();
     }
 
     AssemblerLabel jmp(RegisterID dst)
@@ -1271,23 +1281,20 @@ public:
 
     AssemblerLabel jne()
     {
-        AssemblerLabel label = m_buffer.label();
         branch(BF_OPCODE, 0);
-        return label;
+        return m_buffer.label();
     }
 
     AssemblerLabel je()
     {
-        AssemblerLabel label = m_buffer.label();
         branch(BT_OPCODE, 0);
-        return label;
+        return m_buffer.label();
     }
 
     AssemblerLabel bra()
     {
-        AssemblerLabel label = m_buffer.label();
         branch(BRA_OPCODE, 0);
-        return label;
+        return m_buffer.label();
     }
 
     void ret()
@@ -1361,33 +1368,16 @@ public:
     {
         ASSERT(from.isSet());
 
-        uint16_t* instructionPtr = getInstructionPtr(code, from.m_offset);
-        uint16_t instruction = *instructionPtr;
+        uint16_t* instructionPtr = getInstructionPtr(code, from.m_offset) - 3;
         int offsetBits = (reinterpret_cast<uint32_t>(to) - reinterpret_cast<uint32_t>(code)) - from.m_offset;
 
-        if (((instruction & 0xff00) == BT_OPCODE) || ((instruction & 0xff00) == BF_OPCODE)) {
-            /* BT label ==> BF 2
-               nop          LDR reg
-               nop          braf @reg
-               nop          nop
-            */
-            offsetBits -= 8;
-            instruction ^= 0x0202;
-            *instructionPtr++ = instruction;
-            changePCrelativeAddress((*instructionPtr & 0xff), instructionPtr, offsetBits);
-            instruction = (BRAF_OPCODE | (*instructionPtr++ & 0xf00));
-            *instructionPtr = instruction;
-            printBlockInstr(instructionPtr - 2, from.m_offset, 3);
-            return;
-        }
-
-         /* MOV #imm, reg => LDR reg
-            braf @reg        braf @reg
-            nop              nop
-         */
+        /* MOV #imm, reg => LDR reg
+           braf @reg        braf @reg
+           nop              nop
+        */
         ASSERT((instructionPtr[0] & 0xf000) == MOVL_READ_OFFPC_OPCODE);
         ASSERT((instructionPtr[1] & 0xf0ff) == BRAF_OPCODE);
-        changePCrelativeAddress((*instructionPtr & 0xff), instructionPtr, offsetBits - 6);
+        changePCrelativeAddress((*instructionPtr & 0xff), instructionPtr, offsetBits);
         printInstr(*instructionPtr, from.m_offset + 2);
     }
 
@@ -1490,24 +1480,10 @@ public:
     static void relinkJump(void* from, void* to)
     {
         uint16_t* instructionPtr = reinterpret_cast<uint16_t*> (from);
-        uint16_t instruction = *instructionPtr;
-        int32_t offsetBits = (reinterpret_cast<uint32_t>(to) - reinterpret_cast<uint32_t>(from));
-
-        if (((*instructionPtr & 0xff00) == BT_OPCODE) || ((*instructionPtr & 0xff00) == BF_OPCODE)) {
-            offsetBits -= 8;
-            instructionPtr++;
-            ASSERT((instructionPtr[0] & 0xf000) == MOVL_READ_OFFPC_OPCODE);
-            changePCrelativeAddress((*instructionPtr & 0xff), instructionPtr, offsetBits);
-            instruction = (BRAF_OPCODE | (*instructionPtr++ & 0xf00));
-            *instructionPtr = instruction;
-            printBlockInstr(instructionPtr, reinterpret_cast<uint32_t>(from) + 1, 3);
-            cacheFlush(instructionPtr, sizeof(SH4Word));
-            return;
-        }
-
+        instructionPtr -= 3;
+        ASSERT((instructionPtr[0] & 0xf000) == MOVL_READ_OFFPC_OPCODE);
         ASSERT((instructionPtr[1] & 0xf0ff) == BRAF_OPCODE);
-        changePCrelativeAddress((*instructionPtr & 0xff), instructionPtr, offsetBits - 6);
-        printInstr(*instructionPtr, reinterpret_cast<uint32_t>(from));
+        changePCrelativeAddress((*instructionPtr & 0xff), instructionPtr, reinterpret_cast<uint32_t>(to) - reinterpret_cast<uint32_t>(from));
     }
 
     // Linking & patching
@@ -1545,17 +1521,11 @@ public:
             insn[0] = getOpcodeGroup3(MOVL_READ_OFFPC_OPCODE, SH4Registers::r13, insn[0] & 0x00ff);
             insn[1] = (insn[1] & 0xf00f) | (rd << 8) | (SH4Registers::r13 << 4);
             cacheFlush(insn, 2 * sizeof(SH4Word));
-            changePCrelativeAddress(insn[0] & 0x00ff, insn, imm);
-            return;
-        }
-
-        if ((insn[0] & 0x00ff) == 1)
+        } else {
             insn[1] = getOpcodeGroup6(BRA_OPCODE, 3);
-        else
-            insn[1] = NOP_OPCODE;
-
-        insn[2] = NOP_OPCODE;
-        cacheFlush(&insn[1], 2 * sizeof(SH4Word));
+            insn[2] = NOP_OPCODE;
+            cacheFlush(&insn[1], 2 * sizeof(SH4Word));
+        }
 
         changePCrelativeAddress(insn[0] & 0x00ff, insn, imm);
     }
@@ -1565,12 +1535,12 @@ public:
         ASSERT(to.isSet());
         ASSERT(from.isSet());
 
-        uint16_t* instructionPtr = getInstructionPtr(data(), from.m_offset);
-        uint16_t instruction = *instructionPtr;
-        int offsetBits;
+        uint16_t* instructionPtr = getInstructionPtr(data(), from.m_offset) - 1;
+        int offsetBits = (to.m_offset - from.m_offset);
 
         if (type == JumpNear) {
-            int offset = (codeSize() - from.m_offset) - 4;
+            uint16_t instruction = instructionPtr[0];
+            int offset = (offsetBits - 2);
             ASSERT((((instruction == BT_OPCODE) || (instruction == BF_OPCODE)) && (offset >= -256) && (offset <= 254))
                 || ((instruction == BRA_OPCODE) && (offset >= -4096) && (offset <= 4094)));
             *instructionPtr++ = instruction | (offset >> 1);
@@ -1578,35 +1548,14 @@ public:
             return;
         }
 
-        if (((instruction & 0xff00) == BT_OPCODE) || ((instruction & 0xff00) == BF_OPCODE)) {
-            /* BT label => BF 2
-               nop        LDR reg
-               nop        braf @reg
-               nop        nop
-            */
-            offsetBits = (to.m_offset - from.m_offset) - 8;
-            instruction ^= 0x0202;
-            *instructionPtr++ = instruction;
-            if ((*instructionPtr & 0xf000) == MOVIMM_OPCODE) {
-                uint32_t* addr = getLdrImmAddressOnPool(instructionPtr, m_buffer.poolAddress());
-                *addr = offsetBits;
-            } else
-                changePCrelativeAddress((*instructionPtr & 0xff), instructionPtr, offsetBits);
-            instruction = (BRAF_OPCODE | (*instructionPtr++ & 0xf00));
-            *instructionPtr = instruction;
-            printBlockInstr(instructionPtr - 2, from.m_offset, 3);
-            return;
-        }
-
         /* MOV # imm, reg => LDR reg
            braf @reg         braf @reg
            nop               nop
         */
-        ASSERT((*(instructionPtr + 1) & BRAF_OPCODE) == BRAF_OPCODE);
-        offsetBits = (to.m_offset - from.m_offset) - 6;
+        instructionPtr -= 2;
+        ASSERT((instructionPtr[1] & 0xf0ff) == BRAF_OPCODE);
 
-        instruction = *instructionPtr;
-        if ((instruction & 0xf000) == MOVIMM_OPCODE) {
+        if ((instructionPtr[0] & 0xf000) == MOVIMM_OPCODE) {
             uint32_t* addr = getLdrImmAddressOnPool(instructionPtr, m_buffer.poolAddress());
             *addr = offsetBits;
             printInstr(*instructionPtr, from.m_offset + 2);
@@ -1653,11 +1602,6 @@ public:
         uint16_t* instructionPtr = static_cast<uint16_t*>(from);
         instructionPtr -= 3;
         return reinterpret_cast<void*>(readPCrelativeAddress((*instructionPtr & 0xff), instructionPtr));
-    }
-
-    PassRefPtr<ExecutableMemoryHandle> executableCopy(VM& vm, void* ownerUID, JITCompilationEffort effort)
-    {
-        return m_buffer.executableCopy(vm, ownerUID, effort);
     }
 
     static void cacheFlush(void* code, size_t size)
@@ -2211,8 +2155,8 @@ public:
         printfStdoutInstr(">> end repatch\n");
     }
 #else
-    static void printInstr(uint16_t opc, unsigned size, bool isdoubleInst = true) { };
-    static void printBlockInstr(uint16_t* first, unsigned offset, int nbInstr) { };
+    static void printInstr(uint16_t, unsigned, bool = true) { };
+    static void printBlockInstr(uint16_t*, unsigned, int) { };
 #endif
 
     static void replaceWithLoad(void* instructionStart)

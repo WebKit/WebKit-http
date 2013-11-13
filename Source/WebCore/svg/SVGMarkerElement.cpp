@@ -176,7 +176,7 @@ void SVGMarkerElement::svgAttributeChanged(const QualifiedName& attrName)
         updateRelativeLengthsInformation();
 
     if (RenderObject* object = renderer())
-        object->setNeedsLayout(true);
+        object->setNeedsLayout();
 }
 
 void SVGMarkerElement::childrenChanged(const ChildChange& change)
@@ -187,7 +187,7 @@ void SVGMarkerElement::childrenChanged(const ChildChange& change)
         return;
 
     if (RenderObject* object = renderer())
-        object->setNeedsLayout(true);
+        object->setNeedsLayout();
 }
 
 void SVGMarkerElement::setOrientToAuto()
@@ -214,9 +214,9 @@ void SVGMarkerElement::setOrientToAngle(const SVGAngle& angle)
     svgAttributeChanged(orientAnglePropertyInfo()->attributeName);
 }
 
-RenderElement* SVGMarkerElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGMarkerElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderSVGResourceMarker(*this);
+    return new RenderSVGResourceMarker(*this, std::move(style));
 }
 
 bool SVGMarkerElement::selfHasRelativeLengths() const
@@ -250,10 +250,10 @@ PassRefPtr<SVGAnimatedProperty> SVGMarkerElement::lookupOrCreateOrientTypeWrappe
            (ownerType, orientTypePropertyInfo(), ownerType->m_orientType.value);
 }
   
-PassRefPtr<SVGAnimatedEnumerationPropertyTearOff<SVGMarkerOrientType> > SVGMarkerElement::orientTypeAnimated()
+PassRefPtr<SVGAnimatedEnumerationPropertyTearOff<SVGMarkerOrientType>> SVGMarkerElement::orientTypeAnimated()
 {
     m_orientType.shouldSynchronize = true;
-    return static_pointer_cast<SVGAnimatedEnumerationPropertyTearOff<SVGMarkerOrientType> >(lookupOrCreateOrientTypeWrapper(this));
+    return static_pointer_cast<SVGAnimatedEnumerationPropertyTearOff<SVGMarkerOrientType>>(lookupOrCreateOrientTypeWrapper(this));
 }
 
 }

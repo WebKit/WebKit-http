@@ -24,7 +24,7 @@
  */
 
 [
-    Conditional=SVG
+    Conditional=SVG,
 ] interface SVGCursorElement : SVGElement {
     readonly attribute SVGAnimatedLength x;
     readonly attribute SVGAnimatedLength y;

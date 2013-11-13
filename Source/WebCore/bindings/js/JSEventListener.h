@@ -33,9 +33,9 @@ namespace WebCore {
 
     class JSEventListener : public EventListener {
     public:
-        static PassRefPtr<JSEventListener> create(JSC::JSObject* listener, JSC::JSObject* wrapper, bool isAttribute, DOMWrapperWorld* isolatedWorld)
+        static PassRefPtr<JSEventListener> create(JSC::JSObject* listener, JSC::JSObject* wrapper, bool isAttribute, DOMWrapperWorld& world)
         {
-            return adoptRef(new JSEventListener(listener, wrapper, isAttribute, isolatedWorld));
+            return adoptRef(new JSEventListener(listener, wrapper, isAttribute, world));
         }
 
         static const JSEventListener* cast(const EventListener* listener)
@@ -47,25 +47,25 @@ namespace WebCore {
 
         virtual ~JSEventListener();
 
-        virtual bool operator==(const EventListener& other);
+        virtual bool operator==(const EventListener& other) OVERRIDE;
 
         // Returns true if this event listener was created for an event handler attribute, like "onload" or "onclick".
         bool isAttribute() const { return m_isAttribute; }
 
         JSC::JSObject* jsFunction(ScriptExecutionContext*) const;
-        DOMWrapperWorld* isolatedWorld() const { return m_isolatedWorld.get(); }
+        DOMWrapperWorld& isolatedWorld() const { return *m_isolatedWorld; }
 
         JSC::JSObject* wrapper() const { return m_wrapper.get(); }
         void setWrapper(JSC::VM&, JSC::JSObject* wrapper) const { m_wrapper = JSC::Weak<JSC::JSObject>(wrapper); }
 
     private:
         virtual JSC::JSObject* initializeJSFunction(ScriptExecutionContext*) const;
-        virtual void visitJSFunction(JSC::SlotVisitor&);
-        virtual bool virtualisAttribute() const;
+        virtual void visitJSFunction(JSC::SlotVisitor&) OVERRIDE;
+        virtual bool virtualisAttribute() const OVERRIDE;
 
     protected:
-        JSEventListener(JSC::JSObject* function, JSC::JSObject* wrapper, bool isAttribute, DOMWrapperWorld* isolatedWorld);
-        virtual void handleEvent(ScriptExecutionContext*, Event*);
+        JSEventListener(JSC::JSObject* function, JSC::JSObject* wrapper, bool isAttribute, DOMWrapperWorld&);
+        virtual void handleEvent(ScriptExecutionContext*, Event*) OVERRIDE;
 
     private:
         mutable JSC::Weak<JSC::JSObject> m_jsFunction;

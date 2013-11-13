@@ -226,8 +226,8 @@ def parse_args(args):
                  "'ignore' == Run them anyway, "
                  "'only' == only run the SKIP tests, "
                  "'always' == always skip, even if listed on the command line.")),
-        optparse.make_option("--force", dest="skipped", action="store_const", const='ignore',
-            help="Run all tests, even those marked SKIP in the test list (same as --skipped=ignore)"),
+        optparse.make_option("--force", action="store_true", default=False,
+            help="Run all tests with PASS as expected result, even those marked SKIP in the test list (implies --skipped=ignore)"),
         optparse.make_option("--time-out-ms",
             help="Set the timeout for each test"),
         optparse.make_option("--order", action="store", default="natural",
@@ -291,12 +291,14 @@ def parse_args(args):
             help=("The name of the buildslave used. e.g. apple-macpro-6.")),
         optparse.make_option("--build-number", default="DUMMY_BUILD_NUMBER",
             help=("The build number of the builder running this script.")),
-        optparse.make_option("--got-revision", default="",
-            help=("The revision number. e.g. 12345")),
         optparse.make_option("--test-results-server", default="",
             help=("If specified, upload results json files to this appengine server.")),
         optparse.make_option("--results-server-host", default="",
             help=("If specified, upload results JSON file to this results server.")),
+        optparse.make_option("--additional-repository-name",
+            help=("The name of an additional subversion or git checkout")),
+        optparse.make_option("--additional-repository-path",
+            help=("The path to an additional subversion or git checkout (requires --additional-repository-name)")),
     ]))
 
     option_parser = optparse.OptionParser()
@@ -334,6 +336,11 @@ def _set_up_derived_options(port, options):
         for path in options.additional_platform_directory:
             additional_platform_directories.append(port.host.filesystem.abspath(path))
         options.additional_platform_directory = additional_platform_directories
+
+    if options.force:
+        if options.skipped not in ('ignore', 'default'):
+            _log.warning("--force overrides --skipped=%s" % (options.skipped))
+        options.skipped = 'ignore'
 
     if not options.http and options.skipped in ('ignore', 'only'):
         _log.warning("--force/--skipped=%s overrides --no-http." % (options.skipped))

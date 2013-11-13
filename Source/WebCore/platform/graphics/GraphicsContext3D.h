@@ -42,14 +42,14 @@
 #endif
 
 // FIXME: Find a better way to avoid the name confliction for NO_ERROR.
-#if PLATFORM(WIN) || (PLATFORM(QT) && OS(WINDOWS))
+#if PLATFORM(WIN)
 #undef NO_ERROR
 #elif PLATFORM(GTK)
 // This define is from the X11 headers, but it's used below, so we must undefine it.
 #undef VERSION
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY) || PLATFORM(WIN) || PLATFORM(NIX)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(BLACKBERRY) || PLATFORM(WIN) || PLATFORM(NIX)
 #include "ANGLEWebKitBridge.h"
 #endif
 
@@ -57,13 +57,6 @@
 #include <wtf/RetainPtr.h>
 OBJC_CLASS CALayer;
 OBJC_CLASS WebGLLayer;
-#elif PLATFORM(QT)
-QT_BEGIN_NAMESPACE
-class QPainter;
-class QRect;
-class QOpenGLContext;
-class QSurface;
-QT_END_NAMESPACE
 #elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(NIX)
 typedef unsigned int GLuint;
 #endif
@@ -72,9 +65,6 @@ typedef unsigned int GLuint;
 typedef struct _CGLContextObject *CGLContextObj;
 
 typedef CGLContextObj PlatformGraphicsContext3D;
-#elif PLATFORM(QT)
-typedef QOpenGLContext* PlatformGraphicsContext3D;
-typedef QSurface* PlatformGraphicsSurface3D;
 #else
 typedef void* PlatformGraphicsContext3D;
 typedef void* PlatformGraphicsSurface3D;
@@ -91,9 +81,6 @@ class Extensions3D;
 class Extensions3DOpenGLES;
 #else
 class Extensions3DOpenGL;
-#endif
-#if PLATFORM(QT)
-class Extensions3DQt;
 #endif
 class HostWindow;
 class Image;
@@ -447,6 +434,7 @@ public:
             , shareResources(true)
             , preferDiscreteGPU(false)
             , multithreaded(false)
+            , forceSoftwareRenderer(false)
         {
         }
 
@@ -460,6 +448,7 @@ public:
         bool shareResources;
         bool preferDiscreteGPU;
         bool multithreaded;
+        bool forceSoftwareRenderer;
     };
 
     enum RenderStyle {
@@ -501,7 +490,7 @@ public:
 
     bool makeContextCurrent();
 
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY) || PLATFORM(WIN) || PLATFORM(NIX)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(BLACKBERRY) || PLATFORM(WIN) || PLATFORM(NIX)
     // With multisampling on, blit from multisampleFBO to regular FBO.
     void prepareTexture();
 #endif
@@ -783,9 +772,6 @@ public:
 #if PLATFORM(GTK) || PLATFORM(EFL) || USE(CAIRO)
     void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
                        int canvasWidth, int canvasHeight, PlatformContextCairo* context);
-#elif PLATFORM(QT)
-    void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
-                       int canvasWidth, int canvasHeight, QPainter* context);
 #elif PLATFORM(BLACKBERRY) || USE(CG)
     void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
                        int canvasWidth, int canvasHeight, GraphicsContext*);
@@ -903,8 +889,6 @@ public:
         RetainPtr<CGImageRef> m_decodedImage;
         RetainPtr<CFDataRef> m_pixelData;
         std::unique_ptr<uint8_t[]> m_formalizedRGBA8Data;
-#elif PLATFORM(QT)
-        QImage m_qtImage;
 #elif PLATFORM(BLACKBERRY)
         Vector<unsigned> m_imageData;
 #endif
@@ -929,7 +913,7 @@ private:
     // Destination data will have no gaps between rows.
     static bool packPixels(const uint8_t* sourceData, DataFormat sourceDataFormat, unsigned width, unsigned height, unsigned sourceUnpackAlignment, unsigned destinationFormat, unsigned destinationType, AlphaOp, void* destinationData, bool flipY);
 
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY) || PLATFORM(WIN) || PLATFORM(NIX)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(BLACKBERRY) || PLATFORM(WIN) || PLATFORM(NIX)
     // Take into account the user's requested context creation attributes,
     // in particular stencil and antialias, and determine which could or
     // could not be honored based on the capabilities of the OpenGL
@@ -950,7 +934,7 @@ private:
 
     bool reshapeFBOs(const IntSize&);
     void resolveMultisamplingIfNecessary(const IntRect& = IntRect());
-#if (PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(NIX)) && USE(GRAPHICS_SURFACE)
+#if (PLATFORM(EFL) || PLATFORM(NIX)) && USE(GRAPHICS_SURFACE)
     void createGraphicsSurfaces(const IntSize&);
 #endif
 
@@ -969,7 +953,7 @@ private:
     void* m_context;
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY) || PLATFORM(WIN) || PLATFORM(NIX)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(BLACKBERRY) || PLATFORM(WIN) || PLATFORM(NIX)
     struct SymbolInfo {
         SymbolInfo()
             : type(0)
@@ -1030,7 +1014,7 @@ private:
     OwnPtr<ShaderNameHash> nameHashMapForShaders;
 #endif
 
-#if PLATFORM(BLACKBERRY) || (PLATFORM(QT) && defined(QT_OPENGL_ES_2)) || ((PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN) || PLATFORM(NIX)) && USE(OPENGL_ES_2))
+#if PLATFORM(BLACKBERRY) || ((PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN) || PLATFORM(NIX)) && USE(OPENGL_ES_2))
     friend class Extensions3DOpenGLES;
     OwnPtr<Extensions3DOpenGLES> m_extensions;
 #else
@@ -1041,7 +1025,7 @@ private:
 
     Attributes m_attrs;
     RenderStyle m_renderStyle;
-    Vector<Vector<float> > m_vertexArray;
+    Vector<Vector<float>> m_vertexArray;
 
     GC3Duint m_texture;
 #if !PLATFORM(BLACKBERRY)

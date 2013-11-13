@@ -47,7 +47,7 @@ enum OperandKind { ArgumentOperand, LocalOperand };
 
 enum OperandsLikeTag { OperandsLike };
 
-template<typename T, typename Traits = OperandValueTraits<T> >
+template<typename T, typename Traits = OperandValueTraits<T>>
 class Operands {
 public:
     Operands() { }
@@ -156,6 +156,10 @@ public:
             return true;
         return static_cast<size_t>(VirtualRegister(operand).toLocal()) < numberOfLocals();
     }
+    bool hasOperand(VirtualRegister reg) const
+    {
+        return hasOperand(reg.offset());
+    }
     
     void setOperand(int operand, const T& value)
     {
@@ -204,6 +208,16 @@ public:
         if (index < numberOfArguments())
             return virtualRegisterForArgument(index).offset();
         return virtualRegisterForLocal(index - numberOfArguments()).offset();
+    }
+    size_t indexForOperand(int operand) const
+    {
+        if (operandIsArgument(operand))
+            return static_cast<size_t>(VirtualRegister(operand).toArgument());
+        return static_cast<size_t>(VirtualRegister(operand).toLocal()) + numberOfArguments();
+    }
+    size_t indexForOperand(VirtualRegister reg) const
+    {
+        return indexForOperand(reg.offset());
     }
     
     void setOperandFirstTime(int operand, const T& value)

@@ -9,6 +9,10 @@
      result should be rejected. -->
 
     <style type="text/css">
+        html {
+            -webkit-font-smoothing: none;
+        }
+
         #source{
             -webkit-flow-into: main-thread;
         }
@@ -17,6 +21,7 @@
             -webkit-flow-from: main-thread;
             height:100px;
             width:300px;
+            border: solid 1px #888;
         }
         
         .pass{

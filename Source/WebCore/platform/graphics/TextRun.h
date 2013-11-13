@@ -139,7 +139,7 @@ public:
 
     TextRun subRun(unsigned startOffset, unsigned length) const
     {
-        ASSERT(startOffset < m_len);
+        ASSERT_WITH_SECURITY_IMPLICATION(startOffset < m_len);
 
         TextRun result = *this;
 
@@ -212,8 +212,8 @@ public:
         virtual ~RenderingContext() { }
 
 #if ENABLE(SVG_FONTS)
-        virtual GlyphData glyphDataForCharacter(const Font&, const TextRun&, WidthIterator&, UChar32 character, bool mirror, int currentCharacter, unsigned& advanceLength) = 0;
-        virtual void drawSVGGlyphs(GraphicsContext*, const TextRun&, const SimpleFontData*, const GlyphBuffer&, int from, int to, const FloatPoint&) const = 0;
+        virtual GlyphData glyphDataForCharacter(const Font&, WidthIterator&, UChar32 character, bool mirror, int currentCharacter, unsigned& advanceLength) = 0;
+        virtual void drawSVGGlyphs(GraphicsContext*, const SimpleFontData*, const GlyphBuffer&, int from, int to, const FloatPoint&) const = 0;
         virtual float floatWidthUsingSVGFont(const Font&, const TextRun&, int& charsConsumed, String& glyphName) const = 0;
         virtual bool applySVGKerning(const SimpleFontData*, WidthIterator&, GlyphBuffer*, int from) const = 0;
 #endif

@@ -28,24 +28,12 @@
 #include <wtf/SchedulePair.h>
 #endif
 
-#if PLATFORM(QT)
-#include <qglobal.h>
-#endif
-
 #if PLATFORM(HAIKU)
 class BUrlContext;
 #endif
 
 #if PLATFORM(MAC)
 OBJC_CLASS NSOperationQueue;
-#endif
-
-#if PLATFORM(QT)
-QT_BEGIN_NAMESPACE
-class QObject;
-class QNetworkAccessManager;
-class QUrl;
-QT_END_NAMESPACE
 #endif
 
 #if USE(SOUP)
@@ -80,14 +68,6 @@ public:
 #if PLATFORM(HAIKU)
     virtual BUrlContext* context() = 0;
     virtual void setContext(BUrlContext*) = 0;
-#endif
-
-#if PLATFORM(QT)
-    // FIXME: Wrap QNetworkAccessManager into a NetworkStorageSession to make the code cross-platform.
-    virtual QObject* originatingObject() const = 0;
-    virtual QNetworkAccessManager* networkAccessManager() const = 0;
-    virtual bool mimeSniffingEnabled() const = 0;
-    virtual bool thirdPartyCookiePolicyPermission(const QUrl&) const = 0;
 #endif
 
 #if PLATFORM(WIN)

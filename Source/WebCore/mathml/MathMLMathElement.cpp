@@ -43,17 +43,17 @@ PassRefPtr<MathMLMathElement> MathMLMathElement::create(const QualifiedName& tag
     return adoptRef(new MathMLMathElement(tagName, document));
 }
 
-Node::InsertionNotificationRequest MathMLMathElement::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest MathMLMathElement::insertedInto(ContainerNode& insertionPoint)
 {
     // There are sibling rules in the MathML default style.
-    if (insertionPoint->inDocument())
+    if (insertionPoint.inDocument())
         document().styleSheetCollection().setUsesSiblingRulesOverride(true);
     return MathMLInlineContainerElement::insertedInto(insertionPoint);
 }
 
-RenderElement* MathMLMathElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* MathMLMathElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderMathMLMath(this);
+    return new RenderMathMLMath(*this, std::move(style));
 }
 
 }

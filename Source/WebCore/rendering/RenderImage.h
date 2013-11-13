@@ -35,10 +35,12 @@ class HTMLMapElement;
 
 class RenderImage : public RenderReplaced {
 public:
-    explicit RenderImage(Element*);
+    explicit RenderImage(Element&, PassRef<RenderStyle>);
+    explicit RenderImage(Document&, PassRef<RenderStyle>);
     virtual ~RenderImage();
 
-    static RenderImage* createAnonymous(Document&);
+    // Set the style of the object if it's generated content.
+    void setPseudoStyle(PassRefPtr<RenderStyle>);
 
     void setImageResource(PassOwnPtr<RenderImageResource>);
 
@@ -69,25 +71,25 @@ protected:
 
     virtual void styleDidChange(StyleDifference, const RenderStyle*) OVERRIDE FINAL;
 
-    virtual void imageChanged(WrappedImagePtr, const IntRect* = 0);
+    virtual void imageChanged(WrappedImagePtr, const IntRect* = 0) OVERRIDE;
 
     void paintIntoRect(GraphicsContext*, const LayoutRect&);
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE FINAL;
-    virtual void layout();
+    virtual void layout() OVERRIDE;
 
-    virtual void intrinsicSizeChanged()
+    virtual void intrinsicSizeChanged() OVERRIDE
     {
         if (m_imageResource)
             imageChanged(m_imageResource->imagePtr());
     }
 
 private:
-    virtual const char* renderName() const { return "RenderImage"; }
+    virtual const char* renderName() const OVERRIDE { return "RenderImage"; }
 
-    virtual bool isImage() const { return true; }
+    virtual bool isImage() const OVERRIDE { return true; }
     virtual bool isRenderImage() const OVERRIDE FINAL { return true; }
 
-    virtual void paintReplaced(PaintInfo&, const LayoutPoint&);
+    virtual void paintReplaced(PaintInfo&, const LayoutPoint&) OVERRIDE;
 
     virtual bool computeBackgroundIsKnownToBeObscured() OVERRIDE FINAL;
 
@@ -116,33 +118,7 @@ private:
     friend class RenderImageScaleObserver;
 };
 
-inline RenderImage& toRenderImage(RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isRenderImage());
-    return static_cast<RenderImage&>(object);
-}
-
-inline const RenderImage& toRenderImage(const RenderObject& object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(object.isRenderImage());
-    return static_cast<const RenderImage&>(object);
-}
-
-inline RenderImage* toRenderImage(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderImage());
-    return static_cast<RenderImage*>(object);
-}
-
-inline const RenderImage* toRenderImage(const RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderImage());
-    return static_cast<const RenderImage*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderImage(const RenderImage*);
-void toRenderImage(const RenderImage&);
+RENDER_OBJECT_TYPE_CASTS(RenderImage, isRenderImage())
 
 } // namespace WebCore
 

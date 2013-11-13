@@ -31,8 +31,6 @@
 #include "StylePropertySet.h"
 #include "StyledElement.h"
 
-using namespace std;
-
 namespace WebCore {
 
 namespace {
@@ -276,7 +274,7 @@ CSSValue* PropertySetCSSStyleDeclaration::cloneAndCacheForCSSOM(CSSValue* intern
     // The map is here to maintain the object identity of the CSSValues over multiple invocations.
     // FIXME: It is likely that the identity is not important for web compatibility and this code should be removed.
     if (!m_cssomCSSValueClones)
-        m_cssomCSSValueClones = adoptPtr(new HashMap<CSSValue*, RefPtr<CSSValue> >);
+        m_cssomCSSValueClones = adoptPtr(new HashMap<CSSValue*, RefPtr<CSSValue>>);
     
     RefPtr<CSSValue>& clonedValue = m_cssomCSSValueClones->add(internalValue, RefPtr<CSSValue>()).iterator->value;
     if (!clonedValue)
@@ -287,18 +285,18 @@ CSSValue* PropertySetCSSStyleDeclaration::cloneAndCacheForCSSOM(CSSValue* intern
 StyleSheetContents* PropertySetCSSStyleDeclaration::contextStyleSheet() const
 { 
     CSSStyleSheet* cssStyleSheet = parentStyleSheet();
-    return cssStyleSheet ? cssStyleSheet->contents() : 0;
+    return cssStyleSheet ? &cssStyleSheet->contents() : 0;
 }
 
-PassRefPtr<MutableStylePropertySet> PropertySetCSSStyleDeclaration::copyProperties() const
+PassRef<MutableStylePropertySet> PropertySetCSSStyleDeclaration::copyProperties() const
 {
     return m_propertySet->mutableCopy();
 }
     
-StyleRuleCSSStyleDeclaration::StyleRuleCSSStyleDeclaration(MutableStylePropertySet* propertySet, CSSRule* parentRule)
-    : PropertySetCSSStyleDeclaration(propertySet)
+StyleRuleCSSStyleDeclaration::StyleRuleCSSStyleDeclaration(MutableStylePropertySet& propertySet, CSSRule& parentRule)
+    : PropertySetCSSStyleDeclaration(&propertySet)
     , m_refCount(1)
-    , m_parentRule(parentRule) 
+    , m_parentRule(&parentRule)
 {
     m_propertySet->ref();
 }
@@ -341,11 +339,10 @@ CSSStyleSheet* StyleRuleCSSStyleDeclaration::parentStyleSheet() const
     return m_parentRule ? m_parentRule->parentStyleSheet() : 0;
 }
 
-void StyleRuleCSSStyleDeclaration::reattach(MutableStylePropertySet* propertySet)
+void StyleRuleCSSStyleDeclaration::reattach(MutableStylePropertySet& propertySet)
 {
-    ASSERT(propertySet);
     m_propertySet->deref();
-    m_propertySet = propertySet;
+    m_propertySet = &propertySet;
     m_propertySet->ref();
 }
 

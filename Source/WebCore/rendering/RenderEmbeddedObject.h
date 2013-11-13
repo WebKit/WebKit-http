@@ -35,10 +35,10 @@ class TextRun;
 // For example, <embed src="foo.html"> does not invoke a plug-in.
 class RenderEmbeddedObject : public RenderWidget {
 public:
-    explicit RenderEmbeddedObject(HTMLFrameOwnerElement&);
+    RenderEmbeddedObject(HTMLFrameOwnerElement&, PassRef<RenderStyle>);
     virtual ~RenderEmbeddedObject();
 
-    static RenderEmbeddedObject* createForApplet(HTMLAppletElement&);
+    static RenderEmbeddedObject* createForApplet(HTMLAppletElement&, PassRef<RenderStyle>);
 
     enum PluginUnavailabilityReason {
         PluginMissing,
@@ -53,10 +53,6 @@ public:
     bool showsUnavailablePluginIndicator() const { return isPluginUnavailable() && !m_isUnavailablePluginIndicatorHidden; }
 
     void setUnavailablePluginIndicatorIsHidden(bool);
-
-    // FIXME: This belongs on HTMLObjectElement.
-    bool hasFallbackContent() const { return m_hasFallbackContent; }
-    void setHasFallbackContent(bool hasFallbackContent) { m_hasFallbackContent = hasFallbackContent; }
 
     void handleUnavailablePluginIndicatorEvent(Event*);
 
@@ -86,8 +82,6 @@ private:
     virtual bool requiresLayer() const OVERRIDE FINAL;
 #endif
 
-    virtual void viewCleared() OVERRIDE FINAL;
-
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE FINAL;
 
     virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier, Element** stopElement) OVERRIDE FINAL;
@@ -102,8 +96,6 @@ private:
     virtual bool canHaveChildren() const OVERRIDE FINAL;
     virtual bool canHaveWidget() const { return true; }
 
-    bool m_hasFallbackContent; // FIXME: This belongs on HTMLObjectElement.
-
     bool m_isPluginUnavailable;
     bool m_isUnavailablePluginIndicatorHidden;
     PluginUnavailabilityReason m_pluginUnavailabilityReason;
@@ -113,14 +105,7 @@ private:
     String m_unavailabilityDescription;
 };
 
-inline RenderEmbeddedObject* toRenderEmbeddedObject(RenderObject* object)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isEmbeddedObject());
-    return static_cast<RenderEmbeddedObject*>(object);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toRenderEmbeddedObject(const RenderEmbeddedObject*);
+RENDER_OBJECT_TYPE_CASTS(RenderEmbeddedObject, isEmbeddedObject())
 
 } // namespace WebCore
 

@@ -31,7 +31,6 @@
 #include "NodeTraversal.h"
 #include "RenderListItem.h"
 #include "Text.h"
-#include "VisiblePosition.h"
 #include "htmlediting.h"
 
 namespace WebCore {
@@ -127,7 +126,7 @@ void BreakBlockquoteCommand::doApply()
     }
     
     // Build up list of ancestors in between the start node and the top blockquote.
-    Vector<RefPtr<Element> > ancestors;    
+    Vector<RefPtr<Element>> ancestors;    
     for (Element* node = startNode->parentElement(); node && node != topBlockquote; node = node->parentElement())
         ancestors.append(node);
     
@@ -150,7 +149,7 @@ void BreakBlockquoteCommand::doApply()
             while (listChildNode && !listChildNode->hasTagName(liTag))
                 listChildNode = listChildNode->nextSibling();
             if (listChildNode && listChildNode->renderer() && listChildNode->renderer()->isListItem())
-                setNodeAttribute(clonedChild, startAttr, String::number(toRenderListItem(listChildNode->renderer())->value()));
+                setNodeAttribute(clonedChild, startAttr, AtomicString::number(toRenderListItem(listChildNode->renderer())->value()));
         }
             
         appendNode(clonedChild.get(), clonedAncestor.get());

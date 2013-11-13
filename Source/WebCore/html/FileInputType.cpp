@@ -39,9 +39,7 @@
 #include "RenderFileUploadControl.h"
 #include "ScriptController.h"
 #include "ShadowRoot.h"
-#include <wtf/PassOwnPtr.h>
 #include <wtf/text/StringBuilder.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -83,11 +81,6 @@ const AtomicString& UploadButtonElement::shadowPseudoId() const
 {
     DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-file-upload-button", AtomicString::ConstructFromLiteral));
     return pseudoId;
-}
-
-OwnPtr<InputType> FileInputType::create(HTMLInputElement& element)
-{
-    return adoptPtr(new FileInputType(element));
 }
 
 FileInputType::FileInputType(HTMLInputElement& element)
@@ -212,9 +205,9 @@ void FileInputType::handleDOMActivateEvent(Event* event)
     event->setDefaultHandled();
 }
 
-RenderElement* FileInputType::createRenderer(RenderArena& arena, RenderStyle&) const
+RenderElement* FileInputType::createRenderer(PassRef<RenderStyle> style) const
 {
-    return new (arena) RenderFileUploadControl(element());
+    return new RenderFileUploadControl(element(), std::move(style));
 }
 
 bool FileInputType::canSetStringValue() const
@@ -344,7 +337,7 @@ void FileInputType::requestIcon(const Vector<String>& paths)
     if (m_fileIconLoader)
         m_fileIconLoader->invalidate();
 
-    m_fileIconLoader = FileIconLoader::create(this);
+    m_fileIconLoader = std::make_unique<FileIconLoader>(static_cast<FileIconLoaderClient&>(*this));
 
     chrome->loadIconForFiles(paths, m_fileIconLoader.get());
 }
@@ -362,7 +355,7 @@ void FileInputType::setFiles(PassRefPtr<FileList> files)
     if (!files)
         return;
 
-    RefPtr<HTMLInputElement> input = &element();
+    Ref<HTMLInputElement> input(element());
 
     bool pathsChanged = false;
     if (files->length() != m_fileList->length())
@@ -433,10 +426,10 @@ void FileInputType::updateRendering(PassRefPtr<Icon> icon)
         element().renderer()->repaint();
 }
 
-bool FileInputType::receiveDroppedFiles(const DragData* dragData)
+bool FileInputType::receiveDroppedFiles(const DragData& dragData)
 {
     Vector<String> paths;
-    dragData->asFilenames(paths);
+    dragData.asFilenames(paths);
     if (paths.isEmpty())
         return false;
 

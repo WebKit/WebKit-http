@@ -100,7 +100,7 @@ void SVGFilterElement::setFilterRes(unsigned filterResX, unsigned filterResY)
     setFilterResYBaseValue(filterResY);
 
     if (RenderObject* object = renderer())
-        object->setNeedsLayout(true);
+        object->setNeedsLayout();
 }
 
 bool SVGFilterElement::isSupportedAttribute(const QualifiedName& attrName)
@@ -174,7 +174,7 @@ void SVGFilterElement::svgAttributeChanged(const QualifiedName& attrName)
         updateRelativeLengthsInformation();
 
     if (RenderObject* object = renderer())
-        object->setNeedsLayout(true);
+        object->setNeedsLayout();
 }
 
 void SVGFilterElement::childrenChanged(const ChildChange& change)
@@ -185,20 +185,20 @@ void SVGFilterElement::childrenChanged(const ChildChange& change)
         return;
 
     if (RenderObject* object = renderer())
-        object->setNeedsLayout(true);
+        object->setNeedsLayout();
 }
 
-RenderElement* SVGFilterElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGFilterElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderSVGResourceFilter(*this);
+    return new RenderSVGResourceFilter(*this, std::move(style));
 }
 
-bool SVGFilterElement::childShouldCreateRenderer(const Node* child) const
+bool SVGFilterElement::childShouldCreateRenderer(const Node& child) const
 {
-    if (!child->isSVGElement())
+    if (!child.isSVGElement())
         return false;
 
-    const SVGElement* svgElement = toSVGElement(child);
+    const SVGElement& svgElement = toSVGElement(child);
 
     DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, allowedChildElementTags, ());
     if (allowedChildElementTags.isEmpty()) {
@@ -229,7 +229,7 @@ bool SVGFilterElement::childShouldCreateRenderer(const Node* child) const
         allowedChildElementTags.add(SVGNames::feTurbulenceTag);
     }
 
-    return allowedChildElementTags.contains<SVGAttributeHashTranslator>(svgElement->tagQName());
+    return allowedChildElementTags.contains<SVGAttributeHashTranslator>(svgElement.tagQName());
 }
 
 bool SVGFilterElement::selfHasRelativeLengths() const

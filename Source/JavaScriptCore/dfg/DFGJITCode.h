@@ -38,7 +38,6 @@
 #include "DFGVariableEventStream.h"
 #include "ExecutionCounter.h"
 #include "JITCode.h"
-#include "JumpReplacementWatchpoint.h"
 #include <wtf/SegmentedVector.h>
 
 namespace JSC { namespace DFG {
@@ -48,10 +47,10 @@ class JITCompiler;
 class JITCode : public DirectJITCode {
 public:
     JITCode();
-    ~JITCode();
+    virtual ~JITCode();
     
-    CommonData* dfgCommon();
-    JITCode* dfg();
+    virtual CommonData* dfgCommon() OVERRIDE;
+    virtual JITCode* dfg() OVERRIDE;
     
     OSREntryData* appendOSREntryData(unsigned bytecodeIndex, unsigned machineCodeOffset)
     {
@@ -88,13 +87,6 @@ public:
         return result;
     }
     
-    unsigned appendWatchpoint(const JumpReplacementWatchpoint& watchpoint)
-    {
-        unsigned result = watchpoints.size();
-        watchpoints.append(watchpoint);
-        return result;
-    }
-    
     void reconstruct(
         CodeBlock*, CodeOrigin, unsigned streamIndex, Operands<ValueRecovery>& result);
     
@@ -127,7 +119,6 @@ public:
     Vector<DFG::OSREntryData> osrEntry;
     SegmentedVector<DFG::OSRExit, 8> osrExit;
     Vector<DFG::SpeculationRecovery> speculationRecovery;
-    SegmentedVector<JumpReplacementWatchpoint, 1, 0> watchpoints;
     DFG::VariableEventStream variableEventStream;
     DFG::MinifiedGraph minifiedDFG;
 #if ENABLE(FTL_JIT)

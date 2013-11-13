@@ -224,7 +224,13 @@ public:
     {
         m_assembler.andq_ir(imm.m_value, srcDest);
     }
-    
+
+    void and64(TrustedImmPtr imm, RegisterID srcDest)
+    {
+        move(imm, scratchRegister);
+        and64(scratchRegister, srcDest);
+    }
+
     void lshift64(TrustedImm32 imm, RegisterID dest)
     {
         m_assembler.shlq_i8r(imm.m_value, dest);
@@ -635,6 +641,7 @@ public:
         return FunctionPtr(X86Assembler::readPointer(call.dataLabelPtrAtOffset(-REPTACH_OFFSET_CALL_R11).dataLocation()));
     }
 
+    static bool haveScratchRegisterForBlinding() { return true; }
     static RegisterID scratchRegisterForBlinding() { return scratchRegister; }
 
     static bool canJumpReplacePatchableBranchPtrWithPatch() { return true; }

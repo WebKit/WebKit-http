@@ -273,6 +273,7 @@ z-index
 -webkit-column-break-before
 -webkit-column-break-inside
 -webkit-column-count
+-webkit-column-fill
 -webkit-column-gap
 -webkit-column-progression
 -webkit-column-rule
@@ -314,6 +315,7 @@ z-index
 -webkit-grid-row-start
 -webkit-grid-column
 -webkit-grid-row
+-webkit-grid-template
 -webkit-grid-auto-flow
 -webkit-highlight [Inherited]
 -webkit-hyphenate-character [Inherited]
@@ -384,12 +386,15 @@ z-index
 -webkit-text-combine [Inherited]
 -epub-text-combine = -webkit-text-combine
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
+-webkit-text-align-last [Inherited]
+-webkit-text-justify [Inherited]
+#endif
+#if defined(ENABLE_CSS3_TEXT_DECORATION) && ENABLE_CSS3_TEXT_DECORATION
 -webkit-text-decoration
 -webkit-text-decoration-line
 -webkit-text-decoration-style
 -webkit-text-decoration-color
--webkit-text-align-last [Inherited]
--webkit-text-justify [Inherited]
+-webkit-text-decoration-skip [Inherited]
 -webkit-text-underline-position [Inherited]
 #endif
 -webkit-text-decorations-in-effect [Inherited]
@@ -432,6 +437,7 @@ z-index
 -webkit-shape-outside
 -webkit-shape-margin
 -webkit-shape-padding
+-webkit-shape-image-threshold
 #endif
 #if defined(ENABLE_CSS_EXCLUSIONS) && ENABLE_CSS_EXCLUSIONS
 -webkit-wrap-flow

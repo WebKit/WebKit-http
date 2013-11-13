@@ -42,20 +42,14 @@
 
 #if OS(DARWIN)
 #include <mach/mach_port.h>
-#if HAVE(XPC)
 #include <xpc/xpc.h>
 #endif
-#elif PLATFORM(QT)
-QT_BEGIN_NAMESPACE
-class QSocketNotifier;
-QT_END_NAMESPACE
-#endif
 
-#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL)
 #include "PlatformProcessIdentifier.h"
 #endif
 
-namespace WebCore {
+namespace WTF {
 class RunLoop;
 }
 
@@ -98,32 +92,24 @@ public:
     struct Identifier {
         Identifier()
             : port(MACH_PORT_NULL)
-#if HAVE(XPC)
             , xpcConnection(0)
-#endif
         {
         }
 
         Identifier(mach_port_t port)
             : port(port)
-#if HAVE(XPC)
             , xpcConnection(0)
-#endif
         {
         }
 
-#if HAVE(XPC)
         Identifier(mach_port_t port, xpc_connection_t xpcConnection)
             : port(port)
             , xpcConnection(xpcConnection)
         {
         }
-#endif
 
         mach_port_t port;
-#if HAVE(XPC)
         xpc_connection_t xpcConnection;
-#endif
     };
     static bool identifierIsNull(Identifier identifier) { return identifier.port == MACH_PORT_NULL; }
 #elif USE(UNIX_DOMAIN_SOCKETS)
@@ -131,16 +117,14 @@ public:
     static bool identifierIsNull(Identifier identifier) { return !identifier; }
 #endif
 
-    static PassRefPtr<Connection> createServerConnection(Identifier, Client*, WebCore::RunLoop* clientRunLoop);
-    static PassRefPtr<Connection> createClientConnection(Identifier, Client*, WebCore::RunLoop* clientRunLoop);
+    static PassRefPtr<Connection> createServerConnection(Identifier, Client*, WTF::RunLoop* clientRunLoop);
+    static PassRefPtr<Connection> createClientConnection(Identifier, Client*, WTF::RunLoop* clientRunLoop);
     ~Connection();
 
     Client* client() const { return m_client; }
 
 #if OS(DARWIN)
     void setShouldCloseConnectionOnMachExceptions();
-#elif PLATFORM(QT)
-    void setShouldCloseConnectionOnProcessTermination(WebKit::PlatformProcessIdentifier);
 #endif
 
     void setOnlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage(bool);
@@ -183,7 +167,7 @@ public:
     bool inSendSync() const { return m_inSendSyncCount; }
 
 private:
-    Connection(Identifier, bool isServer, Client*, WebCore::RunLoop* clientRunLoop);
+    Connection(Identifier, bool isServer, Client*, WTF::RunLoop* clientRunLoop);
     void platformInitialize(Identifier);
     void platformInvalidate();
     
@@ -229,7 +213,7 @@ private:
 
     bool m_isConnected;
     RefPtr<WorkQueue> m_connectionQueue;
-    WebCore::RunLoop* m_clientRunLoop;
+    WTF::RunLoop* m_clientRunLoop;
 
     HashMap<StringReference, std::pair<RefPtr<WorkQueue>, RefPtr<WorkQueueMessageReceiver>>> m_workQueueMessageReceivers;
 
@@ -304,9 +288,7 @@ private:
     mach_port_t m_exceptionPort;
     dispatch_source_t m_exceptionPortDataAvailableSource;
 
-#if HAVE(XPC)
     xpc_connection_t m_xpcConnection;
-#endif
 
 #elif USE(UNIX_DOMAIN_SOCKETS)
     // Called on the connection queue.
@@ -318,9 +300,6 @@ private:
     Vector<int> m_fileDescriptors;
     size_t m_fileDescriptorsSize;
     int m_socketDescriptor;
-#if PLATFORM(QT)
-    QSocketNotifier* m_socketNotifier;
-#endif
 #endif
 };
 

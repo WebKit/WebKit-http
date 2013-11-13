@@ -78,7 +78,7 @@ HTMLPlugInElement::~HTMLPlugInElement()
 
 bool HTMLPlugInElement::canProcessDrag() const
 {
-    const PluginViewBase* plugin = pluginWidget() && pluginWidget()->isPluginViewBase() ? static_cast<const PluginViewBase*>(pluginWidget()) : 0;
+    const PluginViewBase* plugin = pluginWidget() && pluginWidget()->isPluginViewBase() ? toPluginViewBase(pluginWidget()) : nullptr;
     return plugin ? plugin->canProcessDrag() : false;
 }
 
@@ -96,7 +96,7 @@ void HTMLPlugInElement::willDetachRenderers()
 
     if (m_isCapturingMouseEvents) {
         if (Frame* frame = document().frame())
-            frame->eventHandler().setCapturingMouseEventsNode(0);
+            frame->eventHandler().setCapturingMouseEventsElement(nullptr);
         m_isCapturingMouseEvents = false;
     }
 
@@ -167,7 +167,7 @@ bool HTMLPlugInElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLFrameOwnerElement::isPresentationAttribute(name);
 }
 
-void HTMLPlugInElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
+void HTMLPlugInElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
 {
     if (name == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, value);

@@ -260,6 +260,29 @@ PassRefPtr<CodeBlock> ScriptExecutable::newReplacementCodeBlockFor(
     return result;
 }
 
+static void setupLLInt(VM& vm, CodeBlock* codeBlock)
+{
+#if ENABLE(LLINT)
+    LLInt::setEntrypoint(vm, codeBlock);
+#else
+    UNUSED_PARAM(vm);
+    UNUSED_PARAM(codeBlock);
+    UNREACHABLE_FOR_PLATFORM();
+#endif
+}
+
+static void setupJIT(VM& vm, CodeBlock* codeBlock)
+{
+#if ENABLE(JIT)
+    CompilationResult result = JIT::compile(&vm, codeBlock, JITCompilationMustSucceed);
+    RELEASE_ASSERT(result == CompilationSuccessful);
+#else
+    UNUSED_PARAM(vm);
+    UNUSED_PARAM(codeBlock);
+    UNREACHABLE_FOR_PLATFORM();
+#endif
+}
+
 JSObject* ScriptExecutable::prepareForExecutionImpl(
     ExecState* exec, JSScope* scope, CodeSpecializationKind kind)
 {
@@ -273,13 +296,22 @@ JSObject* ScriptExecutable::prepareForExecutionImpl(
         return exception;
     }
     
-#if ENABLE(LLINT)
-    LLInt::setEntrypoint(vm, codeBlock.get());
+    bool shouldUseLLInt;
+#if !ENABLE(JIT)
+    // No JIT implies use of the C Loop LLINT. Override the options to reflect this. 
+    Options::useLLInt() = true;
+    shouldUseLLInt = true;
+#elif ENABLE(LLINT)
+    shouldUseLLInt = Options::useLLInt();
 #else
-    CompilationResult result = JIT::compile(&vm, codeBlock.get(), JITCompilationMustSucceed);
-    RELEASE_ASSERT(result == CompilationSuccessful);
+    shouldUseLLInt = false;
 #endif
-
+    
+    if (shouldUseLLInt)
+        setupLLInt(vm, codeBlock.get());
+    else
+        setupJIT(vm, codeBlock.get());
+    
     installCode(codeBlock.get());
     return 0;
 }
@@ -478,11 +510,7 @@ FunctionCodeBlock* FunctionExecutable::baselineCodeBlockFor(CodeSpecializationKi
     }
     if (!result)
         return 0;
-    while (result->alternative())
-        result = static_cast<FunctionCodeBlock*>(result->alternative());
-    RELEASE_ASSERT(result);
-    ASSERT(JITCode::isBaselineCode(result->jitType()));
-    return result;
+    return static_cast<FunctionCodeBlock*>(result->baselineAlternative());
 }
 
 void FunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)

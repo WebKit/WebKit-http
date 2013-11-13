@@ -69,20 +69,18 @@ public:
     bool hasAnyMatchingRules(RuleSet*);
 
     StyleResolver::MatchResult& matchedResult();
-    const Vector<RefPtr<StyleRuleBase> >& matchedRuleList() const;
+    const Vector<RefPtr<StyleRuleBase>>& matchedRuleList() const;
 
 private:
     Document& document() { return m_state.document(); }
     void addElementStyleProperties(const StylePropertySet*, bool isCacheable = true);
 
     void matchUARules(RuleSet*);
-    void matchScopedAuthorRules(bool includeEmptyRules);
-    void matchHostRules(bool includeEmptyRules);
 
     void collectMatchingRules(const MatchRequest&, StyleResolver::RuleRange&);
     void collectMatchingRulesForRegion(const MatchRequest&, StyleResolver::RuleRange&);
     void collectMatchingRulesForList(const Vector<RuleData>*, const MatchRequest&, StyleResolver::RuleRange&);
-    bool ruleMatches(const RuleData&, const ContainerNode* scope, PseudoId&);
+    bool ruleMatches(const RuleData&, PseudoId&);
 
     void sortMatchedRules();
     void sortAndTransferMatchedRules();
@@ -106,10 +104,10 @@ private:
     SelectorChecker::Mode m_mode;
     bool m_canUseFastReject;
 
-    OwnPtr<Vector<const RuleData*, 32> > m_matchedRules;
+    OwnPtr<Vector<const RuleData*, 32>> m_matchedRules;
 
     // Output.
-    Vector<RefPtr<StyleRuleBase> > m_matchedRuleList;
+    Vector<RefPtr<StyleRuleBase>> m_matchedRuleList;
     StyleResolver::MatchResult m_result;
 };
 

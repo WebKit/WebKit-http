@@ -36,8 +36,6 @@
 #include "ScrollbarTheme.h"
 #include <wtf/StdLibExtras.h>
 
-using namespace std;
-
 namespace WebCore {
 
 ScrollView::ScrollView()
@@ -256,8 +254,8 @@ IntSize ScrollView::unscaledVisibleContentSize(VisibleContentRectIncludesScrollb
             horizontalScrollbarHeight = !horizontalBar->isOverlayScrollbar() ? horizontalBar->height() : 0;
     }
 
-    return IntSize(max(0, width() - verticalScrollbarWidth),
-                   max(0, height() - horizontalScrollbarHeight));
+    return IntSize(std::max(0, width() - verticalScrollbarWidth),
+                   std::max(0, height() - horizontalScrollbarHeight));
 }
 
 #if !PLATFORM(GTK)
@@ -387,8 +385,8 @@ void ScrollView::setScrollOffset(const IntPoint& offset)
     int horizontalOffset = offset.x();
     int verticalOffset = offset.y();
     if (constrainsScrollingToContentEdge()) {
-        horizontalOffset = max(min(horizontalOffset, contentsWidth() - visibleWidth()), 0);
-        verticalOffset = max(min(verticalOffset, totalContentsSize().height() - visibleHeight()), 0);
+        horizontalOffset = std::max(std::min(horizontalOffset, contentsWidth() - visibleWidth()), 0);
+        verticalOffset = std::max(std::min(verticalOffset, totalContentsSize().height() - visibleHeight()), 0);
     }
 
     IntSize newOffset = m_scrollOffset;
@@ -559,10 +557,16 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
 
         // If we ever turn one scrollbar off, always turn the other one off too.  Never ever
         // try to both gain/lose a scrollbar in the same pass.
-        if (!newHasHorizontalScrollbar && hasHorizontalScrollbar && vScroll != ScrollbarAlwaysOn)
+        bool needAnotherPass = false;
+        if (!newHasHorizontalScrollbar && hasHorizontalScrollbar && vScroll != ScrollbarAlwaysOn) {
             newHasVerticalScrollbar = false;
-        if (!newHasVerticalScrollbar && hasVerticalScrollbar && hScroll != ScrollbarAlwaysOn)
+            needAnotherPass = true;
+        }
+
+        if (!newHasVerticalScrollbar && hasVerticalScrollbar && hScroll != ScrollbarAlwaysOn) {
             newHasHorizontalScrollbar = false;
+            needAnotherPass = true;
+        }
 
         if (hasHorizontalScrollbar != newHasHorizontalScrollbar && (hasHorizontalScrollbar || !avoidScrollbarCreation())) {
             if (scrollOrigin().y() && !newHasHorizontalScrollbar)
@@ -590,7 +594,7 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
             }
         }
 
-        if (sendContentResizedNotification && m_updateScrollbarsPass < cMaxUpdateScrollbarsPass) {
+        if ((sendContentResizedNotification || needAnotherPass) && m_updateScrollbarsPass < cMaxUpdateScrollbarsPass) {
             m_updateScrollbarsPass++;
             contentsResized();
             visibleContentsResized();
@@ -617,7 +621,7 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
 
     if (m_horizontalScrollbar) {
         int clientWidth = visibleWidth();
-        int pageStep = max(max<int>(clientWidth * Scrollbar::minFractionToStepWhenPaging(), clientWidth - Scrollbar::maxOverlapBetweenPages()), 1);
+        int pageStep = std::max(std::max<int>(clientWidth * Scrollbar::minFractionToStepWhenPaging(), clientWidth - Scrollbar::maxOverlapBetweenPages()), 1);
         IntRect oldRect(m_horizontalScrollbar->frameRect());
         IntRect hBarRect(0,
                         height() - m_horizontalScrollbar->height(),
@@ -638,7 +642,7 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
 
     if (m_verticalScrollbar) {
         int clientHeight = visibleHeight();
-        int pageStep = max(max<int>(clientHeight * Scrollbar::minFractionToStepWhenPaging(), clientHeight - Scrollbar::maxOverlapBetweenPages()), 1);
+        int pageStep = std::max(std::max<int>(clientHeight * Scrollbar::minFractionToStepWhenPaging(), clientHeight - Scrollbar::maxOverlapBetweenPages()), 1);
         IntRect oldRect(m_verticalScrollbar->frameRect());
         IntRect vBarRect(width() - m_verticalScrollbar->width(), 
                          0,
@@ -718,7 +722,7 @@ void ScrollView::scrollContents(const IntSize& scrollDelta)
     if (m_drawPanScrollIcon) {
         // FIXME: the pan icon is broken when accelerated compositing is on, since it will draw under the compositing layers.
         // https://bugs.webkit.org/show_bug.cgi?id=47837
-        int panIconDirtySquareSizeLength = 2 * (panIconSizeLength + max(abs(scrollDelta.width()), abs(scrollDelta.height()))); // We only want to repaint what's necessary
+        int panIconDirtySquareSizeLength = 2 * (panIconSizeLength + std::max(abs(scrollDelta.width()), abs(scrollDelta.height()))); // We only want to repaint what's necessary
         IntPoint panIconDirtySquareLocation = IntPoint(m_panScrollIconPoint.x() - (panIconDirtySquareSizeLength / 2), m_panScrollIconPoint.y() - (panIconDirtySquareSizeLength / 2));
         IntRect panScrollIconDirtyRect = IntRect(panIconDirtySquareLocation, IntSize(panIconDirtySquareSizeLength, panIconDirtySquareSizeLength));
         panScrollIconDirtyRect.intersect(clipRect);
@@ -942,15 +946,15 @@ void ScrollView::frameRectsChanged()
     if (platformWidget())
         return;
 
-    HashSet<RefPtr<Widget> >::const_iterator end = m_children.end();
-    for (HashSet<RefPtr<Widget> >::const_iterator current = m_children.begin(); current != end; ++current)
+    HashSet<RefPtr<Widget>>::const_iterator end = m_children.end();
+    for (HashSet<RefPtr<Widget>>::const_iterator current = m_children.begin(); current != end; ++current)
         (*current)->frameRectsChanged();
 }
 
 void ScrollView::clipRectChanged()
 {
-    HashSet<RefPtr<Widget> >::const_iterator end = m_children.end();
-    for (HashSet<RefPtr<Widget> >::const_iterator current = m_children.begin(); current != end; ++current)
+    HashSet<RefPtr<Widget>>::const_iterator end = m_children.end();
+    for (HashSet<RefPtr<Widget>>::const_iterator current = m_children.begin(); current != end; ++current)
         (*current)->clipRectChanged();
 }
 
@@ -1306,8 +1310,8 @@ void ScrollView::setParentVisible(bool visible)
     if (!isSelfVisible())
         return;
         
-    HashSet<RefPtr<Widget> >::iterator end = m_children.end();
-    for (HashSet<RefPtr<Widget> >::iterator it = m_children.begin(); it != end; ++it)
+    HashSet<RefPtr<Widget>>::iterator end = m_children.end();
+    for (HashSet<RefPtr<Widget>>::iterator it = m_children.begin(); it != end; ++it)
         (*it)->setParentVisible(visible);
 }
 
@@ -1316,8 +1320,8 @@ void ScrollView::show()
     if (!isSelfVisible()) {
         setSelfVisible(true);
         if (isParentVisible()) {
-            HashSet<RefPtr<Widget> >::iterator end = m_children.end();
-            for (HashSet<RefPtr<Widget> >::iterator it = m_children.begin(); it != end; ++it)
+            HashSet<RefPtr<Widget>>::iterator end = m_children.end();
+            for (HashSet<RefPtr<Widget>>::iterator it = m_children.begin(); it != end; ++it)
                 (*it)->setParentVisible(true);
         }
     }
@@ -1329,8 +1333,8 @@ void ScrollView::hide()
 {
     if (isSelfVisible()) {
         if (isParentVisible()) {
-            HashSet<RefPtr<Widget> >::iterator end = m_children.end();
-            for (HashSet<RefPtr<Widget> >::iterator it = m_children.begin(); it != end; ++it)
+            HashSet<RefPtr<Widget>>::iterator end = m_children.end();
+            for (HashSet<RefPtr<Widget>>::iterator it = m_children.begin(); it != end; ++it)
                 (*it)->setParentVisible(false);
         }
         setSelfVisible(false);
@@ -1389,7 +1393,7 @@ void ScrollView::setScrollOrigin(const IntPoint& origin, bool updatePositionAtAl
         updateScrollbars(scrollOffset());
 }
 
-#if !PLATFORM(QT) && !PLATFORM(MAC)
+#if !PLATFORM(MAC)
 
 void ScrollView::platformAddChild(Widget*)
 {

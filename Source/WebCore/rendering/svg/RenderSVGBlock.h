@@ -36,20 +36,19 @@ public:
     SVGGraphicsElement& graphicsElement() const { return toSVGGraphicsElement(nodeForNonAnonymous()); }
 
 protected:
-    explicit RenderSVGBlock(SVGGraphicsElement&);
+    RenderSVGBlock(SVGGraphicsElement&, PassRef<RenderStyle>);
     virtual void willBeDestroyed() OVERRIDE;
 
 private:
     void element() const WTF_DELETED_FUNCTION;
 
-    virtual void setStyle(PassRefPtr<RenderStyle>) OVERRIDE FINAL;
+    virtual void setStyle(PassRef<RenderStyle>) OVERRIDE FINAL;
     virtual void updateFromStyle() OVERRIDE FINAL;
 
     virtual bool isRenderSVGBlock() const OVERRIDE FINAL { return true; };
 
     virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const;
 
-    virtual void styleWillChange(StyleDifference, const RenderStyle* newStyle) OVERRIDE FINAL;
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE FINAL;
 };
 

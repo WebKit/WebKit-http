@@ -165,7 +165,7 @@ static void logConsoleError(ScriptExecutionContext* context, const String& messa
     context->addConsoleMessage(JSMessageSource, ErrorMessageLevel, message);
 }
 
-PassRefPtr<XMLHttpRequest> XMLHttpRequest::create(ScriptExecutionContext* context)
+PassRefPtr<XMLHttpRequest> XMLHttpRequest::create(ScriptExecutionContext& context)
 {
     RefPtr<XMLHttpRequest> xmlHttpRequest(adoptRef(new XMLHttpRequest(context)));
     xmlHttpRequest->suspendIfNeeded();
@@ -173,8 +173,8 @@ PassRefPtr<XMLHttpRequest> XMLHttpRequest::create(ScriptExecutionContext* contex
     return xmlHttpRequest.release();
 }
 
-XMLHttpRequest::XMLHttpRequest(ScriptExecutionContext* context)
-    : ActiveDOMObject(context)
+XMLHttpRequest::XMLHttpRequest(ScriptExecutionContext& context)
+    : ActiveDOMObject(&context)
     , m_async(true)
     , m_includeCredentials(false)
 #if ENABLE(XHR_TIMEOUT)
@@ -188,6 +188,7 @@ XMLHttpRequest::XMLHttpRequest(ScriptExecutionContext* context)
     , m_sameOriginRequest(true)
     , m_receivedLength(0)
     , m_lastSendLineNumber(0)
+    , m_lastSendColumnNumber(0)
     , m_exceptionCode(0)
     , m_progressEventThrottle(this)
     , m_responseTypeCode(ResponseTypeDefault)
@@ -208,7 +209,7 @@ XMLHttpRequest::~XMLHttpRequest()
 
 Document* XMLHttpRequest::document() const
 {
-    ASSERT(scriptExecutionContext()->isDocument());
+    ASSERT_WITH_SECURITY_IMPLICATION(scriptExecutionContext()->isDocument());
     return static_cast<Document*>(scriptExecutionContext());
 }
 
@@ -325,8 +326,11 @@ ArrayBuffer* XMLHttpRequest::responseArrayBuffer()
     if (m_state != DONE)
         return 0;
 
-    if (!m_responseArrayBuffer.get() && m_binaryResponseBuilder.get() && m_binaryResponseBuilder->size() > 0) {
-        m_responseArrayBuffer = ArrayBuffer::create(const_cast<char*>(m_binaryResponseBuilder->data()), static_cast<unsigned>(m_binaryResponseBuilder->size()));
+    if (!m_responseArrayBuffer) {
+        if (m_binaryResponseBuilder)
+            m_responseArrayBuffer = ArrayBuffer::create(const_cast<char*>(m_binaryResponseBuilder->data()), static_cast<unsigned>(m_binaryResponseBuilder->size()));
+        else
+            m_responseArrayBuffer = ArrayBuffer::create(nullptr, 0);
         m_binaryResponseBuilder.clear();
     }
 
@@ -399,10 +403,16 @@ String XMLHttpRequest::responseType()
     return "";
 }
 
+void XMLHttpRequest::setLastSendLineAndColumnNumber(unsigned lineNumber, unsigned columnNumber)
+{
+    m_lastSendLineNumber = lineNumber;
+    m_lastSendColumnNumber = columnNumber;
+}
+
 XMLHttpRequestUpload* XMLHttpRequest::upload()
 {
     if (!m_upload)
-        m_upload = XMLHttpRequestUpload::create(this);
+        m_upload = std::make_unique<XMLHttpRequestUpload>(this);
     return m_upload.get();
 }
 
@@ -452,12 +462,14 @@ bool XMLHttpRequest::isAllowedHTTPMethod(const String& method)
 
 String XMLHttpRequest::uppercaseKnownHTTPMethod(const String& method)
 {
-    if (equalIgnoringCase(method, "COPY") || equalIgnoringCase(method, "DELETE") || equalIgnoringCase(method, "GET")
-        || equalIgnoringCase(method, "HEAD") || equalIgnoringCase(method, "INDEX") || equalIgnoringCase(method, "LOCK")
-        || equalIgnoringCase(method, "M-POST") || equalIgnoringCase(method, "MKCOL") || equalIgnoringCase(method, "MOVE")
-        || equalIgnoringCase(method, "OPTIONS") || equalIgnoringCase(method, "POST") || equalIgnoringCase(method, "PROPFIND")
-        || equalIgnoringCase(method, "PROPPATCH") || equalIgnoringCase(method, "PUT") || equalIgnoringCase(method, "UNLOCK")) {
-        return method.upper();
+    const char* const methods[] = { "COPY", "DELETE", "GET", "HEAD", "INDEX", "LOCK", "M-POST", "MKCOL", "MOVE", "OPTIONS", "POST", "PROPFIND", "PROPPATCH", "PUT", "UNLOCK" };
+    for (unsigned i = 0; i < WTF_ARRAY_LENGTH(methods); ++i) {
+        if (equalIgnoringCase(method, methods[i])) {
+            // Don't bother allocating a new string if it's already all uppercase.
+            if (method == methods[i])
+                break;
+            return ASCIILiteral(methods[i]);
+        }
     }
     return method;
 }
@@ -611,7 +623,7 @@ void XMLHttpRequest::send(Document* document, ExceptionCode& ec)
 
         // FIXME: According to XMLHttpRequest Level 2, this should use the Document.innerHTML algorithm
         // from the HTML5 specification to serialize the document.
-        String body = createMarkup(document);
+        String body = createMarkup(*document);
 
         // FIXME: this should use value of document.inputEncoding to determine the encoding to use.
         TextEncoding encoding = UTF8Encoding();
@@ -1150,7 +1162,7 @@ void XMLHttpRequest::didFinishLoading(unsigned long identifier, double)
 
     m_responseBuilder.shrinkToFit();
 
-    InspectorInstrumentation::didFinishXHRLoading(scriptExecutionContext(), this, identifier, m_responseBuilder.toStringPreserveCapacity(), m_url, m_lastSendURL, m_lastSendLineNumber);
+    InspectorInstrumentation::didFinishXHRLoading(scriptExecutionContext(), this, identifier, m_responseBuilder.toStringPreserveCapacity(), m_url, m_lastSendURL, m_lastSendLineNumber, m_lastSendColumnNumber);
 
     bool hadLoader = m_loader;
     m_loader = 0;

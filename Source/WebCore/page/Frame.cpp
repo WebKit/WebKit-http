@@ -77,6 +77,7 @@
 #include "PageGroup.h"
 #include "RegularExpression.h"
 #include "RenderTableCell.h"
+#include "RenderText.h"
 #include "RenderTextControl.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
@@ -120,8 +121,6 @@
 #include "TiledBackingStore.h"
 #endif
 
-using namespace std;
-
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -159,11 +158,11 @@ Frame::Frame(Page& page, HTMLFrameOwnerElement* ownerElement, FrameLoaderClient&
     , m_loader(*this, frameLoaderClient)
     , m_navigationScheduler(this)
     , m_ownerElement(ownerElement)
-    , m_script(createOwned<ScriptController>(*this))
+    , m_script(std::make_unique<ScriptController>(*this))
     , m_editor(Editor::create(*this))
     , m_selection(adoptPtr(new FrameSelection(this)))
     , m_eventHandler(adoptPtr(new EventHandler(*this)))
-    , m_animationController(createOwned<AnimationController>(*this))
+    , m_animationController(std::make_unique<AnimationController>(*this))
     , m_pageZoomFactor(parentPageZoomFactor(this))
     , m_textZoomFactor(parentTextZoomFactor(this))
 #if ENABLE(ORIENTATION_EVENTS)
@@ -341,7 +340,7 @@ String Frame::searchForLabelsAboveCell(RegularExpression* regExp, HTMLTableCellE
         // search within the above cell we found for a match
         size_t lengthSearched = 0;    
         for (Text* textNode = TextNodeTraversal::firstWithin(aboveCell); textNode; textNode = TextNodeTraversal::next(textNode, aboveCell)) {
-            if (!textNode->renderer() || textNode->renderer()->style()->visibility() != VISIBLE)
+            if (!textNode->renderer() || textNode->renderer()->style().visibility() != VISIBLE)
                 continue;
             // For each text chunk, run the regexp
             String nodeString = textNode->data();
@@ -396,7 +395,7 @@ String Frame::searchForLabelsBeforeElement(const Vector<String>& labels, Element
                 return result;
             }
             searchedCellAbove = true;
-        } else if (n->isTextNode() && n->renderer() && n->renderer()->style()->visibility() == VISIBLE) {
+        } else if (n->isTextNode() && n->renderer() && n->renderer()->style().visibility() == VISIBLE) {
             // For each text chunk, run the regexp
             String nodeString = n->nodeValue();
             // add 100 for slop, to make it more likely that we'll search whole nodes
@@ -509,13 +508,13 @@ FloatSize Frame::resizePageRectsKeepingRatio(const FloatSize& originalSize, cons
     if (!contentRenderer())
         return FloatSize();
 
-    if (contentRenderer()->style()->isHorizontalWritingMode()) {
-        ASSERT(fabs(originalSize.width()) > numeric_limits<float>::epsilon());
+    if (contentRenderer()->style().isHorizontalWritingMode()) {
+        ASSERT(fabs(originalSize.width()) > std::numeric_limits<float>::epsilon());
         float ratio = originalSize.height() / originalSize.width();
         resultSize.setWidth(floorf(expectedSize.width()));
         resultSize.setHeight(floorf(resultSize.width() * ratio));
     } else {
-        ASSERT(fabs(originalSize.height()) > numeric_limits<float>::epsilon());
+        ASSERT(fabs(originalSize.height()) > std::numeric_limits<float>::epsilon());
         float ratio = originalSize.width() / originalSize.height();
         resultSize.setHeight(floorf(expectedSize.height()));
         resultSize.setWidth(floorf(resultSize.height() * ratio));
@@ -535,12 +534,12 @@ void Frame::injectUserScripts(UserScriptInjectionTime injectionTime)
     const UserScriptMap* userScripts = m_page->group().userScripts();
     if (!userScripts)
         return;
-    UserScriptMap::const_iterator end = userScripts->end();
-    for (UserScriptMap::const_iterator it = userScripts->begin(); it != end; ++it)
-        injectUserScriptsForWorld(it->key.get(), *it->value, injectionTime);
+
+    for (auto it = userScripts->begin(), end = userScripts->end(); it != end; ++it)
+        injectUserScriptsForWorld(*it->key.get(), *it->value, injectionTime);
 }
 
-void Frame::injectUserScriptsForWorld(DOMWrapperWorld* world, const UserScriptVector& userScripts, UserScriptInjectionTime injectionTime)
+void Frame::injectUserScriptsForWorld(DOMWrapperWorld& world, const UserScriptVector& userScripts, UserScriptInjectionTime injectionTime)
 {
     if (userScripts.isEmpty())
         return;
@@ -900,7 +899,7 @@ float Frame::frameScaleFactor() const
     Page* page = this->page();
 
     // Main frame is scaled with respect to he container but inner frames are not scaled with respect to the main frame.
-    if (!page || &page->mainFrame() != this || settings().applyPageScaleFactorInCompositor())
+    if (!page || &page->mainFrame() != this || settings().delegatesPageScaling())
         return 1;
 
     return page->pageScaleFactor();
@@ -937,9 +936,6 @@ void Frame::resumeActiveDOMObjectsAndAnimations()
         animation().resumeAnimationsForDocument(document());
         document()->resumeScriptedAnimationControllerCallbacks();
     }
-
-    if (m_view)
-        m_view->resumeAnimatingImages();
 }
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -1035,7 +1031,12 @@ DragImageRef Frame::nodeImage(Node* node)
     m_view->paintContents(buffer->context(), paintingRect);
 
     RefPtr<Image> image = buffer->copyImage();
-    return createDragImageFromImage(image.get(), ImageOrientationDescription(renderer->shouldRespectImageOrientation()));
+
+    ImageOrientationDescription orientationDescription(renderer->shouldRespectImageOrientation());
+#if ENABLE(CSS_IMAGE_ORIENTATION)
+    orientationDescription.setImageOrientationEnum(renderer->style().imageOrientation());
+#endif
+    return createDragImageFromImage(image.get(), orientationDescription);
 }
 
 DragImageRef Frame::dragImageForSelection()

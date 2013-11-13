@@ -34,8 +34,6 @@
 typedef struct CGAffineTransform CGAffineTransform;
 #elif USE(CAIRO)
 #include <cairo.h>
-#elif PLATFORM(QT)
-#include <QTransform>
 #endif
 
 namespace WebCore {
@@ -112,6 +110,8 @@ public:
     AffineTransform& skewX(double angle);
     AffineTransform& skewY(double angle);
 
+    // These functions get the length of an axis-aligned unit vector
+    // once it has been mapped through the transform
     double xScale() const;
     double yScale() const;
 
@@ -168,8 +168,6 @@ public:
     operator CGAffineTransform() const;
 #elif USE(CAIRO)
     operator cairo_matrix_t() const;
-#elif PLATFORM(QT)
-    operator QTransform() const;
 #endif
 
     static AffineTransform translation(double x, double y)

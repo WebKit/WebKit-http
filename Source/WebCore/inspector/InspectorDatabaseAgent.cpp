@@ -37,7 +37,7 @@
 #include "ExceptionCodePlaceholder.h"
 #include "InspectorDatabaseResource.h"
 #include "InspectorFrontend.h"
-#include "InspectorState.h"
+
 #include "InspectorValues.h"
 #include "InstrumentingAgents.h"
 #include "SQLError.h"
@@ -56,10 +56,6 @@
 typedef WebCore::InspectorBackendDispatcher::DatabaseCommandHandler::ExecuteSQLCallback ExecuteSQLCallback;
 
 namespace WebCore {
-
-namespace DatabaseAgentState {
-static const char databaseAgentEnabled[] = "databaseAgentEnabled";
-};
 
 namespace {
 
@@ -84,12 +80,12 @@ public:
     {
         SQLResultSetRowList* rowList = resultSet->rows();
 
-        RefPtr<TypeBuilder::Array<String> > columnNames = TypeBuilder::Array<String>::create();
+        RefPtr<TypeBuilder::Array<String>> columnNames = TypeBuilder::Array<String>::create();
         const Vector<String>& columns = rowList->columnNames();
         for (size_t i = 0; i < columns.size(); ++i)
             columnNames->addItem(columns[i]);
 
-        RefPtr<TypeBuilder::Array<InspectorValue> > values = TypeBuilder::Array<InspectorValue>::create();
+        RefPtr<TypeBuilder::Array<InspectorValue>> values = TypeBuilder::Array<InspectorValue>::create();
         const Vector<SQLValue>& data = rowList->values();
         for (size_t i = 0; i < data.size(); ++i) {
             const SQLValue& value = rowList->values()[i];
@@ -214,8 +210,8 @@ void InspectorDatabaseAgent::clearResources()
     m_resources.clear();
 }
 
-InspectorDatabaseAgent::InspectorDatabaseAgent(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* state)
-    : InspectorBaseAgent<InspectorDatabaseAgent>("Database", instrumentingAgents, state)
+InspectorDatabaseAgent::InspectorDatabaseAgent(InstrumentingAgents* instrumentingAgents)
+    : InspectorBaseAgent<InspectorDatabaseAgent>("Database", instrumentingAgents)
     , m_enabled(false)
 {
     m_instrumentingAgents->setInspectorDatabaseAgent(this);
@@ -242,7 +238,6 @@ void InspectorDatabaseAgent::enable(ErrorString*)
     if (m_enabled)
         return;
     m_enabled = true;
-    m_state->setBoolean(DatabaseAgentState::databaseAgentEnabled, m_enabled);
 
     DatabaseResourcesMap::iterator databasesEnd = m_resources.end();
     for (DatabaseResourcesMap::iterator it = m_resources.begin(); it != databasesEnd; ++it)
@@ -254,15 +249,9 @@ void InspectorDatabaseAgent::disable(ErrorString*)
     if (!m_enabled)
         return;
     m_enabled = false;
-    m_state->setBoolean(DatabaseAgentState::databaseAgentEnabled, m_enabled);
 }
 
-void InspectorDatabaseAgent::restore()
-{
-    m_enabled = m_state->getBoolean(DatabaseAgentState::databaseAgentEnabled);
-}
-
-void InspectorDatabaseAgent::getDatabaseTableNames(ErrorString* error, const String& databaseId, RefPtr<TypeBuilder::Array<String> >& names)
+void InspectorDatabaseAgent::getDatabaseTableNames(ErrorString* error, const String& databaseId, RefPtr<TypeBuilder::Array<String>>& names)
 {
     if (!m_enabled) {
         *error = "Database agent is not enabled";

@@ -43,13 +43,12 @@ using namespace DFG;
 OSRExit::OSRExit(
     ExitKind exitKind, ValueFormat profileValueFormat,
     MethodOfGettingAValueProfile valueProfile, CodeOrigin codeOrigin,
-    CodeOrigin originForProfile, int lastSetOperand, unsigned numberOfArguments,
+    CodeOrigin originForProfile, unsigned numberOfArguments,
     unsigned numberOfLocals)
     : OSRExitBase(exitKind, codeOrigin, originForProfile)
     , m_profileValueFormat(profileValueFormat)
     , m_valueProfile(valueProfile)
     , m_patchableCodeOffset(0)
-    , m_lastSetOperand(lastSetOperand)
     , m_values(numberOfArguments, numberOfLocals)
 {
 }
@@ -79,22 +78,21 @@ void OSRExit::convertToForward(
         return;
     
     VirtualRegister overriddenOperand = lastMovHint->local();
-    m_lastSetOperand = overriddenOperand;
     
     // Is the value for this operand being passed as an argument to the exit, or is
     // it something else? If it's an argument already, then replace that argument;
     // otherwise add another argument.
-    if (m_values[overriddenOperand.offset()].isArgument()) {
-        ExitArgument exitArgument = m_values[overriddenOperand.offset()].exitArgument();
+    if (m_values.operand(overriddenOperand).isArgument()) {
+        ExitArgument exitArgument = m_values.operand(overriddenOperand).exitArgument();
         arguments[exitArgument.argument()] = value.value();
-        m_values[overriddenOperand.offset()] = ExitValue::exitArgument(
+        m_values.operand(overriddenOperand) = ExitValue::exitArgument(
             exitArgument.withFormat(value.format()));
         return;
     }
     
     unsigned argument = arguments.size();
     arguments.append(value.value());
-    m_values[m_lastSetOperand.offset()] = ExitValue::exitArgument(
+    m_values.operand(overriddenOperand) = ExitValue::exitArgument(
         ExitArgument(value.format(), argument));
 }
 

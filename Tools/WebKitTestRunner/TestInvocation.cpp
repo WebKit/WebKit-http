@@ -46,13 +46,7 @@
 #include <WebKit2/WKPagePrivateMac.h>
 #endif
 
-#if OS(WINDOWS)
-#include <direct.h> // For _getcwd.
-#define getcwd _getcwd // MSDN says getcwd is deprecated.
-#define PATH_MAX _MAX_PATH
-#else
 #include <unistd.h> // For getcwd.
-#endif
 
 using namespace WebKit;
 using namespace std;
@@ -69,16 +63,9 @@ static WKURLRef createWKURL(const char* pathOrURL)
     if (!length)
         return 0;
 
-#if OS(WINDOWS)
-    const char separator = '\\';
-    bool isAbsolutePath = length >= 3 && pathOrURL[1] == ':' && pathOrURL[2] == separator;
-    // FIXME: Remove the "localhost/" suffix once <http://webkit.org/b/55683> is fixed.
-    const char* filePrefix = "file://localhost/";
-#else
     const char separator = '/';
     bool isAbsolutePath = pathOrURL[0] == separator;
     const char* filePrefix = "file://";
-#endif
     static const size_t prefixLength = strlen(filePrefix);
 
     std::unique_ptr<char[]> buffer;
@@ -150,19 +137,19 @@ static bool shouldOpenWebInspector(const char* pathOrURL)
 #endif
 
 #if PLATFORM(MAC)
-static bool shouldUseTiledDrawing(const char* pathOrURL)
+static bool shouldUseThreadedScrolling(const char* pathOrURL)
 {
     return strstr(pathOrURL, "tiled-drawing/") || strstr(pathOrURL, "tiled-drawing\\");
 }
 #endif
 
-static void updateTiledDrawingForCurrentTest(const char* pathOrURL)
+static void updateThreadedScrollingForCurrentTest(const char* pathOrURL)
 {
 #if PLATFORM(MAC)
     WKRetainPtr<WKMutableDictionaryRef> viewOptions = adoptWK(WKMutableDictionaryCreate());
-    WKRetainPtr<WKStringRef> useTiledDrawingKey = adoptWK(WKStringCreateWithUTF8CString("TiledDrawing"));
-    WKRetainPtr<WKBooleanRef> useTiledDrawingValue = adoptWK(WKBooleanCreate(shouldUseTiledDrawing(pathOrURL)));
-    WKDictionaryAddItem(viewOptions.get(), useTiledDrawingKey.get(), useTiledDrawingValue.get());
+    WKRetainPtr<WKStringRef> useThreadedScrollingKey = adoptWK(WKStringCreateWithUTF8CString("ThreadedScrolling"));
+    WKRetainPtr<WKBooleanRef> useThreadedScrollingValue = adoptWK(WKBooleanCreate(shouldUseThreadedScrolling(pathOrURL)));
+    WKDictionaryAddItem(viewOptions.get(), useThreadedScrollingKey.get(), useThreadedScrollingValue.get());
 
     TestController::shared().ensureViewSupportsOptions(viewOptions.get());
 #else
@@ -201,7 +188,7 @@ void TestInvocation::invoke()
     TestController::TimeoutDuration timeoutToUse = TestController::LongTimeout;
     sizeWebViewForCurrentTest(m_pathOrURL.c_str());
     updateLayoutType(m_pathOrURL.c_str());
-    updateTiledDrawingForCurrentTest(m_pathOrURL.c_str());
+    updateThreadedScrollingForCurrentTest(m_pathOrURL.c_str());
 
     m_textOutput.clear();
 
@@ -353,16 +340,7 @@ void TestInvocation::dumpAudio(WKDataRef audioData)
     printf("Content-Type: audio/wav\n");
     printf("Content-Length: %lu\n", static_cast<unsigned long>(length));
 
-    const size_t bytesToWriteInOneChunk = 1 << 15;
-    size_t dataRemainingToWrite = length;
-    while (dataRemainingToWrite) {
-        size_t bytesToWriteInThisChunk = std::min(dataRemainingToWrite, bytesToWriteInOneChunk);
-        size_t bytesWritten = fwrite(data, 1, bytesToWriteInThisChunk, stdout);
-        if (bytesWritten != bytesToWriteInThisChunk)
-            break;
-        dataRemainingToWrite -= bytesWritten;
-        data += bytesWritten;
-    }
+    fwrite(data, 1, length, stdout);
     printf("#EOF\n");
     fprintf(stderr, "#EOF\n");
 }

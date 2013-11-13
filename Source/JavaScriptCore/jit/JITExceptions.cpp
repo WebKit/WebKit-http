@@ -38,23 +38,7 @@
 
 namespace JSC {
 
-#if USE(JSVALUE32_64)
-EncodedExceptionHandler encode(ExceptionHandler handler)
-{
-    ExceptionHandlerUnion u;
-    u.handler = handler;
-    return u.encodedHandler;
-}
-#endif
-
-ExceptionHandler uncaughtExceptionHandler()
-{
-    void* catchRoutine = FunctionPtr(LLInt::getCodePtr(ctiOpThrowNotCaught)).value();
-    ExceptionHandler exceptionHandler = { 0, catchRoutine};
-    return exceptionHandler;
-}
-
-ExceptionHandler genericUnwind(VM* vm, ExecState* callFrame, JSValue exceptionValue)
+void genericUnwind(VM* vm, ExecState* callFrame, JSValue exceptionValue)
 {
     RELEASE_ASSERT(exceptionValue);
     HandlerInfo* handler = vm->interpreter->unwind(callFrame, exceptionValue); // This may update callFrame.
@@ -65,15 +49,13 @@ ExceptionHandler genericUnwind(VM* vm, ExecState* callFrame, JSValue exceptionVa
         catchPCForInterpreter = &callFrame->codeBlock()->instructions()[handler->target];
         catchRoutine = ExecutableBase::catchRoutineFor(handler, catchPCForInterpreter);
     } else
-        catchRoutine = FunctionPtr(LLInt::getCodePtr(ctiOpThrowNotCaught)).value();
+        catchRoutine = vm->getCTIStub(throwNotCaught).code().executableAddress();
     
     vm->callFrameForThrow = callFrame;
     vm->targetMachinePCForThrow = catchRoutine;
     vm->targetInterpreterPCForThrow = catchPCForInterpreter;
     
     RELEASE_ASSERT(catchRoutine);
-    ExceptionHandler exceptionHandler = { callFrame, catchRoutine};
-    return exceptionHandler;
 }
 
 }

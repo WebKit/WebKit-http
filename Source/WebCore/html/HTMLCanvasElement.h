@@ -33,9 +33,7 @@
 #include "IntSize.h"
 #include <wtf/Forward.h>
 
-#if PLATFORM(QT)
-#define DefaultInterpolationQuality InterpolationMedium
-#elif USE(CG)
+#if USE(CG)
 #define DefaultInterpolationQuality InterpolationLow
 #else
 #define DefaultInterpolationQuality InterpolationDefault
@@ -57,9 +55,9 @@ class CanvasObserver {
 public:
     virtual ~CanvasObserver() { }
 
-    virtual void canvasChanged(HTMLCanvasElement*, const FloatRect& changedRect) = 0;
-    virtual void canvasResized(HTMLCanvasElement*) = 0;
-    virtual void canvasDestroyed(HTMLCanvasElement*) = 0;
+    virtual void canvasChanged(HTMLCanvasElement&, const FloatRect& changedRect) = 0;
+    virtual void canvasResized(HTMLCanvasElement&) = 0;
+    virtual void canvasDestroyed(HTMLCanvasElement&) = 0;
 };
 
 class HTMLCanvasElement FINAL : public HTMLElement {
@@ -68,8 +66,8 @@ public:
     static PassRefPtr<HTMLCanvasElement> create(const QualifiedName&, Document&);
     virtual ~HTMLCanvasElement();
 
-    void addObserver(CanvasObserver*);
-    void removeObserver(CanvasObserver*);
+    void addObserver(CanvasObserver&);
+    void removeObserver(CanvasObserver&);
 
     // Attributes and functions exposed to script
     int width() const { return size().width(); }
@@ -146,7 +144,7 @@ private:
     HTMLCanvasElement(const QualifiedName&, Document&);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+    virtual RenderElement* createRenderer(PassRef<RenderStyle>) OVERRIDE;
     virtual void willAttachRenderers() OVERRIDE;
     virtual bool areAuthorShadowsAllowed() const OVERRIDE;
 
@@ -188,7 +186,7 @@ private:
     mutable RefPtr<Image> m_copiedImage; // FIXME: This is temporary for platforms that have to copy the image buffer to render (and for CSSCanvasValue).
 };
 
-ELEMENT_TYPE_CASTS(HTMLCanvasElement)
+NODE_TYPE_CASTS(HTMLCanvasElement)
 
 } //namespace
 

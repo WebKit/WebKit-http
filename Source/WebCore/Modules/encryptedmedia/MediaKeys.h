@@ -46,7 +46,7 @@ class HTMLMediaElement;
 class MediaKeys : public RefCounted<MediaKeys>, public CDMClient {
 public:
     static PassRefPtr<MediaKeys> create(const String& keySystem, ExceptionCode&);
-    ~MediaKeys();
+    virtual ~MediaKeys();
 
     PassRefPtr<MediaKeySession> createSession(ScriptExecutionContext*, const String& mimeType, Uint8Array* initData, ExceptionCode&);
 
@@ -64,7 +64,7 @@ protected:
 
     MediaKeys(const String& keySystem, PassOwnPtr<CDM>);
 
-    Vector<RefPtr<MediaKeySession> > m_sessions;
+    Vector<RefPtr<MediaKeySession>> m_sessions;
 
     HTMLMediaElement* m_mediaElement;
     String m_keySystem;

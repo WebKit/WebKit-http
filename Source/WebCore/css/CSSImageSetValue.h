@@ -40,9 +40,9 @@ class StyleImage;
 class CSSImageSetValue : public CSSValueList {
 public:
 
-    static PassRefPtr<CSSImageSetValue> create()
+    static PassRef<CSSImageSetValue> create()
     {
-        return adoptRef(new CSSImageSetValue());
+        return adoptRef(*new CSSImageSetValue());
     }
     ~CSSImageSetValue();
 
@@ -84,7 +84,7 @@ private:
     Vector<ImageWithScale> m_imagesInSet;
 };
 
-CSS_VALUE_TYPE_CASTS(ImageSetValue)
+CSS_VALUE_TYPE_CASTS(CSSImageSetValue, isImageSetValue())
 
 } // namespace WebCore
 

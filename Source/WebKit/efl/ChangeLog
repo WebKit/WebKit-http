@@ -1,3 +1,122 @@
+2013-11-10  Tibor Meszaros  <mtibor@inf.u-szeged.hu>
+
+        Cleanup the EFL --minimal build from unused parameters
+        https://bugs.webkit.org/show_bug.cgi?id=124048
+
+        Reviewed by Gyuyoung Kim.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::createWindow):
+        * ewk/ewk_settings.cpp:
+        (ewk_settings_web_database_path_set):
+        * ewk/ewk_view.cpp:
+        (ewk_view_visibility_state_set):
+        (ewk_view_visibility_state_get):
+
+2013-11-05  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] Remove NATIVE_FULLSCREEN_VIDEO support
+        https://bugs.webkit.org/show_bug.cgi?id=123437
+
+        Reviewed by Philippe Normand.
+
+        Removed some dead code as no GStreamer port is using the native
+        fullscreen video support.
+
+        * WebCoreSupport/FullscreenVideoControllerEfl.h: Removed.
+
+2013-11-01  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK1] Rendering is broken when scrolled ewk_view_single repeatedly
+        https://bugs.webkit.org/show_bug.cgi?id=123609
+
+        Reviewed by Gyuyoung Kim.
+
+        ewk_view_single adds wrong updateRects except last one in scrolls_process,
+        because previous updateRects are not considered accumulated scrollOffsets.
+
+        * ewk/ewk_view_single.cpp:
+        (_ewk_view_single_smart_scrolls_process):
+        Merged scrollOffsets to calculate updateRects once.
+        It will also reduce unnecessary memory copy operations.
+
+2013-10-16  Jochen Eisinger  <jochen@chromium.org>
+
+        A page should exit fullscreen mode if it opens a new popup
+        https://bugs.webkit.org/show_bug.cgi?id=122865
+
+        Reviewed by Jer Noble.
+
+        If a fullscreen page opens a popup, the popup would be hidden and
+        therefore invisible to the user. To avoid this, exit fullscreen mode
+        before opening a new window.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::createWindow):
+
+2013-10-07  Sam Weinig  <sam@webkit.org>
+
+        Consolidate findString functions
+        https://bugs.webkit.org/show_bug.cgi?id=122480
+
+        Reviewed by Darin Adler.
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_text_search):
+        * ewk/ewk_view.cpp:
+        (ewk_view_text_search):
+
+2013-10-07  Sam Weinig  <sam@webkit.org>
+
+        CTTE: Use references in and around DragController
+        https://bugs.webkit.org/show_bug.cgi?id=122427
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DragClientEfl.cpp:
+        (WebCore::DragClientEfl::willPerformDragDestinationAction):
+        (WebCore::DragClientEfl::willPerformDragSourceAction):
+        (WebCore::DragClientEfl::actionMaskForDrag):
+        (WebCore::DragClientEfl::startDrag):
+        * WebCoreSupport/DragClientEfl.h:
+
+2013-10-04  Anders Carlsson  <andersca@apple.com>
+
+        FramePolicyFunction should be an std::function
+        https://bugs.webkit.org/show_bug.cgi?id=122362
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::callPolicyFunction):
+        (WebCore::FrameLoaderClientEfl::dispatchWillSubmitForm):
+        (WebCore::FrameLoaderClientEfl::dispatchDecidePolicyForResponse):
+        (WebCore::FrameLoaderClientEfl::dispatchDecidePolicyForNewWindowAction):
+        (WebCore::FrameLoaderClientEfl::dispatchDecidePolicyForNavigationAction):
+        * WebCoreSupport/FrameLoaderClientEfl.h:
+
+2013-10-03  Sam Weinig  <sam@webkit.org>
+
+        Remove shouldRubberBandInDirection from the WKBundlePageUIClient
+        https://bugs.webkit.org/show_bug.cgi?id=122309
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/ChromeClientEfl.h:
+
+2013-10-01  Sam Weinig  <sam@webkit.org>
+
+        CTTE: DOMWrapperWorlds should be passed around by reference
+        https://bugs.webkit.org/show_bug.cgi?id=122206
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld):
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::dispatchDidClearWindowObjectInWorld):
+        * WebCoreSupport/FrameLoaderClientEfl.h:
+
 2013-09-30  Sam Weinig  <sam@webkit.org>
 
         Fix the build.

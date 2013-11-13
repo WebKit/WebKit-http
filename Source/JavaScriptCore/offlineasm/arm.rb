@@ -99,7 +99,7 @@ class RegisterID
         when "t4"
             "r10"
         when "cfr"
-            "r5"
+            isARMv7 ?  "r7" : "r11"
         when "lr"
             "lr"
         when "sp"
@@ -217,7 +217,7 @@ class Sequence
             end
         }
         result = riscLowerMalformedAddressesDouble(result)
-        result = riscLowerMisplacedImmediates(result, ["storeb", "storei", "storep"])
+        result = riscLowerMisplacedImmediates(result, ["storeb", "storei", "storep", "storeq"])
         result = riscLowerMalformedImmediates(result, 0..0xff)
         result = riscLowerMisplacedAddresses(result)
         result = riscLowerRegisterReuse(result)

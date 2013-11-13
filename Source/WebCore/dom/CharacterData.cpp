@@ -22,9 +22,7 @@
 #include "config.h"
 #include "CharacterData.h"
 
-#include "Document.h"
 #include "ElementTraversal.h"
-#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FrameSelection.h"
 #include "InspectorInstrumentation.h"
@@ -34,11 +32,8 @@
 #include "ProcessingInstruction.h"
 #include "RenderText.h"
 #include "StyleInheritedData.h"
-#include "Text.h"
 #include "TextBreakIterator.h"
 #include <wtf/Ref.h>
-
-using namespace std;
 
 namespace WebCore {
 
@@ -72,7 +67,7 @@ unsigned CharacterData::parserAppendData(const String& string, unsigned offset, 
     ASSERT(lengthLimit >= oldLength);
 
     unsigned characterLength = string.length() - offset;
-    unsigned characterLengthLimit = min(characterLength, lengthLimit - oldLength);
+    unsigned characterLengthLimit = std::min(characterLength, lengthLimit - oldLength);
 
     // Check that we are not on an unbreakable boundary.
     // Some text break iterator implementations work best if the passed buffer is as small as possible,

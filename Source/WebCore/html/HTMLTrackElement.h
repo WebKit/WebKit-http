@@ -73,9 +73,9 @@ private:
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
+    virtual void removedFrom(ContainerNode&) OVERRIDE;
 
-    virtual void removedFrom(ContainerNode*) OVERRIDE;
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
     void loadTimerFired(Timer<HTMLTrackElement>*);
@@ -97,7 +97,7 @@ private:
     Timer<HTMLTrackElement> m_loadTimer;
 };
 
-ELEMENT_TYPE_CASTS(HTMLTrackElement)
+NODE_TYPE_CASTS(HTMLTrackElement)
 
 }
 

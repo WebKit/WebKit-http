@@ -48,7 +48,7 @@ public:
     Node* node() const { return m_node.get(); }
     EventTarget* target() const { return m_target.get(); }
     bool currentTargetSameAsTarget() const { return m_currentTarget.get() == m_target.get(); }
-    virtual void handleLocalEvents(Event*) const;
+    virtual void handleLocalEvents(Event&) const;
     virtual bool isMouseOrFocusEventContext() const;
     virtual bool isTouchEventContext() const;
 
@@ -62,30 +62,51 @@ protected:
     RefPtr<EventTarget> m_target;
 };
 
-typedef Vector<OwnPtr<EventContext>, 32> EventPath;
-
-class MouseOrFocusEventContext : public EventContext {
+class MouseOrFocusEventContext FINAL : public EventContext {
 public:
     MouseOrFocusEventContext(PassRefPtr<Node>, PassRefPtr<EventTarget> currentTarget, PassRefPtr<EventTarget> target);
     virtual ~MouseOrFocusEventContext();
     EventTarget* relatedTarget() const { return m_relatedTarget.get(); }
     void setRelatedTarget(PassRefPtr<EventTarget>);
-    virtual void handleLocalEvents(Event*) const OVERRIDE;
+    virtual void handleLocalEvents(Event&) const OVERRIDE;
     virtual bool isMouseOrFocusEventContext() const OVERRIDE;
 
 private:
     RefPtr<EventTarget> m_relatedTarget;
 };
 
+inline MouseOrFocusEventContext& toMouseOrFocusEventContext(EventContext& eventContext)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(eventContext.isMouseOrFocusEventContext());
+    return static_cast<MouseOrFocusEventContext&>(eventContext);
+}
+
 
 #if ENABLE(TOUCH_EVENTS)
-class TouchEventContext : public EventContext {
+class TouchEventContext FINAL : public EventContext {
 public:
     TouchEventContext(PassRefPtr<Node>, PassRefPtr<EventTarget> currentTarget, PassRefPtr<EventTarget> target);
     virtual ~TouchEventContext();
 
-    virtual void handleLocalEvents(Event*) const OVERRIDE;
+    virtual void handleLocalEvents(Event&) const OVERRIDE;
     virtual bool isTouchEventContext() const OVERRIDE;
+
+    enum TouchListType { Touches, TargetTouches, ChangedTouches, NotTouchList };
+    TouchList* touchList(TouchListType type)
+    {
+        switch (type) {
+        case Touches:
+            return m_touches.get();
+        case TargetTouches:
+            return m_targetTouches.get();
+        case ChangedTouches:
+            return m_changedTouches.get();
+        case NotTouchList:
+            break;
+        }
+        ASSERT_NOT_REACHED();
+        return nullptr;
+    }
 
     TouchList* touches() { return m_touches.get(); }
     TouchList* targetTouches() { return m_targetTouches.get(); }
@@ -99,6 +120,12 @@ private:
     void checkReachability(TouchList*) const;
 #endif
 };
+
+inline TouchEventContext& toTouchEventContext(EventContext& eventContext)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(eventContext.isTouchEventContext());
+    return static_cast<TouchEventContext&>(eventContext);
+}
 
 inline TouchEventContext* toTouchEventContext(EventContext* eventContext)
 {
@@ -117,9 +144,9 @@ inline bool EventContext::isUnreachableNode(EventTarget* target)
 inline bool EventContext::isReachable(Node* target) const
 {
     ASSERT(target);
-    TreeScope* targetScope = target->treeScope();
-    for (TreeScope* scope = m_node->treeScope(); scope; scope = scope->parentTreeScope()) {
-        if (scope == targetScope)
+    TreeScope& targetScope = target->treeScope();
+    for (TreeScope* scope = &m_node->treeScope(); scope; scope = scope->parentTreeScope()) {
+        if (scope == &targetScope)
             return true;
     }
     return false;

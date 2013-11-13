@@ -32,12 +32,10 @@
 #if ENABLE(INPUT_TYPE_DATETIME_INCOMPLETE)
 #include "DateTimeInputType.h"
 
-#include "DateComponents.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "InputTypeNames.h"
 #include <wtf/CurrentTime.h>
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
@@ -46,11 +44,6 @@ using namespace HTMLNames;
 static const int dateTimeDefaultStep = 60;
 static const int dateTimeDefaultStepBase = 0;
 static const int dateTimeStepScaleFactor = 1000;
-
-OwnPtr<InputType> DateTimeInputType::create(HTMLInputElement& element)
-{
-    return adoptPtr(new DateTimeInputType(element));
-}
 
 void DateTimeInputType::attach()
 {

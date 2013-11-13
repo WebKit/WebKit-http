@@ -30,12 +30,12 @@
 #include "config.h"
 #include "LineWidth.h"
 
-#include "RenderBlock.h"
+#include "RenderBlockFlow.h"
 #include "RenderRubyRun.h"
 
 namespace WebCore {
 
-LineWidth::LineWidth(RenderBlock& block, bool isFirstLine, IndentTextOrNot shouldIndentText)
+LineWidth::LineWidth(RenderBlockFlow& block, bool isFirstLine, IndentTextOrNot shouldIndentText)
     : m_block(block)
     , m_uncommittedWidth(0)
     , m_committedWidth(0)
@@ -92,7 +92,7 @@ void LineWidth::updateAvailableWidth(LayoutUnit replacedHeight)
 void LineWidth::shrinkAvailableWidthForNewFloatIfNeeded(FloatingObject* newFloat)
 {
     LayoutUnit height = m_block.logicalHeight();
-    if (height < newFloat->logicalTop(m_block.isHorizontalWritingMode()) || height >= newFloat->logicalBottom(m_block.isHorizontalWritingMode()))
+    if (height < m_block.logicalTopForFloat(newFloat) || height >= m_block.logicalBottomForFloat(newFloat))
         return;
 
 #if ENABLE(CSS_SHAPES)
@@ -122,7 +122,7 @@ void LineWidth::shrinkAvailableWidthForNewFloatIfNeeded(FloatingObject* newFloat
 #endif
 
     if (newFloat->type() == FloatingObject::FloatLeft) {
-        float newLeft = newFloat->logicalRight(m_block.isHorizontalWritingMode());
+        float newLeft = m_block.logicalRightForFloat(newFloat);
 #if ENABLE(CSS_SHAPES)
         if (previousShapeOutsideInfo)
             newLeft -= previousShapeOutsideInfo->rightMarginBoxDelta();
@@ -130,11 +130,11 @@ void LineWidth::shrinkAvailableWidthForNewFloatIfNeeded(FloatingObject* newFloat
             newLeft += shapeOutsideInfo->rightMarginBoxDelta();
 #endif
 
-        if (shouldIndentText() && m_block.style()->isLeftToRightDirection())
+        if (shouldIndentText() && m_block.style().isLeftToRightDirection())
             newLeft += floorToInt(m_block.textIndentOffset());
         m_left = std::max<float>(m_left, newLeft);
     } else {
-        float newRight = newFloat->logicalLeft(m_block.isHorizontalWritingMode());
+        float newRight = m_block.logicalLeftForFloat(newFloat);
 #if ENABLE(CSS_SHAPES)
         if (previousShapeOutsideInfo)
             newRight -= previousShapeOutsideInfo->leftMarginBoxDelta();
@@ -142,29 +142,12 @@ void LineWidth::shrinkAvailableWidthForNewFloatIfNeeded(FloatingObject* newFloat
             newRight += shapeOutsideInfo->leftMarginBoxDelta();
 #endif
 
-        if (shouldIndentText() && !m_block.style()->isLeftToRightDirection())
+        if (shouldIndentText() && !m_block.style().isLeftToRightDirection())
             newRight -= floorToInt(m_block.textIndentOffset());
         m_right = std::min<float>(m_right, newRight);
     }
 
     computeAvailableWidthFromLeftAndRight();
-}
-
-float LineWidth::uncommittedWidthForObject(const RenderObject& object) const
-{
-    auto result = m_uncommittedWidthMap.find(&object);
-    if (result != m_uncommittedWidthMap.end())
-        return result->value;
-    return -1;
-}
-
-void LineWidth::addUncommittedWidth(float delta, const RenderObject& current)
-{
-    m_uncommittedWidth += delta;
-
-    auto result = m_uncommittedWidthMap.add(&current, delta);
-    if (!result.isNewEntry)
-        result.iterator->value += delta;
 }
 
 void LineWidth::commit()
@@ -198,14 +181,26 @@ void LineWidth::fitBelowFloats()
     float newLineLeft = m_left;
     float newLineRight = m_right;
     while (true) {
-        floatLogicalBottom = m_block.nextFloatLogicalBottomBelow(lastFloatLogicalBottom, ShapeOutsideFloatShapeOffset);
+        floatLogicalBottom = m_block.nextFloatLogicalBottomBelow(lastFloatLogicalBottom);
         if (floatLogicalBottom <= lastFloatLogicalBottom)
             break;
 
         newLineLeft = m_block.logicalLeftOffsetForLine(floatLogicalBottom, shouldIndentText());
         newLineRight = m_block.logicalRightOffsetForLine(floatLogicalBottom, shouldIndentText());
-        newLineWidth = max(0.0f, newLineRight - newLineLeft);
+        newLineWidth = std::max(0.0f, newLineRight - newLineLeft);
         lastFloatLogicalBottom = floatLogicalBottom;
+
+#if ENABLE(CSS_SHAPES)
+        // FIXME: This code should be refactored to incorporate with the code above.
+        ShapeInsideInfo* shapeInsideInfo = m_block.layoutShapeInsideInfo();
+        if (shapeInsideInfo) {
+            LayoutUnit logicalOffsetFromShapeContainer = m_block.logicalOffsetFromShapeAncestorContainer(shapeInsideInfo->owner()).height();
+            LayoutUnit lineHeight = m_block.lineHeight(false, m_block.isHorizontalWritingMode() ? HorizontalLine : VerticalLine, PositionOfInteriorLineBoxes);
+            shapeInsideInfo->updateSegmentsForLine(lastFloatLogicalBottom + logicalOffsetFromShapeContainer, lineHeight);
+            updateCurrentShapeSegment();
+            updateAvailableWidth();
+        }
+#endif
         if (newLineWidth >= m_uncommittedWidth)
             break;
     }
@@ -234,7 +229,7 @@ void LineWidth::updateCurrentShapeSegment()
 
 void LineWidth::computeAvailableWidthFromLeftAndRight()
 {
-    m_availableWidth = max(0.0f, m_right - m_left) + m_overhangWidth;
+    m_availableWidth = std::max<float>(0, m_right - m_left) + m_overhangWidth;
 }
 
 bool LineWidth::fitsOnLineExcludingTrailingCollapsedWhitespace() const

@@ -56,7 +56,7 @@ void StackVisitor::gotoNextFrame()
 
 void StackVisitor::readFrame(CallFrame* callFrame)
 {
-    ASSERT(!callFrame->hasHostCallFrameFlag());
+    ASSERT(!callFrame->isVMEntrySentinel());
     if (!callFrame) {
         m_frame.setToEnd();
         return;
@@ -104,7 +104,7 @@ void StackVisitor::readNonInlinedFrame(CallFrame* callFrame, CodeOrigin* codeOri
 {
     m_frame.m_callFrame = callFrame;
     m_frame.m_argumentCountIncludingThis = callFrame->argumentCountIncludingThis();
-    m_frame.m_callerFrame = callFrame->callerFrame()->removeHostCallFrameFlag();
+    m_frame.m_callerFrame = callFrame->callerFrameSkippingVMEntrySentinel();
     m_frame.m_callee = callFrame->callee();
     m_frame.m_scope = callFrame->scope();
     m_frame.m_codeBlock = callFrame->codeBlock();
@@ -127,7 +127,7 @@ static int inlinedFrameOffset(CodeOrigin* codeOrigin)
 void StackVisitor::readInlinedFrame(CallFrame* callFrame, CodeOrigin* codeOrigin)
 {
     ASSERT(codeOrigin);
-    ASSERT(!callFrame->hasHostCallFrameFlag());
+    ASSERT(!callFrame->isVMEntrySentinel());
 
     int frameOffset = inlinedFrameOffset(codeOrigin);
     bool isInlined = !!frameOffset;
@@ -140,15 +140,9 @@ void StackVisitor::readInlinedFrame(CallFrame* callFrame, CodeOrigin* codeOrigin
         m_frame.m_codeBlock = inlineCallFrame->baselineCodeBlock();
         m_frame.m_bytecodeOffset = codeOrigin->bytecodeIndex;
 
-        JSFunction* callee = inlineCallFrame->callee.get();
-        if (callee) {
-            m_frame.m_scope = callee->scope();
-            m_frame.m_callee = callee;
-        } else {
-            CallFrame* inlinedFrame = callFrame + frameOffset;
-            m_frame.m_scope = inlinedFrame->scope();
-            m_frame.m_callee = inlinedFrame->callee();
-        }
+        JSFunction* callee = inlineCallFrame->calleeForCallFrame(callFrame);
+        m_frame.m_scope = callee->scope();
+        m_frame.m_callee = callee;
         ASSERT(m_frame.scope());
         ASSERT(m_frame.callee());
 
@@ -247,7 +241,7 @@ String StackVisitor::Frame::toString()
     return traceBuild.toString().impl();
 }
 
-Arguments* StackVisitor::Frame::arguments()
+Arguments* StackVisitor::Frame::createArguments()
 {
     ASSERT(m_callFrame);
     CallFrame* physicalFrame = m_callFrame;
@@ -265,6 +259,28 @@ Arguments* StackVisitor::Frame::arguments()
         arguments->tearOff(physicalFrame);
     }
     return arguments;
+}
+
+Arguments* StackVisitor::Frame::existingArguments()
+{
+    if (codeBlock()->codeType() != FunctionCode)
+        return 0;
+    if (!codeBlock()->usesArguments())
+        return 0;
+    
+    VirtualRegister reg;
+        
+#if ENABLE(DFG_JIT)
+    if (isInlinedFrame())
+        reg = inlineCallFrame()->argumentsRegister;
+    else
+#endif // ENABLE(DFG_JIT)
+        reg = codeBlock()->argumentsRegister();
+    
+    JSValue result = callFrame()->r(unmodifiedArgumentsRegister(reg).offset()).jsValue();
+    if (!result)
+        return 0;
+    return jsCast<Arguments*>(result);
 }
 
 void StackVisitor::Frame::computeLineAndColumn(unsigned& line, unsigned& column)
@@ -285,17 +301,6 @@ void StackVisitor::Frame::computeLineAndColumn(unsigned& line, unsigned& column)
 
     line = divotLine + codeBlock->ownerExecutable()->lineNo();
     column = divotColumn + (divotLine ? 1 : codeBlock->firstLineColumnOffset());
-}
-
-Register& StackVisitor::Frame::r(int index)
-{
-    int offset = 0;
-
-#if ENABLE(DFG_JIT)
-    if (isInlinedFrame())
-        offset = inlineCallFrame()->stackOffset;
-#endif
-    return callFrame()->r(offset + index);
 }
 
 void StackVisitor::Frame::retrieveExpressionInfo(int& divot, int& startOffset, int& endOffset, unsigned& line, unsigned& column)
@@ -375,7 +380,7 @@ void StackVisitor::Frame::print(int indentLevel)
 
     printif(i, "   name '%s'\n", functionName().utf8().data());
     printif(i, "   sourceURL '%s'\n", sourceURL().utf8().data());
-    printif(i, "   hostFlag %d\n", callerFrame->hasHostCallFrameFlag());
+    printif(i, "   isVMEntrySentinel %d\n", callerFrame->isVMEntrySentinel());
 
 #if ENABLE(DFG_JIT)
     printif(i, "   isInlinedFrame %d\n", isInlinedFrame());
@@ -385,7 +390,7 @@ void StackVisitor::Frame::print(int indentLevel)
 
     printif(i, "   callee %p\n", callee());
     printif(i, "   returnPC %p\n", returnPC);
-    printif(i, "   callerFrame %p\n", callerFrame->removeHostCallFrameFlag());
+    printif(i, "   callerFrame %p\n", callerFrame);
     unsigned locationRawBits = callFrame->locationAsRawBits();
     printif(i, "   rawLocationBits %u 0x%x\n", locationRawBits, locationRawBits);
     printif(i, "   codeBlock %p\n", codeBlock);
@@ -425,8 +430,8 @@ void StackVisitor::Frame::print(int indentLevel)
 using JSC::StackVisitor;
 
 // For debugging use
-void debugPrintCallFrame(JSC::CallFrame*);
-void debugPrintStack(JSC::CallFrame* topCallFrame);
+JS_EXPORT_PRIVATE void debugPrintCallFrame(JSC::CallFrame*);
+JS_EXPORT_PRIVATE void debugPrintStack(JSC::CallFrame* topCallFrame);
 
 class DebugPrintFrameFunctor {
 public:

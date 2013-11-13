@@ -25,13 +25,18 @@
 
 #include "config.h"
 #include "DrawingArea.h"
+#include <wtf/Functional.h>
 
 // Subclasses
-#include "DrawingAreaImpl.h"
-
 #if PLATFORM(MAC)
 #include "RemoteLayerTreeDrawingArea.h"
 #include "TiledCoreAnimationDrawingArea.h"
+#else
+#if USE(COORDINATED_GRAPHICS)
+#include "CoordinatedDrawingArea.h"
+#else
+#include "DrawingAreaImpl.h"
+#endif
 #endif
 
 #include "WebPageCreationParameters.h"
@@ -41,13 +46,19 @@ namespace WebKit {
 std::unique_ptr<DrawingArea> DrawingArea::create(WebPage* webPage, const WebPageCreationParameters& parameters)
 {
     switch (parameters.drawingAreaType) {
-    case DrawingAreaTypeImpl:
-        return std::make_unique<DrawingAreaImpl>(webPage, parameters);
 #if PLATFORM(MAC)
     case DrawingAreaTypeTiledCoreAnimation:
         return std::make_unique<TiledCoreAnimationDrawingArea>(webPage, parameters);
     case DrawingAreaTypeRemoteLayerTree:
         return std::make_unique<RemoteLayerTreeDrawingArea>(webPage, parameters);
+#else
+#if USE(COORDINATED_GRAPHICS)
+    case DrawingAreaTypeCoordinated:
+        return std::make_unique<CoordinatedDrawingArea>(webPage, parameters);
+#else
+    case DrawingAreaTypeImpl:
+        return std::make_unique<DrawingAreaImpl>(webPage, parameters);
+#endif
 #endif
     }
 

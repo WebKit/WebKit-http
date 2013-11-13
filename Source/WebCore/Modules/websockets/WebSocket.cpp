@@ -64,8 +64,6 @@
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
-using namespace std;
-
 namespace WebCore {
 
 const size_t maxReasonSizeInBytes = 123;
@@ -121,8 +119,8 @@ static String joinStrings(const Vector<String>& strings, const char* separator)
 
 static unsigned long saturateAdd(unsigned long a, unsigned long b)
 {
-    if (numeric_limits<unsigned long>::max() - a < b)
-        return numeric_limits<unsigned long>::max();
+    if (std::numeric_limits<unsigned long>::max() - a < b)
+        return std::numeric_limits<unsigned long>::max();
     return a + b;
 }
 
@@ -143,8 +141,8 @@ const char* WebSocket::subProtocolSeperator()
     return ", ";
 }
 
-WebSocket::WebSocket(ScriptExecutionContext* context)
-    : ActiveDOMObject(context)
+WebSocket::WebSocket(ScriptExecutionContext& context)
+    : ActiveDOMObject(&context)
     , m_state(CONNECTING)
     , m_bufferedAmount(0)
     , m_bufferedAmountAfterClose(0)
@@ -160,20 +158,20 @@ WebSocket::~WebSocket()
         m_channel->disconnect();
 }
 
-PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext* context)
+PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext& context)
 {
     RefPtr<WebSocket> webSocket(adoptRef(new WebSocket(context)));
     webSocket->suspendIfNeeded();
     return webSocket.release();
 }
 
-PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext* context, const String& url, ExceptionCode& ec)
+PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext& context, const String& url, ExceptionCode& ec)
 {
     Vector<String> protocols;
     return WebSocket::create(context, url, protocols, ec);
 }
 
-PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext* context, const String& url, const Vector<String>& protocols, ExceptionCode& ec)
+PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext& context, const String& url, const Vector<String>& protocols, ExceptionCode& ec)
 {
     if (url.isNull()) {
         ec = SYNTAX_ERR;
@@ -183,14 +181,14 @@ PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext* context, const S
     RefPtr<WebSocket> webSocket(adoptRef(new WebSocket(context)));
     webSocket->suspendIfNeeded();
 
-    webSocket->connect(context->completeURL(url), protocols, ec);
+    webSocket->connect(context.completeURL(url), protocols, ec);
     if (ec)
         return 0;
 
     return webSocket.release();
 }
 
-PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext* context, const String& url, const String& protocol, ExceptionCode& ec)
+PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext& context, const String& url, const String& protocol, ExceptionCode& ec)
 {
     Vector<String> protocols;
     protocols.append(protocol);
@@ -518,7 +516,7 @@ void WebSocket::didReceiveMessage(const String& msg)
     dispatchEvent(MessageEvent::create(msg, SecurityOrigin::create(m_url)->toString()));
 }
 
-void WebSocket::didReceiveBinaryData(PassOwnPtr<Vector<char> > binaryData)
+void WebSocket::didReceiveBinaryData(PassOwnPtr<Vector<char>> binaryData)
 {
     LOG(Network, "WebSocket %p didReceiveBinaryData() %lu byte binary message", this, static_cast<unsigned long>(binaryData->size()));
     switch (m_binaryType) {

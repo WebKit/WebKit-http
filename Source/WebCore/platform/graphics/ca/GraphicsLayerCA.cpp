@@ -48,10 +48,13 @@
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(MAC)
+#include "PlatformCALayerMac.h"
 #include "WebCoreSystemInterface.h"
 #endif
 
-using namespace std;
+#if PLATFORM(WIN)
+#include "PlatformCALayerWin.h"
+#endif
 
 namespace WebCore {
 
@@ -275,10 +278,44 @@ static inline bool supportsAcceleratedFilterAnimations()
 
 std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, GraphicsLayerClient* client)
 {
+    std::unique_ptr<GraphicsLayer> graphicsLayer;
     if (!factory)
-        return std::make_unique<GraphicsLayerCA>(client);
+        graphicsLayer = std::make_unique<GraphicsLayerCA>(client);
+    else
+        graphicsLayer = factory->createGraphicsLayer(client);
 
-    return factory->createGraphicsLayer(client);
+    graphicsLayer->initialize();
+
+    return std::move(graphicsLayer);
+}
+
+#if ENABLE(CSS_FILTERS)
+bool GraphicsLayerCA::filtersCanBeComposited(const FilterOperations& filters)
+{
+#if PLATFORM(MAC)
+    return PlatformCALayerMac::filtersCanBeComposited(filters);
+#elif PLATFORM(WIN)
+    return PlatformCALayerWin::filtersCanBeComposited(filters);
+#endif
+}
+#endif
+    
+PassRefPtr<PlatformCALayer> GraphicsLayerCA::createPlatformCALayer(PlatformCALayer::LayerType layerType, PlatformCALayerClient* owner)
+{
+#if PLATFORM(MAC)
+    return PlatformCALayerMac::create(layerType, owner);
+#elif PLATFORM(WIN)
+    return PlatformCALayerWin::create(layerType, owner);
+#endif
+}
+    
+PassRefPtr<PlatformCALayer> GraphicsLayerCA::createPlatformCALayer(PlatformLayer* platformLayer, PlatformCALayerClient* owner)
+{
+#if PLATFORM(MAC)
+    return PlatformCALayerMac::create(platformLayer, owner);
+#elif PLATFORM(WIN)
+    return PlatformCALayerWin::create(platformLayer, owner);
+#endif
 }
 
 GraphicsLayerCA::GraphicsLayerCA(GraphicsLayerClient* client)
@@ -290,13 +327,17 @@ GraphicsLayerCA::GraphicsLayerCA(GraphicsLayerClient* client)
     , m_uncommittedChanges(0)
     , m_isCommittingChanges(false)
 {
+}
+
+void GraphicsLayerCA::initialize()
+{
     PlatformCALayer::LayerType layerType = PlatformCALayer::LayerTypeWebLayer;
-    if (client && client->shouldUseTiledBacking(this)) {
+    if (m_client && m_client->shouldUseTiledBacking(this)) {
         layerType = PlatformCALayer::LayerTypePageTiledBackingLayer;
         m_isPageTiledBackingLayer = true;
     }
 
-    m_layer = PlatformCALayer::create(layerType, this);
+    m_layer = createPlatformCALayer(layerType, this);
     noteLayerPropertyChanged(ContentsScaleChanged);
 }
 
@@ -332,7 +373,12 @@ void GraphicsLayerCA::willBeDestroyed()
 
 void GraphicsLayerCA::setName(const String& name)
 {
-    String longName = String::format("CALayer(%p) GraphicsLayer(%p) ", m_layer->platformLayer(), this) + name;
+    String caLayerDescription;
+
+    if (!m_layer->isRemote())
+        caLayerDescription = String::format("CALayer(%p) ", m_layer->platformLayer());
+
+    String longName = caLayerDescription + String::format("GraphicsLayer(%p) ", this) + name;
     GraphicsLayer::setName(longName);
     noteLayerPropertyChanged(NameChanged);
 }
@@ -605,7 +651,7 @@ void GraphicsLayerCA::setBackfaceVisibility(bool visible)
 
 void GraphicsLayerCA::setOpacity(float opacity)
 {
-    float clampedOpacity = max(0.0f, min(opacity, 1.0f));
+    float clampedOpacity = std::max(0.0f, std::min(opacity, 1.0f));
 
     if (clampedOpacity == m_opacity)
         return;
@@ -617,7 +663,7 @@ void GraphicsLayerCA::setOpacity(float opacity)
 #if ENABLE(CSS_FILTERS)
 bool GraphicsLayerCA::setFilters(const FilterOperations& filterOperations)
 {
-    bool canCompositeFilters = PlatformCALayer::filtersCanBeComposited(filterOperations);
+    bool canCompositeFilters = filtersCanBeComposited(filterOperations);
 
     if (m_filters == filterOperations)
         return canCompositeFilters;
@@ -640,8 +686,8 @@ bool GraphicsLayerCA::setFilters(const FilterOperations& filterOperations)
 
 void GraphicsLayerCA::setNeedsDisplay()
 {
-    FloatRect hugeRect(-numeric_limits<float>::max() / 2, -numeric_limits<float>::max() / 2,
-                       numeric_limits<float>::max(), numeric_limits<float>::max());
+    FloatRect hugeRect(-std::numeric_limits<float>::max() / 2, -std::numeric_limits<float>::max() / 2,
+                       std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
 
     setNeedsDisplayInRect(hugeRect);
 }
@@ -714,14 +760,6 @@ bool GraphicsLayerCA::addAnimation(const KeyframeValueList& valueList, const Int
     if (animationHasStepsTimingFunction(valueList, anim))
         return false;
 
-#if PLATFORM(WIN)
-    // CoreAnimation on Windows does not handle a reverse direction. Fall
-    // back to software animation in that case.
-    // https://bugs.webkit.org/show_bug.cgi?id=85121
-    if (!anim->directionIsForwards())
-        return false;
-#endif
-
     bool createdAnimations = false;
     if (valueList.property() == AnimatedPropertyWebkitTransform)
         createdAnimations = createTransformAnimationsFromKeyframes(valueList, anim, animationName, timeOffset, boxSize);
@@ -778,19 +816,27 @@ void GraphicsLayerCA::setContentsToSolidColor(const Color& color)
         return;
 
     m_contentsSolidColor = color;
+    
+    bool contentsLayerChanged = false;
 
-    if (m_contentsSolidColor.isValid()) {
-        m_contentsLayerPurpose = ContentsLayerForBackgroundColor;
-        m_contentsLayer = PlatformCALayer::create(PlatformCALayer::LayerTypeLayer, this);
+    if (m_contentsSolidColor.isValid() && m_contentsSolidColor.alpha()) {
+        if (!m_contentsLayer || m_contentsLayerPurpose != ContentsLayerForBackgroundColor) {
+            m_contentsLayerPurpose = ContentsLayerForBackgroundColor;
+            m_contentsLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
 #ifndef NDEBUG
-        m_contentsLayer->setName("Background Color Layer");
+            m_contentsLayer->setName("Background Color Layer");
 #endif
+            contentsLayerChanged = true;
+        }
     } else {
+        contentsLayerChanged = m_contentsLayer;
         m_contentsLayerPurpose = NoContentsLayer;
         m_contentsLayer = 0;
     }
 
-    noteSublayersChanged();
+    if (contentsLayerChanged)
+        noteSublayersChanged();
+
     noteLayerPropertyChanged(ContentsColorLayerChanged);
 }
 
@@ -847,7 +893,7 @@ void GraphicsLayerCA::setContentsToMedia(PlatformLayer* mediaLayer)
     // the creator of the raw layer is using it for some other purpose.
     // For now we don't support such a case.
     PlatformCALayer* platformCALayer = PlatformCALayer::platformCALayer(mediaLayer);
-    m_contentsLayer = mediaLayer ? (platformCALayer ? platformCALayer : PlatformCALayer::create(mediaLayer, this)) : 0;
+    m_contentsLayer = mediaLayer ? (platformCALayer ? platformCALayer : createPlatformCALayer(mediaLayer, this)) : 0;
     m_contentsLayerPurpose = mediaLayer ? ContentsLayerForMedia : NoContentsLayer;
 
     noteSublayersChanged();
@@ -860,7 +906,7 @@ void GraphicsLayerCA::setContentsToCanvas(PlatformLayer* canvasLayer)
         return;
     
     // Create the PlatformCALayer to wrap the incoming layer
-    m_contentsLayer = canvasLayer ? PlatformCALayer::create(canvasLayer, this) : 0;
+    m_contentsLayer = canvasLayer ? createPlatformCALayer(canvasLayer, this) : 0;
     
     m_contentsLayerPurpose = canvasLayer ? ContentsLayerForCanvas : NoContentsLayer;
 
@@ -1098,7 +1144,7 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
         static Color washFillColor(255, 0, 0, 50);
         static Color washBorderColor(255, 0, 0, 100);
         
-        m_visibleTileWashLayer = PlatformCALayer::create(PlatformCALayer::LayerTypeLayer, this);
+        m_visibleTileWashLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
         String name = String::format("Visible Tile Wash Layer %p", m_visibleTileWashLayer->platformLayer());
         m_visibleTileWashLayer->setName(name);
         m_visibleTileWashLayer->setAnchorPoint(FloatPoint3D(0, 0, 0));
@@ -1108,8 +1154,10 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
         noteSublayersChanged(DontScheduleFlush);
     }
 
-    if (m_visibleTileWashLayer)
-        m_visibleTileWashLayer->setFrame(m_visibleRect);
+    if (m_visibleTileWashLayer) {
+        m_visibleTileWashLayer->setPosition(m_visibleRect.location());
+        m_visibleTileWashLayer->setBounds(FloatRect(FloatPoint(), m_visibleRect.size()));
+    }
 #endif
 
     bool hadChanges = m_uncommittedChanges;
@@ -1172,11 +1220,11 @@ bool GraphicsLayerCA::platformCALayerShowRepaintCounter(PlatformCALayer* platfor
     // so we don't want to overpaint the repaint counter when called with the TileController's own layer.
     if (m_isPageTiledBackingLayer && platformLayer)
         return false;
-    
+
     return isShowingRepaintCounter();
 }
 
-void GraphicsLayerCA::platformCALayerPaintContents(GraphicsContext& context, const IntRect& clip)
+void GraphicsLayerCA::platformCALayerPaintContents(PlatformCALayer*, GraphicsContext& context, const IntRect& clip)
 {
     paintGraphicsLayerContents(context, clip);
 }
@@ -1186,9 +1234,14 @@ void GraphicsLayerCA::platformCALayerSetNeedsToRevalidateTiles()
     noteLayerPropertyChanged(TilingAreaChanged, m_isCommittingChanges ? DontScheduleFlush : ScheduleFlush);
 }
 
-float GraphicsLayerCA::platformCALayerDeviceScaleFactor()
+float GraphicsLayerCA::platformCALayerDeviceScaleFactor() const
 {
     return deviceScaleFactor();
+}
+
+float GraphicsLayerCA::platformCALayerContentsScaleMultiplierForNewTiles(PlatformCALayer*) const
+{
+    return client() ? client()->contentsScaleMultiplierForNewTiles(this) : 1;
 }
 
 void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState, float pageScaleFactor, const FloatPoint& positionRelativeToBase, const FloatRect& oldVisibleRect, TransformationMatrix* transformFromRoot)
@@ -1606,7 +1659,7 @@ void GraphicsLayerCA::ensureStructuralLayer(StructuralLayerPurpose purpose)
             m_structuralLayer = 0;
         
         if (!m_structuralLayer) {
-            m_structuralLayer = PlatformCALayer::create(PlatformCALayer::LayerTypeTransformLayer, this);
+            m_structuralLayer = createPlatformCALayer(PlatformCALayer::LayerTypeTransformLayer, this);
             structuralLayerChanged = true;
         }
     } else {
@@ -1614,7 +1667,7 @@ void GraphicsLayerCA::ensureStructuralLayer(StructuralLayerPurpose purpose)
             m_structuralLayer = 0;
 
         if (!m_structuralLayer) {
-            m_structuralLayer = PlatformCALayer::create(PlatformCALayer::LayerTypeLayer, this);
+            m_structuralLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
             structuralLayerChanged = true;
         }
     }
@@ -1778,7 +1831,7 @@ void GraphicsLayerCA::updateContentsImage()
 {
     if (m_pendingContentsImage) {
         if (!m_contentsLayer.get()) {
-            m_contentsLayer = PlatformCALayer::create(PlatformCALayer::LayerTypeLayer, this);
+            m_contentsLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
 #ifndef NDEBUG
             m_contentsLayer->setName("Image Layer");
 #endif
@@ -1859,7 +1912,7 @@ void GraphicsLayerCA::updateContentsRects()
     bool gainedOrLostClippingLayer = false;
     if (!m_contentsClippingRect.contains(m_contentsRect)) {
         if (!m_contentsClippingLayer) {
-            m_contentsClippingLayer = PlatformCALayer::create(PlatformCALayer::LayerTypeLayer, this);
+            m_contentsClippingLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
             m_contentsClippingLayer->setMasksToBounds(true);
             m_contentsClippingLayer->setAnchorPoint(FloatPoint());
 #ifndef NDEBUG
@@ -2205,7 +2258,7 @@ bool GraphicsLayerCA::createAnimationFromKeyframes(const KeyframeValueList& valu
 
 bool GraphicsLayerCA::appendToUncommittedAnimations(const KeyframeValueList& valueList, const TransformOperations* operations, const Animation* animation, const String& animationName, const IntSize& boxSize, int animationIndex, double timeOffset, bool isMatrixAnimation)
 {
-    TransformOperation::OperationType transformOp = isMatrixAnimation ? TransformOperation::MATRIX_3D : operations->operations().at(animationIndex)->getOperationType();
+    TransformOperation::OperationType transformOp = isMatrixAnimation ? TransformOperation::MATRIX_3D : operations->operations().at(animationIndex)->type();
     bool additive = animationIndex > 0;
     bool isKeyframe = valueList.size() > 2;
 
@@ -2276,18 +2329,10 @@ bool GraphicsLayerCA::createTransformAnimationsFromKeyframes(const KeyframeValue
     int listIndex = validateTransformOperations(valueList, hasBigRotation);
     const TransformOperations* operations = (listIndex >= 0) ? &static_cast<const TransformAnimationValue&>(valueList.at(listIndex)).value() : 0;
 
-    // We need to fall back to software animation if we don't have setValueFunction:, and
-    // we would need to animate each incoming transform function separately. This is the
-    // case if we have a rotation >= 180 or we have more than one transform function.
-    if ((hasBigRotation || (operations && operations->size() > 1)) && !PlatformCAAnimation::supportsValueFunction())
-        return false;
-
     bool validMatrices = true;
 
     // If function lists don't match we do a matrix animation, otherwise we do a component hardware animation.
-    // Also, we can't do component animation unless we have valueFunction, so we need to do matrix animation
-    // if that's not true as well.
-    bool isMatrixAnimation = listIndex < 0 || !PlatformCAAnimation::supportsValueFunction();
+    bool isMatrixAnimation = listIndex < 0;
     int numAnimations = isMatrixAnimation ? 1 : operations->size();
 
     bool reverseAnimationList = true;
@@ -2325,7 +2370,7 @@ bool GraphicsLayerCA::appendToUncommittedAnimations(const KeyframeValueList& val
 {
     bool isKeyframe = valueList.size() > 2;
     
-    FilterOperation::OperationType filterOp = operation->getOperationType();
+    FilterOperation::OperationType filterOp = operation->type();
     int numAnimatedProperties = PlatformCAFilters::numAnimatedFilterProperties(filterOp);
     
     // Each filter might need to animate multiple properties, each with their own keyPath. The keyPath is always of the form:
@@ -2366,14 +2411,14 @@ bool GraphicsLayerCA::createFilterAnimationsFromKeyframes(const KeyframeValueLis
         
     const FilterOperations& operations = static_cast<const FilterAnimationValue&>(valueList.at(listIndex)).value();
     // Make sure the platform layer didn't fallback to using software filter compositing instead.
-    if (!PlatformCALayer::filtersCanBeComposited(operations))
+    if (!filtersCanBeComposited(operations))
         return false;
 
     int numAnimations = operations.size();
 
     // FIXME: We can't currently hardware animate shadows.
     for (int i = 0; i < numAnimations; ++i) {
-        if (operations.at(i)->getOperationType() == FilterOperation::DROP_SHADOW)
+        if (operations.at(i)->type() == FilterOperation::DROP_SHADOW)
             return false;
     }
 
@@ -2408,7 +2453,7 @@ void GraphicsLayerCA::setupAnimation(PlatformCAAnimation* propertyAnim, const An
 
     float repeatCount = anim->iterationCount();
     if (repeatCount == Animation::IterationCountInfinite)
-        repeatCount = numeric_limits<float>::max();
+        repeatCount = std::numeric_limits<float>::max();
     else if (anim->direction() == Animation::AnimationDirectionAlternate || anim->direction() == Animation::AnimationDirectionAlternateReverse)
         repeatCount /= 2;
 
@@ -2664,12 +2709,12 @@ bool GraphicsLayerCA::setFilterAnimationEndpoints(const KeyframeValueList& value
     ASSERT(fromOperation || toOperation);
 
     if (!fromOperation) {
-        defaultFromOperation = DefaultFilterOperation::create(toOperation->getOperationType());
+        defaultFromOperation = DefaultFilterOperation::create(toOperation->type());
         fromOperation = defaultFromOperation.get();
     }
 
     if (!toOperation) {
-        defaultToOperation = DefaultFilterOperation::create(fromOperation->getOperationType());
+        defaultToOperation = DefaultFilterOperation::create(fromOperation->type());
         toOperation = defaultToOperation.get();
     }
 
@@ -2686,7 +2731,7 @@ bool GraphicsLayerCA::setFilterAnimationEndpoints(const KeyframeValueList& value
 bool GraphicsLayerCA::setFilterAnimationKeyframes(const KeyframeValueList& valueList, const Animation* animation, PlatformCAAnimation* keyframeAnim, int functionIndex, int internalFilterPropertyIndex, FilterOperation::OperationType filterOp)
 {
     Vector<float> keyTimes;
-    Vector<RefPtr<FilterOperation> > values;
+    Vector<RefPtr<FilterOperation>> values;
     Vector<const TimingFunction*> timingFunctions;
     RefPtr<DefaultFilterOperation> defaultOperation;
 
@@ -2774,7 +2819,7 @@ static float clampedContentsScaleForScale(float scale)
     // those too small to see.
     const float maxScale = 10.0f;
     const float minScale = 0.01f;
-    return max(minScale, min(scale, maxScale));
+    return std::max(minScale, std::min(scale, maxScale));
 }
 
 void GraphicsLayerCA::updateContentsScale(float pageScaleFactor)
@@ -2898,7 +2943,7 @@ void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
     PlatformCALayer::LayerType layerType = useTiledLayer ? PlatformCALayer::LayerTypeTiledBackingLayer : PlatformCALayer::LayerTypeWebLayer;
 #endif
 
-    m_layer = PlatformCALayer::create(layerType, this);
+    m_layer = createPlatformCALayer(layerType, this);
 
     m_usingTiledBacking = useTiledLayer;
     
@@ -2970,7 +3015,7 @@ void GraphicsLayerCA::setupContentsLayer(PlatformCALayer* contentsLayer)
 
     if (isShowingDebugBorder()) {
         contentsLayer->setBorderColor(Color(0, 0, 128, 180));
-        contentsLayer->setBorderWidth(1.0f);
+        contentsLayer->setBorderWidth(4);
     }
 }
 
@@ -3083,7 +3128,7 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
     }
 
     const Vector<GraphicsLayer*>& childLayers = children();
-    Vector<RefPtr<PlatformCALayer> > clonalSublayers;
+    Vector<RefPtr<PlatformCALayer>> clonalSublayers;
 
     RefPtr<PlatformCALayer> replicaLayer;
     

@@ -21,10 +21,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 messages -> WebPage LegacyReceiver {
-    SetActive(bool active)
-    SetFocused(bool focused)
     SetInitialFocus(bool forward, bool isKeyboardEventValid, WebKit::WebKeyboardEvent event)
-    SetIsInWindow(bool isInWindow, bool wantsDidUpdateViewInWindowState)
+    SetViewState(unsigned viewState, bool wantsDidUpdateViewState)
 
     SetDrawsBackground(bool drawsBackground)
     SetDrawsTransparentBackground(bool drawsTransparentBackground)
@@ -42,9 +40,6 @@ messages -> WebPage LegacyReceiver {
 #if ENABLE(TOUCH_EVENTS)
     TouchEvent(WebKit::WebTouchEvent event)
     TouchEventSyncForTesting(WebKit::WebTouchEvent event) -> (bool handled)
-#endif
-#if ENABLE(TOUCH_EVENTS) && PLATFORM(QT)
-    HighlightPotentialActivation(WebCore::IntPoint point, WebCore::IntSize area)
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -76,11 +71,6 @@ messages -> WebPage LegacyReceiver {
 
     Reload(bool reloadFromOrigin, WebKit::SandboxExtension::Handle sandboxExtensionHandle)
     StopLoading()
-
-#if PLATFORM(QT)
-    ApplicationSchemeReply(WebKit::QtNetworkReplyData reply)
-    RegisterApplicationScheme(WTF::String scheme)
-#endif
 
     StopLoadingFrame(uint64_t frameID)
     
@@ -144,9 +134,6 @@ messages -> WebPage LegacyReceiver {
     ListenForLayoutMilestones(uint32_t milestones)
     SetSuppressScrollbarAnimations(bool suppressAnimations)
 
-    SetRubberBandsAtBottom(bool rubberBandsAtBottom)
-    SetRubberBandsAtTop(bool rubberBandsAtTop)
-
     SetPaginationMode(uint32_t mode)
     SetPaginationBehavesLikeColumns(bool behavesLikeColumns)
     SetPageLength(double pageLength)
@@ -163,10 +150,10 @@ messages -> WebPage LegacyReceiver {
     CountStringMatches(WTF::String string, uint32_t findOptions, unsigned maxMatchCount)
 
     # Drag and drop.
-#if (PLATFORM(QT) || PLATFORM(GTK)) && ENABLE(DRAG_SUPPORT)
+#if PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
     PerformDragControllerAction(uint64_t action, WebCore::DragData dragData)
 #endif
-#if !PLATFORM(QT) && !PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
+#if !PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
     PerformDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, WTF::String dragStorageName, uint32_t flags, WebKit::SandboxExtension::Handle sandboxExtensionHandle, WebKit::SandboxExtension::HandleArray sandboxExtensionsForUpload)
 #endif
 #if ENABLE(DRAG_SUPPORT)
@@ -179,11 +166,7 @@ messages -> WebPage LegacyReceiver {
 #if PLATFORM(GTK)
     FailedToShowPopupMenu()
 #endif
-#if PLATFORM(QT)
-    HidePopupMenu()
-    SelectedIndex(int32_t newIndex)
-#endif
-    
+
 #if ENABLE(CONTEXT_MENUS)
     # Context menu.
     DidSelectItemFromActiveContextMenu(WebKit::WebContextMenuItemData menuItem)
@@ -253,7 +236,7 @@ messages -> WebPage LegacyReceiver {
     CommitPageTransitionViewport()
 #endif
 
-#if PLATFORM(QT) || PLATFORM(GTK)
+#if PLATFORM(GTK)
     SetComposition(WTF::String text, WTF::Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd)
     ConfirmComposition(WTF::String text, int64_t selectionStart, int64_t selectionLength)
     CancelComposition()
@@ -263,7 +246,6 @@ messages -> WebPage LegacyReceiver {
     # Complex text input support for plug-ins.
     SendComplexTextInputToPlugin(uint64_t pluginComplexTextInputIdentifier, String textInput)
 
-    SetWindowIsVisible(bool windowIsVisible)
     WindowAndViewFramesChanged(WebCore::FloatRect windowFrameInScreenCoordinates, WebCore::FloatRect windowFrameInUnflippedScreenCoordinates, WebCore::FloatRect viewFrameInWindowCoordinates, WebCore::FloatPoint accessibilityViewCoordinates)
     ViewExposedRectChanged(WebCore::FloatRect exposedRect, bool clipsToExposedRect)
     SetMainFrameIsScrollable(bool isScrollable)

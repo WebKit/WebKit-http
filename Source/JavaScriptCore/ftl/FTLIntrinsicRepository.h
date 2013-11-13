@@ -44,13 +44,25 @@ namespace JSC { namespace FTL {
     macro(mulWithOverflow64, "llvm.smul.with.overflow.i64", functionType(structType(m_context, int64, boolean), int64, int64)) \
     macro(subWithOverflow32, "llvm.ssub.with.overflow.i32", functionType(structType(m_context, int32, boolean), int32, int32)) \
     macro(subWithOverflow64, "llvm.ssub.with.overflow.i64", functionType(structType(m_context, int64, boolean), int64, int64)) \
-    macro(trap, "llvm.trap", functionType(voidType)) \
-    macro(osrExit, "webkit_osr_exit", functionType(voidType, boolean, int32, Variadic))
+    macro(patchpointInt64, "llvm.experimental.patchpoint.i64", functionType(int64, int32, int32, ref8, int32, Variadic)) \
+    macro(patchpointVoid, "llvm.experimental.patchpoint.void", functionType(voidType, int32, int32, ref8, int32, Variadic)) \
+    macro(stackmap, "llvm.experimental.stackmap", functionType(voidType, int32, int32, Variadic)) \
+    macro(trap, "llvm.trap", functionType(voidType))
 
 #define FOR_EACH_FUNCTION_TYPE(macro) \
+    macro(C_JITOperation_ESt, functionType(intPtr, intPtr, intPtr)) \
     macro(I_JITOperation_EJss, functionType(intPtr, intPtr, intPtr)) \
     macro(J_JITOperation_E, functionType(int64, intPtr)) \
+    macro(J_JITOperation_EJssZ, functionType(int64, intPtr, intPtr, int32)) \
+    macro(J_JITOperation_ESsiJI, functionType(int64, intPtr, intPtr, int64, intPtr)) \
+    macro(Jss_JITOperation_EZ, functionType(intPtr, intPtr, int32)) \
+    macro(P_JITOperation_E, functionType(intPtr, intPtr)) \
     macro(P_JITOperation_EC, functionType(intPtr, intPtr, intPtr)) \
+    macro(P_JITOperation_EO, functionType(intPtr, intPtr, intPtr)) \
+    macro(P_JITOperation_ESt, functionType(intPtr, intPtr, intPtr)) \
+    macro(P_JITOperation_EStPS, functionType(intPtr, intPtr, intPtr, intPtr, intPtr)) \
+    macro(P_JITOperation_EStSS, functionType(intPtr, intPtr, intPtr, intPtr, intPtr)) \
+    macro(P_JITOperation_EStZ, functionType(intPtr, intPtr, intPtr, int32)) \
     macro(V_JITOperation_EOZD, functionType(voidType, intPtr, intPtr, int32, doubleType)) \
     macro(V_JITOperation_EOZJ, functionType(voidType, intPtr, intPtr, int32, int64)) \
     macro(Z_JITOperation_D, functionType(int32, doubleType))

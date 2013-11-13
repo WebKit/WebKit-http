@@ -62,7 +62,7 @@
 #include <wtf/text/StringHash.h>
 
 #if USE(ACCELERATED_COMPOSITING)
-#include "PlatformCALayer.h"
+#include "PlatformCALayerWin.h"
 #include "WKCAImageQueue.h"
 #endif
 
@@ -100,15 +100,15 @@ private:
 
     virtual void platformCALayerAnimationStarted(CFTimeInterval beginTime) { }
     virtual GraphicsLayer::CompositingCoordinatesOrientation platformCALayerContentsOrientation() const { return GraphicsLayer::CompositingCoordinatesBottomUp; }
-    virtual void platformCALayerPaintContents(GraphicsContext&, const IntRect& inClip) { }
+    virtual void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const IntRect& inClip) { }
     virtual bool platformCALayerShowDebugBorders() const { return false; }
     virtual bool platformCALayerShowRepaintCounter(PlatformCALayer*) const { return false; }
-    virtual int platformCALayerIncrementRepaintCount() { return 0; }
+    virtual int platformCALayerIncrementRepaintCount(PlatformCALayer*) { return 0; }
 
     virtual bool platformCALayerContentsOpaque() const { return false; }
     virtual bool platformCALayerDrawsContent() const { return false; }
     virtual void platformCALayerLayerDidDisplay(PlatformLayer*) { }
-    virtual float platformCALayerDeviceScaleFactor() { return 1; }
+    virtual float platformCALayerDeviceScaleFactor() const { return 1; }
 
     MediaPlayerPrivateQuickTimeVisualContext* m_parent;
 };
@@ -1015,11 +1015,11 @@ bool MediaPlayerPrivateQuickTimeVisualContext::isAvailable()
 #endif
 }
 
-MediaPlayer::SupportsType MediaPlayerPrivateQuickTimeVisualContext::supportsType(const String& type, const String& codecs, const URL&)
+MediaPlayer::SupportsType MediaPlayerPrivateQuickTimeVisualContext::supportsType(const MediaEngineSupportParameters& parameters)
 {
     // only return "IsSupported" if there is no codecs parameter for now as there is no way to ask QT if it supports an
     //  extended MIME type
-    return mimeTypeCache().contains(type) ? (codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported) : MediaPlayer::IsNotSupported;
+    return mimeTypeCache().contains(parameters.type) ? (parameters.codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported) : MediaPlayer::IsNotSupported;
 }
 
 void MediaPlayerPrivateQuickTimeVisualContext::MovieClient::movieEnded(QTMovie* movie)
@@ -1193,14 +1193,14 @@ void MediaPlayerPrivateQuickTimeVisualContext::createLayerForMovie()
 
     // Create a PlatformCALayer which will transform the contents of the video layer
     // which is in m_qtVideoLayer.
-    m_transformLayer = PlatformCALayer::create(PlatformCALayer::LayerTypeLayer, m_layerClient.get());
+    m_transformLayer = PlatformCALayerWin::create(PlatformCALayer::LayerTypeLayer, m_layerClient.get());
     if (!m_transformLayer)
         return;
 
     // Mark the layer as anchored in the top left.
     m_transformLayer->setAnchorPoint(FloatPoint3D());
 
-    m_qtVideoLayer = PlatformCALayer::create(PlatformCALayer::LayerTypeLayer, 0);
+    m_qtVideoLayer = PlatformCALayerWin::create(PlatformCALayer::LayerTypeLayer, 0);
     if (!m_qtVideoLayer)
         return;
 

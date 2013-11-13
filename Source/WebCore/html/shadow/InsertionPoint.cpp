@@ -31,9 +31,7 @@
 #include "config.h"
 #include "InsertionPoint.h"
 
-#include "HTMLNames.h"
 #include "QualifiedName.h"
-#include "ShadowRoot.h"
 #include "StaticNodeList.h"
 #include "Text.h"
 
@@ -114,7 +112,7 @@ void InsertionPoint::childrenChanged(const ChildChange& change)
         root->invalidateDistribution();
 }
 
-Node::InsertionNotificationRequest InsertionPoint::insertedInto(ContainerNode* insertionPoint)
+Node::InsertionNotificationRequest InsertionPoint::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
 
@@ -126,11 +124,11 @@ Node::InsertionNotificationRequest InsertionPoint::insertedInto(ContainerNode* i
     return InsertionDone;
 }
 
-void InsertionPoint::removedFrom(ContainerNode* insertionPoint)
+void InsertionPoint::removedFrom(ContainerNode& insertionPoint)
 {
     ShadowRoot* root = containingShadowRoot();
     if (!root)
-        root = insertionPoint->containingShadowRoot();
+        root = insertionPoint.containingShadowRoot();
 
     if (root && root->hostElement()) {
         root->invalidateDistribution();

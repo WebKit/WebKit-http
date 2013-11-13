@@ -30,7 +30,10 @@
 
 #if ENABLE(FTL_JIT)
 
+#include "FTLLocation.h"
+#include "FTLSlowPathCallKey.h"
 #include "MacroAssemblerCodeRef.h"
+#include <wtf/HashMap.h>
 
 namespace JSC {
 
@@ -38,7 +41,64 @@ class VM;
 
 namespace FTL {
 
-MacroAssemblerCodeRef osrExitGenerationThunkGenerator(VM*);
+MacroAssemblerCodeRef osrExitGenerationThunkGenerator(VM&, const Location&);
+MacroAssemblerCodeRef slowPathCallThunkGenerator(VM&, const SlowPathCallKey&);
+
+template<typename KeyTypeArgument>
+struct ThunkMap {
+    typedef KeyTypeArgument KeyType;
+    typedef HashMap<KeyType, MacroAssemblerCodeRef> ToThunkMap;
+    typedef HashMap<MacroAssemblerCodePtr, KeyType> FromThunkMap;
+    
+    ToThunkMap m_toThunk;
+    FromThunkMap m_fromThunk;
+};
+
+template<typename MapType, typename GeneratorType>
+MacroAssemblerCodeRef generateIfNecessary(
+    VM& vm, MapType& map, const typename MapType::KeyType& key, GeneratorType generator)
+{
+    typename MapType::ToThunkMap::iterator iter = map.m_toThunk.find(key);
+    if (iter != map.m_toThunk.end())
+        return iter->value;
+    
+    MacroAssemblerCodeRef result = generator(vm, key);
+    map.m_toThunk.add(key, result);
+    map.m_fromThunk.add(result.code(), key);
+    return result;
+}
+
+template<typename MapType>
+typename MapType::KeyType keyForThunk(MapType& map, MacroAssemblerCodePtr ptr)
+{
+    typename MapType::FromThunkMap::iterator iter = map.m_fromThunk.find(ptr);
+    RELEASE_ASSERT(iter != map.m_fromThunk.end());
+    return iter->value;
+}
+
+class Thunks {
+public:
+    MacroAssemblerCodeRef getOSRExitGenerationThunk(VM& vm, const Location& location)
+    {
+        return generateIfNecessary(
+            vm, m_osrExitThunks, location, osrExitGenerationThunkGenerator);
+    }
+    
+    MacroAssemblerCodeRef getSlowPathCallThunk(VM& vm, const SlowPathCallKey& key)
+    {
+        return generateIfNecessary(
+            vm, m_slowPathCallThunks, key, slowPathCallThunkGenerator);
+    }
+    
+    SlowPathCallKey keyForSlowPathCallThunk(MacroAssemblerCodePtr ptr)
+    {
+        return keyForThunk(m_slowPathCallThunks, ptr);
+    }
+    
+private:
+    ThunkMap<Location> m_osrExitThunks;
+    ThunkMap<SlowPathCallKey> m_slowPathCallThunks;
+};
 
 } } // namespace JSC::FTL
 

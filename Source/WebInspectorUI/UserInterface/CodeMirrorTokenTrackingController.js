@@ -37,6 +37,7 @@ WebInspector.CodeMirrorTokenTrackingController = function(codeMirror, delegate)
     this._mouseOutReleaseDelayDuration = 0;
     this._classNameForHighlightedRange = null;
 
+    this._enabled = false;
     this._tracking = false;
     this._hoveredTokenInfo = null;
 };
@@ -61,6 +62,31 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
     set delegate(x)
     {
         this._delegate = x;
+    },
+
+    get enabled()
+    {
+        return this._enabled;
+    },
+
+    set enabled(enabled)
+    {
+        if (this._enabled === enabled)
+            return;
+
+        this._enabled = enabled;
+
+        var wrapper = this._codeMirror.getWrapperElement();
+        if (enabled) {
+            wrapper.addEventListener("mouseenter", this);
+            wrapper.addEventListener("mouseleave", this);
+            this._updateHoveredTokenInfo({left: WebInspector.mouseCoords.x, top: WebInspector.mouseCoords.y});
+            this._startTracking();
+        } else {
+            wrapper.removeEventListener("mouseenter", this);
+            wrapper.removeEventListener("mouseleave", this);
+            this._stopTracking();
+        }
     },
 
     get mode()
@@ -110,55 +136,27 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
         this._classNameForHighlightedRange = x || null;
     },
 
-    get tracking()
-    {
-        return this._tracking;
-    },
-
     get candidate()
     {
         return this._candidate;
     },
 
-    startTracking: function()
+    highlightLastHoveredRange: function()
     {
-        console.assert(!this._tracking);
-        if (this._tracking)
-            return;
-
-        this._tracking = true;
-
-        var wrapper = this._codeMirror.getWrapperElement();
-        wrapper.addEventListener("mousemove", this, true);
-        wrapper.addEventListener("mouseout", this, false);
-        wrapper.addEventListener("mousedown", this, false);
-        wrapper.addEventListener("mouseup", this, false);
-        window.addEventListener("blur", this, true);
-    },
-
-    stopTracking: function()
-    {
-        console.assert(this._tracking);
-        if (!this._tracking)
-            return;
-
-        this._tracking = false;
-
-        var wrapper = this._codeMirror.getWrapperElement();
-        wrapper.removeEventListener("mousemove", this, true);
-        wrapper.removeEventListener("mouseout", this, false);
-        wrapper.removeEventListener("mousedown", this, false);
-        wrapper.removeEventListener("mouseup", this, false);
-        window.removeEventListener("blur", this, true);
-        window.removeEventListener("mousemove", this, true);
-
-        clearTimeout(this._tokenHoverTimer);
-        delete this._selectionMayBeInProgress;
-        delete this._hoveredTokenInfo;
+        if (this._candidate)
+            this.highlightRange(this._candidate.hoveredTokenRange);
     },
 
     highlightRange: function(range)
     {
+        // Nothing to do if we're trying to highlight the same range.
+        if (this._codeMirrorMarkedText && this._codeMirrorMarkedText.className === this._classNameForHighlightedRange) {
+            var highlightedRange = this._codeMirrorMarkedText.find();
+            if (WebInspector.compareCodeMirrorPositions(highlightedRange.from, range.start) === 0 &&
+                WebInspector.compareCodeMirrorPositions(highlightedRange.to, range.end) === 0)
+                return;
+        }
+
         this.removeHighlightedRange();
 
         var className = this._classNameForHighlightedRange || "";
@@ -187,9 +185,51 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
 
     // Private
 
+    _startTracking: function()
+    {
+        console.assert(!this._tracking);
+        if (this._tracking)
+            return;
+
+        this._tracking = true;
+
+        var wrapper = this._codeMirror.getWrapperElement();
+        wrapper.addEventListener("mousemove", this, true);
+        wrapper.addEventListener("mouseout", this, false);
+        wrapper.addEventListener("mousedown", this, false);
+        wrapper.addEventListener("mouseup", this, false);
+        window.addEventListener("blur", this, true);
+    },
+
+    _stopTracking: function()
+    {
+        console.assert(this._tracking);
+        if (!this._tracking)
+            return;
+
+        this._tracking = false;
+        this._candidate = null;
+
+        var wrapper = this._codeMirror.getWrapperElement();
+        wrapper.removeEventListener("mousemove", this, true);
+        wrapper.removeEventListener("mouseout", this, false);
+        wrapper.removeEventListener("mousedown", this, false);
+        wrapper.removeEventListener("mouseup", this, false);
+        window.removeEventListener("blur", this, true);
+        window.removeEventListener("mousemove", this, true);
+
+        this._resetTrackingStates();
+    },
+
     handleEvent: function(event)
     {
         switch (event.type) {
+        case "mouseenter":
+            this._mouseEntered(event);
+            break;
+        case "mouseleave":
+            this._mouseLeft(event);
+            break;
         case "mousemove":
             if (event.currentTarget === window)
                 this._mouseMovedWithMarkedText(event);
@@ -211,6 +251,16 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
             this._windowLostFocus(event);
             break;
         }
+    },
+
+    _mouseEntered: function(event)
+    {
+        this._startTracking();
+    },
+
+    _mouseLeft: function(event)
+    {
+        this._stopTracking();
     },
 
     _mouseMovedWithMarkedText: function(event)
@@ -238,13 +288,17 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
 
     _mouseMovedOverEditor: function(event)
     {
+        this._updateHoveredTokenInfo({left: event.pageX, top: event.pageY});
+    },
+
+    _updateHoveredTokenInfo: function(mouseCoords)
+    {
         // Get the position in the text and the token at that position.
-        var position = this._codeMirror.coordsChar({left: event.pageX, top: event.pageY});
+        var position = this._codeMirror.coordsChar(mouseCoords);
         var token = this._codeMirror.getTokenAt(position);
 
         if (!token || !token.type || !token.string) {
-            clearTimeout(this._tokenHoverTimer);
-            delete this._hoveredTokenInfo;
+            this._resetTrackingStates();
             return;
         }
 
@@ -307,7 +361,7 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
 
     _windowLostFocus: function(event)
     {
-        delete this._selectionMayBeInProgress;
+        this._resetTrackingStates();
     },
 
     _processNewHoveredToken: function()
@@ -360,6 +414,32 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
         if (this._hoveredTokenInfo.modeName !== "javascript")
             return null;
 
+        var startPosition = {line: this._hoveredTokenInfo.position.line, ch: this._hoveredTokenInfo.token.start};
+        var endPosition = {line: this._hoveredTokenInfo.position.line, ch: this._hoveredTokenInfo.token.end};
+
+        // If the hovered token is within a selection, use the selection as our expression.
+        if (this._codeMirror.somethingSelected()) {
+            var selectionRange = {
+                start: this._codeMirror.getCursor("start"),
+                end: this._codeMirror.getCursor("end")
+            };
+        
+            function tokenIsInRange(token, range)
+            {
+                return token.line >= range.start.line && token.ch >= range.start.ch &&
+                       token.line <= range.end.line && token.ch <= range.end.ch;
+            }
+        
+            if (tokenIsInRange(startPosition, selectionRange) || tokenIsInRange(endPosition, selectionRange)) {
+                return {
+                    hoveredToken: this._hoveredTokenInfo.token,
+                    hoveredTokenRange: selectionRange,
+                    expression: this._codeMirror.getSelection(),
+                    expressionRange: selectionRange,
+                };
+            }
+        } 
+
         // We only handle vars, definitions, properties, and the keyword 'this'.
         var type = this._hoveredTokenInfo.token.type;
         var isProperty = type.indexOf("property") !== -1;
@@ -379,8 +459,6 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
         // Work out the full hovered expression.
         var expression = this._hoveredTokenInfo.token.string;
         var expressionStartPosition = {line: this._hoveredTokenInfo.position.line, ch: this._hoveredTokenInfo.token.start};
-        var startPosition = {line: this._hoveredTokenInfo.position.line, ch: this._hoveredTokenInfo.token.start};
-        var endPosition = {line: this._hoveredTokenInfo.position.line, ch: this._hoveredTokenInfo.token.end};
         while (true) {
             var token = this._codeMirror.getTokenAt(expressionStartPosition);
             var isDot = token && !token.type && token.string === ".";
@@ -398,6 +476,14 @@ WebInspector.CodeMirrorTokenTrackingController.prototype = {
             expression: expression,
             expressionRange: {start: expressionStartPosition, end: endPosition},
         };
+    },
+
+    _resetTrackingStates: function()
+    {
+        clearTimeout(this._tokenHoverTimer);
+        delete this._selectionMayBeInProgress;
+        delete this._hoveredTokenInfo;
+        this.removeHighlightedRange();
     }
 };
 

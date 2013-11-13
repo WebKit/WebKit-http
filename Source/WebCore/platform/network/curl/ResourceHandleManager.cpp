@@ -8,6 +8,7 @@
  * Copyright (C) 2009 Appcelerator Inc.
  * Copyright (C) 2009 Brent Fulgham <bfulgham@webkit.org>
  * Copyright (C) 2013 Peter Gal <galpeter@inf.u-szeged.hu>, University of Szeged
+ * Copyright (C) 2013 Alex Christensen <achristensen@webkit.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,13 +41,17 @@
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
 #include "MultipartHandle.h"
-#include "NotImplemented.h"
-#include "ProtectionSpace.h"
 #include "ResourceError.h"
 #include "ResourceHandle.h"
 #include "ResourceHandleInternal.h"
+
 #if OS(WINDOWS)
 #include "WebCoreBundleWin.h"
+#include <shlobj.h>
+#include <shlwapi.h>
+#else
+#include <sys/param.h>
+#define MAX_PATH MAXPATHLEN
 #endif
 
 #include <errno.h>
@@ -58,10 +63,6 @@
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
 
-#if !OS(WINDOWS)
-#include <sys/param.h>
-#define MAX_PATH MAXPATHLEN
-#endif
 #if PLATFORM(HAIKU)
 #include <Entry.h>
 #include <FindDirectory.h>
@@ -110,7 +111,30 @@ static char* cookieJarPath()
     if (cookieJarPath)
         return fastStrDup(cookieJarPath);
 
+#if OS(WINDOWS)
+    char executablePath[MAX_PATH];
+    char appDataDirectory[MAX_PATH];
+    char cookieJarFullPath[MAX_PATH];
+    char cookieJarDirectory[MAX_PATH];
+
+    if (FAILED(::SHGetFolderPathA(0, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, 0, 0, appDataDirectory))
+        || FAILED(::GetModuleFileNameA(0, executablePath, MAX_PATH)))
+        return fastStrDup("cookies.dat");
+
+    ::PathRemoveExtensionA(executablePath);
+    LPSTR executableName = ::PathFindFileNameA(executablePath);
+    sprintf_s(cookieJarDirectory, MAX_PATH, "%s/%s", appDataDirectory, executableName);
+    sprintf_s(cookieJarFullPath, MAX_PATH, "%s/cookies.dat", cookieJarDirectory);
+
+    if (::SHCreateDirectoryExA(0, cookieJarDirectory, 0) != ERROR_SUCCESS
+        && ::GetLastError() != ERROR_FILE_EXISTS
+        && ::GetLastError() != ERROR_ALREADY_EXISTS)
+        return fastStrDup("cookies.dat");
+
+    return fastStrDup(cookieJarFullPath);
+#else
     return fastStrDup("cookies.dat");
+#endif
 }
 
 static Mutex* sharedResourceMutex(curl_lock_data data) {
@@ -374,15 +398,15 @@ static bool getProtectionSpace(CURL* h, const ResourceResponse& response, Protec
     if (err != CURLE_OK)
         return false;
 
-    const char* url = 0;
-    err = curl_easy_getinfo(h, CURLINFO_EFFECTIVE_URL, &url);
+    const char* effectiveUrl = 0;
+    err = curl_easy_getinfo(h, CURLINFO_EFFECTIVE_URL, &effectiveUrl);
     if (err != CURLE_OK)
         return false;
 
-    URL kurl(ParsedURLString, url);
+    URL url(ParsedURLString, effectiveUrl);
 
-    String host = kurl.host();
-    String protocol = kurl.protocol();
+    String host = url.host();
+    String protocol = url.protocol();
 
     String realm;
 
@@ -963,20 +987,20 @@ void ResourceHandleManager::applyAuthenticationToRequest(ResourceHandle* handle,
 void ResourceHandleManager::initializeHandle(ResourceHandle* job)
 {
     static const int allowedProtocols = CURLPROTO_FILE | CURLPROTO_FTP | CURLPROTO_FTPS | CURLPROTO_HTTP | CURLPROTO_HTTPS;
-    URL kurl = job->firstRequest().url();
+    URL url = job->firstRequest().url();
 
     // Remove any fragment part, otherwise curl will send it as part of the request.
-    kurl.removeFragmentIdentifier();
+    url.removeFragmentIdentifier();
 
     ResourceHandleInternal* d = job->getInternal();
-    String url = kurl.string();
+    String urlString = url.string();
 
-    if (kurl.isLocalFile()) {
+    if (url.isLocalFile()) {
         // Remove any query part sent to a local file.
-        if (!kurl.query().isEmpty()) {
+        if (!url.query().isEmpty()) {
             // By setting the query to a null string it'll be removed.
-            kurl.setQuery(String());
-            url = kurl.string();
+            url.setQuery(String());
+            urlString = url.string();
         }
         // Determine the MIME type based on the path.
         d->m_response.setMimeType(MIMETypeRegistry::getMIMETypeForPath(url));
@@ -1035,7 +1059,7 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
     ASSERT(!d->m_url);
 
     // url is in ASCII so latin1() will only convert it to char* without character translation.
-    d->m_url = fastStrDup(url.latin1().data());
+    d->m_url = fastStrDup(urlString.latin1().data());
     curl_easy_setopt(d->m_handle, CURLOPT_URL, d->m_url);
 
     if (m_cookieJarFileName)

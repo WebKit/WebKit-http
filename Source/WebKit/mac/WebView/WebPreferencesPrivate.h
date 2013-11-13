@@ -214,6 +214,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)multithreadedWebGLEnabled;
 - (void)setMultithreadedWebGLEnabled:(BOOL)enabled;
 
+- (BOOL)forceSoftwareWebGLRendering;
+- (void)setForceSoftwareWebGLRendering:(BOOL)forced;
+
 - (BOOL)accelerated2dCanvasEnabled;
 - (void)setAccelerated2dCanvasEnabled:(BOOL)enabled;
 
@@ -285,6 +288,11 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setQTKitEnabled:(BOOL)flag;
 - (BOOL)isQTKitEnabled;
+
+// VideoPluginProxy support is dependent on WebCore/WebKit being
+// compiled with ENABLE_PLUGIN_PROXY_FOR_VIDEO.
+- (void)setVideoPluginProxyEnabled:(BOOL)flag;
+- (BOOL)isVideoPluginProxyEnabled;
 
 // WebSocket support depends on ENABLE(WEB_SOCKETS).
 - (void)setHixie76WebSocketProtocolEnabled:(BOOL)flag;

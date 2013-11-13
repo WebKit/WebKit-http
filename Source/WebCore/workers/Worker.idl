@@ -30,7 +30,7 @@
     CustomConstructor(DOMString scriptUrl),
     JSGenerateToNativeObject,
     JSGenerateToJSObject,
-    ActiveDOMObject
+    ActiveDOMObject,
 ] interface Worker : EventTarget {
 
     attribute EventListener onmessage;

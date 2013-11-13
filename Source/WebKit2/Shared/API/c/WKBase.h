@@ -42,7 +42,7 @@
 #include <WebKit2/WKBaseEfl.h>
 #endif
 
-#if defined(__APPLE__) && !defined(BUILDING_QT__)
+#if defined(__APPLE__)
 #include <WebKit2/WKBaseMac.h>
 #endif
 
@@ -119,6 +119,7 @@ typedef const struct OpaqueWKNotificationPermissionRequest* WKNotificationPermis
 typedef const struct OpaqueWKNotificationProvider* WKNotificationProviderRef;
 typedef const struct OpaqueWKOpenPanelParameters* WKOpenPanelParametersRef;
 typedef const struct OpaqueWKOpenPanelResultListener* WKOpenPanelResultListenerRef;
+typedef const struct OpaqueWKOriginDataManager* WKOriginDataManagerRef;
 typedef const struct OpaqueWKPage* WKPageRef;
 typedef const struct OpaqueWKPageGroup* WKPageGroupRef;
 typedef const struct OpaqueWKPluginSiteDataManager* WKPluginSiteDataManagerRef;

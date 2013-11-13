@@ -79,7 +79,7 @@ namespace WebCore {
 
 static void cancelAll(const ResourceLoaderSet& loaders)
 {
-    Vector<RefPtr<ResourceLoader> > loadersCopy;
+    Vector<RefPtr<ResourceLoader>> loadersCopy;
     copyToVector(loaders, loadersCopy);
     size_t size = loadersCopy.size();
     for (size_t i = 0; i < size; ++i)
@@ -88,7 +88,7 @@ static void cancelAll(const ResourceLoaderSet& loaders)
 
 static void setAllDefersLoading(const ResourceLoaderSet& loaders, bool defers)
 {
-    Vector<RefPtr<ResourceLoader> > loadersCopy;
+    Vector<RefPtr<ResourceLoader>> loadersCopy;
     copyToVector(loaders, loadersCopy);
     size_t size = loadersCopy.size();
     for (size_t i = 0; i < size; ++i)
@@ -371,7 +371,7 @@ void DocumentLoader::finishedLoading(double finishTime)
         // cancel the already-finished substitute load.
         unsigned long identifier = m_identifierForLoadWithoutResourceLoader;
         m_identifierForLoadWithoutResourceLoader = 0;
-        frameLoader()->notifier()->dispatchDidFinishLoading(this, identifier, finishTime);
+        frameLoader()->notifier().dispatchDidFinishLoading(this, identifier, finishTime);
     }
 
 #if USE(CONTENT_FILTERING)
@@ -527,13 +527,12 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
     // listener. But there's no way to do that in practice. So instead we cancel later if the
     // listener tells us to. In practice that means the navigation policy needs to be decided
     // synchronously for these redirect cases.
-    if (!redirectResponse.isNull())
-        frameLoader()->policyChecker().checkNavigationPolicy(newRequest, callContinueAfterNavigationPolicy, this);
-}
+    if (redirectResponse.isNull())
+        return;
 
-void DocumentLoader::callContinueAfterNavigationPolicy(void* argument, const ResourceRequest& request, PassRefPtr<FormState>, bool shouldContinue)
-{
-    static_cast<DocumentLoader*>(argument)->continueAfterNavigationPolicy(request, shouldContinue);
+    frameLoader()->policyChecker().checkNavigationPolicy(newRequest, [this](const ResourceRequest& request, PassRefPtr<FormState>, bool shouldContinue) {
+        continueAfterNavigationPolicy(request, shouldContinue);
+    });
 }
 
 void DocumentLoader::continueAfterNavigationPolicy(const ResourceRequest&, bool shouldContinue)
@@ -613,7 +612,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
 
     if (m_identifierForLoadWithoutResourceLoader) {
         addResponse(m_response);
-        frameLoader()->notifier()->dispatchDidReceiveResponse(this, m_identifierForLoadWithoutResourceLoader, m_response, 0);
+        frameLoader()->notifier().dispatchDidReceiveResponse(this, m_identifierForLoadWithoutResourceLoader, m_response, 0);
     }
 
     ASSERT(!m_waitingForContentPolicy);
@@ -638,12 +637,9 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
         m_contentFilter = ContentFilter::create(response);
 #endif
 
-    frameLoader()->policyChecker().checkContentPolicy(m_response, callContinueAfterContentPolicy, this);
-}
-
-void DocumentLoader::callContinueAfterContentPolicy(void* argument, PolicyAction policy)
-{
-    static_cast<DocumentLoader*>(argument)->continueAfterContentPolicy(policy);
+    frameLoader()->policyChecker().checkContentPolicy(m_response, [this](PolicyAction policy) {
+        continueAfterContentPolicy(policy);
+    });
 }
 
 void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
@@ -852,7 +848,7 @@ void DocumentLoader::dataReceived(CachedResource* resource, const char* data, in
 #endif
 
     if (m_identifierForLoadWithoutResourceLoader)
-        frameLoader()->notifier()->dispatchDidReceiveData(this, m_identifierForLoadWithoutResourceLoader, data, length, -1);
+        frameLoader()->notifier().dispatchDidReceiveData(this, m_identifierForLoadWithoutResourceLoader, data, length, -1);
 
     m_applicationCacheHost->mainResourceDataReceived(data, length, -1, false);
     m_timeOfLastDataReceived = monotonicallyIncreasingTime();
@@ -1075,7 +1071,7 @@ PassRefPtr<ArchiveResource> DocumentLoader::subresource(const URL& url) const
     return ArchiveResource::create(data->sharedBuffer(), url, resource->response());
 }
 
-void DocumentLoader::getSubresources(Vector<PassRefPtr<ArchiveResource> >& subresources) const
+void DocumentLoader::getSubresources(Vector<PassRefPtr<ArchiveResource>>& subresources) const
 {
     if (!isCommitted())
         return;
@@ -1378,8 +1374,8 @@ void DocumentLoader::startLoadingMainResource()
 
     if (m_substituteData.isValid()) {
         m_identifierForLoadWithoutResourceLoader = m_frame->page()->progress().createUniqueIdentifier();
-        frameLoader()->notifier()->assignIdentifierToInitialRequest(m_identifierForLoadWithoutResourceLoader, this, m_request);
-        frameLoader()->notifier()->dispatchWillSendRequest(this, m_identifierForLoadWithoutResourceLoader, m_request, ResourceResponse());
+        frameLoader()->notifier().assignIdentifierToInitialRequest(m_identifierForLoadWithoutResourceLoader, this, m_request);
+        frameLoader()->notifier().dispatchWillSendRequest(this, m_identifierForLoadWithoutResourceLoader, m_request, ResourceResponse());
         handleSubstituteDataLoadSoon();
         return;
     }
@@ -1401,8 +1397,8 @@ void DocumentLoader::startLoadingMainResource()
 
     if (!mainResourceLoader()) {
         m_identifierForLoadWithoutResourceLoader = m_frame->page()->progress().createUniqueIdentifier();
-        frameLoader()->notifier()->assignIdentifierToInitialRequest(m_identifierForLoadWithoutResourceLoader, this, request);
-        frameLoader()->notifier()->dispatchWillSendRequest(this, m_identifierForLoadWithoutResourceLoader, request, ResourceResponse());
+        frameLoader()->notifier().assignIdentifierToInitialRequest(m_identifierForLoadWithoutResourceLoader, this, request);
+        frameLoader()->notifier().dispatchWillSendRequest(this, m_identifierForLoadWithoutResourceLoader, request, ResourceResponse());
     }
     m_mainResource->addClient(this);
 

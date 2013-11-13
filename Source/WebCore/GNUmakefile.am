@@ -10,7 +10,6 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/ThirdParty/ANGLE/include/KHR \
 	-I$(srcdir)/Source/WebCore \
 	-I$(srcdir)/Source/WebCore/Modules/battery \
-	-I$(srcdir)/Source/WebCore/Modules/filesystem \
 	-I$(srcdir)/Source/WebCore/Modules/gamepad \
 	-I$(srcdir)/Source/WebCore/Modules/geolocation \
 	-I$(srcdir)/Source/WebCore/Modules/indexeddb \
@@ -32,6 +31,7 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/bridge \
 	-I$(srcdir)/Source/WebCore/bridge/c \
 	-I$(srcdir)/Source/WebCore/bridge/jsc \
+	-I$(srcdir)/Source/WebCore/crypto \
 	-I$(srcdir)/Source/WebCore/css \
 	-I$(srcdir)/Source/WebCore/dom \
 	-I$(srcdir)/Source/WebCore/dom/default \
@@ -128,6 +128,7 @@ webcoregtk_cppflags += \
 	-I$(srcdir)/Source/WebCore/platform/graphics/gstreamer \
 	-I$(srcdir)/Source/WebCore/platform/graphics/gtk \
 	-I$(srcdir)/Source/WebCore/platform/gtk \
+	-I$(srcdir)/Source/WebCore/platform/mediastream/gstreamer \
 	-I$(srcdir)/Source/WebCore/platform/network/soup \
 	-I$(srcdir)/Source/WebCore/platform/text/enchant
 
@@ -328,10 +329,7 @@ dom_binding_idls += \
   DerivedSources/WebCore/InternalSettingsGenerated.idl
 
 # All Web Inspector generated files are created with this one call to CodeGeneratorInspector.py
-DerivedSources/WebCore/InspectorProtocolVersion.h : $(WebCore)/inspector/Inspector.json $(WebCore)/inspector/generate-inspector-protocol-version
-	$(AM_V_GEN)$(PYTHON) $(WebCore)/inspector/generate-inspector-protocol-version -o $(GENSOURCES_WEBCORE)/InspectorProtocolVersion.h $(WebCore)/inspector/Inspector.json
-
-DerivedSources/WebCore/InspectorBackendDispatcher.cpp: $(WebCore)/inspector/Inspector.json $(WebCore)/inspector/CodeGeneratorInspector.py
+DerivedSources/WebCore/InspectorBackendDispatcher.cpp: $(WebCore)/inspector/Inspector.json $(WebCore)/inspector/CodeGeneratorInspector.py $(WebCore)/inspector/CodeGeneratorInspectorStrings.py
 	$(AM_V_GEN)$(PYTHON) $(WebCore)/inspector/CodeGeneratorInspector.py $< --output_h_dir $(GENSOURCES_WEBCORE) --output_cpp_dir $(GENSOURCES_WEBCORE) --output_js_dir $(GENSOURCES_WEBCORE)
 DerivedSources/WebCore/InspectorTypeBuilder.h: DerivedSources/WebCore/InspectorTypeBuilder.cpp
 DerivedSources/WebCore/InspectorTypeBuilder.cpp: DerivedSources/WebCore/InspectorFrontend.h
@@ -369,7 +367,6 @@ DerivedSources/ANGLE/glslang_tab.h: DerivedSources/ANGLE/glslang_tab.cpp
 
 IDL_PATH := \
     $(WebCore)/Modules/battery \
-    $(WebCore)/Modules/filesystem \
     $(WebCore)/Modules/gamepad \
     $(WebCore)/Modules/geolocation \
     $(WebCore)/Modules/indexeddb \
@@ -382,6 +379,7 @@ IDL_PATH := \
     $(WebCore)/Modules/webdatabase \
     $(WebCore)/Modules/websockets \
     $(WebCore)/bindings/js \
+    $(WebCore)/crypto \
     $(WebCore)/css \
     $(WebCore)/dom \
     $(WebCore)/fileapi \
@@ -601,7 +599,6 @@ libWebCoreGtk_la_CPPFLAGS = \
 
 EXTRA_DIST += \
 	$(wildcard $(srcdir)/Source/WebCore/Modules/battery/*.idl) \
-	$(wildcard $(srcdir)/Source/WebCore/Modules/filesystem/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/Modules/gamepad/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/Modules/geolocation/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/Modules/indexeddb/*.idl) \
@@ -614,6 +611,7 @@ EXTRA_DIST += \
 	$(wildcard $(srcdir)/Source/WebCore/Modules/webaudio/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/Modules/webdatabase/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/Modules/websockets/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/crypto/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/css/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/dom/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/fileapi/*.idl) \
@@ -656,7 +654,6 @@ EXTRA_DIST += \
 	Source/WebCore/css/CSSValueKeywords.in \
 	Source/WebCore/dom/DOMExceptions.in \
 	Source/WebCore/css/fullscreen.css \
-	Source/WebCore/css/fullscreenQuickTime.css \
 	Source/WebCore/css/html.css \
 	Source/WebCore/css/make-css-file-arrays.pl \
 	Source/WebCore/css/makegrammar.pl \
@@ -688,9 +685,7 @@ EXTRA_DIST += \
 	Source/WebCore/inspector/InjectedScriptCanvasModuleSource.js \
 	Source/WebCore/inspector/InjectedScriptSource.js \
 	Source/WebCore/inspector/Inspector.json \
-	Source/WebCore/inspector/Inspector-1.0.json \
 	Source/WebCore/inspector/InspectorOverlayPage.html \
-	Source/WebCore/inspector/generate-inspector-protocol-version \
 	Source/WebCore/inspector/xxd.pl \
 	Source/WebCore/LICENSE-APPLE \
 	Source/WebCore/LICENSE-LGPL-2 \

@@ -30,17 +30,14 @@
 
 namespace WebCore {
 
+class RenderSVGText;
 class SVGInlineTextBox;
 
 class SVGRootInlineBox FINAL : public RootInlineBox {
 public:
-    SVGRootInlineBox(RenderBlock& block)
-        : RootInlineBox(block)
-        , m_logicalHeight(0)
-    {
-    }
+    SVGRootInlineBox(RenderSVGText&);
 
-    virtual bool isSVGRootInlineBox() const { return true; }
+    RenderSVGText& renderSVGText();
 
     virtual float virtualLogicalHeight() const { return m_logicalHeight; }
     void setLogicalHeight(float height) { m_logicalHeight = height; }
@@ -55,14 +52,16 @@ public:
     InlineBox* closestLeafChildForPosition(const LayoutPoint&);
 
 private:
+    virtual bool isSVGRootInlineBox() const OVERRIDE { return true; }
     void reorderValueLists(Vector<SVGTextLayoutAttributes*>&);
     void layoutCharactersInTextBoxes(InlineFlowBox*, SVGTextLayoutEngine&);
     void layoutChildBoxes(InlineFlowBox*, FloatRect* = 0);
     void layoutRootBox(const FloatRect&);
 
-private:
     float m_logicalHeight;
 };
+
+INLINE_BOX_OBJECT_TYPE_CASTS(SVGRootInlineBox, isSVGRootInlineBox())
 
 } // namespace WebCore
 

@@ -35,7 +35,7 @@
 
 #include "MediaStreamCenter.h"
 
-#include "MediaStreamDescriptor.h"
+#include "MediaStreamPrivate.h"
 
 namespace WebCore {
 
@@ -65,11 +65,6 @@ MediaStreamCenter::MediaStreamCenter()
 
 MediaStreamCenter::~MediaStreamCenter()
 {
-}
-
-void MediaStreamCenter::endLocalMediaStream(MediaStreamDescriptor* streamDescriptor)
-{
-    streamDescriptor->setEnded();
 }
 
 } // namespace WebCore

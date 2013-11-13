@@ -58,7 +58,7 @@ namespace WebCore {
         ContextMenuItemTagOpenImageInNewWindow,
         ContextMenuItemTagDownloadImageToDisk,
         ContextMenuItemTagCopyImageToClipboard,
-#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL)
         ContextMenuItemTagCopyImageUrlToClipboard,
 #endif
         ContextMenuItemTagOpenFrameInNewWindow,
@@ -72,7 +72,7 @@ namespace WebCore {
 #if PLATFORM(GTK)
         ContextMenuItemTagDelete,
 #endif
-#if PLATFORM(GTK) || PLATFORM(QT) || PLATFORM (EFL)
+#if PLATFORM(GTK) || PLATFORM (EFL)
         ContextMenuItemTagSelectAll,
 #endif
 #if PLATFORM(GTK)

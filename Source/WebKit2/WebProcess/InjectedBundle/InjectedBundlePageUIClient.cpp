@@ -67,7 +67,7 @@ void InjectedBundlePageUIClient::willRunJavaScriptPrompt(WebPage* page, const St
         m_client.willRunJavaScriptPrompt(toAPI(page), toAPI(message.impl()), toAPI(defaultValue.impl()), toAPI(frame), m_client.clientInfo);
 }
 
-void InjectedBundlePageUIClient::mouseDidMoveOverElement(WebPage* page, const HitTestResult& coreHitTestResult, WebEvent::Modifiers modifiers, RefPtr<APIObject>& userData)
+void InjectedBundlePageUIClient::mouseDidMoveOverElement(WebPage* page, const HitTestResult& coreHitTestResult, WebEvent::Modifiers modifiers, RefPtr<API::Object>& userData)
 {
     if (!m_client.mouseDidMoveOverElement)
         return;
@@ -116,13 +116,6 @@ String InjectedBundlePageUIClient::generateFileForUpload(WebPage* page, const St
     return generatedFilePath ? generatedFilePath->string() : String();
 }
 
-bool InjectedBundlePageUIClient::shouldRubberBandInDirection(WebPage* page, WKScrollDirection direction) const
-{
-    if (!m_client.shouldRubberBandInDirection)
-        return true;
-    return m_client.shouldRubberBandInDirection(toAPI(page), direction, m_client.clientInfo);
-}
-    
 WKBundlePageUIElementVisibility InjectedBundlePageUIClient::statusBarIsVisible(WebPage* page)
 {
     if (!m_client.statusBarIsVisible)

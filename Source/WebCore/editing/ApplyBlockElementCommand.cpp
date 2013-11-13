@@ -33,7 +33,6 @@
 #include "RenderStyle.h"
 #include "Text.h"
 #include "TextIterator.h"
-#include "VisiblePosition.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
 
@@ -182,7 +181,7 @@ RenderStyle* ApplyBlockElementCommand::renderStyleOfEnclosingTextNode(const Posi
     if (!renderer)
         return 0;
 
-    return renderer->style();
+    return &renderer->style();
 }
 
 void ApplyBlockElementCommand::rangeForParagraphSplittingTextNodesIfNeeded(const VisiblePosition& endOfCurrentParagraph, Position& start, Position& end)
@@ -282,7 +281,7 @@ VisiblePosition ApplyBlockElementCommand::endOfNextParagrahSplittingTextNodesIfN
     return Position(text.get(), position.offsetInContainerNode() - 1);
 }
 
-PassRefPtr<Element> ApplyBlockElementCommand::createBlockElement() const
+PassRefPtr<Element> ApplyBlockElementCommand::createBlockElement()
 {
     RefPtr<Element> element = createHTMLElement(document(), m_tagName);
     if (m_inlineStyle.length())

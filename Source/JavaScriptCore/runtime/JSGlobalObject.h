@@ -71,6 +71,8 @@ class SourceCode;
 struct ActivationStackNode;
 struct HashTable;
 
+#define DEFINE_STANDARD_BUILTIN(macro, upperName, lowerName) macro(upperName, lowerName, lowerName, JS ## upperName, upperName)
+    
 #define FOR_EACH_SIMPLE_BUILTIN_TYPE(macro) \
     macro(Set, set, set, JSSet, Set) \
     macro(Map, map, map, JSMap, Map) \
@@ -80,7 +82,12 @@ struct HashTable;
     macro(Number, number, numberObject, NumberObject, Number) \
     macro(Error, error, error, ErrorInstance, Error) \
     macro(JSArrayBuffer, arrayBuffer, arrayBuffer, JSArrayBuffer, ArrayBuffer) \
-    macro(WeakMap, weakMap, weakMap, JSWeakMap, WeakMap) \
+    DEFINE_STANDARD_BUILTIN(macro, WeakMap, weakMap) \
+    DEFINE_STANDARD_BUILTIN(macro, ArrayIterator, arrayIterator) \
+    DEFINE_STANDARD_BUILTIN(macro, ArgumentsIterator, argumentsIterator) \
+    DEFINE_STANDARD_BUILTIN(macro, MapIterator, mapIterator) \
+    DEFINE_STANDARD_BUILTIN(macro, SetIterator, setIterator) \
+
 
 #define DECLARE_SIMPLE_BUILTIN_TYPE(capitalName, lowerName, properName, instanceType, jsName) \
     class JS ## capitalName; \
@@ -119,6 +126,9 @@ struct GlobalObjectMethodTable {
     typedef void (*QueueTaskToEventLoopCallbackFunctionPtr)(ExecState*, TaskContext*);
     typedef void (*QueueTaskToEventLoopFunctionPtr)(const JSGlobalObject*, QueueTaskToEventLoopCallbackFunctionPtr, PassRefPtr<TaskContext>);
     QueueTaskToEventLoopFunctionPtr queueTaskToEventLoop;
+
+    typedef bool (*ShouldInterruptScriptBeforeTimeoutPtr)(const JSGlobalObject*);
+    ShouldInterruptScriptBeforeTimeoutPtr shouldInterruptScriptBeforeTimeout;
 };
 
 class JSGlobalObject : public JSSegmentedVariableObject {
@@ -140,9 +150,7 @@ private:
 
 protected:
 
-    // Add one so we don't need to index with -1 to get current frame pointer.
-    // An index of -1 is an error for some compilers.
-    Register m_globalCallFrame[JSStack::CallFrameHeaderSize + 1];
+    Register m_globalCallFrame[JSStack::CallFrameHeaderSize];
 
     WriteBarrier<JSObject> m_globalThis;
 
@@ -194,6 +202,8 @@ protected:
     WriteBarrier<Structure> m_regExpMatchesArrayStructure;
     WriteBarrier<Structure> m_regExpStructure;
     WriteBarrier<Structure> m_internalFunctionStructure;
+    
+    WriteBarrier<Structure> m_iteratorResultStructure;
 
 #if ENABLE(PROMISES)
     WriteBarrier<Structure> m_promiseStructure;
@@ -402,6 +412,8 @@ public:
     Structure* regExpStructure() const { return m_regExpStructure.get(); }
     Structure* setStructure() const { return m_setStructure.get(); }
     Structure* stringObjectStructure() const { return m_stringObjectStructure.get(); }
+    Structure* iteratorResultStructure() const { return m_iteratorResultStructure.get(); }
+    static ptrdiff_t iteratorResultStructureOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_iteratorResultStructure); }
 
 #if ENABLE(PROMISES)
     Structure* promiseStructure() const { return m_promiseStructure.get(); }
@@ -462,6 +474,7 @@ public:
 
     Debugger* debugger() const { return m_debugger; }
     void setDebugger(Debugger* debugger) { m_debugger = debugger; }
+    static ptrdiff_t debuggerOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_debugger); }
 
     const GlobalObjectMethodTable* globalObjectMethodTable() const { return m_globalObjectMethodTable; }
 
@@ -472,6 +485,7 @@ public:
     JS_EXPORT_PRIVATE ExecState* globalExec();
 
     static bool shouldInterruptScript(const JSGlobalObject*) { return true; }
+    static bool shouldInterruptScriptBeforeTimeout(const JSGlobalObject*) { return false; }
     static bool javaScriptExperimentsEnabled(const JSGlobalObject*) { return false; }
 
     bool evalEnabled() const { return m_evalEnabled; }

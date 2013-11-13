@@ -44,17 +44,16 @@ const int DragController::DragIconBottomInset = 3;
 
 const float DragController::DragImageAlpha = 0.75f;
 
-DragOperation DragController::dragOperation(DragData* dragData)
+DragOperation DragController::dragOperation(DragData& dragData)
 {
     //FIXME: to match the macos behaviour we should return DragOperationNone
     //if we are a modal window, we are the drag source, or the window is an attached sheet
     //If this can be determined from within WebCore operationForDrag can be pulled into 
     //WebCore itself
-    ASSERT(dragData);
-    return dragData->containsURL(0) && !m_didInitiateDrag ? DragOperationCopy : DragOperationNone;
+    return dragData.containsURL(0) && !m_didInitiateDrag ? DragOperationCopy : DragOperationNone;
 }
 
-bool DragController::isCopyKeyDown(DragData*)
+bool DragController::isCopyKeyDown(DragData&)
 {
     return ::GetAsyncKeyState(VK_CONTROL);
 }
@@ -70,9 +69,9 @@ void DragController::cleanupAfterSystemDrag()
 {
 }
 
-void DragController::declareAndWriteDragImage(Clipboard* clipboard, Element* element, const URL& url, const String& label)
+void DragController::declareAndWriteDragImage(Clipboard& clipboard, Element& element, const URL& url, const String& label)
 {
-    Pasteboard& pasteboard = clipboard->pasteboard();
+    Pasteboard& pasteboard = clipboard.pasteboard();
 
     // FIXME: Do we really need this check?
     if (!pasteboard.writableDataObject())

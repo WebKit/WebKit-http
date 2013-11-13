@@ -60,6 +60,13 @@ namespace JSC {
         
         CString ascii() const { return m_string.ascii(); }
         CString utf8() const { return m_string.utf8(); }
+        
+        static Identifier from(const PrivateName& name)
+        {
+            Identifier result;
+            result.m_string = name.uid();
+            return result;
+        }
 
         static Identifier createLCharFromUChar(VM* vm, const UChar* s, int length) { return Identifier(vm, add8(vm, s, length)); }
 
@@ -162,11 +169,11 @@ namespace JSC {
         static void translate(StringImpl*& location, const CharBuffer<T>& buf, unsigned hash)
         {
             T* d;
-            StringImpl* r = StringImpl::createUninitialized(buf.length, d).leakRef();
+            StringImpl& r = StringImpl::createUninitialized(buf.length, d).leakRef();
             for (unsigned i = 0; i != buf.length; i++)
                 d[i] = buf.s[i];
-            r->setHash(hash);
-            location = r; 
+            r.setHash(hash);
+            location = &r;
         }
     };
 
@@ -182,7 +189,7 @@ namespace JSC {
         if (!length)
             return StringImpl::empty();
         CharBuffer<T> buf = { s, static_cast<unsigned>(length) };
-        HashSet<StringImpl*>::AddResult addResult = vm->identifierTable->add<CharBuffer<T>, IdentifierCharBufferTranslator<T> >(buf);
+        HashSet<StringImpl*>::AddResult addResult = vm->identifierTable->add<CharBuffer<T>, IdentifierCharBufferTranslator<T>>(buf);
         
         // If the string is newly-translated, then we need to adopt it.
         // The boolean in the pair tells us if that is so.
@@ -237,7 +244,7 @@ namespace JSC {
     IdentifierTable* createIdentifierTable();
     void deleteIdentifierTable(IdentifierTable*);
 
-    struct IdentifierRepHash : PtrHash<RefPtr<StringImpl> > {
+    struct IdentifierRepHash : PtrHash<RefPtr<StringImpl>> {
         static unsigned hash(const RefPtr<StringImpl>& key) { return key->existingHash(); }
         static unsigned hash(StringImpl* key) { return key->existingHash(); }
     };
@@ -247,7 +254,7 @@ namespace JSC {
         static const bool emptyValueIsZero = false;
     };
 
-    typedef HashMap<RefPtr<StringImpl>, int, IdentifierRepHash, HashTraits<RefPtr<StringImpl> >, IdentifierMapIndexHashTraits> IdentifierMap;
+    typedef HashMap<RefPtr<StringImpl>, int, IdentifierRepHash, HashTraits<RefPtr<StringImpl>>, IdentifierMapIndexHashTraits> IdentifierMap;
     typedef HashMap<StringImpl*, int, IdentifierRepHash, HashTraits<StringImpl*>, IdentifierMapIndexHashTraits> BorrowedIdentifierMap;
 
     template<typename U, typename V>

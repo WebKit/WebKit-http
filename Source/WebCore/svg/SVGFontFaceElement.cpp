@@ -65,7 +65,7 @@ void SVGFontFaceElement::parseAttribute(const QualifiedName& name, const AtomicS
 {    
     CSSPropertyID propId = cssPropertyIdForSVGAttributeName(name);
     if (propId > 0) {
-        m_fontFaceRule->mutableProperties()->setProperty(propId, value, false);
+        m_fontFaceRule->mutableProperties().setProperty(propId, value, false);
         rebuildFontFace();
         return;
     }
@@ -228,7 +228,7 @@ void SVGFontFaceElement::rebuildFontFace()
     }
 
     // we currently ignore all but the first src element, alternatively we could concat them
-    auto srcElement = childrenOfType<SVGFontFaceSrcElement>(this).first();
+    auto srcElement = childrenOfType<SVGFontFaceSrcElement>(*this).first();
 
     bool describesParentFont = isSVGFontElement(parentNode());
     RefPtr<CSSValueList> list;
@@ -248,16 +248,16 @@ void SVGFontFaceElement::rebuildFontFace()
         return;
 
     // Parse in-memory CSS rules
-    m_fontFaceRule->mutableProperties()->addParsedProperty(CSSProperty(CSSPropertySrc, list));
+    m_fontFaceRule->mutableProperties().addParsedProperty(CSSProperty(CSSPropertySrc, list));
 
     if (describesParentFont) {    
         // Traverse parsed CSS values and associate CSSFontFaceSrcValue elements with ourselves.
         RefPtr<CSSValue> src = m_fontFaceRule->properties().getPropertyCSSValue(CSSPropertySrc);
-        CSSValueList* srcList = static_cast<CSSValueList*>(src.get());
+        CSSValueList* srcList = toCSSValueList(src.get());
 
         unsigned srcLength = srcList ? srcList->length() : 0;
         for (unsigned i = 0; i < srcLength; i++) {
-            if (CSSFontFaceSrcValue* item = static_cast<CSSFontFaceSrcValue*>(srcList->itemWithoutBoundsCheck(i)))
+            if (CSSFontFaceSrcValue* item = toCSSFontFaceSrcValue(srcList->itemWithoutBoundsCheck(i)))
                 item->setSVGFontFaceElement(this);
         }
     }
@@ -265,10 +265,10 @@ void SVGFontFaceElement::rebuildFontFace()
     document().styleResolverChanged(DeferRecalcStyle);
 }
 
-Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(ContainerNode* rootParent)
+Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(ContainerNode& rootParent)
 {
     SVGElement::insertedInto(rootParent);
-    if (!rootParent->inDocument()) {
+    if (!rootParent.inDocument()) {
         ASSERT(!m_fontElement);
         return InsertionDone;
     }
@@ -278,14 +278,14 @@ Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(ContainerNod
     return InsertionDone;
 }
 
-void SVGFontFaceElement::removedFrom(ContainerNode* rootParent)
+void SVGFontFaceElement::removedFrom(ContainerNode& rootParent)
 {
     SVGElement::removedFrom(rootParent);
 
-    if (rootParent->inDocument()) {
+    if (rootParent.inDocument()) {
         m_fontElement = 0;
         document().accessSVGExtensions()->unregisterSVGFontFaceElement(this);
-        m_fontFaceRule->mutableProperties()->clear();
+        m_fontFaceRule->mutableProperties().clear();
 
         document().styleResolverChanged(DeferRecalcStyle);
     } else

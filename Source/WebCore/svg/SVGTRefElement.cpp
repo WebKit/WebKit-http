@@ -220,14 +220,14 @@ void SVGTRefElement::svgAttributeChanged(const QualifiedName& attrName)
     ASSERT_NOT_REACHED();
 }
 
-RenderElement* SVGTRefElement::createRenderer(RenderArena& arena, RenderStyle&)
+RenderElement* SVGTRefElement::createRenderer(PassRef<RenderStyle> style)
 {
-    return new (arena) RenderSVGInline(*this);
+    return new RenderSVGInline(*this, std::move(style));
 }
 
-bool SVGTRefElement::childShouldCreateRenderer(const Node* child) const
+bool SVGTRefElement::childShouldCreateRenderer(const Node& child) const
 {
-    return child->isInShadowTree();
+    return child.isInShadowTree();
 }
 
 bool SVGTRefElement::rendererIsNeeded(const RenderStyle& style)
@@ -275,18 +275,18 @@ void SVGTRefElement::buildPendingResource()
     updateReferencedText(target.get());
 }
 
-Node::InsertionNotificationRequest SVGTRefElement::insertedInto(ContainerNode* rootParent)
+Node::InsertionNotificationRequest SVGTRefElement::insertedInto(ContainerNode& rootParent)
 {
     SVGElement::insertedInto(rootParent);
-    if (rootParent->inDocument())
+    if (rootParent.inDocument())
         buildPendingResource();
     return InsertionDone;
 }
 
-void SVGTRefElement::removedFrom(ContainerNode* rootParent)
+void SVGTRefElement::removedFrom(ContainerNode& rootParent)
 {
     SVGElement::removedFrom(rootParent);
-    if (rootParent->inDocument())
+    if (rootParent.inDocument())
         m_targetListener->detach();
 }
 

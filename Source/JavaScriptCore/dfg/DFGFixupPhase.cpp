@@ -233,7 +233,7 @@ private:
         case ArithMod: {
             if (Node::shouldSpeculateInt32ForArithmetic(node->child1().node(), node->child2().node())
                 && node->canSpeculateInt32()) {
-                if (isX86() || isARMv7s()) {
+                if (isX86() || isARM64() || isARMv7s()) {
                     fixEdge<Int32Use>(node->child1());
                     fixEdge<Int32Use>(node->child2());
                     break;
@@ -278,7 +278,9 @@ private:
             break;
         }
             
-        case ArithSqrt: {
+        case ArithSqrt:
+        case ArithSin:
+        case ArithCos: {
             fixEdge<NumberUse>(node->child1());
             break;
         }
@@ -292,6 +294,8 @@ private:
                 fixEdge<Int32Use>(node->child1());
             else if (node->child1()->shouldSpeculateNumber())
                 fixEdge<NumberUse>(node->child1());
+            else if (node->child1()->shouldSpeculateString())
+                fixEdge<StringUse>(node->child1());
             break;
         }
             
@@ -471,7 +475,8 @@ private:
             
             break;
         }
-            
+
+        case PutByValDirect:
         case PutByVal:
         case PutByValAlias: {
             Edge& child1 = m_graph.varArgChild(node, 0);
@@ -801,18 +806,6 @@ private:
             break;
         }
             
-        case CheckArray: {
-            switch (node->arrayMode().type()) {
-            case Array::String:
-                fixEdge<StringUse>(node->child1());
-                break;
-            default:
-                fixEdge<CellUse>(node->child1());
-                break;
-            }
-            break;
-        }
-            
         case Arrayify:
         case ArrayifyToStructure: {
             fixEdge<CellUse>(node->child1());
@@ -882,10 +875,21 @@ private:
         case CheckTierUpAndOSREnter:
         case Int52ToDouble:
         case Int52ToValue:
+        case InvalidationPoint:
+        case CheckArray:
             RELEASE_ASSERT_NOT_REACHED();
             break;
-        
-#if !ASSERT_DISABLED    
+
+        case IsString:
+            if (node->child1()->shouldSpeculateString()) {
+                m_insertionSet.insertNode(m_indexInBlock, SpecNone, Phantom, node->codeOrigin,
+                    Edge(node->child1().node(), StringUse));
+                m_graph.convertToConstant(node, jsBoolean(true));
+                observeUseKindOnNode<StringUse>(node);
+            }
+            break;
+
+#if !ASSERT_DISABLED
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
         case SetArgument:
         case JSConstant:
@@ -895,7 +899,6 @@ private:
         case Flush:
         case PhantomLocal:
         case GetLocalUnlinked:
-        case InlineStart:
         case GetMyScope:
         case GetClosureVar:
         case GetGlobalVar:
@@ -912,7 +915,6 @@ private:
         case IsUndefined:
         case IsBoolean:
         case IsNumber:
-        case IsString:
         case IsObject:
         case IsFunction:
         case CreateActivation:
@@ -1262,29 +1264,35 @@ private:
     {
         ASSERT(arrayMode.isSpecific());
         
-        Structure* structure = arrayMode.originalArrayStructure(m_graph, codeOrigin);
-        
-        Edge indexEdge = index ? Edge(index, Int32Use) : Edge();
-        
-        if (arrayMode.doesConversion()) {
-            if (structure) {
-                m_insertionSet.insertNode(
-                    m_indexInBlock, SpecNone, ArrayifyToStructure, codeOrigin,
-                    OpInfo(structure), OpInfo(arrayMode.asWord()), Edge(array, CellUse), indexEdge);
-            } else {
-                m_insertionSet.insertNode(
-                    m_indexInBlock, SpecNone, Arrayify, codeOrigin,
-                    OpInfo(arrayMode.asWord()), Edge(array, CellUse), indexEdge);
-            }
+        if (arrayMode.type() == Array::String) {
+            m_insertionSet.insertNode(
+                m_indexInBlock, SpecNone, Phantom, codeOrigin,
+                Edge(array, StringUse));
         } else {
-            if (structure) {
-                m_insertionSet.insertNode(
-                    m_indexInBlock, SpecNone, CheckStructure, codeOrigin,
-                    OpInfo(m_graph.addStructureSet(structure)), Edge(array, CellUse));
+            Structure* structure = arrayMode.originalArrayStructure(m_graph, codeOrigin);
+        
+            Edge indexEdge = index ? Edge(index, Int32Use) : Edge();
+        
+            if (arrayMode.doesConversion()) {
+                if (structure) {
+                    m_insertionSet.insertNode(
+                        m_indexInBlock, SpecNone, ArrayifyToStructure, codeOrigin,
+                        OpInfo(structure), OpInfo(arrayMode.asWord()), Edge(array, CellUse), indexEdge);
+                } else {
+                    m_insertionSet.insertNode(
+                        m_indexInBlock, SpecNone, Arrayify, codeOrigin,
+                        OpInfo(arrayMode.asWord()), Edge(array, CellUse), indexEdge);
+                }
             } else {
-                m_insertionSet.insertNode(
-                    m_indexInBlock, SpecNone, CheckArray, codeOrigin,
-                    OpInfo(arrayMode.asWord()), Edge(array, CellUse));
+                if (structure) {
+                    m_insertionSet.insertNode(
+                        m_indexInBlock, SpecNone, CheckStructure, codeOrigin,
+                        OpInfo(m_graph.addStructureSet(structure)), Edge(array, CellUse));
+                } else {
+                    m_insertionSet.insertNode(
+                        m_indexInBlock, SpecNone, CheckArray, codeOrigin,
+                        OpInfo(arrayMode.asWord()), Edge(array, CellUse));
+                }
             }
         }
         

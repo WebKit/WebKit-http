@@ -34,10 +34,10 @@
 #import <WebCore/AlternativeTextUIController.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/HistoryItem.h>
-#import <WebCore/RunLoop.h>
 #import <objc/objc-auto.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
+#import <wtf/RunLoop.h>
 
 BOOL applicationIsTerminating = NO;
 int pluginDatabaseClientCount = 0;
@@ -74,7 +74,7 @@ WebViewLayerFlushScheduler::WebViewLayerFlushScheduler(LayerFlushController* flu
 {
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
-    WebCore::RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMainRunLoop();
     WebCoreObjCFinalizeOnMainThread(self);
 }
 
@@ -97,6 +97,10 @@ WebViewLayerFlushScheduler::WebViewLayerFlushScheduler(LayerFlushController* flu
 
 #if ENABLE(DASHBOARD_SUPPORT)
     dashboardBehaviorAllowWheelScrolling = YES;
+#endif
+
+#if ENABLE(REMOTE_INSPECTOR)
+    allowsRemoteInspection = YES;
 #endif
 
     shouldCloseWithWindow = objc_collectingEnabled();
@@ -129,6 +133,15 @@ WebViewLayerFlushScheduler::WebViewLayerFlushScheduler(LayerFlushController* flu
     [frameLoadDelegateForwarder release];
     [editingDelegateForwarder release];
     [mediaStyle release];
+
+#if ENABLE(REMOTE_INSPECTOR)
+    [remoteInspectorUserInfo release];
+#if PLATFORM(IOS)
+    [indicateLayer release];
+    [hostApplicationBundleId release];
+    [hostApplicationName release];
+#endif
+#endif
 
     [super dealloc];
 }

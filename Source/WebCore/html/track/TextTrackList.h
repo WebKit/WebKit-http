@@ -40,14 +40,16 @@ public:
     {
         return adoptRef(new TextTrackList(element, context));
     }
-    ~TextTrackList();
+    virtual ~TextTrackList();
 
     virtual unsigned length() const OVERRIDE;
     int getTrackIndex(TextTrack*);
     int getTrackIndexRelativeToRenderedTracks(TextTrack*);
     virtual bool contains(TrackBase*) const OVERRIDE;
 
-    TextTrack* item(unsigned index);
+    TextTrack* item(unsigned index) const;
+    TextTrack* lastItem() const { return item(length() - 1); }
+
     void append(PassRefPtr<TextTrack>);
     virtual void remove(TrackBase*) OVERRIDE;
 
@@ -59,8 +61,8 @@ private:
 
     void invalidateTrackIndexesAfterTrack(TextTrack*);
 
-    Vector<RefPtr<TrackBase> > m_addTrackTracks;
-    Vector<RefPtr<TrackBase> > m_elementTracks;
+    Vector<RefPtr<TrackBase>> m_addTrackTracks;
+    Vector<RefPtr<TrackBase>> m_elementTracks;
 };
 
 } // namespace WebCore

@@ -78,12 +78,7 @@
 #include <windows.h>
 #endif
 
-#if PLATFORM(QT)
-#include <QCoreApplication>
-#include <QDateTime>
-#endif
-
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && CPU(ARM_THUMB2)
 #include <fenv.h>
 #include <arm/arch.h>
 #endif
@@ -236,6 +231,7 @@ protected:
         addFunction(vm, "readline", functionReadline, 0);
         addFunction(vm, "preciseTime", functionPreciseTime, 0);
         addFunction(vm, "neverInlineFunction", functionNeverInlineFunction, 1);
+        addFunction(vm, "noInline", functionNeverInlineFunction, 1);
         addFunction(vm, "numberOfDFGCompiles", functionNumberOfDFGCompiles, 1);
 #if ENABLE(SAMPLING_FLAGS)
         addFunction(vm, "setSamplingFlags", functionSetSamplingFlags, 1);
@@ -262,7 +258,7 @@ protected:
 };
 
 const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, 0, ExecState::globalObjectTable, CREATE_METHOD_TABLE(GlobalObject) };
-const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled, 0 };
+const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled, 0, &shouldInterruptScriptBeforeTimeout };
 
 
 GlobalObject::GlobalObject(VM& vm, Structure* structure)
@@ -311,7 +307,7 @@ EncodedJSValue JSC_HOST_CALL functionPrint(ExecState* exec)
 #ifndef NDEBUG
 EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState* exec)
 {
-    if (!exec->callerFrame()->hasHostCallFrameFlag())
+    if (!exec->callerFrame()->isVMEntrySentinel())
         exec->vm().interpreter->dumpCallFrame(exec->callerFrame());
     return JSValue::encode(jsUndefined());
 }
@@ -541,7 +537,7 @@ static NO_RETURN_DUE_TO_CRASH void timeoutThreadMain(void*)
 
 int main(int argc, char** argv)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && CPU(ARM_THUMB2)
     // Enabled IEEE754 denormal support.
     fenv_t env;
     fegetenv( &env );
@@ -555,7 +551,6 @@ int main(int argc, char** argv)
     // testing/debugging, as it causes the post-mortem debugger not to be invoked. We reset the
     // error mode here to work around Cygwin's behavior. See <http://webkit.org/b/55222>.
     ::SetErrorMode(0);
-#endif
 
 #if defined(_DEBUG)
     _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
@@ -565,6 +560,7 @@ int main(int argc, char** argv)
     _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
     _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
 #endif
+#endif
 
     timeBeginPeriod(1);
 #endif
@@ -572,10 +568,6 @@ int main(int argc, char** argv)
 #if PLATFORM(BLACKBERRY)
     // Write all WTF logs to the system log
     BlackBerry::Platform::setupApplicationLogging("jsc");
-#endif
-
-#if PLATFORM(QT)
-    QCoreApplication app(argc, argv);
 #endif
 
 #if PLATFORM(EFL)
@@ -599,6 +591,10 @@ int main(int argc, char** argv)
             createThread(timeoutThreadMain, 0, "jsc Timeout Thread");
         }
     }
+#endif
+
+#if PLATFORM(IOS)
+    Options::crashIfCantAllocateJITMemory() = true;
 #endif
 
     // We can't use destructors in the following code because it uses Windows
@@ -855,10 +851,10 @@ int jscmain(int argc, char** argv)
     // Note that the options parsing can affect VM creation, and thus
     // comes first.
     CommandLine options(argc, argv);
-    RefPtr<VM> vm = VM::create(LargeHeap);
+    VM* vm = VM::create(LargeHeap).leakRef();
     int result;
     {
-        APIEntryShim shim(vm.get());
+        APIEntryShim shim(vm);
 
         if (options.m_profile && !vm->m_perBytecodeProfiler)
             vm->m_perBytecodeProfiler = adoptPtr(new Profiler::Database(*vm));
@@ -877,14 +873,6 @@ int jscmain(int argc, char** argv)
             if (!vm->m_perBytecodeProfiler->save(options.m_profilerOutput.utf8().data()))
                 fprintf(stderr, "could not save profiler output.\n");
         }
-    }
-    
-    if (Options::neverDeleteVMInCommandLine()) {
-        JSC::VM* temp = vm.release().leakRef();
-        UNUSED_PARAM(temp);
-    } else {
-        JSLockHolder lock(*vm);
-        vm.clear();
     }
     
     return result;

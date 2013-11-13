@@ -36,7 +36,6 @@
 #include "InspectorAgent.h"
 #include "InspectorFrontend.h"
 #include "InspectorPageAgent.h"
-#include "InspectorState.h"
 #include "InspectorValues.h"
 #include "InstrumentingAgents.h"
 #include "NetworkStateNotifier.h"
@@ -45,12 +44,8 @@
 
 namespace WebCore {
 
-namespace ApplicationCacheAgentState {
-static const char applicationCacheAgentEnabled[] = "applicationCacheAgentEnabled";
-}
-
-InspectorApplicationCacheAgent::InspectorApplicationCacheAgent(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* state, InspectorPageAgent* pageAgent)
-    : InspectorBaseAgent<InspectorApplicationCacheAgent>(ASCIILiteral("ApplicationCache"), instrumentingAgents, state)
+InspectorApplicationCacheAgent::InspectorApplicationCacheAgent(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent)
+    : InspectorBaseAgent<InspectorApplicationCacheAgent>(ASCIILiteral("ApplicationCache"), instrumentingAgents)
     , m_pageAgent(pageAgent)
     , m_frontend(0)
 {
@@ -67,17 +62,8 @@ void InspectorApplicationCacheAgent::clearFrontend()
     m_frontend = 0;
 }
 
-void InspectorApplicationCacheAgent::restore()
-{
-    if (m_state->getBoolean(ApplicationCacheAgentState::applicationCacheAgentEnabled)) {
-        ErrorString error;
-        enable(&error);
-    }
-}
-
 void InspectorApplicationCacheAgent::enable(ErrorString*)
 {
-    m_state->setBoolean(ApplicationCacheAgentState::applicationCacheAgentEnabled, true);
     m_instrumentingAgents->setInspectorApplicationCacheAgent(this);
 
     // We need to pass initial navigator.onOnline.
@@ -104,7 +90,7 @@ void InspectorApplicationCacheAgent::networkStateChanged()
     m_frontend->networkStateUpdated(isNowOnline);
 }
 
-void InspectorApplicationCacheAgent::getFramesWithManifests(ErrorString*, RefPtr<TypeBuilder::Array<TypeBuilder::ApplicationCache::FrameWithManifest> >& result)
+void InspectorApplicationCacheAgent::getFramesWithManifests(ErrorString*, RefPtr<TypeBuilder::Array<TypeBuilder::ApplicationCache::FrameWithManifest>>& result)
 {
     result = TypeBuilder::Array<TypeBuilder::ApplicationCache::FrameWithManifest>::create();
 
@@ -172,9 +158,9 @@ PassRefPtr<TypeBuilder::ApplicationCache::ApplicationCache> InspectorApplication
         .release();
 }
 
-PassRefPtr<TypeBuilder::Array<TypeBuilder::ApplicationCache::ApplicationCacheResource> > InspectorApplicationCacheAgent::buildArrayForApplicationCacheResources(const ApplicationCacheHost::ResourceInfoList& applicationCacheResources)
+PassRefPtr<TypeBuilder::Array<TypeBuilder::ApplicationCache::ApplicationCacheResource>> InspectorApplicationCacheAgent::buildArrayForApplicationCacheResources(const ApplicationCacheHost::ResourceInfoList& applicationCacheResources)
 {
-    RefPtr<TypeBuilder::Array<TypeBuilder::ApplicationCache::ApplicationCacheResource> > resources = TypeBuilder::Array<TypeBuilder::ApplicationCache::ApplicationCacheResource>::create();
+    RefPtr<TypeBuilder::Array<TypeBuilder::ApplicationCache::ApplicationCacheResource>> resources = TypeBuilder::Array<TypeBuilder::ApplicationCache::ApplicationCacheResource>::create();
 
     ApplicationCacheHost::ResourceInfoList::const_iterator end = applicationCacheResources.end();
     ApplicationCacheHost::ResourceInfoList::const_iterator it = applicationCacheResources.begin();

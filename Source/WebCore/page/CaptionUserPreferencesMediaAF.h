@@ -37,7 +37,7 @@ namespace WebCore {
 
 class CaptionUserPreferencesMediaAF : public CaptionUserPreferences {
 public:
-    static PassOwnPtr<CaptionUserPreferencesMediaAF> create(PageGroup* group) { return adoptPtr(new CaptionUserPreferencesMediaAF(group)); }
+    CaptionUserPreferencesMediaAF(PageGroup&);
     virtual ~CaptionUserPreferencesMediaAF();
 
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
@@ -63,12 +63,10 @@ public:
 
     virtual String captionsStyleSheetOverride() const OVERRIDE;
     virtual int textTrackSelectionScore(TextTrack*, HTMLMediaElement*) const OVERRIDE;
-    virtual Vector<RefPtr<TextTrack> > sortedTrackListForMenu(TextTrackList*) OVERRIDE;
+    virtual Vector<RefPtr<TextTrack>> sortedTrackListForMenu(TextTrackList*) OVERRIDE;
     virtual String displayNameForTrack(TextTrack*) const OVERRIDE;
 
 private:
-    CaptionUserPreferencesMediaAF(PageGroup*);
-
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
     String captionsWindowCSS() const;
     String captionsBackgroundCSS() const;

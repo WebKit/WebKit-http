@@ -32,8 +32,8 @@
 
 namespace WebCore {
 
-RenderTextControlMultiLine::RenderTextControlMultiLine(HTMLTextAreaElement& element)
-    : RenderTextControl(element)
+RenderTextControlMultiLine::RenderTextControlMultiLine(HTMLTextAreaElement& element, PassRef<RenderStyle> style)
+    : RenderTextControl(element, std::move(style))
 {
 }
 
@@ -85,19 +85,13 @@ int RenderTextControlMultiLine::baselinePosition(FontBaseline baselineType, bool
     return RenderBox::baselinePosition(baselineType, firstLine, direction, linePositionMode);
 }
 
-PassRefPtr<RenderStyle> RenderTextControlMultiLine::createInnerTextStyle(const RenderStyle* startStyle) const
+PassRef<RenderStyle> RenderTextControlMultiLine::createInnerTextStyle(const RenderStyle* startStyle) const
 {
-    RefPtr<RenderStyle> textBlockStyle = RenderStyle::create();
-    textBlockStyle->inheritFrom(startStyle);
-    adjustInnerTextStyle(startStyle, textBlockStyle.get());
-    textBlockStyle->setDisplay(BLOCK);
-
-    return textBlockStyle.release();
-}
-
-RenderStyle* RenderTextControlMultiLine::textBaseStyle() const
-{
-    return style();
+    auto textBlockStyle = RenderStyle::create();
+    textBlockStyle.get().inheritFrom(startStyle);
+    adjustInnerTextStyle(startStyle, &textBlockStyle.get());
+    textBlockStyle.get().setDisplay(BLOCK);
+    return textBlockStyle;
 }
 
 RenderObject* RenderTextControlMultiLine::layoutSpecialExcludedChild(bool relayoutChildren)
@@ -108,7 +102,7 @@ RenderObject* RenderTextControlMultiLine::layoutSpecialExcludedChild(bool relayo
     if (!placeholderRenderer->isBox())
         return placeholderRenderer;
     RenderBox* placeholderBox = toRenderBox(placeholderRenderer);
-    placeholderBox->style()->setLogicalWidth(Length(contentLogicalWidth() - placeholderBox->borderAndPaddingLogicalWidth(), Fixed));
+    placeholderBox->style().setLogicalWidth(Length(contentLogicalWidth() - placeholderBox->borderAndPaddingLogicalWidth(), Fixed));
     placeholderBox->layoutIfNeeded();
     placeholderBox->setX(borderLeft() + paddingLeft());
     placeholderBox->setY(borderTop() + paddingTop());

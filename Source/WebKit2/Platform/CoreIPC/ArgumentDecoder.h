@@ -39,7 +39,6 @@ public:
     ArgumentDecoder(const uint8_t* buffer, size_t bufferSize);
     virtual ~ArgumentDecoder();
 
-    uint64_t destinationID() const { return m_destinationID; }
     size_t length() const { return m_bufferEnd - m_buffer; }
 
     bool isInvalid() const { return m_bufferPos > m_bufferEnd; }
@@ -80,7 +79,7 @@ public:
         if (numElements > std::numeric_limits<size_t>::max() / sizeof(T))
             return false;
 
-        return bufferIsLargeEnoughToContain(__alignof(T), numElements * sizeof(T));
+        return bufferIsLargeEnoughToContain(alignof(T), numElements * sizeof(T));
     }
 
     // Generic type decode function.
@@ -99,12 +98,7 @@ protected:
     bool alignBufferPosition(unsigned alignment, size_t size);
     bool bufferIsLargeEnoughToContain(unsigned alignment, size_t size) const;
 
-// FIXME: Move m_destinationID to MessageDecoder.
-protected:
-    uint64_t m_destinationID;
-
 private:
-    uint8_t* m_allocatedBase;
     uint8_t* m_buffer;
     uint8_t* m_bufferPos;
     uint8_t* m_bufferEnd;

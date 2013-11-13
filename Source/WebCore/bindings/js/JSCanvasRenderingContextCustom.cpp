@@ -47,7 +47,7 @@ void JSCanvasRenderingContext::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
     Base::visitChildren(thisObject, visitor);
 
-    visitor.addOpaqueRoot(root(thisObject->impl()->canvas()));
+    visitor.addOpaqueRoot(root(thisObject->impl().canvas()));
 }
 
 JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, CanvasRenderingContext* object)
@@ -59,7 +59,7 @@ JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, CanvasR
     if (object->is3d())
         return wrap<JSWebGLRenderingContext>(exec, globalObject, static_cast<WebGLRenderingContext*>(object));
 #endif
-    ASSERT(object->is2d());
+    ASSERT_WITH_SECURITY_IMPLICATION(object->is2d());
     return wrap<JSCanvasRenderingContext2D>(exec, globalObject, static_cast<CanvasRenderingContext2D*>(object));
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2010-2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,10 @@
 
 #if ENABLE(JAVASCRIPT_DEBUGGER)
 
-#include "ScriptDebugListener.h"
+#include "BreakpointID.h"
 #include "ScriptBreakpoint.h"
+#include "ScriptDebugListener.h"
+#include "SourceID.h"
 #include "Timer.h"
 #include <debugger/Debugger.h>
 #include <wtf/HashMap.h>
@@ -50,35 +52,16 @@ class ExecState;
 }
 namespace WebCore {
 
-class JavaScriptCallFrame;
 class ScriptDebugListener;
 class ScriptObject;
 class ScriptValue;
 
-class ScriptDebugServer : protected JSC::Debugger {
+class ScriptDebugServer : public JSC::Debugger {
     WTF_MAKE_NONCOPYABLE(ScriptDebugServer); WTF_MAKE_FAST_ALLOCATED;
 public:
-    String setBreakpoint(const String& sourceID, const ScriptBreakpoint&, int* actualLineNumber, int* actualColumnNumber);
-    void removeBreakpoint(const String& breakpointId);
+    BreakpointID setBreakpoint(SourceID, const ScriptBreakpoint&, unsigned* actualLineNumber, unsigned* actualColumnNumber);
+    void removeBreakpoint(BreakpointID);
     void clearBreakpoints();
-    void setBreakpointsActivated(bool activated);
-    void activateBreakpoints() { setBreakpointsActivated(true); }
-    void deactivateBreakpoints() { setBreakpointsActivated(false); }
-
-    enum PauseOnExceptionsState {
-        DontPauseOnExceptions,
-        PauseOnAllExceptions,
-        PauseOnUncaughtExceptions
-    };
-    PauseOnExceptionsState pauseOnExceptionsState() const { return m_pauseOnExceptionsState; }
-    void setPauseOnExceptionsState(PauseOnExceptionsState);
-
-    void setPauseOnNextStatement(bool pause);
-    void breakProgram();
-    void continueProgram();
-    void stepIntoStatement();
-    void stepOverStatement();
-    void stepOutOfFunction();
 
     bool canSetScriptSource();
     bool setScriptSource(const String& sourceID, const String& newContent, bool preview, String* error, ScriptValue* newCallFrames, ScriptObject* result);
@@ -95,12 +78,11 @@ public:
         // FIXME(webkit.org/b/82203): Implement preprocessor.
     }
 
-    bool isPaused() { return m_paused; }
     bool runningNestedMessageLoop() { return m_runningNestedMessageLoop; }
 
-    void compileScript(JSC::ExecState*, const String& expression, const String& sourceURL, String* scriptId, String* exceptionMessage);
+    void compileScript(JSC::ExecState*, const String& expression, const String& sourceURL, String* scriptID, String* exceptionMessage);
     void clearCompiledScripts();
-    void runScript(JSC::ExecState*, const String& scriptId, ScriptValue* result, bool* wasThrown, String* exceptionMessage);
+    void runScript(JSC::ExecState*, const String& scriptID, ScriptValue* result, bool* wasThrown, String* exceptionMessage);
 
     class Task {
         WTF_MAKE_FAST_ALLOCATED;
@@ -113,7 +95,7 @@ protected:
     typedef HashSet<ScriptDebugListener*> ListenerSet;
     typedef void (ScriptDebugServer::*JavaScriptExecutionCallback)(ScriptDebugListener*);
 
-    ScriptDebugServer();
+    ScriptDebugServer(bool isInWorkerThread = false);
     ~ScriptDebugServer();
 
     virtual ListenerSet* getListenersForGlobalObject(JSC::JSGlobalObject*) = 0;
@@ -124,9 +106,7 @@ protected:
 
     virtual bool isContentScript(JSC::ExecState*);
 
-    bool hasBreakpoint(intptr_t sourceID, const TextPosition&, ScriptBreakpoint* hitBreakpoint) const;
     bool evaluateBreakpointAction(const ScriptBreakpointAction&) const;
-    bool evaluateBreakpointActions(const ScriptBreakpoint&) const;
 
     void dispatchFunctionToListeners(JavaScriptExecutionCallback, JSC::JSGlobalObject*);
     void dispatchFunctionToListeners(const ListenerSet& listeners, JavaScriptExecutionCallback callback);
@@ -135,39 +115,26 @@ protected:
     void dispatchDidParseSource(const ListenerSet& listeners, JSC::SourceProvider*, bool isContentScript);
     void dispatchFailedToParseSource(const ListenerSet& listeners, JSC::SourceProvider*, int errorLine, const String& errorMessage);
 
-    void createCallFrame(JSC::CallFrame*);
-    void updateCallFrameAndPauseIfNeeded(JSC::CallFrame*);
-    void pauseIfNeeded(JSC::JSGlobalObject* dynamicGlobalObject);
-
-    virtual void detach(JSC::JSGlobalObject*) OVERRIDE;
-
     virtual void sourceParsed(JSC::ExecState*, JSC::SourceProvider*, int errorLine, const String& errorMsg) OVERRIDE;
-    virtual void callEvent(JSC::CallFrame*) OVERRIDE;
-    virtual void atStatement(JSC::CallFrame*) OVERRIDE;
-    virtual void returnEvent(JSC::CallFrame*) OVERRIDE;
-    virtual void exception(JSC::CallFrame*, JSC::JSValue exceptionValue, bool hasHandler) OVERRIDE;
-    virtual void willExecuteProgram(JSC::CallFrame*) OVERRIDE;
-    virtual void didExecuteProgram(JSC::CallFrame*) OVERRIDE;
-    virtual void didReachBreakpoint(JSC::CallFrame*) OVERRIDE;
 
-    typedef Vector<ScriptBreakpoint> BreakpointsInLine;
-    typedef HashMap<long, BreakpointsInLine> LineToBreakpointMap;
-    typedef HashMap<intptr_t, LineToBreakpointMap> SourceIdToBreakpointsMap;
+    bool m_doneProcessingDebuggerEvents;
+
+private:
+    typedef Vector<ScriptBreakpointAction> BreakpointActions;
+    typedef HashMap<BreakpointID, BreakpointActions> BreakpointIDToActionsMap;
+
+    virtual bool needPauseHandling(JSC::JSGlobalObject*) OVERRIDE;
+    virtual void handleBreakpointHit(const JSC::Breakpoint&) OVERRIDE;
+    virtual void handleExceptionInBreakpointCondition(JSC::ExecState*, JSC::JSValue exception) const OVERRIDE;
+    virtual void handlePause(JSC::Debugger::ReasonForPause, JSC::JSGlobalObject*) OVERRIDE;
+    virtual void notifyDoneProcessingDebuggerEvents() OVERRIDE;
 
     bool m_callingListeners;
-    PauseOnExceptionsState m_pauseOnExceptionsState;
-    bool m_pauseOnNextStatement;
-    bool m_paused;
     bool m_runningNestedMessageLoop;
-    bool m_doneProcessingDebuggerEvents;
-    bool m_breakpointsActivated;
-    JavaScriptCallFrame* m_pauseOnCallFrame;
-    RefPtr<JavaScriptCallFrame> m_currentCallFrame;
-    SourceIdToBreakpointsMap m_sourceIdToBreakpoints;
+    BreakpointIDToActionsMap m_breakpointIDToActions;
     Timer<ScriptDebugServer> m_recompileTimer;
 
-    int m_lastExecutedLine;
-    intptr_t m_lastExecutedSourceId;
+    friend class DebuggerCallFrameScope;
 };
 
 } // namespace WebCore

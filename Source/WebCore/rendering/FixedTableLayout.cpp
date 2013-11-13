@@ -68,8 +68,6 @@
   overflow content.
 */
 
-using namespace std;
-
 namespace WebCore {
 
 FixedTableLayout::FixedTableLayout(RenderTable* table)
@@ -98,7 +96,7 @@ int FixedTableLayout::calcWidthArray()
         if (col->isTableColumnGroupWithColumnChildren())
             continue;
 
-        Length colStyleLogicalWidth = col->style()->logicalWidth();
+        Length colStyleLogicalWidth = col->style().logicalWidth();
         int effectiveColWidth = 0;
         if (colStyleLogicalWidth.isFixed() && colStyleLogicalWidth.value() > 0)
             effectiveColWidth = colStyleLogicalWidth.value();
@@ -178,9 +176,9 @@ void FixedTableLayout::computeIntrinsicLogicalWidths(LayoutUnit& minWidth, Layou
 
 void FixedTableLayout::applyPreferredLogicalWidthQuirks(LayoutUnit& minWidth, LayoutUnit& maxWidth) const
 {
-    Length tableLogicalWidth = m_table->style()->logicalWidth();
+    Length tableLogicalWidth = m_table->style().logicalWidth();
     if (tableLogicalWidth.isFixed() && tableLogicalWidth.isPositive())
-        minWidth = maxWidth = max<int>(minWidth, tableLogicalWidth.value() - m_table->bordersPaddingAndSpacingInRowDirection());
+        minWidth = maxWidth = std::max<int>(minWidth, tableLogicalWidth.value() - m_table->bordersPaddingAndSpacingInRowDirection());
 
     /*
         <table style="width:100%; background-color:red"><tr><td>
@@ -194,7 +192,7 @@ void FixedTableLayout::applyPreferredLogicalWidthQuirks(LayoutUnit& minWidth, La
     // In this example, the two inner tables should be as large as the outer table. 
     // We can achieve this effect by making the maxwidth of fixed tables with percentage
     // widths be infinite.
-    if (m_table->style()->logicalWidth().isPercent() && maxWidth < tableMaxWidth)
+    if (m_table->style().logicalWidth().isPercent() && maxWidth < tableMaxWidth)
         maxWidth = tableMaxWidth;
 }
 

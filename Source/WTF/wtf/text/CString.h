@@ -91,10 +91,10 @@ WTF_EXPORT_PRIVATE bool operator==(const CString& a, const CString& b);
 inline bool operator!=(const CString& a, const CString& b) { return !(a == b); }
 WTF_EXPORT_PRIVATE bool operator==(const CString& a, const char* b);
 inline bool operator!=(const CString& a, const char* b) { return !(a == b); }
-bool operator<(const CString& a, const CString& b);
+WTF_EXPORT_PRIVATE bool operator<(const CString& a, const CString& b);
 
 struct CStringHash {
-    WTF_EXPORT_PRIVATE static unsigned hash(const CString& string) { return string.hash(); }
+    static unsigned hash(const CString& string) { return string.hash(); }
     WTF_EXPORT_PRIVATE static bool equal(const CString& a, const CString& b);
     static const bool safeToCompareToEmptyOrDeleted = true;
 };

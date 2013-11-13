@@ -28,22 +28,15 @@
 
 #include "CachedImage.h"
 #include "CSSPrimitiveValue.h"
-#include "CSSPropertyNames.h"
-#include "CSSValueKeywords.h"
 #include "CompositeEditCommand.h"
-#include "DeleteButton.h"
 #include "Document.h"
-#include "Editor.h"
 #include "EditorClient.h"
-#include "Frame.h"
-#include "FrameSelection.h"
 #include "htmlediting.h"
 #include "HTMLDivElement.h"
 #include "HTMLNames.h"
 #include "Image.h"
 #include "Node.h"
 #include "Page.h"
-#include "Range.h"
 #include "RemoveNodeCommand.h"
 #include "RenderBox.h"
 #include "StylePropertySet.h"
@@ -112,20 +105,18 @@ static bool isDeletableElement(const Node* node)
         return true;
 
     if (box->isRenderBlock() && !box->isTableCell()) {
-        RenderStyle* style = box->style();
-        if (!style)
-            return false;
+        const RenderStyle& style = box->style();
 
         // Allow blocks that have background images
-        if (style->hasBackgroundImage()) {
-            for (const FillLayer* background = style->backgroundLayers(); background; background = background->next()) {
+        if (style.hasBackgroundImage()) {
+            for (const FillLayer* background = style.backgroundLayers(); background; background = background->next()) {
                 if (background->image() && background->image()->canRender(box, 1))
                     return true;
             }
         }
 
         // Allow blocks with a minimum number of non-transparent borders
-        unsigned visibleBorders = style->borderTop().isVisible() + style->borderBottom().isVisible() + style->borderLeft().isVisible() + style->borderRight().isVisible();
+        unsigned visibleBorders = style.borderTop().isVisible() + style.borderBottom().isVisible() + style.borderLeft().isVisible() + style.borderRight().isVisible();
         if (visibleBorders >= minimumVisibleBorders)
             return true;
 
@@ -138,11 +129,9 @@ static bool isDeletableElement(const Node* node)
         if (!parentRenderer)
             return false;
 
-        RenderStyle* parentStyle = parentRenderer->style();
-        if (!parentStyle)
-            return false;
+        const RenderStyle& parentStyle = parentRenderer->style();
 
-        if (box->hasBackground() && (!parentRenderer->hasBackground() || style->visitedDependentColor(CSSPropertyBackgroundColor) != parentStyle->visitedDependentColor(CSSPropertyBackgroundColor)))
+        if (box->hasBackground() && (!parentRenderer->hasBackground() || style.visitedDependentColor(CSSPropertyBackgroundColor) != parentStyle.visitedDependentColor(CSSPropertyBackgroundColor)))
             return true;
     }
 
@@ -224,14 +213,14 @@ void DeleteButtonController::createDeletionUI()
     const int borderRadius = 6;
 
     outline->setInlineStyleProperty(CSSPropertyPosition, CSSValueAbsolute);
-    outline->setInlineStyleProperty(CSSPropertyZIndex, String::number(-1000000));
+    outline->setInlineStyleProperty(CSSPropertyZIndex, ASCIILiteral("-1000000"));
     outline->setInlineStyleProperty(CSSPropertyTop, -borderWidth - m_target->renderBox()->borderTop(), CSSPrimitiveValue::CSS_PX);
     outline->setInlineStyleProperty(CSSPropertyRight, -borderWidth - m_target->renderBox()->borderRight(), CSSPrimitiveValue::CSS_PX);
     outline->setInlineStyleProperty(CSSPropertyBottom, -borderWidth - m_target->renderBox()->borderBottom(), CSSPrimitiveValue::CSS_PX);
     outline->setInlineStyleProperty(CSSPropertyLeft, -borderWidth - m_target->renderBox()->borderLeft(), CSSPrimitiveValue::CSS_PX);
     outline->setInlineStyleProperty(CSSPropertyBorderWidth, borderWidth, CSSPrimitiveValue::CSS_PX);
     outline->setInlineStyleProperty(CSSPropertyBorderStyle, CSSValueSolid);
-    outline->setInlineStyleProperty(CSSPropertyBorderColor, "rgba(0, 0, 0, 0.6)");
+    outline->setInlineStyleProperty(CSSPropertyBorderColor, ASCIILiteral("rgba(0, 0, 0, 0.6)"));
     outline->setInlineStyleProperty(CSSPropertyBorderRadius, borderRadius, CSSPrimitiveValue::CSS_PX);
     outline->setInlineStyleProperty(CSSPropertyVisibility, CSSValueVisible);
 
@@ -249,7 +238,7 @@ void DeleteButtonController::createDeletionUI()
     const int buttonBottomShadowOffset = 2;
 
     button->setInlineStyleProperty(CSSPropertyPosition, CSSValueAbsolute);
-    button->setInlineStyleProperty(CSSPropertyZIndex, String::number(1000000));
+    button->setInlineStyleProperty(CSSPropertyZIndex, ASCIILiteral("1000000"));
     button->setInlineStyleProperty(CSSPropertyTop, (-buttonHeight / 2) - m_target->renderBox()->borderTop() - (borderWidth / 2) + buttonBottomShadowOffset, CSSPrimitiveValue::CSS_PX);
     button->setInlineStyleProperty(CSSPropertyLeft, (-buttonWidth / 2) - m_target->renderBox()->borderLeft() - (borderWidth / 2), CSSPrimitiveValue::CSS_PX);
     button->setInlineStyleProperty(CSSPropertyWidth, buttonWidth, CSSPrimitiveValue::CSS_PX);
@@ -310,13 +299,13 @@ void DeleteButtonController::show(HTMLElement* element)
         return;
     }
 
-    if (m_target->renderer()->style()->position() == StaticPosition) {
+    if (m_target->renderer()->style().position() == StaticPosition) {
         m_target->setInlineStyleProperty(CSSPropertyPosition, CSSValueRelative);
         m_wasStaticPositioned = true;
     }
 
-    if (m_target->renderer()->style()->hasAutoZIndex()) {
-        m_target->setInlineStyleProperty(CSSPropertyZIndex, String::number(0));
+    if (m_target->renderer()->style().hasAutoZIndex()) {
+        m_target->setInlineStyleProperty(CSSPropertyZIndex, ASCIILiteral("0"));
         m_wasAutoZIndex = true;
     }
 }

@@ -61,7 +61,7 @@ bool JSCSSValueOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handl
     if (!jsCSSValue->hasCustomProperties())
         return false;
     DOMWrapperWorld* world = static_cast<DOMWrapperWorld*>(context);
-    void* root = world->m_cssValueRoots.get(jsCSSValue->impl());
+    void* root = world->m_cssValueRoots.get(&jsCSSValue->impl());
     if (!root)
         return false;
     return visitor.containsOpaqueRoot(root);
@@ -70,9 +70,9 @@ bool JSCSSValueOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handl
 void JSCSSValueOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
     JSCSSValue* jsCSSValue = jsCast<JSCSSValue*>(handle.get().asCell());
-    DOMWrapperWorld* world = static_cast<DOMWrapperWorld*>(context);
-    world->m_cssValueRoots.remove(jsCSSValue->impl());
-    uncacheWrapper(world, jsCSSValue->impl(), jsCSSValue);
+    DOMWrapperWorld& world = *static_cast<DOMWrapperWorld*>(context);
+    world.m_cssValueRoots.remove(&jsCSSValue->impl());
+    uncacheWrapper(world, &jsCSSValue->impl(), jsCSSValue);
     jsCSSValue->releaseImpl();
 }
 

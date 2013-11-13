@@ -1,3 +1,53 @@
+2013-10-24  Mark Rowe  <mrowe@apple.com>
+
+        Remove references to OS X 10.7 from Xcode configuration settings.
+
+        Now that we're not building for OS X 10.7 they're no longer needed.
+
+        Reviewed by Anders Carlsson.
+
+        * gtest/xcode/Config/General.xcconfig:
+
+2013-10-24  Mark Rowe  <mrowe@apple.com>
+
+        <rdar://problem/15312643> Prepare for the mysterious future.
+
+        Reviewed by David Kilzer.
+
+        * gtest/xcode/Config/General.xcconfig:
+
+2013-10-10  Mark Rowe  <mrowe@apple.com>
+
+        <rdar://problem/13341666> WebKit should always build against an SDK.
+
+        Have all projects default to building against the OS X Internal SDK for the Production
+        configuration. For the Debug and Release configurations, look for UseInternalSDK.xcconfig
+        to determine whether the OS X Internal SDK should be used. If not, use the normal OS X SDK.
+
+        Reviewed by Dan Bernstein.
+
+        * gtest/xcode/Config/General.xcconfig:
+        * gtest/xcode/Config/ProductionProject.xcconfig:
+
+2013-10-06  Dan Bernstein  <mitz@apple.com>
+
+        Build against the Xcode default toolchain when targeting OS X 10.8.
+
+        This fixes the build after r156632 in configurations that use another toolchain
+        by default.
+
+        * gtest/xcode/Config/General.xcconfig:
+
+2013-10-06  Darin Adler  <darin@apple.com>
+
+        Remove unneeded ScriptGCEvent class
+        https://bugs.webkit.org/show_bug.cgi?id=122390
+
+        Reviewed by Anders Carlsson.
+
+        * gtest/xcode/gtest.xcodeproj/project.pbxproj: Let Xcode update this file.
+        Not really part of this bug fix, but good to land anyway.
+
 2013-09-29  Darin Adler  <darin@apple.com>
 
         Take some Xcode advice about turning on additional warnings in ANGLE and gtest

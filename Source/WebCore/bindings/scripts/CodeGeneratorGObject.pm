@@ -885,6 +885,24 @@ sub ParamCanBeNull {
     return 0;
 }
 
+sub GetFunctionDeprecationInformation {
+    my($function, $parentNode) = @_;
+
+    my $version;
+    my $replacement;
+
+    if ($parentNode->extendedAttributes->{"EventTarget"} && $function->signature->name eq "dispatchEvent") {
+        # dispatchEvent is implemented already as part fo the WebKitDOMEventTarget interface.
+        # Mark it as deprecated for now in favor of the interface method, and skip it once
+        # we break the API. All other methods of WebKitDOMEventTarget interface are already
+        # skipped because they receive an EventListener as parameter.
+        $version = "2.4";
+        $replacement = "webkit_dom_event_target_dispatch_event";
+    }
+
+    return ($version, $replacement);
+}
+
 sub GenerateFunction {
     my ($object, $interfaceName, $function, $prefix, $parentNode) = @_;
 
@@ -894,6 +912,7 @@ sub GenerateFunction {
         return;
     }
 
+    my ($deprecationVersion, $deprecationReplacement) = GetFunctionDeprecationInformation($function, $parentNode);
     my $functionSigType = $prefix eq "set_" ? "void" : $function->signature->type;
     my $functionName = "webkit_dom_" . $decamelize . "_" . $prefix . decamelize($function->signature->name);
     my $returnType = GetGlibTypeName($functionSigType);
@@ -939,6 +958,10 @@ sub GenerateFunction {
 
     push(@symbols, "$returnType $functionName($symbolSig)\n");
 
+    if ($deprecationVersion) {
+        push(@hBody, "#if !defined(WEBKIT_DISABLE_DEPRECATED)\n");
+    }
+
     # Insert introspection annotations
     push(@hBody, "/**\n");
     push(@hBody, " * ${functionName}:\n");
@@ -957,17 +980,39 @@ sub GenerateFunction {
     }
     push(@hBody, " * \@error: #GError\n") if $raisesException;
     push(@hBody, " *\n");
-    if (IsGDOMClassType($function->signature->type)) {
-        push(@hBody, " * Returns: (transfer none):\n");
+    my $returnTypeName = $returnType;
+    $returnTypeName =~ s/\*$//;
+    if ($returnValueIsGDOMType) {
+        push(@hBody, " * Returns: (transfer none): A #${returnTypeName}\n");
     } elsif ($returnType ne "void") {
-        push(@hBody, " * Returns:\n");
+        push(@hBody, " * Returns: A #${returnTypeName}\n");
     }
-    push(@hBody, " *\n");
+    if ($deprecationVersion) {
+        push(@hBody, " *\n");
+        push(@hBody, " * Deprecated: $deprecationVersion");
+        if ($deprecationReplacement) {
+            push(@hBody, ": Use $deprecationReplacement() instead.");
+        }
+        push(@hBody, "\n");
+    }
     push(@hBody, "**/\n");
 
-    push(@hBody, "WEBKIT_API $returnType\n$functionName($functionSig);\n");
+    if ($deprecationVersion && $deprecationReplacement) {
+        push(@hBody, "WEBKIT_DEPRECATED_FOR($deprecationReplacement) ");
+    } elsif ($deprecationVersion) {
+        push(@hBody, "WEBKIT_DEPRECATED ");
+    } else {
+        push(@hBody, "WEBKIT_API ");
+    }
+    push(@hBody, "$returnType\n$functionName($functionSig);\n");
+    if ($deprecationVersion) {
+        push(@hBody, "#endif /* WEBKIT_DISABLE_DEPRECATED */\n");
+    }
     push(@hBody, "\n");
 
+    if ($deprecationVersion) {
+        push(@cBody, "#if !defined(WEBKIT_DISABLE_DEPRECATED)\n");
+    }
     push(@cBody, "$returnType $functionName($functionSig)\n{\n");
     push(@cBody, "#if ${parentConditionalString}\n") if $parentConditionalString;
     push(@cBody, "#if ${conditionalString}\n") if $conditionalString;
@@ -1183,7 +1228,13 @@ EOF
         push(@cBody, "#endif /* ${parentConditionalString} */\n");
     }
 
-    push(@cBody, "}\n\n");
+    push(@cBody, "}\n");
+
+    if ($deprecationVersion) {
+        push(@cBody, "#endif // WEBKIT_DISABLE_DEPRECATED\n");
+    }
+
+    push(@cBody, "\n");
 }
 
 sub ClassHasFunction {
@@ -1380,32 +1431,33 @@ sub GenerateEventTargetIface {
     $implIncludes{"WebKitDOMEventTarget.h"} = 1;
     $implIncludes{"WebKitDOMEventPrivate.h"} = 1;
 
-    push(@cBodyProperties, "static void webkit_dom_${decamelize}_dispatch_event(WebKitDOMEventTarget* target, WebKitDOMEvent* event, GError** error)\n{\n");
+    push(@cBodyProperties, "static gboolean webkit_dom_${decamelize}_dispatch_event(WebKitDOMEventTarget* target, WebKitDOMEvent* event, GError** error)\n{\n");
     push(@cBodyProperties, "#if ${conditionalString}\n") if $conditionalString;
     push(@cBodyProperties, "    WebCore::Event* coreEvent = WebKit::core(event);\n");
     push(@cBodyProperties, "    WebCore::${interfaceName}* coreTarget = static_cast<WebCore::${interfaceName}*>(WEBKIT_DOM_OBJECT(target)->coreObject);\n\n");
     push(@cBodyProperties, "    WebCore::ExceptionCode ec = 0;\n");
-    push(@cBodyProperties, "    coreTarget->dispatchEvent(coreEvent, ec);\n");
+    push(@cBodyProperties, "    gboolean result = coreTarget->dispatchEvent(coreEvent, ec);\n");
     push(@cBodyProperties, "    if (ec) {\n        WebCore::ExceptionCodeDescription description(ec);\n");
     push(@cBodyProperties, "        g_set_error_literal(error, g_quark_from_string(\"WEBKIT_DOM\"), description.code, description.name);\n    }\n");
-    push(@cBodyProperties, "#else\n") if $conditionalString;
-    push(@cBodyProperties, @conditionalWarn) if scalar(@conditionalWarn);
-    push(@cBodyProperties, "#endif // ${conditionalString}\n") if $conditionalString;
-    push(@cBodyProperties, "}\n\n");
-
-    push(@cBodyProperties, "static gboolean webkit_dom_${decamelize}_add_event_listener(WebKitDOMEventTarget* target, const char* eventName, GCallback handler, gboolean bubble, gpointer userData)\n{\n");
-    push(@cBodyProperties, "#if ${conditionalString}\n") if $conditionalString;
-    push(@cBodyProperties, "    WebCore::${interfaceName}* coreTarget = static_cast<WebCore::${interfaceName}*>(WEBKIT_DOM_OBJECT(target)->coreObject);\n");
-    push(@cBodyProperties, "    return WebCore::GObjectEventListener::addEventListener(G_OBJECT(target), coreTarget, eventName, handler, bubble, userData);\n");
+    push(@cBodyProperties, "    return result;\n");
     push(@cBodyProperties, "#else\n") if $conditionalString;
     push(@cBodyProperties, @conditionalWarn) if scalar(@conditionalWarn);
     push(@cBodyProperties, "    return false;\n#endif // ${conditionalString}\n") if $conditionalString;
     push(@cBodyProperties, "}\n\n");
 
-    push(@cBodyProperties, "static gboolean webkit_dom_${decamelize}_remove_event_listener(WebKitDOMEventTarget* target, const char* eventName, GCallback handler, gboolean bubble)\n{\n");
+    push(@cBodyProperties, "static gboolean webkit_dom_${decamelize}_add_event_listener(WebKitDOMEventTarget* target, const char* eventName, GClosure* handler, gboolean useCapture)\n{\n");
     push(@cBodyProperties, "#if ${conditionalString}\n") if $conditionalString;
     push(@cBodyProperties, "    WebCore::${interfaceName}* coreTarget = static_cast<WebCore::${interfaceName}*>(WEBKIT_DOM_OBJECT(target)->coreObject);\n");
-    push(@cBodyProperties, "    return WebCore::GObjectEventListener::removeEventListener(G_OBJECT(target), coreTarget, eventName, handler, bubble);\n");
+    push(@cBodyProperties, "    return WebCore::GObjectEventListener::addEventListener(G_OBJECT(target), coreTarget, eventName, handler, useCapture);\n");
+    push(@cBodyProperties, "#else\n") if $conditionalString;
+    push(@cBodyProperties, @conditionalWarn) if scalar(@conditionalWarn);
+    push(@cBodyProperties, "    return false;\n#endif // ${conditionalString}\n") if $conditionalString;
+    push(@cBodyProperties, "}\n\n");
+
+    push(@cBodyProperties, "static gboolean webkit_dom_${decamelize}_remove_event_listener(WebKitDOMEventTarget* target, const char* eventName, GClosure* handler, gboolean useCapture)\n{\n");
+    push(@cBodyProperties, "#if ${conditionalString}\n") if $conditionalString;
+    push(@cBodyProperties, "    WebCore::${interfaceName}* coreTarget = static_cast<WebCore::${interfaceName}*>(WEBKIT_DOM_OBJECT(target)->coreObject);\n");
+    push(@cBodyProperties, "    return WebCore::GObjectEventListener::removeEventListener(G_OBJECT(target), coreTarget, eventName, handler, useCapture);\n");
     push(@cBodyProperties, "#else\n") if $conditionalString;
     push(@cBodyProperties, @conditionalWarn) if scalar(@conditionalWarn);
     push(@cBodyProperties, "    return false;\n#endif // ${conditionalString}\n") if $conditionalString;

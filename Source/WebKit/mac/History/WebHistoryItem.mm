@@ -47,12 +47,12 @@
 #import <WebCore/Image.h>
 #import <WebCore/URL.h>
 #import <WebCore/PageCache.h>
-#import <WebCore/RunLoop.h>
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
+#import <wtf/RunLoop.h>
 #import <wtf/StdLibExtras.h>
 #import <wtf/text/WTFString.h>
 
@@ -97,7 +97,7 @@ void WKNotifyHistoryItemChanged(HistoryItem*)
 {
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
-    WebCore::RunLoop::initializeMainRunLoop();
+    RunLoop::initializeMainRunLoop();
     WebCoreObjCFinalizeOnMainThread(self);
 }
 
@@ -360,7 +360,7 @@ WebHistoryItem *kit(HistoryItem* item)
 
     if (NSArray *redirectURLs = [dict _webkit_arrayForKey:redirectURLsKey]) {
         NSUInteger size = [redirectURLs count];
-        OwnPtr<Vector<String> > redirectURLsVector = adoptPtr(new Vector<String>(size));
+        OwnPtr<Vector<String>> redirectURLsVector = adoptPtr(new Vector<String>(size));
         for (NSUInteger i = 0; i < size; ++i)
             (*redirectURLsVector)[i] = String([redirectURLs _webkit_stringAtIndex:i]);
         core(_private)->setRedirectURLs(redirectURLsVector.release());
@@ -546,14 +546,6 @@ WebHistoryItem *kit(HistoryItem* item)
 - (void)_setLastVisitedTimeInterval:(NSTimeInterval)time
 {
     core(_private)->setLastVisitedTime(time);
-}
-
-// FIXME: <rdar://problem/4880065> - Push Global History into WebCore
-// Once that task is complete, this accessor can go away
-- (NSCalendarDate *)_lastVisitedDate
-{
-    ASSERT_MAIN_THREAD();
-    return [[[NSCalendarDate alloc] initWithTimeIntervalSinceReferenceDate:core(_private)->lastVisitedTime()] autorelease];
 }
 
 - (WebHistoryItem *)targetItem
