@@ -37,13 +37,13 @@ DragClientHaiku::DragClientHaiku(BWebView* webView)
     : m_webView(webView)
 {}
 
-DragDestinationAction DragClientHaiku::actionMaskForDrag(DragData*)
+DragDestinationAction DragClientHaiku::actionMaskForDrag(DragData&)
 {
     notImplemented();
     return DragDestinationActionAny;
 }
 
-void DragClientHaiku::willPerformDragDestinationAction(DragDestinationAction, DragData*)
+void DragClientHaiku::willPerformDragDestinationAction(DragDestinationAction, DragData&)
 {
     notImplemented();
 }
@@ -59,12 +59,12 @@ DragSourceAction DragClientHaiku::dragSourceActionMaskForPoint(const IntPoint&)
     return DragSourceActionAny;
 }
 
-void DragClientHaiku::willPerformDragSourceAction(DragSourceAction, const IntPoint&, Clipboard*)
+void DragClientHaiku::willPerformDragSourceAction(DragSourceAction, const IntPoint&, Clipboard&)
 {
     notImplemented();
 }
 
-void DragClientHaiku::startDrag(DragImageRef dragImage, const IntPoint&, const IntPoint&, Clipboard*, Frame*, bool)
+void DragClientHaiku::startDrag(DragImageRef dragImage, const IntPoint&, const IntPoint&, Clipboard&, Frame&, bool)
 {
     notImplemented();
 }

@@ -120,17 +120,17 @@ public:
     virtual Frame* dispatchCreatePage(const NavigationAction&);
     virtual void dispatchShow();
 
-    virtual void dispatchDecidePolicyForResponse(FramePolicyFunction, const ResourceResponse&, const ResourceRequest&);
-    virtual void dispatchDecidePolicyForNewWindowAction(FramePolicyFunction, const NavigationAction&,
-                                                        const ResourceRequest&, PassRefPtr<FormState>, const String&);
-    virtual void dispatchDecidePolicyForNavigationAction(FramePolicyFunction, const NavigationAction&,
-                                                         const ResourceRequest&, PassRefPtr<FormState>);
+    virtual void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction);
+    virtual void dispatchDecidePolicyForNewWindowAction(const NavigationAction&,
+        const ResourceRequest&, PassRefPtr<FormState>, const String&, FramePolicyFunction);
+    virtual void dispatchDecidePolicyForNavigationAction(const NavigationAction&,
+                                                         const ResourceRequest&, PassRefPtr<FormState>, FramePolicyFunction);
     virtual void cancelPolicyCheck();
 
     virtual void dispatchUnableToImplementPolicy(const ResourceError&);
 
     virtual void dispatchWillSendSubmitEvent(PassRefPtr<FormState>) { }
-    virtual void dispatchWillSubmitForm(FramePolicyFunction, PassRefPtr<FormState>);
+    virtual void dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction);
 
     virtual void dispatchDidLoadMainResource(DocumentLoader*);
     virtual void revertToProvisionalState(DocumentLoader*);
@@ -222,7 +222,7 @@ public:
 
     virtual void dispatchDidBecomeFrameset(bool);
 
-    virtual void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld*);
+    virtual void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&);
     virtual void documentElementAvailable();
     virtual void didPerformFirstNavigation() const;
 

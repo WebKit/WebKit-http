@@ -42,7 +42,7 @@ namespace WebCore {
 	    static bool supportsFormat(const String&);
     };
 
-    FontCustomPlatformData* createFontCustomPlatformData(SharedBuffer*);
+    std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer&);
 
 }
 

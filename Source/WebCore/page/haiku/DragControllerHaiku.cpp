@@ -46,7 +46,7 @@ const int DragController::DragIconBottomInset = 3;
 const float DragController::DragImageAlpha = 0.75f;
 
 
-bool DragController::isCopyKeyDown(DragData* /* dragData */)
+bool DragController::isCopyKeyDown(DragData& /* dragData */)
 {
     if (modifiers() & B_COMMAND_KEY)
         return true;
@@ -54,10 +54,10 @@ bool DragController::isCopyKeyDown(DragData* /* dragData */)
     return false;
 }
 
-DragOperation DragController::dragOperation(DragData* dragData)
+DragOperation DragController::dragOperation(DragData& dragData)
 {
     // FIXME: This logic is incomplete
-    if (dragData->containsURL(0))
+    if (dragData.containsURL(0))
         return DragOperationCopy;
 
     return DragOperationNone;
@@ -74,7 +74,7 @@ void DragController::cleanupAfterSystemDrag()
 {
 }
 
-void DragController::declareAndWriteDragImage(Clipboard* clipboard, Element* element, const URL& url, const String& label)
+void DragController::declareAndWriteDragImage(Clipboard& clipboard, Element& element, const URL& url, const String& label)
 {
 }
 

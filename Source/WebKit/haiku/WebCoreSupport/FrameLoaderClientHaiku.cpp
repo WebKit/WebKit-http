@@ -464,7 +464,7 @@ void FrameLoaderClientHaiku::dispatchDidFirstVisuallyNonEmptyLayout()
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchWillSubmitForm(FramePolicyFunction function, PassRefPtr<FormState>)
+void FrameLoaderClientHaiku::dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction function)
 {
     CALLED();
     notImplemented();
@@ -493,7 +493,7 @@ void FrameLoaderClientHaiku::dispatchShow()
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(FramePolicyFunction function, const WebCore::ResourceResponse& response, const WebCore::ResourceRequest& request)
+void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest& request, FramePolicyFunction function)
 {
     if (request.isNull()) {
 printf("FrameLoaderClientHaiku::dispatchDecidePolicyForResponse %s -> ignore (isNull)\n",
@@ -515,8 +515,8 @@ BString(response.mimeType()).String());
     }
 }
 
-void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
-    const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState, const String& targetName)
+void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action,
+    const ResourceRequest& request, PassRefPtr<FormState> formState, const String& targetName, FramePolicyFunction function)
 {
     ASSERT(function);
     if (!function)
@@ -563,12 +563,12 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     callPolicyFunction(function, PolicyIgnore);
 }
 
-void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
-    const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState)
+void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(const NavigationAction& action,
+    const ResourceRequest& request, PassRefPtr<FormState> formState, FramePolicyFunction function)
 {
     // Potentially we want to open a new window, when the user clicked with the
     // tertiary mouse button. That's why we can reuse the other method.
-    dispatchDecidePolicyForNewWindowAction(function, action, request, formState, String());
+    dispatchDecidePolicyForNewWindowAction(action, request, formState, String(), function);
 }
 
 void FrameLoaderClientHaiku::cancelPolicyCheck()
@@ -694,7 +694,7 @@ void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* documentLoader)
 
     if (!m_pluginView) {
         TRACE("!m_pluginView\n");
-        documentLoader->writer()->setEncoding(m_response.textEncodingName(), false);
+        documentLoader->writer().setEncoding(m_response.textEncodingName(), false);
     } else {
         TRACE("m_pluginView\n");
         m_pluginView->didFinishLoading();
@@ -1097,9 +1097,9 @@ void FrameLoaderClientHaiku::dispatchDidBecomeFrameset(bool)
 {
 }
 
-void FrameLoaderClientHaiku::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* world)
+void FrameLoaderClientHaiku::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& world)
 {
-    if (world != mainThreadNormalWorld())
+    if (&world != &mainThreadNormalWorld())
         return;
 
     if (m_webFrame) {
@@ -1131,7 +1131,7 @@ void FrameLoaderClientHaiku::didPerformFirstNavigation() const
 
 void FrameLoaderClientHaiku::callPolicyFunction(FramePolicyFunction function, PolicyAction action)
 {
-    (m_webFrame->Frame()->loader().policyChecker().*function)(action);
+    function(action);
 }
 
 void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const

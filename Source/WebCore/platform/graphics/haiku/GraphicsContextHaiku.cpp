@@ -643,6 +643,10 @@ void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, boo
     drawLine(IntPoint(origin), IntPoint(endPoint));
 }
 
+void GraphicsContext::updateDocumentMarkerResources()
+{
+}
+
 void GraphicsContext::drawLineForDocumentMarker(const FloatPoint&, float /* width */, DocumentMarkerLineStyle /* style */)
 {
     if (paintingDisabled())

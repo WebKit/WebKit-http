@@ -117,7 +117,7 @@ bool Pasteboard::writeString(const String& type, const String& data)
     return result;
 }
 
-void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete, Frame* frame, ShouldSerializeSelectedTextForClipboard)
+void Pasteboard::writeSelection(Range& selectedRange, bool canSmartCopyOrDelete, Frame& frame, ShouldSerializeSelectedTextForClipboard)
 {
     AutoClipboardLocker locker(be_clipboard);
     if (!locker.isLocked())
@@ -128,7 +128,7 @@ void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete,
     if (!data)
         return;
 
-    BString string(frame->editor().selectedText());
+    BString string(frame.editor().selectedText());
 
     // Replace unwanted representation of blank lines
     const char* utf8BlankLine = "\302\240\n";
@@ -177,7 +177,7 @@ void Pasteboard::write(const PasteboardURL& url)
     be_clipboard->Commit();
 }
 
-void Pasteboard::writeImage(Node*, const URL&, const String&)
+void Pasteboard::writeImage(Element&, const URL&, const String&)
 {
     notImplemented();
 }
@@ -204,7 +204,7 @@ void Pasteboard::read(PasteboardPlainText& text)
         text.text = buffer;
 }
 
-PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefPtr<Range> context,
+PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& context,
                                                           bool allowPlainText, bool& chosePlainText)
 {
     chosePlainText = false;
@@ -225,7 +225,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefP
         html.append(decoder->flush());
 
         if (!html.isEmpty()) {
-            RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(frame->document(), html, "", DisallowScriptingContent);
+            RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(*frame.document(), html, "", DisallowScriptingContent);
             if (fragment)
                 return fragment.release();
         }
@@ -238,7 +238,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefP
         BString plainText(buffer, bufferLength);
 
         chosePlainText = true;
-        RefPtr<DocumentFragment> fragment = createFragmentFromText(context.get(), plainText);
+        RefPtr<DocumentFragment> fragment = createFragmentFromText(context, plainText);
         if (fragment)
             return fragment.release();
     }

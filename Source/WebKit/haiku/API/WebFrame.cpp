@@ -257,7 +257,7 @@ BString BWebFrame::FrameSource() const
         WebCore::Document* document = fData->frame->document();
 
         if (document)
-            return BString(createMarkup(document));
+            return BString(createMarkup(*document));
     }
 
     return BString();
@@ -298,7 +298,7 @@ BString BWebFrame::AsMarkup() const
     if (!fData->frame->document())
         return BString();
 
-    return createMarkup(fData->frame->document());
+    return createMarkup(*fData->frame->document());
 }
 
 BString BWebFrame::ExternalRepresentation() const

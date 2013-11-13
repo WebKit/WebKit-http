@@ -42,6 +42,8 @@ LIST(APPEND WebCore_SOURCES
   platform/haiku/TemporaryLinkStubs.cpp
   platform/haiku/WidgetHaiku.cpp
 
+  platform/graphics/WOFFFileFormat.cpp
+
   platform/graphics/haiku/ColorHaiku.cpp
   platform/graphics/haiku/FontCacheHaiku.cpp
   platform/graphics/haiku/FontCustomPlatformData.cpp
