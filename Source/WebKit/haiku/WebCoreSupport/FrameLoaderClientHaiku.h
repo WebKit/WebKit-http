@@ -57,7 +57,8 @@ struct LoadErrorResetToken;
 
 class FrameLoaderClientHaiku : public FrameLoaderClient {
 public:
-    FrameLoaderClientHaiku(BWebPage*, BWebFrame*);
+    FrameLoaderClientHaiku(BWebPage*);
+    void setFrame(BWebFrame* frame) {m_webFrame = frame;}
 
     void setDispatchTarget(const BMessenger& messenger);
     BWebPage* page() const;

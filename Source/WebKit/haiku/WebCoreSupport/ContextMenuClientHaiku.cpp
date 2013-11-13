@@ -62,7 +62,7 @@ PlatformMenuDescription ContextMenuClientHaiku::getCustomMenuFromDefaultItems(Co
     // into menu->setPlatformDescription().
     WebCore::Page* page = m_webPage->page();
     if (page)
-        menu->setController(page->contextMenuController());
+        menu->setController(&page->contextMenuController());
 
     return menu->platformDescription();
 }
@@ -89,7 +89,7 @@ void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)
     url.append(encoded);
 
     if (Page* page = frame->page())
-        page->mainFrame()->loader()->urlSelected(KURL(ParsedURLString, url), String("_blank"), 0, false, false, MaybeSendReferrer);
+        page->mainFrame().loader().urlSelected(KURL(ParsedURLString, url), String("_blank"), 0, false, false, MaybeSendReferrer);
 }
 
 void ContextMenuClientHaiku::lookUpInDictionary(Frame*)

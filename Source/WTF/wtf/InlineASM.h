@@ -83,6 +83,7 @@
      || OS(FREEBSD)             \
      || OS(OPENBSD)             \
      || OS(NETBSD)              \
+     || OS(HAIKU)               \
      || OS(QNX)
     // GNU as-compatible syntax.
 #define LOCAL_LABEL_STRING(name) ".L" #name

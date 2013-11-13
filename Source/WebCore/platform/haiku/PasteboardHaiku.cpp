@@ -48,10 +48,24 @@ Pasteboard::Pasteboard()
 {
 }
 
-Pasteboard* Pasteboard::generalPasteboard()
+PassOwnPtr<Pasteboard> Pasteboard::createForCopyAndPaste()
 {
-    static Pasteboard pasteboard;
-    return &pasteboard;
+    return adoptPtr(new Pasteboard());
+}
+
+PassOwnPtr<Pasteboard> Pasteboard::createPrivate()
+{
+    return adoptPtr(new Pasteboard());
+}
+
+PassOwnPtr<Pasteboard> Pasteboard::createForDragAndDrop()
+{
+    return adoptPtr(new Pasteboard());
+}
+
+PassOwnPtr<Pasteboard> Pasteboard::createForDragAndDrop(const DragData& dragData)
+{
+    return adoptPtr(new Pasteboard());
 }
 
 // BClipboard unfortunately does not derive from BLocker, so we cannot use BAutolock.
@@ -209,9 +223,71 @@ void Pasteboard::writeImage(Node*, const KURL&, const String&)
     notImplemented();
 }
 
-void Pasteboard::writeClipboard(Clipboard* /*clipboard*/)
+bool Pasteboard::hasData()
 {
-    notImplemented();
+    bool result = false;
+
+    if (be_clipboard->Lock()) {
+        BMessage* data = be_clipboard->Data();
+
+        if (data)
+            result = !data->IsEmpty();
+
+        be_clipboard->Unlock();
+    }
+
+    return result;
+}
+
+void Pasteboard::clear(const String& type)
+{
+    if (be_clipboard->Lock()) {
+        BMessage* data = be_clipboard->Data();
+
+        if (data) {
+            data->RemoveName(BString(type).String());
+            be_clipboard->Commit();
+        }
+
+        be_clipboard->Unlock();
+    }
+}
+
+String Pasteboard::readString(const String& type)
+{
+    BString result;
+
+    if (be_clipboard->Lock()) {
+        BMessage* data = be_clipboard->Data();
+
+        if (data)
+            data->FindString(BString(type).String(), &result);
+
+        be_clipboard->Unlock();
+    }
+
+    return result;
+}
+
+bool Pasteboard::writeString(const String& type, const String& data)
+{
+    bool result = false;
+
+    if (be_clipboard->Lock()) {
+        BMessage* bdata = be_clipboard->Data();
+
+        if (bdata) {
+            bdata->RemoveName(BString(type).String());
+
+            if (bdata->AddString(BString(type).String(), BString(data)) == B_OK)
+                result = true;
+        }
+
+        be_clipboard->Commit();
+        be_clipboard->Unlock();
+    }
+
+    return result;
 }
 
 void Pasteboard::clear()
@@ -222,6 +298,45 @@ void Pasteboard::clear()
 
     be_clipboard->Clear();
     be_clipboard->Commit();
+}
+
+// Extensions beyond IE's API.
+Vector<String> Pasteboard::types()
+{
+    Vector<String> result;
+
+    if (be_clipboard->Lock()) {
+        BMessage* data = be_clipboard->Data();
+
+        if (data) {
+            char* name;
+            uint32 type;
+            int32 count;
+
+            for (int32 i = 0; data->GetInfo(B_ANY_TYPE, i, &name, &type, &count) == B_OK; i++)
+                result.append(name);
+        }
+
+        be_clipboard->Unlock();
+    }
+
+    return result;
+}
+
+Vector<String> Pasteboard::readFilenames()
+{
+    notImplemented();
+    return Vector<String>();
+}
+
+void Pasteboard::setDragImage(BBitmap*, const IntPoint&)
+{
+    notImplemented();
+}
+
+void Pasteboard::writePasteboard(const Pasteboard& sourcePasteboard)
+{
+    notImplemented();
 }
 
 } // namespace WebCore

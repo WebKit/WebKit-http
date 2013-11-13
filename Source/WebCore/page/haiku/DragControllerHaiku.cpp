@@ -27,7 +27,9 @@
 #include "config.h"
 #include "DragController.h"
 
+#include "Clipboard.h"
 #include "DragData.h"
+#include "Pasteboard.h"
 
 #include <InterfaceDefs.h>
 
@@ -69,6 +71,10 @@ const IntSize& DragController::maxDragImageSize()
 }
 
 void DragController::cleanupAfterSystemDrag()
+{
+}
+
+void DragController::declareAndWriteDragImage(Clipboard* clipboard, Element* element, const KURL& url, const String& label)
 {
 }
 

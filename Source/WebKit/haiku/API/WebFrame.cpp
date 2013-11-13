@@ -64,16 +64,26 @@ BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate*
     , fTitle(0)
     , fData(data)
 {
-	fData->loaderClient = new WebCore::FrameLoaderClientHaiku(webPage, this);
-    RefPtr<WebCore::Frame> frame = WebCore::Frame::create(fData->page, fData->ownerElement,
+    if (!parentFrame /*|| !ownerElement*/) {
+        // No parent, we are creating the main BWebFrame.
+        // mainframe is already created in WebCore::Page, just use it.
+        fData->frame = &webPage->page()->mainFrame();
+        fData->loaderClient = static_cast<FrameLoaderClientHaiku*>(&fData->frame->loader().client());
+    } else {
+        //frameLoaderClient = new FrameLoaderClientQt();
+        //frame = Frame::create(page, ownerElement, frameLoaderClient);
+        //
+	    fData->loaderClient = new WebCore::FrameLoaderClientHaiku(webPage);
+        RefPtr<WebCore::Frame> frame = WebCore::Frame::create(fData->page, fData->ownerElement,
         fData->loaderClient);
-    // We don't keep the reference to the Frame, see WebFramePrivate.h.
-    fData->frame = frame.get();
 
-    if (parentFrame)
-        parentFrame->Frame()->tree()->appendChild(fData->frame);
+        // We don't keep the reference to the Frame, see WebFramePrivate.h.
+        fData->frame = frame.get();
+        parentFrame->Frame()->tree().appendChild(fData->frame);
+    }
+    fData->loaderClient->setFrame(this);
 
-    fData->frame->tree()->setName(fData->name);
+    fData->frame->tree().setName(fData->name);
     fData->frame->init();
 }
 
@@ -120,24 +130,24 @@ void BWebFrame::LoadURL(KURL url)
 	if (url.isEmpty())
 		return;
 
-    if (!fData->frame || !fData->frame->loader())
+    if (!fData->frame)
         return;
 
     fData->requestedURL = url.string();
 
-    fData->frame->loader()->reloadWithOverrideURL(url);
+    fData->frame->loader().reloadWithOverrideURL(url);
 }
 
 void BWebFrame::StopLoading()
 {
-    if (fData->frame && fData->frame->loader())
-        fData->frame->loader()->stop();
+    if (fData->frame)
+        fData->frame->loader().stop();
 }
 
 void BWebFrame::Reload()
 {
-    if (fData->frame && fData->frame->loader())
-        fData->frame->loader()->reload();
+    if (fData->frame)
+        fData->frame->loader().reload();
 }
 
 BString BWebFrame::URL() const

@@ -39,8 +39,6 @@ void PlatformStrategiesHaiku::initialize()
 {
     DEFINE_STATIC_LOCAL(PlatformStrategiesHaiku, platformStrategies, ());
     setPlatformStrategies(&platformStrategies);
-
-    puts("PLATFORM STRATEGY SET");
 }
 
 PlatformStrategiesHaiku::PlatformStrategiesHaiku()
@@ -49,7 +47,6 @@ PlatformStrategiesHaiku::PlatformStrategiesHaiku()
 
 CookiesStrategy* PlatformStrategiesHaiku::createCookiesStrategy()
 {
-    puts("CREATE COOKIES STRATEGY");
     return this;
 }
 
@@ -60,7 +57,6 @@ DatabaseStrategy* PlatformStrategiesHaiku::createDatabaseStrategy()
 
 LoaderStrategy* PlatformStrategiesHaiku::createLoaderStrategy()
 {
-    puts("CREATE LOADER STRATEGY");
     return this;
 }
 
@@ -98,7 +94,6 @@ String PlatformStrategiesHaiku::cookiesForDOM(const NetworkStorageSession& sessi
 
 void PlatformStrategiesHaiku::setCookiesFromDOM(const NetworkStorageSession& session, const KURL& firstParty, const KURL& url, const String& cookieString)
 {
-    puts("PlATFORM STRATEGY SET COOKIES");
     WebCore::setCookiesFromDOM(session, firstParty, url, cookieString);
 }
 

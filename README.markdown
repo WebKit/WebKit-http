@@ -8,16 +8,16 @@ For more information, please visit the [project's wiki and issue tracker](http:/
 ### Requirements ###
 
 - You need a recent version of Haiku with the GCC 4 development tools
-- The following dependencies: `CMake, GPerf, ICU, libxml, sqlite3, libxslt, Perl, Python`
+- The following dependencies: `CMake, GPerf, ICU, libxml, sqlite3, libxslt, Perl, Python, Ruby`
 - And a fast computer!
 
 Dependencies can be installed (for a gcc2hybrid version) via:
 
-    $ pkgman install cmake gperf sqlite_x86_devel libxml2_x86_devel libxslt_x86_devel icu_x86_devel icu_devel perl python
+    $ pkgman install cmake gperf sqlite_x86_devel libxml2_x86_devel libxslt_x86_devel icu_x86_devel icu_devel perl python ruby
 
 Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
 
-    AddHaikuImagePackages cmake gperf sqlite_x86_devel libxml2_x86_devel libxslt_devel icu_x86_devel icu_devel perl python ;
+    AddHaikuImagePackages cmake gperf sqlite_x86_devel libxml2_x86_devel libxslt_devel icu_x86_devel icu_devel perl python ruby ;
 
 Packages for other flavors of Haiku may or may not be available. Use [haikuporter](http://haikuports.org) to build them if needed.
 
@@ -26,8 +26,7 @@ Packages for other flavors of Haiku may or may not be available. Use [haikuporte
 #### Configuring your build for the first time ####
 On a gcc2hybrid Haiku:
     $ PKG_CONFIG_LIBDIR=/boot/system/develop/lib/x86/pkgconfig \
-        CC=/boot/system/develop/tools/x86/bin/gcc \
-        CXX=/boot/system/develop/tools/x86/bin/g++ \
+        CC=gcc-x86 CXX=g++-x86 \
         Tools/Scripts/build-webkit --haiku --no-webkit2
 
 On other versions:
@@ -68,15 +67,15 @@ using "cmake -Dvar=value WebKitBuild/Release".
 ### Speeding up the build with distcc ###
 
 You can set the compiler while calling the configure script:
-    $ CC="distcc i586-pc-haiku-gcc" CXX="distcc i586-pc-haiku-g++" build-webkit ...
+    $ CC="distcc gcc-x86" CXX="distcc g++-x86" build-webkit ...
 
 It is a good idea to set the NUMBER_OF_PROCESSORS environment variable as well
 (this will be given to cmake through the -j option). If you don't set it, only
 the local CPUs will be counted, leading to a sub-optimal distcc distribution.
 
-distcc will look for a compiler named i586-pc-haiku-gcc. You'll need to adjust
-the path on the local machines and the slaves to get that pointing to the gcc4
-version. On the local machine, the path must be set for all make invocation.
+distcc will look for a compiler named gcc-x86 and g++-x86. You'll need to adjust
+the path on the slaves to get that pointing to the gcc4 version (the gcc4 compiler
+is already visible under this name on the local machine and haiku slaves).
 CMake usually tries to resolve the compiler to an absolute path on the first
 time it is called, but this doesn't work when the compiler is called through
 distcc.

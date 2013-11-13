@@ -58,7 +58,7 @@ DragImageRef dissolveDragImageToFraction(DragImageRef image, float)
     return image;
 }
 
-DragImageRef createDragImageFromImage(Image*, RespectImageOrientationEnum)
+DragImageRef createDragImageFromImage(Image*, ImageOrientationDescription)
 {
     notImplemented();
     return 0;

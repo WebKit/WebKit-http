@@ -112,7 +112,7 @@ void ChromeClientHaiku::takeFocus(FocusDirection)
 {
 }
 
-void ChromeClientHaiku::focusedNodeChanged(Node* node)
+void ChromeClientHaiku::focusedElementChanged(Element* node)
 {
     if (node)
         focus();
@@ -164,8 +164,8 @@ Page* ChromeClientHaiku::createWindow(Frame* frame, const FrameLoadRequest& requ
 	if (!page)
 	    return 0;
 
-    if (!request.resourceRequest().isEmpty() && page->mainFrame() && page->mainFrame()->loader())
-        page->mainFrame()->loader()->load(request);
+    if (!request.resourceRequest().isEmpty())
+        page->mainFrame().loader().load(request);
 
     return page;
 }
@@ -257,7 +257,7 @@ void ChromeClientHaiku::closeWindowSoon()
     m_webPage->page()->setGroupName(String());
 
     // Make sure all loading has stopped.
-    m_webPage->MainFrame()->Frame()->loader()->stopAllLoaders();
+    m_webPage->MainFrame()->Frame()->loader().stopAllLoaders();
 
     m_webPage->closeWindow();
 }

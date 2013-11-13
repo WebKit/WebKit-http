@@ -15,7 +15,6 @@ LIST(APPEND WebCore_SOURCES
   page/haiku/EventHandlerHaiku.cpp
   page/haiku/FrameHaiku.cpp
 
-  platform/haiku/ClipboardHaiku.cpp
   platform/haiku/ContextMenuHaiku.cpp
   platform/haiku/ContextMenuItemHaiku.cpp
   platform/haiku/CursorHaiku.cpp
@@ -62,7 +61,6 @@ LIST(APPEND WebCore_SOURCES
   platform/graphics/haiku/PathHaiku.cpp
   platform/graphics/haiku/SimpleFontDataHaiku.cpp
   platform/graphics/haiku/StillImageHaiku.cpp
-  editing/haiku/EditorHaiku.cpp
   platform/graphics/haiku/ImageBufferHaiku.cpp
   platform/graphics/haiku/FontPlatformDataHaiku.cpp
   

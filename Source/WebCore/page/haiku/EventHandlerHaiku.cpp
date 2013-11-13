@@ -29,7 +29,7 @@
 #include "config.h"
 #include "EventHandler.h"
 
-#include "ClipboardHaiku.h"
+#include "Clipboard.h"
 #include "EventNames.h"
 #include "FocusController.h"
 #include "Frame.h"
@@ -70,15 +70,15 @@ bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
 
 void EventHandler::focusDocumentView()
 {
-    BView* view = m_frame->view()->platformWidget();
+    BView* view = m_frame.view()->platformWidget();
     if (view && view->LockLooperWithTimeout(5000) == B_OK) {
         view->MakeFocus(true);
         view->UnlockLooper();
     }
 
-    Page* page = m_frame->page();
+    Page* page = m_frame.page();
     if (page)
-        page->focusController()->setFocusedFrame(m_frame);
+        page->focusController().setFocusedFrame(&m_frame);
 }
 
 bool EventHandler::passWidgetMouseDownEventToWidget(const MouseEventWithHitTestResults& event)
@@ -114,29 +114,29 @@ bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widge
     if (!widget->isFrameView())
         return false;
 
-    return static_cast<FrameView*>(widget)->frame()->eventHandler()->handleWheelEvent(event);
+    return static_cast<FrameView*>(widget)->frame().eventHandler().handleWheelEvent(event);
 }
 
 PassRefPtr<Clipboard> EventHandler::createDraggingClipboard() const
 {
-    return ClipboardHaiku::create(ClipboardWritable, m_frame, Clipboard::DragAndDrop);
+    return Clipboard::createForDragAndDrop();
 }
 
 bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
 {
-    subframe->eventHandler()->handleMousePressEvent(mev.event());
+    subframe->eventHandler().handleMousePressEvent(mev.event());
     return true;
 }
 
 bool EventHandler::passMouseMoveEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe, HitTestResult* hoveredNode)
 {
-    subframe->eventHandler()->handleMouseMoveEvent(mev.event(), hoveredNode);
+    subframe->eventHandler().handleMouseMoveEvent(mev.event(), hoveredNode);
     return true;
 }
 
 bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
 {
-    subframe->eventHandler()->handleMouseReleaseEvent(mev.event());
+    subframe->eventHandler().handleMouseReleaseEvent(mev.event());
     return true;
 }
 

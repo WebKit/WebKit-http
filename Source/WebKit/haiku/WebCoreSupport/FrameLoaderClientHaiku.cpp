@@ -76,6 +76,7 @@
 #include <Message.h>
 #include <MimeType.h>
 #include <String.h>
+#include <assert.h>
 #include <debugger.h>
 
 //#define TRACE_FRAME_LOADER_CLIENT
@@ -89,17 +90,15 @@
 
 namespace WebCore {
 
-FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage, BWebFrame* webFrame)
+FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage)
     : m_webPage(webPage)
-    , m_webFrame(webFrame)
     , m_messenger()
     , m_loadingErrorPage(false)
     , m_pluginView(0)
     , m_hasSentResponseToPlugin(false)
 {
-    CALLED("BWebPage: %p, BWebFrame: %p", webPage, webFrame);
+    CALLED("BWebPage: %p", webPage);
     ASSERT(m_webPage);
-    ASSERT(m_webFrame);
 }
 
 void FrameLoaderClientHaiku::setDispatchTarget(const BMessenger& messenger)
@@ -353,7 +352,7 @@ void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
     }
 
     BMessage message(LOAD_NEGOTIATING);
-    message.AddString("url", m_webFrame->Frame()->loader()->provisionalDocumentLoader()->request().url().string());
+    message.AddString("url", m_webFrame->Frame()->loader().provisionalDocumentLoader()->request().url().string());
     dispatchMessage(message);
 }
 
@@ -390,7 +389,7 @@ void FrameLoaderClientHaiku::dispatchDidCommitLoad()
     }
 
     BMessage message(LOAD_COMMITTED);
-    message.AddString("url", m_webFrame->Frame()->loader()->documentLoader()->request().url().string());
+    message.AddString("url", m_webFrame->Frame()->loader().documentLoader()->request().url().string());
     dispatchMessage(message);
 
     // We should assume first the frame has no title. If it has, then the above
@@ -482,7 +481,7 @@ Frame* FrameLoaderClientHaiku::dispatchCreatePage(const NavigationAction& /*acti
     CALLED();
     WebCore::Page* page = m_webPage->createNewPage();
     if (page)
-        return page->mainFrame();
+        return &page->mainFrame();
 
     return 0;
 }
@@ -553,11 +552,11 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     dispatchMessage(message);
 
     if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
-        m_webFrame->Frame()->loader()->resetMultipleFormSubmissionProtection();
+        m_webFrame->Frame()->loader().resetMultipleFormSubmissionProtection();
 
     if (action.type() == NavigationTypeLinkClicked) {
         ResourceRequest emptyRequest;
-        m_webFrame->Frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
+        m_webFrame->Frame()->loader().activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
     }
 
     callPolicyFunction(function, PolicyIgnore);
@@ -614,14 +613,14 @@ void FrameLoaderClientHaiku::postProgressStartedNotification()
 //        m_loadError = ResourceError();
         postProgressEstimateChangedNotification();
     }
-    if (!m_webFrame || m_webFrame->Frame()->tree()->parent())
+    if (!m_webFrame || m_webFrame->Frame()->tree().parent())
         return;
     triggerNavigationHistoryUpdate();
 }
 
 void FrameLoaderClientHaiku::postProgressEstimateChangedNotification()
 {
-    m_webPage->setLoadingProgress(m_webFrame->Frame()->page()->progress()->estimatedProgress() * 100);
+    m_webPage->setLoadingProgress(m_webFrame->Frame()->page()->progress().estimatedProgress() * 100);
 
     // Triggering this continually during loading progress makes stopping more reliably available.
     triggerNavigationHistoryUpdate();
@@ -670,7 +669,7 @@ void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, cons
 
         Frame* coreFrame = loader->frame();
         if (coreFrame && coreFrame->document()->isMediaDocument())
-            loader->cancelMainResourceLoad(coreFrame->loader()->client()->pluginWillHandleLoadError(loader->response()));
+            loader->cancelMainResourceLoad(coreFrame->loader().client().pluginWillHandleLoadError(loader->response()));
     }
 
     // We re-check here as the plugin can have been created.
@@ -710,7 +709,7 @@ void FrameLoaderClientHaiku::updateGlobalHistory()
         return;
 
     BMessage message(UPDATE_HISTORY);
-    message.AddString("url", frame->loader()->documentLoader()->urlForHistory().string());
+    message.AddString("url", frame->loader().documentLoader()->urlForHistory().string());
     dispatchMessage(message);
 }
 
@@ -948,6 +947,8 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 
     Frame* frame = m_webFrame->Frame();
 
+    assert(frame);
+
     BRect bounds = m_webPage->viewBounds();
     IntSize size = IntSize(bounds.IntegerWidth() + 1, bounds.IntegerHeight() + 1);
 
@@ -967,8 +968,9 @@ String FrameLoaderClientHaiku::userAgent(const KURL&)
     if (language.CountryCode() != NULL)
         languageTag << "-" << language.CountryCode();
 
-    // FIXME: Get the app name from the app. Hardcoded WebPositive for now. Mentioning "Safari" is needed for some sites like gmail.com.
-    BString userAgent("Mozilla/5.0 (compatible; U; Haiku x86; %language%) AppleWebKit/%webkit% (KHTML, like Gecko) Haiku/R1 WebPositive/1.1 Safari/%webkit%");
+    // FIXME: Get the app name from the app. Hardcoded WebPositive for now.
+    // We have to look as close to Safari as possible for some sites like gmail.com 
+    BString userAgent("Mozilla/5.0 (compatible; x86 Haiku R1; %language%) AppleWebKit/%webkit% (KHTML, like Gecko) WebPositive/1.2 Safari/%webkit%");
     userAgent.ReplaceAll("%webkit%", WebKitInfo::WebKitVersion().String());
     userAgent.ReplaceAll("%language%", languageTag.String());
     return userAgent;
@@ -998,15 +1000,15 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const Str
 
     // As long as we don't return the Frame, we are responsible for deleting it.
     RefPtr<Frame> childFrame = frame->Frame();
-
+    
     // The creation of the frame may have run arbitrary JavaScript that removed it from the page already.
     if (!childFrame->page())
         return 0;
 
-    childFrame->loader()->loadURLIntoChildFrame(url, referrer, childFrame.get());
+    childFrame->loader().loadURLIntoChildFrame(url, referrer, childFrame.get());
 
     // The frame's onload handler may have removed it from the document.
-    if (!childFrame->tree()->parent())
+    if (!childFrame->tree().parent())
         return 0;
 
     return childFrame.release();
@@ -1128,19 +1130,19 @@ void FrameLoaderClientHaiku::didPerformFirstNavigation() const
 
 void FrameLoaderClientHaiku::callPolicyFunction(FramePolicyFunction function, PolicyAction action)
 {
-    (m_webFrame->Frame()->loader()->policyChecker()->*function)(action);
+    (m_webFrame->Frame()->loader().policyChecker()->*function)(action);
 }
 
 void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
 {
     WebCore::Page* page = m_webFrame->Frame()->page();
-    WebCore::FrameLoader* loader = m_webFrame->Frame()->loader();
-    if (!page || !loader)
+    WebCore::FrameLoader& loader = m_webFrame->Frame()->loader();
+    if (!page)
         return;
     BMessage message(UPDATE_NAVIGATION_INTERFACE);
     message.AddBool("can go backward", page->canGoBackOrForward(-1));
     message.AddBool("can go forward", page->canGoBackOrForward(1));
-    message.AddBool("can stop", loader->isLoading());
+    message.AddBool("can stop", loader.isLoading());
     dispatchMessage(message);
 }
 

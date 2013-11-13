@@ -27,7 +27,6 @@
 #include "config.h"
 #include "DragData.h"
 
-#include "ClipboardHaiku.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "NotImplemented.h"

@@ -207,9 +207,10 @@ BWebPage::BWebPage(BWebView* webView)
     pageClients.editorClient = new EditorClientHaiku(this);
     pageClients.dragClient = new DragClientHaiku(webView);
     pageClients.inspectorClient = new InspectorClientHaiku();
+    pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
     fPage = new Page(pageClients);
 
-    fSettings = new BWebSettings(fPage->settings());
+    fSettings = new BWebSettings(&fPage->settings());
 }
 
 BWebPage::~BWebPage()
@@ -220,7 +221,7 @@ BWebPage::~BWebPage()
 	// Calling detachFromParent() on the FrameLoader will recursively detach
 	// all child frames, as well as stop all loaders before doing that.
     if (fMainFrame && fMainFrame->Frame())
-        fMainFrame->Frame()->loader()->detachFromParent();
+        fMainFrame->Frame()->loader().detachFromParent();
 
     // NOTE: The m_webFrame member will be deleted by the
     // FrameLoaderClientHaiku, when the WebCore::Frame/FrameLoader instance is
@@ -1012,10 +1013,10 @@ void BWebPage::handleFocused(const BMessage* message)
     bool focused;
     message->FindBool("focused", &focused);
 
-    FocusController* focusController = fPage->focusController();
-    focusController->setFocused(focused);
-    if (focused && !focusController->focusedFrame())
-        focusController->setFocusedFrame(fMainFrame->Frame());
+    FocusController& focusController = fPage->focusController();
+    focusController.setFocused(focused);
+    if (focused && !focusController.focusedFrame())
+        focusController.setFocusedFrame(fMainFrame->Frame());
 }
 
 void BWebPage::handleActivated(const BMessage* message)
@@ -1023,8 +1024,8 @@ void BWebPage::handleActivated(const BMessage* message)
     bool activated;
     message->FindBool("activated", &activated);
 
-    FocusController* focusController = fPage->focusController();
-    focusController->setActive(activated);
+    FocusController& focusController = fPage->focusController();
+    focusController.setActive(activated);
 }
 
 void BWebPage::handleMouseEvent(const BMessage* message)
@@ -1038,14 +1039,14 @@ void BWebPage::handleMouseEvent(const BMessage* message)
     case B_MOUSE_DOWN:
         // Handle context menus, if necessary.
         if (event.button() == RightButton) {
-            fPage->contextMenuController()->clearContextMenu();
+            fPage->contextMenuController().clearContextMenu();
 
-            WebCore::Frame* focusedFrame = fPage->focusController()->focusedOrMainFrame();
-            focusedFrame->eventHandler()->sendContextMenuEvent(event);
+            WebCore::Frame& focusedFrame = fPage->focusController().focusedOrMainFrame();
+            focusedFrame.eventHandler().sendContextMenuEvent(event);
             // If the web page implements it's own context menu handling, then
             // the contextMenu() pointer will be zero. In this case, we should
             // also swallow the event.
-            ContextMenu* contextMenu = fPage->contextMenuController()->contextMenu();
+            ContextMenu* contextMenu = fPage->contextMenuController().contextMenu();
             if (contextMenu) {
             	BMenu* platformMenu = contextMenu->releasePlatformDescription();
             	if (platformMenu) {
@@ -1064,14 +1065,14 @@ void BWebPage::handleMouseEvent(const BMessage* message)
             break;
     	}
     	// Handle regular mouse events.
-        frame->eventHandler()->handleMousePressEvent(event);
+        frame->eventHandler().handleMousePressEvent(event);
         break;
     case B_MOUSE_UP:
-        frame->eventHandler()->handleMouseReleaseEvent(event);
+        frame->eventHandler().handleMouseReleaseEvent(event);
         break;
     case B_MOUSE_MOVED:
     default:
-        frame->eventHandler()->mouseMoved(event);
+        frame->eventHandler().mouseMoved(event);
         break;
     }
 }
@@ -1083,18 +1084,18 @@ void BWebPage::handleMouseWheelChanged(BMessage* message)
         return;
 
     PlatformWheelEvent event(message);
-    frame->eventHandler()->handleWheelEvent(event);
+    frame->eventHandler().handleWheelEvent(event);
 }
 
 void BWebPage::handleKeyEvent(BMessage* message)
 {
-    WebCore::Frame* frame = fPage->focusController()->focusedOrMainFrame();
-    if (!frame->view() || !frame->document())
+    WebCore::Frame& frame = fPage->focusController().focusedOrMainFrame();
+    if (!frame.view() || !frame.document())
         return;
 
     PlatformKeyboardEvent event(message);
 	// Try to let WebCore handle this event
-	if (!frame->eventHandler()->keyEvent(event) && message->what == B_KEY_DOWN) {
+	if (!frame.eventHandler().keyEvent(event) && message->what == B_KEY_DOWN) {
 		// Handle keyboard scrolling (probably should be extracted to a method.)
 		ScrollDirection direction;
 		ScrollGranularity granularity;
@@ -1135,7 +1136,7 @@ void BWebPage::handleKeyEvent(BMessage* message)
 			default:
 				return;
 		}
-		frame->eventHandler()->scrollRecursively(direction, granularity);
+		frame.eventHandler().scrollRecursively(direction, granularity);
 	}
 }
 
@@ -1196,8 +1197,8 @@ void BWebPage::handleResendNotifications(BMessage*)
     BMessage message(UPDATE_NAVIGATION_INTERFACE);
     message.AddBool("can go backward", fPage->canGoBackOrForward(-1));
     message.AddBool("can go forward", fPage->canGoBackOrForward(1));
-    if (WebCore::FrameLoader* loader = fMainFrame->Frame()->loader())
-        message.AddBool("can stop", loader->isLoading());
+    WebCore::FrameLoader& loader = fMainFrame->Frame()->loader();
+    message.AddBool("can stop", loader.isLoading());
     dispatchMessage(message);
 	// Send loading progress and status text notifications
     setLoadingProgress(fLoadingProgress);
@@ -1211,14 +1212,12 @@ void BWebPage::handleSendEditingCapabilities(BMessage*)
     bool canCopy = false;
     bool canPaste = false;
 
-    WebCore::Frame* frame = fPage->focusController()->focusedOrMainFrame();
-    if (frame) {
-        WebCore::Editor& editor = frame->editor();
+    WebCore::Frame& frame = fPage->focusController().focusedOrMainFrame();
+    WebCore::Editor& editor = frame.editor();
 
-        canCut = editor.canCut() || editor.canDHTMLCut();
-        canCopy = editor.canCopy() || editor.canDHTMLCopy();
-        canPaste = editor.canPaste() || editor.canDHTMLPaste();
-    }
+    canCut = editor.canCut() || editor.canDHTMLCut();
+    canCopy = editor.canCopy() || editor.canDHTMLCopy();
+    canPaste = editor.canPaste() || editor.canDHTMLPaste();
 
     BMessage message(B_EDITING_CAPABILITIES_RESULT);
     message.AddBool("can cut", canCut);
