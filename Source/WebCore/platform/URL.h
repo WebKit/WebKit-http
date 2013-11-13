@@ -45,6 +45,10 @@ class QUrl;
 QT_END_NAMESPACE
 #endif
 
+#if PLATFORM(HAIKU)
+class BUrl;
+#endif
+
 namespace WebCore {
 
 class TextEncoding;
@@ -177,6 +181,11 @@ public:
 #if PLATFORM(QT)
     URL(const QUrl&);
     operator QUrl() const;
+#endif
+
+#if USE(HAIKU)
+	URL(const BUrl&);
+	operator BUrl() const;
 #endif
 
     const URL* innerURL() const { return 0; }

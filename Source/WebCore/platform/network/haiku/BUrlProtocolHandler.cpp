@@ -262,7 +262,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
     ResourceHandleInternal* d = m_resourceHandle->getInternal();
     unsigned failureCount = 0;
 
-    const KURL& url = m_resourceHandle->firstRequest().url();
+    const URL& url = m_resourceHandle->firstRequest().url();
     ProtectionSpaceServerType serverType = ProtectionSpaceServerHTTP;
     if (url.protocolIs("https"))
         serverType = ProtectionSpaceServerHTTPS;
@@ -359,7 +359,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     }
 
 
-    KURL url(m_request->Url());
+    URL url(m_request->Url());
 
     int contentLength = 0;
     const char* contentLengthString

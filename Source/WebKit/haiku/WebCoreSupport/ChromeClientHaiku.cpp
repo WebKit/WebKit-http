@@ -39,6 +39,7 @@
 #include "FrameView.h"
 #include "HitTestResult.h"
 #include "Icon.h"
+#include "MainFrame.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PopupMenuHaiku.h"

@@ -49,6 +49,7 @@
 #include "HTTPParsers.h"
 #include "HTTPStatusCodes.h"
 #include "IconDatabase.h"
+#include "MainFrame.h"
 #include "MouseEvent.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
@@ -301,7 +302,7 @@ void FrameLoaderClientHaiku::dispatchDidCancelClientRedirect()
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const KURL&, double interval, double fireDate)
+void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate)
 {
     notImplemented();
 }
@@ -742,12 +743,12 @@ void FrameLoaderClientHaiku::didDisplayInsecureContent()
 {
 }
 
-void FrameLoaderClientHaiku::didRunInsecureContent(WebCore::SecurityOrigin*, const WebCore::KURL&)
+void FrameLoaderClientHaiku::didRunInsecureContent(WebCore::SecurityOrigin*, const WebCore::URL&)
 {
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::didDetectXSS(const KURL&, bool)
+void FrameLoaderClientHaiku::didDetectXSS(const URL&, bool)
 {
     notImplemented();
 }
@@ -918,7 +919,7 @@ WTF::PassRefPtr<DocumentLoader> FrameLoaderClientHaiku::createDocumentLoader(con
     return loader.release();
 }
 
-void FrameLoaderClientHaiku::setTitle(const StringWithDirection&, const KURL&)
+void FrameLoaderClientHaiku::setTitle(const StringWithDirection&, const URL&)
 {
     notImplemented();
 }
@@ -960,7 +961,7 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
     postCommitFrameViewSetup(m_webFrame, frame->view(), true);
 }
 
-String FrameLoaderClientHaiku::userAgent(const KURL&)
+String FrameLoaderClientHaiku::userAgent(const URL&)
 {
     BLanguage language;
     BLocale::Default()->GetLanguage(&language);
@@ -981,7 +982,7 @@ bool FrameLoaderClientHaiku::canCachePage() const
     return true;
 }
 
-PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const String& name, HTMLFrameOwnerElement* ownerElement,
+PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement* ownerElement,
     const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight)
 {
     CALLED();
@@ -1019,7 +1020,7 @@ void FrameLoaderClientHaiku::didTransferChildFrameToNewDocument()
     CALLED();
 }
 
-ObjectContentType FrameLoaderClientHaiku::objectContentType(const KURL& url, const String& originalMimeType, bool /*shouldPreferPlugInsForImages*/)
+ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, const String& originalMimeType, bool /*shouldPreferPlugInsForImages*/)
 {
     CALLED();
     if (url.isEmpty() && !originalMimeType.length())
@@ -1055,7 +1056,7 @@ ObjectContentType FrameLoaderClientHaiku::objectContentType(const KURL& url, con
     return ObjectContentNone;
 }
 
-PassRefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement*, const KURL&, const Vector<String>&,
+PassRefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,
                                                         const Vector<String>&, const String&, bool loadManually)
 {
     CALLED();
@@ -1071,7 +1072,7 @@ void FrameLoaderClientHaiku::redirectDataToPlugin(Widget* pluginWidget)
     m_hasSentResponseToPlugin = false;
 }
 
-PassRefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL& baseURL,
+PassRefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL,
                                                                   const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
     notImplemented();
@@ -1130,7 +1131,7 @@ void FrameLoaderClientHaiku::didPerformFirstNavigation() const
 
 void FrameLoaderClientHaiku::callPolicyFunction(FramePolicyFunction function, PolicyAction action)
 {
-    (m_webFrame->Frame()->loader().policyChecker()->*function)(action);
+    (m_webFrame->Frame()->loader().policyChecker().*function)(action);
 }
 
 void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const

@@ -26,7 +26,7 @@
  */
 
 #include "config.h"
-#include "KURL.h"
+#include "URL.h"
 
 #include <String.h>
 #include <wtf/text/CString.h>
@@ -35,12 +35,12 @@
 
 namespace WebCore {
 
-KURL::KURL(const BUrl& url)
+URL::URL(const BUrl& url)
 {
-    *this = KURL(KURL(), url.UrlString().String());
+    *this = URL(URL(), url.UrlString().String());
 }
 
-KURL::operator BUrl() const
+URL::operator BUrl() const
 {
 	BString str;
 	str.Append(m_string.utf8().data(), m_string.utf8().length());

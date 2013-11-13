@@ -167,11 +167,11 @@ public:
     void setDragImage(DragImageRef, const IntPoint& hotSpot);
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(WIN)
+#if PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(WIN) || PLATFORM(HAIKU)
     PassRefPtr<DocumentFragment> documentFragment(Frame*, PassRefPtr<Range>, bool allowPlainText, bool& chosePlainText); // FIXME: Layering violation.
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(WIN)
+#if PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(WIN) || PLATFORM(HAIKU)
     void writeImage(Node*, const URL&, const String& title); // FIXME: Layering violation.
     void writeSelection(Range*, bool canSmartCopyOrDelete, Frame*, ShouldSerializeSelectedTextForClipboard = DefaultSelectedTextType); // FIXME: Layering violation.
 #endif

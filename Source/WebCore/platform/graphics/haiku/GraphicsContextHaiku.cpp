@@ -858,7 +858,7 @@ InterpolationQuality GraphicsContext::imageInterpolationQuality() const
     return m_data->m_graphicsState->imageInterpolationQuality;
 }
 
-void GraphicsContext::setURLForRect(const KURL& link, const IntRect& destRect)
+void GraphicsContext::setURLForRect(const URL& link, const IntRect& destRect)
 {
     notImplemented();
 }

@@ -33,7 +33,7 @@
 
 #include "config.h"
 
-#include "KURL.h"
+#include "URL.h"
 #include "NotImplemented.h"
 #include "SSLKeyGenerator.h"
 #include <InterfaceDefs.h>
@@ -48,7 +48,7 @@ Vector<char> loadResourceIntoArray(const char*)
 
 namespace WebCore {
 
-String signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String &challengeString, const KURL &url)
+String signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String &challengeString, const URL &url)
 {
     return String();
 }

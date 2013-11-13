@@ -31,7 +31,7 @@
 
 #include "ChromeClient.h"
 #include "FloatRect.h"
-#include "KURL.h"
+#include "URL.h"
 #include <wtf/RefCounted.h>
 #include "WebPage.h"
 
@@ -163,7 +163,7 @@ namespace WebCore {
         BWebPage* m_webPage;
         BWebView* m_webView;
 
-        KURL lastHoverURL;
+        URL lastHoverURL;
         String lastHoverTitle;
         String lastHoverContent;
     };

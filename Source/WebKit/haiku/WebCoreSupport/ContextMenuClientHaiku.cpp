@@ -34,10 +34,11 @@
 #include "FrameLoader.h"
 #include "FrameLoadRequest.h"
 #include "HitTestResult.h"
-#include "KURL.h"
+#include "MainFrame.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "ResourceRequest.h"
+#include "URL.h"
 #include "WebPage.h"
 
 
@@ -72,7 +73,7 @@ void ContextMenuClientHaiku::contextMenuItemSelected(ContextMenuItem*, const Con
     notImplemented();
 }
 
-void ContextMenuClientHaiku::downloadURL(const KURL& url)
+void ContextMenuClientHaiku::downloadURL(const URL& url)
 {
 	ResourceRequest request(url);
     BWebPage::requestDownload(request);
@@ -89,7 +90,7 @@ void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)
     url.append(encoded);
 
     if (Page* page = frame->page())
-        page->mainFrame().loader().urlSelected(KURL(ParsedURLString, url), String("_blank"), 0, false, false, MaybeSendReferrer);
+        page->mainFrame().loader().urlSelected(URL(ParsedURLString, url), String("_blank"), 0, false, false, MaybeSendReferrer);
 }
 
 void ContextMenuClientHaiku::lookUpInDictionary(Frame*)

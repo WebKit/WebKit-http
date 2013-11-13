@@ -29,7 +29,7 @@
 #include "config.h"
 
 #include "Cookie.h"
-#include "KURL.h"
+#include "URL.h"
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "PlatformCookieJar.h"
@@ -45,7 +45,7 @@
 
 namespace WebCore {
 
-void setCookiesFromDOM(const NetworkStorageSession& session, const KURL&, const KURL& url, const String& value)
+void setCookiesFromDOM(const NetworkStorageSession& session, const URL&, const URL& url, const String& value)
 {
 	BNetworkCookie* heapCookie
 		= new BNetworkCookie(value, BUrl(url.string().utf8().data()));
@@ -58,8 +58,8 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const KURL&, const 
     session.context()->context()->GetCookieJar().AddCookie(heapCookie);
 }
 
-String cookiesForDOM(const NetworkStorageSession& session, const KURL& firstParty,
-    const KURL& url)
+String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty,
+    const URL& url)
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: Request for %s\n", url.string().utf8().data());
@@ -68,7 +68,7 @@ String cookiesForDOM(const NetworkStorageSession& session, const KURL& firstPart
 	return cookieRequestHeaderFieldValue(session, firstParty, url);
 }
 
-String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const KURL&, const KURL& url)
+String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL&, const URL& url)
 {
 	BString result;
 	BUrl hUrl(url.string().utf8().data());
@@ -91,12 +91,12 @@ String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const
     return result;
 }
 
-bool cookiesEnabled(const NetworkStorageSession&, const KURL&, const KURL&)
+bool cookiesEnabled(const NetworkStorageSession&, const URL&, const URL&)
 {
     return true;
 }
 
-bool getRawCookies(const NetworkStorageSession&, const KURL&, const KURL& url, Vector<Cookie>& rawCookies)
+bool getRawCookies(const NetworkStorageSession&, const URL&, const URL& url, Vector<Cookie>& rawCookies)
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: get raw cookies for %s (NOT IMPLEMENTED)\n", url.string().utf8().data());
@@ -107,7 +107,7 @@ bool getRawCookies(const NetworkStorageSession&, const KURL&, const KURL& url, V
     return false; // return true when implemented
 }
 
-void deleteCookie(const NetworkStorageSession&, const KURL& url, const String& name)
+void deleteCookie(const NetworkStorageSession&, const URL& url, const String& name)
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: delete cookie for %s (NOT IMPLEMENTED)\n", url.string().utf8().data());

@@ -33,7 +33,7 @@
 
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
-#include "KURL.h"
+#include "URL.h"
 #include "ResourceResponse.h"
 #include <Messenger.h>
 #include <wtf/Forward.h>
@@ -99,7 +99,7 @@ public:
     virtual void dispatchDidHandleOnloadEvents();
     virtual void dispatchDidReceiveServerRedirectForProvisionalLoad();
     virtual void dispatchDidCancelClientRedirect();
-    virtual void dispatchWillPerformClientRedirect(const KURL&, double interval, double fireDate);
+    virtual void dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate);
     virtual void dispatchDidChangeLocationWithinPage();
     virtual void dispatchDidPushStateWithinPage();
     virtual void dispatchDidReplaceStateWithinPage();
@@ -165,8 +165,8 @@ public:
 
     virtual void didDisplayInsecureContent();
 
-    virtual void didRunInsecureContent(SecurityOrigin*, const KURL&);
-    virtual void didDetectXSS(const KURL&, bool didBlockEntirePage);
+    virtual void didRunInsecureContent(SecurityOrigin*, const URL&);
+    virtual void didDetectXSS(const URL&, bool didBlockEntirePage);
 
     virtual ResourceError cancelledError(const ResourceRequest&);
     virtual ResourceError blockedError(const ResourceRequest&);
@@ -180,7 +180,7 @@ public:
 
     virtual bool shouldFallBack(const ResourceError&);
 
-    virtual String userAgent(const KURL&);
+    virtual String userAgent(const URL&);
 
     virtual void savePlatformDataToCachedFrame(CachedFrame*);
     virtual void transitionToCommittedFromCachedFrame(CachedFrame*);
@@ -200,20 +200,20 @@ public:
     virtual void prepareForDataSourceReplacement();
     virtual PassRefPtr<DocumentLoader> createDocumentLoader(const ResourceRequest&, const SubstituteData&);
 
-    virtual void setTitle(const StringWithDirection&, const KURL&);
+    virtual void setTitle(const StringWithDirection&, const URL&);
 
-    virtual PassRefPtr<Frame> createFrame(const KURL& url, const String& name, HTMLFrameOwnerElement*,
+    virtual PassRefPtr<Frame> createFrame(const URL& url, const String& name, HTMLFrameOwnerElement*,
                                                    const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight);
     virtual void didTransferChildFrameToNewDocument();
-    virtual PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const KURL&, const Vector<String>&,
+    virtual PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,
                                                      const Vector<String>&, const String&, bool);
     virtual void recreatePlugin(Widget*) { }
     virtual void redirectDataToPlugin(Widget* pluginWidget);
 
-    virtual PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL& baseURL,
+    virtual PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL,
                                                                const Vector<String>& paramNames, const Vector<String>& paramValues);
 
-    virtual ObjectContentType objectContentType(const KURL&, const String& mimeType, bool shouldPreferPlugInsForImages);
+    virtual ObjectContentType objectContentType(const URL&, const String& mimeType, bool shouldPreferPlugInsForImages);
 
     virtual String overrideMediaType() const;
 

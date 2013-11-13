@@ -39,11 +39,12 @@
 #include "FrameLoaderClientHaiku.h"
 #include "FrameView.h"
 #include "HTMLFrameOwnerElement.h"
-#include "KURL.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
+#include "URL.h"
 #include "WebFramePrivate.h"
 #include "WebPage.h"
 #include "markup.h"
@@ -110,22 +111,22 @@ void BWebFrame::SetListener(const BMessenger& listener)
 
 void BWebFrame::LoadURL(BString urlString)
 {
-	KURL url;
+    WebCore::URL url;
     if (BEntry(urlString.String()).Exists()) {
         url.setProtocol("file");
         url.setPath(urlString);
     } else
-		url = KURL(KURL(), urlString.Trim().String());
+		url = WebCore::URL(WebCore::URL(), urlString.Trim().String());
 
 	if (!url.protocolIsInHTTPFamily() && !url.isLocalFile()) {
-		url = KURL();
+		url = WebCore::URL();
 		url.setProtocol("http");
 		url.setHostAndPort(urlString);
 	}
     LoadURL(url);
 }
 
-void BWebFrame::LoadURL(KURL url)
+void BWebFrame::LoadURL(WebCore::URL url)
 {
 	if (url.isEmpty())
 		return;

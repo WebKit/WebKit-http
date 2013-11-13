@@ -40,7 +40,7 @@ namespace WebCore {
 class ChromeClientHaiku;
 class Frame;
 class FrameLoaderClientHaiku;
-class KURL;
+class URL;
 }
 
 class WebFramePrivate;
@@ -115,7 +115,7 @@ private:
 
 			void				Shutdown();
 
-			void				LoadURL(WebCore::KURL);
+			void				LoadURL(WebCore::URL);
 			WebCore::Frame*		Frame() const;
 
 private:

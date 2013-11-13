@@ -87,7 +87,7 @@ void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, const ResourceRespo
     	if (!response.suggestedFilename().isEmpty())
             m_filename = response.suggestedFilename();
         else {
-        	WebCore::KURL url(response.url());
+        	WebCore::URL url(response.url());
             url.setQuery(String());
             url.removeFragmentIdentifier();
             m_filename = WebCore::decodeURLEscapeSequences(url.lastPathComponent()).utf8().data();
