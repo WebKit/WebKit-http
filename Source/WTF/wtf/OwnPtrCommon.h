@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Torch Mobile, Inc.
  * Copyright (C) 2010 Company 100 Inc.
  *
@@ -28,16 +28,6 @@
 #ifndef WTF_OwnPtrCommon_h
 #define WTF_OwnPtrCommon_h
 
-#if OS(WINDOWS)
-typedef struct HBITMAP__* HBITMAP;
-typedef struct HBRUSH__* HBRUSH;
-typedef struct HDC__* HDC;
-typedef struct HFONT__* HFONT;
-typedef struct HPALETTE__* HPALETTE;
-typedef struct HPEN__* HPEN;
-typedef struct HRGN__* HRGN;
-#endif
-
 #if PLATFORM(EFL)
 typedef struct _Ecore_Evas Ecore_Evas;
 typedef struct _Ecore_IMF_Context Ecore_IMF_Context;
@@ -62,16 +52,6 @@ namespace WTF {
         if (sizeof(known))
             delete ptr;
     }
-
-#if OS(WINDOWS)
-    WTF_EXPORT_PRIVATE void deleteOwnedPtr(HBITMAP);
-    WTF_EXPORT_PRIVATE void deleteOwnedPtr(HBRUSH);
-    WTF_EXPORT_PRIVATE void deleteOwnedPtr(HDC);
-    WTF_EXPORT_PRIVATE void deleteOwnedPtr(HFONT);
-    WTF_EXPORT_PRIVATE void deleteOwnedPtr(HPALETTE);
-    WTF_EXPORT_PRIVATE void deleteOwnedPtr(HPEN);
-    WTF_EXPORT_PRIVATE void deleteOwnedPtr(HRGN);
-#endif
 
 #if PLATFORM(EFL)
     WTF_EXPORT_PRIVATE void deleteOwnedPtr(Ecore_Evas*);

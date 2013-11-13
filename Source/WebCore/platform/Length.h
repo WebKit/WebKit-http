@@ -24,6 +24,7 @@
 #define Length_h
 
 #include "AnimationUtilities.h"
+#include <memory>
 #include <string.h>
 #include <wtf/Assertions.h>
 #include <wtf/FastMalloc.h>
@@ -88,13 +89,25 @@ public:
     {
         initFromLength(length);
     }
-    
+
+    Length(Length&& other)
+    {
+        moveFromLength(std::move(other));
+    }
+
     Length& operator=(const Length& length)
     {
         initFromLength(length);
         return *this;
     }
-    
+
+    Length& operator=(Length&& other)
+    {
+        if (this != &other)
+            moveFromLength(std::move(other));
+        return *this;
+    }
+
     ~Length()
     {
         if (isCalculated())
@@ -286,6 +299,13 @@ private:
             incrementCalculatedRef();
     }
 
+    void moveFromLength(Length&& length)
+    {
+        ASSERT(this != &length);
+        memcpy(this, &length, sizeof(Length));
+        length.m_type = Auto;
+    }
+
     Length blendMixedTypes(const Length& from, double progress) const;
 
     int calculationHandle() const
@@ -305,8 +325,8 @@ private:
     bool m_isFloat;
 };
 
-OwnArrayPtr<Length> newCoordsArray(const String&, int& len);
-OwnArrayPtr<Length> newLengthArray(const String&, int& len);
+std::unique_ptr<Length[]> newCoordsArray(const String&, int& len);
+std::unique_ptr<Length[]> newLengthArray(const String&, int& len);
 
 } // namespace WebCore
 

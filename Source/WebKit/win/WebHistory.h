@@ -29,12 +29,12 @@
 #include "WebKit.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <WebCore/COMPtr.h>
+#include <memory>
 #include <wtf/Forward.h>
-#include <wtf/OwnArrayPtr.h>
 #include <wtf/RetainPtr.h>
 
 namespace WebCore {
-    class KURL;
+    class URL;
     class PageGroup;
 }
 
@@ -111,13 +111,14 @@ public:
 
     // WebHistory
     static WebHistory* sharedHistory();
-    void visitedURL(const WebCore::KURL&, const WTF::String& title, const WTF::String& httpMethod, bool wasFailure, bool increaseVisitCount);
+    void visitedURL(const WebCore::URL&, const WTF::String& title, const WTF::String& httpMethod, bool wasFailure, bool increaseVisitCount);
     void addVisitedLinksToPageGroup(WebCore::PageGroup&);
 
     COMPtr<IWebHistoryItem> itemForURLString(const WTF::String&) const;
 
     typedef int64_t DateKey;
-    typedef HashMap<DateKey, RetainPtr<CFMutableArrayRef> > DateToEntriesMap;
+    typedef HashMap<DateKey, Vector<COMPtr<IWebHistoryItem>>> DateToEntriesMap;
+    typedef HashMap<WTF::String, COMPtr<IWebHistoryItem>> URLToEntriesMap;
 
 private:
 
@@ -134,20 +135,15 @@ private:
     HRESULT postNotification(NotificationType notifyType, IPropertyBag* userInfo = 0);
     HRESULT removeItem(IWebHistoryItem* entry);
     HRESULT addItem(IWebHistoryItem* entry, bool discardDuplicate, bool* added);
-    HRESULT removeItemForURLString(CFStringRef urlString);
+    HRESULT removeItemForURLString(const WTF::String& urlString);
     HRESULT addItemToDateCaches(IWebHistoryItem* entry);
     HRESULT removeItemFromDateCaches(IWebHistoryItem* entry);
-    HRESULT insertItem(IWebHistoryItem* entry, DateKey);
-    HRESULT ageLimitDate(CFAbsoluteTime* time);
-    bool findKey(DateKey*, CFAbsoluteTime forDay);
-    static CFAbsoluteTime timeToDate(CFAbsoluteTime time);
     BSTR getNotificationString(NotificationType notifyType);
-    HRESULT itemForURLString(CFStringRef urlString, IWebHistoryItem** item) const;
 
     ULONG m_refCount;
-    RetainPtr<CFMutableDictionaryRef> m_entriesByURL;
+    URLToEntriesMap m_entriesByURL;
     DateToEntriesMap m_entriesByDate;
-    OwnArrayPtr<DATE> m_orderedLastVisitedDays;
+    std::unique_ptr<DATE[]> m_orderedLastVisitedDays;
     COMPtr<WebPreferences> m_preferences;
 };
 

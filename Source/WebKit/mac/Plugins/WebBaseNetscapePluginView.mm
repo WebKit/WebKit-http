@@ -67,8 +67,6 @@
 #define LoginWindowDidSwitchFromUserNotification    @"WebLoginWindowDidSwitchFromUserNotification"
 #define LoginWindowDidSwitchToUserNotification      @"WebLoginWindowDidSwitchToUserNotification"
 
-static const NSTimeInterval ClearSubstituteImageDelay = 0.5;
-
 using namespace WebCore;
 
 @implementation WebBaseNetscapePluginView
@@ -847,7 +845,7 @@ using namespace WebCore;
     if (!frame->document()->securityOrigin()->canAccess(targetFrame->document()->securityOrigin()))
         return CString();
   
-    KURL absoluteURL = targetFrame->document()->completeURL(relativeURLString);
+    URL absoluteURL = targetFrame->document()->completeURL(relativeURLString);
     return absoluteURL.string().utf8();
 }
 

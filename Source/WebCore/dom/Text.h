@@ -34,9 +34,9 @@ class Text : public CharacterData {
 public:
     static const unsigned defaultLengthLimit = 1 << 16;
 
-    static PassRefPtr<Text> create(Document*, const String&);
-    static PassRefPtr<Text> createWithLengthLimit(Document*, const String&, unsigned positionInString, unsigned lengthLimit = defaultLengthLimit);
-    static PassRefPtr<Text> createEditingText(Document*, const String&);
+    static PassRefPtr<Text> create(Document&, const String&);
+    static PassRefPtr<Text> createWithLengthLimit(Document&, const String&, unsigned positionInString, unsigned lengthLimit = defaultLengthLimit);
+    static PassRefPtr<Text> createEditingText(Document&, const String&);
 
     virtual ~Text();
 
@@ -47,12 +47,12 @@ public:
     String wholeText() const;
     PassRefPtr<Text> replaceWholeText(const String&, ExceptionCode&);
     
-    RenderText* createTextRenderer(RenderArena*, RenderStyle*);
+    RenderText* createTextRenderer(RenderArena&, RenderStyle&);
     
     virtual bool canContainRangeEndPoint() const OVERRIDE FINAL { return true; }
 
 protected:
-    Text(Document* document, const String& data, ConstructionType type)
+    Text(Document& document, const String& data, ConstructionType type)
         : CharacterData(document, data, type)
     {
     }
@@ -70,6 +70,12 @@ private:
 #endif
 };
 
+inline Text& toText(Node& node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(node.isTextNode());
+    return static_cast<Text&>(node);
+}
+
 inline Text* toText(Node* node)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isTextNode());
@@ -81,6 +87,9 @@ inline const Text* toText(const Node* node)
     ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isTextNode());
     return static_cast<const Text*>(node);
 }
+
+void toText(const Text&);
+void toText(const Text*);
 
 } // namespace WebCore
 

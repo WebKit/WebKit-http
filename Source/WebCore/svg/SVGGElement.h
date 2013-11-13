@@ -31,14 +31,13 @@ namespace WebCore {
 class SVGGElement FINAL : public SVGGraphicsElement,
                           public SVGExternalResourcesRequired {
 public:
-    static PassRefPtr<SVGGElement> create(const QualifiedName&, Document*);
-
-protected:
-    SVGGElement(const QualifiedName&, Document*);
-
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    static PassRefPtr<SVGGElement> create(const QualifiedName&, Document&);
 
 private:
+    SVGGElement(const QualifiedName&, Document&);
+
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
+
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool supportsFocus() const OVERRIDE { return true; }
 

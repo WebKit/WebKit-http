@@ -39,6 +39,7 @@ from webkitpy.common.memoized import memoized
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.base import Port
 from webkitpy.port.xvfbdriver import XvfbDriver
+from webkitpy.port.linux_get_crash_log import GDBCrashLogGenerator
 
 _log = logging.getLogger(__name__)
 
@@ -188,3 +189,21 @@ class QtPort(Port):
     # Qt port is not ready for parallel testing, see https://bugs.webkit.org/show_bug.cgi?id=77730 for details.
     def default_child_processes(self):
         return 1
+
+    def build_webkit_command(self, build_style=None):
+        command = super(QtPort, self).build_webkit_command(build_style)
+        command.append("--qt")
+        if not self.get_option('webkit_test_runner'):
+            command.append("--no-webkit2")
+        command.append(super(QtPort, self).make_args())
+        return command
+
+    def run_webkit_tests_command(self):
+        command = super(QtPort, self).run_webkit_tests_command()
+        command.append("--qt")
+        if self.get_option('webkit_test_runner'):
+            command.append("-2")
+        return command
+
+    def _get_crash_log(self, name, pid, stdout, stderr, newer_than):
+        return GDBCrashLogGenerator(name, pid, newer_than, self._filesystem, self._path_to_driver).generate_crash_log(stdout, stderr)

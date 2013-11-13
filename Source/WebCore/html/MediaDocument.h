@@ -34,7 +34,7 @@ namespace WebCore {
 
 class MediaDocument FINAL : public HTMLDocument {
 public:
-    static PassRefPtr<MediaDocument> create(Frame* frame, const KURL& url)
+    static PassRefPtr<MediaDocument> create(Frame* frame, const URL& url)
     {
         return adoptRef(new MediaDocument(frame, url));
     }
@@ -43,7 +43,7 @@ public:
     void mediaElementSawUnsupportedTracks();
 
 private:
-    MediaDocument(Frame*, const KURL&);
+    MediaDocument(Frame*, const URL&);
 
     virtual PassRefPtr<DocumentParser> createParser();
 
@@ -66,8 +66,21 @@ inline const MediaDocument* toMediaDocument(const Document* document)
     return static_cast<const MediaDocument*>(document);
 }
 
+inline MediaDocument& toMediaDocument(Document& document)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(document.isMediaDocument());
+    return static_cast<MediaDocument&>(document);
+}
+
+inline const MediaDocument& toMediaDocument(const Document& document)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(document.isMediaDocument());
+    return static_cast<const MediaDocument&>(document);
+}
+
 // This will catch anyone doing an unnecessary cast.
 void toMediaDocument(const MediaDocument*);
+void toMediaDocument(const MediaDocument&);
 
 }
 

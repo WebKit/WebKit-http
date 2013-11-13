@@ -242,7 +242,7 @@ public:
     void setActiveOpenPanelResultListener(PassRefPtr<WebOpenPanelResultListener>);
 
     void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
-    void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&) OVERRIDE;
+    void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&) OVERRIDE;
 
     // -- InjectedBundle methods
 #if ENABLE(CONTEXT_MENUS)
@@ -413,10 +413,10 @@ public:
     WebContextMenu* contextMenuAtPointInWindow(const WebCore::IntPoint&);
 #endif
     
-    bool hasLocalDataForURL(const WebCore::KURL&);
-    String cachedResponseMIMETypeForURL(const WebCore::KURL&);
-    String cachedSuggestedFilenameForURL(const WebCore::KURL&);
-    PassRefPtr<WebCore::SharedBuffer> cachedResponseDataForURL(const WebCore::KURL&);
+    bool hasLocalDataForURL(const WebCore::URL&);
+    String cachedResponseMIMETypeForURL(const WebCore::URL&);
+    String cachedSuggestedFilenameForURL(const WebCore::URL&);
+    PassRefPtr<WebCore::SharedBuffer> cachedResponseDataForURL(const WebCore::URL&);
 
     static bool canHandleRequest(const WebCore::ResourceRequest&);
 
@@ -673,7 +673,7 @@ private:
     void platformInitialize();
 
     void didReceiveWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
-    void didReceiveSyncWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    void didReceiveSyncWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&);
 
 #if !PLATFORM(MAC)
     static const char* interpretKeyEvent(const WebCore::KeyboardEvent*);
@@ -686,9 +686,9 @@ private:
 
     String sourceForFrame(WebFrame*);
 
-    void loadDataImpl(PassRefPtr<WebCore::SharedBuffer>, const String& MIMEType, const String& encodingName, const WebCore::KURL& baseURL, const WebCore::KURL& failingURL, CoreIPC::MessageDecoder&);
+    void loadDataImpl(PassRefPtr<WebCore::SharedBuffer>, const String& MIMEType, const String& encodingName, const WebCore::URL& baseURL, const WebCore::URL& failingURL, CoreIPC::MessageDecoder&);
 
-    bool platformHasLocalDataForURL(const WebCore::KURL&);
+    bool platformHasLocalDataForURL(const WebCore::URL&);
 
     // Actions
     void tryClose();
@@ -857,7 +857,7 @@ private:
     String m_userAgent;
 
     WebCore::IntSize m_viewSize;
-    OwnPtr<DrawingArea> m_drawingArea;
+    std::unique_ptr<DrawingArea> m_drawingArea;
 
     HashSet<PluginView*> m_pluginViews;
     bool m_hasSeenPlugin;
@@ -1029,6 +1029,8 @@ private:
     unsigned m_maximumRenderingSuppressionToken;
     
     WebCore::ScrollPinningBehavior m_scrollPinningBehavior;
+
+    bool m_useThreadedScrolling;
 };
 
 } // namespace WebKit

@@ -238,8 +238,8 @@ namespace JSC {
 
         bool isInErrorHandlingMode() { return m_errorHandlingModeReentry; }
 
-        NEVER_INLINE HandlerInfo* unwind(CallFrame*&, JSValue&, unsigned bytecodeOffset);
-        NEVER_INLINE void debug(CallFrame*, DebugHookID, int firstLine, int lastLine, int column);
+        NEVER_INLINE HandlerInfo* unwind(CallFrame*&, JSValue&);
+        NEVER_INLINE void debug(CallFrame*, DebugHookID);
         JSString* stackTraceAsString(ExecState*, Vector<StackFrame>);
 
         static EncodedJSValue JSC_HOST_CALL constructWithErrorConstructor(ExecState*);

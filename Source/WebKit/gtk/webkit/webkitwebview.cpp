@@ -12,6 +12,7 @@
  *  Copyright (C) 2009 Bobby Powers
  *  Copyright (C) 2010 Joone Hur <joone@kldp.org>
  *  Copyright (C) 2012 Igalia S.L.
+ *  Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -33,7 +34,7 @@
 
 #include "AXObjectCache.h"
 #include "ArchiveResource.h"
-#include "BackForwardListImpl.h"
+#include "BackForwardList.h"
 #include "CairoUtilities.h"
 #include "Chrome.h"
 #include "ChromeClientGtk.h"
@@ -70,6 +71,7 @@
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "InspectorClientGtk.h"
+#include "MainFrame.h"
 #include "MemoryCache.h"
 #include "MouseEventWithHitTestResults.h"
 #include "NotImplemented.h"
@@ -120,6 +122,10 @@
 #if ENABLE(DEVICE_ORIENTATION)
 #include "DeviceMotionClientGtk.h"
 #include "DeviceOrientationClientGtk.h"
+#endif
+
+#if PLATFORM(WAYLAND) && defined(GDK_WINDOWING_WAYLAND)
+#include <gdk/gdkwayland.h>
 #endif
 
 /**
@@ -1941,7 +1947,7 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
         NULL,
         webkit_marshal_BOOLEAN__OBJECT,
         G_TYPE_BOOLEAN, 1,
-        G_TYPE_OBJECT);
+        WEBKIT_TYPE_DOWNLOAD);
 
     /**
      * WebKitWebView::load-started:
@@ -3493,6 +3499,27 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
     g_type_class_add_private(webViewClass, sizeof(WebKitWebViewPrivate));
 }
 
+static void updateAcceleratedCompositingSetting(Settings& settings, bool value)
+{
+#if PLATFORM(WAYLAND) && defined(GDK_WINDOWING_WAYLAND)
+    GdkDisplay* display = gdk_display_manager_get_default_display(gdk_display_manager_get());
+    if (GDK_IS_WAYLAND_DISPLAY(display)) {
+        if (!settings.acceleratedCompositingEnabled() && !value)
+            return;
+
+        static bool unsupportedACWarningShown = false;
+        if (!unsupportedACWarningShown) {
+            g_warning("Accelerated compositing is not supported under Wayland displays, disabling.");
+            unsupportedACWarningShown = true;
+        }
+        settings.setAcceleratedCompositingEnabled(false);
+        return;
+    }
+#endif
+
+    settings.setAcceleratedCompositingEnabled(value);
+}
+
 static void webkit_web_view_update_settings(WebKitWebView* webView)
 {
     WebKitWebSettingsPrivate* settingsPrivate = webView->priv->webSettings->priv;
@@ -3512,7 +3539,7 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
     coreSettings.setScriptEnabled(settingsPrivate->enableScripts);
     coreSettings.setPluginsEnabled(settingsPrivate->enablePlugins);
     coreSettings.setTextAreasAreResizable(settingsPrivate->resizableTextAreas);
-    coreSettings.setUserStyleSheetLocation(KURL(KURL(), settingsPrivate->userStylesheetURI.data()));
+    coreSettings.setUserStyleSheetLocation(URL(URL(), settingsPrivate->userStylesheetURI.data()));
     coreSettings.setDeveloperExtrasEnabled(settingsPrivate->enableDeveloperExtras);
     coreSettings.setPrivateBrowsingEnabled(settingsPrivate->enablePrivateBrowsing);
     coreSettings.setCaretBrowsingEnabled(settingsPrivate->enableCaretBrowsing);
@@ -3558,11 +3585,11 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    WebCore::RuntimeEnabledFeatures::setMediaStreamEnabled(settingsPrivate->enableMediaStream);
+    WebCore::RuntimeEnabledFeatures::sharedFeatures().setMediaStreamEnabled(settingsPrivate->enableMediaStream);
 #endif
 
 #if USE(ACCELERATED_COMPOSITING)
-    coreSettings.setAcceleratedCompositingEnabled(settingsPrivate->enableAcceleratedCompositing);
+    updateAcceleratedCompositingSetting(coreSettings, settingsPrivate->enableAcceleratedCompositing);
     char* debugVisualsEnvironment = getenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS");
     bool showDebugVisuals = debugVisualsEnvironment && !strcmp(debugVisualsEnvironment, "1");
     coreSettings.setShowDebugBorders(showDebugVisuals);
@@ -3640,7 +3667,7 @@ static void webkit_web_view_settings_notify(WebKitWebSettings* webSettings, GPar
     else if (name == g_intern_string("resizable-text-areas"))
         settings.setTextAreasAreResizable(g_value_get_boolean(&value));
     else if (name == g_intern_string("user-stylesheet-uri"))
-        settings.setUserStyleSheetLocation(KURL(KURL(), g_value_get_string(&value)));
+        settings.setUserStyleSheetLocation(URL(URL(), g_value_get_string(&value)));
     else if (name == g_intern_string("enable-developer-extras"))
         settings.setDeveloperExtrasEnabled(g_value_get_boolean(&value));
     else if (name == g_intern_string("enable-private-browsing"))
@@ -3711,7 +3738,7 @@ static void webkit_web_view_settings_notify(WebKitWebSettings* webSettings, GPar
 
 #if USE(ACCELERATED_COMPOSITING)
     else if (name == g_intern_string("enable-accelerated-compositing"))
-        settings.setAcceleratedCompositingEnabled(g_value_get_boolean(&value));
+        updateAcceleratedCompositingSetting(settings, g_value_get_boolean(&value));
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -4047,7 +4074,7 @@ void webkit_web_view_set_maintains_back_forward_list(WebKitWebView* webView, gbo
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    static_cast<BackForwardListImpl*>(core(webView)->backForwardList())->setEnabled(flag);
+    static_cast<BackForwardList*>(core(webView)->backForwardClient())->setEnabled(flag);
 }
 
 /**
@@ -4062,7 +4089,7 @@ void webkit_web_view_set_maintains_back_forward_list(WebKitWebView* webView, gbo
 WebKitWebBackForwardList* webkit_web_view_get_back_forward_list(WebKitWebView* webView)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), 0);
-    if (!core(webView) || !static_cast<BackForwardListImpl*>(core(webView)->backForwardList())->enabled())
+    if (!core(webView) || !static_cast<BackForwardList*>(core(webView)->backForwardClient())->enabled())
         return 0;
     return webView->priv->backForwardList.get();
 }
@@ -4143,7 +4170,7 @@ gboolean webkit_web_view_can_go_back(WebKitWebView* webView)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
-    if (!core(webView) || !core(webView)->backForwardList()->backItem())
+    if (!core(webView) || !core(webView)->backForwardClient()->backItem())
         return FALSE;
 
     return TRUE;
@@ -4184,7 +4211,7 @@ gboolean webkit_web_view_can_go_forward(WebKitWebView* webView)
     if (!page)
         return FALSE;
 
-    if (!page->backForwardList()->forwardItem())
+    if (!page->backForwardClient()->forwardItem())
         return FALSE;
 
     return TRUE;

@@ -27,7 +27,7 @@
 #import "config.h"
 #import "PluginProcess.h"
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
 
 #import "ArgumentCoders.h"
 #import "NetscapePlugin.h"
@@ -189,11 +189,11 @@ static void carbonWindowHidden(WindowRef window)
 static bool openCFURLRef(CFURLRef url, int32_t& status, CFURLRef* launchedURL)
 {
     String launchedURLString;
-    if (!PluginProcess::shared().openURL(KURL(url).string(), status, launchedURLString))
+    if (!PluginProcess::shared().openURL(URL(url).string(), status, launchedURLString))
         return false;
 
     if (!launchedURLString.isNull() && launchedURL)
-        *launchedURL = KURL(ParsedURLString, launchedURLString).createCFURL().leakRef();
+        *launchedURL = URL(ParsedURLString, launchedURLString).createCFURL().leakRef();
     return true;
 }
 
@@ -293,7 +293,7 @@ static NSRunningApplication *replacedNSWorkspace_launchApplicationAtURL_options_
         }
     }
 
-    if (PluginProcess::shared().launchApplicationAtURL(KURL(url).string(), arguments)) {
+    if (PluginProcess::shared().launchApplicationAtURL(URL(url).string(), arguments)) {
         if (error)
             *error = nil;
         return nil;
@@ -495,4 +495,4 @@ void PluginProcess::initializeSandbox(const ChildProcessInitializationParameters
 
 } // namespace WebKit
 
-#endif // ENABLE(PLUGIN_PROCESS)
+#endif // ENABLE(NETSCAPE_PLUGIN_API)

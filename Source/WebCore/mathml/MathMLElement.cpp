@@ -32,19 +32,18 @@
 #include "MathMLElement.h"
 
 #include "MathMLNames.h"
-#include "RenderObject.h"
 #include "RenderTableCell.h"
 
 namespace WebCore {
     
 using namespace MathMLNames;
     
-MathMLElement::MathMLElement(const QualifiedName& tagName, Document* document)
+MathMLElement::MathMLElement(const QualifiedName& tagName, Document& document)
     : StyledElement(tagName, document, CreateStyledElement)
 {
 }
     
-PassRefPtr<MathMLElement> MathMLElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<MathMLElement> MathMLElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new MathMLElement(tagName, document));
 }

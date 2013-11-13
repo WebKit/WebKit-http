@@ -225,6 +225,21 @@ public:
         m_assembler.andq_ir(imm.m_value, srcDest);
     }
     
+    void lshift64(TrustedImm32 imm, RegisterID dest)
+    {
+        m_assembler.shlq_i8r(imm.m_value, dest);
+    }
+    
+    void rshift64(TrustedImm32 imm, RegisterID dest)
+    {
+        m_assembler.sarq_i8r(imm.m_value, dest);
+    }
+    
+    void mul64(RegisterID src, RegisterID dest)
+    {
+        m_assembler.imulq_rr(src, dest);
+    }
+    
     void neg64(RegisterID dest)
     {
         m_assembler.negq_r(dest);
@@ -525,6 +540,14 @@ public:
         return Jump(m_assembler.jCC(x86Condition(cond)));
     }
 
+    Jump branchMul64(ResultCondition cond, RegisterID src, RegisterID dest)
+    {
+        mul64(src, dest);
+        if (cond != Overflow)
+            m_assembler.testq_rr(dest, dest);
+        return Jump(m_assembler.jCC(x86Condition(cond)));
+    }
+
     Jump branchSub64(ResultCondition cond, TrustedImm32 imm, RegisterID dest)
     {
         sub64(imm, dest);
@@ -541,6 +564,12 @@ public:
     {
         move(src1, dest);
         return branchSub64(cond, src2, dest);
+    }
+
+    Jump branchNeg64(ResultCondition cond, RegisterID srcDest)
+    {
+        neg64(srcDest);
+        return Jump(m_assembler.jCC(x86Condition(cond)));
     }
 
     ConvertibleLoadLabel convertibleLoadPtr(Address address, RegisterID dest)
@@ -588,6 +617,11 @@ public:
     {
         MacroAssemblerX86Common::move(TrustedImmPtr(address.m_ptr), scratchRegister);
         return MacroAssemblerX86Common::branchTest8(cond, Address(scratchRegister), mask);
+    }
+
+    void convertInt64ToDouble(RegisterID src, FPRegisterID dest)
+    {
+        m_assembler.cvtsi2sdq_rr(src, dest);
     }
 
     static bool supportsFloatingPoint() { return true; }

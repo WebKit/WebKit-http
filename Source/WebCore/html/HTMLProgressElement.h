@@ -34,7 +34,7 @@ public:
     static const double IndeterminatePosition;
     static const double InvalidPosition;
 
-    static PassRefPtr<HTMLProgressElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<HTMLProgressElement> create(const QualifiedName&, Document&);
 
     double value() const;
     void setValue(double, ExceptionCode&);
@@ -47,14 +47,14 @@ public:
     virtual bool canContainRangeEndPoint() const { return false; }
 
 private:
-    HTMLProgressElement(const QualifiedName&, Document*);
+    HTMLProgressElement(const QualifiedName&, Document&);
     virtual ~HTMLProgressElement();
 
     virtual bool areAuthorShadowsAllowed() const OVERRIDE { return false; }
     virtual bool shouldAppearIndeterminate() const OVERRIDE;
     virtual bool supportLabels() const OVERRIDE { return true; }
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
     RenderProgress* renderProgress() const;
 
@@ -68,6 +68,8 @@ private:
 
     ProgressValueElement* m_value;
 };
+
+ELEMENT_TYPE_CASTS(HTMLProgressElement)
 
 } // namespace
 

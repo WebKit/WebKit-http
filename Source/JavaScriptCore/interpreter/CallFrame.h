@@ -134,29 +134,22 @@ namespace JSC  {
             static inline bool isCodeOriginIndex(uint32_t bits);
             static inline uint32_t encodeAsCodeOriginIndex(uint32_t bits);
 
-            static inline bool isInlinedCode(uint32_t bits);
-            static inline uint32_t encodeAsInlinedCode(uint32_t bits);
-
         private:
             enum TypeTag {
                 BytecodeLocationTag = 0,
                 CodeOriginIndexTag = 1,
-                IsInlinedCodeTag = 2,
             };
 
             static inline uint32_t encode(TypeTag, uint32_t bits);
 
-            static const uint32_t s_mask = 0x3;
+            static const uint32_t s_mask = 0x1;
 #if USE(JSVALUE64)
-            static const uint32_t s_shift = 30;
+            static const uint32_t s_shift = 31;
             static const uint32_t s_shiftedMask = s_mask << s_shift;
 #else
-            static const uint32_t s_shift = 2;
+            static const uint32_t s_shift = 1;
 #endif
         };
-
-        bool isInlinedFrame() const;
-        void setIsInlinedFrame();
 
         bool hasLocationAsBytecodeOffset() const;
         bool hasLocationAsCodeOriginIndex() const;
@@ -171,6 +164,17 @@ namespace JSC  {
 #if ENABLE(DFG_JIT)
         unsigned bytecodeOffsetFromCodeOriginIndex();
 #endif
+        
+        // This will try to get you the bytecode offset, but you should be aware that
+        // this bytecode offset may be bogus in the presence of inlining. This will
+        // also return 0 if the call frame has no notion of bytecode offsets (for
+        // example if it's native code).
+        // https://bugs.webkit.org/show_bug.cgi?id=121754
+        unsigned bytecodeOffset();
+        
+        // This will get you a CodeOrigin. It will always succeed. May return
+        // CodeOrigin(0) if we're in native code.
+        CodeOrigin codeOrigin();
 
         Register* frameExtent()
         {
@@ -181,18 +185,6 @@ namespace JSC  {
     
         Register* frameExtentInternal();
     
-#if ENABLE(DFG_JIT)
-        InlineCallFrame* inlineCallFrame() const { return this[JSStack::ReturnPC].asInlineCallFrame(); }
-#else
-        // This will never be called if !ENABLE(DFG_JIT) since all calls should be guarded by
-        // isInlinedFrame(). But to make it easier to write code without having a bunch of
-        // #if's, we make a dummy implementation available anyway.
-        InlineCallFrame* inlineCallFrame() const
-        {
-            RELEASE_ASSERT_NOT_REACHED();
-            return 0;
-        }
-#endif
 #if USE(JSVALUE32_64)
         Instruction* currentVPC() const
         {
@@ -214,7 +206,7 @@ namespace JSC  {
             CallFrame* callerFrame, int argc, JSObject* callee)
         {
             ASSERT(callerFrame); // Use noCaller() rather than 0 for the outer host call frame caller.
-            ASSERT(callerFrame == noCaller() || callerFrame->removeHostCallFrameFlag()->stack()->end() >= this);
+            ASSERT(callerFrame == noCaller() || callerFrame->removeHostCallFrameFlag()->stack()->containsAddress(this));
 
             setCodeBlock(codeBlock);
             setScope(scope);
@@ -226,14 +218,14 @@ namespace JSC  {
 
         // Read a register from the codeframe (or constant from the CodeBlock).
         Register& r(int);
-        // Read a register for a non-constant 
+        // Read a register for a non-constant
         Register& uncheckedR(int);
 
         // Access to arguments as passed. (After capture, arguments may move to a different location.)
         size_t argumentCount() const { return argumentCountIncludingThis() - 1; }
         size_t argumentCountIncludingThis() const { return this[JSStack::ArgumentCount].payload(); }
-        static int argumentOffset(int argument) { return s_firstArgumentOffset - argument; }
-        static int argumentOffsetIncludingThis(int argument) { return s_thisArgumentOffset - argument; }
+        static int argumentOffset(int argument) { return (s_firstArgumentOffset + argument); }
+        static int argumentOffsetIncludingThis(int argument) { return (s_thisArgumentOffset + argument); }
 
         // In the following (argument() and setArgument()), the 'argument'
         // parameter is the index of the arguments of the target function of
@@ -248,7 +240,12 @@ namespace JSC  {
         {
             if (argument >= argumentCount())
                  return jsUndefined();
-            return this[argumentOffset(argument)].jsValue();
+            return getArgumentUnsafe(argument);
+        }
+        JSValue uncheckedArgument(size_t argument)
+        {
+            ASSERT(argument < argumentCount());
+            return getArgumentUnsafe(argument);
         }
         void setArgument(size_t argument, JSValue value)
         {
@@ -278,9 +275,6 @@ namespace JSC  {
         void setCodeBlock(CodeBlock* codeBlock) { static_cast<Register*>(this)[JSStack::CodeBlock] = codeBlock; }
         void setReturnPC(void* value) { static_cast<Register*>(this)[JSStack::ReturnPC] = (Instruction*)value; }
         
-#if ENABLE(DFG_JIT)
-        void setInlineCallFrame(InlineCallFrame* inlineCallFrame) { static_cast<Register*>(this)[JSStack::ReturnPC] = inlineCallFrame; }
-#endif
         CallFrame* callerFrameNoFlags() { return callerFrame()->removeHostCallFrameFlag(); }
 
         // CallFrame::iterate() expects a Functor that implements the following method:
@@ -293,8 +287,8 @@ namespace JSC  {
 
     private:
         static const intptr_t HostCallFrameFlag = 1;
-        static const int s_thisArgumentOffset = -1 - JSStack::CallFrameHeaderSize;
-        static const int s_firstArgumentOffset = s_thisArgumentOffset - 1;
+        static const int s_thisArgumentOffset = JSStack::CallFrameHeaderSize + 1;
+        static const int s_firstArgumentOffset = s_thisArgumentOffset + 1;
 
 #ifndef NDEBUG
         JSStack* stack();
@@ -318,7 +312,7 @@ namespace JSC  {
             //       offset = s_firstArgumentOffset - argIndex;
             // Hence:
             //       argIndex = s_firstArgumentOffset - offset;
-            size_t argIndex = s_firstArgumentOffset - offset;
+            size_t argIndex = offset - s_firstArgumentOffset;
             return argIndex;
         }
 

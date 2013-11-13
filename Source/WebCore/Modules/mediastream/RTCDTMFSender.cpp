@@ -47,7 +47,7 @@ static const long defaultInterToneGapMs = 50;
 PassRefPtr<RTCDTMFSender> RTCDTMFSender::create(ScriptExecutionContext* context, RTCPeerConnectionHandler* peerConnectionHandler, PassRefPtr<MediaStreamTrack> prpTrack, ExceptionCode& ec)
 {
     RefPtr<MediaStreamTrack> track = prpTrack;
-    OwnPtr<RTCDTMFSenderHandler> handler = peerConnectionHandler->createDTMFSender(track->component());
+    OwnPtr<RTCDTMFSenderHandler> handler = peerConnectionHandler->createDTMFSender(track->source());
     if (!handler) {
         ec = NOT_SUPPORTED_ERR;
         return 0;
@@ -128,30 +128,10 @@ void RTCDTMFSender::didPlayTone(const String& tone)
     scheduleDispatchEvent(RTCDTMFToneChangeEvent::create(tone));
 }
 
-const AtomicString& RTCDTMFSender::interfaceName() const
-{
-    return eventNames().interfaceForRTCDTMFSender;
-}
-
-ScriptExecutionContext* RTCDTMFSender::scriptExecutionContext() const
-{
-    return ActiveDOMObject::scriptExecutionContext();
-}
-
 void RTCDTMFSender::stop()
 {
     m_stopped = true;
     m_handler->setClient(0);
-}
-
-EventTargetData* RTCDTMFSender::eventTargetData()
-{
-    return &m_eventTargetData;
-}
-
-EventTargetData& RTCDTMFSender::ensureEventTargetData()
-{
-    return m_eventTargetData;
 }
 
 void RTCDTMFSender::scheduleDispatchEvent(PassRefPtr<Event> event)

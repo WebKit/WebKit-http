@@ -62,14 +62,14 @@ struct AbstractValue {
     bool isClear() const { return m_type == SpecNone; }
     bool operator!() const { return isClear(); }
     
-    void makeTop()
+    void makeHeapTop()
     {
-        m_type |= SpecTop; // The state may have included SpecEmpty, in which case we want this to become SpecEmptyOrTop.
-        m_arrayModes = ALL_ARRAY_MODES;
-        m_currentKnownStructure.makeTop();
-        m_futurePossibleStructure.makeTop();
-        m_value = JSValue();
-        checkConsistency();
+        makeTop(SpecHeapTop);
+    }
+    
+    void makeBytecodeTop()
+    {
+        makeTop(SpecBytecodeTop);
     }
     
     void clobberStructures()
@@ -89,9 +89,9 @@ struct AbstractValue {
         m_value = JSValue();
     }
     
-    bool isTop() const
+    bool isHeapTop() const
     {
-        return m_type == SpecTop && m_currentKnownStructure.isTop() && m_futurePossibleStructure.isTop();
+        return (m_type | SpecHeapTop) == m_type && m_currentKnownStructure.isTop() && m_futurePossibleStructure.isTop();
     }
     
     bool valueIsTop() const
@@ -104,10 +104,10 @@ struct AbstractValue {
         return m_value;
     }
     
-    static AbstractValue top()
+    static AbstractValue heapTop()
     {
         AbstractValue result;
-        result.makeTop();
+        result.makeHeapTop();
         return result;
     }
     
@@ -185,6 +185,16 @@ struct AbstractValue {
         checkConsistency();
     }
     
+    bool couldBeType(SpeculatedType desiredType)
+    {
+        return !!(m_type & desiredType);
+    }
+    
+    bool isType(SpeculatedType desiredType)
+    {
+        return !(m_type & ~desiredType);
+    }
+    
     FiltrationResult filter(Graph&, const StructureSet&);
     
     FiltrationResult filterArrayModes(ArrayModes arrayModes);
@@ -193,25 +203,9 @@ struct AbstractValue {
     
     FiltrationResult filterByValue(JSValue value);
     
-    bool validateType(JSValue value) const
-    {
-        if (isTop())
-            return true;
-        
-        if (mergeSpeculations(m_type, speculationFromValue(value)) != m_type)
-            return false;
-        
-        if (value.isEmpty()) {
-            ASSERT(m_type & SpecEmpty);
-            return true;
-        }
-        
-        return true;
-    }
-    
     bool validate(JSValue value) const
     {
-        if (isTop())
+        if (isHeapTop())
             return true;
         
         if (!!m_value && m_value != value)
@@ -251,7 +245,11 @@ struct AbstractValue {
             || !arrayModesAreClearOrTop(m_arrayModes);
     }
     
+#if ASSERT_DISABLED
+    void checkConsistency() const { }
+#else
     void checkConsistency() const;
+#endif
     
     void dumpInContext(PrintStream&, DumpContext*) const;
     void dump(PrintStream&) const;
@@ -361,6 +359,39 @@ private:
         // FIXME: We could make this try to predict the set of array modes that this object
         // could have in the future. For now, just do the simple thing.
         m_arrayModes = ALL_ARRAY_MODES;
+    }
+    
+    bool validateType(JSValue value) const
+    {
+        if (isHeapTop())
+            return true;
+        
+        // Constant folding always represents Int52's in a double (i.e. Int52AsDouble).
+        // So speculationFromValue(value) for an Int52 value will return Int52AsDouble,
+        // and that's fine - the type validates just fine.
+        SpeculatedType type = m_type;
+        if (type & SpecInt52)
+            type |= SpecInt52AsDouble;
+        
+        if (mergeSpeculations(type, speculationFromValue(value)) != type)
+            return false;
+        
+        if (value.isEmpty()) {
+            ASSERT(m_type & SpecEmpty);
+            return true;
+        }
+        
+        return true;
+    }
+    
+    void makeTop(SpeculatedType top)
+    {
+        m_type |= top;
+        m_arrayModes = ALL_ARRAY_MODES;
+        m_currentKnownStructure.makeTop();
+        m_futurePossibleStructure.makeTop();
+        m_value = JSValue();
+        checkConsistency();
     }
     
     void setFuturePossibleStructure(Graph&, Structure* structure);

@@ -35,7 +35,7 @@
 #include "ActiveDOMObject.h"
 #include "EventNames.h"
 #include "EventTarget.h"
-#include "KURL.h"
+#include "URL.h"
 #include "NotificationClient.h"
 #include "SharedBuffer.h"
 #include "TextDirection.h"
@@ -63,7 +63,8 @@ class ThreadableLoader;
 
 typedef int ExceptionCode;
 
-class Notification : public RefCounted<Notification>, public ActiveDOMObject, public EventTarget {
+// FIXME: This class should be marked FINAL once <http://webkit.org/b/121747> is fixed.
+class Notification : public RefCounted<Notification>, public ActiveDOMObject, public EventTargetWithInlineData {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     Notification();
@@ -82,8 +83,8 @@ public:
 #endif
     void close();
 
-    KURL iconURL() const { return m_icon; }
-    void setIconURL(const KURL& url) { m_icon = url; }
+    URL iconURL() const { return m_icon; }
+    void setIconURL(const URL& url) { m_icon = url; }
 
     String title() const { return m_title; }
     String body() const { return m_body; }
@@ -122,8 +123,8 @@ public:
     using RefCounted<Notification>::deref;
 
     // EventTarget interface
-    virtual const AtomicString& interfaceName() const;
-    virtual ScriptExecutionContext* scriptExecutionContext() const { return ActiveDOMObject::scriptExecutionContext(); }
+    virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL { return NotificationEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL { return ActiveDOMObject::scriptExecutionContext(); }
 
     void stopLoadingIcon();
 
@@ -152,10 +153,8 @@ private:
     virtual void contextDestroyed() OVERRIDE;
 
     // EventTarget interface
-    virtual void refEventTarget() OVERRIDE { ref(); }
-    virtual void derefEventTarget() OVERRIDE { deref(); }
-    virtual EventTargetData* eventTargetData() OVERRIDE;
-    virtual EventTargetData& ensureEventTargetData() OVERRIDE;
+    virtual void refEventTarget() OVERRIDE FINAL { ref(); }
+    virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
 
     void startLoadingIcon();
     void finishLoadingIcon();
@@ -165,7 +164,7 @@ private:
 #endif
 
     // Text notifications.
-    KURL m_icon;
+    URL m_icon;
     String m_title;
     String m_body;
     String m_direction;
@@ -181,8 +180,6 @@ private:
     NotificationState m_state;
 
     RefPtr<NotificationCenter> m_notificationCenter;
-    
-    EventTargetData m_eventTargetData;
 
 #if ENABLE(NOTIFICATIONS)
     OwnPtr<Timer<Notification> > m_taskTimer;

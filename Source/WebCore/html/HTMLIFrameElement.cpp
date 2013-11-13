@@ -37,14 +37,14 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-inline HTMLIFrameElement::HTMLIFrameElement(const QualifiedName& tagName, Document* document)
+inline HTMLIFrameElement::HTMLIFrameElement(const QualifiedName& tagName, Document& document)
     : HTMLFrameElementBase(tagName, document)
 {
     ASSERT(hasTagName(iframeTag));
     setHasCustomStyleResolveCallbacks();
 }
 
-PassRefPtr<HTMLIFrameElement> HTMLIFrameElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<HTMLIFrameElement> HTMLIFrameElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new HTMLIFrameElement(tagName, document));
 }
@@ -95,9 +95,9 @@ bool HTMLIFrameElement::rendererIsNeeded(const RenderStyle& style)
     return isURLAllowed() && style.display() != NONE;
 }
 
-RenderObject* HTMLIFrameElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* HTMLIFrameElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
-    return new (arena) RenderIFrame(this);
+    return new (arena) RenderIFrame(*this);
 }
 
 bool HTMLIFrameElement::shouldDisplaySeamlessly() const

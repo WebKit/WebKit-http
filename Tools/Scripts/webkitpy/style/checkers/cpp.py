@@ -41,11 +41,11 @@ import math  # for log
 import os
 import os.path
 import re
-import sre_compile
 import string
 import sys
 import unicodedata
 
+from common import match, search, sub, subn
 from webkitpy.common.memoized import memoized
 
 # The key to use to provide a class to fake loading a header file.
@@ -125,40 +125,6 @@ _MOC_HEADER = 3
 # INCLUDE_IO_INJECTION_KEY allows providing a custom io class which allows
 # for faking a header file.
 _unit_test_config = {}
-
-
-# The regexp compilation caching is inlined in all regexp functions for
-# performance reasons; factoring it out into a separate function turns out
-# to be noticeably expensive.
-_regexp_compile_cache = {}
-
-
-def match(pattern, s):
-    """Matches the string with the pattern, caching the compiled regexp."""
-    if not pattern in _regexp_compile_cache:
-        _regexp_compile_cache[pattern] = sre_compile.compile(pattern)
-    return _regexp_compile_cache[pattern].match(s)
-
-
-def search(pattern, s):
-    """Searches the string for the pattern, caching the compiled regexp."""
-    if not pattern in _regexp_compile_cache:
-        _regexp_compile_cache[pattern] = sre_compile.compile(pattern)
-    return _regexp_compile_cache[pattern].search(s)
-
-
-def sub(pattern, replacement, s):
-    """Substitutes occurrences of a pattern, caching the compiled regexp."""
-    if not pattern in _regexp_compile_cache:
-        _regexp_compile_cache[pattern] = sre_compile.compile(pattern)
-    return _regexp_compile_cache[pattern].sub(replacement, s)
-
-
-def subn(pattern, replacement, s):
-    """Substitutes occurrences of a pattern, caching the compiled regexp."""
-    if not pattern in _regexp_compile_cache:
-        _regexp_compile_cache[pattern] = sre_compile.compile(pattern)
-    return _regexp_compile_cache[pattern].subn(replacement, s)
 
 
 def iteratively_replace_matches_with_char(pattern, char_replacement, s):
@@ -552,13 +518,12 @@ class _FunctionState(object):
         self._parameter_list = None
 
     def modifiers_and_return_type(self):
-        """Returns the modifiers and the return type."""
-        # Go backwards from where the function name is until we encounter one of several things:
-        #   ';' or '{' or '}' or 'private:', etc. or '#' or return Position(0, 0)
-        elided = self._clean_lines.elided
-        start_modifiers = _rfind_in_lines(r';|\{|\}|((private|public|protected):)|(#.*)',
-                                          elided, self.parameter_start_position, Position(0, 0))
-        return SingleLineView(elided, start_modifiers, self.function_name_start_position).single_line.strip()
+         """Returns the modifiers and the return type."""
+         # Go backwards from where the function name is until we encounter one of several things:
+         #   ';' or '{' or '}' or 'private:', etc. or '#' or return Position(0, 0)
+         elided = self._clean_lines.elided
+         start_modifiers = _rfind_in_lines(r';|\{|\}|((private|public|protected):)|(#.*)', elided, self.parameter_start_position, Position(0, 0))
+         return SingleLineView(elided, start_modifiers, self.function_name_start_position).single_line.strip()
 
     def parameter_list(self):
         if not self._parameter_list:
@@ -1630,22 +1595,21 @@ def _check_parameter_name_against_text(parameter, text, error):
     return True
 
 
-def check_function_definition_and_pass_ptr(type_text, row, location_description, error):
+def check_function_definition_and_pass_ptr(type_text, row, error):
     """Check that function definitions for use Pass*Ptr instead of *Ptr.
 
     Args:
-       type_text: A string containing the type. (For return values, it may contain more than the type.)
+       type_text: A string containing the type.
        row: The row number of the type.
-       location_description: Used to indicate where the type is. This is either 'parameter' or 'return'.
        error: The function to call with any errors found.
     """
-    match_ref_or_own_ptr = '(?=\W|^)(Ref|Own)Ptr(?=\W)'
-    bad_type_usage = search(match_ref_or_own_ptr, type_text)
+    match_ref_ptr = '(?=\W|^)RefPtr(?=\W)'
+    bad_type_usage = search(match_ref_ptr, type_text)
     if not bad_type_usage or type_text.endswith('&') or type_text.endswith('*'):
         return
     type_name = bad_type_usage.group(0)
     error(row, 'readability/pass_ptr', 5,
-          'The %s type should use Pass%s instead of %s.' % (location_description, type_name, type_name))
+          'The parameter type should use Pass%s instead of %s.' % (type_name, type_name))
 
 
 def check_function_definition(filename, file_extension, clean_lines, line_number, function_state, error):
@@ -1664,12 +1628,9 @@ def check_function_definition(filename, file_extension, clean_lines, line_number
     if line_number != function_state.body_start_position.row:
         return
 
-    modifiers_and_return_type = function_state.modifiers_and_return_type()
-    check_function_definition_and_pass_ptr(modifiers_and_return_type, function_state.function_name_start_position.row, 'return', error)
-
     parameter_list = function_state.parameter_list()
     for parameter in parameter_list:
-        check_function_definition_and_pass_ptr(parameter.type, parameter.row, 'parameter', error)
+        check_function_definition_and_pass_ptr(parameter.type, parameter.row, error)
 
         # Do checks specific to function declarations and parameter names.
         if not function_state.is_declaration or not parameter.name:
@@ -1730,10 +1691,10 @@ def check_for_leaky_patterns(clean_lines, line_number, function_state, error):
               'memory leaks.' % matched_get_dc.group('function_name'))
 
     matched_create_dc = search(r'\b(?P<function_name>Create(Compatible)?DC)\s*\(', line)
-    matched_own_dc = search(r'\badoptPtr\b', line)
+    matched_own_dc = search(r'\badoptGDIObject\b', line)
     if matched_create_dc and not matched_own_dc:
         error(line_number, 'runtime/leaky_pattern', 5,
-              'Use adoptPtr and OwnPtr<HDC> when calling %s to avoid potential '
+              'Use adoptGDIObject and GDIObject<HDC> when calling %s to avoid potential '
               'memory leaks.' % matched_create_dc.group('function_name'))
 
 
@@ -1870,10 +1831,10 @@ def check_spacing(file_extension, clean_lines, line_number, error):
     # FIXME: It's not ok to have spaces around binary operators like .
 
     # You should always have whitespace around binary operators.
-    # Alas, we can't test < or > because they're legitimately used sans spaces
+    # Alas, we can't test <, >, <<, or >> because they're legitimately used sans spaces
     # (a->b, vector<int> a).  The only time we can tell is a < with no >, and
     # only if it's not template params list spilling into the next line.
-    matched = search(r'[^<>=!\s](==|!=|\+=|-=|\*=|/=|/|\|=|&=|<<=|>>=|<=|>=|\|\||\||&&|>>|<<)[^<>=!\s]', line)
+    matched = search(r'[^<>=!\s](==|!=|\+=|-=|\*=|/=|/|\|=|&=|<<=|>>=|<=|>=|\|\||\||&&)[^<>=!\s]', line)
     if not matched:
         # Note that while it seems that the '<[^<]*' term in the following
         # regexp could be simplified to '<.*', which would indeed match
@@ -1907,6 +1868,8 @@ def check_spacing(file_extension, clean_lines, line_number, error):
         statement = matched.group('statement')
         condition, rest = up_to_unmatched_closing_paren(matched.group('remainder'))
         if condition is not None:
+            if statement == 'for' and search(r'(?:[^ :]:[^:]|[^:]:[^ :])', condition):
+                error(line_number, 'whitespace/colon', 4, 'Missing space around : in range-based for statement')
             condition_match = search(r'(?P<leading>[ ]*)(?P<separator>.).*[^ ]+(?P<trailing>[ ]*)', condition)
             if condition_match:
                 n_leading = len(condition_match.group('leading'))
@@ -3699,6 +3662,7 @@ class CppChecker(object):
         'runtime/virtual',
         'whitespace/blank_line',
         'whitespace/braces',
+        'whitespace/colon',
         'whitespace/comma',
         'whitespace/comments',
         'whitespace/declaration',

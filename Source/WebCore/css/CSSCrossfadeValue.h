@@ -37,7 +37,7 @@ namespace WebCore {
 
 class CachedImage;
 class CrossfadeSubimageObserverProxy;
-class RenderObject;
+class RenderElement;
 class Document;
 
 class CSSCrossfadeValue : public CSSImageGeneratorValue {
@@ -52,12 +52,12 @@ public:
 
     String customCSSText() const;
 
-    PassRefPtr<Image> image(RenderObject*, const IntSize&);
+    PassRefPtr<Image> image(RenderElement*, const IntSize&);
     bool isFixedSize() const { return true; }
-    IntSize fixedSize(const RenderObject*);
+    IntSize fixedSize(const RenderElement*);
 
     bool isPending() const;
-    bool knownToBeOpaque(const RenderObject*) const;
+    bool knownToBeOpaque(const RenderElement*) const;
 
     void loadSubimages(CachedResourceLoader*);
 
@@ -110,11 +110,7 @@ private:
     CrossfadeSubimageObserverProxy m_crossfadeSubimageObserver;
 };
 
-inline CSSCrossfadeValue* toCSSCrossfadeValue(CSSImageGeneratorValue* value)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isCrossfadeValue());
-    return static_cast<CSSCrossfadeValue*>(value);
-}
+CSS_VALUE_TYPE_CASTS(CrossfadeValue)
 
 } // namespace WebCore
 

@@ -1,3 +1,46 @@
+2013-09-30  Patrick Gansterer  <paroga@webkit.org>
+
+        Unreviewed WinCE build fix after r153927.
+
+        * WebView.cpp:
+        (WebView::WebView):
+
+2013-09-30  Patrick Gansterer  <paroga@webkit.org>
+
+        Unreviewed WinCE build fix after r155289.
+
+        * WebCoreSupport/FrameLoaderClientWinCE.cpp:
+        (WebKit::FrameLoaderClientWinCE::dispatchDecidePolicyForResponse):
+        (WebKit::FrameLoaderClientWinCE::dispatchDecidePolicyForNewWindowAction):
+        (WebKit::FrameLoaderClientWinCE::dispatchDecidePolicyForNavigationAction):
+        (WebKit::FrameLoaderClientWinCE::dispatchWillSubmitForm):
+
+2013-09-30  Patrick Gansterer  <paroga@webkit.org>
+
+        Unreviewed WinCE build fix after r154178.
+
+        * WebView.cpp:
+        (WebView::wndProc):
+
+2013-09-26  Darin Adler  <darin@apple.com>
+
+        rename KURL to URL
+        https://bugs.webkit.org/show_bug.cgi?id=16214
+
+        Reviewed by Andreas Kling.
+
+        * many files: Renamed, using script.
+
+2013-09-16  Enrica Casucci  <enrica@apple.com>
+
+        Remove unused function didSetSelectionTypesForPasteboard from EditorClient.
+        https://bugs.webkit.org/show_bug.cgi?id=121464
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/EditorClientWinCE.cpp:
+        * WebCoreSupport/EditorClientWinCE.h:
+
 2013-08-24  Darin Adler  <darin@apple.com>
 
         Frame::tree should return a reference instead of a pointer

@@ -32,18 +32,18 @@ struct RadialGradientAttributes;
 
 class SVGRadialGradientElement FINAL : public SVGGradientElement {
 public:
-    static PassRefPtr<SVGRadialGradientElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGRadialGradientElement> create(const QualifiedName&, Document&);
 
     bool collectGradientAttributes(RadialGradientAttributes&);
 
 private:
-    SVGRadialGradientElement(const QualifiedName&, Document*);
+    SVGRadialGradientElement(const QualifiedName&, Document&);
 
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&);
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 
     virtual bool selfHasRelativeLengths() const;
 
@@ -57,11 +57,7 @@ private:
     END_DECLARE_ANIMATED_PROPERTIES
 };
 
-inline SVGRadialGradientElement* toSVGRadialGradientElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(SVGNames::radialGradientTag));
-    return static_cast<SVGRadialGradientElement*>(node);
-}
+ELEMENT_TYPE_CASTS(SVGRadialGradientElement)
 
 } // namespace WebCore
 

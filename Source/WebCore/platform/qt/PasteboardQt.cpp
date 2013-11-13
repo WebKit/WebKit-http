@@ -144,12 +144,10 @@ bool Pasteboard::canSmartReplace()
     return false;
 }
 
-String Pasteboard::plainText(Frame*)
+void Pasteboard::read(PasteboardPlainText& text)
 {
 #ifndef QT_NO_CLIPBOARD
-    return QGuiApplication::clipboard()->text(m_selectionMode ? QClipboard::Selection : QClipboard::Clipboard);
-#else
-    return String();
+    text.text = QGuiApplication::clipboard()->text(m_selectionMode ? QClipboard::Selection : QClipboard::Clipboard);
 #endif
 }
 
@@ -194,20 +192,20 @@ void Pasteboard::writePlainText(const String& text, SmartReplaceOption smartRepl
 #endif
 }
 
-void Pasteboard::writeURL(const KURL& url, const String&, Frame*)
+void Pasteboard::write(const PasteboardURL& pasteboardURL)
 {
-    ASSERT(!url.isEmpty());
+    ASSERT(!pasteboardURL.url.isEmpty());
 
 #ifndef QT_NO_CLIPBOARD
     QMimeData* md = new QMimeData;
-    QString urlString = url.string();
+    QString urlString = pasteboardURL.url.string();
     md->setText(urlString);
-    md->setUrls(QList<QUrl>() << url);
+    md->setUrls(QList<QUrl>() << pasteboardURL.url);
     QGuiApplication::clipboard()->setMimeData(md, m_selectionMode ? QClipboard::Selection : QClipboard::Clipboard);
 #endif
 }
 
-void Pasteboard::writeImage(Node* node, const KURL&, const String&)
+void Pasteboard::writeImage(Node* node, const URL&, const String&)
 {
     ASSERT(node);
 

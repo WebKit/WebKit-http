@@ -40,18 +40,19 @@ class HTMLSummaryElement;
 
 class DetailsMarkerControl FINAL : public HTMLDivElement {
 public:
-    DetailsMarkerControl(Document*);
-    static PassRefPtr<DetailsMarkerControl> create(Document*);
+    static PassRefPtr<DetailsMarkerControl> create(Document&);
 
 private:
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    DetailsMarkerControl(Document&);
+
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     virtual bool rendererIsNeeded(const RenderStyle&);
     virtual const AtomicString& shadowPseudoId() const;
 
     HTMLSummaryElement* summaryElement();
 };
 
-inline PassRefPtr<DetailsMarkerControl> DetailsMarkerControl::create(Document* document)
+inline PassRefPtr<DetailsMarkerControl> DetailsMarkerControl::create(Document& document)
 {
     return adoptRef(new DetailsMarkerControl(document));
 }

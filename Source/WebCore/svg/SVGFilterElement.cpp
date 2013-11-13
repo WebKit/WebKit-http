@@ -62,7 +62,7 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGFilterElement)
     REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
 END_REGISTER_ANIMATED_PROPERTIES
 
-inline SVGFilterElement::SVGFilterElement(const QualifiedName& tagName, Document* document)
+inline SVGFilterElement::SVGFilterElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
     , m_filterUnits(SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX)
     , m_primitiveUnits(SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE)
@@ -77,7 +77,7 @@ inline SVGFilterElement::SVGFilterElement(const QualifiedName& tagName, Document
     registerAnimatedPropertiesForSVGFilterElement();
 }
 
-PassRefPtr<SVGFilterElement> SVGFilterElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGFilterElement> SVGFilterElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new SVGFilterElement(tagName, document));
 }
@@ -188,9 +188,9 @@ void SVGFilterElement::childrenChanged(const ChildChange& change)
         object->setNeedsLayout(true);
 }
 
-RenderObject* SVGFilterElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SVGFilterElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
-    return new (arena) RenderSVGResourceFilter(this);
+    return new (arena) RenderSVGResourceFilter(*this);
 }
 
 bool SVGFilterElement::childShouldCreateRenderer(const Node* child) const

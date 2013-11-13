@@ -41,7 +41,7 @@ public:
     static const SVGPropertyInfo* pointsPropertyInfo();
 
 protected:
-    SVGPolyElement(const QualifiedName&, Document*);
+    SVGPolyElement(const QualifiedName&, Document&);
 
 private:
     virtual bool isValid() const { return SVGTests::isValid(); }
@@ -64,6 +64,12 @@ private:
 protected:
     mutable SVGSynchronizableAnimatedProperty<SVGPointList> m_points;
 };
+
+inline SVGPolyElement& toSVGPolyElement(SVGElement& element)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(element.hasTagName(SVGNames::polygonTag) || element.hasTagName(SVGNames::polylineTag));
+    return static_cast<SVGPolyElement&>(element);
+}
 
 inline SVGPolyElement* toSVGPolyElement(SVGElement* element)
 {

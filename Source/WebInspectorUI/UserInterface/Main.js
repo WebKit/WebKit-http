@@ -178,13 +178,13 @@ WebInspector.contentLoaded = function()
     this.detailsSidebar.addEventListener(WebInspector.Sidebar.Event.WidthDidChange, this._sidebarWidthDidChange, this);
     this.detailsSidebar.addEventListener(WebInspector.Sidebar.Event.SidebarPanelSelected, this._detailsSidebarPanelSelected, this);
 
-    this._reloadPageKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Command, "R", this._reloadPage.bind(this));
-    this._reloadPageIgnoringCacheKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Command | WebInspector.KeyboardShortcut.Modifier.Shift, "R", this._reloadPageIgnoringCache.bind(this));
+    this._reloadPageKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "R", this._reloadPage.bind(this));
+    this._reloadPageIgnoringCacheKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "R", this._reloadPageIgnoringCache.bind(this));
 
-    this._inspectModeKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Command | WebInspector.KeyboardShortcut.Modifier.Shift, "C", this._toggleInspectMode.bind(this));
+    this._inspectModeKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "C", this._toggleInspectMode.bind(this));
 
-    this._undoKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Command, "Z", this._undoKeyboardShortcut.bind(this));
-    this._redoKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Command | WebInspector.KeyboardShortcut.Modifier.Shift, "Z", this._redoKeyboardShortcut.bind(this));
+    this._undoKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "Z", this._undoKeyboardShortcut.bind(this));
+    this._redoKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "Z", this._redoKeyboardShortcut.bind(this));
     this._undoKeyboardShortcut.implicitlyPreventsDefault = this._redoKeyboardShortcut.implicitlyPreventsDefault = false;
 
     this.undockButtonNavigationItem = new WebInspector.ToggleControlToolbarItem("undock", WebInspector.UIString("Detach into separate window"), "", "Images/Undock.svg", "", 16, 14);
@@ -1094,29 +1094,23 @@ WebInspector._contentBrowserRepresentedObjectsDidChange = function(event)
 
 WebInspector._initializeWebSocketIfNeeded = function()
 {
-    var ws;
+    if (!InspectorFrontendHost.initializeWebSocket)
+        return;
+
     var queryParams = parseLocationQueryParameters();
 
     if ("ws" in queryParams)
-        ws = "ws://" + queryParams.ws;
+        var url = "ws://" + queryParams.ws;
     else if ("page" in queryParams) {
         var page = queryParams.page;
         var host = "host" in queryParams ? queryParams.host : window.location.host;
-        ws = "ws://" + host + "/devtools/page/" + page;
+        var url = "ws://" + host + "/devtools/page/" + page;
     }
 
-    if (!ws)
+    if (!url)
         return;
 
-    var socket = new WebSocket(ws);
-    socket.addEventListener("open", createSocket);
-
-    function createSocket()
-    {
-        WebInspector.socket = socket;
-        WebInspector.socket.addEventListener("message", function(message) { InspectorBackend.dispatch(message.data); });
-        WebInspector.socket.addEventListener("error", function(error) { console.error(error); });
-    }
+    InspectorFrontendHost.initializeWebSocket(url);
 }
 
 WebInspector._updateSplitConsoleHeight = function(height)

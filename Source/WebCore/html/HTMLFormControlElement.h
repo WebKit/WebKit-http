@@ -106,7 +106,7 @@ public:
     using Node::deref;
 
 protected:
-    HTMLFormControlElement(const QualifiedName& tagName, Document*, HTMLFormElement*);
+    HTMLFormControlElement(const QualifiedName& tagName, Document&, HTMLFormElement*);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void requiredAttributeChanged();
@@ -178,13 +178,20 @@ inline bool isHTMLFormControlElement(const Node* node)
     return node->isElementNode() && toElement(node)->isFormControlElement();
 }
 
+inline HTMLFormControlElement& toHTMLFormControlElement(Node& node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(isHTMLFormControlElement(&node));
+    return static_cast<HTMLFormControlElement&>(node);
+}
+
 inline HTMLFormControlElement* toHTMLFormControlElement(Node* node)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLFormControlElement(node));
     return static_cast<HTMLFormControlElement*>(node);
 }
-// This will catch anyone doing an unnecessary cast.
+
 void toHTMLFormControlElement(const HTMLFormControlElement*);
+void toHTMLFormControlElement(const HTMLFormControlElement&);
 
 template <> inline bool isElementOfType<HTMLFormControlElement>(const Element* element) { return isHTMLFormControlElement(element); }
 

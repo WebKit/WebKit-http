@@ -26,7 +26,7 @@
 #ifndef PluginControllerProxy_h
 #define PluginControllerProxy_h
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
 
 #include "Connection.h"
 #include "Plugin.h"
@@ -53,7 +53,7 @@ class PluginControllerProxy : PluginController {
     WTF_MAKE_NONCOPYABLE(PluginControllerProxy);
 
 public:
-    static PassOwnPtr<PluginControllerProxy> create(WebProcessConnection*, const PluginCreationParameters&);
+    PluginControllerProxy(WebProcessConnection*, const PluginCreationParameters&);
     ~PluginControllerProxy();
 
     uint64_t pluginInstanceID() const { return m_pluginInstanceID; }
@@ -62,7 +62,7 @@ public:
     void destroy();
 
     void didReceivePluginControllerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
-    void didReceiveSyncPluginControllerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    void didReceiveSyncPluginControllerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&);
 
     bool wantsWheelEvents() const;
 
@@ -78,8 +78,6 @@ public:
     PassRefPtr<Messages::WebProcessConnection::CreatePlugin::DelayedReply> takeInitializationReply();
 
 private:
-    PluginControllerProxy(WebProcessConnection*, const PluginCreationParameters&);
-
     void startPaintTimer();
     void paint();
 
@@ -206,7 +204,7 @@ private:
     bool m_isComplexTextInputEnabled;
 
     // For CA plug-ins, this holds the information needed to export the layer hierarchy to the UI process.
-    OwnPtr<LayerHostingContext> m_layerHostingContext;
+    std::unique_ptr<LayerHostingContext> m_layerHostingContext;
 #endif
 
     // The contents scale factor of this plug-in.
@@ -224,6 +222,6 @@ private:
 
 } // namespace WebKit
 
-#endif // ENABLE(PLUGIN_PROCESS)
+#endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #endif // PluginControllerProxy_h

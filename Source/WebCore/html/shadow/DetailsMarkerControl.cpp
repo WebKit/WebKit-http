@@ -40,14 +40,14 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-DetailsMarkerControl::DetailsMarkerControl(Document* document) 
+DetailsMarkerControl::DetailsMarkerControl(Document& document)
     : HTMLDivElement(divTag, document)
 {
 }
 
-RenderObject* DetailsMarkerControl::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* DetailsMarkerControl::createRenderer(RenderArena& arena, RenderStyle&)
 {
-    return new (arena) RenderDetailsMarker(this);
+    return new (arena) RenderDetailsMarker(*this);
 }
 
 bool DetailsMarkerControl::rendererIsNeeded(const RenderStyle& style)

@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<script src="../../../fast/js/resources/js-test-pre.js"></script>
+<script src="../../../resources/js-test-pre.js"></script>
 </head>
 <body id="body">
 
@@ -19,12 +19,12 @@
           // this text field should be required.
           document.getElementById("body").focus();
           var obj = accessibilityController.focusedElement.childAtIndex(0);
-          var succeeded = obj.valueDescription == "MAX";
+          var succeeded = obj.valueDescription == "AXValueDescription: MAX";
           shouldBe("succeeded", "true");
     }
 
 </script>
 
-<script src="../../../fast/js/resources/js-test-post.js"></script>
+<script src="../../../resources/js-test-post.js"></script>
 </body>
 </html>

@@ -122,7 +122,7 @@ protected:
     void updateViewportSize();
     WebCore::FloatSize dipSize() const;
     // PageClient
-    virtual PassOwnPtr<DrawingAreaProxy> createDrawingAreaProxy() OVERRIDE;
+    virtual std::unique_ptr<DrawingAreaProxy> createDrawingAreaProxy() OVERRIDE;
 
     virtual void setViewNeedsDisplay(const WebCore::IntRect&) OVERRIDE;
 

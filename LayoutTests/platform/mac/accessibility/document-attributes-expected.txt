@@ -1,5 +1,4 @@
 AXRole: AXWebArea
-AXSubrole: (null)
 AXRoleDescription: HTML content
 AXChildren: <array of size 0>
 AXHelp: 
@@ -20,11 +19,13 @@ AXSelected: 0
 AXBlockQuoteLevel: 0
 AXTopLevelUIElement: <AXWebArea>
 AXLanguage: 
+AXDOMIdentifier: 
+AXDOMClassList: <array of size 0>
 AXLinkUIElements: <array of size 0>
 AXLoaded: 1
 AXLayoutCount: 2
 AXLoadingProgress: 1
 AXURL: LayoutTests/platform/mac/accessibility/document-attributes.html
-AXARIABusy: 0
+AXElementBusy: 0
 
 

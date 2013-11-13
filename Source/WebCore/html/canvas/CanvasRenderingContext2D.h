@@ -48,9 +48,7 @@ namespace WebCore {
 
 class CanvasGradient;
 class CanvasPattern;
-#if ENABLE(CANVAS_PATH)
 class DOMPath;
-#endif
 class FloatRect;
 class GraphicsContext;
 class HTMLCanvasElement;
@@ -63,7 +61,7 @@ typedef int ExceptionCode;
 
 class CanvasRenderingContext2D : public CanvasRenderingContext, public CanvasPathMethods {
 public:
-    static PassOwnPtr<CanvasRenderingContext2D> create(HTMLCanvasElement* canvas, bool usesCSSCompatibilityParseMode, bool usesDashboardCompatibilityMode)
+    static OwnPtr<CanvasRenderingContext2D> create(HTMLCanvasElement* canvas, bool usesCSSCompatibilityParseMode, bool usesDashboardCompatibilityMode)
     {
         return adoptPtr(new CanvasRenderingContext2D(canvas, usesCSSCompatibilityParseMode, usesDashboardCompatibilityMode));
     }
@@ -143,6 +141,7 @@ public:
     PassRefPtr<DOMPath> currentPath();
     void setCurrentPath(DOMPath*);
 #endif
+
     void fill(const String& winding = "nonzero");
     void stroke();
     void clip(const String& winding = "nonzero");
@@ -251,7 +250,7 @@ private:
         CompositeOperator m_globalComposite;
         BlendMode m_globalBlend;
         AffineTransform m_transform;
-        bool m_invertibleCTM;
+        bool m_hasInvertibleTransform;
         Vector<float> m_lineDash;
         float m_lineDashOffset;
         bool m_imageSmoothingEnabled;
@@ -313,7 +312,7 @@ private:
     bool rectContainsCanvas(const FloatRect&) const;
 
     template<class T> IntRect calculateCompositingBufferRect(const T&, IntSize*);
-    PassOwnPtr<ImageBuffer> createCompositingBuffer(const IntRect&);
+    OwnPtr<ImageBuffer> createCompositingBuffer(const IntRect&);
     void compositeBuffer(ImageBuffer*, const IntRect&, CompositeOperator);
 
     void inflateStrokeRect(FloatRect&) const;
@@ -329,7 +328,7 @@ private:
     virtual bool is2d() const OVERRIDE { return true; }
     virtual bool isAccelerated() const OVERRIDE;
 
-    virtual bool isTransformInvertible() const { return state().m_invertibleCTM; }
+    virtual bool hasInvertibleTransform() const OVERRIDE { return state().m_hasInvertibleTransform; }
 
 #if ENABLE(ACCELERATED_2D_CANVAS) && USE(ACCELERATED_COMPOSITING)
     virtual PlatformLayer* platformLayer() const OVERRIDE;

@@ -51,6 +51,7 @@ class XvfbDriverTest(unittest.TestCase):
 
         driver = XvfbDriver(port, worker_number=worker_number, pixel_tests=True)
         driver._startup_delay_secs = 0
+        driver._xvfb_screen_depth = lambda: '24'
         return driver
 
     def cleanup_driver(self, driver):

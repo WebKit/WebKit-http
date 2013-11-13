@@ -49,7 +49,7 @@ using namespace std;
 
 namespace WebCore {
 
-MediaControlsApple::MediaControlsApple(Document* document)
+MediaControlsApple::MediaControlsApple(Document& document)
     : MediaControls(document)
     , m_rewindButton(0)
     , m_returnToRealTimeButton(0)
@@ -68,14 +68,14 @@ MediaControlsApple::MediaControlsApple(Document* document)
 {
 }
 
-PassRefPtr<MediaControls> MediaControls::create(Document* document)
+PassRefPtr<MediaControls> MediaControls::create(Document& document)
 {
     return MediaControlsApple::createControls(document);
 }
 
-PassRefPtr<MediaControlsApple> MediaControlsApple::createControls(Document* document)
+PassRefPtr<MediaControlsApple> MediaControlsApple::createControls(Document& document)
 {
-    if (!document->page())
+    if (!document.page())
         return 0;
 
     RefPtr<MediaControlsApple> controls = adoptRef(new MediaControlsApple(document));
@@ -102,7 +102,7 @@ PassRefPtr<MediaControlsApple> MediaControlsApple::createControls(Document* docu
     if (ec)
         return 0;
 
-    if (document->page()->theme()->usesMediaControlStatusDisplay()) {
+    if (document.page()->theme()->usesMediaControlStatusDisplay()) {
         RefPtr<MediaControlStatusDisplayElement> statusDisplay = MediaControlStatusDisplayElement::create(document);
         controls->m_statusDisplay = statusDisplay.get();
         panel->appendChild(statusDisplay.release(), ec, AttachLazily);
@@ -149,7 +149,7 @@ PassRefPtr<MediaControlsApple> MediaControlsApple::createControls(Document* docu
     if (ec)
         return 0;
 
-    if (document->page()->theme()->supportsClosedCaptioning()) {
+    if (document.page()->theme()->supportsClosedCaptioning()) {
         RefPtr<MediaControlClosedCaptionsContainerElement> closedCaptionsContainer = MediaControlClosedCaptionsContainerElement::create(document);
 
         RefPtr<MediaControlClosedCaptionsTrackListElement> closedCaptionsTrackList = MediaControlClosedCaptionsTrackListElement::create(document, controls.get());
@@ -178,7 +178,7 @@ PassRefPtr<MediaControlsApple> MediaControlsApple::createControls(Document* docu
     // The mute button and the slider element should be in the same div.
     RefPtr<HTMLDivElement> panelVolumeControlContainer = HTMLDivElement::create(document);
 
-    if (document->page()->theme()->usesMediaControlVolumeSlider()) {
+    if (document.page()->theme()->usesMediaControlVolumeSlider()) {
         RefPtr<MediaControlVolumeSliderContainerElement> volumeSliderContainer = MediaControlVolumeSliderContainerElement::create(document);
 
         RefPtr<MediaControlPanelVolumeSliderElement> slider = MediaControlPanelVolumeSliderElement::create(document);
@@ -522,7 +522,7 @@ void MediaControlsApple::showClosedCaptionTrackList()
     m_panel->setInlineStyleProperty(CSSPropertyPointerEvents, CSSValueNone);
 
     RefPtr<EventListener> listener = eventListener();
-    m_closedCaptionsContainer->addEventListener(eventNames().mousewheelEvent, listener, true);
+    m_closedCaptionsContainer->addEventListener(eventNames().wheelEvent, listener, true);
 
     // Track click events in the capture phase at two levels, first at the document level
     // such that a click outside of the <video> may dismiss the track list, second at the
@@ -544,7 +544,7 @@ void MediaControlsApple::hideClosedCaptionTrackList()
     m_panel->removeInlineStyleProperty(CSSPropertyPointerEvents);
 
     EventListener* listener = eventListener().get();
-    m_closedCaptionsContainer->removeEventListener(eventNames().mousewheelEvent, listener, true);
+    m_closedCaptionsContainer->removeEventListener(eventNames().wheelEvent, listener, true);
     document().removeEventListener(eventNames().clickEvent, listener, true);
     removeEventListener(eventNames().clickEvent, listener, true);
 }
@@ -601,8 +601,7 @@ void MediaControlsAppleEventListener::handleEvent(ScriptExecutionContext*, Event
 {
     if (event->type() == eventNames().clickEvent)
         m_mediaControls->handleClickEvent(event);
-
-    else if (event->type() == eventNames().mousewheelEvent && event->hasInterface(eventNames().interfaceForWheelEvent)) {
+    else if ((event->type() == eventNames().wheelEvent || event->type() == eventNames().mousewheelEvent) && event->eventInterface() == WheelEventInterfaceType) {
         WheelEvent* wheelEvent = static_cast<WheelEvent*>(event);
         if (m_mediaControls->shouldClosedCaptionsContainerPreventPageScrolling(wheelEvent->wheelDeltaY()))
             event->preventDefault();

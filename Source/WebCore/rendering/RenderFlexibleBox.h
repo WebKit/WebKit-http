@@ -37,10 +37,10 @@ namespace WebCore {
 
 class RenderFlexibleBox : public RenderBlock {
 public:
-    RenderFlexibleBox(Element*);
+    explicit RenderFlexibleBox(Element*);
     virtual ~RenderFlexibleBox();
 
-    static RenderFlexibleBox* createAnonymous(Document*);
+    static RenderFlexibleBox* createAnonymous(Document&);
 
     virtual const char* renderName() const OVERRIDE;
 
@@ -153,7 +153,7 @@ private:
     LayoutUnit availableAlignmentSpaceForChild(LayoutUnit lineCrossAxisExtent, RenderBox*);
     LayoutUnit marginBoxAscentForChild(RenderBox*);
 
-    LayoutUnit computeChildMarginValue(Length margin, RenderView*);
+    LayoutUnit computeChildMarginValue(const Length& margin);
     void computeMainAxisPreferredSizes(OrderHashSet&);
     LayoutUnit adjustChildSizeForMinAndMax(RenderBox*, LayoutUnit childSize);
     bool computeNextFlexLine(OrderedFlexItemList& orderedChildren, LayoutUnit& preferredMainAxisExtent, double& totalFlexGrow, double& totalWeightedFlexShrink, LayoutUnit& minMaxAppliedMainAxisExtent, bool& hasInfiniteLineLength);

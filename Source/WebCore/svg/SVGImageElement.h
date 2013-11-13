@@ -36,10 +36,10 @@ class SVGImageElement FINAL : public SVGGraphicsElement,
                               public SVGExternalResourcesRequired,
                               public SVGURIReference {
 public:
-    static PassRefPtr<SVGImageElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGImageElement> create(const QualifiedName&, Document&);
 
 private:
-    SVGImageElement(const QualifiedName&, Document*);
+    SVGImageElement(const QualifiedName&, Document&);
     
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool supportsFocus() const OVERRIDE { return true; }
@@ -53,10 +53,10 @@ private:
     virtual void didAttachRenderers() OVERRIDE;
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 
     virtual const AtomicString& imageSourceURL() const OVERRIDE;
-    virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
 
     virtual bool haveLoadedRequiredResources();
 
@@ -75,6 +75,8 @@ private:
 
     SVGImageLoader m_imageLoader;
 };
+
+ELEMENT_TYPE_CASTS(SVGImageElement)
 
 } // namespace WebCore
 

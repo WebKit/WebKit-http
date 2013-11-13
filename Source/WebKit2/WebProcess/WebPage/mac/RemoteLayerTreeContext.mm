@@ -30,20 +30,14 @@
 #import "RemoteLayerTreeTransaction.h"
 #import "RemoteLayerTreeHostMessages.h"
 #import "WebPage.h"
-#import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
+#import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
-#import <wtf/PassOwnPtr.h>
 #import <wtf/TemporaryChange.h>
 
 using namespace WebCore;
 
 namespace WebKit {
-
-PassOwnPtr<RemoteLayerTreeContext> RemoteLayerTreeContext::create(WebPage* webPage)
-{
-    return adoptPtr(new RemoteLayerTreeContext(webPage));
-}
 
 RemoteLayerTreeContext::RemoteLayerTreeContext(WebPage* webPage)
     : m_webPage(webPage)
@@ -86,9 +80,9 @@ RemoteLayerTreeTransaction& RemoteLayerTreeContext::currentTransaction()
     return *m_currentTransaction;
 }
 
-PassOwnPtr<GraphicsLayer> RemoteLayerTreeContext::createGraphicsLayer(GraphicsLayerClient* client)
+std::unique_ptr<GraphicsLayer> RemoteLayerTreeContext::createGraphicsLayer(GraphicsLayerClient* client)
 {
-    return RemoteGraphicsLayer::create(client, this);
+    return std::make_unique<RemoteGraphicsLayer>(client, this);
 }
 
 void RemoteLayerTreeContext::layerFlushTimerFired(WebCore::Timer<RemoteLayerTreeContext>*)

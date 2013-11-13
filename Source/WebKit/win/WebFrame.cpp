@@ -64,7 +64,6 @@
 #include <WebCore/Event.h>
 #include <WebCore/EventHandler.h>
 #include <WebCore/FormState.h>
-#include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameLoadRequest.h>
 #include <WebCore/FrameTree.h>
@@ -81,6 +80,7 @@
 #include <WebCore/HTMLPlugInElement.h>
 #include <WebCore/JSDOMWindow.h>
 #include <WebCore/KeyboardEvent.h>
+#include <WebCore/MainFrame.h>
 #include <WebCore/MouseRelatedEvent.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
@@ -567,11 +567,11 @@ void WebFrame::loadData(PassRefPtr<WebCore::SharedBuffer> data, BSTR mimeType, B
     String encodingString(textEncodingName, SysStringLen(textEncodingName));
 
     // FIXME: We should really be using MarshallingHelpers::BSTRToKURL here,
-    // but that would turn a null BSTR into a null KURL, and we crash inside of
-    // WebCore if we use a null KURL in constructing the ResourceRequest.
-    KURL baseKURL = KURL(KURL(), String(baseURL ? baseURL : L"", SysStringLen(baseURL)));
+    // but that would turn a null BSTR into a null URL, and we crash inside of
+    // WebCore if we use a null URL in constructing the ResourceRequest.
+    URL baseKURL = URL(URL(), String(baseURL ? baseURL : L"", SysStringLen(baseURL)));
 
-    KURL failingKURL = MarshallingHelpers::BSTRToKURL(failingURL);
+    URL failingKURL = MarshallingHelpers::BSTRToKURL(failingURL);
 
     ResourceRequest request(baseKURL);
     SubstituteData substituteData(data, mimeTypeString, encodingString, failingKURL);
@@ -701,11 +701,11 @@ HRESULT STDMETHODCALLTYPE WebFrame::provisionalDataSource(
     return *source ? S_OK : E_FAIL;
 }
 
-KURL WebFrame::url() const
+URL WebFrame::url() const
 {
     Frame* coreFrame = core(this);
     if (!coreFrame)
-        return KURL();
+        return URL();
 
     return coreFrame->document()->url();
 }
@@ -1228,7 +1228,7 @@ HRESULT WebFrame::pauseAnimation(BSTR animationName, IDOMNode* node, double seco
     if (!domNode)
         return E_FAIL;
 
-    *animationWasRunning = frame->animation().pauseAnimationAtTime(domNode->node()->renderer(), String(animationName, SysStringLen(animationName)), secondsFromNow);
+    *animationWasRunning = frame->animation().pauseAnimationAtTime(toRenderElement(domNode->node()->renderer()), String(animationName, SysStringLen(animationName)), secondsFromNow);
     return S_OK;
 }
 
@@ -1247,7 +1247,7 @@ HRESULT WebFrame::pauseTransition(BSTR propertyName, IDOMNode* node, double seco
     if (!domNode)
         return E_FAIL;
 
-    *transitionWasRunning = frame->animation().pauseTransitionAtTime(domNode->node()->renderer(), String(propertyName, SysStringLen(propertyName)), secondsFromNow);
+    *transitionWasRunning = frame->animation().pauseTransitionAtTime(toRenderElement(domNode->node()->renderer()), String(propertyName, SysStringLen(propertyName)), secondsFromNow);
     return S_OK;
 }
 

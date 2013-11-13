@@ -1738,9 +1738,7 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_lint('a<Foo*> t <<= &b & &c; // Test', '')
         self.assert_lint('a<Foo*> t <<= *b / &c; // Test', '')
         self.assert_lint('if (a=b == 1)', 'Missing spaces around =  [whitespace/operators] [4]')
-        self.assert_lint('a = 1<<20', 'Missing spaces around <<  [whitespace/operators] [3]')
         self.assert_lint('if (a = b == 1)', '')
-        self.assert_lint('a = 1 << 20', '')
         self.assert_multi_line_lint('#include <sys/io.h>\n', '')
         self.assert_multi_line_lint('#import <foo/bar.h>\n', '')
 
@@ -3440,12 +3438,12 @@ class PassPtrTest(CppStyleTestBase):
             'RefPtr<Type1> myFunction(int)\n'
             '{\n'
             '}',
-            'The return type should use PassRefPtr instead of RefPtr.  [readability/pass_ptr] [5]')
+            '')
         self.assert_pass_ptr_check(
             'OwnPtr<Type1> myFunction(int)\n'
             '{\n'
             '}',
-            'The return type should use PassOwnPtr instead of OwnPtr.  [readability/pass_ptr] [5]')
+            '')
 
     def test_ref_ptr_parameter_value(self):
         self.assert_pass_ptr_check(
@@ -3479,7 +3477,7 @@ class PassPtrTest(CppStyleTestBase):
             'int myFunction(OwnPtr<Type1>)\n'
             '{\n'
             '}',
-            'The parameter type should use PassOwnPtr instead of OwnPtr.  [readability/pass_ptr] [5]')
+            '')
         self.assert_pass_ptr_check(
             'int myFunction(OwnPtr<Type1>& simple)\n'
             '{\n'
@@ -3526,20 +3524,20 @@ class LeakyPatternTest(CppStyleTestBase):
     def test_create_dc(self):
         self.assert_leaky_pattern_check(
             'HDC dc2 = ::CreateDC();',
-            'Use adoptPtr and OwnPtr<HDC> when calling CreateDC to avoid potential '
+            'Use adoptGDIObject and GDIObject<HDC> when calling CreateDC to avoid potential '
             'memory leaks.  [runtime/leaky_pattern] [5]')
 
         self.assert_leaky_pattern_check(
-            'adoptPtr(CreateDC());',
+            'adoptGDIObject(CreateDC());',
             '')
 
     def test_create_compatible_dc(self):
         self.assert_leaky_pattern_check(
             'HDC dc2 = CreateCompatibleDC(dc);',
-            'Use adoptPtr and OwnPtr<HDC> when calling CreateCompatibleDC to avoid potential '
+            'Use adoptGDIObject and GDIObject<HDC> when calling CreateCompatibleDC to avoid potential '
             'memory leaks.  [runtime/leaky_pattern] [5]')
         self.assert_leaky_pattern_check(
-            'adoptPtr(CreateCompatibleDC(dc));',
+            'adoptGDIObject(CreateCompatibleDC(dc));',
             '')
 
 
@@ -3849,7 +3847,18 @@ class WebKitStyleTest(CppStyleTestBase):
         #     'return condition ? 1:0;',
         #     '')
 
-        # 3. Place spaces between control statements and their parentheses.
+        # 3. Place spaces around the colon in a range-based for loop.
+        self.assert_multi_line_lint(
+            '    for (const WTF::Vector& vector : vectors)\n'
+            '        process(vector);\n',
+            '')
+
+        self.assert_multi_line_lint(
+            '    for (const Vector& vector: vectors)\n'
+            '        process(vector);\n',
+            'Missing space around : in range-based for statement  [whitespace/colon] [4]')
+
+        # 5. Place spaces between control statements and their parentheses.
         self.assert_multi_line_lint(
             '    if (condition)\n'
             '        doIt();\n',
@@ -3859,7 +3868,7 @@ class WebKitStyleTest(CppStyleTestBase):
             '        doIt();\n',
             'Missing space before ( in if(  [whitespace/parens] [5]')
 
-        # 4. Do not place spaces between a function and its parentheses,
+        # 6. Do not place spaces between a function and its parentheses,
         #    or between a parenthesis and its content.
         self.assert_multi_line_lint(
             'f(a, b);',

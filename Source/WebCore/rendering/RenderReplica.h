@@ -35,7 +35,7 @@ namespace WebCore {
 
 class RenderReplica FINAL : public RenderBox {
 public:
-    static RenderReplica* createAnonymous(Document*);
+    static RenderReplica* createAnonymous(Document&);
 
     virtual ~RenderReplica();
 
@@ -50,8 +50,9 @@ public:
 private:
     RenderReplica();
 
-    virtual bool isReplica() const { return true; }
-    virtual void computePreferredLogicalWidths();
+    virtual bool isReplica() const OVERRIDE { return true; }
+    virtual bool canHaveChildren() const OVERRIDE { return false; }
+    virtual void computePreferredLogicalWidths() OVERRIDE;
 
 };
 

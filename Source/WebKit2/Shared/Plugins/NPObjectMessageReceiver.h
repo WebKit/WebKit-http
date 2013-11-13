@@ -26,12 +26,11 @@
 #ifndef NPObjectMessageReceiver_h
 #define NPObjectMessageReceiver_h
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
 
 #include "Connection.h"
 #include <WebCore/npruntime.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/PassOwnPtr.h>
 
 namespace WebKit {
 
@@ -44,17 +43,15 @@ class NPObjectMessageReceiver {
     WTF_MAKE_NONCOPYABLE(NPObjectMessageReceiver);
 
 public:
-    static PassOwnPtr<NPObjectMessageReceiver> create(NPRemoteObjectMap*, Plugin*, uint64_t npObjectID, NPObject*);
+    NPObjectMessageReceiver(NPRemoteObjectMap*, Plugin*, uint64_t npObjectID, NPObject*);
     ~NPObjectMessageReceiver();
 
-    void didReceiveSyncNPObjectMessageReceiverMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    void didReceiveSyncNPObjectMessageReceiverMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&);
 
     Plugin* plugin() const { return m_plugin; }
     NPObject* npObject() const { return m_npObject; }
     
 private:
-    NPObjectMessageReceiver(NPRemoteObjectMap*, Plugin*, uint64_t npObjectID, NPObject*);
-
     // Message handlers.
     void deallocate();
     void hasMethod(const NPIdentifierData&, bool& returnValue);
@@ -75,7 +72,7 @@ private:
     
 } // namespace WebKit
 
-#endif // ENABLE(PLUGIN_PROCESS)
+#endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 
 #endif // NPObjectMessageReceiver_h

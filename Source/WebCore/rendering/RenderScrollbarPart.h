@@ -35,7 +35,7 @@ class RenderScrollbar;
 
 class RenderScrollbarPart FINAL : public RenderBlock {
 public:
-    static RenderScrollbarPart* createAnonymous(Document*, RenderScrollbar* = 0, ScrollbarPart = NoPart);
+    static RenderScrollbarPart* createAnonymous(Document&, RenderScrollbar* = 0, ScrollbarPart = NoPart);
     
     virtual ~RenderScrollbarPart();
 
@@ -54,7 +54,7 @@ public:
     virtual LayoutUnit marginRight() const OVERRIDE { ASSERT(isIntegerValue(m_marginBox.right())); return m_marginBox.right(); }
 
     virtual bool isRenderScrollbarPart() const { return true; }
-    RenderObject* rendererOwningScrollbar() const;
+    RenderBox* rendererOwningScrollbar() const;
 
 protected:
     virtual void styleWillChange(StyleDifference diff, const RenderStyle* newStyle);

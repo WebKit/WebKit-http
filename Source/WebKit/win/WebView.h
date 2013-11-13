@@ -33,8 +33,9 @@
 #include "WebPreferences.h"
 #include <WebCore/COMPtr.h>
 #include <WebCore/DragActions.h>
+#include <WebCore/GraphicsLayer.h>
 #include <WebCore/IntRect.h>
-#include <WebCore/RefCountedGDIHandle.h>
+#include <WebCore/SharedGDIObject.h>
 #include <WebCore/SuspendableTimer.h>
 #include <WebCore/WindowMessageListener.h>
 #include <wtf/HashSet.h>
@@ -69,9 +70,6 @@ class WebBackForwardList;
 class WebFrame;
 class WebInspector;
 class WebInspectorClient;
-
-typedef WebCore::RefCountedGDIHandle<HBITMAP> RefCountedHBITMAP;
-typedef WebCore::RefCountedGDIHandle<HRGN> RefCountedHRGN;
 
 WebView* kit(WebCore::Page*);
 WebCore::Page* core(IWebView*);
@@ -880,7 +878,7 @@ public:
     void paintIntoWindow(HDC bitmapDC, HDC windowDC, const WebCore::IntRect& dirtyRect);
     bool ensureBackingStore();
     void addToDirtyRegion(const WebCore::IntRect&);
-    void addToDirtyRegion(HRGN);
+    void addToDirtyRegion(GDIObject<HRGN>);
     void scrollBackingStore(WebCore::FrameView*, int dx, int dy, const WebCore::IntRect& scrollViewRect, const WebCore::IntRect& clipRect);
     void deleteBackingStore();
     void repaint(const WebCore::IntRect&, bool contentChanged, bool immediate = false, bool repaintContentOnly = false);
@@ -892,6 +890,7 @@ public:
 
     bool transparent() const { return m_transparent; }
     bool usesLayeredWindow() const { return m_usesLayeredWindow; }
+    bool needsDisplay() const { return m_needsDisplay; }
 
     bool onIMEStartComposition();
     bool onIMEComposition(LPARAM);
@@ -910,7 +909,7 @@ public:
 
     // Convenient to be able to violate the rules of COM here for easy movement to the frame.
     WebFrame* topLevelFrame() const { return m_mainFrame; }
-    const WTF::String& userAgentForKURL(const WebCore::KURL& url);
+    const WTF::String& userAgentForKURL(const WebCore::URL& url);
 
     static bool canHandleRequest(const WebCore::ResourceRequest&);
 
@@ -949,7 +948,7 @@ public:
     bool onGetObject(WPARAM, LPARAM, LRESULT&) const;
     static STDMETHODIMP AccessibleObjectFromWindow(HWND, DWORD objectID, REFIID, void** ppObject);
 
-    void downloadURL(const WebCore::KURL&);
+    void downloadURL(const WebCore::URL&);
 
 #if USE(ACCELERATED_COMPOSITING)
     void flushPendingGraphicsLayerChangesSoon();
@@ -1086,9 +1085,9 @@ protected:
     WebInspectorClient* m_inspectorClient;
 #endif // ENABLE(INSPECTOR)
     
-    RefPtr<RefCountedHBITMAP> m_backingStoreBitmap;
+    RefPtr<WebCore::SharedGDIObject<HBITMAP>> m_backingStoreBitmap;
     SIZE m_backingStoreSize;
-    RefPtr<RefCountedHRGN> m_backingStoreDirtyRegion;
+    RefPtr<WebCore::SharedGDIObject<HRGN>> m_backingStoreDirtyRegion;
 
     COMPtr<IAccessibilityDelegate> m_accessibilityDelegate;
     COMPtr<IWebEditingDelegate> m_editingDelegate;
@@ -1158,12 +1157,13 @@ protected:
     void setAcceleratedCompositing(bool);
 
     RefPtr<WebCore::CACFLayerTreeHost> m_layerTreeHost;
-    OwnPtr<WebCore::GraphicsLayer> m_backingLayer;
+    std::unique_ptr<WebCore::GraphicsLayer> m_backingLayer;
     bool m_isAcceleratedCompositing;
 #endif
 
     bool m_nextDisplayIsSynchronous;
     bool m_usesLayeredWindow;
+    bool m_needsDisplay;
 
     HCURSOR m_lastSetCursor;
 

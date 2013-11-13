@@ -28,6 +28,7 @@
 #include "BitmapImage.h"
 
 #include "FloatRect.h"
+#include "ImageBuffer.h"
 #include "ImageObserver.h"
 #include "IntRect.h"
 #include "MIMETypeRegistry.h"
@@ -58,6 +59,7 @@ BitmapImage::BitmapImage(ImageObserver* observer)
     , m_sizeAvailable(false)
     , m_hasUniformFrameSize(true)
     , m_haveFrameCount(false)
+    , m_cachedImage(0)
 {
 }
 
@@ -67,16 +69,10 @@ BitmapImage::~BitmapImage()
     stopAnimation();
 }
 
-bool BitmapImage::isBitmapImage() const
-{
-    return true;
-}
-
 bool BitmapImage::hasSingleSecurityOrigin() const
 {
     return true;
 }
-
 
 void BitmapImage::destroyDecodedData(bool destroyAll)
 {
@@ -102,6 +98,12 @@ void BitmapImage::destroyDecodedDataIfNecessary(bool destroyAll)
     // Animated images >5MB are considered large enough that we'll only hang on
     // to one frame at a time.
     static const unsigned cLargeAnimationCutoff = 5242880;
+
+    // If we have decoded frames but there is no encoded data, we shouldn't destroy
+    // the decoded image since we won't be able to reconstruct it later.
+    if (!data() && m_frames.size())
+        return;
+
     unsigned allFrameBytes = 0;
     for (size_t i = 0; i < m_frames.size(); ++i)
         allFrameBytes += m_frames[i].m_frameBytes;
@@ -498,6 +500,40 @@ unsigned BitmapImage::decodedSize() const
     return m_decodedSize;
 }
 
+void BitmapImage::drawPattern(GraphicsContext* ctxt, const FloatRect& tileRect, const AffineTransform& transform,
+    const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+{
+    if (tileRect.isEmpty())
+        return;
+
+    if (!ctxt->drawLuminanceMask()) {
+        Image::drawPattern(ctxt, tileRect, transform, phase, styleColorSpace, op, destRect, blendMode);
+        return;
+    }
+    if (!m_cachedImage) {
+        OwnPtr<ImageBuffer> buffer = ImageBuffer::create(expandedIntSize(tileRect.size()));
+        ASSERT(buffer.get());
+
+        ImageObserver* observer = imageObserver();
+        ASSERT(observer);
+
+        // Temporarily reset image observer, we don't want to receive any changeInRect() calls due to this relayout.
+        setImageObserver(0);
+
+        draw(buffer->context(), tileRect, tileRect, styleColorSpace, op, blendMode);
+
+        setImageObserver(observer);
+        buffer->convertToLuminanceMask();
+
+        m_cachedImage = buffer->copyImage(DontCopyBackingStore, Unscaled);
+        m_cachedImage->setSpaceSize(spaceSize());
+
+        setImageObserver(observer);
+    }
+
+    ctxt->setDrawLuminanceMask(false);
+    m_cachedImage->drawPattern(ctxt, tileRect, transform, phase, styleColorSpace, op, destRect, blendMode);
+}
 
 
 void BitmapImage::advanceAnimation(Timer<BitmapImage>*)

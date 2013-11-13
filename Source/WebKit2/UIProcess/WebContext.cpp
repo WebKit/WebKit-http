@@ -279,12 +279,6 @@ void WebContext::setProcessModel(ProcessModel processModel)
     if (processModel != ProcessModelSharedSecondaryProcess && !m_messagesToInjectedBundlePostedToEmptyContext.isEmpty())
         CRASH();
 
-#if !ENABLE(PLUGIN_PROCESS)
-    // Plugin process is required for multiple web process mode.
-    if (processModel != ProcessModelSharedSecondaryProcess)
-        CRASH();
-#endif
-
     m_processModel = processModel;
 }
 
@@ -564,11 +558,11 @@ WebProcessProxy* WebContext::createNewWebProcess()
         for (size_t i = 0; i != m_messagesToInjectedBundlePostedToEmptyContext.size(); ++i) {
             pair<String, RefPtr<APIObject>>& message = m_messagesToInjectedBundlePostedToEmptyContext[i];
 
-            OwnPtr<CoreIPC::ArgumentEncoder> messageData = CoreIPC::ArgumentEncoder::create();
+            CoreIPC::ArgumentEncoder messageData;
 
-            messageData->encode(message.first);
-            messageData->encode(WebContextUserMessageEncoder(message.second.get()));
-            process->send(Messages::WebProcess::PostInjectedBundleMessage(CoreIPC::DataReference(messageData->buffer(), messageData->bufferSize())), 0);
+            messageData.encode(message.first);
+            messageData.encode(WebContextUserMessageEncoder(message.second.get()));
+            process->send(Messages::WebProcess::PostInjectedBundleMessage(CoreIPC::DataReference(messageData.buffer(), messageData.bufferSize())), 0);
         }
         m_messagesToInjectedBundlePostedToEmptyContext.clear();
     } else
@@ -608,17 +602,10 @@ bool WebContext::shouldTerminate(WebProcessProxy* process)
     if (!m_processTerminationEnabled)
         return false;
 
-    WebContextSupplementMap::const_iterator it = m_supplements.begin();
-    WebContextSupplementMap::const_iterator end = m_supplements.end();
-    for (; it != end; ++it) {
-        if (!it->value->shouldTerminate(process))
+    for (const auto& supplement : m_supplements.values()) {
+        if (!supplement->shouldTerminate(process))
             return false;
     }
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    if (!m_pluginSiteDataManager->shouldTerminate(process))
-        return false;
-#endif
 
     return true;
 }
@@ -676,12 +663,6 @@ void WebContext::disconnectProcess(WebProcessProxy* process)
     WebContextSupplementMap::const_iterator end = m_supplements.end();
     for (; it != end; ++it)
         it->value->processDidClose(process);
-
-    // When out of process plug-ins are enabled, we don't want to invalidate the plug-in site data
-    // manager just because the web process crashes since it's not involved.
-#if ENABLE(NETSCAPE_PLUGIN_API) && !ENABLE(PLUGIN_PROCESS)
-    m_pluginSiteDataManager->invalidate();
-#endif
 
     // The vector may have the last reference to process proxy, which in turn may have the last reference to the context.
     // Since vector elements are destroyed in place, we would recurse into WebProcessProxy destructor
@@ -763,13 +744,12 @@ void WebContext::postMessageToInjectedBundle(const String& messageName, APIObjec
 
     // FIXME: Return early if the message body contains any references to WKPageRefs/WKFrameRefs etc. since they're local to a process.
 
-    OwnPtr<CoreIPC::ArgumentEncoder> messageData = CoreIPC::ArgumentEncoder::create();
-    messageData->encode(messageName);
-    messageData->encode(WebContextUserMessageEncoder(messageBody));
+    CoreIPC::ArgumentEncoder messageData;
+    messageData.encode(messageName);
+    messageData.encode(WebContextUserMessageEncoder(messageBody));
 
-    for (size_t i = 0; i < m_processes.size(); ++i) {
-        m_processes[i]->send(Messages::WebProcess::PostInjectedBundleMessage(CoreIPC::DataReference(messageData->buffer(), messageData->bufferSize())), 0);
-    }
+    for (size_t i = 0; i < m_processes.size(); ++i)
+        m_processes[i]->send(Messages::WebProcess::PostInjectedBundleMessage(CoreIPC::DataReference(messageData.buffer(), messageData.bufferSize())), 0);
 }
 
 // InjectedBundle client
@@ -917,7 +897,7 @@ bool WebContext::dispatchMessage(CoreIPC::Connection* connection, CoreIPC::Messa
     return m_messageReceiverMap.dispatchMessage(connection, decoder);
 }
 
-bool WebContext::dispatchSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+bool WebContext::dispatchSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, std::unique_ptr<CoreIPC::MessageEncoder>& replyEncoder)
 {
     return m_messageReceiverMap.dispatchSyncMessage(connection, decoder, replyEncoder);
 }
@@ -946,7 +926,7 @@ void WebContext::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
     ASSERT_NOT_REACHED();
 }
 
-void WebContext::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+void WebContext::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, std::unique_ptr<CoreIPC::MessageEncoder>& replyEncoder)
 {
     if (decoder.messageReceiverName() == Messages::WebContext::messageReceiverName()) {
         didReceiveSyncWebContextMessage(connection, decoder, replyEncoder);

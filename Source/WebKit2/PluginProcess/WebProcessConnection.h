@@ -26,7 +26,7 @@
 #ifndef WebProcessConnection_h
 #define WebProcessConnection_h
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
 
 #include "Connection.h"
 #include "Plugin.h"
@@ -57,19 +57,19 @@ public:
 private:
     WebProcessConnection(CoreIPC::Connection::Identifier);
 
-    void addPluginControllerProxy(PassOwnPtr<PluginControllerProxy>);
+    void addPluginControllerProxy(std::unique_ptr<PluginControllerProxy>);
 
     void destroyPluginControllerProxy(PluginControllerProxy*);
 
     // CoreIPC::Connection::Client
     virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
-    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&) OVERRIDE;
+    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&) OVERRIDE;
     virtual void didClose(CoreIPC::Connection*);
     virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName);
 
     // Message handlers.
     void didReceiveWebProcessConnectionMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
-    void didReceiveSyncWebProcessConnectionMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    void didReceiveSyncWebProcessConnectionMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&);
     void createPlugin(const PluginCreationParameters&, PassRefPtr<Messages::WebProcessConnection::CreatePlugin::DelayedReply>);
     void createPluginAsynchronously(const PluginCreationParameters&);
     void destroyPlugin(uint64_t pluginInstanceID, bool asynchronousCreationIncomplete);
@@ -78,14 +78,14 @@ private:
 
     RefPtr<CoreIPC::Connection> m_connection;
 
-    HashMap<uint64_t, OwnPtr<PluginControllerProxy>> m_pluginControllers;
+    HashMap<uint64_t, std::unique_ptr<PluginControllerProxy>> m_pluginControllers;
     RefPtr<NPRemoteObjectMap> m_npRemoteObjectMap;
     HashSet<uint64_t> m_asynchronousInstanceIDsToIgnore;
 };
 
 } // namespace WebKit
 
-#endif // ENABLE(PLUGIN_PROCESS)
+#endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 
 #endif // WebProcessConnection_h

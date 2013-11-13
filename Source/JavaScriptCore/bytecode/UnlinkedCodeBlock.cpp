@@ -183,7 +183,7 @@ String UnlinkedFunctionExecutable::paramString() const
     for (size_t pos = 0; pos < parameters.size(); ++pos) {
         if (!builder.isEmpty())
             builder.appendLiteral(", ");
-        builder.append(parameters.at(pos).string());
+        parameters.at(pos)->toString(builder);
     }
     return builder.toString();
 }
@@ -194,8 +194,8 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_numCalleeRegisters(0)
     , m_numParameters(0)
     , m_vm(vm)
-    , m_argumentsRegister(-1)
-    , m_globalObjectRegister(-1)
+    , m_argumentsRegister(VirtualRegister())
+    , m_globalObjectRegister(VirtualRegister())
     , m_needsFullScopeChain(info.m_needsActivation)
     , m_usesEval(info.m_usesEval)
     , m_isNumericCompareFunction(false)
@@ -263,7 +263,7 @@ void UnlinkedCodeBlock::expressionRangeForBytecodeOffset(unsigned bytecodeOffset
         return;
     }
 
-    Vector<ExpressionRangeInfo>& expressionInfo = m_expressionInfo.data();
+    Vector<ExpressionRangeInfo>& expressionInfo = m_expressionInfo;
 
     int low = 0;
     int high = expressionInfo.size();
@@ -351,7 +351,7 @@ void UnlinkedCodeBlock::addExpressionInfo(unsigned instructionOffset,
     }
     } // switch
 
-    m_expressionInfo.data().append(info);
+    m_expressionInfo.append(info);
 }
 
 void UnlinkedProgramCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)

@@ -240,12 +240,12 @@
         return state;
     }
 
-    CodeMirror.extendMode("css-base", {token: extendedCSSToken, alternateName: "css"});
+    CodeMirror.extendMode("css", {token: extendedCSSToken});
     CodeMirror.extendMode("xml", {token: extendedXMLToken});
     CodeMirror.extendMode("javascript", {token: extendedToken});
 
     CodeMirror.defineMode("css-rule", CodeMirror.modes.css);
-    CodeMirror.extendMode("css-rule", {startState: extendedCSSRuleStartState});
+    CodeMirror.extendMode("css-rule", {token: extendedCSSToken, startState: extendedCSSRuleStartState, alternateName: "css"});
 
     CodeMirror.defineExtension("hasLineClass", function(line, where, className) {
         // This matches the arguments to addLineClass and removeLineClass.
@@ -269,6 +269,20 @@
         // Check that it is surrounded by spaces. Add padding spaces first to work with beginning and end of string cases.
         var paddedClass = " " + lineInfo[classProperty] + " ";
         return paddedClass.indexOf(" " + className + " ", index) !== -1;
+    });
+
+    CodeMirror.defineExtension("setUniqueBookmark", function(position, options) {
+        var marks = this.findMarksAt(position);
+        for (var i = 0; i < marks.length; ++i) {
+            if (marks[i].__uniqueBookmark) {
+                marks[i].clear();
+                break;
+            }
+        }
+
+        var uniqueBookmark = this.setBookmark(position, options);
+        uniqueBookmark.__uniqueBookmark = true;
+        return uniqueBookmark;
     });
 
     CodeMirror.defineExtension("toggleLineClass", function(line, where, className) {

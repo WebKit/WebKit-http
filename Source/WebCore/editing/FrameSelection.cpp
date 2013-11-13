@@ -89,11 +89,6 @@ DragCaretController::DragCaretController()
 {
 }
 
-PassOwnPtr<DragCaretController> DragCaretController::create()
-{
-    return adoptPtr(new DragCaretController);
-}
-
 bool DragCaretController::isContentRichlyEditable() const
 {
     return isRichlyEditablePosition(m_position.deepEquivalent());
@@ -1271,7 +1266,7 @@ static RenderObject* caretRenderer(Node* node)
         return 0;
 
     // if caretNode is a block and caret is inside it then caret should be painted by that block
-    bool paintedByBlock = renderer->isBlockFlowFlexBoxOrGrid() && caretRendersInsideNode(node);
+    bool paintedByBlock = renderer->isRenderBlockFlow() && caretRendersInsideNode(node);
     return paintedByBlock ? renderer : renderer->containingBlock();
 }
 
@@ -1559,7 +1554,7 @@ bool FrameSelection::contains(const LayoutPoint& point)
     // Treat a collapsed selection like no selection.
     if (!isRange())
         return false;
-    if (!document->renderer()) 
+    if (!document->renderView()) 
         return false;
     
     HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);

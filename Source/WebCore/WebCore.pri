@@ -81,7 +81,6 @@ INCLUDEPATH += \
     $$SOURCE_DIR/platform/qt \
     $$SOURCE_DIR/platform/sql \
     $$SOURCE_DIR/platform/text \
-    $$SOURCE_DIR/platform/text/transcoder \
     $$SOURCE_DIR/plugins \
     $$SOURCE_DIR/rendering \
     $$SOURCE_DIR/rendering/mathml \
@@ -114,8 +113,10 @@ use?(LIBXML2) {
     mac {
         INCLUDEPATH += /usr/include/libxml2
         LIBS += -lxml2
-    } else {
+    } else:!contains(QT_CONFIG, no-pkg-config) {
         PKGCONFIG += libxml-2.0
+    } else {
+        LIBS += -lxml2
     }
 }
 
@@ -123,8 +124,10 @@ enable?(XSLT) {
     mac {
         INCLUDEPATH += /usr/include/libxslt
         LIBS += -lxslt
-    } else {
+    } else:!contains(QT_CONFIG, no-pkg-config) {
         PKGCONFIG += libxslt
+    } else {
+        LIBS += -lxslt
     }
 }
 

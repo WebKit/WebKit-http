@@ -200,7 +200,7 @@ static bool executeInsertFragment(Frame& frame, PassRefPtr<DocumentFragment> fra
 
 static bool executeInsertNode(Frame& frame, PassRefPtr<Node> content)
 {
-    RefPtr<DocumentFragment> fragment = DocumentFragment::create(frame.document());
+    RefPtr<DocumentFragment> fragment = DocumentFragment::create(*frame.document());
     ExceptionCode ec = 0;
     fragment->appendChild(content, ec);
     if (ec)
@@ -253,7 +253,7 @@ static unsigned verticalScrollDistance(Frame& frame)
     Element* focusedElement = frame.document()->focusedElement();
     if (!focusedElement)
         return 0;
-    RenderObject* renderer = focusedElement->renderer();
+    auto renderer = focusedElement->renderer();
     if (!renderer || !renderer->isBox())
         return 0;
     RenderStyle* style = renderer->style();
@@ -493,7 +493,7 @@ static bool executeInsertBacktab(Frame& frame, Event* event, EditorCommandSource
 
 static bool executeInsertHorizontalRule(Frame& frame, Event*, EditorCommandSource, const String& value)
 {
-    RefPtr<HTMLHRElement> rule = HTMLHRElement::create(frame.document());
+    RefPtr<HTMLHRElement> rule = HTMLHRElement::create(*frame.document());
     if (!value.isEmpty())
         rule->setIdAttribute(value);
     return executeInsertNode(frame, rule.release());
@@ -507,7 +507,7 @@ static bool executeInsertHTML(Frame& frame, Event*, EditorCommandSource, const S
 static bool executeInsertImage(Frame& frame, Event*, EditorCommandSource, const String& value)
 {
     // FIXME: If userInterface is true, we should display a dialog box and let the user choose a local image.
-    RefPtr<HTMLImageElement> image = HTMLImageElement::create(frame.document());
+    RefPtr<HTMLImageElement> image = HTMLImageElement::create(*frame.document());
     image->setSrc(value);
     return executeInsertNode(frame, image.release());
 }

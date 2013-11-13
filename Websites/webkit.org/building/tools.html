@@ -7,11 +7,10 @@ include("../header.inc");
 <h4>Mac OS X</h4>
 <ol>
 <li><p>Install Xcode</p>
-<p>Get Xcode from <a target="installtools" href="https://developer.apple.com/downloads">https://developer.apple.com/downloads</a>.  Xcode 3.1.4 or later is required to build.</p>
+<p>Get Xcode from <a target="installtools" href="https://developer.apple.com/downloads">https://developer.apple.com/downloads</a>. Xcode 4.6 or later is required to build.</p>
 <li><p>Install the Xcode Command Line Tools (located under Xcode Preferences > Downloads)</p>
-  <p><b>Note:</b> Before you can use the Xcode 4.3.2 tools, you must either run <code>sudo xcode-select -switch /Applications/Xcode.app</code> or
+  <p><b>Note:</b> Before you can use the command line tools, you must either run <code>sudo xcode-select -switch /Applications/Xcode.app</code> or
 set the environment variable DEVELOPER_DIR to <code>/Applications/Xcode.app/Contents/Developer</code>. See <a href="x-man-page://xcode-select">the <code>xcode-select</code> man page</a> for more details.</p>
-  <p><b>Note:</b> This step is not required for versions of Xcode earlier than 4.3.</p>
 <li><p>Install Java for Mac OS X Developer Package</p>
 <p>Download and install the latest OS-appropriate &ldquo;Java for Mac OS X Developer Package&rdquo; from <a target="installtools" href="https://developer.apple.com/downloads">https://developer.apple.com/downloads</a>.</p>
 </ol>
@@ -70,7 +69,14 @@ Those lines would prevent picking up the Windows TMP and TEMP environment variab
 <li><p>Install DirectX SDK</p>
 <p>Download the <a href="http://www.microsoft.com/en-us/download/details.aspx?id=6812">June 2010 DirectX SDK</a>  This is needed for accelerated compositing.</p>
 </p>
-
+<li><p>Install php, we use the following steps (you need this to run http layout tests):</p>
+<ol>
+<li>cd /usr/local/bin</li>
+<li>wget http://apt-cyg.googlecode.com/svn/trunk/apt-cyg</li>
+<li>chmod a+x apt-cyg</li>
+<li>Change line 341 of the apt-cyg script to "wget -nc $mirror/../$install"</li>
+<li>apt-cyg -m ftp://sourceware.org/pub/cygwinports/x86 install php</li>
+</ol>
 <li><p>Optional: Install the 32-bit version of Debugging Tools for Windows</p>
 <p>Debugging Tools for Windows includes many useful debugging tools such as WinDbg and NTSD. Some of WebKit&rsquo;s tests and scripts use these tools. Follow the <a target="installtools" href="http://www.microsoft.com/whdc/devtools/debugging/installx86.mspx#b">instructions for installing the 32-bit version of Debugging Tools for Windows</a>.</p>
 <li><p>Optional: Hotfix for 64-bit Windows to disable the user-mode callback filter for exceptions</p>

@@ -48,28 +48,28 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-TextControlInnerContainer::TextControlInnerContainer(Document* document)
+TextControlInnerContainer::TextControlInnerContainer(Document& document)
     : HTMLDivElement(divTag, document)
 {
 }
 
-PassRefPtr<TextControlInnerContainer> TextControlInnerContainer::create(Document* document)
+PassRefPtr<TextControlInnerContainer> TextControlInnerContainer::create(Document& document)
 {
     return adoptRef(new TextControlInnerContainer(document));
 }
     
-RenderObject* TextControlInnerContainer::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* TextControlInnerContainer::createRenderer(RenderArena& arena, RenderStyle&)
 {
     return new (arena) RenderTextControlInnerContainer(this);
 }
 
-TextControlInnerElement::TextControlInnerElement(Document* document)
+TextControlInnerElement::TextControlInnerElement(Document& document)
     : HTMLDivElement(divTag, document)
 {
     setHasCustomStyleResolveCallbacks();
 }
 
-PassRefPtr<TextControlInnerElement> TextControlInnerElement::create(Document* document)
+PassRefPtr<TextControlInnerElement> TextControlInnerElement::create(Document& document)
 {
     return adoptRef(new TextControlInnerElement(document));
 }
@@ -82,13 +82,13 @@ PassRefPtr<RenderStyle> TextControlInnerElement::customStyleForRenderer()
 
 // ---------------------------
 
-inline TextControlInnerTextElement::TextControlInnerTextElement(Document* document)
+inline TextControlInnerTextElement::TextControlInnerTextElement(Document& document)
     : HTMLDivElement(divTag, document)
 {
     setHasCustomStyleResolveCallbacks();
 }
 
-PassRefPtr<TextControlInnerTextElement> TextControlInnerTextElement::create(Document* document)
+PassRefPtr<TextControlInnerTextElement> TextControlInnerTextElement::create(Document& document)
 {
     return adoptRef(new TextControlInnerTextElement(document));
 }
@@ -112,7 +112,7 @@ void TextControlInnerTextElement::defaultEventHandler(Event* event)
         HTMLDivElement::defaultEventHandler(event);
 }
 
-RenderObject* TextControlInnerTextElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* TextControlInnerTextElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
     return new (arena) RenderTextControlInnerBlock(this);
 }
@@ -125,12 +125,12 @@ PassRefPtr<RenderStyle> TextControlInnerTextElement::customStyleForRenderer()
 
 // ----------------------------
 
-inline SearchFieldResultsButtonElement::SearchFieldResultsButtonElement(Document* document)
+inline SearchFieldResultsButtonElement::SearchFieldResultsButtonElement(Document& document)
     : HTMLDivElement(divTag, document)
 {
 }
 
-PassRefPtr<SearchFieldResultsButtonElement> SearchFieldResultsButtonElement::create(Document* document)
+PassRefPtr<SearchFieldResultsButtonElement> SearchFieldResultsButtonElement::create(Document& document)
 {
     return adoptRef(new SearchFieldResultsButtonElement(document));
 }
@@ -179,14 +179,14 @@ bool SearchFieldResultsButtonElement::willRespondToMouseClickEvents()
 
 // ----------------------------
 
-inline SearchFieldCancelButtonElement::SearchFieldCancelButtonElement(Document* document)
+inline SearchFieldCancelButtonElement::SearchFieldCancelButtonElement(Document& document)
     : HTMLDivElement(divTag, document)
     , m_capturing(false)
 {
     setHasCustomStyleResolveCallbacks();
 }
 
-PassRefPtr<SearchFieldCancelButtonElement> SearchFieldCancelButtonElement::create(Document* document)
+PassRefPtr<SearchFieldCancelButtonElement> SearchFieldCancelButtonElement::create(Document& document)
 {
     return adoptRef(new SearchFieldCancelButtonElement(document));
 }
@@ -258,7 +258,7 @@ bool SearchFieldCancelButtonElement::willRespondToMouseClickEvents()
 
 #if ENABLE(INPUT_SPEECH)
 
-inline InputFieldSpeechButtonElement::InputFieldSpeechButtonElement(Document* document)
+inline InputFieldSpeechButtonElement::InputFieldSpeechButtonElement(Document& document)
     : HTMLDivElement(divTag, document)
     , m_capturing(false)
     , m_state(Idle)
@@ -277,7 +277,7 @@ InputFieldSpeechButtonElement::~InputFieldSpeechButtonElement()
     }
 }
 
-PassRefPtr<InputFieldSpeechButtonElement> InputFieldSpeechButtonElement::create(Document* document)
+PassRefPtr<InputFieldSpeechButtonElement> InputFieldSpeechButtonElement::create(Document& document)
 {
     return adoptRef(new InputFieldSpeechButtonElement(document));
 }

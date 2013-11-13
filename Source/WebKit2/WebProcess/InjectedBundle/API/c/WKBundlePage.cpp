@@ -46,13 +46,12 @@
 #include "WebString.h"
 #include "WebURL.h"
 #include "WebURLRequest.h"
-
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/AccessibilityObject.h>
-#include <WebCore/Frame.h>
-#include <WebCore/KURL.h>
+#include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
-#include <wtf/OwnArrayPtr.h>
+#include <WebCore/URL.h>
+#include <wtf/StdLibExtras.h>
 
 using namespace WebKit;
 
@@ -148,17 +147,25 @@ WKBundleFrameRef WKBundlePageGetMainFrame(WKBundlePageRef pageRef)
     return toAPI(toImpl(pageRef)->mainWebFrame());
 }
 
-WKArrayRef WKBundlePageCopyContextMenuItemTitles(WKBundlePageRef pageRef)
+void WKBundlePageClickMenuItem(WKBundlePageRef pageRef, WKContextMenuItemRef item)
+{
+#if ENABLE(CONTEXT_MENUS)
+    toImpl(pageRef)->contextMenu()->itemSelected(*toImpl(item)->data());
+#endif
+}
+
+WKArrayRef WKBundlePageCopyContextMenuItems(WKBundlePageRef pageRef)
 {
 #if ENABLE(CONTEXT_MENUS)
     WebContextMenu* contextMenu = toImpl(pageRef)->contextMenu();
-    const Vector<WebContextMenuItemData> &items = contextMenu->items();
+    const Vector<WebContextMenuItemData>& items = contextMenu->items();
     size_t arrayLength = items.size();
-    OwnArrayPtr<WKTypeRef> itemNames = adoptArrayPtr(new WKTypeRef[arrayLength]);
-    for (size_t i = 0; i < arrayLength; ++i)
-        itemNames[i] = WKStringCreateWithUTF8CString(items[i].title().utf8().data());
 
-    return WKArrayCreateAdoptingValues(itemNames.get(), arrayLength);
+    auto wkItems = std::make_unique<WKTypeRef[]>(arrayLength);
+    for (size_t i = 0; i < arrayLength; ++i)
+        wkItems[i] = toAPI(WebContextMenuItem::create(items[i]).leakRef());
+
+    return WKArrayCreate(wkItems.get(), arrayLength);
 #else
     return 0;
 #endif
@@ -357,7 +364,7 @@ void WKBundlePageSetFooterBanner(WKBundlePageRef pageRef, WKBundlePageBannerRef 
 
 bool WKBundlePageHasLocalDataForURL(WKBundlePageRef pageRef, WKURLRef urlRef)
 {
-    return toImpl(pageRef)->hasLocalDataForURL(WebCore::KURL(WebCore::KURL(), toWTFString(urlRef)));
+    return toImpl(pageRef)->hasLocalDataForURL(WebCore::URL(WebCore::URL(), toWTFString(urlRef)));
 }
 
 bool WKBundlePageCanHandleRequest(WKURLRequestRef requestRef)

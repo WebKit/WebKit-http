@@ -32,8 +32,9 @@
 #define Blob_h
 
 #include "BlobData.h"
-#include "KURL.h"
+#include "URL.h"
 #include "ScriptWrappable.h"
+#include "URLRegistry.h"
 #include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -43,20 +44,20 @@ namespace WebCore {
 
 class ScriptExecutionContext;
 
-class Blob : public ScriptWrappable, public RefCounted<Blob> {
+class Blob : public ScriptWrappable, public URLRegistrable, public RefCounted<Blob> {
 public:
     static PassRefPtr<Blob> create()
     {
         return adoptRef(new Blob);
     }
 
-    static PassRefPtr<Blob> create(PassOwnPtr<BlobData> blobData, long long size)
+    static PassRefPtr<Blob> create(std::unique_ptr<BlobData> blobData, long long size)
     {
-        return adoptRef(new Blob(blobData, size));
+        return adoptRef(new Blob(std::move(blobData), size));
     }
 
     // For deserialization.
-    static PassRefPtr<Blob> create(const KURL& srcURL, const String& type, long long size)
+    static PassRefPtr<Blob> create(const URL& srcURL, const String& type, long long size)
     {
         ASSERT(Blob::isNormalizedContentType(type));
         return adoptRef(new Blob(srcURL, type, size));
@@ -64,7 +65,7 @@ public:
 
     virtual ~Blob();
 
-    const KURL& url() const { return m_internalURL; }
+    const URL& url() const { return m_internalURL; }
     const String& type() const { return m_type; }
 
     virtual unsigned long long size() const { return static_cast<unsigned long long>(m_size); }
@@ -78,21 +79,24 @@ public:
     static bool isNormalizedContentType(const String&);
     static bool isNormalizedContentType(const CString&);
 
+    // URLRegistrable
+    virtual URLRegistry& registry() const OVERRIDE;
+
 #if ENABLE(BLOB)
     PassRefPtr<Blob> slice(long long start = 0, long long end = std::numeric_limits<long long>::max(), const String& contentType = String()) const;
 #endif
 
 protected:
     Blob();
-    Blob(PassOwnPtr<BlobData>, long long size);
+    Blob(std::unique_ptr<BlobData>, long long size);
 
     // For deserialization.
-    Blob(const KURL& srcURL, const String& type, long long size);
+    Blob(const URL& srcURL, const String& type, long long size);
 
     // This is an internal URL referring to the blob data associated with this object. It serves
     // as an identifier for this blob. The internal URL is never used to source the blob's content
     // into an HTML or for FileRead'ing, public blob URLs must be used for those purposes.
-    KURL m_internalURL;
+    URL m_internalURL;
 
     String m_type;
     long long m_size;

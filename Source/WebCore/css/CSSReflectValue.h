@@ -52,7 +52,7 @@ public:
     String customSerializeResolvingVariables(const HashMap<AtomicString, String>&) const;
 #endif
 
-    void addSubresourceStyleURLs(ListHashSet<KURL>&, const StyleSheetContents*) const;
+    void addSubresourceStyleURLs(ListHashSet<URL>&, const StyleSheetContents*) const;
 
     bool equals(const CSSReflectValue&) const;
 
@@ -69,6 +69,8 @@ private:
     RefPtr<CSSPrimitiveValue> m_offset;
     RefPtr<CSSValue> m_mask;
 };
+
+CSS_VALUE_TYPE_CASTS(ReflectValue)
 
 } // namespace WebCore
 

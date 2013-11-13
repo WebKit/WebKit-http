@@ -380,7 +380,8 @@ public:
         [NSNumber numberWithBool:NO],  WebKitCanvasUsesAcceleratedDrawingPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitShowDebugBordersPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitShowRepaintCounterPreferenceKey,
-        [NSNumber numberWithBool:NO],   WebKitWebGLEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitWebGLEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO],   WebKitMultithreadedWebGLEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitAccelerated2dCanvasEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitFrameFlatteningEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitSpatialNavigationEnabledPreferenceKey,
@@ -412,7 +413,9 @@ public:
                                         WebKitScreenFontSubstitutionEnabledKey,
         [NSNumber numberWithInt:WebAllowAllStorage], WebKitStorageBlockingPolicyKey,
         [NSNumber numberWithBool:NO],   WebKitPlugInSnapshottingEnabledPreferenceKey,
-
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+        [NSNumber numberWithFloat:WKGetMinimumZoomFontSize()], WebKitMinimumZoomFontSizePreferenceKey,
+#endif
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
         [NSNumber numberWithBool:YES],  WebKitQTKitEnabledPreferenceKey,
@@ -1080,6 +1083,18 @@ public:
     return (NSTimeInterval)[self _floatValueForKey:WebKitBackForwardCacheExpirationIntervalKey];
 }
 
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+- (void)_setMinimumZoomFontSize:(float)size
+{
+    [self _setFloatValue:size forKey:WebKitMinimumZoomFontSizePreferenceKey];
+}
+
+- (float)_minimumZoomFontSize
+{
+    return [self _floatValueForKey:WebKitMinimumZoomFontSizePreferenceKey];
+}
+#endif
+
 - (float)PDFScaleFactor
 {
     return [self _floatValueForKey:WebKitPDFScaleFactorPreferenceKey];
@@ -1450,6 +1465,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setWebGLEnabled:(BOOL)enabled
 {
     [self _setBoolValue:enabled forKey:WebKitWebGLEnabledPreferenceKey];
+}
+
+- (BOOL)multithreadedWebGLEnabled
+{
+    return [self _boolValueForKey:WebKitMultithreadedWebGLEnabledPreferenceKey];
+}
+
+- (void)setMultithreadedWebGLEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitMultithreadedWebGLEnabledPreferenceKey];
 }
 
 - (BOOL)accelerated2dCanvasEnabled

@@ -58,6 +58,7 @@ usesDashboardBackwardCompatibilityMode initial=false, conditional=DASHBOARD_SUPP
 textAreasAreResizable initial=false, setNeedsStyleRecalcInAllFrames=1
 authorAndUserStylesEnabled initial=true, setNeedsStyleRecalcInAllFrames=1
 acceleratedCompositingEnabled initial=true, setNeedsStyleRecalcInAllFrames=1
+acceleratedCompositedAnimationsEnabled initial=true, setNeedsStyleRecalcInAllFrames=1
 showDebugBorders initial=false, setNeedsStyleRecalcInAllFrames=1
 showRepaintCounter initial=false, setNeedsStyleRecalcInAllFrames=1
 
@@ -105,6 +106,7 @@ experimentalNotificationsEnabled initial=false
 webGLEnabled initial=false
 webGLErrorsToConsoleEnabled initial=true
 openGLMultisamplingEnabled initial=true
+multithreadedWebGLEnabled initial=false
 privilegedWebGLExtensionsEnabled initial=false
 accelerated2dCanvasEnabled initial=false
 antialiased2dCanvasEnabled initial=true
@@ -125,8 +127,8 @@ shouldInjectUserScriptsInInitialEmptyDocument initial=false
 fixedElementsLayoutRelativeToFrame initial=false
 allowDisplayOfInsecureContent initial=true
 allowRunningOfInsecureContent initial=true
-mediaPlaybackRequiresUserGesture initial=false
-mediaPlaybackAllowsInline initial=true
+mediaPlaybackRequiresUserGesture initial=defaultMediaPlaybackRequiresUserGesture
+mediaPlaybackAllowsInline initial=defaultMediaPlaybackAllowsInline
 passwordEchoEnabled initial=false
 suppressesIncrementalRendering initial=false
 incrementalRenderingSuppressionTimeoutInSeconds type=double, initial=defaultIncrementalRenderingSuppressionTimeoutInSeconds
@@ -142,7 +144,7 @@ notificationsEnabled initial=true
 # Some apps needs isLoadingInAPISense to account for active subresource loaders.
 needsIsLoadingInAPISenseQuirk initial=false
 
-shouldRespectImageOrientation initial=false
+shouldRespectImageOrientation initial=defaultShouldRespectImageOrientation
 wantsBalancedSetDefersLoadingBehavior initial=false
 requestAnimationFrameEnabled initial=true
 deviceSupportsTouch initial=false
@@ -186,6 +188,8 @@ spatialNavigationEnabled initial=false
 # enabled, the user can initiate drag using long press.
 touchDragDropEnabled initial=false
 
+autoscrollForDragAndDropEnabled initial=false
+
 unifiedTextCheckerEnabled initial=defaultUnifiedTextCheckerEnabled
 
 logsPageMessagesToSystemConsoleEnabled initial=false
@@ -200,3 +204,5 @@ selectTrailingWhitespaceEnabled initial=defaultSelectTrailingWhitespaceEnabled
 
 selectionIncludesAltImageText initial=true
 useLegacyBackgroundSizeShorthandBehavior initial=false
+
+minimumZoomFontSize type=float, initial=15, conditional=IOS_TEXT_AUTOSIZING

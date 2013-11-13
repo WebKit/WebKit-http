@@ -1,3 +1,247 @@
+2013-09-30  Sam Weinig  <sam@webkit.org>
+
+        Remove support for DOMFileSystem
+        https://bugs.webkit.org/show_bug.cgi?id=122137
+
+        Reviewed by Anders Carlsson.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+        * Source/cmake/OptionsBlackBerry.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2013-09-30  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove the code guarded by STYLE_SCOPED
+        https://bugs.webkit.org/show_bug.cgi?id=122123
+
+        Reviewed by Anders Carlsson.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+        * Source/cmake/OptionsBlackBerry.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2013-09-30  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Fix force_static_libs_as_shared in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=121961
+
+        Reviewed by Csaba Osztrogonác.
+
+        Get rid of the unused WebKit2QML library
+
+        * Source/api.pri:
+
+2013-09-26  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        [GTK] Tons of warnings caused by using FORTIFY_SOURCE in an unoptimized build
+        https://bugs.webkit.org/show_bug.cgi?id=121836
+
+        Reviewed by Martin Robinson.
+
+        * Source/autotools/SetupCompilerFlags.m4: only consider enabling FORTIFY_SOURCE if optimizations have
+        been enabled, since they are required for FORTIFY_SOURCE to work, and enabling FORTIFY_SOURCE unconditionally
+        generates warnings in newer glibc.
+
+2013-09-25  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Fix build with Qt 5.2 QtPosition module
+        https://bugs.webkit.org/show_bug.cgi?id=121089
+
+        Reviewed by Simon Hausmann.
+
+        QtLocation -> QtPositioning
+
+        * Source/sync.profile:
+
+2013-09-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Enable the Wayland target if GTK+ dependency is found
+        https://bugs.webkit.org/show_bug.cgi?id=121704
+
+        Reviewed by Gustavo Noronha Silva.
+
+        The Wayland target should be enabled by default if the GTK+ dependency is of version 3.9.14 or later.
+
+        * Source/autotools/FindDependencies.m4: If the Wayland target was not strictly disabled, the GTK+ dependency
+        is tested if it can provide the Wayland GDK backend, and that the version of that backend matches the version
+        of the master GTK+ dependency for which we already tested. If found, the target is enabled, otherwise we either
+        warn or error out, depending on whether the build target was set to auto or completely disabled through configuration.
+        * Source/autotools/ReadCommandLineArguments.m4: Switch the default Wayland target status to 'auto', meaning
+        it will be disabled if the GTK+ dependency is not found.
+        * Source/autotools/Versions.m4: Require GTK+ 3.9.14 for the Wayland target only.
+
+2013-09-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Autotools] Rework the build target selection
+        https://bugs.webkit.org/show_bug.cgi?id=121703
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Replace the --with-target configuration flag with target-specific --enable-*-target flags:
+        - --enable-x11-target
+        - --enable-wayland-target
+        - --enable-win32-target
+        - --enable-quartz-target
+        - --enable-directfb-target
+
+        By default, the X11 target is enabled. This default is preserved only if no --enable-*-target flag
+        is passed on the command line. When that occurs, the newly-constructed list of build targets is
+        used to determine what build targets should actually be built. So for instance, executing just
+        `./configure` would only enable the X11 target as that's the default, and executing
+        `./configure --enable-wayland-target` would only enable the Wayland target, as the defaults are
+        completely ignored.
+
+        * Source/autotools/CheckSystemAndBasicDependencies.m4: Abort if grep was not found, just in case.
+        * Source/autotools/CustomMacros.m4: The new file that contains helpful custom macros.
+        * Source/autotools/FindDependencies.m4: Use the appropriate 'enable_*_target' references instead of 'with_*target'.
+        * Source/autotools/PrintBuildConfiguration.m4: Use the new AM_APPEND_TO_DESCRIPTION macro to construct a pretty-looking
+        description string of what targets will be built.
+        * Source/autotools/ReadCommandLineArguments.m4: Replace the --with-target configuration flag and the related
+        hacks with the set of --enable-*-target flags. The new AM_DETERMINE_BUILD_TARGET_STATUS macro is used to determine
+        whether to enable specific build targets, based indirectly on the passed-in --enable-*-target flags.
+        * Source/autotools/SetupAutoconfHeader.m4: Use the appropriate 'enable_*_target' references instead of 'with_*target'.
+        * Source/autotools/SetupAutomake.m4: Use the appropriate 'enable_*_target' references instead of 'with_*target'.
+        * configure.ac: Include the new CustomMacros.m4 file.
+
+2013-09-23  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Bump version
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/autotools/Versions.m4: Bump to 2.3.0
+
+2013-09-20  Sergio Correia  <sergio.correia@openbossa.org>
+
+        [CMAKE] FindHarfBuzz: Handle harfbuzz / harfbuzz-icu split
+        https://bugs.webkit.org/show_bug.cgi?id=121688
+
+        Reviewed by Martin Robinson.
+
+        HarfBuzz 0.9.18 split ICU support into a separate harfbuzz-icu library.
+        To be able to build with earlier and newer versions of HarfBuzz, we should
+        check for harfbuzz-icu as well, if version >= 0.9.18.
+
+        * Source/cmake/FindHarfBuzz.cmake: Check for harfbuzz-icu, if version
+        >= 0.9.18.
+
+2013-09-16  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Make symbol export filter more strict, and disable for dev/test builds
+        https://bugs.webkit.org/show_bug.cgi?id=120586
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: only include test-related automake files when developer
+        mode is on.
+        * Source/autotools/ReadCommandLineArguments.m4: add --enable-developer-mode,
+        defaults to no, and to yes for debug builds.
+        * Source/autotools/SetupAutomake.m4: add ENABLE_DEVELOPER_MODE conditional.
+        * Source/autotools/symbols.filter: make the exported symbols list much shorter,
+        covering only the public ABI and a few symbols required by WebKit2 processes.
+
+2013-09-13  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        [GTK] Move to the new web inspector
+        https://bugs.webkit.org/show_bug.cgi?id=120647
+
+        Reviewed by Carlos Garcia Campos.
+
+        * GNUmakefile.am: include the new WebInspectorUI GNUmakefile.am.
+
+2013-09-13  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Update sync.profile
+        https://bugs.webkit.org/show_bug.cgi?id=121295
+
+        Reviewed by Simon Hausmann.
+
+        Ensure we let the dependencies pick the right branch instead of always master
+        and list all the dependencies we need on all platforms.
+
+        * Source/sync.profile:
+
+2013-09-11  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Remove Gail dependency from build system for GTK3
+        https://bugs.webkit.org/show_bug.cgi?id=119673
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/autotools/FindDependencies.m4: Don't look for GAIL at all.
+        * Source/autotools/Versions.m4: Removed any reference to GAIL.
+        * Source/cmake/FindGAIL3.cmake: Removed.
+        * Source/cmake/OptionsGTK.cmake: Don't look for the GAIL package.
+
+2013-09-11  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Split out generic Windows files into its own file
+        https://bugs.webkit.org/show_bug.cgi?id=119514
+
+        Reviewed by Gyuyoung Kim.
+
+        This allows us to add smaller CMakeLists.txt files when
+        adding additional Windows ports.
+
+        * Source/cmake/OptionsWinCE.cmake:
+        * Source/cmake/WebKitMacros.cmake:
+
+2013-09-11  Alberto Garcia  <berto@igalia.com>
+
+        autogen.sh: fix removal of autom4te.cache
+        https://bugs.webkit.org/show_bug.cgi?id=121150
+
+        Reviewed by Carlos Garcia Campos.
+
+        The removal of autom4te.cache is wrong, it uses 'rm -f' instead of
+        'rm -rf' and it relies on an undefined variable.
+
+        In addition to that, it should be done after running autoreconf,
+        which is when it's no longer needed.
+
+        * autogen.sh:
+
+2013-09-11  Alberto Garcia  <berto@igalia.com>
+
+        Unquoted $ORIGDIR in autogen.sh
+        https://bugs.webkit.org/show_bug.cgi?id=19512
+
+        Reviewed by Carlos Garcia Campos.
+
+        Quote all directory names. This doesn't mean that all possible
+        directory names are safe for building webkit, but the configure
+        script already runs a sanity check.
+
+        * autogen.sh:
+
+2013-09-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Stop disabling deprecated symbols in debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=121145
+
+        Reviewed by Carlos Garcia Campos.
+
+        Disabling the dependencies' deprecated symbols in debug builds is only causing unnecessary
+        build failures. Compiler warnings are being thrown whenever a deprecated symbol is being
+        used, so a build failure is an overreach in this case.
+
+        * Source/autotools/SetupAutoconfHeader.m4:
+
+2013-09-10  Marcelo Morais  <m.morais@samsung.com>
+
+        [EFL] WebInspector: Move to new webinspector
+        https://bugs.webkit.org/show_bug.cgi?id=119559
+
+        Reviewed by Gyuyoung Kim.
+
+        Enabling the new Web Inspector on EFL port.
+        Co-author: Andre Loureiro <andre.vl@samsung.com>
+
+        * Source/PlatformEfl.cmake:
+        * Source/cmake/OptionsEfl.cmake:
+
 2013-09-06  Zan Dobersek  <zdobersek@igalia.com>
 
         REGRESSION(r155143): Build failures on GTK port with Clang and libstdc++ < 4.8.1

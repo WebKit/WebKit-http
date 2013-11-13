@@ -74,16 +74,16 @@ const ClassInfo DateConstructor::s_info = { "Function", &InternalFunction::s_inf
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DateConstructor);
 
-DateConstructor::DateConstructor(JSGlobalObject* globalObject, Structure* structure)
-    : InternalFunction(globalObject, structure) 
+DateConstructor::DateConstructor(VM& vm, Structure* structure)
+    : InternalFunction(vm, structure)
 {
 }
 
-void DateConstructor::finishCreation(ExecState* exec, DatePrototype* datePrototype)
+void DateConstructor::finishCreation(VM& vm, DatePrototype* datePrototype)
 {
-    Base::finishCreation(exec->vm(), datePrototype->classInfo()->className);
-    putDirectWithoutTransition(exec->vm(), exec->propertyNames().prototype, datePrototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(exec->vm(), exec->propertyNames().length, jsNumber(7), ReadOnly | DontEnum | DontDelete);
+    Base::finishCreation(vm, datePrototype->classInfo()->className);
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, datePrototype, DontEnum | DontDelete | ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(7), ReadOnly | DontEnum | DontDelete);
 }
 
 bool DateConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
@@ -94,6 +94,7 @@ bool DateConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, Prop
 // ECMA 15.9.3
 JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, const ArgList& args)
 {
+    VM& vm = exec->vm();
     int numArgs = args.size();
 
     double value;
@@ -106,7 +107,7 @@ JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, const Arg
         else {
             JSValue primitive = args.at(0).toPrimitive(exec);
             if (primitive.isString())
-                value = parseDate(exec, primitive.getString(exec));
+                value = parseDate(vm, primitive.getString(exec));
             else
                 value = primitive.toNumber(exec);
         }
@@ -139,11 +140,11 @@ JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, const Arg
             t.setSecond(JSC::toInt32(doubleArguments[5]));
             t.setIsDST(-1);
             double ms = (numArgs >= 7) ? doubleArguments[6] : 0;
-            value = gregorianDateTimeToMS(exec, t, ms, false);
+            value = gregorianDateTimeToMS(vm, t, ms, false);
         }
     }
 
-    return DateInstance::create(exec, globalObject->dateStructure(), value);
+    return DateInstance::create(vm, globalObject->dateStructure(), value);
 }
     
 static EncodedJSValue JSC_HOST_CALL constructWithDateConstructor(ExecState* exec)
@@ -161,9 +162,10 @@ ConstructType DateConstructor::getConstructData(JSCell*, ConstructData& construc
 // ECMA 15.9.2
 static EncodedJSValue JSC_HOST_CALL callDate(ExecState* exec)
 {
+    VM& vm = exec->vm();
     GregorianDateTime ts;
-    msToGregorianDateTime(exec, currentTimeMS(), false, ts);
-    return JSValue::encode(jsNontrivialString(exec, formatDateTime(ts, DateTimeFormatDateAndTime, false)));
+    msToGregorianDateTime(vm, currentTimeMS(), false, ts);
+    return JSValue::encode(jsNontrivialString(&vm, formatDateTime(ts, DateTimeFormatDateAndTime, false)));
 }
 
 CallType DateConstructor::getCallData(JSCell*, CallData& callData)
@@ -174,7 +176,7 @@ CallType DateConstructor::getCallData(JSCell*, CallData& callData)
 
 static EncodedJSValue JSC_HOST_CALL dateParse(ExecState* exec)
 {
-    return JSValue::encode(jsNumber(parseDate(exec, exec->argument(0).toString(exec)->value(exec))));
+    return JSValue::encode(jsNumber(parseDate(exec->vm(), exec->argument(0).toString(exec)->value(exec))));
 }
 
 static EncodedJSValue JSC_HOST_CALL dateNow(ExecState*)
@@ -212,7 +214,7 @@ static EncodedJSValue JSC_HOST_CALL dateUTC(ExecState* exec)
     t.setMinute(JSC::toInt32(doubleArguments[4]));
     t.setSecond(JSC::toInt32(doubleArguments[5]));
     double ms = (n >= 7) ? doubleArguments[6] : 0;
-    return JSValue::encode(jsNumber(timeClip(gregorianDateTimeToMS(exec, t, ms, true))));
+    return JSValue::encode(jsNumber(timeClip(gregorianDateTimeToMS(exec->vm(), t, ms, true))));
 }
 
 } // namespace JSC

@@ -42,13 +42,13 @@ class TextEncoding;
 
 class HTMLFormElement FINAL : public HTMLElement {
 public:
-    static PassRefPtr<HTMLFormElement> create(Document*);
-    static PassRefPtr<HTMLFormElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<HTMLFormElement> create(Document&);
+    static PassRefPtr<HTMLFormElement> create(const QualifiedName&, Document&);
     virtual ~HTMLFormElement();
 
     PassRefPtr<HTMLCollection> elements();
     bool hasNamedElement(const AtomicString&);
-    void getNamedElements(const AtomicString&, Vector<RefPtr<Node> >&);
+    void getNamedElements(const AtomicString&, Vector<Ref<Element>>&);
 
     unsigned length() const;
     Node* item(unsigned index);
@@ -109,7 +109,7 @@ public:
     static HTMLFormElement* findClosestFormAncestor(const Element&);
 
 private:
-    HTMLFormElement(const QualifiedName&, Document*);
+    HTMLFormElement(const QualifiedName&, Document&);
 
     virtual bool rendererIsNeeded(const RenderStyle&);
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
@@ -165,6 +165,8 @@ private:
 
     bool m_wasDemoted;
 };
+
+ELEMENT_TYPE_CASTS(HTMLFormElement)
 
 } // namespace WebCore
 

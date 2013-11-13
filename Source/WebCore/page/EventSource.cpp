@@ -59,7 +59,7 @@ namespace WebCore {
 
 const unsigned long long EventSource::defaultReconnectDelay = 3000;
 
-inline EventSource::EventSource(ScriptExecutionContext* context, const KURL& url, const Dictionary& eventSourceInit)
+inline EventSource::EventSource(ScriptExecutionContext* context, const URL& url, const Dictionary& eventSourceInit)
     : ActiveDOMObject(context)
     , m_url(url)
     , m_withCredentials(false)
@@ -80,7 +80,7 @@ PassRefPtr<EventSource> EventSource::create(ScriptExecutionContext* context, con
         return 0;
     }
 
-    KURL fullURL = context->completeURL(url);
+    URL fullURL = context->completeURL(url);
     if (!fullURL.isValid()) {
         ec = SYNTAX_ERR;
         return 0;
@@ -207,16 +207,6 @@ void EventSource::close()
         m_state = CLOSED;
         unsetPendingActivity(this);
     }
-}
-
-const AtomicString& EventSource::interfaceName() const
-{
-    return eventNames().interfaceForEventSource;
-}
-
-ScriptExecutionContext* EventSource::scriptExecutionContext() const
-{
-    return ActiveDOMObject::scriptExecutionContext();
 }
 
 void EventSource::didReceiveResponse(unsigned long, const ResourceResponse& response)
@@ -429,16 +419,6 @@ PassRefPtr<MessageEvent> EventSource::createMessageEvent()
     RefPtr<MessageEvent> event = MessageEvent::create();
     event->initMessageEvent(m_eventName.isEmpty() ? eventNames().messageEvent : AtomicString(m_eventName), false, false, SerializedScriptValue::create(String::adopt(m_data)), m_eventStreamOrigin, m_lastEventId, 0, 0);
     return event.release();
-}
-
-EventTargetData* EventSource::eventTargetData()
-{
-    return &m_eventTargetData;
-}
-
-EventTargetData& EventSource::ensureEventTargetData()
-{
-    return m_eventTargetData;
 }
 
 } // namespace WebCore

@@ -76,5 +76,22 @@ bool ShapeInsideInfo::adjustLogicalLineTop(float minSegmentWidth)
     return false;
 }
 
+ShapeValue* ShapeInsideInfo::shapeValue() const
+{
+    return m_renderer->style()->resolvedShapeInside();
+}
+
+LayoutUnit ShapeInsideInfo::computeFirstFitPositionForFloat(const LayoutSize floatSize) const
+{
+    if (!computedShape() || !floatSize.width() || shapeLogicalBottom() < logicalLineTop())
+        return 0;
+
+    LayoutUnit firstFitPosition = 0;
+    if (computedShape()->firstIncludedIntervalLogicalTop(m_shapeLineTop, floatSize, firstFitPosition) && (m_shapeLineTop <= firstFitPosition))
+        return firstFitPosition;
+
+    return 0;
+}
+
 }
 #endif

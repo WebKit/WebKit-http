@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
  * Copyright (C) 2011 Ericsson AB. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,22 +34,24 @@
 #include "ExceptionBase.h"
 #include "MediaStreamDescriptor.h"
 #include "MediaStreamTrack.h"
+#include "ScriptWrappable.h"
 #include "Timer.h"
+#include "URLRegistry.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class MediaStream : public RefCounted<MediaStream>, public MediaStreamDescriptorClient, public EventTarget, public ContextDestructionObserver {
+class MediaStreamCenter;
+
+// FIXME: This class should be marked FINAL once <http://webkit.org/b/121747> is fixed.
+class MediaStream : public RefCounted<MediaStream>, public URLRegistrable, public ScriptWrappable, public MediaStreamDescriptorClient, public EventTargetWithInlineData, public ContextDestructionObserver {
 public:
     static PassRefPtr<MediaStream> create(ScriptExecutionContext*);
     static PassRefPtr<MediaStream> create(ScriptExecutionContext*, PassRefPtr<MediaStream>);
     static PassRefPtr<MediaStream> create(ScriptExecutionContext*, const MediaStreamTrackVector&);
     static PassRefPtr<MediaStream> create(ScriptExecutionContext*, PassRefPtr<MediaStreamDescriptor>);
     virtual ~MediaStream();
-
-    // DEPRECATED
-    String label() const { return m_descriptor->id(); }
 
     String id() const { return m_descriptor->id(); }
 
@@ -60,58 +63,55 @@ public:
     MediaStreamTrackVector getVideoTracks() const { return m_videoTracks; }
 
     bool ended() const;
+    void setEnded();
+    void stop();
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(ended);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(addtrack);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(removetrack);
 
-    // MediaStreamDescriptorClient
-    virtual void trackEnded() OVERRIDE;
-    virtual void streamEnded() OVERRIDE;
-
-    virtual bool isLocal() const { return false; }
-
     MediaStreamDescriptor* descriptor() const { return m_descriptor.get(); }
 
     // EventTarget
-    virtual const AtomicString& interfaceName() const OVERRIDE;
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE;
+    virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL { return MediaStreamEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL { return ContextDestructionObserver::scriptExecutionContext(); }
 
     using RefCounted<MediaStream>::ref;
     using RefCounted<MediaStream>::deref;
 
+    // URLRegistrable
+    virtual URLRegistry& registry() const OVERRIDE;
+
 protected:
     MediaStream(ScriptExecutionContext*, PassRefPtr<MediaStreamDescriptor>);
-
-    // EventTarget
-    virtual EventTargetData* eventTargetData() OVERRIDE;
-    virtual EventTargetData& ensureEventTargetData() OVERRIDE;
 
     // ContextDestructionObserver
     virtual void contextDestroyed();
 
 private:
+    // MediaStreamDescriptorClient
+    virtual void trackDidEnd() OVERRIDE;
+    virtual void streamDidEnd() OVERRIDE;
+    
     // EventTarget
-    virtual void refEventTarget() OVERRIDE { ref(); }
-    virtual void derefEventTarget() OVERRIDE { deref(); }
+    virtual void refEventTarget() OVERRIDE FINAL { ref(); }
+    virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
 
     // MediaStreamDescriptorClient
-    virtual void addRemoteTrack(MediaStreamComponent*) OVERRIDE;
-    virtual void removeRemoteTrack(MediaStreamComponent*) OVERRIDE;
+    virtual void addRemoteSource(MediaStreamSource*) OVERRIDE;
+    virtual void removeRemoteSource(MediaStreamSource*) OVERRIDE;
 
     void scheduleDispatchEvent(PassRefPtr<Event>);
     void scheduledEventTimerFired(Timer<MediaStream>*);
 
     bool m_stopped;
 
-    EventTargetData m_eventTargetData;
-
+    RefPtr<MediaStreamDescriptor> m_descriptor;
     MediaStreamTrackVector m_audioTracks;
     MediaStreamTrackVector m_videoTracks;
-    RefPtr<MediaStreamDescriptor> m_descriptor;
 
     Timer<MediaStream> m_scheduledEventTimer;
-    Vector<RefPtr<Event> > m_scheduledEvents;
+    Vector<RefPtr<Event>> m_scheduledEvents;
 };
 
 typedef Vector<RefPtr<MediaStream> > MediaStreamVector;

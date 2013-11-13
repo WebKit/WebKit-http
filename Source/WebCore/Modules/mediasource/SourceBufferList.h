@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -34,51 +34,49 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include "EventTarget.h"
+#include "GenericEventQueue.h"
+#include "ScriptWrappable.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
 class SourceBuffer;
-class GenericEventQueue;
 
-class SourceBufferList : public RefCounted<SourceBufferList>, public EventTarget {
+// FIXME: This class should be marked FINAL once <http://webkit.org/b/121747> is fixed.
+class SourceBufferList : public RefCounted<SourceBufferList>, public ScriptWrappable, public EventTargetWithInlineData {
 public:
-    static PassRefPtr<SourceBufferList> create(ScriptExecutionContext* context, GenericEventQueue* asyncEventQueue)
+    static PassRefPtr<SourceBufferList> create(ScriptExecutionContext* context)
     {
-        return adoptRef(new SourceBufferList(context, asyncEventQueue));
+        return adoptRef(new SourceBufferList(context));
     }
-    virtual ~SourceBufferList() { }
+    virtual ~SourceBufferList();
 
-    unsigned long length() const;
-    SourceBuffer* item(unsigned index) const;
+    unsigned long length() const { return m_list.size(); }
+    SourceBuffer* item(unsigned long index) const { return (index < m_list.size()) ? m_list[index].get() : 0; }
 
     void add(PassRefPtr<SourceBuffer>);
-    bool remove(SourceBuffer*);
+    void remove(SourceBuffer*);
+    bool contains(SourceBuffer* buffer) { return m_list.find(buffer) != notFound; }
     void clear();
 
     // EventTarget interface
-    virtual const AtomicString& interfaceName() const OVERRIDE;
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE;
+    virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL { return SourceBufferListEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL { return m_scriptExecutionContext; }
 
     using RefCounted<SourceBufferList>::ref;
     using RefCounted<SourceBufferList>::deref;
 
-protected:
-    virtual EventTargetData* eventTargetData() OVERRIDE;
-    virtual EventTargetData& ensureEventTargetData() OVERRIDE;
-
 private:
-    SourceBufferList(ScriptExecutionContext*, GenericEventQueue*);
+    SourceBufferList(ScriptExecutionContext*);
 
-    void createAndFireEvent(const AtomicString&);
+    void scheduleEvent(const AtomicString&);
 
-    virtual void refEventTarget() OVERRIDE { ref(); }
-    virtual void derefEventTarget() OVERRIDE { deref(); }
+    virtual void refEventTarget() OVERRIDE FINAL { ref(); }
+    virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
 
-    EventTargetData m_eventTargetData;
     ScriptExecutionContext* m_scriptExecutionContext;
-    GenericEventQueue* m_asyncEventQueue;
+    GenericEventQueue m_asyncEventQueue;
 
     Vector<RefPtr<SourceBuffer> > m_list;
 };
@@ -86,4 +84,5 @@ private:
 } // namespace WebCore
 
 #endif
+
 #endif

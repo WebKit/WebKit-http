@@ -42,7 +42,6 @@ namespace JSC {
     class JSPropertyNameIterator;
     class JSScope;
 
-    struct InlineCallFrame;
     struct Instruction;
 
     typedef ExecState CallFrame;
@@ -61,7 +60,6 @@ namespace JSC {
         Register& operator=(CodeBlock*);
         Register& operator=(JSScope*);
         Register& operator=(Instruction*);
-        Register& operator=(InlineCallFrame*);
 
         int32_t i() const;
         JSActivation* activation() const;
@@ -71,8 +69,9 @@ namespace JSC {
         JSPropertyNameIterator* propertyNameIterator() const;
         JSScope* scope() const;
         Instruction* vPC() const;
-        InlineCallFrame* asInlineCallFrame() const;
         int32_t unboxedInt32() const;
+        int64_t unboxedInt52() const;
+        int64_t unboxedStrictInt52() const;
         bool unboxedBoolean() const;
         double unboxedDouble() const;
         JSCell* unboxedCell() const;
@@ -95,9 +94,9 @@ namespace JSC {
             CallFrame* callFrame;
             CodeBlock* codeBlock;
             Instruction* vPC;
-            InlineCallFrame* inlineCallFrame;
             EncodedValueDescriptor encodedValue;
             double number;
+            int64_t integer;
         } u;
     };
 
@@ -149,12 +148,6 @@ namespace JSC {
         return *this;
     }
 
-    ALWAYS_INLINE Register& Register::operator=(InlineCallFrame* inlineCallFrame)
-    {
-        u.inlineCallFrame = inlineCallFrame;
-        return *this;
-    }
-
     ALWAYS_INLINE int32_t Register::i() const
     {
         return jsValue().asInt32();
@@ -175,14 +168,19 @@ namespace JSC {
         return u.vPC;
     }
 
-    ALWAYS_INLINE InlineCallFrame* Register::asInlineCallFrame() const
-    {
-        return u.inlineCallFrame;
-    }
-        
     ALWAYS_INLINE int32_t Register::unboxedInt32() const
     {
         return payload();
+    }
+
+    ALWAYS_INLINE int64_t Register::unboxedInt52() const
+    {
+        return u.integer >> JSValue::int52ShiftAmount;
+    }
+
+    ALWAYS_INLINE int64_t Register::unboxedStrictInt52() const
+    {
+        return u.integer;
     }
 
     ALWAYS_INLINE bool Register::unboxedBoolean() const

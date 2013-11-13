@@ -36,7 +36,7 @@
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/HTTPHeaderMap.h>
 #include <WebCore/IntRect.h>
-#include <WebCore/KURL.h>
+#include <WebCore/URL.h>
 #include <WebCore/SharedBuffer.h>
 #include <runtime/JSObject.h>
 #include <utility>
@@ -319,11 +319,6 @@ void NetscapePlugin::handlePluginThreadAsyncCall(void (*function)(void*), void* 
     function(userData);
 }
 
-PassOwnPtr<NetscapePlugin::Timer> NetscapePlugin::Timer::create(NetscapePlugin* netscapePlugin, unsigned timerID, unsigned interval, bool repeat, TimerFunc timerFunc)
-{
-    return adoptPtr(new Timer(netscapePlugin, timerID, interval, repeat, timerFunc));
-}
-
 NetscapePlugin::Timer::Timer(NetscapePlugin* netscapePlugin, unsigned timerID, unsigned interval, bool repeat, TimerFunc timerFunc)
     : m_netscapePlugin(netscapePlugin)
     , m_timerID(timerID)
@@ -369,18 +364,18 @@ uint32_t NetscapePlugin::scheduleTimer(unsigned interval, bool repeat, void (*ti
     // FIXME: Handle wrapping around.
     unsigned timerID = ++m_nextTimerID;
 
-    OwnPtr<Timer> timer = Timer::create(this, timerID, interval, repeat, timerFunc);
+    auto timer = std::make_unique<Timer>(this, timerID, interval, repeat, timerFunc);
     
     // FIXME: Based on the plug-in visibility, figure out if we should throttle the timer, or if we should start it at all.
     timer->start();
-    m_timers.set(timerID, timer.release());
+    m_timers.set(timerID, std::move(timer));
 
     return timerID;
 }
 
 void NetscapePlugin::unscheduleTimer(unsigned timerID)
 {
-    if (OwnPtr<Timer> timer = m_timers.take(timerID))
+    if (auto timer = m_timers.take(timerID))
         timer->stop();
 }
 
@@ -702,7 +697,7 @@ PassRefPtr<ShareableBitmap> NetscapePlugin::snapshot()
     backingStoreSize.scale(contentsScaleFactor());
 
     RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(backingStoreSize, ShareableBitmap::SupportsAlpha);
-    OwnPtr<GraphicsContext> context = bitmap->createGraphicsContext();
+    auto context = bitmap->createGraphicsContext();
 
     // FIXME: We should really call applyDeviceScaleFactor instead of scale, but that ends up calling into WKSI
     // which we currently don't have initiated in the plug-in process.
@@ -790,7 +785,7 @@ void NetscapePlugin::didEvaluateJavaScript(uint64_t requestID, const String& res
         pluginStream->sendJavaScriptStream(result);
 }
 
-void NetscapePlugin::streamDidReceiveResponse(uint64_t streamID, const KURL& responseURL, uint32_t streamLength, 
+void NetscapePlugin::streamDidReceiveResponse(uint64_t streamID, const URL& responseURL, uint32_t streamLength, 
                                               uint32_t lastModifiedTime, const String& mimeType, const String& headers, const String& /* suggestedFileName */)
 {
     ASSERT(m_isStarted);
@@ -823,7 +818,7 @@ void NetscapePlugin::streamDidFail(uint64_t streamID, bool wasCancelled)
         pluginStream->didFail(wasCancelled);
 }
 
-void NetscapePlugin::manualStreamDidReceiveResponse(const KURL& responseURL, uint32_t streamLength, uint32_t lastModifiedTime, 
+void NetscapePlugin::manualStreamDidReceiveResponse(const URL& responseURL, uint32_t streamLength, uint32_t lastModifiedTime, 
                                                     const String& mimeType, const String& headers, const String& /* suggestedFileName */)
 {
     ASSERT(m_isStarted);

@@ -24,6 +24,7 @@
 #include "PropertyOffset.h"
 #include "Structure.h"
 #include "WriteBarrier.h"
+#include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/HashTable.h>
 #include <wtf/MathExtras.h>
 #include <wtf/PassOwnPtr.h>

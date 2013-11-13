@@ -29,6 +29,7 @@
 
 #import "MediaPlayerPrivateAVFoundationObjC.h"
 
+#import "AudioTrackPrivateAVFObjC.h"
 #import "BlockExceptions.h"
 #import "ExceptionCodePlaceholder.h"
 #import "FloatConversion.h"
@@ -37,7 +38,7 @@
 #import "GraphicsContext.h"
 #import "InbandTextTrackPrivateAVFObjC.h"
 #import "InbandTextTrackPrivateLegacyAVFObjC.h"
-#import "KURL.h"
+#import "URL.h"
 #import "Logging.h"
 #import "SecurityOrigin.h"
 #import "SoftLinking.h"
@@ -429,7 +430,7 @@ void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
         [options.get() setObject:headerFields.get() forKey:@"AVURLAssetHTTPHeaderFieldsKey"];
 #endif
 
-    NSURL *cocoaURL = KURL(ParsedURLString, url);
+    NSURL *cocoaURL = URL(ParsedURLString, url);
     m_avAsset = adoptNS([[AVURLAsset alloc] initWithURL:cocoaURL options:options.get()]);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
@@ -882,7 +883,7 @@ void MediaPlayerPrivateAVFoundationObjC::getSupportedTypes(HashSet<String>& supp
     supportedTypes = mimeTypeCache();
 } 
 
-MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsType(const String& type, const String& codecs, const KURL&)
+MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsType(const String& type, const String& codecs, const URL&)
 {
     if (!mimeTypeCache().contains(type))
         return MediaPlayer::IsNotSupported;
@@ -905,7 +906,7 @@ static bool keySystemIsSupported(const String& keySystem)
     return false;
 }
 
-MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::extendedSupportsType(const String& type, const String& codecs, const String& keySystem, const KURL& url)
+MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::extendedSupportsType(const String& type, const String& codecs, const String& keySystem, const URL& url)
 {
     // From: <http://dvcs.w3.org/hg/html-media/raw-file/eme-v0.1b/encrypted-media/encrypted-media.html#dom-canplaytype>
     // In addition to the steps in the current specification, this method must run the following steps:
@@ -1048,6 +1049,47 @@ void MediaPlayerPrivateAVFoundationObjC::tracksChanged()
         }
         setHasVideo(hasVideo);
         setHasAudio(hasAudio);
+
+
+#if ENABLE(VIDEO_TRACK)
+        RetainPtr<NSSet> audioTracks = adoptNS([[NSSet alloc] initWithArray:[tracks objectsAtIndexes:[tracks indexesOfObjectsPassingTest:^(id track, NSUInteger, BOOL*){
+            return [[[track assetTrack] mediaType] isEqualToString:AVMediaTypeAudio];
+        }]]]);
+        RetainPtr<NSMutableSet> oldAudioTracks = adoptNS([[NSMutableSet alloc] initWithCapacity:m_audioTracks.size()]);
+
+        typedef Vector<RefPtr<AudioTrackPrivateAVFObjC> > AudioTrackVector;
+        for (AudioTrackVector::iterator i = m_audioTracks.begin(); i != m_audioTracks.end(); ++i)
+            [oldAudioTracks.get() addObject:(*i)->playerItemTrack()];
+
+        RetainPtr<NSMutableSet> removedAVAudioTracks = adoptNS([oldAudioTracks.get() mutableCopy]);
+        [removedAVAudioTracks.get() minusSet:audioTracks.get()];
+
+        RetainPtr<NSMutableSet> addedAVAudioTracks = adoptNS([audioTracks.get() mutableCopy]);
+        [addedAVAudioTracks.get() minusSet:oldAudioTracks.get()];
+
+        AudioTrackVector replacementAudioTracks;
+        AudioTrackVector addedAudioTracks;
+        AudioTrackVector removedAudioTracks;
+        for (AudioTrackVector::iterator i = m_audioTracks.begin(); i != m_audioTracks.end(); ++i) {
+            if ([removedAVAudioTracks containsObject:(*i)->playerItemTrack()])
+                removedAudioTracks.append(*i);
+            else
+                replacementAudioTracks.append(*i);
+        }
+
+        for (AVPlayerItemTrack* playerItemTrack in addedAVAudioTracks.get())
+            addedAudioTracks.append(AudioTrackPrivateAVFObjC::create(playerItemTrack));
+
+        replacementAudioTracks.appendVector(addedAudioTracks);
+
+        m_audioTracks.swap(replacementAudioTracks);
+
+        for (AudioTrackVector::iterator i = removedAudioTracks.begin(); i != removedAudioTracks.end(); ++i)
+            player()->removeAudioTrack(*i);
+
+        for (AudioTrackVector::iterator i = addedAudioTracks.begin(); i != addedAudioTracks.end(); ++i)
+            player()->addAudioTrack(*i);
+#endif
     }
 
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
@@ -1117,7 +1159,7 @@ bool MediaPlayerPrivateAVFoundationObjC::hasSingleSecurityOrigin() const
     if (!m_avAsset)
         return false;
     
-    RefPtr<SecurityOrigin> resolvedOrigin = SecurityOrigin::create(KURL(wkAVAssetResolvedURL(m_avAsset.get())));
+    RefPtr<SecurityOrigin> resolvedOrigin = SecurityOrigin::create(URL(wkAVAssetResolvedURL(m_avAsset.get())));
     RefPtr<SecurityOrigin> requestedOrigin = SecurityOrigin::createFromString(assetURL());
     return resolvedOrigin->isSameSchemeHostPort(requestedOrigin.get());
 }
@@ -1309,7 +1351,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateAVFoundationObjC::generateKeyRe
 
     RefPtr<ArrayBuffer> keyRequestBuffer = ArrayBuffer::create([keyRequest.get() bytes], [keyRequest.get() length]);
     RefPtr<Uint8Array> keyRequestArray = Uint8Array::create(keyRequestBuffer, 0, keyRequestBuffer->byteLength());
-    player()->keyMessage(keySystem, sessionID, keyRequestArray->data(), keyRequestArray->byteLength(), KURL());
+    player()->keyMessage(keySystem, sessionID, keyRequestArray->data(), keyRequestArray->byteLength(), URL());
 
     // Move ownership of the AVAssetResourceLoadingRequestfrom the keyIDToRequestMap to the sessionIDToRequestMap:
     m_sessionIDToRequestMap.set(sessionID, avRequest);
@@ -1525,23 +1567,15 @@ String MediaPlayerPrivateAVFoundationObjC::languageOfPrimaryAudioTrack() const
     }
 
     AVAssetTrack *track = [tracks objectAtIndex:0];
-    NSString *language = [track extendedLanguageTag];
+    m_languageOfPrimaryAudioTrack = AudioTrackPrivateAVFObjC::languageForAVAssetTrack(track);
 
-    // If the language code is stored as a QuickTime 5-bit packed code there aren't enough bits for a full
-    // RFC 4646 language tag so extendedLanguageTag returns NULL. In this case languageCode will return the
-    // ISO 639-2/T language code so check it.
-    if (!language)
-        language = [track languageCode];
-
-    // Some legacy tracks have "und" as a language, treat that the same as no language at all.
-    if (language && ![language isEqualToString:@"und"]) {
-        m_languageOfPrimaryAudioTrack = language;
+#if !LOG_DISABLED
+    if (m_languageOfPrimaryAudioTrack == emptyString())
+        LOG(Media, "MediaPlayerPrivateAVFoundationObjC::languageOfPrimaryAudioTrack(%p) - single audio track has no language, returning emptyString()", this);
+    else
         LOG(Media, "MediaPlayerPrivateAVFoundationObjC::languageOfPrimaryAudioTrack(%p) - returning language of single audio track: %s", this, m_languageOfPrimaryAudioTrack.utf8().data());
-        return m_languageOfPrimaryAudioTrack;
-    }
+#endif
 
-    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::languageOfPrimaryAudioTrack(%p) - single audio track has no language, returning emptyString()", this);
-    m_languageOfPrimaryAudioTrack = emptyString();
     return m_languageOfPrimaryAudioTrack;
 }
 

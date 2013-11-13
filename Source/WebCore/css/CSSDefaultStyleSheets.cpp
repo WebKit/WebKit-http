@@ -148,8 +148,9 @@ void CSSDefaultStyleSheets::loadSimpleDefaultStyle()
 RuleSet* CSSDefaultStyleSheets::viewSourceStyle()
 {
     if (!defaultViewSourceStyle) {
+        static StyleSheetContents* viewSourceStyleSheet = parseUASheet(sourceUserAgentStyleSheet, sizeof(sourceUserAgentStyleSheet));
         defaultViewSourceStyle = RuleSet::create().leakPtr();
-        defaultViewSourceStyle->addRulesFromSheet(parseUASheet(sourceUserAgentStyleSheet, sizeof(sourceUserAgentStyleSheet)), screenEval());
+        defaultViewSourceStyle->addRulesFromSheet(viewSourceStyleSheet, screenEval());
     }
     return defaultViewSourceStyle;
 }
@@ -184,7 +185,9 @@ void CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement(Element* element,
 
 #if ENABLE(VIDEO)
     if (!mediaControlsStyleSheet && (element->hasTagName(videoTag) || isHTMLAudioElement(element))) {
-        String mediaRules = String(mediaControlsUserAgentStyleSheet, sizeof(mediaControlsUserAgentStyleSheet)) + RenderTheme::themeForPage(element->document().page())->extraMediaControlsStyleSheet();
+        String mediaRules = RenderTheme::themeForPage(element->document().page())->mediaControlsStyleSheet();
+        if (mediaRules.isEmpty())
+            mediaRules = String(mediaControlsUserAgentStyleSheet, sizeof(mediaControlsUserAgentStyleSheet)) + RenderTheme::themeForPage(element->document().page())->extraMediaControlsStyleSheet();
         mediaControlsStyleSheet = parseUASheet(mediaRules);
         defaultStyle->addRulesFromSheet(mediaControlsStyleSheet, screenEval());
         defaultPrintStyle->addRulesFromSheet(mediaControlsStyleSheet, printEval());

@@ -74,8 +74,6 @@ case "$with_gtk" in
         WEBKITGTK_API_MINOR_VERSION=0
         WEBKITGTK_API_VERSION=1.0
         WEBKITGTK_PC_NAME=webkit
-        GAIL_PC_NAME=gail
-        GAIL_REQUIRED_VERSION=gail2_required_version
         ;;
     3.0) GTK_REQUIRED_VERSION=gtk3_required_version
         GTK_API_VERSION=3.0
@@ -83,8 +81,6 @@ case "$with_gtk" in
         WEBKITGTK_API_MINOR_VERSION=0
         WEBKITGTK_API_VERSION=3.0
         WEBKITGTK_PC_NAME=webkitgtk
-        GAIL_PC_NAME=gail-3.0
-        GAIL_REQUIRED_VERSION=gail3_required_version
         ;;
 esac
 AC_SUBST([WEBKITGTK_API_MAJOR_VERSION])
@@ -154,25 +150,26 @@ if test "$enable_spellcheck" = "yes"; then
     AC_SUBST(ENCHANT_LIBS)
 fi
 
-PKG_CHECK_MODULES(GAIL, $GAIL_PC_NAME >= $GAIL_REQUIRED_VERSION)
-AC_SUBST(GAIL_CFLAGS)
-AC_SUBST(GAIL_LIBS)
+PKG_CHECK_MODULES(CAIRO, cairo >= cairo_required_version)
+PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED_VERSION)
+GTK_ACTUAL_VERSION=`pkg-config --modversion gtk+-$GTK_API_VERSION`
 
-# Check for target-specific dependencies.
-if test "$with_target" = "directfb"; then
-    PKG_CHECK_MODULES(CAIRO, cairo-directfb >= cairo_required_version)
-    PKG_CHECK_MODULES(GTK, gtk+-directfb-2.0 >= $GTK_REQUIRED_VERSION)
-else
-    PKG_CHECK_MODULES(CAIRO, cairo >= cairo_required_version)
-    PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED_VERSION)
-    GTK_ACTUAL_VERSION=`pkg-config --modversion gtk+-$GTK_API_VERSION`
+if test "$enable_directfb_target" = "yes"; then
+    PKG_CHECK_MODULES(CAIRO_DIRECTFB, cairo-directfb >= cairo_required_version)
+    CAIRO_CFLAGS="$CAIRO_CFLAGS $CAIRO_DIRECTFB_CFLAGS"
+    CAIRO_LIBS="$CAIRO_LIBS $CAIRO_DIRECTFB_LIBS"
+
+    PKG_CHECK_MODULES(GTK_DIRECTFB, gtk+-directfb-2.0 >= $GTK_REQUIRED_VERSION)
+    GTK_CFLAGS="$GTK_CFLAGS $GTK_DIRECTFB_CFLAGS"
+    GTK_LIBS="$GTK_LIBS $GTK_DIRECTFB_LIBS"
 fi
+
 AC_SUBST(GTK_CFLAGS)
 AC_SUBST(GTK_LIBS)
 AC_SUBST(CAIRO_CFLAGS)
 AC_SUBST(CAIRO_LIBS)
 
-if test "$with_x11_target" = "yes"; then
+if test "$enable_x11_target" = "yes"; then
     # The GTK+ X11 target dependency should match the version of the master GTK+ dependency.
     PKG_CHECK_MODULES(GTK_X11, gtk+-x11-$GTK_API_VERSION = $GTK_ACTUAL_VERSION)
 
@@ -194,7 +191,7 @@ if test "$with_x11_target" = "yes"; then
 
     # Check for XRender under Linux/Unix. Some linkers require explicit linkage (like GNU Gold),
     # so we cannot rely on GTK+ pulling XRender.
-    if test "$with_x11_target" = "yes"; then
+    if test "$enable_x11_target" = "yes"; then
         PKG_CHECK_MODULES([XRENDER], [xrender])
         AC_SUBST([XRENDER_CFLAGS])
         AC_SUBST([XRENDER_LIBS])
@@ -204,9 +201,19 @@ elif test "enable_glx" != "no"; then
     enable_glx=no
 fi
 
-if test "$with_wayland_target" = "yes"; then
-    # The GTK+ Wayland target dependency should match the version of the master GTK+ dependency.
-    PKG_CHECK_MODULES(GTK_WAYLAND, gtk+-wayland-$GTK_API_VERSION = $GTK_ACTUAL_VERSION)
+if test "$enable_wayland_target" != "no"; then
+     # The GTK+ Wayland target dependency should match the version of the master GTK+ dependency.
+    PKG_CHECK_MODULES([GTK_WAYLAND], [
+        gtk+-wayland-$GTK_API_VERSION = $GTK_ACTUAL_VERSION
+        gtk+-wayland-$GTK_API_VERSION >= gtk3_wayland_required_version
+    ], [enable_wayland_target=yes], [
+        if test "$enable_wayland_target" = "yes"; then
+            AC_MSG_ERROR([GTK+ Wayland dependency (gtk+-wayland-$GTK_API_VERSION >= gtk3_wayland_required_version) not found.])
+        else
+            AC_MSG_WARN([GTK+ Wayland dependency (gtk+-wayland-$GTK_API_VERSION >= gtk3_wayland_required_version) not found, disabling the Wayland target.])
+            enable_wayland_target=no
+        fi
+    ])
 fi
 
 AC_CHECK_HEADERS([GL/glx.h], [have_glx="yes"], [have_glx="no"])
@@ -275,7 +282,7 @@ else
     AC_CHECK_HEADERS([GL/gl.h], [found_opengl="yes"], [])
 fi
 
-if test "$with_x11_target" = "yes" && test "$found_opengl" = "yes"; then
+if test "$enable_x11_target" = "yes" && test "$found_opengl" = "yes"; then
     PKG_CHECK_MODULES([XCOMPOSITE], [xcomposite])
     PKG_CHECK_MODULES([XDAMAGE], [xdamage])
     AC_SUBST(XCOMPOSITE_CFLAGS)
@@ -295,7 +302,7 @@ if test "$enable_webgl" != "no"; then
     fi
 fi
 
-if test "$with_x11_target" != "yes" && test "$with_wayland_target" = "yes" && test "enable_accelerated_compositing" != "no"; then
+if test "$enable_x11_target" != "yes" && test "$enable_wayland_target" = "yes" && test "enable_accelerated_compositing" != "no"; then
     AC_MSG_WARN([Accelerated compositing for Wayland is not yet implemented, disabling due to the Wayland-only target.])
     enable_accelerated_compositing=no
 fi
@@ -372,7 +379,7 @@ if test "$enable_credential_storage" = "yes"; then
 fi
 
 # Check if FreeType/FontConfig are available.
-if test "$with_target" = "directfb"; then
+if test "$enable_directfb_target" = "yes"; then
     PKG_CHECK_MODULES([FREETYPE],
         [fontconfig >= fontconfig_required_version freetype2 >= freetype2_required_version harfbuzz >= harfbuzz_required_version])
 else
@@ -497,7 +504,7 @@ if test "$enable_webkit2" = "yes"; then
     fi
 
     # Make sure we have GTK+ 2.x to build the plugin process.
-    PKG_CHECK_MODULES(GTK2, gtk+-2.0 >= gtk2_required_version gail >= gail2_required_version)
+    PKG_CHECK_MODULES(GTK2, gtk+-2.0 >= gtk2_required_version)
     AC_SUBST(GTK2_CFLAGS)
     AC_SUBST(GTK2_LIBS)
 

@@ -36,8 +36,7 @@ class ImportanceAssertion;
 
 class MessageDecoder : public ArgumentDecoder {
 public:
-    static PassOwnPtr<MessageDecoder> create(const DataReference& buffer);
-    static PassOwnPtr<MessageDecoder> create(const DataReference& buffer, Vector<Attachment>&);
+    MessageDecoder(const DataReference& buffer, Vector<Attachment>);
     virtual ~MessageDecoder();
 
     StringReference messageReceiverName() const { return m_messageReceiverName; }
@@ -47,18 +46,16 @@ public:
     bool shouldDispatchMessageWhenWaitingForSyncReply() const;
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-    void setImportanceAssertion(PassOwnPtr<ImportanceAssertion>);
+    void setImportanceAssertion(std::unique_ptr<ImportanceAssertion>);
 #endif
 
 private:
-    MessageDecoder(const DataReference& buffer, Vector<Attachment>&);
-
     uint8_t m_messageFlags;
     StringReference m_messageReceiverName;
     StringReference m_messageName;
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-    OwnPtr<ImportanceAssertion> m_importanceAssertion;
+    std::unique_ptr<ImportanceAssertion> m_importanceAssertion;
 #endif
 };
 

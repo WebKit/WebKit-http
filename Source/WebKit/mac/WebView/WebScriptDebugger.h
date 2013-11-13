@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,30 +48,25 @@ namespace JSC {
 
 @class WebScriptCallFrame;
 
-class WebScriptDebugger : public JSC::Debugger {
+class WebScriptDebugger FINAL : public JSC::Debugger {
 public:
     WebScriptDebugger(JSC::JSGlobalObject*);
 
-    void initGlobalCallFrame(const JSC::DebuggerCallFrame&);
-
-    virtual void sourceParsed(JSC::ExecState*, JSC::SourceProvider*, int errorLine, const WTF::String& errorMsg);
-    virtual void callEvent(const JSC::DebuggerCallFrame&, intptr_t sourceID, int lineNumber, int columnNumber);
-    virtual void atStatement(const JSC::DebuggerCallFrame&, intptr_t sourceID, int lineNumber, int columnNumber);
-    virtual void returnEvent(const JSC::DebuggerCallFrame&, intptr_t sourceID, int lineNumber, int columnNumber);
-    virtual void exception(const JSC::DebuggerCallFrame&, intptr_t sourceID, int lineNumber, int columnNumber, bool hasHandler);
-    virtual void willExecuteProgram(const JSC::DebuggerCallFrame&, intptr_t sourceID, int lineno, int columnno);
-    virtual void didExecuteProgram(const JSC::DebuggerCallFrame&, intptr_t sourceID, int lineno, int columnno);
-    virtual void didReachBreakpoint(const JSC::DebuggerCallFrame&, intptr_t sourceID, int lineno, int columnno);
-
     JSC::JSGlobalObject* globalObject() const { return m_globalObject.get(); }
-    WebScriptCallFrame *globalCallFrame() const { return m_globalCallFrame.get(); }
 
 private:
+    virtual void sourceParsed(JSC::ExecState*, JSC::SourceProvider*, int errorLine, const WTF::String& errorMsg) OVERRIDE;
+    virtual void callEvent(JSC::CallFrame*) OVERRIDE { }
+    virtual void atStatement(JSC::CallFrame*) OVERRIDE { }
+    virtual void returnEvent(JSC::CallFrame*) OVERRIDE { }
+    virtual void exception(JSC::CallFrame*, JSC::JSValue exceptionValue, bool hasHandler) OVERRIDE;
+    virtual void willExecuteProgram(JSC::CallFrame*) OVERRIDE { }
+    virtual void didExecuteProgram(JSC::CallFrame*) OVERRIDE { }
+    virtual void didReachBreakpoint(JSC::CallFrame*) OVERRIDE { }
+
     bool m_callingDelegate;
-    RetainPtr<WebScriptCallFrame> m_topCallFrame;
 
     JSC::Strong<JSC::JSGlobalObject> m_globalObject;
-    RetainPtr<WebScriptCallFrame> m_globalCallFrame;
 };
 
 #endif // WebScriptDebugger_h

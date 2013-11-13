@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<script src="../../../fast/js/resources/js-test-pre.js"></script>
+<script src="../../../resources/js-test-pre.js"></script>
 </head>
 <body id="body">
 
@@ -15,11 +15,11 @@
 
     if (window.accessibilityController) {
           var range = accessibilityController.accessibleElementById("range");
-          shouldBe("range.valueDescription", "'hello'");
+          shouldBe("range.valueDescription", "'AXValueDescription: hello'");
     }
 
 </script>
 
-<script src="../../../fast/js/resources/js-test-post.js"></script>
+<script src="../../../resources/js-test-post.js"></script>
 </body>
 </html>

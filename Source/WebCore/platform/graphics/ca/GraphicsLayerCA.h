@@ -140,7 +140,7 @@ public:
             , treeDepth(0)
         { }
     };
-    void recursiveCommitChanges(const CommitState&, const TransformState&, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
+    void recursiveCommitChanges(const CommitState&, const TransformState&, const TransformationMatrix& rootRelativeTransformForScaling, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
 
     virtual void flushCompositingState(const FloatRect&);
     virtual void flushCompositingStateForThisLayerOnly();
@@ -172,8 +172,9 @@ private:
     virtual bool platformCALayerContentsOpaque() const { return contentsOpaque(); }
     virtual bool platformCALayerDrawsContent() const { return drawsContent(); }
     virtual void platformCALayerLayerDidDisplay(PlatformLayer* layer) { return layerDidDisplay(layer); }
-    virtual void platformCALayerDidCreateTiles(const Vector<FloatRect>& dirtyRects) OVERRIDE;
+    virtual void platformCALayerSetNeedsToRevalidateTiles() OVERRIDE;
     virtual float platformCALayerDeviceScaleFactor() OVERRIDE;
+    virtual bool isCommittingChanges() const OVERRIDE { return m_isCommittingChanges; }
 
     virtual double backingStoreMemoryEstimate() const;
 
@@ -193,7 +194,7 @@ private:
     typedef String CloneID; // Identifier for a given clone, based on original/replica branching down the tree.
     static bool isReplicatedRootClone(const CloneID& cloneID) { return cloneID[0U] & 1; }
 
-    typedef HashMap<CloneID, RefPtr<PlatformCALayer> > LayerMap;
+    typedef HashMap<CloneID, RefPtr<PlatformCALayer>> LayerMap;
     LayerMap* primaryLayerClones() const { return m_structuralLayer.get() ? m_structuralLayerClones.get() : m_layerClones.get(); }
     LayerMap* animatedLayerClones(AnimatedPropertyID) const;
 
@@ -213,8 +214,8 @@ private:
     bool setAnimationEndpoints(const KeyframeValueList&, const Animation*, PlatformCAAnimation*);
     bool setAnimationKeyframes(const KeyframeValueList&, const Animation*, PlatformCAAnimation*);
 
-    bool setTransformAnimationEndpoints(const KeyframeValueList&, const Animation*, PlatformCAAnimation*, int functionIndex, TransformOperation::OperationType, bool isMatrixAnimation, const IntSize& boxSize);
-    bool setTransformAnimationKeyframes(const KeyframeValueList&, const Animation*, PlatformCAAnimation*, int functionIndex, TransformOperation::OperationType, bool isMatrixAnimation, const IntSize& boxSize);
+    bool setTransformAnimationEndpoints(const KeyframeValueList&, const Animation*, PlatformCAAnimation*, int functionIndex, TransformOperation::OperationType, bool isMatrixAnimation, const IntSize& boxSize, Vector<TransformationMatrix>& matrixes);
+    bool setTransformAnimationKeyframes(const KeyframeValueList&, const Animation*, PlatformCAAnimation*, int functionIndex, TransformOperation::OperationType, bool isMatrixAnimation, const IntSize& boxSize, Vector<TransformationMatrix>& matrixes);
     
 #if ENABLE(CSS_FILTERS)
     bool setFilterAnimationEndpoints(const KeyframeValueList&, const Animation*, PlatformCAAnimation*, int functionIndex, int internalFilterPropertyIndex);
@@ -228,7 +229,7 @@ private:
         return m_runningAnimations.find(animationName) != m_runningAnimations.end();
     }
 
-    void commitLayerChangesBeforeSublayers(CommitState&, float pageScaleFactor, const FloatPoint& positionRelativeToBase, const FloatRect& oldVisibleRect);
+    void commitLayerChangesBeforeSublayers(CommitState&, float pageScaleFactor, const FloatPoint& positionRelativeToBase, const FloatRect& oldVisibleRect, TransformationMatrix* transformFromRoot = 0);
     void commitLayerChangesAfterSublayers(CommitState&);
 
     FloatPoint computePositionRelativeToBase(float& pageScale) const;
@@ -248,6 +249,10 @@ private:
 
     void computePixelAlignment(float pixelAlignmentScale, const FloatPoint& positionRelativeToBase,
         FloatPoint& position, FloatSize&, FloatPoint3D& anchorPoint, FloatSize& alignmentOffset) const;
+
+    TransformationMatrix layerTransform(const FloatPoint& position, const TransformationMatrix* customTransform = 0) const;
+    void updateRootRelativeScale(TransformationMatrix* transformFromRoot);
+
     enum ComputeVisibleRectFlag { RespectAnimatingTransforms = 1 << 0 };
     typedef unsigned ComputeVisibleRectFlags;
     FloatRect computeVisibleRect(TransformState&, ComputeVisibleRectFlags = RespectAnimatingTransforms) const;
@@ -351,6 +356,7 @@ private:
     void updateAcceleratesDrawing();
     void updateDebugBorder();
     void updateVisibleRect(const FloatRect& oldVisibleRect);
+    void updateTiles();
     void updateContentsScale(float pageScaleFactor);
     
     enum StructuralLayerPurpose {
@@ -373,6 +379,9 @@ private:
 #if ENABLE(CSS_FILTERS)
     bool appendToUncommittedAnimations(const KeyframeValueList&, const FilterOperation*, const Animation*, const String& animationName, int animationIndex, double timeOffset);
 #endif
+
+    // Returns true if any transform animations are running.
+    bool getTransformFromAnimationsWithMaxScaleImpact(const TransformationMatrix& parentTransformFromRoot, TransformationMatrix&, float& maxScale) const;
     
     enum LayerChange {
         NoChange = 0,
@@ -403,12 +412,14 @@ private:
         ContentsVisibilityChanged = 1 << 25,
         VisibleRectChanged = 1 << 26,
         FiltersChanged = 1 << 27,
-        TilesAdded = 1 < 28,
-        DebugIndicatorsChanged = 1 << 29
+        TilingAreaChanged = 1 << 28,
+        TilesAdded = 1 < 29,
+        DebugIndicatorsChanged = 1 << 30
     };
     typedef unsigned LayerChangeFlags;
-    void noteLayerPropertyChanged(LayerChangeFlags flags);
-    void noteSublayersChanged();
+    enum ScheduleFlushOrNot { ScheduleFlush, DontScheduleFlush };
+    void noteLayerPropertyChanged(LayerChangeFlags, ScheduleFlushOrNot = ScheduleFlush);
+    void noteSublayersChanged(ScheduleFlushOrNot = ScheduleFlush);
     void noteChangesForScaleSensitiveProperties();
 
     void repaintLayerDirtyRects();
@@ -442,6 +453,8 @@ private:
     bool m_allowTiledLayer : 1;
     bool m_isPageTiledBackingLayer : 1;
     
+    float m_rootRelativeScaleFactor;
+    
     Color m_contentsSolidColor;
 
     RetainPtr<CGImageRef> m_uncorrectedContentsImage;
@@ -451,12 +464,12 @@ private:
     // a single transition or keyframe animation, so index is used to distinguish these.
     struct LayerPropertyAnimation {
         LayerPropertyAnimation(PassRefPtr<PlatformCAAnimation> caAnimation, const String& animationName, AnimatedPropertyID property, int index, int subIndex, double timeOffset)
-        : m_animation(caAnimation)
-        , m_name(animationName)
-        , m_property(property)
-        , m_index(index)
-        , m_subIndex(subIndex)
-        , m_timeOffset(timeOffset)
+            : m_animation(caAnimation)
+            , m_name(animationName)
+            , m_property(property)
+            , m_index(index)
+            , m_subIndex(subIndex)
+            , m_timeOffset(timeOffset)
         { }
 
         RefPtr<PlatformCAAnimation> m_animation;
@@ -487,10 +500,16 @@ private:
     typedef HashMap<String, Vector<LayerPropertyAnimation> > AnimationsMap;
     AnimationsMap m_runningAnimations;
 
+    // Map from animation key to TransformationMatrices for animations of transform. The vector contains a matrix for
+    // the two endpoints, or each keyframe. Used for contentsScale adjustment.
+    typedef HashMap<String, Vector<TransformationMatrix> > TransformsMap;
+    TransformsMap m_animationTransforms;
+
     Vector<FloatRect> m_dirtyRects;
     FloatSize m_pixelAlignmentOffset;
     
     LayerChangeFlags m_uncommittedChanges;
+    bool m_isCommittingChanges;
 };
 
 } // namespace WebCore

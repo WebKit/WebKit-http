@@ -32,6 +32,7 @@
 #include "Color.h"
 #include "ContainerNode.h"
 #include "DocumentEventQueue.h"
+#include "DocumentStyleSheetCollection.h"
 #include "DocumentTiming.h"
 #include "FocusDirection.h"
 #include "HitTestRequest.h"
@@ -69,7 +70,6 @@ class CachedScript;
 class CanvasRenderingContext;
 class CharacterData;
 class Comment;
-class ContextFeatures;
 class CustomElementConstructor;
 class CustomElementRegistry;
 class DOMImplementation;
@@ -189,6 +189,18 @@ class FontLoader;
 
 typedef int ExceptionCode;
 
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+struct TextAutoSizingHash;
+class TextAutoSizingKey;
+class TextAutoSizingValue;
+
+struct TextAutoSizingTraits : WTF::GenericHashTraits<TextAutoSizingKey> {
+    static const bool emptyValueIsZero = true;
+    static void constructDeletedValue(TextAutoSizingKey& slot);
+    static bool isDeletedValue(const TextAutoSizingKey& value);
+};
+#endif
+
 enum PageshowEventPersistence {
     PageshowEventNotPersisted = 0,
     PageshowEventPersisted = 1
@@ -224,11 +236,11 @@ typedef unsigned char DocumentClassFlags;
 
 class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext {
 public:
-    static PassRefPtr<Document> create(Frame* frame, const KURL& url)
+    static PassRefPtr<Document> create(Frame* frame, const URL& url)
     {
         return adoptRef(new Document(frame, url));
     }
-    static PassRefPtr<Document> createXHTML(Frame* frame, const KURL& url)
+    static PassRefPtr<Document> createXHTML(Frame* frame, const URL& url)
     {
         return adoptRef(new Document(frame, url, XHTMLDocumentClass));
     }
@@ -402,7 +414,7 @@ public:
     String documentURI() const { return m_documentURI; }
     void setDocumentURI(const String&);
 
-    virtual KURL baseURI() const;
+    virtual URL baseURI() const;
 
 #if ENABLE(PAGE_VISIBILITY_API)
     String visibilityState() const;
@@ -465,7 +477,7 @@ public:
     // This is a DOM function.
     StyleSheetList* styleSheets();
 
-    DocumentStyleSheetCollection* styleSheetCollection() { return m_styleSheetCollection.get(); }
+    DocumentStyleSheetCollection& styleSheetCollection() { return m_styleSheetCollection; }
 
     bool gotoAnchorNeededAfterStylesheetsLoad() { return m_gotoAnchorNeededAfterStylesheetsLoad; }
     void setGotoAnchorNeededAfterStylesheetsLoad(bool b) { m_gotoAnchorNeededAfterStylesheetsLoad = b; }
@@ -528,7 +540,8 @@ public:
     CachedResourceLoader* cachedResourceLoader() { return m_cachedResourceLoader.get(); }
 
     void didBecomeCurrentDocumentInFrame();
-    virtual void detach();
+    void destroyRenderTree();
+    void disconnectFromFrame();
     void prepareForDestruction();
 
     // Override ScriptExecutionContext methods to do additional work
@@ -536,16 +549,10 @@ public:
     virtual void resumeActiveDOMObjects(ActiveDOMObject::ReasonForSuspension) OVERRIDE;
 
     RenderArena* renderArena() { return m_renderArena.get(); }
-
-    // Implemented in RenderView.h to avoid a cyclic header dependency this just
-    // returns renderer so callers can avoid verbose casts.
     RenderView* renderView() const { return m_renderView; }
 
-    // FIXME: Remove this, callers that have a Document* should call renderView().
-    // Shadow the implementations on Node to provide faster access for documents.
-    RenderView* renderer() const { return m_renderView; }
-
     bool renderTreeBeingDestroyed() const { return m_renderTreeBeingDestroyed; }
+    bool hasLivingRenderTree() const { return renderView() && !renderTreeBeingDestroyed(); }
 
     AXObjectCache* existingAXObjectCache() const;
     AXObjectCache* axObjectCache() const;
@@ -577,22 +584,22 @@ public:
 
     bool wellFormed() const { return m_wellFormed; }
 
-    const KURL& url() const { return m_url; }
-    void setURL(const KURL&);
+    virtual const URL& url() const OVERRIDE FINAL { return m_url; }
+    void setURL(const URL&);
 
     // To understand how these concepts relate to one another, please see the
     // comments surrounding their declaration.
-    const KURL& baseURL() const { return m_baseURL; }
-    void setBaseURLOverride(const KURL&);
-    const KURL& baseURLOverride() const { return m_baseURLOverride; }
-    const KURL& baseElementURL() const { return m_baseElementURL; }
+    const URL& baseURL() const { return m_baseURL; }
+    void setBaseURLOverride(const URL&);
+    const URL& baseURLOverride() const { return m_baseURLOverride; }
+    const URL& baseElementURL() const { return m_baseElementURL; }
     const String& baseTarget() const { return m_baseTarget; }
     void processBaseElement();
 
-    KURL completeURL(const String&) const;
-    KURL completeURL(const String&, const KURL& baseURLOverride) const;
+    virtual URL completeURL(const String&) const OVERRIDE FINAL;
+    URL completeURL(const String&, const URL& baseURLOverride) const;
 
-    virtual String userAgent(const KURL&) const;
+    virtual String userAgent(const URL&) const;
 
     virtual void disableEval(const String& errorMessage);
 
@@ -703,9 +710,9 @@ public:
     void attachRange(Range*);
     void detachRange(Range*);
 
-    void updateRangesAfterChildrenChanged(ContainerNode*);
+    void updateRangesAfterChildrenChanged(ContainerNode&);
     // nodeChildrenWillBeRemoved is used when removing all node children at once.
-    void nodeChildrenWillBeRemoved(ContainerNode*);
+    void nodeChildrenWillBeRemoved(ContainerNode&);
     // nodeWillBeRemoved is only safe when removing one node at a time.
     void nodeWillBeRemoved(Node*);
     bool canReplaceChild(Node* newChild, Node* oldChild);
@@ -723,6 +730,7 @@ public:
     DOMWindow* defaultView() const { return domWindow(); } 
 
     // Helper functions for forwarding DOMWindow event related tasks to the DOMWindow if it exists.
+    void setWindowAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
     void setWindowAttributeEventListener(const AtomicString& eventType, PassRefPtr<EventListener>);
     EventListener* getWindowAttributeEventListener(const AtomicString& eventType);
     void dispatchWindowEvent(PassRefPtr<Event>, PassRefPtr<EventTarget> = 0);
@@ -809,8 +817,8 @@ public:
     //    document inherits the security context of another document, it
     //    inherits its cookieURL but not its URL.
     //
-    const KURL& cookieURL() const { return m_cookieURL; }
-    void setCookieURL(const KURL& url) { m_cookieURL = url; }
+    const URL& cookieURL() const { return m_cookieURL; }
+    void setCookieURL(const URL& url) { m_cookieURL = url; }
 
     // The firstPartyForCookies is used to compute whether this document
     // appears in a "third-party" context for the purpose of third-party
@@ -822,8 +830,8 @@ public:
     //       firstPartyForCookies have a different registry-controlled
     //       domain.
     //
-    const KURL& firstPartyForCookies() const { return m_firstPartyForCookies; }
-    void setFirstPartyForCookies(const KURL& url) { m_firstPartyForCookies = url; }
+    const URL& firstPartyForCookies() const { return m_firstPartyForCookies; }
+    void setFirstPartyForCookies(const URL& url) { m_firstPartyForCookies = url; }
     
     // The following implements the rule from HTML 4 for what valid names are.
     // To get this right for all the XML cases, we probably have to improve this or move it
@@ -858,7 +866,7 @@ public:
     bool queryCommandSupported(const String& command);
     String queryCommandValue(const String& command);
 
-    KURL openSearchDescriptionURL();
+    URL openSearchDescriptionURL();
 
     // designMode support
     enum InheritedBool { off = false, on = true, inherit };    
@@ -912,7 +920,9 @@ public:
 
     void updateFocusAppearanceSoon(bool restorePreviousSelection);
     void cancelFocusAppearanceUpdate();
-        
+
+    void resetHiddenFocusElementSoon();
+
     // Extension for manipulating canvas drawing contexts for use in CSS
     CanvasRenderingContext* getCSSCanvasContext(const String& type, const String& name, int width, int height);
     HTMLCanvasElement* getCSSCanvasElement(const String& name);
@@ -997,7 +1007,7 @@ public:
     void initSecurityContext();
     void initContentSecurityPolicy();
 
-    void updateURLForPushOrReplaceState(const KURL&);
+    void updateURLForPushOrReplaceState(const URL&);
     void statePopped(PassRefPtr<SerializedScriptValue>);
 
     bool processingLoadEvent() const { return m_processingLoadEvent; }
@@ -1014,7 +1024,7 @@ public:
     void enqueuePageshowEvent(PageshowEventPersistence);
     void enqueueHashchangeEvent(const String& oldURL, const String& newURL);
     void enqueuePopstateEvent(PassRefPtr<SerializedScriptValue> stateObject);
-    virtual DocumentEventQueue* eventQueue() const { return m_eventQueue.get(); }
+    DocumentEventQueue& eventQueue() const { return m_eventQueue; }
 
     void addMediaCanStartListener(MediaCanStartListener*);
     void removeMediaCanStartListener(MediaCanStartListener*);
@@ -1130,8 +1140,8 @@ public:
 #if ENABLE(CUSTOM_ELEMENTS)
     PassRefPtr<Element> createElement(const AtomicString& localName, const AtomicString& typeExtension, ExceptionCode&);
     PassRefPtr<Element> createElementNS(const AtomicString& namespaceURI, const String& qualifiedName, const AtomicString& typeExtension, ExceptionCode&);
-    PassRefPtr<CustomElementConstructor> registerElement(WebCore::ScriptState*, const AtomicString& name, ExceptionCode&);
-    PassRefPtr<CustomElementConstructor> registerElement(WebCore::ScriptState*, const AtomicString& name, const Dictionary& options, ExceptionCode&);
+    PassRefPtr<CustomElementConstructor> registerElement(JSC::ExecState*, const AtomicString& name, ExceptionCode&);
+    PassRefPtr<CustomElementConstructor> registerElement(JSC::ExecState*, const AtomicString& name, const Dictionary& options, ExceptionCode&);
     CustomElementRegistry* registry() const { return m_registry.get(); }
     void didCreateCustomElement(Element*, CustomElementConstructor*);
 #endif
@@ -1142,9 +1152,6 @@ public:
     bool hasActiveParser();
     void incrementActiveParserCount() { ++m_activeParserCount; }
     void decrementActiveParserCount();
-
-    void setContextFeatures(PassRefPtr<ContextFeatures>);
-    ContextFeatures* contextFeatures() { return m_contextFeatures.get(); }
 
     DocumentSharedObjectPool* sharedObjectPool() { return m_sharedObjectPool.get(); }
 
@@ -1180,7 +1187,7 @@ public:
     void setVisualUpdatesAllowedByClient(bool);
 
 protected:
-    Document(Frame*, const KURL&, unsigned = DefaultDocumentClass);
+    Document(Frame*, const URL&, unsigned = DefaultDocumentClass);
 
     void clearXMLVersion() { m_xmlVersion = String(); }
 
@@ -1188,11 +1195,12 @@ private:
     friend class Node;
     friend class IgnoreDestructiveWriteCountIncrementer;
 
+    RenderObject* renderer() const WTF_DELETED_FUNCTION;
     void setRenderer(RenderObject*) WTF_DELETED_FUNCTION;
     void setRenderView(RenderView*);
 
     virtual void createRenderTree();
-    virtual void dispose() OVERRIDE;
+    virtual void dropChildren() OVERRIDE;
 
     void detachParser();
 
@@ -1211,10 +1219,7 @@ private:
     virtual void refScriptExecutionContext() { ref(); }
     virtual void derefScriptExecutionContext() { deref(); }
 
-    virtual const KURL& virtualURL() const; // Same as url(), but needed for ScriptExecutionContext to implement it without a performance loss for direct calls.
-    virtual KURL virtualCompleteURL(const String&) const; // Same as completeURL() for the same reason as above.
-
-    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, ScriptState* = 0, unsigned long requestIdentifier = 0);
+    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
 
     virtual double minimumTimerInterval() const;
 
@@ -1223,6 +1228,8 @@ private:
     void updateTitle(const StringWithDirection&);
     void updateFocusAppearanceTimerFired(Timer<Document>*);
     void updateBaseURL();
+
+    void resetHiddenFocusElementTimer(Timer<Document>*);
 
     void buildAccessKeyMap(TreeScope* root);
 
@@ -1257,7 +1264,6 @@ private:
     void visualUpdatesSuppressionTimerFired(Timer<Document>*);
 
     void addListenerType(ListenerType listenerType) { m_listenerTypes |= listenerType; }
-    void addMutationEventListenerTypeIfEnabled(ListenerType);
 
     void didAssociateFormControlsTimerFired(Timer<Document>*);
 
@@ -1283,17 +1289,16 @@ private:
     RefPtr<CachedResourceLoader> m_cachedResourceLoader;
     RefPtr<DocumentParser> m_parser;
     unsigned m_activeParserCount;
-    RefPtr<ContextFeatures> m_contextFeatures;
 
     bool m_wellFormed;
 
     // Document URLs.
-    KURL m_url; // Document.URL: The URL from which this document was retrieved.
-    KURL m_baseURL; // Node.baseURI: The URL to use when resolving relative URLs.
-    KURL m_baseURLOverride; // An alternative base URL that takes precedence over m_baseURL (but not m_baseElementURL).
-    KURL m_baseElementURL; // The URL set by the <base> element.
-    KURL m_cookieURL; // The URL to use for cookie access.
-    KURL m_firstPartyForCookies; // The policy URL for third-party cookie blocking.
+    URL m_url; // Document.URL: The URL from which this document was retrieved.
+    URL m_baseURL; // Node.baseURI: The URL to use when resolving relative URLs.
+    URL m_baseURLOverride; // An alternative base URL that takes precedence over m_baseURL (but not m_baseElementURL).
+    URL m_baseElementURL; // The URL set by the <base> element.
+    URL m_cookieURL; // The URL to use for cookie access.
+    URL m_firstPartyForCookies; // The policy URL for third-party cookie blocking.
 
     // Document.documentURI:
     // Although URL-like, Document.documentURI can actually be set to any
@@ -1336,7 +1341,7 @@ private:
 
     MutationObserverOptions m_mutationObserverTypes;
 
-    OwnPtr<DocumentStyleSheetCollection> m_styleSheetCollection;
+    DocumentStyleSheetCollection m_styleSheetCollection;
     RefPtr<StyleSheetList> m_styleSheetList;
 
     OwnPtr<FormController> m_formController;
@@ -1371,12 +1376,13 @@ private:
     bool m_titleSetExplicitly;
     RefPtr<Element> m_titleElement;
 
-    RefPtr<RenderArena> m_renderArena;
+    OwnPtr<RenderArena> m_renderArena;
 
     OwnPtr<AXObjectCache> m_axObjectCache;
     const OwnPtr<DocumentMarkerController> m_markers;
     
     Timer<Document> m_updateFocusAppearanceTimer;
+    Timer<Document> m_resetHiddenFocusElementTimer;
 
     Element* m_cssTarget;
 
@@ -1453,7 +1459,7 @@ private:
     bool m_isSrcdocDocument;
 
     RenderView* m_renderView;
-    RefPtr<DocumentEventQueue> m_eventQueue;
+    mutable DocumentEventQueue m_eventQueue;
 
     WeakPtrFactory<Document> m_weakFactory;
 
@@ -1506,6 +1512,17 @@ private:
 
     Timer<Document> m_pendingTasksTimer;
     Vector<OwnPtr<Task> > m_pendingTasks;
+
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+public:
+    void addAutoSizingNode(Node*, float size);
+    void validateAutoSizingNodes();
+    void resetAutoSizingNodes();
+
+private:
+    typedef HashMap<TextAutoSizingKey, RefPtr<TextAutoSizingValue>, TextAutoSizingHash, TextAutoSizingTraits> TextAutoSizingMap;
+    TextAutoSizingMap m_textAutoSizedNodes;
+#endif
 
 #if ENABLE(TEXT_AUTOSIZING)
     OwnPtr<TextAutosizer> m_textAutosizer;
@@ -1608,21 +1625,25 @@ inline bool Node::isDocumentNode() const
 inline Node::Node(Document* document, ConstructionType type)
     : m_nodeFlags(type)
     , m_parentNode(0)
-    , m_treeScope(document)
+    , m_treeScope(document ? document : TreeScope::noDocumentInstance())
     , m_previous(0)
     , m_next(0)
 {
-    if (!m_treeScope)
-        m_treeScope = TreeScope::noDocumentInstance();
-    m_treeScope->guardRef();
+    m_treeScope->selfOnlyRef();
 
 #if !defined(NDEBUG) || (defined(DUMP_NODE_STATISTICS) && DUMP_NODE_STATISTICS)
     trackForDebugging();
 #endif
+
     InspectorCounters::incrementCounter(InspectorCounters::NodeCounter);
 }
 
-Node* eventTargetNodeForDocument(Document*);
+inline ScriptExecutionContext* Node::scriptExecutionContext() const
+{
+    return &document();
+}
+
+Element* eventTargetElementForDocument(Document*);
 
 } // namespace WebCore
 

@@ -27,11 +27,12 @@
 #include "AnimationController.h"
 #include "Frame.h"
 #include "GraphicsContext.h"
+#include "HTMLFrameOwnerElement.h"
 #include "HitTestResult.h"
+#include "PluginViewBase.h"
 #include "RenderCounter.h"
 #include "RenderLayer.h"
 #include "RenderView.h"
-#include "RenderWidgetProtector.h"
 #include <wtf/StackStats.h>
 #include <wtf/Ref.h>
 
@@ -87,22 +88,15 @@ static void moveWidgetToParentSoon(Widget* child, FrameView* parent)
     WidgetHierarchyUpdatesSuspensionScope::scheduleWidgetToMove(child, parent);
 }
 
-RenderWidget::RenderWidget(Element* element)
-    : RenderReplaced(element)
-    , m_widget(0)
-    , m_frameView(element->document().view())
-    // Reference counting is used to prevent the widget from being
-    // destroyed while inside the Widget code, which might not be
-    // able to handle that.
-    , m_refCount(1)
+RenderWidget::RenderWidget(HTMLFrameOwnerElement& element)
+    : RenderReplaced(&element)
+    , m_weakPtrFactory(this)
 {
-    view().addWidget(this);
+    setInline(false);
 }
 
 void RenderWidget::willBeDestroyed()
 {
-    view().removeWidget(this);
-    
     if (AXObjectCache* cache = document().existingAXObjectCache()) {
         cache->childrenChanged(this->parent());
         cache->remove(this);
@@ -113,21 +107,8 @@ void RenderWidget::willBeDestroyed()
     RenderReplaced::willBeDestroyed();
 }
 
-void RenderWidget::destroy()
-{
-    willBeDestroyed();
-
-    // Grab the arena from node()->document().renderArena() before clearing the node pointer.
-    // Clear the node before deref-ing, as this may be deleted when deref is called.
-    RenderArena* arena = renderArena();
-    clearNode();
-    deref(arena);
-}
-
 RenderWidget::~RenderWidget()
 {
-    ASSERT(m_refCount <= 0);
-    clearWidget();
 }
 
 // Widgets are always placed on integer boundaries, so rounding the size is actually
@@ -140,9 +121,6 @@ static inline IntRect roundedIntRect(const LayoutRect& rect)
 
 bool RenderWidget::setWidgetGeometry(const LayoutRect& frame)
 {
-    if (!node())
-        return false;
-
     IntRect clipRect = roundedIntRect(enclosingLayer()->childrenClipRect());
     IntRect newFrame = roundedIntRect(frame);
     bool clipChanged = m_clipRect != clipRect;
@@ -153,13 +131,24 @@ bool RenderWidget::setWidgetGeometry(const LayoutRect& frame)
 
     m_clipRect = clipRect;
 
-    RenderWidgetProtector protector(this);
-    Ref<Node> protectNode(*node());
+    WeakPtr<RenderWidget> weakThis = createWeakPtr();
+
+    // This call *may* cause this renderer to disappear from underneath...
     m_widget->setFrameRect(newFrame);
 
-    if (clipChanged && !boundsChanged)
+    // ...so we follow up with a sanity check.
+    if (!weakThis)
+        return true;
+
+    if (clipChanged && !boundsChanged) {
+        // This call *may* cause this renderer to disappear from underneath...
         m_widget->clipRectChanged();
-    
+
+        // ...so here's another sanity check.
+        if (!weakThis)
+            return true;
+    }
+
 #if USE(ACCELERATED_COMPOSITING)
     if (hasLayer() && layer()->isComposited())
         layer()->backing()->updateAfterWidgetResize();
@@ -190,18 +179,24 @@ void RenderWidget::setWidget(PassRefPtr<Widget> widget)
 
     if (m_widget) {
         moveWidgetToParentSoon(m_widget.get(), 0);
+        view().frameView().willRemoveWidgetFromRenderTree(*m_widget);
         widgetRendererMap().remove(m_widget.get());
-        clearWidget();
+        m_widget = nullptr;
     }
     m_widget = widget;
     if (m_widget) {
         widgetRendererMap().add(m_widget.get(), this);
+        view().frameView().didAddWidgetToRenderTree(*m_widget);
         // If we've already received a layout, apply the calculated space to the
         // widget immediately, but we have to have really been fully constructed (with a non-null
         // style pointer).
         if (style()) {
-            if (!needsLayout())
+            if (!needsLayout()) {
+                WeakPtr<RenderWidget> weakThis = createWeakPtr();
                 updateWidgetGeometry();
+                if (!weakThis)
+                    return;
+            }
 
             if (style()->visibility() != VISIBLE)
                 m_widget->hide();
@@ -210,8 +205,11 @@ void RenderWidget::setWidget(PassRefPtr<Widget> widget)
                 repaint();
             }
         }
-        moveWidgetToParentSoon(m_widget.get(), m_frameView);
+        moveWidgetToParentSoon(m_widget.get(), &view().frameView());
     }
+    // make sure the scrollbars are set correctly for restore
+    // ### find better fix
+    viewCleared();
 }
 
 void RenderWidget::layout()
@@ -290,7 +288,7 @@ void RenderWidget::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     if ((paintInfo.phase == PaintPhaseOutline || paintInfo.phase == PaintPhaseSelfOutline) && hasOutline())
         paintOutline(paintInfo, LayoutRect(adjustedPaintOffset, size()));
 
-    if (!m_frameView || paintInfo.phase != PaintPhaseForeground)
+    if (paintInfo.phase != PaintPhaseForeground)
         return;
 
 #if PLATFORM(MAC)
@@ -334,19 +332,18 @@ void RenderWidget::setOverlapTestResult(bool isOverlapped)
     toFrameView(m_widget.get())->setIsOverlapped(isOverlapped);
 }
 
-void RenderWidget::deref(RenderArena *arena)
-{
-    if (--m_refCount <= 0)
-        arenaDelete(arena, this);
-}
-
 void RenderWidget::updateWidgetPosition()
 {
-    if (!m_widget || !node()) // Check the node in case destroy() has been called.
+    if (!m_widget)
         return;
 
+    WeakPtr<RenderWidget> weakThis = createWeakPtr();
+
     bool boundsChanged = updateWidgetGeometry();
-    
+
+    if (!weakThis)
+        return;
+
     // if the frame bounds got changed, or if view needs layout (possibly indicating
     // content size is wrong) we have to do a layout to set the right widget size
     if (m_widget && m_widget->isFrameView()) {
@@ -357,19 +354,9 @@ void RenderWidget::updateWidgetPosition()
     }
 }
 
-void RenderWidget::widgetPositionsUpdated()
-{
-    if (!m_widget)
-        return;
-    m_widget->widgetPositionsUpdated();
-}
-
 IntRect RenderWidget::windowClipRect() const
 {
-    if (!m_frameView)
-        return IntRect();
-
-    return intersection(m_frameView->contentsToWindow(m_clipRect), m_frameView->windowClipRect());
+    return intersection(view().frameView().contentsToWindow(m_clipRect), view().frameView().windowClipRect());
 }
 
 void RenderWidget::setSelectionState(SelectionState state)
@@ -381,11 +368,6 @@ void RenderWidget::setSelectionState(SelectionState state)
         m_widget->setIsSelected(isSelected());
 }
 
-void RenderWidget::clearWidget()
-{
-    m_widget = 0;
-}
-
 RenderWidget* RenderWidget::find(const Widget* widget)
 {
     return widgetRendererMap().get(widget);
@@ -393,11 +375,32 @@ RenderWidget* RenderWidget::find(const Widget* widget)
 
 bool RenderWidget::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction action)
 {
+    if (request.allowsChildFrameContent() && widget() && widget()->isFrameView() && toFrameView(widget())->renderView()) {
+        FrameView* childFrameView = toFrameView(widget());
+        RenderView* childRoot = childFrameView->renderView();
+
+        LayoutPoint adjustedLocation = accumulatedOffset + location();
+        LayoutPoint contentOffset = LayoutPoint(borderLeft() + paddingLeft(), borderTop() + paddingTop()) - childFrameView->scrollOffset();
+        HitTestLocation newHitTestLocation(locationInContainer, -adjustedLocation - contentOffset);
+        HitTestRequest newHitTestRequest(request.type() | HitTestRequest::ChildFrameHitTest);
+        HitTestResult childFrameResult(newHitTestLocation);
+
+        bool isInsideChildFrame = childRoot->hitTest(newHitTestRequest, newHitTestLocation, childFrameResult);
+
+        if (newHitTestLocation.isRectBasedTest())
+            result.append(childFrameResult);
+        else if (isInsideChildFrame)
+            result = childFrameResult;
+
+        if (isInsideChildFrame)
+            return true;
+    }
+
     bool hadResult = result.innerNode();
     bool inside = RenderReplaced::nodeAtPoint(request, result, locationInContainer, accumulatedOffset, action);
 
     // Check to see if we are really over the widget itself (and not just in the border/padding area).
-    if ((inside || result.isRectBasedTest()) && !hadResult && result.innerNode() == node())
+    if ((inside || result.isRectBasedTest()) && !hadResult && result.innerNode() == &frameOwnerElement())
         result.setIsOverWidget(contentBoxRect().contains(result.localPoint()));
     return inside;
 }
@@ -409,6 +412,45 @@ CursorDirective RenderWidget::getCursor(const LayoutPoint& point, Cursor& cursor
         return DoNotSetCursor;
     }
     return RenderReplaced::getCursor(point, cursor);
+}
+
+
+#if USE(ACCELERATED_COMPOSITING)
+bool RenderWidget::requiresLayer() const
+{
+    return RenderReplaced::requiresLayer() || requiresAcceleratedCompositing();
+}
+
+bool RenderWidget::requiresAcceleratedCompositing() const
+{
+    // There are two general cases in which we can return true. First, if this is a plugin 
+    // renderer and the plugin has a layer, then we need a layer. Second, if this is 
+    // a renderer with a contentDocument and that document needs a layer, then we need
+    // a layer.
+    if (widget() && widget()->isPluginViewBase() && toPluginViewBase(widget())->platformLayer())
+        return true;
+
+    if (Document* contentDocument = frameOwnerElement().contentDocument()) {
+        if (RenderView* view = contentDocument->renderView())
+            return view->usesCompositing();
+    }
+
+    return false;
+}
+#endif
+
+bool RenderWidget::needsPreferredWidthsRecalculation() const
+{
+    if (RenderReplaced::needsPreferredWidthsRecalculation())
+        return true;
+    return embeddedContentBox();
+}
+
+RenderBox* RenderWidget::embeddedContentBox() const
+{
+    if (!widget() || !widget()->isFrameView())
+        return 0;
+    return toFrameView(widget())->embeddedContentBox();
 }
 
 } // namespace WebCore

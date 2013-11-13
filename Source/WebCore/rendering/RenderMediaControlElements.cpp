@@ -36,13 +36,13 @@
 namespace WebCore {
 
 RenderMediaVolumeSliderContainer::RenderMediaVolumeSliderContainer(Element* element)
-    : RenderBlock(element)
+    : RenderBlockFlow(element)
 {
 }
 
 void RenderMediaVolumeSliderContainer::layout()
 {
-    RenderBlock::layout();
+    RenderBlockFlow::layout();
 
     if (style()->display() == NONE || !nextSibling() || !nextSibling()->isBox())
         return;
@@ -73,7 +73,7 @@ void RenderMediaControlTimelineContainer::layout()
     RenderFlexibleBox::layout();
 
     LayoutStateDisabler layoutStateDisabler(&view());
-    MediaControlTimelineContainerElement* container = static_cast<MediaControlTimelineContainerElement*>(node());
+    MediaControlTimelineContainerElement* container = static_cast<MediaControlTimelineContainerElement*>(element());
     container->setTimeDisplaysHidden(width().toInt() < minWidthToDisplayTimeDisplays);
 }
 
@@ -82,20 +82,20 @@ void RenderMediaControlTimelineContainer::layout()
 #if ENABLE(VIDEO_TRACK)
 
 RenderTextTrackContainerElement::RenderTextTrackContainerElement(Element* element)
-    : RenderBlock(element)
+    : RenderBlockFlow(element)
 {
 }
 
 void RenderTextTrackContainerElement::layout()
 {
-    RenderBlock::layout();
+    RenderBlockFlow::layout();
     if (style()->display() == NONE)
         return;
 
-    ASSERT(mediaControlElementType(node()) == MediaTextTrackDisplayContainer);
+    ASSERT(mediaControlElementType(element()) == MediaTextTrackDisplayContainer);
 
     LayoutStateDisabler layoutStateDisabler(&view());
-    static_cast<MediaControlTextTrackContainerElement*>(node())->updateSizes();
+    static_cast<MediaControlTextTrackContainerElement*>(element())->updateSizes();
 }
 
 #endif // ENABLE(VIDEO_TRACK)

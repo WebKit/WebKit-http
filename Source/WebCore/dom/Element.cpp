@@ -65,6 +65,7 @@
 #include "HTMLTableRowsCollection.h"
 #include "InsertionPoint.h"
 #include "InspectorInstrumentation.h"
+#include "KeyboardEvent.h"
 #include "MutationObserverInterestGroup.h"
 #include "MutationRecord.h"
 #include "NamedNodeMap.h"
@@ -85,6 +86,7 @@
 #include "Text.h"
 #include "TextIterator.h"
 #include "VoidCallback.h"
+#include "WheelEvent.h"
 #include "XMLNSNames.h"
 #include "XMLNames.h"
 #include "htmlediting.h"
@@ -154,7 +156,7 @@ static Attr* findAttrNodeInList(AttrNodeList& attrNodeList, const QualifiedName&
     return 0;
 }
 
-PassRefPtr<Element> Element::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<Element> Element::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new Element(tagName, document, CreateElement));
 }
@@ -162,7 +164,7 @@ PassRefPtr<Element> Element::create(const QualifiedName& tagName, Document* docu
 Element::~Element()
 {
 #ifndef NDEBUG
-    if (document().renderer()) {
+    if (document().hasLivingRenderTree()) {
         // When the document is not destroyed, an element that was part of a named flow
         // content nodes should have been removed from the content nodes collection
         // and the inNamedFlow flag reset.
@@ -238,6 +240,16 @@ bool Element::shouldUseInputMethod()
     return isContentEditable(UserSelectAllIsAlwaysNonEditable);
 }
 
+bool Element::dispatchWheelEvent(const PlatformWheelEvent& event)
+{
+    return EventDispatcher::dispatchEvent(this, WheelEventDispatchMediator::create(event, document().defaultView()));
+}
+
+bool Element::dispatchKeyEvent(const PlatformKeyboardEvent& event)
+{
+    return EventDispatcher::dispatchEvent(this, KeyboardEventDispatchMediator::create(KeyboardEvent::create(event, document().defaultView())));
+}
+
 void Element::dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions eventOptions, SimulatedClickVisualOptions visualOptions)
 {
     EventDispatcher::dispatchSimulatedClick(this, underlyingEvent, eventOptions, visualOptions);
@@ -286,7 +298,7 @@ PassRefPtr<Attr> Element::detachAttribute(unsigned index)
     if (attrNode)
         detachAttrNodeFromElementWithValue(attrNode.get(), attribute.value());
     else
-        attrNode = Attr::create(&document(), attribute.name(), attribute.value());
+        attrNode = Attr::create(document(), attribute.name(), attribute.value());
 
     removeAttributeInternal(index, NotInSynchronizationOfLazyAttribute);
     return attrNode.release();
@@ -380,7 +392,7 @@ inline void Element::synchronizeAttribute(const AtomicString& localName) const
     if (elementData()->m_animatedSVGAttributesAreDirty) {
         // We're not passing a namespace argument on purpose. SVGNames::*Attr are defined w/o namespaces as well.
         ASSERT(isSVGElement());
-        static_cast<const SVGElement*>(this)->synchronizeAnimatedSVGAttribute(QualifiedName(nullAtom, localName, nullAtom));
+        toSVGElement(this)->synchronizeAnimatedSVGAttribute(QualifiedName(nullAtom, localName, nullAtom));
     }
 #endif
 }
@@ -577,8 +589,8 @@ void Element::scrollByUnits(int units, ScrollGranularity granularity)
         direction = ScrollUp;
         units = -units;
     }
-    Node* stopNode = this;
-    toRenderBox(renderer())->scroll(direction, granularity, units, &stopNode);
+    Element* stopElement = this;
+    toRenderBox(renderer())->scroll(direction, granularity, units, &stopElement);
 }
 
 void Element::scrollByLines(int lines)
@@ -591,17 +603,17 @@ void Element::scrollByPages(int pages)
     scrollByUnits(pages, ScrollByPage);
 }
 
-static float localZoomForRenderer(RenderObject* renderer)
+static float localZoomForRenderer(RenderElement* renderer)
 {
     // FIXME: This does the wrong thing if two opposing zooms are in effect and canceled each
     // other out, but the alternative is that we'd have to crawl up the whole render tree every
     // time (or store an additional bit in the RenderStyle to indicate that a zoom was specified).
     float zoomFactor = 1;
     if (renderer->style()->effectiveZoom() != 1) {
-        // Need to find the nearest enclosing RenderObject that set up
+        // Need to find the nearest enclosing RenderElement that set up
         // a differing zoom, and then we divide our result by it to eliminate the zoom.
-        RenderObject* prev = renderer;
-        for (RenderObject* curr = prev->parent(); curr; curr = curr->parent()) {
+        RenderElement* prev = renderer;
+        for (RenderElement* curr = prev->parent(); curr; curr = curr->parent()) {
             if (curr->style()->effectiveZoom() != prev->style()->effectiveZoom()) {
                 zoomFactor = prev->style()->zoom();
                 break;
@@ -614,7 +626,7 @@ static float localZoomForRenderer(RenderObject* renderer)
     return zoomFactor;
 }
 
-static int adjustForLocalZoom(LayoutUnit value, RenderObject* renderer)
+static int adjustForLocalZoom(LayoutUnit value, RenderElement* renderer)
 {
     float zoomFactor = localZoomForRenderer(renderer);
     if (zoomFactor == 1)
@@ -680,11 +692,13 @@ Element* Element::bindingsOffsetParent()
 Element* Element::offsetParent()
 {
     document().updateLayoutIgnorePendingStylesheets();
-    if (RenderObject* renderer = this->renderer()) {
-        if (RenderObject* offsetParent = renderer->offsetParent())
-            return toElement(offsetParent->node());
-    }
-    return 0;
+    auto renderer = this->renderer();
+    if (!renderer)
+        return nullptr;
+    auto offsetParent = renderer->offsetParent();
+    if (!offsetParent)
+        return nullptr;
+    return offsetParent->element();
 }
 
 int Element::clientLeft()
@@ -709,15 +723,15 @@ int Element::clientWidth()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
+    if (!document().hasLivingRenderTree())
+        return 0;
+    RenderView& renderView = *document().renderView();
+
     // When in strict mode, clientWidth for the document element should return the width of the containing frame.
     // When in quirks mode, clientWidth for the body element should return the width of the containing frame.
     bool inQuirksMode = document().inQuirksMode();
-    if ((!inQuirksMode && document().documentElement() == this) || (inQuirksMode && isHTMLElement() && document().body() == this)) {
-        if (FrameView* view = document().view()) {
-            if (RenderView* renderView = document().renderView())
-                return adjustForAbsoluteZoom(view->layoutWidth(), renderView);
-        }
-    }
+    if ((!inQuirksMode && document().documentElement() == this) || (inQuirksMode && isHTMLElement() && document().body() == this))
+        return adjustForAbsoluteZoom(renderView.frameView().layoutWidth(), &renderView);
     
     if (RenderBox* renderer = renderBox())
 #if ENABLE(SUBPIXEL_LAYOUT)
@@ -732,17 +746,16 @@ int Element::clientHeight()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
+    if (!document().hasLivingRenderTree())
+        return 0;
+    RenderView& renderView = *document().renderView();
+
     // When in strict mode, clientHeight for the document element should return the height of the containing frame.
     // When in quirks mode, clientHeight for the body element should return the height of the containing frame.
-    bool inQuirksMode = document().inQuirksMode();     
+    bool inQuirksMode = document().inQuirksMode();
+    if ((!inQuirksMode && document().documentElement() == this) || (inQuirksMode && isHTMLElement() && document().body() == this))
+        return adjustForAbsoluteZoom(renderView.frameView().layoutHeight(), &renderView);
 
-    if ((!inQuirksMode && document().documentElement() == this) || (inQuirksMode && isHTMLElement() && document().body() == this)) {
-        if (FrameView* view = document().view()) {
-            if (RenderView* renderView = document().renderView())
-                return adjustForAbsoluteZoom(view->layoutHeight(), renderView);
-        }
-    }
-    
     if (RenderBox* renderer = renderBox())
 #if ENABLE(SUBPIXEL_LAYOUT)
         return adjustLayoutUnitForAbsoluteZoom(renderer->pixelSnappedClientHeight(), renderer).round();
@@ -758,12 +771,14 @@ int Element::scrollLeft()
         return 0;
 
     document().updateLayoutIgnorePendingStylesheets();
-    if (document().documentElement() == this) {
-        if (RenderView* renderView = document().renderView()) {
-            if (FrameView* view = &renderView->frameView())
-                return adjustForAbsoluteZoom(view->scrollX(), renderView);
-        }
-    }
+
+    if (!document().hasLivingRenderTree())
+        return 0;
+    RenderView& renderView = *document().renderView();
+
+    if (document().documentElement() == this)
+        return adjustForAbsoluteZoom(renderView.frameView().scrollX(), &renderView);
+
     if (RenderBox* rend = renderBox())
         return adjustForAbsoluteZoom(rend->scrollLeft(), rend);
     return 0;
@@ -775,12 +790,14 @@ int Element::scrollTop()
         return 0;
 
     document().updateLayoutIgnorePendingStylesheets();
-    if (document().documentElement() == this) {
-        if (RenderView* renderView = document().renderView()) {
-            if (FrameView* view = &renderView->frameView())
-                return adjustForAbsoluteZoom(view->scrollY(), renderView);
-        }
-    }
+
+    if (!document().hasLivingRenderTree())
+        return 0;
+    RenderView& renderView = *document().renderView();
+
+    if (document().documentElement() == this)
+        return adjustForAbsoluteZoom(renderView.frameView().scrollY(), &renderView);
+
     if (RenderBox* rend = renderBox())
         return adjustForAbsoluteZoom(rend->scrollTop(), rend);
     return 0;
@@ -788,14 +805,42 @@ int Element::scrollTop()
 
 void Element::setScrollLeft(int newLeft)
 {
+    if (document().documentElement() == this && document().inQuirksMode())
+        return;
+
     document().updateLayoutIgnorePendingStylesheets();
+
+    if (!document().hasLivingRenderTree())
+        return;
+
+    if (document().documentElement() == this) {
+        RenderView& renderView = *document().renderView();
+        int zoom = renderView.style()->effectiveZoom();
+        renderView.frameView().setScrollPosition(IntPoint(newLeft * zoom, renderView.frameView().scrollY() * zoom));
+        return;
+    }
+
     if (RenderBox* rend = renderBox())
         rend->setScrollLeft(static_cast<int>(newLeft * rend->style()->effectiveZoom()));
 }
 
 void Element::setScrollTop(int newTop)
 {
+    if (document().documentElement() == this && document().inQuirksMode())
+        return;
+
     document().updateLayoutIgnorePendingStylesheets();
+
+    if (!document().hasLivingRenderTree())
+        return;
+
+    if (document().documentElement() == this) {
+        RenderView& renderView = *document().renderView();
+        int zoom = renderView.style()->effectiveZoom();
+        renderView.frameView().setScrollPosition(IntPoint(renderView.frameView().scrollX() * zoom, newTop * zoom));
+        return;
+    }
+
     if (RenderBox* rend = renderBox())
         rend->setScrollTop(static_cast<int>(newTop * rend->style()->effectiveZoom()));
 }
@@ -1231,10 +1276,10 @@ void Element::setPrefix(const AtomicString& prefix, ExceptionCode& ec)
     m_tagName.setPrefix(prefix.isEmpty() ? AtomicString() : prefix);
 }
 
-KURL Element::baseURI() const
+URL Element::baseURI() const
 {
     const AtomicString& baseAttribute = getAttribute(baseAttr);
-    KURL base(KURL(), baseAttribute);
+    URL base(URL(), baseAttribute);
     if (!base.protocol().isEmpty())
         return base;
 
@@ -1242,11 +1287,11 @@ KURL Element::baseURI() const
     if (!parent)
         return base;
 
-    const KURL& parentBase = parent->baseURI();
+    const URL& parentBase = parent->baseURI();
     if (parentBase.isNull())
         return base;
 
-    return KURL(parentBase, baseAttribute);
+    return URL(parentBase, baseAttribute);
 }
 
 const AtomicString& Element::imageSourceURL() const
@@ -1259,9 +1304,9 @@ bool Element::rendererIsNeeded(const RenderStyle& style)
     return style.display() != NONE;
 }
 
-RenderObject* Element::createRenderer(RenderArena*, RenderStyle* style)
+RenderElement* Element::createRenderer(RenderArena&, RenderStyle& style)
 {
-    return RenderObject::createObject(this, style);
+    return RenderElement::createFor(*this, style);
 }
 
 Node::InsertionNotificationRequest Element::insertedInto(ContainerNode* insertionPoint)
@@ -1293,7 +1338,7 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode* insertio
         if (newScope)
             updateIdForTreeScope(newScope, nullAtom, idValue);
         if (newDocument)
-            updateIdForDocument(newDocument, nullAtom, idValue, AlwaysUpdateHTMLDocumentNamedItemMaps);
+            updateIdForDocument(*newDocument, nullAtom, idValue, AlwaysUpdateHTMLDocumentNamedItemMaps);
     }
 
     const AtomicString& nameValue = getNameAttribute();
@@ -1301,7 +1346,7 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode* insertio
         if (newScope)
             updateNameForTreeScope(newScope, nullAtom, nameValue);
         if (newDocument)
-            updateNameForDocument(newDocument, nullAtom, nameValue);
+            updateNameForDocument(*newDocument, nullAtom, nameValue);
     }
 
     if (newScope && hasTagName(labelTag)) {
@@ -1336,7 +1381,7 @@ void Element::removedFrom(ContainerNode* insertionPoint)
             if (oldScope)
                 updateIdForTreeScope(oldScope, idValue, nullAtom);
             if (oldDocument)
-                updateIdForDocument(oldDocument, idValue, nullAtom, AlwaysUpdateHTMLDocumentNamedItemMaps);
+                updateIdForDocument(*oldDocument, idValue, nullAtom, AlwaysUpdateHTMLDocumentNamedItemMaps);
         }
 
         const AtomicString& nameValue = getNameAttribute();
@@ -1344,7 +1389,7 @@ void Element::removedFrom(ContainerNode* insertionPoint)
             if (oldScope)
                 updateNameForTreeScope(oldScope, nameValue, nullAtom);
             if (oldDocument)
-                updateNameForDocument(oldDocument, nameValue, nullAtom);
+                updateNameForDocument(*oldDocument, nameValue, nullAtom);
         }
 
         if (oldScope && hasTagName(labelTag)) {
@@ -1360,10 +1405,10 @@ void Element::removedFrom(ContainerNode* insertionPoint)
 #endif
 }
 
-void Element::unregisterNamedFlowContentNode()
+void Element::unregisterNamedFlowContentElement()
 {
     if (document().cssRegionsEnabled() && inNamedFlow() && document().renderView())
-        document().renderView()->flowThreadController().unregisterNamedFlowContentNode(this);
+        document().renderView()->flowThreadController().unregisterNamedFlowContentElement(*this);
 }
 
 void Element::lazyReattach(ShouldSetAttached shouldSetAttached)
@@ -1408,6 +1453,20 @@ void Element::didAffectSelector(AffectedSelectorMask)
     setNeedsStyleRecalc();
 }
 
+static bool shouldUseNodeRenderingTraversalSlowPath(const Element& element)
+{
+    if (element.isShadowRoot())
+        return true;
+    if (element.isPseudoElement() || element.beforePseudoElement() || element.afterPseudoElement())
+        return true;
+    return element.isInsertionPoint() || element.shadowRoot();
+}
+
+void Element::resetNeedsNodeRenderingTraversalSlowPath()
+{
+    setNeedsNodeRenderingTraversalSlowPath(shouldUseNodeRenderingTraversalSlowPath(*this));
+}
+
 void Element::addShadowRoot(PassRefPtr<ShadowRoot> newShadowRoot)
 {
     ASSERT(!shadowRoot());
@@ -1419,10 +1478,9 @@ void Element::addShadowRoot(PassRefPtr<ShadowRoot> newShadowRoot)
     shadowRoot->setParentTreeScope(treeScope());
     shadowRoot->distributor().didShadowBoundaryChange(this);
 
-    ChildNodeInsertionNotifier(this).notify(shadowRoot);
+    ChildNodeInsertionNotifier(*this).notify(*shadowRoot);
 
-    // Existence of shadow roots requires the host and its children to do traversal using ComposedShadowTreeWalker.
-    setNeedsShadowTreeWalker();
+    resetNeedsNodeRenderingTraversalSlowPath();
 
     // FIXME(94905): ShadowHost should be reattached during recalcStyle.
     // Set some flag here and recreate shadow hosts' renderer in
@@ -1448,7 +1506,7 @@ void Element::removeShadowRoot()
     oldRoot->setHostElement(0);
     oldRoot->setParentTreeScope(&document());
 
-    ChildNodeRemovalNotifier(this).notify(oldRoot.get());
+    ChildNodeRemovalNotifier(*this).notify(*oldRoot);
 
     oldRoot->distributor().invalidateDistribution(this);
 }
@@ -1459,7 +1517,7 @@ PassRefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
         ensureUserAgentShadowRoot();
 
 #if ENABLE(SHADOW_DOM)
-    if (RuntimeEnabledFeatures::authorShadowDOMForAnyElementEnabled()) {
+    if (RuntimeEnabledFeatures::sharedFeatures().authorShadowDOMForAnyElementEnabled()) {
         addShadowRoot(ShadowRoot::create(document(), ShadowRoot::AuthorShadowRoot));
         return shadowRoot();
     }
@@ -1472,7 +1530,7 @@ PassRefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
         ec = HIERARCHY_REQUEST_ERR;
         return 0;
     }
-    addShadowRoot(ShadowRoot::create(&document(), ShadowRoot::AuthorShadowRoot));
+    addShadowRoot(ShadowRoot::create(document(), ShadowRoot::AuthorShadowRoot));
 
     return shadowRoot();
 }
@@ -1498,7 +1556,7 @@ ShadowRoot& Element::ensureUserAgentShadowRoot()
 {
     ShadowRoot* shadowRoot = userAgentShadowRoot();
     if (!shadowRoot) {
-        addShadowRoot(ShadowRoot::create(&document(), ShadowRoot::UserAgentShadowRoot));
+        addShadowRoot(ShadowRoot::create(document(), ShadowRoot::UserAgentShadowRoot));
         shadowRoot = userAgentShadowRoot();
         didAddUserAgentShadowRoot(shadowRoot);
     }
@@ -1699,7 +1757,7 @@ PassRefPtr<Attr> Element::setAttributeNode(Attr* attrNode, ExceptionCode& ec)
         if (oldAttrNode)
             detachAttrNodeFromElementWithValue(oldAttrNode.get(), elementData.attributeAt(index).value());
         else
-            oldAttrNode = Attr::create(&document(), attrNode->qualifiedName(), elementData.attributeAt(index).value());
+            oldAttrNode = Attr::create(document(), attrNode->qualifiedName(), elementData.attributeAt(index).value());
     }
 
     setAttributeInternal(index, attrNode->qualifiedName(), attrNode->value(), NotInSynchronizationOfLazyAttribute);
@@ -2294,14 +2352,14 @@ bool Element::updateExistingPseudoElement(PseudoElement* existingPseudoElement, 
     // FIXME: This is silly.
     // Wait until our parent is not displayed or pseudoElementRendererIsNeeded
     // is false, otherwise we could continously create and destroy PseudoElements
-    // when RenderObject::isChildAllowed on our parent returns false for the
+    // when RenderElement::isChildAllowed on our parent returns false for the
     // PseudoElement's renderer for each style recalc.
     return renderer() && pseudoElementRendererIsNeeded(existingPseudoElement->renderStyle());
 }
 
 PassRefPtr<PseudoElement> Element::createPseudoElementIfNeeded(PseudoId pseudoId)
 {
-    if (!document().styleSheetCollection()->usesBeforeAfterRules())
+    if (!document().styleSheetCollection().usesBeforeAfterRules())
         return 0;
     if (!renderer() || !renderer()->canHaveGeneratedChildren())
         return 0;
@@ -2349,13 +2407,13 @@ PseudoElement* Element::afterPseudoElement() const
 void Element::setBeforePseudoElement(PassRefPtr<PseudoElement> element)
 {
     ensureElementRareData().setBeforePseudoElement(element);
-    resetNeedsShadowTreeWalker();
+    resetNeedsNodeRenderingTraversalSlowPath();
 }
 
 void Element::setAfterPseudoElement(PassRefPtr<PseudoElement> element)
 {
     ensureElementRareData().setAfterPseudoElement(element);
-    resetNeedsShadowTreeWalker();
+    resetNeedsNodeRenderingTraversalSlowPath();
 }
 
 static void disconnectPseudoElement(PseudoElement* pseudoElement)
@@ -2374,6 +2432,7 @@ void Element::clearBeforePseudoElement()
         return;
     disconnectPseudoElement(elementRareData()->beforePseudoElement());
     elementRareData()->setBeforePseudoElement(nullptr);
+    resetNeedsNodeRenderingTraversalSlowPath();
 }
 
 void Element::clearAfterPseudoElement()
@@ -2382,6 +2441,7 @@ void Element::clearAfterPseudoElement()
         return;
     disconnectPseudoElement(elementRareData()->afterPseudoElement());
     elementRareData()->setAfterPseudoElement(nullptr);
+    resetNeedsNodeRenderingTraversalSlowPath();
 }
 
 // ElementTraversal API
@@ -2433,7 +2493,7 @@ bool Element::webkitMatchesSelector(const String& selector, ExceptionCode& ec)
         return false;
     }
 
-    SelectorQuery* selectorQuery = document().selectorQueryCache().add(selector, &document(), ec);
+    SelectorQuery* selectorQuery = document().selectorQueryCache().add(selector, document(), ec);
     if (!selectorQuery)
         return false;
     return selectorQuery->matches(this);
@@ -2460,7 +2520,7 @@ DOMStringMap* Element::dataset()
     return data.dataset();
 }
 
-KURL Element::getURLAttribute(const QualifiedName& name) const
+URL Element::getURLAttribute(const QualifiedName& name) const
 {
 #if !ASSERT_DISABLED
     if (elementData()) {
@@ -2471,7 +2531,7 @@ KURL Element::getURLAttribute(const QualifiedName& name) const
     return document().completeURL(stripLeadingAndTrailingHTMLSpaces(getAttribute(name)));
 }
 
-KURL Element::getNonEmptyURLAttribute(const QualifiedName& name) const
+URL Element::getNonEmptyURLAttribute(const QualifiedName& name) const
 {
 #if !ASSERT_DISABLED
     if (elementData()) {
@@ -2481,7 +2541,7 @@ KURL Element::getNonEmptyURLAttribute(const QualifiedName& name) const
 #endif
     String value = stripLeadingAndTrailingHTMLSpaces(getAttribute(name));
     if (value.isEmpty())
-        return KURL();
+        return URL();
     return document().completeURL(value);
 }
 
@@ -2627,7 +2687,7 @@ bool Element::shouldMoveToFlowThread(const RenderStyle& styleToUse) const
     if (styleToUse.flowThread().isEmpty())
         return false;
 
-    return !isRegisteredWithNamedFlow();
+    return !document().renderView()->flowThreadController().isContentElementRegisteredWithAnyNamedFlow(*this);
 }
 
 const AtomicString& Element::webkitRegionOverset() const
@@ -2683,7 +2743,7 @@ bool Element::fastAttributeLookupAllowed(const QualifiedName& name) const
 
 #if ENABLE(SVG)
     if (isSVGElement())
-        return !static_cast<const SVGElement*>(this)->isAnimatableAttribute(name);
+        return !toSVGElement(this)->isAnimatableAttribute(name);
 #endif
 
     return true;
@@ -2711,7 +2771,7 @@ inline void Element::updateName(const AtomicString& oldName, const AtomicString&
         return;
     if (!document().isHTMLDocument())
         return;
-    updateNameForDocument(toHTMLDocument(&document()), oldName, newName);
+    updateNameForDocument(toHTMLDocument(document()), oldName, newName);
 }
 
 void Element::updateNameForTreeScope(TreeScope* scope, const AtomicString& oldName, const AtomicString& newName)
@@ -2725,7 +2785,7 @@ void Element::updateNameForTreeScope(TreeScope* scope, const AtomicString& oldNa
         scope->addElementByName(newName, this);
 }
 
-void Element::updateNameForDocument(HTMLDocument* document, const AtomicString& oldName, const AtomicString& newName)
+void Element::updateNameForDocument(HTMLDocument& document, const AtomicString& oldName, const AtomicString& newName)
 {
     ASSERT(inDocument());
     ASSERT(oldName != newName);
@@ -2733,17 +2793,17 @@ void Element::updateNameForDocument(HTMLDocument* document, const AtomicString& 
     if (WindowNameCollection::nodeMatchesIfNameAttributeMatch(this)) {
         const AtomicString& id = WindowNameCollection::nodeMatchesIfIdAttributeMatch(this) ? getIdAttribute() : nullAtom;
         if (!oldName.isEmpty() && oldName != id)
-            document->removeWindowNamedItem(oldName, this);
+            document.removeWindowNamedItem(oldName, this);
         if (!newName.isEmpty() && newName != id)
-            document->addWindowNamedItem(newName, this);
+            document.addWindowNamedItem(newName, this);
     }
 
     if (DocumentNameCollection::nodeMatchesIfNameAttributeMatch(this)) {
         const AtomicString& id = DocumentNameCollection::nodeMatchesIfIdAttributeMatch(this) ? getIdAttribute() : nullAtom;
         if (!oldName.isEmpty() && oldName != id)
-            document->removeDocumentNamedItem(oldName, this);
+            document.removeDocumentNamedItem(oldName, this);
         if (!newName.isEmpty() && newName != id)
-            document->addDocumentNamedItem(newName, this);
+            document.addDocumentNamedItem(newName, this);
     }
 }
 
@@ -2761,7 +2821,7 @@ inline void Element::updateId(const AtomicString& oldId, const AtomicString& new
         return;
     if (!document().isHTMLDocument())
         return;
-    updateIdForDocument(toHTMLDocument(&document()), oldId, newId, UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute);
+    updateIdForDocument(toHTMLDocument(document()), oldId, newId, UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute);
 }
 
 void Element::updateIdForTreeScope(TreeScope* scope, const AtomicString& oldId, const AtomicString& newId)
@@ -2775,7 +2835,7 @@ void Element::updateIdForTreeScope(TreeScope* scope, const AtomicString& oldId, 
         scope->addElementById(newId, this);
 }
 
-void Element::updateIdForDocument(HTMLDocument* document, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition condition)
+void Element::updateIdForDocument(HTMLDocument& document, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition condition)
 {
     ASSERT(inDocument());
     ASSERT(oldId != newId);
@@ -2783,17 +2843,17 @@ void Element::updateIdForDocument(HTMLDocument* document, const AtomicString& ol
     if (WindowNameCollection::nodeMatchesIfIdAttributeMatch(this)) {
         const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && WindowNameCollection::nodeMatchesIfNameAttributeMatch(this) ? getNameAttribute() : nullAtom;
         if (!oldId.isEmpty() && oldId != name)
-            document->removeWindowNamedItem(oldId, this);
+            document.removeWindowNamedItem(oldId, this);
         if (!newId.isEmpty() && newId != name)
-            document->addWindowNamedItem(newId, this);
+            document.addWindowNamedItem(newId, this);
     }
 
     if (DocumentNameCollection::nodeMatchesIfIdAttributeMatch(this)) {
         const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && DocumentNameCollection::nodeMatchesIfNameAttributeMatch(this) ? getNameAttribute() : nullAtom;
         if (!oldId.isEmpty() && oldId != name)
-            document->removeDocumentNamedItem(oldId, this);
+            document.removeDocumentNamedItem(oldId, this);
         if (!newId.isEmpty() && newId != name)
-            document->addDocumentNamedItem(newId, this);
+            document.addDocumentNamedItem(newId, this);
     }
 }
 
@@ -2830,8 +2890,8 @@ void Element::willModifyAttribute(const QualifiedName& name, const AtomicString&
             setNeedsStyleRecalc();
     }
 
-    if (OwnPtr<MutationObserverInterestGroup> recipients = MutationObserverInterestGroup::createForAttributesMutation(this, name))
-        recipients->enqueueMutationRecord(MutationRecord::createAttributes(this, name, oldValue));
+    if (OwnPtr<MutationObserverInterestGroup> recipients = MutationObserverInterestGroup::createForAttributesMutation(*this, name))
+        recipients->enqueueMutationRecord(MutationRecord::createAttributes(*this, name, oldValue));
 
 #if ENABLE(INSPECTOR)
     InspectorInstrumentation::willModifyDOMAttr(&document(), this, oldValue, newValue);
@@ -2954,7 +3014,7 @@ void Element::resetComputedStyle()
 
 void Element::clearStyleDerivedDataBeforeDetachingRenderer()
 {
-    unregisterNamedFlowContentNode();
+    unregisterNamedFlowContentElement();
     cancelFocusAppearanceUpdate();
     clearBeforePseudoElement();
     clearAfterPseudoElement();

@@ -386,7 +386,7 @@ public:
     };
 
     // Scrolling methods for layers that can scroll their overflow.
-    void scrollByRecursively(const IntSize&, ScrollOffsetClamping = ScrollOffsetUnclamped);
+    void scrollByRecursively(const IntSize&, ScrollOffsetClamping = ScrollOffsetUnclamped, ScrollableArea** scrolledArea = 0);
     void scrollToOffset(const IntSize&, ScrollOffsetClamping = ScrollOffsetUnclamped);
     void scrollToXOffset(int x, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(IntSize(x, scrollYOffset()), clamp); }
     void scrollToYOffset(int y, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(IntSize(scrollXOffset(), y), clamp); }
@@ -750,7 +750,7 @@ public:
 
     // Overloaded new operator. Derived classes must override operator new
     // in order to allocate out of the RenderArena.
-    void* operator new(size_t, RenderArena*);
+    void* operator new(size_t, RenderArena&);
 
     // Overridden to prevent the normal delete from being called.
     void operator delete(void*, size_t);
@@ -1028,9 +1028,7 @@ private:
     virtual IntPoint lastKnownMousePosition() const;
     virtual bool isHandlingWheelEvent() const OVERRIDE;
     virtual bool shouldSuspendScrollAnimations() const;
-    virtual bool scrollbarsCanBeActive() const;
     virtual IntRect scrollableAreaBoundingBox() const OVERRIDE;
-    virtual bool scrollbarAnimationsAreSuppressed() const OVERRIDE;
 
     // Rectangle encompassing the scroll corner and resizer rect.
     IntRect scrollCornerAndResizerRect() const;
@@ -1047,6 +1045,9 @@ private:
     void setAncestorChainHasVisibleDescendant();
 
     void updateDescendantDependentFlags(HashSet<const RenderObject*>* outOfFlowDescendantContainingBlocks = 0);
+#if USE(ACCELERATED_COMPOSITING)
+    bool updateDescendantClippingContext(bool addClipping);
+#endif
 
     // This flag is computed by RenderLayerCompositor, which knows more about 3d hierarchies than we do.
     void setHas3DTransformedDescendant(bool b) { m_has3DTransformedDescendant = b; }
@@ -1115,8 +1116,8 @@ private:
     friend class RenderLayerCompositor;
     friend class RenderLayerModelObject;
 
-    // Only safe to call from RenderBoxModelObject::destroyLayer(RenderArena*)
-    void destroy(RenderArena*);
+    // Only safe to call from RenderBoxModelObject::destroyLayer(RenderArena&)
+    void destroy(RenderArena&);
 
     LayoutUnit overflowTop() const;
     LayoutUnit overflowBottom() const;

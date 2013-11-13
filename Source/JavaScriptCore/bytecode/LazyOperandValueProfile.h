@@ -32,6 +32,7 @@
 
 #include "ConcurrentJITLock.h"
 #include "ValueProfile.h"
+#include "VirtualRegister.h"
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/OwnPtr.h>
@@ -45,26 +46,26 @@ class LazyOperandValueProfileKey {
 public:
     LazyOperandValueProfileKey()
         : m_bytecodeOffset(0) // 0 = empty value
-        , m_operand(-1) // not a valid operand index in our current scheme
+        , m_operand(VirtualRegister()) // not a valid operand index in our current scheme
     {
     }
     
     LazyOperandValueProfileKey(WTF::HashTableDeletedValueType)
         : m_bytecodeOffset(1) // 1 = deleted value
-        , m_operand(-1) // not a valid operand index in our current scheme
+        , m_operand(VirtualRegister()) // not a valid operand index in our current scheme
     {
     }
     
-    LazyOperandValueProfileKey(unsigned bytecodeOffset, int operand)
+    LazyOperandValueProfileKey(unsigned bytecodeOffset, VirtualRegister operand)
         : m_bytecodeOffset(bytecodeOffset)
         , m_operand(operand)
     {
-        ASSERT(operand != -1);
+        ASSERT(m_operand.isValid());
     }
     
     bool operator!() const
     {
-        return m_operand == -1;
+        return !m_operand.isValid();
     }
     
     bool operator==(const LazyOperandValueProfileKey& other) const
@@ -75,7 +76,7 @@ public:
     
     unsigned hash() const
     {
-        return WTF::intHash(m_bytecodeOffset) + m_operand;
+        return WTF::intHash(m_bytecodeOffset) + m_operand.offset();
     }
     
     unsigned bytecodeOffset() const
@@ -83,7 +84,8 @@ public:
         ASSERT(!!*this);
         return m_bytecodeOffset;
     }
-    int operand() const
+
+    VirtualRegister operand() const
     {
         ASSERT(!!*this);
         return m_operand;
@@ -91,11 +93,11 @@ public:
     
     bool isHashTableDeletedValue() const
     {
-        return m_operand == -1 && m_bytecodeOffset;
+        return !m_operand.isValid() && m_bytecodeOffset;
     }
 private: 
     unsigned m_bytecodeOffset;
-    int m_operand;
+    VirtualRegister m_operand;
 };
 
 struct LazyOperandValueProfileKeyHash {
@@ -128,7 +130,7 @@ namespace JSC {
 struct LazyOperandValueProfile : public MinimalValueProfile {
     LazyOperandValueProfile()
         : MinimalValueProfile()
-        , m_operand(-1)
+        , m_operand(VirtualRegister())
     {
     }
     
@@ -143,7 +145,7 @@ struct LazyOperandValueProfile : public MinimalValueProfile {
         return LazyOperandValueProfileKey(m_bytecodeOffset, m_operand);
     }
     
-    int m_operand;
+    VirtualRegister m_operand;
     
     typedef SegmentedVector<LazyOperandValueProfile, 8> List;
 };
@@ -156,7 +158,7 @@ public:
     CompressedLazyOperandValueProfileHolder();
     ~CompressedLazyOperandValueProfileHolder();
     
-    void computeUpdatedPredictions(const ConcurrentJITLocker&, OperationInProgress);
+    void computeUpdatedPredictions(const ConcurrentJITLocker&);
     
     LazyOperandValueProfile* add(
         const ConcurrentJITLocker&, const LazyOperandValueProfileKey& key);

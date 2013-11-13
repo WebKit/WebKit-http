@@ -73,7 +73,7 @@ public:
     RenderBoxRegionInfo* renderBoxRegionInfo(const RenderBox*) const;
     RenderBoxRegionInfo* setRenderBoxRegionInfo(const RenderBox*, LayoutUnit logicalLeftInset, LayoutUnit logicalRightInset,
         bool containingBlockChainIsInset);
-    PassOwnPtr<RenderBoxRegionInfo> takeRenderBoxRegionInfo(const RenderBox*);
+    OwnPtr<RenderBoxRegionInfo> takeRenderBoxRegionInfo(const RenderBox*);
     void removeRenderBoxRegionInfo(const RenderBox*);
 
     void deleteAllRenderBoxRegionInfo();
@@ -153,8 +153,6 @@ public:
 
     LayoutRect rectFlowPortionForBox(const RenderBox*, const LayoutRect&) const;
 
-    Element* generatingElement() const { return toElement(RenderObject::generatingNode()); }
-
 protected:
     RenderOverflow* ensureOverflowForBox(const RenderBox*);
 
@@ -192,7 +190,7 @@ private:
     virtual void installFlowThread();
 
     PassRefPtr<RenderStyle> computeStyleInRegion(const RenderObject*);
-    void computeChildrenStyleInRegion(const RenderObject*);
+    void computeChildrenStyleInRegion(const RenderElement*);
     void setObjectStyleInRegion(RenderObject*, PassRefPtr<RenderStyle>, bool objectRegionStyleCached);
 
     void checkRegionStyle();

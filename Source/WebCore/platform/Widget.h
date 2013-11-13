@@ -65,7 +65,7 @@ QT_END_NAMESPACE
 typedef QObject* PlatformWidget;
 #endif
 
-#if PLATFORM(BLACKBERRY)
+#if PLATFORM(BLACKBERRY) || PLATFORM(NIX)
 typedef void* PlatformWidget;
 #endif
 
@@ -206,9 +206,6 @@ public:
     IntPoint convertFromContainingWindow(const IntPoint&) const;
 
     virtual void frameRectsChanged() { }
-
-    // Notifies this widget that other widgets on the page have been repositioned.
-    virtual void widgetPositionsUpdated() {}
 
     // Notifies this widget that its clip rect changed.
     virtual void clipRectChanged() { }

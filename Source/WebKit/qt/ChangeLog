@@ -1,3 +1,136 @@
+2013-09-26  Darin Adler  <darin@apple.com>
+
+        rename KURL to URL
+        https://bugs.webkit.org/show_bug.cgi?id=16214
+
+        Reviewed by Andreas Kling.
+
+        * many files: Renamed, using script.
+
+2013-09-27  Darin Adler  <darin@apple.com>
+
+        Add empty MainFrame class
+        https://bugs.webkit.org/show_bug.cgi?id=121770
+
+        Reviewed by Andreas Kling.
+
+        * Source/WebKit/qt/WebCoreSupport/InspectorClientQt.cpp:
+        * Source/WebKit/qt/WebCoreSupport/ChromeClientQt.cpp:
+        * Source/WebKit/qt/WebCoreSupport/QWebFrameAdapter.cpp:
+        * Source/WebKit/qt/WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * Source/WebKit/qt/WebCoreSupport/FrameLoaderClientQt.cpp:
+        * Source/WebKit/qt/WebCoreSupport/QWebPageAdapter.cpp:
+        Include MainFrame.h instead of Frame.h as needed.
+
+2013-09-27  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Fix force_static_libs_as_shared in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=121961
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WebCoreSupport/QWebFrameAdapter.h:
+
+2013-09-25  Brent Fulgham  <bfulgham@apple.com>
+
+        Refactor RuntimeEnabledFeatures as a Singleton.
+        https://bugs.webkit.org/show_bug.cgi?id=121883.
+
+        Reviewed by Jer Noble.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply): Use singleton accessor.
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::setSeamlessIFramesEnabled): Ditto.
+
+2013-09-25  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Fix build with Qt 5.2 QtPosition module
+        https://bugs.webkit.org/show_bug.cgi?id=121089
+
+        Reviewed by Simon Hausmann.
+
+        QtLocation -> QtPositioning
+
+        * WebCoreSupport/GeolocationClientQt.cpp:
+
+2013-09-24  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Crash when trying to download blob url
+        https://bugs.webkit.org/show_bug.cgi?id=121681
+
+        Reviewed by Simon Hausmann.
+
+        Do not crash if a download was triggered on a resource WebCore handles internally.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::convertMainResourceLoadToDownload):
+
+2013-09-24  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] RepaintRequested signal sometimes not emitted
+        https://bugs.webkit.org/show_bug.cgi?id=121790
+
+        Reviewed by Simon Hausmann.
+
+        We should also emit repaintRequested after calling PageClient::update().
+
+        * WidgetSupport/PageClientQt.cpp:
+        (WebCore::PageClientQWidget::repaintViewport):
+        (WebCore::PageClientQGraphicsWidget::repaintViewport):
+
+2013-09-22  Sam Weinig  <sam@webkit.org>
+
+        CTTE: Use references more in ContainerNode, ContainerNodeAlgorithms and related classes
+        https://bugs.webkit.org/show_bug.cgi?id=121772
+
+        Reviewed by Andreas Kling.
+
+        * Api/qwebelement.cpp:
+        (QWebElementCollection::append):
+        Update to work with the new StaticNodeList adopt function.
+
+2013-09-19  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        Keep chasing the definition of QAccessibleWidget
+        https://bugs.webkit.org/show_bug.cgi?id=121611
+
+        Reviewed by Jocelyn Turcotte.
+
+        * WidgetApi/qwebviewaccessible_p.h:
+
+2013-09-16  Enrica Casucci  <enrica@apple.com>
+
+        Remove unused function didSetSelectionTypesForPasteboard from EditorClient.
+        https://bugs.webkit.org/show_bug.cgi?id=121464
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/EditorClientQt.cpp:
+        * WebCoreSupport/EditorClientQt.h:
+
+2013-09-12  Andreas Kling  <akling@apple.com>
+
+        Fix Qt build.
+
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::inputMethodQuery):
+
+2013-09-11  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Generate more HTML type checks and casting
+        https://bugs.webkit.org/show_bug.cgi?id=121080
+
+        Reviewed by Andreas Kling.
+
+        Clean-up remained functions of HTML elements using auto-generated isFooElement(),
+        and replace toFooElement() with ELEMENT_TYPE_CASTS() macro.
+
+        Besides this patch clean-up unnecessary checks which are being supported by
+        auto-generated isFooElement().
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+
 2013-09-03  Allan Sandfeld Jensen  <allan.jensen@digia.com>
 
         [Qt] Images scaled poorly on composited canvas

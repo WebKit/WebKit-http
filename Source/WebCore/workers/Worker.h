@@ -54,7 +54,7 @@ namespace WebCore {
         static PassRefPtr<Worker> create(ScriptExecutionContext*, const String& url, ExceptionCode&);
         virtual ~Worker();
 
-        virtual const AtomicString& interfaceName() const OVERRIDE;
+        virtual EventTargetInterface eventTargetInterface() const OVERRIDE;
 
         void postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray*, ExceptionCode&);
         // Needed for Objective-C bindings (see bug 28774).
@@ -76,9 +76,6 @@ namespace WebCore {
         // WorkerScriptLoaderClient callbacks
         virtual void didReceiveResponse(unsigned long identifier, const ResourceResponse&) OVERRIDE;
         virtual void notifyFinished() OVERRIDE;
-
-        virtual void refEventTarget() OVERRIDE { ref(); }
-        virtual void derefEventTarget() OVERRIDE { deref(); }
 
         friend void networkStateChanged(bool isOnLine);
 

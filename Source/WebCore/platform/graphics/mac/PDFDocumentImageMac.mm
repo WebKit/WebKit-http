@@ -35,14 +35,25 @@
 #import <objc/objc-class.h>
 #import <wtf/RetainPtr.h>
 
+#ifdef __has_include
+#if __has_include(<ApplicationServices/ApplicationServicesPriv.h>)
+#import <ApplicationServices/ApplicationServicesPriv.h>
+#endif
+#endif
+
 SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, PDFKit)
 SOFT_LINK_CLASS(PDFKit, PDFDocument)
+
+extern "C" {
+bool CGContextGetAllowsFontSmoothing(CGContextRef context);
+bool CGContextGetAllowsFontSubpixelQuantization(CGContextRef context);
+}
 
 namespace WebCore {
 
 void PDFDocumentImage::createPDFDocument()
 {
-    m_document = adoptNS([[getPDFDocumentClass() alloc] initWithData:data()->createNSData()]);
+    m_document = adoptNS([[getPDFDocumentClass() alloc] initWithData:data()->createNSData().get()]);
 }
 
 void PDFDocumentImage::computeBoundsForCurrentPage()
@@ -65,7 +76,16 @@ void PDFDocumentImage::drawPDFPage(GraphicsContext* context)
     CGContextTranslateCTM(context->platformContext(), -m_cropBox.x(), -m_cropBox.y());
 
     LocalCurrentGraphicsContext localCurrentContext(context);
+
+    // These states can be mutated by PDFKit but are not saved
+    // on the context's state stack. (<rdar://problem/14951759>)
+    bool allowsSmoothing = CGContextGetAllowsFontSmoothing(context->platformContext());
+    bool allowsSubpixelQuantization = CGContextGetAllowsFontSubpixelQuantization(context->platformContext());
+
     [[m_document pageAtIndex:0] drawWithBox:kPDFDisplayBoxCropBox];
+
+    CGContextSetAllowsFontSmoothing(context->platformContext(), allowsSmoothing);
+    CGContextSetAllowsFontSubpixelQuantization(context->platformContext(), allowsSubpixelQuantization);
 }
 
 }

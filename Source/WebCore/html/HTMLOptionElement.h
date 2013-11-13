@@ -34,9 +34,9 @@ class HTMLSelectElement;
 
 class HTMLOptionElement FINAL : public HTMLElement {
 public:
-    static PassRefPtr<HTMLOptionElement> create(Document*);
-    static PassRefPtr<HTMLOptionElement> create(const QualifiedName&, Document*);
-    static PassRefPtr<HTMLOptionElement> createForJSConstructor(Document*, const String& data, const String& value,
+    static PassRefPtr<HTMLOptionElement> create(Document&);
+    static PassRefPtr<HTMLOptionElement> create(const QualifiedName&, Document&);
+    static PassRefPtr<HTMLOptionElement> createForJSConstructor(Document&, const String& data, const String& value,
        bool defaultSelected, bool selected, ExceptionCode&);
 
     virtual String text() const;
@@ -67,7 +67,7 @@ public:
     void setSelectedState(bool);
 
 private:
-    HTMLOptionElement(const QualifiedName&, Document*);
+    HTMLOptionElement(const QualifiedName&, Document&);
 
     virtual bool isFocusable() const OVERRIDE;
     virtual bool rendererIsNeeded(const RenderStyle&) { return false; }
@@ -94,6 +94,8 @@ private:
     bool m_isSelected;
     RefPtr<RenderStyle> m_style;
 };
+
+ELEMENT_TYPE_CASTS(HTMLOptionElement)
 
 } // namespace
 

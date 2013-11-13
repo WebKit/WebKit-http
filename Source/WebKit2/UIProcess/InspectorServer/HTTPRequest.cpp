@@ -74,7 +74,7 @@ size_t HTTPRequest::parseRequestLine(const char* data, size_t length, String& fa
 {
     String url;
     size_t result = parseHTTPRequestLine(data, length, failureReason, m_requestMethod, url, m_httpVersion);
-    m_url = KURL(KURL(), url);
+    m_url = URL(URL(), url);
     return result;
 }
 
@@ -93,6 +93,13 @@ size_t HTTPRequest::parseHeaders(const char* data, size_t length, String& failur
             break;
         m_headerFields.add(name, value);
     }
+
+    // If we got here and "name" is empty, it means the headers are valid and ended with a
+    // blank line (parseHTTPHeader returns "name" as empty if parsing a blank line), otherwise
+    // the headers didn't end with a blank line and we have an invalid request.
+    // See also http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html
+    if (!name.isEmpty())
+        return 0;
     return p - data;
 }
 
@@ -106,7 +113,7 @@ HTTPRequest::HTTPRequest()
 {
 }
 
-HTTPRequest::HTTPRequest(const String& requestMethod, const KURL& url, HTTPVersion version)
+HTTPRequest::HTTPRequest(const String& requestMethod, const URL& url, HTTPVersion version)
     : m_url(url)
     , m_httpVersion(version)
     , m_requestMethod(requestMethod)

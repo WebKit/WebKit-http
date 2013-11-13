@@ -27,9 +27,18 @@ messages -> WebContext LegacyReceiver {
 
     DidGetStatistics(WebKit::StatisticsData statisticsData, uint64_t callbackID)
 
+#if PLATFORM(IOS)
+    WriteWebContentToPasteboard(WebCore::PasteboardWebContent content)
+    WriteImageToPasteboard(WebCore::PasteboardImage pasteboardImage)
+    WriteStringToPasteboard(WTF::String pasteboardType, WTF::String text) 
+    ReadStringFromPasteboard(uint64_t index, WTF::String pasteboardType) -> (WTF::String string)
+    ReadURLFromPasteboard(uint64_t index, WTF::String pasteboardType) -> (WTF::String string)
+    ReadBufferFromPasteboard(uint64_t index, WTF::String pasteboardType) -> (WebKit::SharedMemory::Handle handle, uint64_t size)
+    GetPasteboardItemsCount() -> (uint64_t itemsCount)
+#endif
+
 #if PLATFORM(MAC)
     # Pasteboard messages.
-    
     GetPasteboardTypes(WTF::String pasteboardName) -> (Vector<WTF::String> types)
     GetPasteboardPathnamesForType(WTF::String pasteboardName, WTF::String pasteboardType) -> (Vector<WTF::String> pathnames)
     GetPasteboardStringForType(WTF::String pasteboardName, WTF::String pasteboardType) -> (WTF::String string)

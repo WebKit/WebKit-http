@@ -30,8 +30,8 @@
 
 #include "CachedImage.h"
 #include "Image.h"
+#include "RenderElement.h"
 #include "RenderImageResourceStyleImage.h"
-#include "RenderObject.h"
 
 namespace WebCore {
 
@@ -44,7 +44,7 @@ RenderImageResource::~RenderImageResource()
 {
 }
 
-void RenderImageResource::initialize(RenderObject* renderer)
+void RenderImageResource::initialize(RenderElement* renderer)
 {
     ASSERT(!m_renderer);
     ASSERT(renderer);

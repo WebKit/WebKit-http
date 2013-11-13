@@ -49,7 +49,7 @@ public:
     StyleCachedImageSet* cachedImageSet(CachedResourceLoader*);
 
     // Returns a StyleCachedImageSet if the best fit image has been cached already, otherwise a StylePendingImage.
-    StyleImage* cachedOrPendingImageSet(Document*);
+    StyleImage* cachedOrPendingImageSet(Document&);
 
     String customCSSText() const;
 
@@ -83,6 +83,8 @@ private:
 
     Vector<ImageWithScale> m_imagesInSet;
 };
+
+CSS_VALUE_TYPE_CASTS(ImageSetValue)
 
 } // namespace WebCore
 

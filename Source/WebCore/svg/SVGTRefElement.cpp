@@ -49,7 +49,7 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGTRefElement)
     REGISTER_PARENT_ANIMATED_PROPERTIES(SVGTextPositioningElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
-PassRefPtr<SVGTRefElement> SVGTRefElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGTRefElement> SVGTRefElement::create(const QualifiedName& tagName, Document& document)
 {
     RefPtr<SVGTRefElement> element = adoptRef(new SVGTRefElement(tagName, document));
     element->ensureUserAgentShadowRoot();
@@ -129,7 +129,7 @@ void SVGTRefTargetEventListener::handleEvent(ScriptExecutionContext*, Event* eve
         m_trefElement->detachTarget();
 }
 
-inline SVGTRefElement::SVGTRefElement(const QualifiedName& tagName, Document* document)
+inline SVGTRefElement::SVGTRefElement(const QualifiedName& tagName, Document& document)
     : SVGTextPositioningElement(tagName, document)
     , m_targetListener(SVGTRefTargetEventListener::create(this))
 {
@@ -151,7 +151,7 @@ void SVGTRefElement::updateReferencedText(Element* target)
     ASSERT(shadowRoot());
     ShadowRoot* root = shadowRoot();
     if (!root->firstChild())
-        root->appendChild(Text::create(&document(), textContent), ASSERT_NO_EXCEPTION);
+        root->appendChild(Text::create(document(), textContent), ASSERT_NO_EXCEPTION);
     else {
         ASSERT(root->firstChild()->isTextNode());
         root->firstChild()->setTextContent(textContent, ASSERT_NO_EXCEPTION);
@@ -175,7 +175,7 @@ void SVGTRefElement::detachTarget()
 
     // Mark the referenced ID as pending.
     String id;
-    SVGURIReference::targetElementFromIRIString(href(), &document(), &id);
+    SVGURIReference::targetElementFromIRIString(href(), document(), &id);
     if (!id.isEmpty())
         document().accessSVGExtensions()->addPendingResource(id, this);
 }
@@ -220,9 +220,9 @@ void SVGTRefElement::svgAttributeChanged(const QualifiedName& attrName)
     ASSERT_NOT_REACHED();
 }
 
-RenderObject* SVGTRefElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SVGTRefElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
-    return new (arena) RenderSVGInline(this);
+    return new (arena) RenderSVGInline(*this);
 }
 
 bool SVGTRefElement::childShouldCreateRenderer(const Node* child) const
@@ -255,7 +255,7 @@ void SVGTRefElement::buildPendingResource()
         return;
 
     String id;
-    RefPtr<Element> target = SVGURIReference::targetElementFromIRIString(href(), &document(), &id);
+    RefPtr<Element> target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
     if (!target.get()) {
         if (id.isEmpty())
             return;

@@ -51,7 +51,7 @@ namespace WebCore {
 
 JSValue JSDocument::location(ExecState* exec) const
 {
-    Frame* frame = static_cast<Document*>(impl())->frame();
+    Frame* frame = impl()->frame();
     if (!frame)
         return jsNull();
 
@@ -59,14 +59,14 @@ JSValue JSDocument::location(ExecState* exec) const
     if (JSObject* wrapper = getCachedWrapper(currentWorld(exec), location))
         return wrapper;
 
-    JSLocation* jsLocation = JSLocation::create(getDOMStructure<JSLocation>(exec, globalObject()), globalObject(), location);
+    JSLocation* jsLocation = JSLocation::create(getDOMStructure<JSLocation>(exec->vm(), globalObject()), globalObject(), location);
     cacheWrapper(currentWorld(exec), location, jsLocation);
     return jsLocation;
 }
 
 void JSDocument::setLocation(ExecState* exec, JSValue value)
 {
-    Frame* frame = static_cast<Document*>(impl())->frame();
+    Frame* frame = impl()->frame();
     if (!frame)
         return;
 

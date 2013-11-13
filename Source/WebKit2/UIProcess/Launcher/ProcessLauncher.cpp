@@ -82,17 +82,13 @@ const char* ProcessLauncher::processTypeAsString(ProcessType processType)
     switch (processType) {
     case WebProcess:
         return "webprocess";
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
     case PluginProcess:
         return "pluginprocess";
 #endif
 #if ENABLE(NETWORK_PROCESS)
     case NetworkProcess:
         return "networkprocess";
-#endif
-#if ENABLE(SHARED_WORKER_PROCESS)
-    case SharedWorkerProcess:
-        return "sharedworkerprocess";
 #endif
     }
 
@@ -107,7 +103,7 @@ bool ProcessLauncher::getProcessTypeFromString(const char* string, ProcessType& 
         return true;
     }
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
     if (!strcmp(string, "pluginprocess")) {
         processType = PluginProcess;
         return true;
@@ -117,13 +113,6 @@ bool ProcessLauncher::getProcessTypeFromString(const char* string, ProcessType& 
 #if ENABLE(NETWORK_PROCESS)
     if (!strcmp(string, "networkprocess")) {
         processType = NetworkProcess;
-        return true;
-    }
-#endif
-
-#if ENABLE(SHARED_WORKER_PROCESS)
-    if (!strcmp(string, "sharedworkerprocess")) {
-        processType = SharedWorkerProcess;
         return true;
     }
 #endif

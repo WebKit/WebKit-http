@@ -44,13 +44,13 @@
 
 namespace WebCore {
 
-    class KURL;
+    class URL;
     class ScriptExecutionContext;
 
-    class AbstractWorker : public RefCounted<AbstractWorker>, public ActiveDOMObject, public EventTarget {
+    class AbstractWorker : public RefCounted<AbstractWorker>, public ActiveDOMObject, public EventTargetWithInlineData {
     public:
         // EventTarget APIs
-        virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE { return ActiveDOMObject::scriptExecutionContext(); }
+        virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL { return ActiveDOMObject::scriptExecutionContext(); }
 
         DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
 
@@ -62,18 +62,14 @@ namespace WebCore {
 
     protected:
         // Helper function that converts a URL to an absolute URL and checks the result for validity.
-        KURL resolveURL(const String& url, ExceptionCode& ec);
+        URL resolveURL(const String& url, ExceptionCode& ec);
         intptr_t asID() const { return reinterpret_cast<intptr_t>(this); }
 
     private:
-        virtual void refEventTarget() OVERRIDE { ref(); }
-        virtual void derefEventTarget() OVERRIDE { deref(); }
-        virtual EventTargetData* eventTargetData() OVERRIDE;
-        virtual EventTargetData& ensureEventTargetData() OVERRIDE;
-        
-        virtual void contextDestroyed() OVERRIDE;
+        virtual void refEventTarget() OVERRIDE FINAL { ref(); }
+        virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
 
-        EventTargetData m_eventTargetData;
+        virtual void contextDestroyed() OVERRIDE;
     };
 
 } // namespace WebCore

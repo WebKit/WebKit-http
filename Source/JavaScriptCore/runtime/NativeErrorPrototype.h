@@ -28,20 +28,20 @@ namespace JSC {
 
     class NativeErrorPrototype : public ErrorPrototype {
     private:
-        NativeErrorPrototype(ExecState*, Structure*);
+        NativeErrorPrototype(VM&, Structure*);
     
     public:
         typedef ErrorPrototype Base;
 
-        static NativeErrorPrototype* create(ExecState* exec, JSGlobalObject* globalObject, Structure* structure, const String& name, NativeErrorConstructor* constructor)
+        static NativeErrorPrototype* create(VM& vm, JSGlobalObject* globalObject, Structure* structure, const String& name, NativeErrorConstructor* constructor)
         {
-            NativeErrorPrototype* prototype = new (NotNull, allocateCell<NativeErrorPrototype>(*exec->heap())) NativeErrorPrototype(exec, structure);
-            prototype->finishCreation(exec, globalObject, name, constructor);
+            NativeErrorPrototype* prototype = new (NotNull, allocateCell<NativeErrorPrototype>(vm.heap)) NativeErrorPrototype(vm, structure);
+            prototype->finishCreation(vm, globalObject, name, constructor);
             return prototype;
         }
 
     protected:
-        void finishCreation(ExecState*, JSGlobalObject*, const String& nameAndMessage, NativeErrorConstructor*);
+        void finishCreation(VM&, JSGlobalObject*, const String& nameAndMessage, NativeErrorConstructor*);
     };
 
 } // namespace JSC

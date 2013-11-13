@@ -31,24 +31,23 @@
 #ifndef ThreadableBlobRegistry_h
 #define ThreadableBlobRegistry_h
 
-#include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
 class BlobData;
-class KURL;
+class URL;
 class SecurityOrigin;
 
 class ThreadableBlobRegistry {
 public:
-    static void registerBlobURL(const KURL&, PassOwnPtr<BlobData>);
-    static void registerBlobURL(SecurityOrigin*, const KURL&, const KURL& srcURL);
-    static void unregisterBlobURL(const KURL&);
+    static void registerBlobURL(const URL&, std::unique_ptr<BlobData>);
+    static void registerBlobURL(SecurityOrigin*, const URL&, const URL& srcURL);
+    static void unregisterBlobURL(const URL&);
 
     // Returns the origin for the given blob URL. This is because we are not able to embed the unique security origin or the origin of file URL
     // in the blob URL.
-    static PassRefPtr<SecurityOrigin> getCachedOrigin(const KURL&);
+    static PassRefPtr<SecurityOrigin> getCachedOrigin(const URL&);
 };
 
 } // namespace WebCore

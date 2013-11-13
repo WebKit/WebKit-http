@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebProcessProxy.h"
 
+#include "CustomProtocolManagerProxyMessages.h"
 #include "DataReference.h"
 #include "DownloadProxyMap.h"
 #include "PluginInfoStore.h"
@@ -40,16 +41,12 @@
 #include "WebPluginSiteDataManager.h"
 #include "WebProcessMessages.h"
 #include "WebProcessProxyMessages.h"
-#include <WebCore/KURL.h>
+#include <WebCore/URL.h>
+#include <WebCore/RunLoop.h>
 #include <WebCore/SuddenTermination.h>
 #include <stdio.h>
-#include <wtf/MainThread.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
-
-#if ENABLE(CUSTOM_PROTOCOLS)
-#include "CustomProtocolManagerProxyMessages.h"
-#endif
 
 #if PLATFORM(MAC)
 #include "PDFPlugin.h"
@@ -74,7 +71,7 @@ static uint64_t generatePageID()
 
 static WebProcessProxy::WebPageProxyMap& globalPageMap()
 {
-    ASSERT(isMainThread());
+    ASSERT(RunLoop::isMain());
     DEFINE_STATIC_LOCAL(WebProcessProxy::WebPageProxyMap, pageMap, ());
     return pageMap;
 }
@@ -228,13 +225,13 @@ void WebProcessProxy::registerNewWebBackForwardListItem(WebBackForwardListItem* 
 
 void WebProcessProxy::assumeReadAccessToBaseURL(const String& urlString)
 {
-    KURL url(KURL(), urlString);
+    URL url(URL(), urlString);
     if (!url.isLocalFile())
         return;
 
     // There's a chance that urlString does not point to a directory.
     // Get url's base URL to add to m_localPathsWithAssumedReadAccess.
-    KURL baseURL(KURL(), url.baseAsString());
+    URL baseURL(URL(), url.baseAsString());
     
     // Client loads an alternate string. This doesn't grant universal file read, but the web process is assumed
     // to have read access to this directory already.
@@ -243,10 +240,10 @@ void WebProcessProxy::assumeReadAccessToBaseURL(const String& urlString)
 
 bool WebProcessProxy::checkURLReceivedFromWebProcess(const String& urlString)
 {
-    return checkURLReceivedFromWebProcess(KURL(KURL(), urlString));
+    return checkURLReceivedFromWebProcess(URL(URL(), urlString));
 }
 
-bool WebProcessProxy::checkURLReceivedFromWebProcess(const KURL& url)
+bool WebProcessProxy::checkURLReceivedFromWebProcess(const URL& url)
 {
     // FIXME: Consider checking that the URL is valid. Currently, WebProcess sends invalid URLs in many cases, but it probably doesn't have good reasons to do that.
 
@@ -259,7 +256,7 @@ bool WebProcessProxy::checkURLReceivedFromWebProcess(const KURL& url)
         return true;
 
     // If we loaded a string with a file base URL before, loading resources from that subdirectory is fine.
-    // There are no ".." components, because all URLs received from WebProcess are parsed with KURL, which removes those.
+    // There are no ".." components, because all URLs received from WebProcess are parsed with URL, which removes those.
     String path = url.fileSystemPath();
     for (HashSet<String>::const_iterator iter = m_localPathsWithAssumedReadAccess.begin(); iter != m_localPathsWithAssumedReadAccess.end(); ++iter) {
         if (path.startsWith(*iter))
@@ -269,9 +266,9 @@ bool WebProcessProxy::checkURLReceivedFromWebProcess(const KURL& url)
     // Items in back/forward list have been already checked.
     // One case where we don't have sandbox extensions for file URLs in b/f list is if the list has been reinstated after a crash or a browser restart.
     for (WebBackForwardListItemMap::iterator iter = m_backForwardListItemMap.begin(), end = m_backForwardListItemMap.end(); iter != end; ++iter) {
-        if (KURL(KURL(), iter->value->url()).fileSystemPath() == path)
+        if (URL(URL(), iter->value->url()).fileSystemPath() == path)
             return true;
-        if (KURL(KURL(), iter->value->originalURL()).fileSystemPath() == path)
+        if (URL(URL(), iter->value->originalURL()).fileSystemPath() == path)
             return true;
     }
 
@@ -292,7 +289,7 @@ void WebProcessProxy::addBackForwardItem(uint64_t itemID, const String& original
     MESSAGE_CHECK_URL(originalURL);
     MESSAGE_CHECK_URL(url);
 
-    WebBackForwardListItemMap::AddResult result = m_backForwardListItemMap.add(itemID, 0);
+    WebBackForwardListItemMap::AddResult result = m_backForwardListItemMap.add(itemID, nullptr);
     if (result.isNewEntry) {
         result.iterator->value = WebBackForwardListItem::create(originalURL, url, title, backForwardData.data(), backForwardData.size(), itemID);
         return;
@@ -325,32 +322,12 @@ void WebProcessProxy::getPlugins(bool refresh, Vector<PluginInfo>& plugins, Vect
 }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
 void WebProcessProxy::getPluginProcessConnection(uint64_t pluginProcessToken, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply)
 {
     PluginProcessManager::shared().getPluginProcessConnection(pluginProcessToken, reply);
 }
-
-#elif ENABLE(NETSCAPE_PLUGIN_API)
-
-void WebProcessProxy::didGetSitesWithPluginData(const Vector<String>& sites, uint64_t callbackID)
-{
-    m_context->pluginSiteDataManager()->didGetSitesWithData(sites, callbackID);
-}
-
-void WebProcessProxy::didClearPluginSiteData(uint64_t callbackID)
-{
-    m_context->pluginSiteDataManager()->didClearSiteData(callbackID);
-}
-
 #endif
-
-#if ENABLE(SHARED_WORKER_PROCESS)
-void WebProcessProxy::getSharedWorkerProcessConnection(const String& /* url */, const String& /* name */, PassRefPtr<Messages::WebProcessProxy::GetSharedWorkerProcessConnection::DelayedReply>)
-{
-    // FIXME: Implement
-}
-#endif // ENABLE(SHARED_WORKER_PROCESS)
 
 #if ENABLE(NETWORK_PROCESS)
 void WebProcessProxy::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> reply)
@@ -375,7 +352,7 @@ void WebProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC
     // FIXME: Add unhandled message logging.
 }
 
-void WebProcessProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+void WebProcessProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, std::unique_ptr<CoreIPC::MessageEncoder>& replyEncoder)
 {
     if (dispatchSyncMessage(connection, decoder, replyEncoder))
         return;
@@ -395,7 +372,7 @@ void WebProcessProxy::didClose(CoreIPC::Connection*)
 {
     // Protect ourselves, as the call to disconnect() below may otherwise cause us
     // to be deleted before we can finish our work.
-    RefPtr<WebProcessProxy> protect(this);
+    Ref<WebProcessProxy> protect(*this);
 
     webConnection()->didClose();
 

@@ -25,6 +25,7 @@
 
 #include "BidiRun.h"
 #include "RenderBlock.h"
+#include "RenderInline.h"
 #include "RenderText.h"
 #include <wtf/StdLibExtras.h>
 
@@ -43,7 +44,7 @@ public:
     {
     }
 
-    InlineIterator(RenderObject* root, RenderObject* o, unsigned p)
+    InlineIterator(RenderElement* root, RenderObject* o, unsigned p)
         : m_root(root)
         , m_obj(o)
         , m_pos(p)
@@ -67,7 +68,7 @@ public:
 
     RenderObject* object() const { return m_obj; }
     unsigned offset() const { return m_pos; }
-    RenderObject* root() const { return m_root; }
+    RenderElement* root() const { return m_root; }
 
     void fastIncrementInTextNode();
     void increment(InlineBidiResolver* = 0);
@@ -76,7 +77,7 @@ public:
     inline bool atTextParagraphSeparator()
     {
         return m_obj && m_obj->preservesNewline() && m_obj->isText() && toRenderText(m_obj)->textLength()
-            && !toRenderText(m_obj)->isWordBreak() && toRenderText(m_obj)->characterAt(m_pos) == '\n';
+            && toRenderText(m_obj)->characterAt(m_pos) == '\n';
     }
     
     inline bool atParagraphSeparator()
@@ -90,7 +91,7 @@ public:
     ALWAYS_INLINE WTF::Unicode::Direction direction() const;
 
 private:
-    RenderObject* m_root;
+    RenderElement* m_root;
 
     // FIXME: These should be private.
 public:
@@ -166,7 +167,7 @@ static inline void notifyObserverWillExitObject(Observer* observer, RenderObject
 static inline bool isIteratorTarget(RenderObject* object)
 {
     ASSERT(object); // The iterator will of course return 0, but its not an expected argument to this function.
-    return object->isText() || object->isFloating() || object->isOutOfFlowPositioned() || object->isReplaced();
+    return object->isTextOrLineBreak() || object->isFloating() || object->isOutOfFlowPositioned() || object->isReplaced();
 }
 
 // This enum is only used for bidiNextShared()
@@ -175,18 +176,17 @@ enum EmptyInlineBehavior {
     IncludeEmptyInlines,
 };
 
-static bool isEmptyInline(RenderObject* object)
+static bool isEmptyInline(const RenderInline& renderer)
 {
-    if (!object->isRenderInline())
-        return false;
-
-    for (RenderObject* curr = object->firstChild(); curr; curr = curr->nextSibling()) {
+    for (RenderObject* curr = renderer.firstChild(); curr; curr = curr->nextSibling()) {
         if (curr->isFloatingOrOutOfFlowPositioned())
             continue;
-        if (curr->isText() && toRenderText(curr)->isAllCollapsibleWhitespace())
+        if (curr->isText()) {
+            if (!toRenderText(curr)->isAllCollapsibleWhitespace())
+                return false;
             continue;
-
-        if (!isEmptyInline(curr))
+        }
+        if (!curr->isRenderInline() || !isEmptyInline(toRenderInline(*curr)))
             return false;
     }
     return true;
@@ -196,7 +196,7 @@ static bool isEmptyInline(RenderObject* object)
 // This function will iterate over inlines within a block, optionally notifying
 // a bidi resolver as it enters/exits inlines (so it can push/pop embedding levels).
 template <class Observer>
-static inline RenderObject* bidiNextShared(RenderObject* root, RenderObject* current, Observer* observer = 0, EmptyInlineBehavior emptyInlineBehavior = SkipEmptyInlines, bool* endOfInlinePtr = 0)
+static inline RenderObject* bidiNextShared(RenderElement* root, RenderObject* current, Observer* observer = 0, EmptyInlineBehavior emptyInlineBehavior = SkipEmptyInlines, bool* endOfInlinePtr = 0)
 {
     RenderObject* next = 0;
     // oldEndOfInline denotes if when we last stopped iterating if we were at the end of an inline.
@@ -206,7 +206,7 @@ static inline RenderObject* bidiNextShared(RenderObject* root, RenderObject* cur
     while (current) {
         next = 0;
         if (!oldEndOfInline && !isIteratorTarget(current)) {
-            next = current->firstChild();
+            next = toRenderElement(current)->firstChild();
             notifyObserverEnteredObject(observer, next);
         }
 
@@ -241,8 +241,7 @@ static inline RenderObject* bidiNextShared(RenderObject* root, RenderObject* cur
             break;
 
         if (isIteratorTarget(next)
-            || ((emptyInlineBehavior == IncludeEmptyInlines || isEmptyInline(next)) // Always return EMPTY inlines.
-                && next->isRenderInline()))
+            || (next->isRenderInline() && (emptyInlineBehavior == IncludeEmptyInlines || isEmptyInline(toRenderInline(*next)))))
             break;
         current = next;
     }
@@ -254,26 +253,26 @@ static inline RenderObject* bidiNextShared(RenderObject* root, RenderObject* cur
 }
 
 template <class Observer>
-static inline RenderObject* bidiNextSkippingEmptyInlines(RenderObject* root, RenderObject* current, Observer* observer)
+static inline RenderObject* bidiNextSkippingEmptyInlines(RenderElement* root, RenderObject* current, Observer* observer)
 {
     // The SkipEmptyInlines callers never care about endOfInlinePtr.
     return bidiNextShared(root, current, observer, SkipEmptyInlines);
 }
 
 // This makes callers cleaner as they don't have to specify a type for the observer when not providing one.
-static inline RenderObject* bidiNextSkippingEmptyInlines(RenderObject* root, RenderObject* current)
+static inline RenderObject* bidiNextSkippingEmptyInlines(RenderElement* root, RenderObject* current)
 {
     InlineBidiResolver* observer = 0;
     return bidiNextSkippingEmptyInlines(root, current, observer);
 }
 
-static inline RenderObject* bidiNextIncludingEmptyInlines(RenderObject* root, RenderObject* current, bool* endOfInlinePtr = 0)
+static inline RenderObject* bidiNextIncludingEmptyInlines(RenderElement* root, RenderObject* current, bool* endOfInlinePtr = 0)
 {
     InlineBidiResolver* observer = 0; // Callers who include empty inlines, never use an observer.
     return bidiNextShared(root, current, observer, IncludeEmptyInlines, endOfInlinePtr);
 }
 
-static inline RenderObject* bidiFirstSkippingEmptyInlines(RenderObject* root, InlineBidiResolver* resolver = 0)
+static inline RenderObject* bidiFirstSkippingEmptyInlines(RenderElement* root, InlineBidiResolver* resolver = 0)
 {
     RenderObject* o = root->firstChild();
     if (!o)
@@ -281,7 +280,7 @@ static inline RenderObject* bidiFirstSkippingEmptyInlines(RenderObject* root, In
 
     if (o->isRenderInline()) {
         notifyObserverEnteredObject(resolver, o);
-        if (!isEmptyInline(o))
+        if (!isEmptyInline(toRenderInline(*o)))
             o = bidiNextSkippingEmptyInlines(root, o, resolver);
         else {
             // Never skip empty inlines.
@@ -301,7 +300,7 @@ static inline RenderObject* bidiFirstSkippingEmptyInlines(RenderObject* root, In
 }
 
 // FIXME: This method needs to be renamed when bidiNext finds a good name.
-static inline RenderObject* bidiFirstIncludingEmptyInlines(RenderObject* root)
+static inline RenderObject* bidiFirstIncludingEmptyInlines(RenderElement* root)
 {
     RenderObject* o = root->firstChild();
     // If either there are no children to walk, or the first one is correct
@@ -324,7 +323,7 @@ inline void InlineIterator::fastIncrementInTextNode()
 // it shouldn't use functions called bidiFirst and bidiNext.
 class InlineWalker {
 public:
-    InlineWalker(RenderObject* root)
+    InlineWalker(RenderElement* root)
         : m_root(root)
         , m_current(0)
         , m_atEndOfInline(false)
@@ -333,7 +332,7 @@ public:
         m_current = bidiFirstIncludingEmptyInlines(m_root);
     }
 
-    RenderObject* root() { return m_root; }
+    RenderElement* root() { return m_root; }
     RenderObject* current() { return m_current; }
 
     bool atEndOfInline() { return m_atEndOfInline; }
@@ -346,7 +345,7 @@ public:
         return m_current;
     }
 private:
-    RenderObject* m_root;
+    RenderElement* m_root;
     RenderObject* m_current;
     bool m_atEndOfInline;
 };
@@ -420,12 +419,17 @@ static inline bool isIsolatedInline(RenderObject* object)
 static inline RenderObject* containingIsolate(RenderObject* object, RenderObject* root)
 {
     ASSERT(object);
+    RenderObject* containingIsolateObject = 0;
     while (object && object != root) {
+        if (containingIsolateObject && !isIsolatedInline(object))
+            break;
+
         if (isIsolatedInline(object))
-            return object;
+            containingIsolateObject = object;
+
         object = object->parent();
     }
-    return 0;
+    return containingIsolateObject;
 }
 
 static inline unsigned numberOfIsolateAncestors(const InlineIterator& iter)

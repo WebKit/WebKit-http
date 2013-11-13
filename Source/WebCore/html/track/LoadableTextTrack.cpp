@@ -31,7 +31,6 @@
 
 #include "Event.h"
 #include "HTMLTrackElement.h"
-#include "ScriptEventListener.h"
 #include "ScriptExecutionContext.h"
 #include "TextTrackCueList.h"
 
@@ -55,7 +54,7 @@ void LoadableTextTrack::clearClient()
     TextTrack::clearClient();
 }
 
-void LoadableTextTrack::scheduleLoad(const KURL& url)
+void LoadableTextTrack::scheduleLoad(const URL& url)
 {
     if (url == m_url)
         return;

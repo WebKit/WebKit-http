@@ -35,9 +35,9 @@
 #include "NodeRenderStyle.h"
 #include "NodeRenderingTraversal.h"
 #include "NodeTraversal.h"
+#include "RenderElement.h"
 #include "RenderFullScreen.h"
 #include "RenderNamedFlowThread.h"
-#include "RenderObject.h"
 #include "RenderText.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
@@ -190,7 +190,7 @@ static RenderNamedFlowThread* moveToFlowThreadIfNeeded(Element& element, const R
         return 0;
     FlowThreadController& flowThreadController = element.document().renderView()->flowThreadController();
     RenderNamedFlowThread& parentFlowRenderer = flowThreadController.ensureRenderFlowThreadWithName(style.flowThread());
-    flowThreadController.registerNamedFlowContentNode(&element, &parentFlowRenderer);
+    flowThreadController.registerNamedFlowContentElement(element, parentFlowRenderer);
     return &parentFlowRenderer;
 }
 #endif
@@ -220,17 +220,18 @@ static void createRendererIfNeeded(Element& element, RenderStyle* resolvedStyle)
     if (!element.rendererIsNeeded(*style))
         return;
 
-    RenderObject* parentRenderer;
+    RenderElement* parentRenderer;
     RenderObject* nextRenderer;
     if (parentFlowRenderer) {
         parentRenderer = parentFlowRenderer;
         nextRenderer = parentFlowRenderer->nextRendererForNode(&element);
     } else {
+        // FIXME: Make this path Element only, handle the root special case separately.
         parentRenderer = renderingParentNode->renderer();
         nextRenderer = nextSiblingRenderer(element, renderingParentNode);
     }
 
-    RenderObject* newRenderer = element.createRenderer(document.renderArena(), style.get());
+    RenderElement* newRenderer = element.createRenderer(*document.renderArena(), *style);
     if (!newRenderer)
         return;
     if (!parentRenderer->isChildAllowed(newRenderer, style.get())) {
@@ -247,7 +248,7 @@ static void createRendererIfNeeded(Element& element, RenderStyle* resolvedStyle)
 
 #if ENABLE(FULLSCREEN_API)
     if (document.webkitIsFullScreen() && document.webkitCurrentFullScreenElement() == &element) {
-        newRenderer = RenderFullScreen::wrapRenderer(newRenderer, parentRenderer, &document);
+        newRenderer = RenderFullScreen::wrapRenderer(newRenderer, parentRenderer, document);
         if (!newRenderer)
             return;
     }
@@ -339,7 +340,7 @@ static bool textRendererIsNeeded(const Text& textNode, const RenderObject& paren
         if (parentRenderer.isRenderBlock() && !parentRenderer.childrenInline() && (!previousRenderer || !previousRenderer->isInline()))
             return false;
         
-        RenderObject* first = parentRenderer.firstChild();
+        RenderObject* first = toRenderElement(parentRenderer).firstChild();
         while (first && first->isFloatingOrOutOfFlowPositioned())
             first = first->nextSibling();
         RenderObject* nextRenderer = nextSiblingRenderer(textNode);
@@ -358,23 +359,18 @@ static void createTextRendererIfNeeded(Text& textNode)
     ContainerNode* renderingParentNode = NodeRenderingTraversal::parent(&textNode);
     if (!renderingParentNode)
         return;
-    RenderObject* parentRenderer = renderingParentNode->renderer();
+    RenderElement* parentRenderer = renderingParentNode->renderer();
     if (!parentRenderer || !parentRenderer->canHaveChildren())
         return;
     if (!renderingParentNode->childShouldCreateRenderer(&textNode))
         return;
 
     Document& document = textNode.document();
-    RefPtr<RenderStyle> style;
-    bool resetStyleInheritance = textNode.parentNode()->isShadowRoot() && toShadowRoot(textNode.parentNode())->resetStyleInheritance();
-    if (resetStyleInheritance)
-        style = document.ensureStyleResolver().defaultStyleForElement();
-    else
-        style = parentRenderer->style();
+    RefPtr<RenderStyle> style = parentRenderer->style();
 
     if (!textRendererIsNeeded(textNode, *parentRenderer, *style))
         return;
-    RenderText* newRenderer = textNode.createTextRenderer(document.renderArena(), style.get());
+    RenderText* newRenderer = textNode.createTextRenderer(*document.renderArena(), *style);
     if (!newRenderer)
         return;
     if (!parentRenderer->isChildAllowed(newRenderer, style.get())) {
@@ -389,7 +385,6 @@ static void createTextRendererIfNeeded(Text& textNode)
     RenderObject* nextRenderer = nextSiblingRenderer(textNode);
     textNode.setRenderer(newRenderer);
     // Parent takes care of the animations, no need to call setAnimatableStyle.
-    newRenderer->setStyle(style.release());
     parentRenderer->addChild(newRenderer, nextRenderer);
 }
 
@@ -550,7 +545,7 @@ static void detachRenderTree(Element& current, DetachType detachType)
         current.didDetachRenderers();
 }
 
-static bool pseudoStyleCacheIsInvalid(RenderObject* renderer, RenderStyle* newStyle)
+static bool pseudoStyleCacheIsInvalid(RenderElement* renderer, RenderStyle* newStyle)
 {
     const RenderStyle* currentStyle = renderer->style();
 
@@ -604,7 +599,7 @@ static Change resolveLocal(Element& current, Change inheritedChange)
         return Detach;
     }
 
-    if (RenderObject* renderer = current.renderer()) {
+    if (RenderElement* renderer = current.renderer()) {
         if (localChange != NoChange || pseudoStyleCacheIsInvalid(renderer, newStyle.get()) || (inheritedChange == Force && renderer->requiresForcedStyleRecalcPropagation()) || current.styleChangeType() == SyntheticStyleChange)
             renderer->setAnimatableStyle(newStyle.get());
         else if (current.needsStyleRecalc()) {
@@ -616,7 +611,7 @@ static Change resolveLocal(Element& current, Change inheritedChange)
 
     // If "rem" units are used anywhere in the document, and if the document element's font size changes, then go ahead and force font updating
     // all the way down the tree. This is simpler than having to maintain a cache of objects (and such font size changes should be rare anyway).
-    if (document.styleSheetCollection()->usesRemUnits() && document.documentElement() == &current && localChange != NoChange && currentStyle && newStyle && currentStyle->fontSize() != newStyle->fontSize()) {
+    if (document.styleSheetCollection().usesRemUnits() && document.documentElement() == &current && localChange != NoChange && currentStyle && newStyle && currentStyle->fontSize() != newStyle->fontSize()) {
         // Cached RenderStyles may depend on the re units.
         if (StyleResolver* styleResolver = document.styleResolverIfExists())
             styleResolver->invalidateMatchedPropertiesCache();
@@ -630,12 +625,9 @@ static Change resolveLocal(Element& current, Change inheritedChange)
     return localChange;
 }
 
-static void updateTextStyle(Text& text, RenderStyle* parentElementStyle, Style::Change change)
+static void updateTextStyle(Text& text)
 {
     RenderText* renderer = toRenderText(text.renderer());
-
-    if (change != Style::NoChange && renderer)
-        renderer->setStyle(parentElementStyle);
 
     if (!text.needsStyleRecalc())
         return;
@@ -648,7 +640,7 @@ static void updateTextStyle(Text& text, RenderStyle* parentElementStyle, Style::
     text.clearNeedsStyleRecalc();
 }
 
-static void resolveShadowTree(ShadowRoot* shadowRoot, RenderStyle* parentElementStyle, Style::Change change)
+static void resolveShadowTree(ShadowRoot* shadowRoot, Style::Change change)
 {
     if (!shadowRoot)
         return;
@@ -658,7 +650,7 @@ static void resolveShadowTree(ShadowRoot* shadowRoot, RenderStyle* parentElement
     for (Node* child = shadowRoot->firstChild(); child; child = child->nextSibling()) {
         if (child->isTextNode()) {
             // Current user agent ShadowRoots don't have immediate text children so this branch is never actually taken.
-            updateTextStyle(*toText(child), parentElementStyle, change);
+            updateTextStyle(*toText(child));
             continue;
         }
         resolveTree(*toElement(child), change);
@@ -750,12 +742,10 @@ void resolveTree(Element& current, Change change)
     if (change != Detach) {
         StyleResolverParentPusher parentPusher(&current);
 
-        RenderStyle* currentStyle = current.renderStyle();
-
         if (ShadowRoot* shadowRoot = current.shadowRoot()) {
             if (change >= Inherit || shadowRoot->childNeedsStyleRecalc() || shadowRoot->needsStyleRecalc()) {
                 parentPusher.push();
-                resolveShadowTree(shadowRoot, currentStyle, change);
+                resolveShadowTree(shadowRoot, change);
             }
         }
 
@@ -768,7 +758,7 @@ void resolveTree(Element& current, Change change)
         bool forceCheckOfAnyElementSibling = false;
         for (Node* child = current.firstChild(); child; child = child->nextSibling()) {
             if (child->isTextNode()) {
-                updateTextStyle(*toText(child), currentStyle, change);
+                updateTextStyle(*toText(child));
                 continue;
             }
             if (!child->isElementNode())
@@ -811,9 +801,9 @@ void resolveTree(Document& document, Change change)
         }
 #endif
 
-        Style::Change documentChange = determineChange(documentStyle.get(), document.renderer()->style(), document.settings());
+        Style::Change documentChange = determineChange(documentStyle.get(), document.renderView()->style(), document.settings());
         if (documentChange != NoChange)
-            document.renderer()->setStyle(documentStyle.release());
+            document.renderView()->setStyle(documentStyle.release());
     }
 
     Element* documentElement = document.documentElement();

@@ -1,3 +1,411 @@
+2013-09-30  Andreas Kling  <akling@apple.com>
+
+        Try to fix the Windows build.
+
+        * WebFrame.cpp:
+        (WebFrame::pauseAnimation):
+        (WebFrame::pauseTransition):
+
+2013-09-27  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Unreviewed build fix following r156560.
+
+        * WebView.h:
+
+2013-09-26  Darin Adler  <darin@apple.com>
+
+        rename KURL to URL
+        https://bugs.webkit.org/show_bug.cgi?id=16214
+
+        Reviewed by Andreas Kling.
+
+        * many files: Renamed, using script.
+
+2013-09-27  Darin Adler  <darin@apple.com>
+
+        Add empty MainFrame class
+        https://bugs.webkit.org/show_bug.cgi?id=121770
+
+        Reviewed by Andreas Kling.
+
+        * win/WebCoreSupport/WebDragClient.cpp:
+        * win/WebCoreSupport/WebContextMenuClient.cpp:
+        * win/WebDropSource.cpp:
+        * win/WebFrame.cpp:
+        * win/WebView.cpp:
+        Include MainFrame.h instead of Frame.h as needed.
+
+2013-09-25  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Attempting to scroll from a non-scrollable layer results the main document getting scrolled.
+        https://bugs.webkit.org/show_bug.cgi?id=121889.
+        <rdar://problem/15072441>
+
+        Reviewed by Timothy Horton.
+
+        * WebView.cpp:
+        (WebView::gesture): 
+        Call scrollByRecursively on the current RenderLayer's enclosingScrollableLayer to make sure that the method
+        doesn't bail early and end up just scrolling the main document instead of the next scrollable layer in the RenderLayer tree.
+
+2013-09-25  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Replace CF time functions with Windows API functions in WebHistory
+        https://bugs.webkit.org/show_bug.cgi?id=121599
+
+        Reviewed by Brent Fulgham.
+
+        This reduces the dependencies on the CoreFoundation library.
+
+        * WebHistory.cpp:
+        (addDayToSystemTime):
+        (getDayBoundaries):
+        (beginningOfDay):
+        (dateKey):
+        (WebHistory::orderedLastVisitedDays):
+        * WebHistory.h:
+
+2013-09-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Refactor RuntimeEnabledFeatures as a Singleton.
+        https://bugs.webkit.org/show_bug.cgi?id=121883
+
+        Reviewed by Jer Noble.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged): Use singleton accessor
+
+2013-09-24  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Overpanning occurs even when what is being panned isn't the main document.
+        https://bugs.webkit.org/show_bug.cgi?id=121885.
+        <rdar://problem/15072332>.
+
+        Reviewed by Brent Fulgham.
+
+        * WebView.cpp:
+        (WebView::gestureNotify):
+        (WebView::gesture):
+
+2013-09-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed crash fix after r156321.
+
+        Fix a few mistakes in the use of Vectors and counting that introduced test crashes.
+
+        * WebHistory.cpp:
+        (WebHistory::removeAllItems): Loop termination tried to test an unsigned for negative size.
+        (WebHistory::removeItemFromDateCaches): Vector was being created with empty entries.
+        (WebHistory::addItemToDateCaches): Ditto.
+
+2013-09-24  Patrick Gansterer  <paroga@webkit.org>
+
+        Make WebHistory more type safe
+        https://bugs.webkit.org/show_bug.cgi?id=121801
+
+        Reviewed by Brent Fulgham.
+
+        Use a WTF::Vector instead of a CFMutableArray to avoid
+        casting from void* all the time when accessing the entries.
+        This reduces the dependencies on CoreFoundation too.
+
+        * WebHistory.cpp:
+        (getDayBoundaries):
+        (beginningOfDay):
+        (dateKey):
+        (WebHistory::orderedItemsLastVisitedOnDay):
+        (WebHistory::removeItemFromDateCaches):
+        (WebHistory::addItemToDateCaches):
+        * WebHistory.h:
+
+2013-09-23  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Implement WebMutableURLRequest::setHTTPBody()
+        https://bugs.webkit.org/show_bug.cgi?id=91920
+
+        Reviewed by Brent Fulgham.
+
+        * WebMutableURLRequest.cpp:
+        (WebMutableURLRequest::setHTTPBody):
+        (WebMutableURLRequest::setHTTPBodyStream):
+
+2013-09-23  Patrick Gansterer  <paroga@webkit.org>
+
+        use NOMINMAX instead of #define min min
+        https://bugs.webkit.org/show_bug.cgi?id=73563
+
+        Reviewed by Brent Fulgham.
+
+        Use NOMINMAX instead of #define min/max as a cleaner
+        way of ensuring that Windows system header files don't
+        define min/max as macro in the first place.
+
+        * WebKitPrefix.h:
+
+2013-09-22  Sam Weinig  <sam@webkit.org>
+
+        Try to fix the windows build (take 2).
+
+        * DOMEventsClasses.cpp:
+        (DOMEvent::createInstance):
+
+2013-09-22  Sam Weinig  <sam@webkit.org>
+
+        Try to fix the windows build.
+
+        * DOMEventsClasses.cpp:
+        (DOMEvent::createInstance):
+
+2013-09-20  Roger Fong  <roger_fong@apple.com>
+
+        Handle panning gestures messages properly on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=121711.
+
+        Reviewed by Brent Fulgham.
+
+        This fixes a number of issues with panning gestures on Windows.
+        1. Two finger panning in one direction can sometimes cause some unexpected scrolling 
+        in the other direction when the gesture first begins (directions meaning horizontal and vertical)
+        2. Single finger horizontal panning should only be disabled when attempting to select text.
+        3. Scrolling via panning should be clamped, other wise we can scroll contents completely out of the scrollview.
+        4. Horizontal overpan should work.
+        5. Overpan should occur whenever we scroll to the extents of whichever scroll view we're currently scrolling.
+
+        * WebView.cpp:
+        (WebView::gestureNotify):
+        (WebView::gesture):
+
+2013-09-20  Patrick Gansterer  <paroga@webkit.org>
+
+        Fix MIDL files for Visual Studio 2012
+        https://bugs.webkit.org/show_bug.cgi?id=121552
+
+        Reviewed by Brent Fulgham.
+
+        The MIDL compiler shipped with Visual Studio 2012 does not accept forward declarations
+        with typedefs. Use the struct keyword in the function signature to fix this problem.
+
+        * Interfaces/DOMPrivate.idl:
+
+2013-09-20  Patrick Gansterer  <paroga@webkit.org>
+
+        Remove duplicated secondsPerDay variables
+        https://bugs.webkit.org/show_bug.cgi?id=121601
+
+        Reviewed by Andreas Kling.
+
+        Use secondsPerDay from DateMath.h instead of defining it again.
+
+        * MarshallingHelpers.cpp:
+
+2013-09-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Add covariant RenderElement* Element::renderer()
+        https://bugs.webkit.org/show_bug.cgi?id=121638
+
+        Unreviewed buildfix after r156144.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::boundingBox):
+        (DOMElement::font):
+
+2013-09-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Build fix after r156063.
+
+        * WebHistory.h: std::unique is an algorithm; std::unique_ptr is what we want here!
+
+2013-09-18  Sam Weinig  <sam@webkit.org>
+
+        Replace use of OwnArrayPtr<Foo> with std::unique_ptr<Foo[]> in WebKit and WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=121568
+
+        Reviewed by Andreas Kling.
+
+        * WebHistory.cpp:
+        (WebHistory::removeAllItems):
+        (WebHistory::orderedLastVisitedDays):
+        (WebHistory::addItemToDateCaches):
+        (WebHistory::removeItemFromDateCaches):
+        * WebHistory.h:
+        * WebPreferences.cpp:
+        (WebPreferences::copyWebKitPreferencesToCFPreferences):
+
+2013-09-18  Patrick Gansterer  <paroga@webkit.org>
+
+        Make WebHistory more type safe
+        https://bugs.webkit.org/show_bug.cgi?id=119389
+
+        Reviewed by Brent Fulgham.
+
+        Use a WTF::HashMap instead of a CFMutableDictionary to avoid
+        casting from void* all the time when accessing the entries.
+        This reduces the dependencies on CoreFoundation too.
+
+        * WebHistory.cpp:
+        (WebHistory::WebHistory):
+        (WebHistory::removeAllItems):
+        (WebHistory::allItems):
+        (WebHistory::removeItem):
+        (WebHistory::addItem):
+        (WebHistory::visitedURL):
+        (WebHistory::itemForURL):
+        (WebHistory::removeItemForURLString):
+        (WebHistory::itemForURLString):
+        (WebHistory::addVisitedLinksToPageGroup):
+        * WebHistory.h:
+
+2013-09-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Speculative build fix after r155963
+
+        * WebKitCOMAPI.cpp:
+        (classFactory): Use nullptr rather than 0 for HashMap.
+
+2013-09-16  Enrica Casucci  <enrica@apple.com>
+
+        Remove unused function didSetSelectionTypesForPasteboard from EditorClient.
+        https://bugs.webkit.org/show_bug.cgi?id=121464
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        * WebCoreSupport/WebEditorClient.h:
+
+2013-09-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Rendering stops when mouse is moving for some types of animations.
+        https://bugs.webkit.org/show_bug.cgi?id=121329
+
+        Reviewed by Anders Carlsson.
+
+        * WebView.cpp:
+        (WebView::WebView): Add new display flag.
+        (WebView::repaint): Mark view as needing a display operation.
+        (WebView::addToDirtyRegion): Ditto
+        (WebView::scrollBackingStore): Ditto
+        (WebView::sizeChanged): Ditto
+        (WebView::updateBackingStore): Ditto
+        (WebView::performLayeredWindowUpdate): Mark the WebView as having been
+        moved to screen.
+        (WebView::paintIntoWindow): Ditto
+        (WebView::WebViewWndProc): If the view needs display, and it was not done during
+        this message loop iteration, draw the screen.
+        * WebView.h:
+        (WebView::needsDisplay): Added
+
+2013-09-15  Patrick Gansterer  <paroga@webkit.org>
+
+        Remove dependency on CoreFoundation from WebIconDatabase
+        https://bugs.webkit.org/show_bug.cgi?id=119387
+
+        Reviewed by Brent Fulgham.
+
+        * COMVariantSetter.h:
+        (COMVariant::operator&):
+        (COMVariant::operator->):
+        * WebIconDatabase.cpp:
+        (WebIconDatabase::iconDatabaseNotificationUserInfoURLKey):
+        (postDidAddIconNotification):
+        * WebIconDatabase.h:
+        * WebView.cpp:
+        (WebView::notifyDidAddIcon):
+
+2013-09-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Avoid converting from IntSize->SIZE->IntSize
+        https://bugs.webkit.org/show_bug.cgi?id=121180
+
+        Reviewed by Anders Carlsson.
+
+        * WebIconDatabase.cpp:
+        (WebIconDatabase::iconForURL): Guard against null SIZE argument.
+        This was dereferenced with checking before! Use IntSize arguments.
+        (WebIconDatabase::defaultIconWithSize): Used passed-in IntSize.
+        (createDIB): Take an IntSize argument.
+        (WebIconDatabase::getOrCreateSharedBitmap): Take IntSize argument.
+        (WebIconDatabase::getOrCreateDefaultIconBitmap): Ditto.
+        * WebIconDatabase.h: Update for IntSize arguments.
+        * WebView.cpp:
+        (WebView::dispatchDidReceiveIconFromWebFrame): Pass address of
+        IntSize directly, rather than casting to SIZE first.
+
+2013-09-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build correction after r155507.
+
+        * WebCoreSupport/WebChromeClient.cpp: Add missing header include
+        to define isHTMLVideoElement.
+
+2013-09-11  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Compile error when VIDEO is not enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=121156
+
+        Reviewed by Andreas Kling.
+
+        * WebView.cpp:
+        (WebView::enterFullscreenForNode): Protect isHTMLVideoElement() function with ENABLE(VIDEO) guard.
+
+2013-09-11  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Generate more HTML type checks and casting
+        https://bugs.webkit.org/show_bug.cgi?id=121080
+
+        Reviewed by Andreas Kling.
+
+        Clean-up remained functions of HTML elements using auto-generated isFooElement(),
+        and replace toFooElement() with ELEMENT_TYPE_CASTS() macro.
+
+        Besides this patch clean-up unnecessary checks which are being supported by
+        auto-generated isFooElement().
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::supportsFullscreenForNode):
+        * WebView.cpp:
+        (WebView::enterFullscreenForNode):
+
+2013-09-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Create SharedGDIObject Class Template
+        https://bugs.webkit.org/show_bug.cgi?id=121037
+
+        Reviewed by Anders Carlsson.
+
+        * WebView.cpp: Change implementations to use the new SharedGDIObject
+        class.
+        (WebView::addToDirtyRegion):
+        (WebView::scrollBackingStore):
+        (WebView::updateBackingStore):
+        (WebView::performLayeredWindowUpdate):
+        (WebView::paint):
+        (WebView::backingStore):
+        * WebView.h: Ditto.
+
+2013-09-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Change from using OwnPtr<GDI Stuff> to new GDIObject template.
+        https://bugs.webkit.org/show_bug.cgi?id=120778
+
+        Reviewed by Anders Carlsson.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::createHUDWindow): Switch to GDIObject.
+        (FullscreenVideoController::draw): Ditto.
+        * FullscreenVideoController.h:
+        * WebCoreSupport/EmbeddedWidget.cpp:
+        (EmbeddedWidget::frameRectsChanged): Switch to GDIObject.
+        * WebNodeHighlight.cpp:
+        (WebNodeHighlight::update): Switch to GDIObject.
+        * WebView.cpp:
+        (WebView::scrollBackingStore): Switch to GDIObject.
+        (WebView::updateBackingStore): Ditto.
+        (WebView::performLayeredWindowUpdate): Ditto.
+        (WebView::paint): Ditto.
+        (WebView::paintIntoBackingStore): Ditto.
+        (WebView::paintIntoWindow): Ditto.
+        (WebView::generateSelectionImage): Ditto.
+
 2013-09-05  Roger Fong  <roger_fong@apple.com>
 
         [Windows] Implement text offset methods of IAccessibleText interface.

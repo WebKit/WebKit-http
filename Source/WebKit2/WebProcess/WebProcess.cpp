@@ -79,6 +79,7 @@
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/Settings.h>
 #include <WebCore/StorageTracker.h>
+#include <unistd.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/PassRefPtr.h>
@@ -90,17 +91,12 @@
 #endif
 
 #if ENABLE(NETWORK_PROCESS)
+#if PLATFORM(MAC)
 #include "CookieStorageShim.h"
+#endif
 #include "NetworkProcessConnection.h"
 #endif
 
-#if !OS(WINDOWS)
-#include <unistd.h>
-#endif
-
-#if !ENABLE(PLUGIN_PROCESS)
-#include "NetscapePluginModule.h"
-#endif
 
 #if ENABLE(CUSTOM_PROTOCOLS)
 #include "CustomProtocolManager.h"
@@ -120,10 +116,6 @@
 
 #if ENABLE(NETWORK_PROCESS)
 #include "WebResourceLoadScheduler.h"
-#endif
-
-#if ENABLE(PLUGIN_PROCESS)
-#include "PluginProcessConnectionManager.h"
 #endif
 
 #if USE(SECURITY_FRAMEWORK)
@@ -173,7 +165,7 @@ WebProcess::WebProcess()
     , m_usesNetworkProcess(false)
     , m_webResourceLoadScheduler(new WebResourceLoadScheduler)
 #endif
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
     , m_pluginProcessConnectionManager(PluginProcessConnectionManager::create())
 #endif
     , m_nonVisibleProcessCleanupTimer(this, &WebProcess::nonVisibleProcessCleanupTimerFired)
@@ -224,7 +216,7 @@ void WebProcess::initializeConnection(CoreIPC::Connection* connection)
 
     m_eventDispatcher->initializeConnection(connection);
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
     m_pluginProcessConnectionManager->initializeConnection(connection);
 #endif
 
@@ -351,8 +343,10 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
     m_usesNetworkProcess = parameters.usesNetworkProcess;
     ensureNetworkProcessConnection();
 
+#if PLATFORM(MAC)
     if (usesNetworkProcess())
         CookieStorageShim::shared().initialize();
+#endif
 #endif
     setTerminationTimeout(parameters.terminationTimeout);
 
@@ -478,7 +472,7 @@ DownloadManager& WebProcess::downloadManager()
     return downloadManager;
 }
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
 PluginProcessConnectionManager& WebProcess::pluginProcessConnectionManager()
 {
     return *m_pluginProcessConnectionManager;
@@ -574,7 +568,7 @@ void WebProcess::createWebPage(uint64_t pageID, const WebPageCreationParameters&
 {
     // It is necessary to check for page existence here since during a window.open() (or targeted
     // link) the WebPage gets created both in the synchronous handler and through the normal way. 
-    HashMap<uint64_t, RefPtr<WebPage>>::AddResult result = m_pageMap.add(pageID, 0);
+    HashMap<uint64_t, RefPtr<WebPage>>::AddResult result = m_pageMap.add(pageID, nullptr);
     if (result.isNewEntry) {
         ASSERT(!result.iterator->value);
         result.iterator->value = WebPage::create(pageID, parameters);
@@ -631,7 +625,7 @@ void WebProcess::terminate()
     ChildProcess::terminate();
 }
 
-void WebProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+void WebProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, std::unique_ptr<CoreIPC::MessageEncoder>& replyEncoder)
 {
     messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder);
 }
@@ -726,7 +720,7 @@ WebPageGroupProxy* WebProcess::webPageGroup(uint64_t pageGroupID)
 
 WebPageGroupProxy* WebProcess::webPageGroup(const WebPageGroupData& pageGroupData)
 {
-    HashMap<uint64_t, RefPtr<WebPageGroupProxy>>::AddResult result = m_pageGroupMap.add(pageGroupData.pageGroupID, 0);
+    HashMap<uint64_t, RefPtr<WebPageGroupProxy>>::AddResult result = m_pageGroupMap.add(pageGroupData.pageGroupID, nullptr);
     if (result.isNewEntry) {
         ASSERT(!result.iterator->value);
         result.iterator->value = WebPageGroupProxy::create(pageGroupData);
@@ -756,59 +750,6 @@ void WebProcess::clearApplicationCache()
     // Empty the application cache.
     cacheStorage().empty();
 }
-
-#if ENABLE(NETSCAPE_PLUGIN_API) && !ENABLE(PLUGIN_PROCESS)
-void WebProcess::getSitesWithPluginData(const Vector<String>& pluginPaths, uint64_t callbackID)
-{
-    HashSet<String> sitesSet;
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    for (size_t i = 0; i < pluginPaths.size(); ++i) {
-        RefPtr<NetscapePluginModule> netscapePluginModule = NetscapePluginModule::getOrCreate(pluginPaths[i]);
-        if (!netscapePluginModule)
-            continue;
-
-        Vector<String> sites = netscapePluginModule->sitesWithData();
-        for (size_t i = 0; i < sites.size(); ++i)
-            sitesSet.add(sites[i]);
-    }
-#else
-    UNUSED_PARAM(pluginPaths);
-#endif
-
-    Vector<String> sites;
-    copyToVector(sitesSet, sites);
-
-    parentProcessConnection()->send(Messages::WebProcessProxy::DidGetSitesWithPluginData(sites, callbackID), 0);
-}
-
-void WebProcess::clearPluginSiteData(const Vector<String>& pluginPaths, const Vector<String>& sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID)
-{
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    for (size_t i = 0; i < pluginPaths.size(); ++i) {
-        RefPtr<NetscapePluginModule> netscapePluginModule = NetscapePluginModule::getOrCreate(pluginPaths[i]);
-        if (!netscapePluginModule)
-            continue;
-
-        if (sites.isEmpty()) {
-            // Clear everything.
-            netscapePluginModule->clearSiteData(String(), flags, maxAgeInSeconds);
-            continue;
-        }
-
-        for (size_t i = 0; i < sites.size(); ++i)
-            netscapePluginModule->clearSiteData(sites[i], flags, maxAgeInSeconds);
-    }
-#else
-    UNUSED_PARAM(pluginPaths);
-    UNUSED_PARAM(sites);
-    UNUSED_PARAM(flags);
-    UNUSED_PARAM(maxAgeInSeconds);
-#endif
-
-    parentProcessConnection()->send(Messages::WebProcessProxy::DidClearPluginSiteData(callbackID), 0);
-}
-#endif
 
 static inline void addCaseFoldedCharacters(StringHasher& hasher, const String& string)
 {
@@ -1034,15 +975,15 @@ void WebProcess::postInjectedBundleMessage(const CoreIPC::DataReference& message
     if (!injectedBundle)
         return;
 
-    OwnPtr<CoreIPC::ArgumentDecoder> decoder = CoreIPC::ArgumentDecoder::create(messageData.data(), messageData.size());
+    CoreIPC::ArgumentDecoder decoder(messageData.data(), messageData.size());
 
     String messageName;
-    if (!decoder->decode(messageName))
+    if (!decoder.decode(messageName))
         return;
 
     RefPtr<APIObject> messageBody;
     InjectedBundleUserMessageDecoder messageBodyDecoder(messageBody);
-    if (!decoder->decode(messageBodyDecoder))
+    if (!decoder.decode(messageBodyDecoder))
         return;
 
     injectedBundle->didReceiveMessage(messageName, messageBody.get());

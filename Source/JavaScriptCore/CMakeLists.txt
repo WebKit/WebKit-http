@@ -40,8 +40,8 @@ set(JavaScriptCore_SOURCES
     API/JSWeakObjectMapRefPrivate.cpp
     API/OpaqueJSString.cpp
 
-    assembler/MacroAssembler.cpp
     assembler/LinkBuffer.cpp
+    assembler/MacroAssembler.cpp
     assembler/MacroAssemblerX86Common.cpp
 
     bytecode/ArrayAllocationProfile.cpp
@@ -57,6 +57,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ExecutionCounter.cpp
     bytecode/ExitKind.cpp
     bytecode/GetByIdStatus.cpp
+    bytecode/InlineCallFrameSet.cpp
     bytecode/JumpTable.cpp
     bytecode/LazyOperandValueProfile.cpp
     bytecode/MethodOfGettingAValueProfile.cpp
@@ -71,16 +72,20 @@ set(JavaScriptCore_SOURCES
     bytecode/StructureStubClearingWatchpoint.cpp
     bytecode/StructureStubInfo.cpp
     bytecode/UnlinkedCodeBlock.cpp
+    bytecode/ValueRecovery.cpp
     bytecode/Watchpoint.cpp
 
     bytecompiler/BytecodeGenerator.cpp
     bytecompiler/NodesCodegen.cpp
 
+    debugger/Debugger.cpp
+    debugger/DebuggerActivation.cpp
+    debugger/DebuggerCallFrame.cpp
+
     dfg/DFGAbstractHeap.cpp
     dfg/DFGAbstractValue.cpp
     dfg/DFGArgumentsSimplificationPhase.cpp
     dfg/DFGArrayMode.cpp
-    dfg/DFGAssemblyHelpers.cpp
     dfg/DFGAtTailAbstractState.cpp
     dfg/DFGBackwardsPropagationPhase.cpp
     dfg/DFGBasicBlock.cpp
@@ -146,7 +151,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGPlan.cpp
     dfg/DFGPredictionInjectionPhase.cpp
     dfg/DFGPredictionPropagationPhase.cpp
-    dfg/DFGRepatch.cpp
     dfg/DFGSSAConversionPhase.cpp
     dfg/DFGSpeculativeJIT.cpp
     dfg/DFGSpeculativeJIT32_64.cpp
@@ -198,10 +202,6 @@ set(JavaScriptCore_SOURCES
     heap/WeakSet.cpp
     heap/WriteBarrierSupport.cpp
 
-    debugger/Debugger.cpp
-    debugger/DebuggerActivation.cpp
-    debugger/DebuggerCallFrame.cpp
-
     interpreter/AbstractPC.cpp
     interpreter/CallFrame.cpp
     interpreter/Interpreter.cpp
@@ -209,6 +209,7 @@ set(JavaScriptCore_SOURCES
     interpreter/StackVisitor.cpp
     interpreter/VMInspector.cpp
 
+    jit/AssemblyHelpers.cpp
     jit/ClosureCallStubRoutine.cpp
     jit/ExecutableAllocator.cpp
     jit/ExecutableAllocatorFixedVMPool.cpp
@@ -224,6 +225,7 @@ set(JavaScriptCore_SOURCES
     jit/JITExceptions.cpp
     jit/JITOpcodes.cpp
     jit/JITOpcodes32_64.cpp
+    jit/JITOperations.cpp
     jit/JITPropertyAccess.cpp
     jit/JITPropertyAccess32_64.cpp
     jit/JITStubRoutine.cpp
@@ -231,6 +233,7 @@ set(JavaScriptCore_SOURCES
     jit/JITThunks.cpp
     jit/JITToDFGDeferredCompilationCallback.cpp
     jit/JumpReplacementWatchpoint.cpp
+    jit/Repatch.cpp
     jit/ThunkGenerators.cpp
 
     parser/Lexer.cpp
@@ -241,6 +244,10 @@ set(JavaScriptCore_SOURCES
     parser/SourceProvider.cpp
     parser/SourceProviderCache.cpp
 
+    profiler/LegacyProfiler.cpp
+    profiler/Profile.cpp
+    profiler/ProfileGenerator.cpp
+    profiler/ProfileNode.cpp
     profiler/ProfilerBytecode.cpp
     profiler/ProfilerBytecodeSequence.cpp
     profiler/ProfilerBytecodes.cpp
@@ -248,15 +255,11 @@ set(JavaScriptCore_SOURCES
     profiler/ProfilerCompilationKind.cpp
     profiler/ProfilerCompiledBytecode.cpp
     profiler/ProfilerDatabase.cpp
-    profiler/ProfilerOrigin.cpp
-    profiler/ProfilerOriginStack.cpp
     profiler/ProfilerOSRExit.cpp
     profiler/ProfilerOSRExitSite.cpp
+    profiler/ProfilerOrigin.cpp
+    profiler/ProfilerOriginStack.cpp
     profiler/ProfilerProfiledBytecodes.cpp
-    profiler/Profile.cpp
-    profiler/ProfileGenerator.cpp
-    profiler/ProfileNode.cpp
-    profiler/LegacyProfiler.cpp
 
     runtime/ArgList.cpp
     runtime/Arguments.cpp
@@ -342,6 +345,7 @@ set(JavaScriptCore_SOURCES
     runtime/JSTypedArrayPrototypes.cpp
     runtime/JSTypedArrays.cpp
     runtime/JSVariableObject.cpp
+    runtime/JSWeakMap.cpp
     runtime/JSWithScope.cpp
     runtime/JSWrapperObject.cpp
     runtime/LiteralParser.cpp
@@ -396,14 +400,17 @@ set(JavaScriptCore_SOURCES
     runtime/VM.cpp
     runtime/Watchdog.cpp
     runtime/WatchdogNone.cpp
+    runtime/WeakMapConstructor.cpp
+    runtime/WeakMapData.cpp
+    runtime/WeakMapPrototype.cpp
 
     tools/CodeProfile.cpp
     tools/CodeProfiling.cpp
 
     yarr/YarrCanonicalizeUCS2.cpp
-    yarr/YarrPattern.cpp
     yarr/YarrInterpreter.cpp
     yarr/YarrJIT.cpp
+    yarr/YarrPattern.cpp
     yarr/YarrSyntaxChecker.cpp
 )
 
@@ -563,23 +570,22 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
 set(JavaScriptCore_FORWARDING_HEADERS_FILES
     API/APICast.h
     API/APIShims.h
-    API/JavaScript.h
     API/JSBase.h
     API/JSCTestRunnerUtils.h
     API/JSContextRef.h
     API/JSContextRefPrivate.h
     API/JSObjectRef.h
     API/JSObjectRefPrivate.h
+    API/JSRetainPtr.h
     API/JSScriptRefPrivate.h
     API/JSStringRef.h
-    API/JSStringRefCF.h
     API/JSStringRefBSTR.h
+    API/JSStringRefCF.h
     API/JSValueRef.h
-    API/JavaScriptCore.h
-    API/JSRetainPtr.h
     API/JSWeakObjectMapRefInternal.h
     API/JSWeakObjectMapRefPrivate.h
-    API/JSRetainPtr.h
+    API/JavaScript.h
+    API/JavaScriptCore.h
     API/OpaqueJSString.h
     API/WebKitAvailability.h
 )
@@ -660,9 +666,10 @@ add_subdirectory(shell)
 
 WEBKIT_WRAP_SOURCELIST(${JavaScriptCore_SOURCES})
 include_directories(${JavaScriptCore_INCLUDE_DIRECTORIES})
-add_definitions(-DBUILDING_JavaScriptCore -DSTATICALLY_LINKED_WITH_WTF)
+add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
 add_library(JavaScriptCore ${JavaScriptCore_LIBRARY_TYPE} ${JavaScriptCore_HEADERS} ${JavaScriptCore_SOURCES})
 target_link_libraries(JavaScriptCore ${JavaScriptCore_LIBRARIES})
+set_target_properties(JavaScriptCore PROPERTIES COMPILE_DEFINITIONS "BUILDING_JavaScriptCore")
 set_target_properties(JavaScriptCore PROPERTIES FOLDER "JavaScriptCore")
 set_target_properties(JavaScriptCore PROPERTIES LINK_INTERFACE_LIBRARIES "")
 

@@ -35,12 +35,12 @@ namespace WebCore {
 
 class RenderArena;
 class RenderBlock;
+class RenderBlockFlow;
 class RenderBox;
-class RenderObject;
+class RenderElement;
 class RenderFlowThread;
-#if ENABLE(CSS_SHAPES)
+class RenderObject;
 class ShapeInsideInfo;
-#endif
 
 class LayoutState {
     WTF_MAKE_NONCOPYABLE(LayoutState);
@@ -53,26 +53,26 @@ public:
         , m_layoutDeltaXSaturated(false)
         , m_layoutDeltaYSaturated(false)
 #endif
-        , m_columnInfo(0)
-        , m_lineGrid(0)
-        , m_next(0)
+        , m_columnInfo(nullptr)
+        , m_lineGrid(nullptr)
+        , m_next(nullptr)
 #if ENABLE(CSS_SHAPES)
-        , m_shapeInsideInfo(0)
+        , m_shapeInsideInfo(nullptr)
 #endif
         , m_pageLogicalHeight(0)
 #ifndef NDEBUG
-        , m_renderer(0)
+        , m_renderer(nullptr)
 #endif
     {
     }
 
     LayoutState(LayoutState*, RenderBox*, const LayoutSize& offset, LayoutUnit pageHeight, bool pageHeightChanged, ColumnInfo*);
-    LayoutState(RenderObject*);
+    explicit LayoutState(RenderObject*);
 
-    void destroy(RenderArena*);
+    void destroy(RenderArena&);
 
     // Overloaded new operator.
-    void* operator new(size_t, RenderArena*);
+    void* operator new(size_t, RenderArena&);
 
     // Overridden to prevent the normal delete from being called.
     void operator delete(void*, size_t);
@@ -90,7 +90,7 @@ public:
     LayoutUnit pageLogicalHeight() const { return m_pageLogicalHeight; }
     bool pageLogicalHeightChanged() const { return m_pageLogicalHeightChanged; }
 
-    RenderBlock* lineGrid() const { return m_lineGrid; }
+    RenderBlockFlow* lineGrid() const { return m_lineGrid; }
     LayoutSize lineGridOffset() const { return m_lineGridOffset; }
     LayoutSize lineGridPaginationOrigin() const { return m_lineGridPaginationOrigin; }
 
@@ -106,24 +106,25 @@ private:
     void* operator new(size_t) throw();
 
     void propagateLineGridInfo(RenderBox*);
-    void establishLineGrid(RenderBlock*);
+    void establishLineGrid(RenderBlockFlow*);
 
     void computeLineGridPaginationOrigin(RenderBox*);
 
 public:
     // Do not add anything apart from bitfields until after m_columnInfo. See https://bugs.webkit.org/show_bug.cgi?id=100173
-    bool m_clipped:1;
-    bool m_isPaginated:1;
+    bool m_clipped : 1;
+    bool m_isPaginated : 1;
     // If our page height has changed, this will force all blocks to relayout.
-    bool m_pageLogicalHeightChanged:1;
+    bool m_pageLogicalHeightChanged : 1;
 #if !ASSERT_DISABLED && ENABLE(SATURATED_LAYOUT_ARITHMETIC)
-    bool m_layoutDeltaXSaturated:1;
-    bool m_layoutDeltaYSaturated:1;
+    bool m_layoutDeltaXSaturated : 1;
+    bool m_layoutDeltaYSaturated : 1;
 #endif
+
     // If the enclosing pagination model is a column model, then this will store column information for easy retrieval/manipulation.
     ColumnInfo* m_columnInfo;
     // The current line grid that we're snapping to and the offset of the start of the grid.
-    RenderBlock* m_lineGrid;
+    RenderBlockFlow* m_lineGrid;
     LayoutState* m_next;
 #if ENABLE(CSS_SHAPES)
     ShapeInsideInfo* m_shapeInsideInfo;

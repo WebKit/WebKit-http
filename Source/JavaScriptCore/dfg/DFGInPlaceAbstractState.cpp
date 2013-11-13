@@ -109,14 +109,14 @@ void InPlaceAbstractState::initialize()
     for (size_t i = 0; i < root->valuesAtHead.numberOfArguments(); ++i) {
         root->valuesAtTail.argument(i).clear();
         if (m_graph.m_form == SSA) {
-            root->valuesAtHead.argument(i).makeTop();
+            root->valuesAtHead.argument(i).makeHeapTop();
             continue;
         }
         
         Node* node = root->variablesAtHead.argument(i);
         ASSERT(node->op() == SetArgument);
         if (!node->variableAccessData()->shouldUnboxIfPossible()) {
-            root->valuesAtHead.argument(i).makeTop();
+            root->valuesAtHead.argument(i).makeHeapTop();
             continue;
         }
         
@@ -129,12 +129,12 @@ void InPlaceAbstractState::initialize()
         else if (isCellSpeculation(prediction))
             root->valuesAtHead.argument(i).setType(SpecCell);
         else
-            root->valuesAtHead.argument(i).makeTop();
+            root->valuesAtHead.argument(i).makeHeapTop();
     }
     for (size_t i = 0; i < root->valuesAtHead.numberOfLocals(); ++i) {
         Node* node = root->variablesAtHead.local(i);
         if (node && node->variableAccessData()->isCaptured())
-            root->valuesAtHead.local(i).makeTop();
+            root->valuesAtHead.local(i).makeHeapTop();
         else
             root->valuesAtHead.local(i).clear();
         root->valuesAtTail.local(i).clear();
@@ -311,11 +311,15 @@ bool InPlaceAbstractState::mergeStateAtTail(AbstractValue& destination, Abstract
         case SetLocal:
             // The block sets the variable, and potentially refines it, both
             // before and after setting it.
-            if (node->variableAccessData()->shouldUseDoubleFormat()) {
-                // FIXME: This unnecessarily loses precision.
-                source.setType(SpecDouble);
-            } else
-                source = forNode(node->child1());
+            source = forNode(node->child1());
+            if (node->variableAccessData()->flushFormat() == FlushedDouble) {
+                ASSERT(!(source.m_type & ~SpecFullNumber));
+                ASSERT(!!(source.m_type & ~SpecDouble) == !!(source.m_type & SpecMachineInt));
+                if (!(source.m_type & ~SpecDouble)) {
+                    source.merge(SpecInt52AsDouble);
+                    source.filter(SpecDouble);
+                }
+            }
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
             dataLogF("          Setting to ");
             source.dump(WTF::dataFile());

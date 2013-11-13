@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,6 +26,7 @@
 #ifndef NavigatorUserMediaError_h
 #define NavigatorUserMediaError_h
 
+#include "DOMError.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
@@ -32,26 +34,28 @@
 
 namespace WebCore {
 
-class NavigatorUserMediaError : public RefCounted<NavigatorUserMediaError> {
+class NavigatorUserMediaError : public DOMError {
 public:
-    // Should be kept in sync with the values in the idl file.
-    enum ErrorCode {
-        PERMISSION_DENIED = 1
-    };
-
-    static PassRefPtr<NavigatorUserMediaError> create(ErrorCode code)
+    static PassRefPtr<NavigatorUserMediaError> create(const String& name, const String& constraintName)
     {
-        return adoptRef(new NavigatorUserMediaError(code));
+        return adoptRef(new NavigatorUserMediaError(name, constraintName));
     }
 
     virtual ~NavigatorUserMediaError() { }
 
-    ErrorCode code() const { return m_code; }
+    const String& constraintName() const { return m_constraintName; }
+
+    static const AtomicString& permissionDeniedErrorName();
+    static const AtomicString& constraintNotSatisfiedErrorName();
 
 private:
-    explicit NavigatorUserMediaError(ErrorCode code) : m_code(code) { }
+    NavigatorUserMediaError(const String& name, const String& constraintName)
+        : DOMError(name)
+        , m_constraintName(constraintName)
+    {
+    }
 
-    ErrorCode m_code;
+    String m_constraintName;
 };
 
 } // namespace WebCore

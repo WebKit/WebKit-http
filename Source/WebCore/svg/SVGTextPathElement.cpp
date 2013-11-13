@@ -46,7 +46,7 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGTextPathElement)
     REGISTER_PARENT_ANIMATED_PROPERTIES(SVGTextContentElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
-inline SVGTextPathElement::SVGTextPathElement(const QualifiedName& tagName, Document* document)
+inline SVGTextPathElement::SVGTextPathElement(const QualifiedName& tagName, Document& document)
     : SVGTextContentElement(tagName, document)
     , m_startOffset(LengthModeOther)
     , m_method(SVGTextPathMethodAlign)
@@ -56,7 +56,7 @@ inline SVGTextPathElement::SVGTextPathElement(const QualifiedName& tagName, Docu
     registerAnimatedPropertiesForSVGTextPathElement();
 }
 
-PassRefPtr<SVGTextPathElement> SVGTextPathElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGTextPathElement> SVGTextPathElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new SVGTextPathElement(tagName, document));
 }
@@ -127,9 +127,9 @@ void SVGTextPathElement::svgAttributeChanged(const QualifiedName& attrName)
         RenderSVGResource::markForLayoutAndParentResourceInvalidation(object);
 }
 
-RenderObject* SVGTextPathElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SVGTextPathElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
-    return new (arena) RenderSVGTextPath(this);
+    return new (arena) RenderSVGTextPath(*this);
 }
 
 bool SVGTextPathElement::childShouldCreateRenderer(const Node* child) const
@@ -160,7 +160,7 @@ void SVGTextPathElement::buildPendingResource()
         return;
 
     String id;
-    Element* target = SVGURIReference::targetElementFromIRIString(href(), &document(), &id);
+    Element* target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
     if (!target) {
         // Do not register as pending if we are already pending this resource.
         if (document().accessSVGExtensions()->isElementPendingResource(this, id))

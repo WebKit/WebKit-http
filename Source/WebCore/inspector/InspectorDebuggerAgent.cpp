@@ -469,18 +469,6 @@ void InspectorDebuggerAgent::setScriptSource(ErrorString* error, const String& s
     if (object)
         result = object;
 }
-void InspectorDebuggerAgent::restartFrame(ErrorString* errorString, const String& callFrameId, RefPtr<Array<TypeBuilder::Debugger::CallFrame> >& newCallFrames, RefPtr<InspectorObject>& result)
-{
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(callFrameId);
-    if (injectedScript.hasNoValue()) {
-        *errorString = "Inspected frame has gone";
-        return;
-    }
-
-    injectedScript.restartFrame(errorString, m_currentCallStack, callFrameId, &result);
-    scriptDebugServer().updateCallStack(&m_currentCallStack);
-    newCallFrames = currentCallFrames();
-}
 
 void InspectorDebuggerAgent::getScriptSource(ErrorString* error, const String& scriptId, String* scriptSource)
 {
@@ -667,30 +655,6 @@ void InspectorDebuggerAgent::setOverlayMessage(ErrorString*, const String*)
 {
 }
 
-void InspectorDebuggerAgent::setVariableValue(ErrorString* errorString, int scopeNumber, const String& variableName, const RefPtr<InspectorObject>& newValue, const String* callFrameId, const String* functionObjectId)
-{
-    InjectedScript injectedScript;
-    if (callFrameId) {
-        injectedScript = m_injectedScriptManager->injectedScriptForObjectId(*callFrameId);
-        if (injectedScript.hasNoValue()) {
-            *errorString = "Inspected frame has gone";
-            return;
-        }
-    } else if (functionObjectId) {
-        injectedScript = m_injectedScriptManager->injectedScriptForObjectId(*functionObjectId);
-        if (injectedScript.hasNoValue()) {
-            *errorString = "Function object id cannot be resolved";
-            return;
-        }
-    } else {
-        *errorString = "Either call frame or function object must be specified";
-        return;
-    }
-    String newValueString = newValue->toJSONString();
-
-    injectedScript.setVariableValue(errorString, m_currentCallStack, callFrameId, functionObjectId, scopeNumber, variableName, newValueString);
-}
-
 void InspectorDebuggerAgent::scriptExecutionBlockedByCSP(const String& directiveText)
 {
     if (scriptDebugServer().pauseOnExceptionsState() != ScriptDebugServer::DontPauseOnExceptions) {
@@ -719,7 +683,7 @@ String InspectorDebuggerAgent::sourceMapURLForScript(const Script& script)
 
     if (!script.url.isEmpty()) {
         if (InspectorPageAgent* pageAgent = m_instrumentingAgents->inspectorPageAgent()) {
-            CachedResource* resource = pageAgent->cachedResource(pageAgent->mainFrame(), KURL(ParsedURLString, script.url));
+            CachedResource* resource = pageAgent->cachedResource(pageAgent->mainFrame(), URL(ParsedURLString, script.url));
             if (resource) {
                 String sourceMapHeader = resource->response().httpHeaderField(sourceMapHTTPHeader);
                 if (!sourceMapHeader.isEmpty())
@@ -788,7 +752,7 @@ void InspectorDebuggerAgent::failedToParseSource(const String& url, const String
     m_frontend->scriptFailedToParse(url, data, firstLine, errorLine, errorMessage);
 }
 
-void InspectorDebuggerAgent::didPause(ScriptState* scriptState, const ScriptValue& callFrames, const ScriptValue& exception)
+void InspectorDebuggerAgent::didPause(JSC::ExecState* scriptState, const ScriptValue& callFrames, const ScriptValue& exception)
 {
     ASSERT(scriptState && !m_pausedScriptState);
     m_pausedScriptState = scriptState;

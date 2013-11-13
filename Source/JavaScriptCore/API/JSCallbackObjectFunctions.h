@@ -407,7 +407,7 @@ EncodedJSValue JSCallbackObject<Parent>::construct(ExecState* exec)
             Vector<JSValueRef, 16> arguments;
             arguments.reserveInitialCapacity(argumentCount);
             for (size_t i = 0; i < argumentCount; ++i)
-                arguments.uncheckedAppend(toRef(exec, exec->argument(i)));
+                arguments.uncheckedAppend(toRef(exec, exec->uncheckedArgument(i)));
             JSValueRef exception = 0;
             JSObject* result;
             {
@@ -474,7 +474,7 @@ EncodedJSValue JSCallbackObject<Parent>::call(ExecState* exec)
             Vector<JSValueRef, 16> arguments;
             arguments.reserveInitialCapacity(argumentCount);
             for (size_t i = 0; i < argumentCount; ++i)
-                arguments.uncheckedAppend(toRef(exec, exec->argument(i)));
+                arguments.uncheckedAppend(toRef(exec, exec->uncheckedArgument(i)));
             JSValueRef exception = 0;
             JSValue result;
             {
@@ -592,15 +592,15 @@ JSValue JSCallbackObject<Parent>::staticFunctionGetter(ExecState* exec, JSValue 
     PropertySlot slot2(thisObj);
     if (Parent::getOwnPropertySlot(thisObj, exec, propertyName, slot2))
         return slot2.getValue(exec, propertyName);
-    
+
     if (StringImpl* name = propertyName.publicName()) {
         for (JSClassRef jsClass = thisObj->classRef(); jsClass; jsClass = jsClass->parentClass) {
             if (OpaqueJSClassStaticFunctionsTable* staticFunctions = jsClass->staticFunctions(exec)) {
                 if (StaticFunctionEntry* entry = staticFunctions->get(name)) {
                     if (JSObjectCallAsFunctionCallback callAsFunction = entry->callAsFunction) {
-                        
-                        JSObject* o = JSCallbackFunction::create(exec, thisObj->globalObject(), callAsFunction, name);
-                        thisObj->putDirect(exec->vm(), propertyName, o, entry->attributes);
+                        VM& vm = exec->vm();
+                        JSObject* o = JSCallbackFunction::create(vm, thisObj->globalObject(), callAsFunction, name);
+                        thisObj->putDirect(vm, propertyName, o, entry->attributes);
                         return o;
                     }
                 }

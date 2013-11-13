@@ -80,12 +80,7 @@ public:
         ASSERT(m_local == find()->m_local);
         return m_local;
     }
-    
-    int operand()
-    {
-        return static_cast<int>(local());
-    }
-    
+
     bool mergeIsCaptured(bool isCaptured)
     {
         return checkAndSet(m_shouldNeverUnbox, m_shouldNeverUnbox | isCaptured)
@@ -230,12 +225,12 @@ public:
     {
         // We don't support this facility for arguments, yet.
         // FIXME: make this work for arguments.
-        if (operandIsArgument(operand()))
+        if (local().isArgument())
             return false;
         
         // If the variable is not a number prediction, then this doesn't
         // make any sense.
-        if (!isNumberSpeculation(prediction())) {
+        if (!isFullNumberSpeculation(prediction())) {
             // FIXME: we may end up forcing a local in inlined argument position to be a double even
             // if it is sometimes not even numeric, since this never signals the fact that it doesn't
             // want doubles. https://bugs.webkit.org/show_bug.cgi?id=109511
@@ -249,7 +244,7 @@ public:
         
         // If the variable is known to be used as an integer, then be safe -
         // don't force it to be a double.
-        if (flags() & NodeUsedAsInt)
+        if (flags() & NodeBytecodeUsesAsInt)
             return false;
         
         // If the variable has been voted to become a double, then make it a
@@ -278,7 +273,7 @@ public:
     {
         ASSERT(isRoot());
         
-        if (operandIsArgument(local()) || shouldNeverUnbox())
+        if (local().isArgument() || shouldNeverUnbox())
             return DFG::mergeDoubleFormatState(m_doubleFormatState, NotUsingDoubleFormat);
         
         if (m_doubleFormatState == CantUseDoubleFormat)
@@ -332,6 +327,9 @@ public:
         SpeculatedType prediction = argumentAwarePrediction();
         if (isInt32Speculation(prediction))
             return FlushedInt32;
+        
+        if (enableInt52() && !m_local.isArgument() && isMachineIntSpeculation(prediction))
+            return FlushedInt52;
         
         if (isCellSpeculation(prediction))
             return FlushedCell;

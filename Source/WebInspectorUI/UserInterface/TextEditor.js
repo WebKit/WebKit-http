@@ -185,7 +185,7 @@ WebInspector.TextEditor.prototype = {
     {
         const supportedModes = {
             "javascript": true,
-            "css-base": true,
+            "css": true,
         };
 
         var mode = this._codeMirror.getMode();
@@ -218,6 +218,8 @@ WebInspector.TextEditor.prototype = {
 
     set mimeType(newMIMEType)
     {
+        newMIMEType = parseMIMEType(newMIMEType).type;
+
         this._mimeType = newMIMEType;
         this._codeMirror.setOption("mode", newMIMEType);
     },

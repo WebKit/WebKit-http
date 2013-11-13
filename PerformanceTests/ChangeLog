@@ -1,3 +1,307 @@
+2013-09-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DoYouEvenBench: Add a test case for FlightJS
+        https://bugs.webkit.org/show_bug.cgi?id=121926
+
+        Reviewed by Antti Koivisto.
+
+        Add a FlightJS test case.
+
+        * DoYouEvenBench/benchmark.html:
+        * DoYouEvenBench/benchmark.js:
+        * DoYouEvenBench/flightjs-example-app: Added.
+        * DoYouEvenBench/flightjs-example-app/LICENSE.md: Added.
+        * DoYouEvenBench/flightjs-example-app/README.md: Added.
+        * DoYouEvenBench/flightjs-example-app/app: Added.
+        * DoYouEvenBench/flightjs-example-app/app/boot: Added.
+        * DoYouEvenBench/flightjs-example-app/app/boot/page.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_data: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_data/compose_box.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_data/mail_items.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_data/move_to.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/compose_box.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/folders.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/mail_controls.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/mail_items.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/move_to_selector.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/component_ui/with_select.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/css: Added.
+        * DoYouEvenBench/flightjs-example-app/app/css/custom.css: Added.
+        * DoYouEvenBench/flightjs-example-app/app/data.js: Added.
+        * DoYouEvenBench/flightjs-example-app/app/templates.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/css: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/css/bootstrap-responsive.css: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/css/bootstrap-responsive.min.css: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/css/bootstrap.css: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/css/bootstrap.min.css: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/img: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/img/glyphicons-halflings-white.png: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/img/glyphicons-halflings.png: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/js/bootstrap.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/bootstrap/js/bootstrap.min.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/.gitignore: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/CHANGES: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/CONTRIBUTORS.md: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/LICENSE: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/README.md: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/component.json: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/es5-sham.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/es5-sham.min.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/es5-shim.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/es5-shim.min.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/package.json: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/helpers: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/helpers/h-kill.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/helpers/h-matchers.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/helpers/h.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/index.html: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib/jasmine-html.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib/jasmine.css: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib/jasmine.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib/jasmine_favicon.png: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/lib/json2.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec/s-array.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec/s-date.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec/s-function.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec/s-object.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/es5-shim/tests/spec/s-string.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/.travis.yml: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/advice.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/component.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/compose.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/index.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/logger.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/registry.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/lib/utils.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/tools: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/tools/debug: Added.
+        * DoYouEvenBench/flightjs-example-app/components/flight/tools/debug/debug.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight/LICENSE.md: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight/README.md: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight/bower.json: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight/lib: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-flight/lib/jasmine-flight.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-jquery: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-jquery/lib: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jasmine-jquery/lib/jasmine-jquery.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jquery: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jquery/component.json: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jquery/composer.json: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jquery/jquery.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/jquery/jquery.min.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/mustache: Added.
+        * DoYouEvenBench/flightjs-example-app/components/mustache/mustache.js: Added.
+        * DoYouEvenBench/flightjs-example-app/components/requirejs: Added.
+        * DoYouEvenBench/flightjs-example-app/components/requirejs/require.js: Added.
+        * DoYouEvenBench/flightjs-example-app/index.html: Added.
+        * DoYouEvenBench/flightjs-example-app/karma.conf.js: Added.
+        * DoYouEvenBench/flightjs-example-app/package.json: Added.
+        * DoYouEvenBench/flightjs-example-app/requireMain.js: Added.
+
+2013-09-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DoYouEvenBench: Indentations in benchmark.js and benchmark.html are all messed up
+        https://bugs.webkit.org/show_bug.cgi?id=121597
+
+        Reviewed by Anders Carlsson.
+
+        Fixed indentations.
+
+        * DoYouEvenBench/benchmark.html:
+        * DoYouEvenBench/benchmark.js:
+        (SimplePromise.prototype.resolve.else):
+        (SimplePromise.prototype.resolve):
+        (BenchmarkRunner.waitForElement.resolveIfReady):
+        (BenchmarkRunner.waitForElement):
+        (BenchmarkRunner._waitAndWarmUp.Fibonacci):
+        (BenchmarkRunner._finalize):
+
+2013-09-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add an AngularJS test to DoYouEvenBench
+        https://bugs.webkit.org/show_bug.cgi?id=121595
+
+        Reviewed by Antti Koivisto.
+
+        * DoYouEvenBench/benchmark.html:
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower.json: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/angular: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/angular-mocks: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/angular-mocks/angular-mocks.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/angular/angular.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/todomvc-common: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/todomvc-common/base.css: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/todomvc-common/base.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/bower_components/todomvc-common/bg.png: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/index.html: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/app.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/controllers: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/controllers/todoCtrl.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/directives: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/directives/todoBlur.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/directives/todoEscape.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/directives/todoFocus.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/services: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/js/services/todoStorage.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/readme.md: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/config: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/config/testacular.conf.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/package.json: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/readme.md: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/unit: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/unit/directivesSpec.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/angularjs/test/unit/todoCtrlSpec.js: Added.
+
+2013-09-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a not completely unrealistic DOM Benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=121361
+
+        Reviewed by Filip Pizlo.
+
+        Add a DOM benchmark based on TodoMVC for vanilla JS, Ember.js, Backbone.js, and jQuery.
+        We'll add more frameworks and demo apps as we go.
+
+        * DoYouEvenBench: Added.
+        * DoYouEvenBench/benchmark.html: Added.
+        * DoYouEvenBench/benchmark.js: Added.
+        (SimplePromise): 
+        (SimplePromise.prototype.then):
+        (SimplePromise.prototype.resolve.else):
+        (SimplePromise.prototype.resolve):
+        (BenchmarkRunner.suite):
+        (BenchmarkRunner.waitForElement.resolveIfReady):
+        (BenchmarkRunner.waitForElement):
+        (BenchmarkRunner._removeFrame):
+        (BenchmarkRunner._appendFrame):
+        (BenchmarkRunner._waitAndWarmUp.Fibonacci):
+        (BenchmarkRunner._testName):
+        (BenchmarkRunner._testItemId):
+        (BenchmarkRunner.listSuites.button.onclick):
+        (BenchmarkRunner.listSuites.callNextStep):
+        (BenchmarkRunner.listSuites):
+        (BenchmarkState):
+        (BenchmarkState.prototype.currentSuite):
+        (BenchmarkState.prototype.currentTest):
+        (BenchmarkState.prototype.next):
+        (BenchmarkState.prototype.isFirstTest):
+        (BenchmarkState.prototype.prepareCurrentSuite.frame.onload):
+        (BenchmarkRunner.step):
+        (BenchmarkRunner._runTestAndRecordResults):
+        (BenchmarkRunner._finalize):
+        * DoYouEvenBench/todomvc: Added.
+        * DoYouEvenBench/todomvc/architecture-examples: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower.json: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/backbone: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/backbone.localStorage: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/backbone.localStorage/backbone.localStorage.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/backbone/backbone.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/jquery: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/jquery/jquery.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/todomvc-common: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/todomvc-common/base.css: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/todomvc-common/base.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/todomvc-common/bg.png: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/underscore: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/bower_components/underscore/underscore.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/index.html: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/app.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/collections: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/collections/todos.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/models: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/models/todo.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/routers: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/routers/router.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/views: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/views/app-view.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/js/views/todo-view.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/backbone/readme.md: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower.json: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/ember: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/ember-localstorage-adapter: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/ember-localstorage-adapter/localstorage_adapter.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/ember/ember.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/handlebars: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/handlebars/handlebars.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/jquery: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/jquery/jquery.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/todomvc-common: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/todomvc-common/base.css: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/todomvc-common/base.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/bower_components/todomvc-common/bg.png: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/index.html: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/app.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/controllers: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/controllers/todo_controller.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/controllers/todos_controller.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/libs: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/libs/ember-data.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/models: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/models/store.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/models/todo.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/views: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/js/views/edit_todo_view.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/readme.md: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/emberjs/test.html: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower.json: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/handlebars: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/handlebars/handlebars.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/jquery: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/jquery/jquery.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/todomvc-common: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/todomvc-common/base.css: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/todomvc-common/base.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/bower_components/todomvc-common/bg.png: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/css: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/css/app.css: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/index.html: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/js/app.js: Added.
+        * DoYouEvenBench/todomvc/architecture-examples/jquery/readme.md: Added.
+        * DoYouEvenBench/todomvc/license.md: Added.
+        * DoYouEvenBench/todomvc/readme.md: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower.json: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower_components: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower_components/todomvc-common: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower_components/todomvc-common/base.css: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower_components/todomvc-common/base.js: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/bower_components/todomvc-common/bg.png: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/index.html: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/app.js: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/controller.js: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/helpers.js: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/model.js: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/store.js: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/js/view.js: Added.
+        * DoYouEvenBench/todomvc/vanilla-examples/vanillajs/readme.md: Added.
+        * Skipped:
+
 2013-09-04  Filip Pizlo  <fpizlo@apple.com>
 
         Introduce a version of SunSpider that runs for a really long time (about 1 sec on my machine)

@@ -115,7 +115,7 @@ void VariableEventStream::reconstruct(
     
     unsigned numVariables;
     if (codeOrigin.inlineCallFrame)
-        numVariables = baselineCodeBlockForInlineCallFrame(codeOrigin.inlineCallFrame)->m_numCalleeRegisters + codeOrigin.inlineCallFrame->stackOffset;
+        numVariables = baselineCodeBlockForInlineCallFrame(codeOrigin.inlineCallFrame)->m_numCalleeRegisters + VirtualRegister(codeOrigin.inlineCallFrame->stackOffset).toLocal();
     else
         numVariables = baselineCodeBlock->m_numCalleeRegisters;
     
@@ -124,8 +124,10 @@ void VariableEventStream::reconstruct(
     // reflect this.
     if (!index) {
         valueRecoveries = Operands<ValueRecovery>(codeBlock->numParameters(), numVariables);
-        for (size_t i = 0; i < valueRecoveries.size(); ++i)
-            valueRecoveries[i] = ValueRecovery::alreadyInJSStack();
+        for (size_t i = 0; i < valueRecoveries.size(); ++i) {
+            valueRecoveries[i] = ValueRecovery::displacedInJSStack(
+                VirtualRegister(valueRecoveries.operandForIndex(i)), DataFormatJS);
+        }
         return;
     }
     
@@ -181,7 +183,7 @@ void VariableEventStream::reconstruct(
     for (unsigned i = 0; i < operandSources.size(); ++i) {
         ValueSource& source = operandSources[i];
         if (source.isTriviallyRecoverable()) {
-            valueRecoveries[i] = source.valueRecovery();
+            valueRecoveries[i] = source.valueRecovery(operandSources.operandForIndex(i));
             continue;
         }
         
@@ -193,28 +195,26 @@ void VariableEventStream::reconstruct(
         MinifiedGenerationInfo info = generationInfos.get(source.id());
         if (info.format == DataFormatNone) {
             // Try to see if there is an alternate node that would contain the value we want.
-            // There are four possibilities:
             //
-            // Int32ToDouble: We can use this in place of the original node, but
-            //    we'd rather not; so we use it only if it is the only remaining
-            //    live version.
+            // Backward rewiring refers to:
             //
-            // ValueToInt32: If the only remaining live version of the value is
-            //    ValueToInt32, then we can use it.
+            //     a: Something(...)
+            //     b: Id(@a) // some identity function
+            //     c: SetLocal(@b)
             //
-            // UInt32ToNumber: If the only live version of the value is a UInt32ToNumber
-            //    then the only remaining uses are ones that want a properly formed number
-            //    rather than a UInt32 intermediate.
+            // Where we find @b being dead, but @a is still alive.
             //
-            // DoubleAsInt32: Same as UInt32ToNumber.
+            // Forward rewiring refers to:
             //
-            // The reverse of the above: This node could be a UInt32ToNumber, but its
-            //    alternative is still alive. This means that the only remaining uses of
-            //    the number would be fine with a UInt32 intermediate.
+            //     a: Something(...)
+            //     b: SetLocal(@a)
+            //     c: Id(@a) // some identity function
+            //
+            // Where we find @a being dead, but @b is still alive.
             
             bool found = false;
             
-            if (node && needsOSRBackwardRewiring(node->op())) {
+            if (node && permitsOSRBackwardRewiring(node->op())) {
                 MinifiedID id = node->child1();
                 if (tryToSetConstantRecovery(valueRecoveries[i], codeBlock, graph.at(id)))
                     continue;
@@ -224,10 +224,8 @@ void VariableEventStream::reconstruct(
             }
             
             if (!found) {
-                MinifiedID int32ToDoubleID;
-                MinifiedID valueToInt32ID;
-                MinifiedID uint32ToNumberID;
-                MinifiedID doubleAsInt32ID;
+                MinifiedID bestID;
+                unsigned bestScore = 0;
                 
                 HashMap<MinifiedID, MinifiedGenerationInfo>::iterator iter = generationInfos.begin();
                 HashMap<MinifiedID, MinifiedGenerationInfo>::iterator end = generationInfos.end();
@@ -242,37 +240,15 @@ void VariableEventStream::reconstruct(
                         continue;
                     if (iter->value.format == DataFormatNone)
                         continue;
-                    switch (node->op()) {
-                    case Int32ToDouble:
-                        int32ToDoubleID = id;
-                        break;
-                    case ValueToInt32:
-                        valueToInt32ID = id;
-                        break;
-                    case UInt32ToNumber:
-                        uint32ToNumberID = id;
-                        break;
-                    case DoubleAsInt32:
-                        doubleAsInt32ID = id;
-                        break;
-                    default:
-                        ASSERT(!needsOSRForwardRewiring(node->op()));
-                        break;
-                    }
+                    unsigned myScore = forwardRewiringSelectionScore(node->op());
+                    if (myScore <= bestScore)
+                        continue;
+                    bestID = id;
+                    bestScore = myScore;
                 }
                 
-                MinifiedID idToUse;
-                if (!!doubleAsInt32ID)
-                    idToUse = doubleAsInt32ID;
-                else if (!!int32ToDoubleID)
-                    idToUse = int32ToDoubleID;
-                else if (!!valueToInt32ID)
-                    idToUse = valueToInt32ID;
-                else if (!!uint32ToNumberID)
-                    idToUse = uint32ToNumberID;
-                
-                if (!!idToUse) {
-                    info = generationInfos.get(idToUse);
+                if (!!bestID) {
+                    info = generationInfos.get(bestID);
                     ASSERT(info.format != DataFormatNone);
                     found = true;
                 }
@@ -303,13 +279,6 @@ void VariableEventStream::reconstruct(
         
         valueRecoveries[i] =
             ValueRecovery::displacedInJSStack(static_cast<VirtualRegister>(info.u.virtualReg), info.format);
-    }
-    
-    // Step 4: Make sure that for locals that coincide with true call frame headers, the exit compiler knows
-    // that those values don't have to be recovered. Signal this by using ValueRecovery::alreadyInJSStack()
-    for (InlineCallFrame* inlineCallFrame = codeOrigin.inlineCallFrame; inlineCallFrame; inlineCallFrame = inlineCallFrame->caller.inlineCallFrame) {
-        for (unsigned i = JSStack::CallFrameHeaderSize; i--;)
-            valueRecoveries.setLocal(inlineCallFrame->stackOffset - i - 1, ValueRecovery::alreadyInJSStack());
     }
 }
 

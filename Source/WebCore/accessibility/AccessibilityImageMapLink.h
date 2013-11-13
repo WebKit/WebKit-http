@@ -56,7 +56,7 @@ public:
     
     virtual Element* anchorElement() const;
     virtual Element* actionElement() const;
-    virtual KURL url() const;
+    virtual URL url() const;
     virtual bool isLink() const { return true; } 
     virtual bool isLinked() const { return true; }
     virtual String title() const;
@@ -75,7 +75,7 @@ private:
     virtual void detachFromParent() OVERRIDE;
 
     virtual Path elementPath() const;
-    RenderObject* imageMapLinkRenderer() const;
+    RenderElement* imageMapLinkRenderer() const;
     virtual void accessibilityText(Vector<AccessibilityText>&);
     virtual bool isImageMapLink() const { return true; }
     virtual bool supportsPath() const { return true; }

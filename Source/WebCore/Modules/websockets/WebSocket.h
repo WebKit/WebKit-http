@@ -37,7 +37,7 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "EventTarget.h"
-#include "KURL.h"
+#include "URL.h"
 #include "WebSocketChannel.h"
 #include "WebSocketChannelClient.h"
 #include <wtf/Forward.h>
@@ -50,7 +50,8 @@ namespace WebCore {
 class Blob;
 class ThreadableWebSocketChannel;
 
-class WebSocket : public RefCounted<WebSocket>, public EventTarget, public ActiveDOMObject, public WebSocketChannelClient {
+// FIXME: This class should be marked FINAL once <http://webkit.org/b/121747> is fixed.
+class WebSocket : public RefCounted<WebSocket>, public EventTargetWithInlineData, public ActiveDOMObject, public WebSocketChannelClient {
 public:
     static void setIsAvailable(bool);
     static bool isAvailable();
@@ -81,7 +82,7 @@ public:
     void close(ExceptionCode& ec) { close(WebSocketChannel::CloseEventCodeNotSpecified, String(), ec); }
     void close(int code, ExceptionCode& ec) { close(code, String(), ec); }
 
-    const KURL& url() const;
+    const URL& url() const;
     State readyState() const;
     unsigned long bufferedAmount() const;
 
@@ -97,8 +98,8 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(close);
 
     // EventTarget functions.
-    virtual const AtomicString& interfaceName() const OVERRIDE;
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE;
+    virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL;
+    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL;
 
     using RefCounted<WebSocket>::ref;
     using RefCounted<WebSocket>::deref;
@@ -122,10 +123,8 @@ private:
     virtual void resume() OVERRIDE;
     virtual void stop() OVERRIDE;
 
-    virtual void refEventTarget() OVERRIDE { ref(); }
-    virtual void derefEventTarget() OVERRIDE { deref(); }
-    virtual EventTargetData* eventTargetData() OVERRIDE;
-    virtual EventTargetData& ensureEventTargetData() OVERRIDE;
+    virtual void refEventTarget() OVERRIDE FINAL { ref(); }
+    virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
 
     size_t getFramingOverhead(size_t payloadSize);
 
@@ -137,8 +136,7 @@ private:
     RefPtr<ThreadableWebSocketChannel> m_channel;
 
     State m_state;
-    KURL m_url;
-    EventTargetData m_eventTargetData;
+    URL m_url;
     unsigned long m_bufferedAmount;
     unsigned long m_bufferedAmountAfterClose;
     BinaryType m_binaryType;

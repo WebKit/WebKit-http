@@ -81,7 +81,7 @@ public:
     virtual bool isPlugInImageElement() const { return false; }
 
 protected:
-    HTMLPlugInElement(const QualifiedName& tagName, Document*);
+    HTMLPlugInElement(const QualifiedName& tagName, Document&);
 
     virtual void willDetachRenderers() OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
@@ -116,6 +116,12 @@ private:
 
     DisplayState m_displayState;
 };
+
+inline HTMLPlugInElement& toHTMLPlugInElement(Node& node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(node.isPluginElement());
+    return static_cast<HTMLPlugInElement&>(node);
+}
 
 inline HTMLPlugInElement* toHTMLPlugInElement(Node* node)
 {

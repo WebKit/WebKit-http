@@ -40,7 +40,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-ProgressShadowElement::ProgressShadowElement(Document* document)
+ProgressShadowElement::ProgressShadowElement(Document& document)
     : HTMLDivElement(HTMLNames::divTag, document)
 {
 }
@@ -56,12 +56,12 @@ bool ProgressShadowElement::rendererIsNeeded(const RenderStyle& style)
     return progressRenderer && !progressRenderer->style()->hasAppearance() && HTMLDivElement::rendererIsNeeded(style);
 }
 
-ProgressInnerElement::ProgressInnerElement(Document* document)
+ProgressInnerElement::ProgressInnerElement(Document& document)
     : ProgressShadowElement(document)
 {
 }
 
-RenderObject* ProgressInnerElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* ProgressInnerElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
     return new (arena) RenderProgress(this);
 }
@@ -75,12 +75,12 @@ bool ProgressInnerElement::rendererIsNeeded(const RenderStyle& style)
     return progressRenderer && !progressRenderer->style()->hasAppearance() && HTMLDivElement::rendererIsNeeded(style);    
 }
 
-ProgressBarElement::ProgressBarElement(Document* document)
+ProgressBarElement::ProgressBarElement(Document& document)
     : ProgressShadowElement(document)
 {
 }
 
-ProgressValueElement::ProgressValueElement(Document* document)
+ProgressValueElement::ProgressValueElement(Document& document)
     : ProgressShadowElement(document)
 {
 }

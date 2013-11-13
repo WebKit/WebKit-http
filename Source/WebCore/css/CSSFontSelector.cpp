@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2011, 2013 Apple Inc. All rights reserved.
  *           (C) 2007, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,6 @@
 #include "FontCache.h"
 #include "Frame.h"
 #include "FrameLoader.h"
-#include "RenderObject.h"
 #include "Settings.h"
 #include "SimpleFontData.h"
 #include "StylePropertySet.h"
@@ -235,7 +234,7 @@ void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace* fontFaceRule)
             RefPtr<CSSFontFaceRule> rule;
 #if ENABLE(FONT_LOAD_EVENTS)
             // FIXME: https://bugs.webkit.org/show_bug.cgi?id=112116 - This CSSFontFaceRule has no parent.
-            if (RuntimeEnabledFeatures::fontLoadEventsEnabled())
+            if (RuntimeEnabledFeatures::sharedFeatures().fontLoadEventsEnabled())
                 rule = static_pointer_cast<CSSFontFaceRule>(fontFaceRule->createCSSOMWrapper());
 #endif
             fontFace = CSSFontFace::create(static_cast<FontTraitsMask>(traitsMask), rule);
@@ -351,7 +350,7 @@ void CSSFontSelector::dispatchInvalidationCallbacks()
         return;
     if (StyleResolver* styleResolver = m_document->styleResolverIfExists())
         styleResolver->invalidateMatchedPropertiesCache();
-    if (m_document->inPageCache() || !m_document->renderer())
+    if (m_document->inPageCache() || !m_document->renderView())
         return;
     m_document->scheduleForcedStyleRecalc();
 }
@@ -515,7 +514,7 @@ CSSSegmentedFontFace* CSSFontSelector::getFontFace(const FontDescription& fontDe
 
     FontTraitsMask traitsMask = fontDescription.traitsMask();
 
-    RefPtr<CSSSegmentedFontFace>& face = segmentedFontFaceCache->add(traitsMask, 0).iterator->value;
+    RefPtr<CSSSegmentedFontFace>& face = segmentedFontFaceCache->add(traitsMask, nullptr).iterator->value;
     if (!face) {
         face = CSSSegmentedFontFace::create(this);
 

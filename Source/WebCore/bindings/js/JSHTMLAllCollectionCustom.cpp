@@ -42,17 +42,17 @@ namespace WebCore {
 
 static JSValue getNamedItems(ExecState* exec, JSHTMLAllCollection* collection, PropertyName propertyName)
 {
-    Vector<RefPtr<Node> > namedItems;
+    Vector<Ref<Element>> namedItems;
     collection->impl()->namedItems(propertyNameToAtomicString(propertyName), namedItems);
 
     if (namedItems.isEmpty())
         return jsUndefined();
     if (namedItems.size() == 1)
-        return toJS(exec, collection->globalObject(), namedItems[0].get());
+        return toJS(exec, collection->globalObject(), &namedItems[0].get());
 
     // FIXME: HTML5 specification says this should be a HTMLCollection.
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/common-dom-interfaces.html#htmlallcollection
-    return toJS(exec, collection->globalObject(), StaticNodeList::adopt(namedItems).get());
+    return toJS(exec, collection->globalObject(), StaticElementList::adopt(namedItems).get());
 }
 
 // HTMLAllCollections are strange objects, they support both get and call.
@@ -63,7 +63,7 @@ static EncodedJSValue JSC_HOST_CALL callHTMLAllCollection(ExecState* exec)
 
     // Do not use thisObj here. It can be the JSHTMLDocument, in the document.forms(i) case.
     JSHTMLAllCollection* jsCollection = jsCast<JSHTMLAllCollection*>(exec->callee());
-    HTMLAllCollection* collection = static_cast<HTMLAllCollection*>(jsCollection->impl());
+    HTMLAllCollection* collection = jsCollection->impl();
 
     // Also, do we need the TypeError test here ?
 

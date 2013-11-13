@@ -26,6 +26,8 @@
 #include "config.h"
 #include "WebDragClient.h"
 
+#if ENABLE(DRAG_SUPPORT)
+
 #include "ArgumentCodersGtk.h"
 #include "ShareableBitmap.h"
 #include "WebPage.h"
@@ -48,7 +50,7 @@ static PassRefPtr<ShareableBitmap> convertCairoSurfaceToShareableBitmap(cairo_su
 
     IntSize imageSize(cairo_image_surface_get_width(surface), cairo_image_surface_get_height(surface));
     RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(imageSize, ShareableBitmap::SupportsAlpha);
-    OwnPtr<GraphicsContext> graphicsContext = bitmap->createGraphicsContext();
+    auto graphicsContext = bitmap->createGraphicsContext();
 
     graphicsContext->platformContext()->drawSurfaceToContext(surface, IntRect(IntPoint(), imageSize), IntRect(IntPoint(), imageSize), graphicsContext.get());
     return bitmap.release();
@@ -69,3 +71,5 @@ void WebDragClient::startDrag(DragImageRef dragImage, const IntPoint& clientPosi
 }
 
 }; // namespace WebKit.
+
+#endif // ENABLE(DRAG_SUPPORT)

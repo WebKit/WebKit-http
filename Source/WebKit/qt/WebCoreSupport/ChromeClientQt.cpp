@@ -37,18 +37,15 @@
 #include "Document.h"
 #include "FileChooser.h"
 #include "FileIconLoader.h"
-#include "Frame.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClientQt.h"
 #include "FrameView.h"
 #include "Geolocation.h"
-#if USE(ACCELERATED_COMPOSITING)
-#include "GraphicsLayer.h"
-#endif
 #include "HTMLFormElement.h"
 #include "HitTestResult.h"
 #include "Icon.h"
+#include "MainFrame.h"
 #include "NavigationAction.h"
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
@@ -68,13 +65,16 @@
 #include "qwebsecurityorigin.h"
 #include "qwebsecurityorigin_p.h"
 #include "qwebsettings.h"
-
 #include <qabstractanimation.h>
 #include <qdebug.h>
 #include <qeventloop.h>
 #include <qwindow.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/OwnPtr.h>
+
+#if USE(ACCELERATED_COMPOSITING)
+#include "GraphicsLayer.h"
+#endif
 
 #if ENABLE(VIDEO) && ((USE(GSTREAMER) && USE(NATIVE_FULLSCREEN_VIDEO)) || USE(QT_MULTIMEDIA))
 #include "FullScreenVideoQt.h"
@@ -690,7 +690,7 @@ FullScreenVideoQt* ChromeClientQt::fullScreenVideo()
 bool ChromeClientQt::supportsFullscreenForNode(const Node* node)
 {
     ASSERT(node);
-    return node->hasTagName(HTMLNames::videoTag) && fullScreenVideo()->isValid();
+    return isHTMLVideoElement(node) && fullScreenVideo()->isValid();
 }
 
 bool ChromeClientQt::requiresFullscreenForVideoPlayback()
@@ -700,14 +700,14 @@ bool ChromeClientQt::requiresFullscreenForVideoPlayback()
 
 void ChromeClientQt::enterFullscreenForNode(Node* node)
 {
-    ASSERT(node && node->hasTagName(HTMLNames::videoTag));
+    ASSERT(node && isHTMLVideoElement(node));
 
     fullScreenVideo()->enterFullScreenForNode(node);
 }
 
 void ChromeClientQt::exitFullscreenForNode(Node* node)
 {
-    ASSERT(node && node->hasTagName(HTMLNames::videoTag));
+    ASSERT(node && isHTMLVideoElement(node));
 
     fullScreenVideo()->exitFullScreenForNode(node);
 } 

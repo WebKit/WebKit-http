@@ -44,13 +44,13 @@ using namespace HTMLNames;
 
 class KeygenSelectElement FINAL : public HTMLSelectElement {
 public:
-    static PassRefPtr<KeygenSelectElement> create(Document* document)
+    static PassRefPtr<KeygenSelectElement> create(Document& document)
     {
         return adoptRef(new KeygenSelectElement(document));
     }
 
 protected:
-    KeygenSelectElement(Document* document)
+    KeygenSelectElement(Document& document)
         : HTMLSelectElement(selectTag, document, 0)
     {
         DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-keygen-select", AtomicString::ConstructFromLiteral));
@@ -60,11 +60,11 @@ protected:
 private:
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren()
     {
-        return create(&document());
+        return create(document());
     }
 };
 
-inline HTMLKeygenElement::HTMLKeygenElement(const QualifiedName& tagName, Document* document, HTMLFormElement* form)
+inline HTMLKeygenElement::HTMLKeygenElement(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
     : HTMLFormControlElementWithState(tagName, document, form)
 {
     ASSERT(hasTagName(keygenTag));
@@ -83,7 +83,7 @@ inline HTMLKeygenElement::HTMLKeygenElement(const QualifiedName& tagName, Docume
     ensureUserAgentShadowRoot().appendChild(select, IGNORE_EXCEPTION);
 }
 
-PassRefPtr<HTMLKeygenElement> HTMLKeygenElement::create(const QualifiedName& tagName, Document* document, HTMLFormElement* form)
+PassRefPtr<HTMLKeygenElement> HTMLKeygenElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
 {
     return adoptRef(new HTMLKeygenElement(tagName, document, form));
 }

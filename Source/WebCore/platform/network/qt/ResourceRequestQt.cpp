@@ -22,6 +22,12 @@
 #include "ResourceRequest.h"
 #include "ThirdPartyCookiesQt.h"
 
+#if ENABLE(BLOB)
+#include "BlobData.h"
+#include "BlobRegistryImpl.h"
+#include "BlobStorageData.h"
+#endif
+
 #include <qglobal.h>
 
 #include <QNetworkRequest>
@@ -40,10 +46,60 @@ unsigned initializeMaximumHTTPConnectionCountPerHost()
     return 6 * (1 + 3 + 2);
 }
 
+#if ENABLE(BLOB)
+static void appendBlobResolved(QByteArray& data, const QUrl& url, QString* contentType = 0)
+{
+    RefPtr<BlobStorageData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(url);
+    if (!blobData)
+        return;
+
+    if (contentType)
+        *contentType = blobData->contentType();
+
+    BlobDataItemList::const_iterator it = blobData->items().begin();
+    const BlobDataItemList::const_iterator itend = blobData->items().end();
+    for (; it != itend; ++it) {
+        const BlobDataItem& blobItem = *it;
+        if (blobItem.type == BlobDataItem::Data)
+            data.append(blobItem.data->data() + static_cast<int>(blobItem.offset), static_cast<int>(blobItem.length));
+        else if (blobItem.type == BlobDataItem::Blob)
+            appendBlobResolved(data, blobItem.url);
+        else if (blobItem.type == BlobDataItem::File) {
+            // File types are not allowed here, so just ignore it.
+        } else
+            ASSERT_NOT_REACHED();
+    }
+}
+
+static void resolveBlobUrl(const QUrl& url, QUrl& resolvedUrl)
+{
+    RefPtr<BlobStorageData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(url);
+    if (!blobData)
+        return;
+
+    QByteArray data;
+    QString contentType;
+    appendBlobResolved(data, url, &contentType);
+
+    QString dataUri(QStringLiteral("data:"));
+    dataUri.append(contentType);
+    dataUri.append(QStringLiteral(";base64,"));
+    dataUri.append(QString::fromLatin1(data.toBase64()));
+    resolvedUrl = QUrl(dataUri);
+}
+#endif
+
 QNetworkRequest ResourceRequest::toNetworkRequest(NetworkingContext *context) const
 {
     QNetworkRequest request;
-    request.setUrl(url());
+    QUrl newurl = url();
+
+#if ENABLE(BLOB)
+    if (newurl.scheme() == QLatin1String("blob"))
+        resolveBlobUrl(url(), newurl);
+#endif
+
+    request.setUrl(newurl);
     request.setOriginatingObject(context ? context->originatingObject() : 0);
 
     const HTTPHeaderMap &headers = httpHeaderFields();

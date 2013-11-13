@@ -30,19 +30,19 @@ namespace WebCore {
 
 class HTMLFrameElement FINAL : public HTMLFrameElementBase {
 public:
-    static PassRefPtr<HTMLFrameElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<HTMLFrameElement> create(const QualifiedName&, Document&);
 
     bool hasFrameBorder() const { return m_frameBorder; }
 
     bool noResize() const;
 
 private:
-    HTMLFrameElement(const QualifiedName&, Document*);
+    HTMLFrameElement(const QualifiedName&, Document&);
 
     virtual void didAttachRenderers() OVERRIDE;
 
     virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
@@ -53,6 +53,8 @@ private:
     bool m_frameBorder;
     bool m_frameBorderSet;
 };
+
+ELEMENT_TYPE_CASTS(HTMLFrameElement)
 
 } // namespace WebCore
 

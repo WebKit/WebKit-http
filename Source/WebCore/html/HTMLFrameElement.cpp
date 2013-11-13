@@ -34,7 +34,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-inline HTMLFrameElement::HTMLFrameElement(const QualifiedName& tagName, Document* document)
+inline HTMLFrameElement::HTMLFrameElement(const QualifiedName& tagName, Document& document)
     : HTMLFrameElementBase(tagName, document)
     , m_frameBorder(true)
     , m_frameBorderSet(false)
@@ -43,7 +43,7 @@ inline HTMLFrameElement::HTMLFrameElement(const QualifiedName& tagName, Document
     setHasCustomStyleResolveCallbacks();
 }
 
-PassRefPtr<HTMLFrameElement> HTMLFrameElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<HTMLFrameElement> HTMLFrameElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new HTMLFrameElement(tagName, document));
 }
@@ -54,9 +54,9 @@ bool HTMLFrameElement::rendererIsNeeded(const RenderStyle&)
     return isURLAllowed();
 }
 
-RenderObject* HTMLFrameElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* HTMLFrameElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
-    return new (arena) RenderFrame(this);
+    return new (arena) RenderFrame(*this);
 }
 
 bool HTMLFrameElement::noResize() const

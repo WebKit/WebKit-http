@@ -40,9 +40,9 @@ public:
 
     String customCSSText() const;
 
-    PassRefPtr<Image> image(RenderObject*, const IntSize&);
+    PassRefPtr<Image> image(RenderElement*, const IntSize&);
     bool isFixedSize() const { return true; }
-    IntSize fixedSize(const RenderObject*);
+    IntSize fixedSize(const RenderElement*);
 
     bool isPending() const { return false; }
     void loadSubimages(CachedResourceLoader*) { }
@@ -93,6 +93,8 @@ private:
     // The document supplies the element and owns it.
     HTMLCanvasElement* m_element;
 };
+
+CSS_VALUE_TYPE_CASTS(CanvasValue)
 
 } // namespace WebCore
 

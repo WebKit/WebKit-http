@@ -31,7 +31,7 @@ class RenderMeter;
 
 class HTMLMeterElement FINAL : public LabelableElement {
 public:
-    static PassRefPtr<HTMLMeterElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<HTMLMeterElement> create(const QualifiedName&, Document&);
 
     enum GaugeRegion {
         GaugeRegionOptimum,
@@ -63,7 +63,7 @@ public:
     bool canContainRangeEndPoint() const { return false; }
 
 private:
-    HTMLMeterElement(const QualifiedName&, Document*);
+    HTMLMeterElement(const QualifiedName&, Document&);
     virtual ~HTMLMeterElement();
 
     virtual bool areAuthorShadowsAllowed() const OVERRIDE { return false; }
@@ -72,7 +72,7 @@ private:
     virtual bool supportLabels() const OVERRIDE { return true; }
 
     virtual bool recalcWillValidate() const { return false; }
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
@@ -81,6 +81,8 @@ private:
 
     RefPtr<MeterValueElement> m_value;
 };
+
+ELEMENT_TYPE_CASTS(HTMLMeterElement)
 
 } // namespace
 

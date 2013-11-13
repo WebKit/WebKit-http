@@ -28,17 +28,19 @@ namespace WebCore {
 
 const float textCombineMargin = 1.15f; // Allow em + 15% margin
 
-RenderCombineText::RenderCombineText(Node* node, PassRefPtr<StringImpl> string)
-     : RenderText(node, string)
-     , m_combinedTextWidth(0)
-     , m_isCombined(false)
-     , m_needsFontUpdate(false)
+RenderCombineText::RenderCombineText(Text& textNode, PassRefPtr<StringImpl> string)
+    : RenderText(&textNode, string)
+    , m_combinedTextWidth(0)
+    , m_isCombined(false)
+    , m_needsFontUpdate(false)
 {
 }
 
 void RenderCombineText::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
-    setStyleInternal(RenderStyle::clone(style()));
+    // FIXME: This is pretty hackish.
+    m_combineFontStyle = RenderStyle::clone(style());
+
     RenderText::styleDidChange(diff, oldStyle);
 
     if (m_isCombined) {
@@ -49,7 +51,7 @@ void RenderCombineText::styleDidChange(StyleDifference diff, const RenderStyle* 
     m_needsFontUpdate = true;
 }
 
-void RenderCombineText::setTextInternal(PassRefPtr<StringImpl> text)
+void RenderCombineText::setTextInternal(const String& text)
 {
     RenderText::setTextInternal(text);
 
@@ -98,7 +100,7 @@ void RenderCombineText::combineText()
     if (style()->isHorizontalWritingMode())
         return;
 
-    TextRun run = RenderBlock::constructTextRun(this, originalFont(), this, style());
+    TextRun run = RenderBlock::constructTextRun(this, originalFont(), this, *style());
     FontDescription description = originalFont().fontDescription();
     float emWidth = description.computedSize() * textCombineMargin;
     bool shouldUpdateFont = false;
@@ -110,7 +112,7 @@ void RenderCombineText::combineText()
     FontSelector* fontSelector = style()->font().fontSelector();
 
     if (m_isCombined)
-        shouldUpdateFont = style()->setFontDescription(description); // Need to change font orientation to horizontal.
+        shouldUpdateFont = m_combineFontStyle->setFontDescription(description); // Need to change font orientation to horizontal.
     else {
         // Need to try compressed glyphs.
         static const FontWidthVariant widthVariants[] = { HalfWidth, ThirdWidth, QuarterWidth };
@@ -124,17 +126,17 @@ void RenderCombineText::combineText()
                 m_isCombined = true;
 
                 // Replace my font with the new one.
-                shouldUpdateFont = style()->setFontDescription(description);
+                shouldUpdateFont = m_combineFontStyle->setFontDescription(description);
                 break;
             }
         }
     }
 
     if (!m_isCombined)
-        shouldUpdateFont = style()->setFontDescription(originalFont().fontDescription());
+        shouldUpdateFont = m_combineFontStyle->setFontDescription(originalFont().fontDescription());
 
     if (shouldUpdateFont)
-        style()->font().update(fontSelector);
+        m_combineFontStyle->font().update(fontSelector);
 
     if (m_isCombined) {
         DEFINE_STATIC_LOCAL(String, objectReplacementCharacterString, (&objectReplacementCharacter, 1));

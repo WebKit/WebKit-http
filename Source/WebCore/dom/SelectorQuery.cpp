@@ -64,7 +64,7 @@ inline bool SelectorDataList::selectorMatches(const SelectorData& selectorData, 
     selectorCheckingContext.behaviorAtBoundary = SelectorChecker::StaysWithinTreeScope;
     selectorCheckingContext.scope = !rootNode->isDocumentNode() && rootNode->isContainerNode() ? toContainerNode(rootNode) : 0;
     PseudoId ignoreDynamicPseudo = NOPSEUDO;
-    return selectorChecker.match(selectorCheckingContext, ignoreDynamicPseudo) == SelectorChecker::SelectorMatches;
+    return selectorChecker.match(selectorCheckingContext, ignoreDynamicPseudo);
 }
 
 bool SelectorDataList::matches(Element* targetElement) const
@@ -81,16 +81,16 @@ bool SelectorDataList::matches(Element* targetElement) const
 }
 
 struct AllElementExtractorSelectorQueryTrait {
-    typedef Vector<RefPtr<Node>> OutputType;
+    typedef Vector<Ref<Element>> OutputType;
     static const bool shouldOnlyMatchFirstElement = false;
-    ALWAYS_INLINE static void appendOutputForElement(OutputType& output, Element* element) { output.append(element); }
+    ALWAYS_INLINE static void appendOutputForElement(OutputType& output, Element* element) { ASSERT(element); output.append(*element); }
 };
 
 PassRefPtr<NodeList> SelectorDataList::queryAll(Node* rootNode) const
 {
-    Vector<RefPtr<Node>> result;
+    Vector<Ref<Element>> result;
     execute<AllElementExtractorSelectorQueryTrait>(rootNode, result);
-    return StaticNodeList::adopt(result);
+    return StaticElementList::adopt(result);
 }
 
 struct SingleElementExtractorSelectorQueryTrait {
@@ -298,7 +298,7 @@ SelectorQuery::SelectorQuery(const CSSSelectorList& selectorList)
     m_selectors.initialize(m_selectorList);
 }
 
-SelectorQuery* SelectorQueryCache::add(const AtomicString& selectors, Document* document, ExceptionCode& ec)
+SelectorQuery* SelectorQueryCache::add(const AtomicString& selectors, Document& document, ExceptionCode& ec)
 {
     HashMap<AtomicString, OwnPtr<SelectorQuery> >::iterator it = m_entries.find(selectors);
     if (it != m_entries.end())

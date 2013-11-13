@@ -34,7 +34,6 @@
 #include "ChromeClient.h"
 #include "ClientRect.h"
 #include "ClientRectList.h"
-#include "ComposedShadowTreeWalker.h"
 #include "ContentDistributor.h"
 #include "Cursor.h"
 #include "DOMStringList.h"
@@ -47,10 +46,8 @@
 #include "EventHandler.h"
 #include "ExceptionCode.h"
 #include "FormController.h"
-#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
-#include "HTMLContentElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLSelectElement.h"
@@ -65,10 +62,12 @@
 #include "InspectorFrontendClientLocal.h"
 #include "InspectorInstrumentation.h"
 #include "InspectorOverlay.h"
+#include "InspectorValues.h"
 #include "InstrumentingAgents.h"
 #include "InternalSettings.h"
 #include "IntRect.h"
 #include "Language.h"
+#include "MainFrame.h"
 #include "MallocStatistics.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
@@ -78,7 +77,6 @@
 #include "Range.h"
 #include "RenderEmbeddedObject.h"
 #include "RenderMenuList.h"
-#include "RenderObject.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
@@ -151,6 +149,10 @@
 #if PLATFORM(QT)
 #include "NetworkingContext.h"
 #include <QNetworkAccessManager>
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+#include "MockMediaStreamCenter.h"
 #endif
 
 namespace WebCore {
@@ -290,6 +292,10 @@ Internals::Internals(Document* document)
     if (document && document->page())
         document->page()->group().captionPreferences()->setTestingMode(true);
 #endif
+    
+#if ENABLE(MEDIA_STREAM)
+    MockMediaStreamCenter::registerMockMediaStreamCenter();
+#endif
 }
 
 Document* Internals::contextDocument() const
@@ -346,34 +352,6 @@ bool Internals::isLoadingFromMemoryCache(const String& url)
     return resource && resource->status() == CachedResource::Cached;
 }
 
-PassRefPtr<Element> Internals::createContentElement(ExceptionCode& ec)
-{
-    Document* document = contextDocument();
-    if (!document) {
-        ec = INVALID_ACCESS_ERR;
-        return 0;
-    }
-
-#if ENABLE(SHADOW_DOM)
-    return HTMLContentElement::create(document);
-#else
-    return 0;
-#endif
-}
-
-bool Internals::isValidContentSelect(Element* insertionPoint, ExceptionCode& ec)
-{
-    if (!insertionPoint || !insertionPoint->isInsertionPoint()) {
-        ec = INVALID_ACCESS_ERR;
-        return false;
-    }
-
-#if ENABLE(SHADOW_DOM)
-    return isHTMLContentElement(insertionPoint) && toHTMLContentElement(insertionPoint)->isSelectValid();
-#else
-    return false;
-#endif
-}
 
 Node* Internals::treeScopeRootNode(Node* node, ExceptionCode& ec)
 {
@@ -510,61 +488,6 @@ bool Internals::attached(Node* node, ExceptionCode& ec)
     return node->attached();
 }
 
-Node* Internals::nextSiblingByWalker(Node* node, ExceptionCode& ec)
-{
-    if (!node) {
-        ec = INVALID_ACCESS_ERR;
-        return 0;
-    }
-    ComposedShadowTreeWalker walker(node);
-    walker.nextSibling();
-    return walker.get();
-}
-
-Node* Internals::firstChildByWalker(Node* node, ExceptionCode& ec)
-{
-    if (!node) {
-        ec = INVALID_ACCESS_ERR;
-        return 0;
-    }
-    ComposedShadowTreeWalker walker(node);
-    walker.firstChild();
-    return walker.get();
-}
-
-Node* Internals::lastChildByWalker(Node* node, ExceptionCode& ec)
-{
-    if (!node) {
-        ec = INVALID_ACCESS_ERR;
-        return 0;
-    }
-    ComposedShadowTreeWalker walker(node);
-    walker.lastChild();
-    return walker.get();
-}
-
-Node* Internals::nextNodeByWalker(Node* node, ExceptionCode& ec)
-{
-    if (!node) {
-        ec = INVALID_ACCESS_ERR;
-        return 0;
-    }
-    ComposedShadowTreeWalker walker(node);
-    walker.next();
-    return walker.get();
-}
-
-Node* Internals::previousNodeByWalker(Node* node, ExceptionCode& ec)
-{
-    if (!node) {
-        ec = INVALID_ACCESS_ERR;
-        return 0;
-    }
-    ComposedShadowTreeWalker walker(node);
-    walker.previous();
-    return walker.get();
-}
-
 String Internals::elementRenderTreeAsText(Element* element, ExceptionCode& ec)
 {
     if (!element) {
@@ -579,19 +502,6 @@ String Internals::elementRenderTreeAsText(Element* element, ExceptionCode& ec)
     }
 
     return representation;
-}
-
-size_t Internals::numberOfScopedHTMLStyleChildren(const Node* scope, ExceptionCode& ec) const
-{
-    if (scope && (scope->isElementNode() || scope->isShadowRoot()))
-#if ENABLE(STYLE_SCOPED)
-        return scope->numberOfScopedHTMLStyleChildren();
-#else
-        return 0;
-#endif
-
-    ec = INVALID_ACCESS_ERR;
-    return 0;
 }
 
 PassRefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Node* node, ExceptionCode& ec) const
@@ -766,7 +676,7 @@ PassRefPtr<ClientRect> Internals::boundingBox(Element* element, ExceptionCode& e
     }
 
     element->document().updateLayoutIgnorePendingStylesheets();
-    RenderObject* renderer = element->renderer();
+    auto renderer = element->renderer();
     if (!renderer)
         return ClientRect::create();
     return ClientRect::create(renderer->absoluteBoundingBoxRectIgnoringTransforms());
@@ -787,6 +697,22 @@ PassRefPtr<ClientRectList> Internals::inspectorHighlightRects(Document* document
     UNUSED_PARAM(document);
     UNUSED_PARAM(ec);
     return ClientRectList::create();
+#endif
+}
+
+String Internals::inspectorHighlightObject(Document* document, ExceptionCode& ec)
+{
+#if ENABLE(INSPECTOR)
+    if (!document || !document->page() || !document->page()->inspectorController()) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+    RefPtr<InspectorObject> object = document->page()->inspectorController()->buildObjectForHighlightedNode();
+    return object ? object->toJSONString() : String();
+#else
+    UNUSED_PARAM(document);
+    UNUSED_PARAM(ec);
+    return String();
 #endif
 }
 
@@ -1285,7 +1211,7 @@ PassRefPtr<NodeList> Internals::nodesFromRect(Document* document, int centerX, i
     if (!request.ignoreClipping() && !frameView->visibleContentRect().intersects(HitTestLocation::rectForPoint(point, topPadding, rightPadding, bottomPadding, leftPadding)))
         return 0;
 
-    Vector<RefPtr<Node> > matches;
+    Vector<Ref<Node>> matches;
 
     // Need padding to trigger a rect based hit test, but we want to return a NodeList
     // so we special case this.
@@ -1293,11 +1219,15 @@ PassRefPtr<NodeList> Internals::nodesFromRect(Document* document, int centerX, i
         HitTestResult result(point);
         renderView->hitTest(request, result);
         if (result.innerNode())
-            matches.append(result.innerNode()->deprecatedShadowAncestorNode());
+            matches.append(*result.innerNode()->deprecatedShadowAncestorNode());
     } else {
         HitTestResult result(point, topPadding, rightPadding, bottomPadding, leftPadding);
         renderView->hitTest(request, result);
-        copyToVector(result.rectBasedTestResult(), matches);
+        
+        const HitTestResult::NodeSet& nodeSet = result.rectBasedTestResult();
+        matches.reserveInitialCapacity(nodeSet.size());
+        for (auto it = nodeSet.begin(), end = nodeSet.end(); it != end; ++it)
+            matches.uncheckedAppend(*it->get());
     }
 
     return StaticNodeList::adopt(matches);
@@ -1693,20 +1623,30 @@ void Internals::allowRoundingHacks() const
     TextRun::setAllowsRoundingHacks(true);
 }
 
-void Internals::insertAuthorCSS(Document* document, const String& css) const
+void Internals::insertAuthorCSS(Document* document, const String& css, ExceptionCode& ec) const
 {
-    RefPtr<StyleSheetContents> parsedSheet = StyleSheetContents::create(document);
+    if (!document) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    RefPtr<StyleSheetContents> parsedSheet = StyleSheetContents::create(*document);
     parsedSheet->setIsUserStyleSheet(false);
     parsedSheet->parseString(css);
-    document->styleSheetCollection()->addAuthorSheet(parsedSheet);
+    document->styleSheetCollection().addAuthorSheet(parsedSheet);
 }
 
-void Internals::insertUserCSS(Document* document, const String& css) const
+void Internals::insertUserCSS(Document* document, const String& css, ExceptionCode& ec) const
 {
-    RefPtr<StyleSheetContents> parsedSheet = StyleSheetContents::create(document);
+    if (!document) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    RefPtr<StyleSheetContents> parsedSheet = StyleSheetContents::create(*document);
     parsedSheet->setIsUserStyleSheet(true);
     parsedSheet->parseString(css);
-    document->styleSheetCollection()->addUserSheet(parsedSheet);
+    document->styleSheetCollection().addUserSheet(parsedSheet);
 }
 
 String Internals::counterValue(Element* element)
@@ -2043,12 +1983,12 @@ void Internals::simulateAudioInterruption(Node* node)
 
 bool Internals::isSelectPopupVisible(Node* node)
 {
-    if (!node->hasTagName(HTMLNames::selectTag))
+    if (!isHTMLSelectElement(node))
         return false;
 
     HTMLSelectElement* select = toHTMLSelectElement(node);
 
-    RenderObject* renderer = select->renderer();
+    auto renderer = select->renderer();
     if (!renderer->isMenuList())
         return false;
 
@@ -2170,7 +2110,7 @@ bool Internals::isPluginUnavailabilityIndicatorObscured(Element* element, Except
         return false;
     }
 
-    RenderObject* renderer = element->renderer();
+    auto renderer = element->renderer();
     if (!renderer || !renderer->isEmbeddedObject()) {
         ec = INVALID_ACCESS_ERR;
         return false;

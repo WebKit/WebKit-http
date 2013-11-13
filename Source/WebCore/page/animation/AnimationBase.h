@@ -44,7 +44,7 @@ class AnimationController;
 class CompositeAnimation;
 class Element;
 class Node;
-class RenderObject;
+class RenderElement;
 class RenderStyle;
 class TimingFunction;
 
@@ -53,10 +53,10 @@ class AnimationBase : public RefCounted<AnimationBase> {
     friend class CSSPropertyAnimation;
 
 public:
-    AnimationBase(const Animation* transition, RenderObject* renderer, CompositeAnimation* compAnim);
+    AnimationBase(const Animation& transition, RenderElement*, CompositeAnimation*);
     virtual ~AnimationBase() { }
 
-    RenderObject* renderer() const { return m_object; }
+    RenderElement* renderer() const { return m_object; }
     void clear()
     {
       endAnimation();
@@ -134,7 +134,7 @@ public:
 
     double progress(double scale, double offset, const TimingFunction*) const;
 
-    virtual void animate(CompositeAnimation*, RenderObject*, const RenderStyle* /*currentStyle*/, RenderStyle* /*targetStyle*/, RefPtr<RenderStyle>& /*animatedStyle*/) = 0;
+    virtual void animate(CompositeAnimation*, RenderElement*, const RenderStyle* /*currentStyle*/, RenderStyle* /*targetStyle*/, RefPtr<RenderStyle>& /*animatedStyle*/) = 0;
     virtual void getAnimatedStyle(RefPtr<RenderStyle>& /*animatedStyle*/) = 0;
 
     virtual bool shouldFireEvents() const { return false; }
@@ -143,7 +143,7 @@ public:
 
     bool animationsMatch(const Animation*) const;
 
-    void setAnimation(const Animation* anim) { m_animation = const_cast<Animation*>(anim); }
+    void setAnimation(const Animation& animation) { m_animation = const_cast<Animation*>(&animation); }
 
     // Return true if this animation is overridden. This will only be the case for
     // ImplicitAnimations and is used to determine whether or not we should force
@@ -190,7 +190,7 @@ public:
         updateStateMachine(AnimationBase::AnimationStateInputStyleAvailable, -1);
     }
 
-    const Animation* animation() const { return m_animation.get(); }
+    const Animation& animation() const { return *m_animation; }
 
 protected:
     virtual void overrideAnimations() { }
@@ -234,7 +234,7 @@ protected:
     double m_totalDuration;
     double m_nextIterationDuration;
 
-    RenderObject* m_object;
+    RenderElement* m_object;
 
     RefPtr<Animation> m_animation;
     CompositeAnimation* m_compAnim;

@@ -43,7 +43,7 @@ const ClassInfo RuntimeMethod::s_info = { "RuntimeMethod", &InternalFunction::s_
 
 RuntimeMethod::RuntimeMethod(JSGlobalObject* globalObject, Structure* structure, Method* method)
     // Callers will need to pass in the right global object corresponding to this native object "method".
-    : InternalFunction(globalObject, structure)
+    : InternalFunction(globalObject->vm(), structure)
     , m_method(method)
 {
 }
@@ -89,10 +89,8 @@ static EncodedJSValue JSC_HOST_CALL callRuntimeMethod(ExecState* exec)
             return JSValue::encode(RuntimeObject::throwInvalidAccessError(exec));
     } else {
         // Calling a runtime object of a plugin element?
-        if (thisValue.inherits(JSHTMLElement::info())) {
-            HTMLElement* element = jsCast<JSHTMLElement*>(asObject(thisValue))->impl();
-            instance = pluginInstance(element);
-        }
+        if (thisValue.inherits(JSHTMLElement::info()))
+            instance = pluginInstance(*jsCast<JSHTMLElement*>(asObject(thisValue))->impl());
         if (!instance)
             return throwVMTypeError(exec);
     }

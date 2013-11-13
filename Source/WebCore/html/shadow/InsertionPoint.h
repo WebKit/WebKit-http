@@ -41,11 +41,6 @@ namespace WebCore {
 
 class InsertionPoint : public HTMLElement {
 public:
-    enum Type {
-        InternalType,
-        HTMLContentElementType
-    };
-
     enum MatchType {
         AlwaysMatches,
         NeverMatches,
@@ -59,7 +54,6 @@ public:
     bool isActive() const;
 
     virtual MatchType matchTypeFor(Node*) const { return AlwaysMatches; }
-    virtual Type insertionPointType() const { return InternalType; }
 
     virtual void willAttachRenderers() OVERRIDE;
     virtual void willDetachRenderers() OVERRIDE;
@@ -72,7 +66,7 @@ public:
     Node* previousDistributedTo(const Node*) const;
 
 protected:
-    InsertionPoint(const QualifiedName&, Document*);
+    InsertionPoint(const QualifiedName&, Document&);
     virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;

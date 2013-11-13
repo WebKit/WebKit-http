@@ -29,7 +29,7 @@
 #include "DragActions.h"
 #include "DragImage.h"
 #include "IntPoint.h"
-#include "KURL.h"
+#include "URL.h"
 
 namespace WebCore {
 
@@ -51,11 +51,12 @@ namespace WebCore {
     class DragController {
         WTF_MAKE_NONCOPYABLE(DragController); WTF_MAKE_FAST_ALLOCATED;
     public:
+        DragController(Page&, DragClient&);
         ~DragController();
 
         static PassOwnPtr<DragController> create(Page*, DragClient*);
 
-        DragClient* client() const { return m_client; }
+        DragClient& client() const { return m_client; }
 
         DragSession dragEntered(DragData*);
         void dragExited(DragData*);
@@ -67,7 +68,7 @@ namespace WebCore {
         void setDidInitiateDrag(bool initiated) { m_didInitiateDrag = initiated; } 
         bool didInitiateDrag() const { return m_didInitiateDrag; }
         DragOperation sourceDragOperation() const { return m_sourceDragOperation; }
-        const KURL& draggingImageURL() const { return m_draggingImageURL; }
+        const URL& draggingImageURL() const { return m_draggingImageURL; }
         void setDragOffset(const IntPoint& offset) { m_dragOffset = offset; }
         const IntPoint& dragOffset() const { return m_dragOffset; }
         DragSourceAction dragSourceAction() const { return m_dragSourceAction; }
@@ -91,8 +92,6 @@ namespace WebCore {
         static const float DragImageAlpha;
 
     private:
-        DragController(Page*, DragClient*);
-
         bool dispatchTextInputEventFor(Frame*, DragData*);
         bool canProcessDrag(DragData*);
         bool concludeEditDrag(DragData*);
@@ -110,10 +109,10 @@ namespace WebCore {
         void doImageDrag(Element*, const IntPoint&, const IntRect&, Clipboard*, Frame*, IntPoint&);
         void doSystemDrag(DragImageRef, const IntPoint&, const IntPoint&, Clipboard*, Frame*, bool forLink);
         void cleanupAfterSystemDrag();
-        void declareAndWriteDragImage(Clipboard*, Element*, const KURL&, const String& label);
+        void declareAndWriteDragImage(Clipboard*, Element*, const URL&, const String& label);
 
-        Page* m_page;
-        DragClient* m_client;
+        Page& m_page;
+        DragClient& m_client;
 
         RefPtr<Document> m_documentUnderMouse; // The document the mouse was last dragged over.
         RefPtr<Document> m_dragInitiator; // The Document (if any) that initiated the drag.
@@ -125,7 +124,7 @@ namespace WebCore {
         bool m_didInitiateDrag;
         DragOperation m_sourceDragOperation; // Set in startDrag when a drag starts from a mouse down within WebKit
         IntPoint m_dragOffset;
-        KURL m_draggingImageURL;
+        URL m_draggingImageURL;
     };
 
 }

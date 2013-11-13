@@ -154,10 +154,10 @@ static inline String targetReferenceFromResource(SVGElement* element)
     else
         ASSERT_NOT_REACHED();
 
-    return SVGURIReference::fragmentIdentifierFromIRIString(target, &element->document());
+    return SVGURIReference::fragmentIdentifierFromIRIString(target, element->document());
 }
 
-static inline RenderSVGResourceContainer* paintingResourceFromSVGPaint(Document* document, const SVGPaint::SVGPaintType& paintType, const String& paintUri, AtomicString& id, bool& hasPendingResource)
+static inline RenderSVGResourceContainer* paintingResourceFromSVGPaint(Document& document, const SVGPaint::SVGPaintType& paintType, const String& paintUri, AtomicString& id, bool& hasPendingResource)
 {
     if (paintType != SVGPaint::SVG_PAINTTYPE_URI && paintType != SVGPaint::SVG_PAINTTYPE_URI_RGBCOLOR)
         return 0;
@@ -208,7 +208,7 @@ bool SVGResources::buildCachedResources(const RenderObject* object, const SVGRen
     if (clipperFilterMaskerTags().contains(tagName)) {
         if (style->hasClipper()) {
             AtomicString id(style->clipperResource());
-            if (setClipper(getRenderSVGResourceById<RenderSVGResourceClipper>(&document, id)))
+            if (setClipper(getRenderSVGResourceById<RenderSVGResourceClipper>(document, id)))
                 foundResources = true;
             else
                 registerPendingResource(extensions, id, element);
@@ -217,7 +217,7 @@ bool SVGResources::buildCachedResources(const RenderObject* object, const SVGRen
 #if ENABLE(FILTERS)
         if (style->hasFilter()) {
             AtomicString id(style->filterResource());
-            if (setFilter(getRenderSVGResourceById<RenderSVGResourceFilter>(&document, id)))
+            if (setFilter(getRenderSVGResourceById<RenderSVGResourceFilter>(document, id)))
                 foundResources = true;
             else
                 registerPendingResource(extensions, id, element);
@@ -226,7 +226,7 @@ bool SVGResources::buildCachedResources(const RenderObject* object, const SVGRen
 
         if (style->hasMasker()) {
             AtomicString id(style->maskerResource());
-            if (setMasker(getRenderSVGResourceById<RenderSVGResourceMasker>(&document, id)))
+            if (setMasker(getRenderSVGResourceById<RenderSVGResourceMasker>(document, id)))
                 foundResources = true;
             else
                 registerPendingResource(extensions, id, element);
@@ -235,19 +235,19 @@ bool SVGResources::buildCachedResources(const RenderObject* object, const SVGRen
 
     if (markerTags().contains(tagName) && style->hasMarkers()) {
         AtomicString markerStartId(style->markerStartResource());
-        if (setMarkerStart(getRenderSVGResourceById<RenderSVGResourceMarker>(&document, markerStartId)))
+        if (setMarkerStart(getRenderSVGResourceById<RenderSVGResourceMarker>(document, markerStartId)))
             foundResources = true;
         else
             registerPendingResource(extensions, markerStartId, element);
 
         AtomicString markerMidId(style->markerMidResource());
-        if (setMarkerMid(getRenderSVGResourceById<RenderSVGResourceMarker>(&document, markerMidId)))
+        if (setMarkerMid(getRenderSVGResourceById<RenderSVGResourceMarker>(document, markerMidId)))
             foundResources = true;
         else
             registerPendingResource(extensions, markerMidId, element);
 
         AtomicString markerEndId(style->markerEndResource());
-        if (setMarkerEnd(getRenderSVGResourceById<RenderSVGResourceMarker>(&document, markerEndId)))
+        if (setMarkerEnd(getRenderSVGResourceById<RenderSVGResourceMarker>(document, markerEndId)))
             foundResources = true;
         else
             registerPendingResource(extensions, markerEndId, element);
@@ -257,7 +257,7 @@ bool SVGResources::buildCachedResources(const RenderObject* object, const SVGRen
         if (style->hasFill()) {
             bool hasPendingResource = false;
             AtomicString id;
-            if (setFill(paintingResourceFromSVGPaint(&document, style->fillPaintType(), style->fillPaintUri(), id, hasPendingResource)))
+            if (setFill(paintingResourceFromSVGPaint(document, style->fillPaintType(), style->fillPaintUri(), id, hasPendingResource)))
                 foundResources = true;
             else if (hasPendingResource)
                 registerPendingResource(extensions, id, element);
@@ -266,7 +266,7 @@ bool SVGResources::buildCachedResources(const RenderObject* object, const SVGRen
         if (style->hasStroke()) {
             bool hasPendingResource = false;
             AtomicString id;
-            if (setStroke(paintingResourceFromSVGPaint(&document, style->strokePaintType(), style->strokePaintUri(), id, hasPendingResource)))
+            if (setStroke(paintingResourceFromSVGPaint(document, style->strokePaintType(), style->strokePaintUri(), id, hasPendingResource)))
                 foundResources = true;
             else if (hasPendingResource)
                 registerPendingResource(extensions, id, element);
@@ -275,7 +275,7 @@ bool SVGResources::buildCachedResources(const RenderObject* object, const SVGRen
 
     if (chainableResourceTags().contains(tagName)) {
         AtomicString id(targetReferenceFromResource(element));
-        if (setLinkedResource(getRenderSVGResourceContainerById(&document, id)))
+        if (setLinkedResource(getRenderSVGResourceContainerById(document, id)))
             foundResources = true;
         else
             registerPendingResource(extensions, id, element);
@@ -647,33 +647,33 @@ void SVGResources::dump(const RenderObject* object)
     fprintf(stderr, "\n | List of resources:\n");
     if (m_clipperFilterMaskerData) {
         if (RenderSVGResourceClipper* clipper = m_clipperFilterMaskerData->clipper)
-            fprintf(stderr, " |-> Clipper    : %p (node=%p)\n", clipper, clipper->node());
+            fprintf(stderr, " |-> Clipper    : %p (node=%p)\n", clipper, &clipper->clipPathElement());
 #if ENABLE(FILTERS)
         if (RenderSVGResourceFilter* filter = m_clipperFilterMaskerData->filter)
-            fprintf(stderr, " |-> Filter     : %p (node=%p)\n", filter, filter->node());
+            fprintf(stderr, " |-> Filter     : %p (node=%p)\n", filter, &filter->filterElement());
 #endif
         if (RenderSVGResourceMasker* masker = m_clipperFilterMaskerData->masker)
-            fprintf(stderr, " |-> Masker     : %p (node=%p)\n", masker, masker->node());
+            fprintf(stderr, " |-> Masker     : %p (node=%p)\n", masker, &masker->maskElement());
     }
 
     if (m_markerData) {
         if (RenderSVGResourceMarker* markerStart = m_markerData->markerStart)
-            fprintf(stderr, " |-> MarkerStart: %p (node=%p)\n", markerStart, markerStart->node());
+            fprintf(stderr, " |-> MarkerStart: %p (node=%p)\n", markerStart, &markerStart->markerElement());
         if (RenderSVGResourceMarker* markerMid = m_markerData->markerMid)
-            fprintf(stderr, " |-> MarkerMid  : %p (node=%p)\n", markerMid, markerMid->node());
+            fprintf(stderr, " |-> MarkerMid  : %p (node=%p)\n", markerMid, &markerMid->markerElement());
         if (RenderSVGResourceMarker* markerEnd = m_markerData->markerEnd)
-            fprintf(stderr, " |-> MarkerEnd  : %p (node=%p)\n", markerEnd, markerEnd->node());
+            fprintf(stderr, " |-> MarkerEnd  : %p (node=%p)\n", markerEnd, &markerEnd->markerElement());
     }
 
     if (m_fillStrokeData) {
         if (RenderSVGResourceContainer* fill = m_fillStrokeData->fill)
-            fprintf(stderr, " |-> Fill       : %p (node=%p)\n", fill, fill->node());
+            fprintf(stderr, " |-> Fill       : %p (node=%p)\n", fill, &fill->element());
         if (RenderSVGResourceContainer* stroke = m_fillStrokeData->stroke)
-            fprintf(stderr, " |-> Stroke     : %p (node=%p)\n", stroke, stroke->node());
+            fprintf(stderr, " |-> Stroke     : %p (node=%p)\n", stroke, &stroke->element());
     }
 
     if (m_linkedResource)
-        fprintf(stderr, " |-> xlink:href : %p (node=%p)\n", m_linkedResource, m_linkedResource->node());
+        fprintf(stderr, " |-> xlink:href : %p (node=%p)\n", m_linkedResource, &m_linkedResource->element());
 }
 #endif
 

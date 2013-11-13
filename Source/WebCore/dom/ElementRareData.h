@@ -27,6 +27,7 @@
 #include "NamedNodeMap.h"
 #include "NodeRareData.h"
 #include "PseudoElement.h"
+#include "RenderElement.h"
 #include "ShadowRoot.h"
 #include "StyleInheritedData.h"
 #include <wtf/OwnPtr.h>
@@ -35,7 +36,7 @@ namespace WebCore {
 
 class ElementRareData : public NodeRareData {
 public:
-    static PassOwnPtr<ElementRareData> create(RenderObject* renderer) { return adoptPtr(new ElementRareData(renderer)); }
+    static PassOwnPtr<ElementRareData> create(RenderElement* renderer) { return adoptPtr(new ElementRareData(renderer)); }
 
     ~ElementRareData();
 
@@ -104,7 +105,7 @@ public:
     void setComputedStyle(PassRefPtr<RenderStyle> computedStyle) { m_computedStyle = computedStyle; }
 
     ClassList* classList() const { return m_classList.get(); }
-    void setClassList(PassOwnPtr<ClassList> classList) { m_classList = classList; }
+    void setClassList(OwnPtr<ClassList> classList) { m_classList = std::move(classList); }
     void clearClassListValueForQuirksMode()
     {
         if (!m_classList)
@@ -166,7 +167,7 @@ private:
     RefPtr<PseudoElement> m_beforePseudoElement;
     RefPtr<PseudoElement> m_afterPseudoElement;
 
-    ElementRareData(RenderObject*);
+    explicit ElementRareData(RenderElement*);
     void releasePseudoElement(PseudoElement*);
 };
 
@@ -175,7 +176,7 @@ inline IntSize defaultMinimumSizeForResizing()
     return IntSize(LayoutUnit::max(), LayoutUnit::max());
 }
 
-inline ElementRareData::ElementRareData(RenderObject* renderer)
+inline ElementRareData::ElementRareData(RenderElement* renderer)
     : NodeRareData(renderer)
     , m_tabIndex(0)
     , m_childIndex(0)

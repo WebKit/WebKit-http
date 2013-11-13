@@ -42,8 +42,8 @@
 #include <wtf/Assertions.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
-#include <wtf/OwnArrayPtr.h>
 #include <wtf/RefPtr.h>
+#include <wtf/StdLibExtras.h>
 
 #if PLATFORM(MAC)
 #include <Carbon/Carbon.h>
@@ -337,7 +337,7 @@ static JSValueRef setEncodedAudioDataCallback(JSContextRef context, JSObjectRef 
     ASSERT(!*exception);
     
     size_t maxLength = JSStringGetMaximumUTF8CStringSize(encodedAudioData.get());
-    OwnArrayPtr<char> encodedAudioDataBuffer = adoptArrayPtr(new char[maxLength + 1]);
+    auto encodedAudioDataBuffer = std::make_unique<char[]>(maxLength + 1);
     JSStringGetUTF8CString(encodedAudioData.get(), encodedAudioDataBuffer.get(), maxLength + 1);
 
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
@@ -388,11 +388,11 @@ static JSValueRef addURLToRedirectCallback(JSContextRef context, JSObjectRef fun
     ASSERT(!*exception);
 
     size_t maxLength = JSStringGetMaximumUTF8CStringSize(origin.get());
-    OwnArrayPtr<char> originBuffer = adoptArrayPtr(new char[maxLength + 1]);
+    auto originBuffer = std::make_unique<char[]>(maxLength + 1);
     JSStringGetUTF8CString(origin.get(), originBuffer.get(), maxLength + 1);
 
     maxLength = JSStringGetMaximumUTF8CStringSize(destination.get());
-    OwnArrayPtr<char> destinationBuffer = adoptArrayPtr(new char[maxLength + 1]);
+    auto destinationBuffer = std::make_unique<char[]>(maxLength + 1);
     JSStringGetUTF8CString(destination.get(), destinationBuffer.get(), maxLength + 1);
 
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
@@ -1325,6 +1325,19 @@ static JSValueRef setTabKeyCyclesThroughElementsCallback(JSContextRef context, J
     return JSValueMakeUndefined(context);
 }
 
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+static JSValueRef setTextAutosizingEnabledCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    if (argumentCount < 1)
+        return JSValueMakeUndefined(context);
+    
+    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
+    controller->setTextAutosizingEnabled(JSValueToBoolean(context, arguments[0]));
+    
+    return JSValueMakeUndefined(context);
+}
+#endif
+
 static JSValueRef setUseDashboardCompatibilityModeCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     // Has mac implementation
@@ -1404,7 +1417,7 @@ static JSValueRef setWillSendRequestClearHeaderCallback(JSContextRef context, JS
     ASSERT(!*exception);
 
     size_t maxLength = JSStringGetMaximumUTF8CStringSize(header.get());
-    OwnArrayPtr<char> headerBuffer = adoptArrayPtr(new char[maxLength + 1]);
+    auto headerBuffer = std::make_unique<char[]>(maxLength + 1);
     JSStringGetUTF8CString(header.get(), headerBuffer.get(), maxLength + 1);
 
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
@@ -2149,6 +2162,9 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "setSpatialNavigationEnabled", setSpatialNavigationEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setStopProvisionalFrameLoads", setStopProvisionalFrameLoadsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setTabKeyCyclesThroughElements", setTabKeyCyclesThroughElementsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+        { "setTextAutosizingEnabled", setTextAutosizingEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+#endif
         { "setUseDashboardCompatibilityMode", setUseDashboardCompatibilityModeCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setUserStyleSheetEnabled", setUserStyleSheetEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setUserStyleSheetLocation", setUserStyleSheetLocationCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },

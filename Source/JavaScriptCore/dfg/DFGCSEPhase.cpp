@@ -63,21 +63,6 @@ public:
     
 private:
     
-    Node* canonicalize(Node* node)
-    {
-        if (!node)
-            return 0;
-        
-        if (node->op() == ValueToInt32)
-            node = node->child1().node();
-        
-        return node;
-    }
-    Node* canonicalize(Edge edge)
-    {
-        return canonicalize(edge.node());
-    }
-    
     unsigned endIndexForPureCSE()
     {
         unsigned result = m_lastSeen[m_currentNode->op()];
@@ -94,9 +79,9 @@ private:
 
     Node* pureCSE(Node* node)
     {
-        Node* child1 = canonicalize(node->child1());
-        Node* child2 = canonicalize(node->child2());
-        Node* child3 = canonicalize(node->child3());
+        Edge child1 = node->child1();
+        Edge child2 = node->child2();
+        Edge child3 = node->child3();
         
         for (unsigned i = endIndexForPureCSE(); i--;) {
             Node* otherNode = m_currentBlock->at(i);
@@ -109,19 +94,19 @@ private:
             if (node->arithNodeFlags() != otherNode->arithNodeFlags())
                 continue;
             
-            Node* otherChild = canonicalize(otherNode->child1());
+            Edge otherChild = otherNode->child1();
             if (!otherChild)
                 return otherNode;
             if (otherChild != child1)
                 continue;
             
-            otherChild = canonicalize(otherNode->child2());
+            otherChild = otherNode->child2();
             if (!otherChild)
                 return otherNode;
             if (otherChild != child2)
                 continue;
             
-            otherChild = canonicalize(otherNode->child3());
+            otherChild = otherNode->child3();
             if (!otherChild)
                 return otherNode;
             if (otherChild != child3)
@@ -180,17 +165,13 @@ private:
         return 0;
     }
     
-    Node* getCalleeLoadElimination(InlineCallFrame* inlineCallFrame)
+    Node* getCalleeLoadElimination()
     {
         for (unsigned i = m_indexInBlock; i--;) {
             Node* node = m_currentBlock->at(i);
-            if (node->codeOrigin.inlineCallFrame != inlineCallFrame)
-                continue;
             switch (node->op()) {
             case GetCallee:
                 return node;
-            case SetCallee:
-                return node->child1().node();
             default:
                 break;
             }
@@ -377,21 +358,21 @@ private:
     {
         for (unsigned i = m_indexInBlock; i--;) {
             Node* node = m_currentBlock->at(i);
-            if (node == child1 || node == canonicalize(child2)) 
+            if (node == child1 || node == child2) 
                 break;
 
             switch (node->op()) {
             case GetByVal:
                 if (!m_graph.byValIsPure(node))
                     return 0;
-                if (node->child1() == child1 && canonicalize(node->child2()) == canonicalize(child2))
+                if (node->child1() == child1 && node->child2() == child2)
                     return node;
                 break;
             case PutByVal:
             case PutByValAlias: {
                 if (!m_graph.byValIsPure(node))
                     return 0;
-                if (m_graph.varArgChild(node, 0) == child1 && canonicalize(m_graph.varArgChild(node, 1)) == canonicalize(child2))
+                if (m_graph.varArgChild(node, 0) == child1 && m_graph.varArgChild(node, 1) == child2)
                     return m_graph.varArgChild(node, 2).node();
                 // We must assume that the PutByVal will clobber the location we're getting from.
                 // FIXME: We can do better; if we know that the PutByVal is accessing an array of a
@@ -817,20 +798,16 @@ private:
         return 0;
     }
     
-    Node* getMyScopeLoadElimination(InlineCallFrame* inlineCallFrame)
+    Node* getMyScopeLoadElimination()
     {
         for (unsigned i = m_indexInBlock; i--;) {
             Node* node = m_currentBlock->at(i);
-            if (node->codeOrigin.inlineCallFrame != inlineCallFrame)
-                continue;
             switch (node->op()) {
             case CreateActivation:
                 // This may cause us to return a different scope.
                 return 0;
             case GetMyScope:
                 return node;
-            case SetMyScope:
-                return node->child1().node();
             default:
                 break;
             }
@@ -1090,6 +1067,8 @@ private:
         case CompareEqConstant:
         case ValueToInt32:
         case MakeRope:
+        case Int52ToDouble:
+        case Int52ToValue:
             if (cseMode == StoreElimination)
                 break;
             setReplacement(pureCSE(node));
@@ -1104,7 +1083,7 @@ private:
         case GetCallee:
             if (cseMode == StoreElimination)
                 break;
-            setReplacement(getCalleeLoadElimination(node->codeOrigin.inlineCallFrame));
+            setReplacement(getCalleeLoadElimination());
             break;
 
         case GetLocal: {
@@ -1155,19 +1134,10 @@ private:
             if (cseMode == NormalCSE) {
                 // Need to be conservative at this time; if the SetLocal has any chance of performing
                 // any speculations then we cannot do anything.
-                if (variableAccessData->isCaptured()) {
-                    // Captured SetLocals never speculate and hence never exit.
-                } else {
-                    if (variableAccessData->shouldUseDoubleFormat())
-                        break;
-                    SpeculatedType prediction = variableAccessData->argumentAwarePrediction();
-                    if (isInt32Speculation(prediction))
-                        break;
-                    if (isArraySpeculation(prediction))
-                        break;
-                    if (isBooleanSpeculation(prediction))
-                        break;
-                }
+                FlushFormat format = variableAccessData->flushFormat();
+                ASSERT(format != DeadFlush);
+                if (format != FlushedJSValue)
+                    break;
             } else {
                 if (replacement->canExit())
                     break;
@@ -1211,7 +1181,7 @@ private:
         case GetMyScope:
             if (cseMode == StoreElimination)
                 break;
-            setReplacement(getMyScopeLoadElimination(node->codeOrigin.inlineCallFrame));
+            setReplacement(getMyScopeLoadElimination());
             break;
             
         // Handle nodes that are conditionally pure: these are pure, and can

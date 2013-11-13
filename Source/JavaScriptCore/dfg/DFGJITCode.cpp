@@ -81,7 +81,7 @@ void JITCode::reconstruct(
         int operand = result.operandForIndex(i);
         
         if (operandIsArgument(operand)
-            && !operandToArgument(operand)
+            && !VirtualRegister(operand).toArgument()
             && codeBlock->codeType() == FunctionCode
             && codeBlock->specializationKind() == CodeForConstruct) {
             // Ugh. If we're in a constructor, the 'this' argument may hold garbage. It will
@@ -92,28 +92,7 @@ void JITCode::reconstruct(
             continue;
         }
         
-        ValueRecovery recovery = recoveries[i];
-        JSValue value;
-        switch (recovery.technique()) {
-        case AlreadyInJSStack:
-        case AlreadyInJSStackAsUnboxedCell:
-        case AlreadyInJSStackAsUnboxedBoolean:
-            value = exec->r(operand).jsValue();
-            break;
-        case AlreadyInJSStackAsUnboxedInt32:
-            value = jsNumber(exec->r(operand).unboxedInt32());
-            break;
-        case AlreadyInJSStackAsUnboxedDouble:
-            value = jsDoubleNumber(exec->r(operand).unboxedDouble());
-            break;
-        case Constant:
-            value = recovery.constant();
-            break;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            break;
-        }
-        result[i] = value;
+        result[i] = recoveries[i].recover(exec);
     }
 }
 

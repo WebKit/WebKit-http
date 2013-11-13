@@ -65,7 +65,7 @@ void* prepareOSREntry(
     
     for (int argument = values.numberOfArguments(); argument--;) {
         RELEASE_ASSERT(
-            exec->r(argumentToOperand(argument)).jsValue() == values.argument(argument));
+            exec->r(virtualRegisterForArgument(argument).offset()).jsValue() == values.argument(argument));
     }
     
     RELEASE_ASSERT(
@@ -77,8 +77,8 @@ void* prepareOSREntry(
     for (int local = values.numberOfLocals(); local--;)
         scratch[local] = JSValue::encode(values.local(local));
     
-    unsigned stackFrameSize = entryCodeBlock->m_numCalleeRegisters;
-    if (!vm.interpreter->stack().grow(&exec->registers()[stackFrameSize])) {
+    int stackFrameSize = entryCodeBlock->m_numCalleeRegisters;
+    if (!vm.interpreter->stack().grow(&exec->registers()[virtualRegisterForLocal(stackFrameSize).offset()])) {
         if (Options::verboseOSR())
             dataLog("    OSR failed bcause stack growth failed.\n");
         return 0;

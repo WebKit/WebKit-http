@@ -213,7 +213,7 @@ void WebSocket::connect(const String& url, const String& protocol, ExceptionCode
 void WebSocket::connect(const String& url, const Vector<String>& protocols, ExceptionCode& ec)
 {
     LOG(Network, "WebSocket %p connect() url='%s'", this, url.utf8().data());
-    m_url = KURL(KURL(), url);
+    m_url = URL(URL(), url);
 
     if (!m_url.isValid()) {
         scriptExecutionContext()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Invalid url for WebSocket " + m_url.stringCenterEllipsizedToLength());
@@ -398,7 +398,7 @@ void WebSocket::close(int code, const String& reason, ExceptionCode& ec)
         m_channel->close(code, reason);
 }
 
-const KURL& WebSocket::url() const
+const URL& WebSocket::url() const
 {
     return m_url;
 }
@@ -448,9 +448,9 @@ void WebSocket::setBinaryType(const String& binaryType)
     scriptExecutionContext()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "'" + binaryType + "' is not a valid value for binaryType; binaryType remains unchanged.");
 }
 
-const AtomicString& WebSocket::interfaceName() const
+EventTargetInterface WebSocket::eventTargetInterface() const
 {
-    return eventNames().interfaceForWebSocket;
+    return WebSocketEventTargetInterfaceType;
 }
 
 ScriptExecutionContext* WebSocket::scriptExecutionContext() const
@@ -526,9 +526,9 @@ void WebSocket::didReceiveBinaryData(PassOwnPtr<Vector<char> > binaryData)
         size_t size = binaryData->size();
         RefPtr<RawData> rawData = RawData::create();
         binaryData->swap(*rawData->mutableData());
-        OwnPtr<BlobData> blobData = BlobData::create();
+        auto blobData = std::make_unique<BlobData>();
         blobData->appendData(rawData.release(), 0, BlobDataItem::toEndOfFile);
-        RefPtr<Blob> blob = Blob::create(blobData.release(), size);
+        RefPtr<Blob> blob = Blob::create(std::move(blobData), size);
         dispatchEvent(MessageEvent::create(blob.release(), SecurityOrigin::create(m_url)->toString()));
         break;
     }
@@ -577,16 +577,6 @@ void WebSocket::didClose(unsigned long unhandledBufferedAmount, ClosingHandshake
     }
     if (hasPendingActivity())
         ActiveDOMObject::unsetPendingActivity(this);
-}
-
-EventTargetData* WebSocket::eventTargetData()
-{
-    return &m_eventTargetData;
-}
-
-EventTargetData& WebSocket::ensureEventTargetData()
-{
-    return m_eventTargetData;
 }
 
 size_t WebSocket::getFramingOverhead(size_t payloadSize)

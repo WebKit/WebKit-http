@@ -43,10 +43,10 @@ public:
 
 class RenderSVGResourceClipper FINAL : public RenderSVGResourceContainer {
 public:
-    RenderSVGResourceClipper(SVGClipPathElement*);
+    explicit RenderSVGResourceClipper(SVGClipPathElement&);
     virtual ~RenderSVGResourceClipper();
 
-    virtual const char* renderName() const { return "RenderSVGResourceClipper"; }
+    SVGClipPathElement& clipPathElement() const { return toSVGClipPathElement(nodeForNonAnonymous()); }
 
     virtual void removeAllClientsFromCache(bool markForInvalidation = true);
     virtual void removeClientFromCache(RenderObject*, bool markForInvalidation = true);
@@ -62,16 +62,20 @@ public:
     
     bool hitTestClipContent(const FloatRect&, const FloatPoint&);
 
-    SVGUnitTypes::SVGUnitType clipPathUnits() const { return static_cast<SVGClipPathElement*>(node())->clipPathUnits(); }
+    SVGUnitTypes::SVGUnitType clipPathUnits() const { return clipPathElement().clipPathUnits(); }
 
     static RenderSVGResourceType s_resourceType;
 private:
+    void element() const WTF_DELETED_FUNCTION;
+
+    virtual const char* renderName() const OVERRIDE { return "RenderSVGResourceClipper"; }
+
     bool pathOnlyClipping(GraphicsContext*, const AffineTransform&, const FloatRect&);
     bool drawContentIntoMaskImage(ClipperData*, const FloatRect& objectBoundingBox);
     void calculateClipContentRepaintRect();
 
     FloatRect m_clipBoundaries;
-    HashMap<RenderObject*, ClipperData*> m_clipper;
+    HashMap<RenderObject*, OwnPtr<ClipperData>> m_clipper;
 };
 
 }

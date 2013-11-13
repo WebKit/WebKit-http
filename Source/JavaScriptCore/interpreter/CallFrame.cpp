@@ -90,11 +90,36 @@ unsigned CallFrame::bytecodeOffsetFromCodeOriginIndex()
 
 #endif // ENABLE(DFG_JIT)
 
+unsigned CallFrame::bytecodeOffset()
+{
+    if (!codeBlock())
+        return 0;
+#if ENABLE(DFG_JIT)
+    if (hasLocationAsCodeOriginIndex())
+        return bytecodeOffsetFromCodeOriginIndex();
+#endif
+    return locationAsBytecodeOffset();
+}
+
+CodeOrigin CallFrame::codeOrigin()
+{
+    if (!codeBlock())
+        return CodeOrigin(0);
+#if ENABLE(DFG_JIT)
+    if (hasLocationAsCodeOriginIndex()) {
+        unsigned index = locationAsCodeOriginIndex();
+        ASSERT(codeBlock()->canGetCodeOrigin(index));
+        return codeBlock()->codeOrigin(index);
+    }
+#endif
+    return CodeOrigin(locationAsBytecodeOffset());
+}
+
 Register* CallFrame::frameExtentInternal()
 {
     CodeBlock* codeBlock = this->codeBlock();
     ASSERT(codeBlock);
-    return registers() + codeBlock->m_numCalleeRegisters;
+    return registers() - codeBlock->m_numCalleeRegisters;
 }
 
 } // namespace JSC

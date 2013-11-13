@@ -30,6 +30,7 @@
 #include "JSImageData.h"
 #include "JSRetainPtr.h"
 #include "JavaScript.h"
+#include "RenderElement.h"
 #include "StillImageQt.h"
 #include <QBuffer>
 #include <QByteArray>
@@ -137,7 +138,7 @@ static JSValueRef assignToHTMLImageElement(JSContextRef context, JSObjectRef fun
 
     // We now know that we have a valid <img> element as the argument, we can attach the pixmap to it.
     RefPtr<StillImage> stillImage = WebCore::StillImage::create(toPixmap(data));
-    HTMLImageElement* imageElement = toHTMLImageElement(static_cast<JSHTMLImageElement*>(jsObject)->impl());
+    HTMLImageElement* imageElement = static_cast<JSHTMLImageElement*>(jsObject)->impl();
     imageElement->setCachedImage(new CachedImage(stillImage.get()));
     return JSValueMakeUndefined(context);
 }
@@ -218,7 +219,7 @@ QVariant QtPixmapRuntime::toQt(JSContextRef context, JSObjectRef obj, QMetaType:
         return emptyVariantForHint(hint);
 
     JSHTMLImageElement* elementJSWrapper = static_cast<JSHTMLImageElement*>(jsObject);
-    HTMLImageElement* imageElement = toHTMLImageElement(elementJSWrapper->impl());
+    HTMLImageElement* imageElement = elementJSWrapper->impl();
 
     if (!imageElement)
         return emptyVariantForHint(hint);

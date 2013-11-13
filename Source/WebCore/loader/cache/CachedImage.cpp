@@ -36,7 +36,7 @@
 #include "FrameView.h"
 #include "MemoryCache.h"
 #include "Page.h"
-#include "RenderObject.h"
+#include "RenderElement.h"
 #include "ResourceBuffer.h"
 #include "Settings.h"
 #include "SubresourceLoader.h"
@@ -315,7 +315,7 @@ inline void CachedImage::createImage()
         return;
 #if USE(CG) && !USE(WEBKIT_IMAGE_DECODERS)
     else if (m_response.mimeType() == "application/pdf")
-        m_image = PDFDocumentImage::create();
+        m_image = PDFDocumentImage::create(this);
 #endif
 #if ENABLE(SVG)
     else if (m_response.mimeType() == "image/svg+xml") {
@@ -524,7 +524,7 @@ void CachedImage::resumeAnimatingImagesForLoader(CachedResourceLoader* loader)
     }
 }
 
-bool CachedImage::currentFrameKnownToBeOpaque(const RenderObject* renderer)
+bool CachedImage::currentFrameKnownToBeOpaque(const RenderElement* renderer)
 {
     Image* image = imageForRenderer(renderer);
     if (image->isBitmapImage())

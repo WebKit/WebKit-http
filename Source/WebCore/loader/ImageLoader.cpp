@@ -168,7 +168,7 @@ void ImageLoader::updateFromElement()
     // If we're not making renderers for the page, then don't load images.  We don't want to slow
     // down the raw HTML parsing case by loading images we don't intend to display.
     Document& document = m_element->document();
-    if (!document.renderer())
+    if (!document.hasLivingRenderTree())
         return;
 
     AtomicString attr = m_element->imageSourceURL();
@@ -318,14 +318,13 @@ void ImageLoader::notifyFinished(CachedResource* resource)
 
 RenderImageResource* ImageLoader::renderImageResource()
 {
-    RenderObject* renderer = m_element->renderer();
-
+    auto renderer = m_element->renderer();
     if (!renderer)
-        return 0;
+        return nullptr;
 
     // We don't return style generated image because it doesn't belong to the ImageLoader.
     // See <https://bugs.webkit.org/show_bug.cgi?id=42840>
-    if (renderer->isImage() && !static_cast<RenderImage*>(renderer)->isGeneratedContent())
+    if (renderer->isImage() && !toRenderImage(*renderer).isGeneratedContent())
         return toRenderImage(*renderer).imageResource();
 
 #if ENABLE(SVG)
@@ -338,7 +337,7 @@ RenderImageResource* ImageLoader::renderImageResource()
         return toRenderVideo(*renderer).imageResource();
 #endif
 
-    return 0;
+    return nullptr;
 }
 
 void ImageLoader::updateRenderer()
@@ -416,7 +415,7 @@ void ImageLoader::dispatchPendingBeforeLoadEvent()
     loadEventSender().cancelEvent(this);
     m_hasPendingLoadEvent = false;
     
-    if (m_element->hasTagName(HTMLNames::objectTag))
+    if (isHTMLObjectElement(m_element))
         static_cast<HTMLObjectElement*>(m_element)->renderFallbackContent();
 
     // Only consider updating the protection ref-count of the Element immediately before returning

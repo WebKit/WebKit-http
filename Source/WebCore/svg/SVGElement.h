@@ -77,7 +77,6 @@ public:
     SVGDocumentExtensions* accessDocumentSVGExtensions();
 
     virtual bool isSVGGraphicsElement() const { return false; }
-    virtual bool isSVGSVGElement() const { return false; }
     virtual bool isFilterEffect() const { return false; }
     virtual bool isGradientStop() const { return false; }
     virtual bool isTextContent() const { return false; }
@@ -140,7 +139,7 @@ public:
 #endif
 
 protected:
-    SVGElement(const QualifiedName&, Document*);
+    SVGElement(const QualifiedName&, Document&);
     virtual ~SVGElement();
 
     virtual bool rendererIsNeeded(const RenderStyle&);
@@ -185,7 +184,8 @@ private:
     void buildPendingResourcesIfNeeded();
     virtual bool isKeyboardFocusable(KeyboardEvent*) const OVERRIDE;
     virtual bool isMouseFocusable() const OVERRIDE;
-
+    virtual void accessKeyAction(bool sendMouseEvents) OVERRIDE;
+    
     HashSet<SVGElement*> m_elementsWithRelativeLengths;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGElement)
@@ -206,6 +206,12 @@ struct SVGAttributeHashTranslator {
     static bool equal(const QualifiedName& a, const QualifiedName& b) { return a.matches(b); }
 };
 
+inline SVGElement& toSVGElement(Node& node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(node.isSVGElement());
+    return static_cast<SVGElement&>(node);
+}
+
 inline SVGElement* toSVGElement(Node* node)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isSVGElement());
@@ -217,6 +223,9 @@ inline const SVGElement* toSVGElement(const Node* node)
     ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isSVGElement());
     return static_cast<const SVGElement*>(node);
 }
+
+void toSVGElement(const SVGElement*);
+void toSVGElement(const SVGElement&);
 
 template <> inline bool isElementOfType<SVGElement>(const Element* element) { return element->isSVGElement(); }
 

@@ -165,6 +165,8 @@ String StylePropertySet::getPropertyValue(CSSPropertyID propertyID) const
         return getShorthandValue(webkitFlexShorthand());
     case CSSPropertyWebkitFlexFlow:
         return getShorthandValue(webkitFlexFlowShorthand());
+    case CSSPropertyWebkitGridArea:
+        return getShorthandValue(webkitGridAreaShorthand());
     case CSSPropertyWebkitGridColumn:
         return getShorthandValue(webkitGridColumnShorthand());
     case CSSPropertyWebkitGridRow:
@@ -1041,7 +1043,7 @@ void MutableStylePropertySet::mergeAndOverrideOnConflict(const StylePropertySet&
         addParsedProperty(other.propertyAt(i).toCSSProperty());
 }
 
-void StylePropertySet::addSubresourceStyleURLs(ListHashSet<KURL>& urls, StyleSheetContents* contextStyleSheet) const
+void StylePropertySet::addSubresourceStyleURLs(ListHashSet<URL>& urls, StyleSheetContents* contextStyleSheet) const
 {
     unsigned size = propertyCount();
     for (unsigned i = 0; i < size; ++i)

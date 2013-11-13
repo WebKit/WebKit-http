@@ -46,7 +46,7 @@
 #include "NodeTraversal.h"
 #include "PositionIterator.h"
 #include "Range.h"
-#include "RenderObject.h"
+#include "RenderElement.h"
 #include "ShadowRoot.h"
 #include "Text.h"
 #include "TextIterator.h"
@@ -134,7 +134,6 @@ Node* lowestEditableAncestor(Node* node)
     if (!node)
         return 0;
     
-    Node* lowestRoot = 0;
     while (node) {
         if (node->rendererIsEditable())
             return node->rootEditableElement();
@@ -143,7 +142,7 @@ Node* lowestEditableAncestor(Node* node)
         node = node->parentNode();
     }
     
-    return lowestRoot;
+    return 0;
 }
 
 bool isEditablePosition(const Position& p, EditableType editableType, EUpdateStyle updateStyle)
@@ -327,11 +326,13 @@ Element* enclosingBlock(Node* node, EditingBoundaryCrossingRule rule)
 
 TextDirection directionOfEnclosingBlock(const Position& position)
 {
-    Node* enclosingBlockNode = enclosingBlock(position.containerNode());
-    if (!enclosingBlockNode)
+    auto block = enclosingBlock(position.containerNode());
+    if (!block)
         return LTR;
-    RenderObject* renderer = enclosingBlockNode->renderer();
-    return renderer ? renderer->style()->direction() : LTR;
+    auto renderer = block->renderer();
+    if (!renderer)
+        return LTR;
+    return renderer->style()->direction();
 }
 
 // This method is used to create positions in the DOM. It returns the maximum valid offset
@@ -896,7 +897,7 @@ bool isEmptyTableCell(const Node* node)
         return false;
 
     // Check that the table cell contains no child renderers except for perhaps a single <br>.
-    RenderObject* childRenderer = renderer->firstChild();
+    RenderObject* childRenderer = toRenderElement(renderer)->firstChild();
     if (!childRenderer)
         return true;
     if (!childRenderer->isBR())
@@ -904,9 +905,9 @@ bool isEmptyTableCell(const Node* node)
     return !childRenderer->nextSibling();
 }
 
-PassRefPtr<HTMLElement> createDefaultParagraphElement(Document* document)
+PassRefPtr<HTMLElement> createDefaultParagraphElement(Document& document)
 {
-    switch (document->frame()->editor().defaultParagraphSeparator()) {
+    switch (document.frame()->editor().defaultParagraphSeparator()) {
     case EditorParagraphSeparatorIsDiv:
         return HTMLDivElement::create(document);
     case EditorParagraphSeparatorIsP:
@@ -917,32 +918,32 @@ PassRefPtr<HTMLElement> createDefaultParagraphElement(Document* document)
     return 0;
 }
 
-PassRefPtr<HTMLElement> createBreakElement(Document* document)
+PassRefPtr<HTMLElement> createBreakElement(Document& document)
 {
     return HTMLBRElement::create(document);
 }
 
-PassRefPtr<HTMLElement> createOrderedListElement(Document* document)
+PassRefPtr<HTMLElement> createOrderedListElement(Document& document)
 {
     return HTMLOListElement::create(document);
 }
 
-PassRefPtr<HTMLElement> createUnorderedListElement(Document* document)
+PassRefPtr<HTMLElement> createUnorderedListElement(Document& document)
 {
     return HTMLUListElement::create(document);
 }
 
-PassRefPtr<HTMLElement> createListItemElement(Document* document)
+PassRefPtr<HTMLElement> createListItemElement(Document& document)
 {
     return HTMLLIElement::create(document);
 }
 
-PassRefPtr<HTMLElement> createHTMLElement(Document* document, const QualifiedName& name)
+PassRefPtr<HTMLElement> createHTMLElement(Document& document, const QualifiedName& name)
 {
-    return HTMLElementFactory::createHTMLElement(name, document, 0, false);
+    return HTMLElementFactory::createElement(name, document);
 }
 
-PassRefPtr<HTMLElement> createHTMLElement(Document* document, const AtomicString& tagName)
+PassRefPtr<HTMLElement> createHTMLElement(Document& document, const AtomicString& tagName)
 {
     return createHTMLElement(document, QualifiedName(nullAtom, tagName, xhtmlNamespaceURI));
 }
@@ -976,35 +977,35 @@ Position positionOutsideTabSpan(const Position& pos)
     return positionInParentBeforeNode(node);
 }
 
-PassRefPtr<Element> createTabSpanElement(Document* document, PassRefPtr<Node> prpTabTextNode)
+PassRefPtr<Element> createTabSpanElement(Document& document, PassRefPtr<Node> prpTabTextNode)
 {
     RefPtr<Node> tabTextNode = prpTabTextNode;
 
     // Make the span to hold the tab.
-    RefPtr<Element> spanElement = document->createElement(spanTag, false);
+    RefPtr<Element> spanElement = document.createElement(spanTag, false);
     spanElement->setAttribute(classAttr, AppleTabSpanClass);
     spanElement->setAttribute(styleAttr, "white-space:pre");
 
     // Add tab text to that span.
     if (!tabTextNode)
-        tabTextNode = document->createEditingTextNode("\t");
+        tabTextNode = document.createEditingTextNode("\t");
 
     spanElement->appendChild(tabTextNode.release(), ASSERT_NO_EXCEPTION);
 
     return spanElement.release();
 }
 
-PassRefPtr<Element> createTabSpanElement(Document* document, const String& tabText)
+PassRefPtr<Element> createTabSpanElement(Document& document, const String& tabText)
 {
-    return createTabSpanElement(document, document->createTextNode(tabText));
+    return createTabSpanElement(document, document.createTextNode(tabText));
 }
 
-PassRefPtr<Element> createTabSpanElement(Document* document)
+PassRefPtr<Element> createTabSpanElement(Document& document)
 {
     return createTabSpanElement(document, PassRefPtr<Node>());
 }
 
-bool isNodeRendered(const Node *node)
+bool isNodeRendered(const Node* node)
 {
     if (!node)
         return false;
@@ -1290,7 +1291,7 @@ bool isBlockFlowElement(const Node* node)
     if (!node->isElementNode())
         return false;
     RenderObject* renderer = node->renderer();
-    return renderer && renderer->isBlockFlowFlexBoxOrGrid();
+    return renderer && renderer->isRenderBlockFlow();
 }
 
 Element* deprecatedEnclosingBlockFlowElement(Node* node)

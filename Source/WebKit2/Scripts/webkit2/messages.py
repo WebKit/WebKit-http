@@ -92,36 +92,43 @@ def reply_parameter_type(type):
     return '%s&' % type
 
 
-def arguments_type(parameters, parameter_type_function):
+def arguments_type_old(parameters, parameter_type_function):
     arguments_type = 'CoreIPC::Arguments%d' % len(parameters)
     if len(parameters):
         arguments_type = '%s<%s>' % (arguments_type, ', '.join(parameter_type_function(parameter.type) for parameter in parameters))
     return arguments_type
 
 
+def arguments_type(message):
+    return 'std::tuple<%s>' % ', '.join(function_parameter_type(parameter.type) for parameter in message.parameters)
+
 def base_class(message):
     return arguments_type(message.parameters, function_parameter_type)
 
 
 def reply_type(message):
-    return arguments_type(message.reply_parameters, reply_parameter_type)
+    return arguments_type_old(message.reply_parameters, reply_parameter_type)
 
 
 def decode_type(message):
-    if message.has_attribute(VARIADIC_ATTRIBUTE):
-        return arguments_type(message.parameters[:-1], reply_parameter_type)
-    return base_class(message)
+    parameters = message.parameters
 
+    if message.has_attribute(VARIADIC_ATTRIBUTE):
+        parameters = parameters[:-1]
+
+    return 'std::tuple<%s>' % ', '.join(parameter.type for parameter in parameters)
 
 def delayed_reply_type(message):
-    return arguments_type(message.reply_parameters, function_parameter_type)
+    return arguments_type_old(message.reply_parameters, function_parameter_type)
 
 
 def message_to_struct_declaration(message):
     result = []
     function_parameters = [(function_parameter_type(x.type), x.name) for x in message.parameters]
-    result.append('struct %s : %s' % (message.name, base_class(message)))
-    result.append(' {\n')
+    result.append('class %s {\n' % message.name)
+    result.append('public:\n')
+    result.append('    typedef %s DecodeType;\n' % decode_type(message))
+    result.append('\n')
     result.append('    static CoreIPC::StringReference receiverName() { return messageReceiverName(); }\n')
     result.append('    static CoreIPC::StringReference name() { return CoreIPC::StringReference("%s"); }\n' % message.name)
     result.append('    static const bool isSync = %s;\n' % ('false', 'true')[message.reply_parameters != None])
@@ -130,24 +137,30 @@ def message_to_struct_declaration(message):
         if message.has_attribute(DELAYED_ATTRIBUTE):
             send_parameters = [(function_parameter_type(x.type), x.name) for x in message.reply_parameters]
             result.append('    struct DelayedReply : public ThreadSafeRefCounted<DelayedReply> {\n')
-            result.append('        DelayedReply(PassRefPtr<CoreIPC::Connection>, PassOwnPtr<CoreIPC::MessageEncoder>);\n')
+            result.append('        DelayedReply(PassRefPtr<CoreIPC::Connection>, std::unique_ptr<CoreIPC::MessageEncoder>);\n')
             result.append('        ~DelayedReply();\n')
             result.append('\n')
             result.append('        bool send(%s);\n' % ', '.join([' '.join(x) for x in send_parameters]))
             result.append('\n')
             result.append('    private:\n')
             result.append('        RefPtr<CoreIPC::Connection> m_connection;\n')
-            result.append('        OwnPtr<CoreIPC::MessageEncoder> m_encoder;\n')
+            result.append('        std::unique_ptr<CoreIPC::MessageEncoder> m_encoder;\n')
             result.append('    };\n\n')
 
         result.append('    typedef %s Reply;\n' % reply_type(message))
 
-    result.append('    typedef %s DecodeType;\n' % decode_type(message))
     if len(function_parameters):
         result.append('    %s%s(%s)' % (len(function_parameters) == 1 and 'explicit ' or '', message.name, ', '.join([' '.join(x) for x in function_parameters])))
-        result.append('\n        : %s(%s)\n' % (base_class(message), ', '.join([x[1] for x in function_parameters])))
+        result.append('\n        : m_arguments(%s)\n' % ', '.join([x[1] for x in function_parameters]))
         result.append('    {\n')
-        result.append('    }\n')
+        result.append('    }\n\n')
+    result.append('    const %s arguments() const\n' % arguments_type(message))
+    result.append('    {\n')
+    result.append('        return m_arguments;\n')
+    result.append('    }\n')
+    result.append('\n')
+    result.append('private:\n')
+    result.append('    %s m_arguments;\n' % arguments_type(message))
     result.append('};\n')
     return surround_in_condition(''.join(result), message.condition)
 
@@ -168,6 +181,8 @@ def struct_or_class(namespace, type):
         'WebCore::MatrixTransformOperation',
         'WebCore::Matrix3DTransformOperation',
         'WebCore::NotificationContents',
+        'WebCore::PasteboardImage',
+        'WebCore::PasteboardWebContent',
         'WebCore::PerspectiveTransformOperation',
         'WebCore::PluginInfo',
         'WebCore::PrintInfo',
@@ -193,7 +208,6 @@ def struct_or_class(namespace, type):
         'WebKit::PluginProcessCreationParameters',
         'WebKit::PrintInfo',
         'WebKit::SecurityOriginData',
-        'WebKit::SharedWorkerProcessCreationParameters',
         'WebKit::StatisticsData',
         'WebKit::TextCheckerState',
         'WebKit::WebNavigationDataStore',
@@ -403,6 +417,8 @@ def headers_for_type(type):
         'WebCore::KeypressCommand': ['<WebCore/KeyboardEvent.h>'],
         'WebCore::FileChooserSettings': ['<WebCore/FileChooser.h>'],
         'WebCore::PluginInfo': ['<WebCore/PluginData.h>'],
+        'WebCore::PasteboardImage': ['<WebCore/Pasteboard.h>'],
+        'WebCore::PasteboardWebContent': ['<WebCore/Pasteboard.h>'],
         'WebCore::TextCheckingRequestData': ['<WebCore/TextChecking.h>'],
         'WebCore::TextCheckingResult': ['<WebCore/TextCheckerClient.h>'],
         'WebCore::ViewportAttributes': ['<WebCore/ViewportArguments.h>'],
@@ -521,9 +537,9 @@ def generate_message_handler(file):
             if message.condition:
                 result.append('#if %s\n\n' % message.condition)
             
-            result.append('%s::DelayedReply::DelayedReply(PassRefPtr<CoreIPC::Connection> connection, PassOwnPtr<CoreIPC::MessageEncoder> encoder)\n' % message.name)
+            result.append('%s::DelayedReply::DelayedReply(PassRefPtr<CoreIPC::Connection> connection, std::unique_ptr<CoreIPC::MessageEncoder> encoder)\n' % message.name)
             result.append('    : m_connection(connection)\n')
-            result.append('    , m_encoder(encoder)\n')
+            result.append('    , m_encoder(std::move(encoder))\n')
             result.append('{\n')
             result.append('}\n')
             result.append('\n')
@@ -536,7 +552,7 @@ def generate_message_handler(file):
             result.append('{\n')
             result.append('    ASSERT(m_encoder);\n')
             result += ['    *m_encoder << %s;\n' % x.name for x in message.reply_parameters]
-            result.append('    bool result = m_connection->sendSyncReply(m_encoder.release());\n')
+            result.append('    bool result = m_connection->sendSyncReply(std::move(m_encoder));\n')
             result.append('    m_connection = nullptr;\n')
             result.append('    return result;\n')
             result.append('}\n')
@@ -573,9 +589,9 @@ def generate_message_handler(file):
     if sync_messages:
         result.append('\n')
         if receiver.has_attribute(LEGACY_RECEIVER_ATTRIBUTE):
-            result.append('void %s::didReceiveSync%sMessage(CoreIPC::Connection*%s, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)\n' % (receiver.name, receiver.name, ' connection' if sync_delayed_messages else ''))
+            result.append('void %s::didReceiveSync%sMessage(CoreIPC::Connection*%s, CoreIPC::MessageDecoder& decoder, std::unique_ptr<CoreIPC::MessageEncoder>& replyEncoder)\n' % (receiver.name, receiver.name, ' connection' if sync_delayed_messages else ''))
         else:
-            result.append('void %s::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)\n' % (receiver.name))
+            result.append('void %s::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, std::unique_ptr<CoreIPC::MessageEncoder>& replyEncoder)\n' % (receiver.name))
         result.append('{\n')
         result += [sync_message_statement(receiver, message) for message in sync_messages]
         if not receiver.has_attribute(LEGACY_RECEIVER_ATTRIBUTE):

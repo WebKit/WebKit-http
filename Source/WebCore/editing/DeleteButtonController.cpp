@@ -58,7 +58,7 @@ const char* const DeleteButtonController::containerElementIdentifier = "WebKit-E
 const char* const DeleteButtonController::buttonElementIdentifier = "WebKit-Editing-Delete-Button";
 const char* const DeleteButtonController::outlineElementIdentifier = "WebKit-Editing-Delete-Outline";
 
-DeleteButtonController::DeleteButtonController(Frame* frame)
+DeleteButtonController::DeleteButtonController(Frame& frame)
     : m_frame(frame)
     , m_wasStaticPositioned(false)
     , m_wasAutoZIndex(false)
@@ -102,24 +102,24 @@ static bool isDeletableElement(const Node* node)
     if ((borderBoundingBox.width() * borderBoundingBox.height()) < minimumArea)
         return false;
 
-    if (renderer->isTable())
+    if (box->isTable())
         return true;
 
     if (node->hasTagName(ulTag) || node->hasTagName(olTag) || node->hasTagName(iframeTag))
         return true;
 
-    if (renderer->isOutOfFlowPositioned())
+    if (box->isOutOfFlowPositioned())
         return true;
 
-    if (renderer->isRenderBlock() && !renderer->isTableCell()) {
-        RenderStyle* style = renderer->style();
+    if (box->isRenderBlock() && !box->isTableCell()) {
+        RenderStyle* style = box->style();
         if (!style)
             return false;
 
         // Allow blocks that have background images
         if (style->hasBackgroundImage()) {
             for (const FillLayer* background = style->backgroundLayers(); background; background = background->next()) {
-                if (background->image() && background->image()->canRender(renderer, 1))
+                if (background->image() && background->image()->canRender(box, 1))
                     return true;
             }
         }
@@ -142,7 +142,7 @@ static bool isDeletableElement(const Node* node)
         if (!parentStyle)
             return false;
 
-        if (renderer->hasBackground() && (!parentRenderer->hasBackground() || style->visitedDependentColor(CSSPropertyBackgroundColor) != parentStyle->visitedDependentColor(CSSPropertyBackgroundColor)))
+        if (box->hasBackground() && (!parentRenderer->hasBackground() || style->visitedDependentColor(CSSPropertyBackgroundColor) != parentStyle->visitedDependentColor(CSSPropertyBackgroundColor)))
             return true;
     }
 
@@ -176,7 +176,7 @@ void DeleteButtonController::respondToChangedSelection(const VisibleSelection& o
         return;
 
     HTMLElement* oldElement = enclosingDeletableElement(oldSelection);
-    HTMLElement* newElement = enclosingDeletableElement(m_frame->selection().selection());
+    HTMLElement* newElement = enclosingDeletableElement(m_frame.selection().selection());
     if (oldElement == newElement)
         return;
 
@@ -203,7 +203,7 @@ void DeleteButtonController::deviceScaleFactorChanged()
 
 void DeleteButtonController::createDeletionUI()
 {
-    RefPtr<HTMLDivElement> container = HTMLDivElement::create(&m_target->document());
+    RefPtr<HTMLDivElement> container = HTMLDivElement::create(m_target->document());
     container->setIdAttribute(containerElementIdentifier);
 
     container->setInlineStyleProperty(CSSPropertyWebkitUserDrag, CSSValueNone);
@@ -217,7 +217,7 @@ void DeleteButtonController::createDeletionUI()
     container->setInlineStyleProperty(CSSPropertyBottom, 0, CSSPrimitiveValue::CSS_PX);
     container->setInlineStyleProperty(CSSPropertyLeft, 0, CSSPrimitiveValue::CSS_PX);
 
-    RefPtr<HTMLDivElement> outline = HTMLDivElement::create(&m_target->document());
+    RefPtr<HTMLDivElement> outline = HTMLDivElement::create(m_target->document());
     outline->setIdAttribute(outlineElementIdentifier);
 
     const int borderWidth = 4;
@@ -241,7 +241,7 @@ void DeleteButtonController::createDeletionUI()
     if (ec)
         return;
 
-    RefPtr<DeleteButton> button = DeleteButton::create(&m_target->document());
+    RefPtr<DeleteButton> button = DeleteButton::create(m_target->document());
     button->setIdAttribute(buttonElementIdentifier);
 
     const int buttonWidth = 30;
@@ -256,7 +256,7 @@ void DeleteButtonController::createDeletionUI()
     button->setInlineStyleProperty(CSSPropertyHeight, buttonHeight, CSSPrimitiveValue::CSS_PX);
     button->setInlineStyleProperty(CSSPropertyVisibility, CSSValueVisible);
 
-    float deviceScaleFactor = WebCore::deviceScaleFactor(m_frame);
+    float deviceScaleFactor = WebCore::deviceScaleFactor(&m_frame);
     RefPtr<Image> buttonImage;
     if (deviceScaleFactor >= 2)
         buttonImage = Image::loadPlatformResource("deleteButton@2x");
@@ -285,12 +285,12 @@ void DeleteButtonController::show(HTMLElement* element)
     if (!enabled() || !element || !element->inDocument() || !isDeletableElement(element))
         return;
 
-    EditorClient* client = m_frame->editor().client();
+    EditorClient* client = m_frame.editor().client();
     if (!client || !client->shouldShowDeleteInterface(element))
         return;
 
     // we rely on the renderer having current information, so we should update the layout if needed
-    m_frame->document()->updateLayoutIgnorePendingStylesheets();
+    m_frame.document()->updateLayoutIgnorePendingStylesheets();
 
     m_target = element;
 
@@ -349,8 +349,8 @@ void DeleteButtonController::enable()
         // Determining if the element is deletable currently depends on style
         // because whether something is editable depends on style, so we need
         // to recalculate style before calling enclosingDeletableElement.
-        m_frame->document()->updateStyleIfNeeded();
-        show(enclosingDeletableElement(m_frame->selection().selection()));
+        m_frame.document()->updateStyleIfNeeded();
+        show(enclosingDeletableElement(m_frame.selection().selection()));
     }
 }
 
@@ -394,9 +394,9 @@ void DeleteButtonController::deleteTarget()
     // within the target, we unconditionally update the selection to be
     // a caret where the target had been.
     Position pos = positionInParentBeforeNode(m_target.get());
-    ASSERT(m_frame->document());
-    applyCommand(RemoveTargetCommand::create(*m_frame->document(), m_target));
-    m_frame->selection().setSelection(VisiblePosition(pos));
+    ASSERT(m_frame.document());
+    applyCommand(RemoveTargetCommand::create(*m_frame.document(), m_target));
+    m_frame.selection().setSelection(VisiblePosition(pos));
 }
 #endif
 

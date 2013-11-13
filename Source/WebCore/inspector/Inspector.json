@@ -911,8 +911,8 @@
                 "description": "WebSocket frame data.",
                 "properties": [
                     { "name": "opcode", "type": "number", "description": "WebSocket frame opcode." },
-                    { "name": "mask", "type": "boolean", "description": "WebSocke frame mask." },
-                    { "name": "payloadData", "type": "string", "description": "WebSocke frame payload data." }
+                    { "name": "mask", "type": "boolean", "description": "WebSocket frame mask." },
+                    { "name": "payloadData", "type": "string", "description": "WebSocket frame payload data." }
                 ]
             },
             {
@@ -2578,10 +2578,16 @@
                 "description": "Current values of DOM counters."
             },
             {
+                "id": "EventType",
+                "type": "string",
+                "enum": ["EventDispatch", "BeginFrame", "ScheduleStyleRecalculation", "RecalculateStyles", "InvalidateLayout", "Layout", "Paint", "ScrollLayer", "ResizeImage", "CompositeLayers", "ParseHTML", "TimerInstall", "TimerRemove", "TimerFire", "EvaluateScript", "MarkLoad", "MarkDOMContent", "TimeStamp", "Time", "TimeEnd", "ScheduleResourceRequest", "ResourceSendRequest", "ResourceReceiveResponse", "ResourceReceivedData", "ResourceFinish", "XHRReadyStateChange", "XHRLoad", "FunctionCall", "GCEvent", "RequestAnimationFrame", "CancelAnimationFrame", "FireAnimationFrame", "WebSocketCreate", "WebSocketSendHandshakeRequest", "WebSocketReceiveHandshakeResponse", "WebSocketDestroy"],
+                "description": "Timeline record type."
+            },
+            {
                 "id": "TimelineEvent",
                 "type": "object",
                 "properties": [
-                    { "name": "type", "type": "string", "description": "Event type." },
+                    { "name": "type", "$ref": "EventType", "description": "Event type." },
                     { "name": "thread", "type": "string", "optional": true, "description": "If present, identifies the thread that produced the event." },
                     { "name": "data", "type": "object", "description": "Event data." },
                     { "name": "children", "type": "array", "optional": true, "items": { "$ref": "TimelineEvent" }, "description": "Nested records." },
@@ -2838,17 +2844,6 @@
                 "description": "Edits JavaScript source live."
             },
             {
-                "name": "restartFrame",
-                "parameters": [
-                    { "name": "callFrameId", "$ref": "CallFrameId", "description": "Call frame identifier to evaluate on." }
-                ],
-                "returns": [
-                    { "name": "callFrames", "type": "array", "items": { "$ref": "CallFrame"}, "description": "New stack trace." },
-                    { "name": "result", "type": "object", "description": "VM-specific description." }
-                ],
-                "description": "Restarts particular call frame from the beginning."
-            },
-            {
                 "name": "getScriptSource",
                 "parameters": [
                     { "name": "scriptId", "$ref": "ScriptId", "description": "Id of the script to get source for." }
@@ -2924,17 +2919,6 @@
                     { "name": "message", "type": "string", "optional": true, "description": "Overlay message to display when paused in debugger." }
                 ],
                 "description": "Sets overlay message."
-            },
-            {
-                "name": "setVariableValue",
-                "parameters": [
-                    { "name": "scopeNumber", "type": "integer", "description": "0-based number of scope as was listed in scope chain. Only 'local', 'closure' and 'catch' scope types are allowed. Other scopes could be manipulated manually." },
-                    { "name": "variableName", "type": "string", "description": "Variable name." },
-                    { "name": "newValue", "$ref": "Runtime.CallArgument", "description": "New variable value." },
-                    { "name": "callFrameId", "$ref": "CallFrameId", "optional": true, "description": "Id of callframe that holds variable." },
-                    { "name": "functionObjectId", "$ref": "Runtime.RemoteObjectId", "optional": true, "description": "Object id of closure (function) that holds variable." }
-                ],
-                "description": "Changes value of variable in a callframe or a closure. Either callframe or function must be specified. Object-based scopes are not supported and must be mutated manually."
             }
         ],
         "events": [

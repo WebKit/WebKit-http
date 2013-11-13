@@ -133,7 +133,8 @@ ProxyInstance::~ProxyInstance()
     
 RuntimeObject* ProxyInstance::newRuntimeObject(ExecState* exec)
 {
-    return ProxyRuntimeObject::create(exec, exec->lexicalGlobalObject(), this);
+    // FIXME: deprecatedGetDOMStructure uses the prototype off of the wrong global object.
+    return ProxyRuntimeObject::create(exec->vm(), WebCore::deprecatedGetDOMStructure<ProxyRuntimeObject>(exec), this);
 }
 
 JSC::Bindings::Class* ProxyInstance::getClass() const
@@ -374,7 +375,7 @@ Method* ProxyInstance::methodNamed(PropertyName propertyName)
         return 0;
 
     // Add a new entry to the map unless an entry was added while we were in waitForReply.
-    auto mapAddResult = m_methods.add(name.impl(), 0);
+    auto mapAddResult = m_methods.add(name.impl(), nullptr);
     if (mapAddResult.isNewEntry && reply->m_result)
         mapAddResult.iterator->value = new ProxyMethod(methodName);
 
@@ -411,7 +412,7 @@ Field* ProxyInstance::fieldNamed(PropertyName propertyName)
         return 0;
     
     // Add a new entry to the map unless an entry was added while we were in waitForReply.
-    auto mapAddResult = m_fields.add(name.impl(), 0);
+    auto mapAddResult = m_fields.add(name.impl(), nullptr);
     if (mapAddResult.isNewEntry && reply->m_result)
         mapAddResult.iterator->value = new ProxyField(identifier);
     return mapAddResult.iterator->value;

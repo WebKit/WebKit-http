@@ -26,7 +26,7 @@
 #ifndef WebBackForwardListProxy_h
 #define WebBackForwardListProxy_h
 
-#include <WebCore/BackForwardList.h>
+#include <WebCore/BackForwardClient.h>
 #include <wtf/HashSet.h>
 #include <wtf/PassRefPtr.h>
 
@@ -34,7 +34,7 @@ namespace WebKit {
 
 class WebPage;
 
-class WebBackForwardListProxy : public WebCore::BackForwardList {
+class WebBackForwardListProxy : public WebCore::BackForwardClient {
 public: 
     static PassRefPtr<WebBackForwardListProxy> create(WebPage* page) { return adoptRef(new WebBackForwardListProxy(page)); }
 

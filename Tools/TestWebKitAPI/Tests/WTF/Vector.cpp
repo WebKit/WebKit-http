@@ -24,6 +24,8 @@
  */
 
 #include "config.h"
+
+#include "MoveOnly.h"
 #include <wtf/Vector.h>
 
 namespace TestWebKitAPI {
@@ -58,6 +60,27 @@ TEST(WTF_Vector, Iterator)
     ++it;
 
     EXPECT_TRUE(end == it);
+}
+
+TEST(WTF_Vector, OverloadedOperatorAmpersand)
+{
+    struct Test {
+    private:
+        Test* operator&();
+    };
+
+    Vector<Test> vector;
+    vector.append(Test());
+}
+
+TEST(WTF_Vector, AppendLast)
+{
+    Vector<unsigned> vector;
+    vector.append(0);
+
+    // FIXME: This test needs to be run with GuardMalloc to show the bug.
+    for (size_t i = 0; i < 100; ++i)
+        vector.append(const_cast<const unsigned&>(vector.last()));
 }
 
 TEST(WTF_Vector, Reverse)
@@ -108,38 +131,6 @@ TEST(WTF_Vector, ReverseIterator)
     EXPECT_TRUE(end == it);
 }
 
-class MoveOnly {
-public:
-    MoveOnly(unsigned value)
-        : m_value(value)
-    {
-    }
-
-    unsigned value() const
-    {
-        return m_value;
-    }
-
-    MoveOnly(MoveOnly&& other)
-        : m_value(other.m_value)
-    {
-        other.m_value = 0;
-    }
-
-    MoveOnly& operator=(MoveOnly&& other)
-    {
-        if (this == &other)
-            return *this;
-
-        m_value = other.m_value;
-        other.m_value = 0;
-        return *this;
-    }
-
-private:
-    unsigned m_value;
-};
-
 TEST(WTF_Vector, MoveOnly_UncheckedAppend)
 {
     Vector<MoveOnly> vector;
@@ -153,6 +144,36 @@ TEST(WTF_Vector, MoveOnly_UncheckedAppend)
 
     for (size_t i = 0; i < 100; ++i)
         EXPECT_EQ(vector[i].value(), i);
+}
+
+TEST(WTF_Vector, MoveOnly_Append)
+{
+    Vector<MoveOnly> vector;
+
+    for (size_t i = 0; i < 100; ++i) {
+        MoveOnly moveOnly(i);
+        vector.append(std::move(moveOnly));
+        EXPECT_EQ(moveOnly.value(), 0U);
+    }
+
+    for (size_t i = 0; i < 100; ++i)
+        EXPECT_EQ(vector[i].value(), i);
+
+    for (size_t i = 0; i < 16; ++i) {
+        Vector<MoveOnly> vector;
+
+        vector.append(i);
+
+        for (size_t j = 0; j < i; ++j)
+            vector.append(j);
+        vector.append(std::move(vector[0]));
+
+        EXPECT_EQ(vector[0].value(), 0U);
+
+        for (size_t j = 0; j < i; ++j)
+            EXPECT_EQ(vector[j + 1].value(), j);
+        EXPECT_EQ(vector.last().value(), i);
+    }
 }
 
 } // namespace TestWebKitAPI

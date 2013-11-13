@@ -311,12 +311,14 @@ protected:
     virtual void paintOverhangAreas(GraphicsContext*, const IntRect& horizontalOverhangArea, const IntRect& verticalOverhangArea, const IntRect& dirtyRect);
 
     virtual void visibleContentsResized() = 0;
+    virtual void addedOrRemovedScrollbar() = 0;
     virtual void delegatesScrollingDidChange() { }
     virtual void fixedLayoutSizeChanged();
 
     // These functions are used to create/destroy scrollbars.
-    void setHasHorizontalScrollbar(bool);
-    void setHasVerticalScrollbar(bool);
+    // They return true if the scrollbar was added or removed.
+    bool setHasHorizontalScrollbar(bool, bool* contentSizeAffected = 0);
+    bool setHasVerticalScrollbar(bool, bool* contentSizeAffected = 0);
 
     virtual void updateScrollCorner();
     virtual void invalidateScrollCornerRect(const IntRect&) OVERRIDE;
@@ -381,8 +383,6 @@ private:
     virtual void repaintFixedElementsAfterScrolling() { }
     virtual void updateFixedElementsAfterScrolling() { }
 
-    void platformInit();
-    void platformDestroy();
     void platformAddChild(Widget*);
     void platformRemoveChild(Widget*);
     void platformSetScrollbarModes();

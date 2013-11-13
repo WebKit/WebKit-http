@@ -34,10 +34,10 @@ class SVGAElement FINAL : public SVGGraphicsElement,
                           public SVGURIReference,
                           public SVGExternalResourcesRequired {
 public:
-    static PassRefPtr<SVGAElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGAElement> create(const QualifiedName&, Document&);
 
 private:
-    SVGAElement(const QualifiedName&, Document*);
+    SVGAElement(const QualifiedName&, Document&);
 
     virtual bool isValid() const { return SVGTests::isValid(); }
     
@@ -48,7 +48,7 @@ private:
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&);
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 
     virtual void defaultEventHandler(Event*);
     

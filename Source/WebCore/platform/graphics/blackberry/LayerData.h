@@ -178,6 +178,16 @@ public:
 
     LayerType layerType() const { return m_layerType; }
 
+    bool isCanvasLayer() const
+    {
+        return m_layerType == CanvasLayer;
+    }
+
+    bool isLayerVisible() const
+    {
+        return m_isVisible;
+    }
+
     bool includeVisibility() const
     {
         if (pluginView())
@@ -187,6 +197,9 @@ public:
         if (mediaPlayer())
             return true;
 #endif
+
+        if (isCanvasLayer())
+            return true;
 
         return false;
     }
@@ -240,7 +253,7 @@ protected:
     unsigned m_sizeIsScaleInvariant : 1;
     unsigned m_contentsResolutionIndependent : 1;
 
-    // The following is only available for media (video) and plugin layers.
+    // The following is only available for media (video), plugin and canvas layers.
     unsigned m_isVisible : 1;
 
     // CAUTION: all the data members are copied from one instance to another

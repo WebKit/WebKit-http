@@ -1,3 +1,81 @@
+2013-09-24  Bear Travis  <betravis@adobe.com>
+
+        Disable CSS_SHAPES on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=121879
+
+        Reviewed by Brent Fulgham.
+
+        Enabling CSS_SHAPES on Windows is currently causing crashes in DRT.
+        Turn the feature off until it can be appropriately fixed.
+
+        * win/tools/vsprops/FeatureDefines.props: Disable on Win port
+        * win/tools/vsprops/FeatureDefinesCairo.props: Disable on WinCairo port
+
+2013-09-23  Patrick Gansterer  <paroga@webkit.org>
+
+        use NOMINMAX instead of #define min min
+        https://bugs.webkit.org/show_bug.cgi?id=73563
+
+        Reviewed by Brent Fulgham.
+
+        Use NOMINMAX instead of #define min/max as a cleaner
+        way of ensuring that Windows system header files don't
+        define min/max as macro in the first place.
+
+        * win/tools/vsprops/common.props:
+
+2013-09-20  Mark Rowe  <mrowe@apple.com>
+
+        Fix link errors for external users when building WebKit with Xcode 5.
+
+        Reviewed by Oliver Hunt.
+
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2013-09-19  Bear Travis  <betravis@adobe.com>
+
+        CSS_SHAPES not supported on AppleWin port
+        https://bugs.webkit.org/show_bug.cgi?id=118810
+
+        Reviewed by Brent Fulgham.
+
+        * win/tools/vsprops/FeatureDefines.props: Add the CSS_SHAPES compile flag on Windows.
+
+2013-09-19  Dan Bernstein  <mitz@apple.com>
+
+        Removed WebCoreSQLite3. It has been unused for years.
+
+        Rubber-stamped by Mark Rowe.
+
+        * WebCoreSQLite3: Removed.
+        * WebCoreSQLite3/sqlite3.h: Removed.
+        * WebCoreSQLite3/sqlite3ext.h: Removed.
+        * libWebCoreSQLite3.a: Removed.
+
+2013-09-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix: Expose PlatformArchitecture macro to build system.
+
+        * win/tools/vsprops/common.props:
+
+2013-09-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Enable Page Visibility API
+        https://bugs.webkit.org/show_bug.cgi?id=121340
+
+        Reviewed by Anders Carlsson.
+
+        * win/tools/vsprops/FeatureDefines.props: Activate feature.
+        * win/tools/vsprops/FeatureDefinesCairo.props: Ditto.
+
+2013-09-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Update WKSI library for Open Source builders.
+
+        * win/lib32/WebKitSystemInterface.lib: Recompile with latest WebKit to use newer
+        WTF.dll symbol exports.
+
 2013-08-29  Filip Pizlo  <fpizlo@apple.com>
 
         Just linking LLVM into JSC causes all plugin tests to fail

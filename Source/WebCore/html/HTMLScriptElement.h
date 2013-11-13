@@ -31,18 +31,18 @@ namespace WebCore {
 
 class HTMLScriptElement FINAL : public HTMLElement, public ScriptElement {
 public:
-    static PassRefPtr<HTMLScriptElement> create(const QualifiedName&, Document*, bool wasInsertedByParser, bool alreadyStarted = false);
+    static PassRefPtr<HTMLScriptElement> create(const QualifiedName&, Document&, bool wasInsertedByParser, bool alreadyStarted = false);
 
     String text() const { return scriptContent(); }
     void setText(const String&);
 
-    KURL src() const;
+    URL src() const;
 
     void setAsync(bool);
     bool async() const;
 
 private:
-    HTMLScriptElement(const QualifiedName&, Document*, bool wasInsertedByParser, bool alreadyStarted);
+    HTMLScriptElement(const QualifiedName&, Document&, bool wasInsertedByParser, bool alreadyStarted);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
@@ -50,7 +50,7 @@ private:
 
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
 
     virtual String sourceAttributeValue() const;
     virtual String charsetAttributeValue() const;
@@ -66,6 +66,8 @@ private:
 
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren();
 };
+
+ELEMENT_TYPE_CASTS(HTMLScriptElement)
 
 } //namespace
 

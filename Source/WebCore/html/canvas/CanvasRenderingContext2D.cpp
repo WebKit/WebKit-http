@@ -51,6 +51,7 @@
 #include "HTMLMediaElement.h"
 #include "HTMLVideoElement.h"
 #include "ImageData.h"
+#include "RenderElement.h"
 #include "SecurityOrigin.h"
 #include "StrokeStyleApplier.h"
 #include "StylePropertySet.h"
@@ -183,7 +184,7 @@ CanvasRenderingContext2D::State::State()
     , m_globalAlpha(1)
     , m_globalComposite(CompositeSourceOver)
     , m_globalBlend(BlendModeNormal)
-    , m_invertibleCTM(true)
+    , m_hasInvertibleTransform(true)
     , m_lineDashOffset(0)
     , m_imageSmoothingEnabled(true)
     , m_textAlign(StartTextAlign)
@@ -210,7 +211,7 @@ CanvasRenderingContext2D::State::State(const State& other)
     , m_globalComposite(other.m_globalComposite)
     , m_globalBlend(other.m_globalBlend)
     , m_transform(other.m_transform)
-    , m_invertibleCTM(other.m_invertibleCTM)
+    , m_hasInvertibleTransform(other.m_hasInvertibleTransform)
     , m_lineDashOffset(other.m_lineDashOffset)
     , m_imageSmoothingEnabled(other.m_imageSmoothingEnabled)
     , m_textAlign(other.m_textAlign)
@@ -246,7 +247,7 @@ CanvasRenderingContext2D::State& CanvasRenderingContext2D::State::operator=(cons
     m_globalComposite = other.m_globalComposite;
     m_globalBlend = other.m_globalBlend;
     m_transform = other.m_transform;
-    m_invertibleCTM = other.m_invertibleCTM;
+    m_hasInvertibleTransform = other.m_hasInvertibleTransform;
     m_imageSmoothingEnabled = other.m_imageSmoothingEnabled;
     m_textAlign = other.m_textAlign;
     m_textBaseline = other.m_textBaseline;
@@ -621,7 +622,7 @@ void CanvasRenderingContext2D::scale(float sx, float sy)
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     if (!std::isfinite(sx) | !std::isfinite(sy))
@@ -635,7 +636,7 @@ void CanvasRenderingContext2D::scale(float sx, float sy)
     realizeSaves();
 
     if (!newTransform.isInvertible()) {
-        modifiableState().m_invertibleCTM = false;
+        modifiableState().m_hasInvertibleTransform = false;
         return;
     }
 
@@ -649,7 +650,7 @@ void CanvasRenderingContext2D::rotate(float angleInRadians)
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     if (!std::isfinite(angleInRadians))
@@ -663,7 +664,7 @@ void CanvasRenderingContext2D::rotate(float angleInRadians)
     realizeSaves();
 
     if (!newTransform.isInvertible()) {
-        modifiableState().m_invertibleCTM = false;
+        modifiableState().m_hasInvertibleTransform = false;
         return;
     }
 
@@ -677,7 +678,7 @@ void CanvasRenderingContext2D::translate(float tx, float ty)
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     if (!std::isfinite(tx) | !std::isfinite(ty))
@@ -691,7 +692,7 @@ void CanvasRenderingContext2D::translate(float tx, float ty)
     realizeSaves();
 
     if (!newTransform.isInvertible()) {
-        modifiableState().m_invertibleCTM = false;
+        modifiableState().m_hasInvertibleTransform = false;
         return;
     }
 
@@ -705,7 +706,7 @@ void CanvasRenderingContext2D::transform(float m11, float m12, float m21, float 
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     if (!std::isfinite(m11) | !std::isfinite(m21) | !std::isfinite(dx) | !std::isfinite(m12) | !std::isfinite(m22) | !std::isfinite(dy))
@@ -719,7 +720,7 @@ void CanvasRenderingContext2D::transform(float m11, float m12, float m21, float 
     realizeSaves();
 
     if (!newTransform.isInvertible()) {
-        modifiableState().m_invertibleCTM = false;
+        modifiableState().m_hasInvertibleTransform = false;
         return;
     }
 
@@ -747,7 +748,7 @@ void CanvasRenderingContext2D::setTransform(float m11, float m12, float m21, flo
     modifiableState().m_transform = AffineTransform();
     m_path.transform(ctm);
 
-    modifiableState().m_invertibleCTM = true;
+    modifiableState().m_hasInvertibleTransform = true;
     transform(m11, m12, m21, m22, dx, dy);
 }
 
@@ -841,6 +842,7 @@ void CanvasRenderingContext2D::beginPath()
 }
 
 #if ENABLE(CANVAS_PATH)
+
 PassRefPtr<DOMPath> CanvasRenderingContext2D::currentPath()
 {
     return DOMPath::create(m_path);
@@ -852,6 +854,7 @@ void CanvasRenderingContext2D::setCurrentPath(DOMPath* path)
         return;
     m_path = path->path();
 }
+
 #endif
 
 static bool validateRectForCanvas(float& x, float& y, float& width, float& height)
@@ -908,7 +911,7 @@ void CanvasRenderingContext2D::fill(const String& windingRuleString)
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     // If gradient size is zero, then paint nothing.
@@ -948,7 +951,7 @@ void CanvasRenderingContext2D::stroke()
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     // If gradient size is zero, then paint nothing.
@@ -974,7 +977,7 @@ void CanvasRenderingContext2D::clip(const String& windingRuleString)
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     WindRule newWindRule = RULE_NONZERO;
@@ -994,7 +997,7 @@ bool CanvasRenderingContext2D::isPointInPath(const float x, const float y, const
     GraphicsContext* c = drawingContext();
     if (!c)
         return false;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return false;
 
     FloatPoint point(x, y);
@@ -1016,7 +1019,7 @@ bool CanvasRenderingContext2D::isPointInStroke(const float x, const float y)
     GraphicsContext* c = drawingContext();
     if (!c)
         return false;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return false;
 
     FloatPoint point(x, y);
@@ -1036,7 +1039,7 @@ void CanvasRenderingContext2D::clearRect(float x, float y, float width, float he
     GraphicsContext* context = drawingContext();
     if (!context)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
     FloatRect rect(x, y, width, height);
 
@@ -1074,7 +1077,7 @@ void CanvasRenderingContext2D::fillRect(float x, float y, float width, float hei
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     // from the HTML5 Canvas spec:
@@ -1110,7 +1113,7 @@ void CanvasRenderingContext2D::strokeRect(float x, float y, float width, float h
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
     if (!(state().m_lineWidth >= 0))
         return;
@@ -1298,7 +1301,7 @@ void CanvasRenderingContext2D::drawImage(HTMLImageElement* image, const FloatRec
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     CachedImage* cachedImage = image->cachedImage();
@@ -1369,7 +1372,7 @@ void CanvasRenderingContext2D::drawImage(HTMLCanvasElement* sourceCanvas, const 
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     // FIXME: Do this through platform-independent GraphicsContext API.
@@ -1460,7 +1463,7 @@ void CanvasRenderingContext2D::drawImage(HTMLVideoElement* video, const FloatRec
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
     checkOrigin(video);
@@ -1547,7 +1550,7 @@ template<class T> IntRect CanvasRenderingContext2D::calculateCompositingBufferRe
     return bufferRect;
 }
 
-PassOwnPtr<ImageBuffer> CanvasRenderingContext2D::createCompositingBuffer(const IntRect& bufferRect)
+OwnPtr<ImageBuffer> CanvasRenderingContext2D::createCompositingBuffer(const IntRect& bufferRect)
 {
     RenderingMode renderMode = isAccelerated() ? Accelerated : Unaccelerated;
     return ImageBuffer::create(bufferRect.size(), 1, ColorSpaceDeviceRGB, renderMode);
@@ -1733,7 +1736,7 @@ void CanvasRenderingContext2D::didDraw(const FloatRect& r, unsigned options)
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
 
 #if ENABLE(ACCELERATED_2D_CANVAS) && USE(ACCELERATED_COMPOSITING)
@@ -2102,11 +2105,45 @@ void CanvasRenderingContext2D::strokeText(const String& text, float x, float y, 
     drawTextInternal(text, x, y, false, maxWidth, true);
 }
 
+static inline bool isSpaceThatNeedsReplacing(UChar c)
+{
+    // According to specification all space characters should be replaced with 0x0020 space character.
+    // http://www.whatwg.org/specs/web-apps/current-work/multipage/the-canvas-element.html#text-preparation-algorithm
+    // The space characters according to specification are : U+0020, U+0009, U+000A, U+000C, and U+000D.
+    // http://www.whatwg.org/specs/web-apps/current-work/multipage/common-microsyntaxes.html#space-character
+    // This function returns true for 0x000B also, so that this is backward compatible.
+    // Otherwise, the test LayoutTests/canvas/philip/tests/2d.text.draw.space.collapse.space.html will fail
+    return c == 0x0009 || c == 0x000A || c == 0x000B || c == 0x000C || c == 0x000D;
+}
+
+static void normalizeSpaces(String& text)
+{
+    size_t i = text.find(isSpaceThatNeedsReplacing);
+
+    if (i == notFound)
+        return;
+
+    unsigned textLength = text.length();
+    Vector<UChar> charVector(textLength);
+    memcpy(charVector.data(), text.characters(), textLength * sizeof(UChar));
+
+    charVector[i++] = ' ';
+
+    for (; i < textLength; ++i) {
+        if (isSpaceThatNeedsReplacing(charVector[i]))
+            charVector[i] = ' ';
+    }
+    text = String::adopt(charVector);
+}
+
 PassRefPtr<TextMetrics> CanvasRenderingContext2D::measureText(const String& text)
 {
     FontCachePurgePreventer fontCachePurgePreventer;
 
     RefPtr<TextMetrics> metrics = TextMetrics::create();
+
+    String normalizedText = text;
+    normalizeSpaces(normalizedText);
 
 #if PLATFORM(QT)
     // We always use complex text shaping since it can't be turned off for QPainterPath::addText().
@@ -2114,7 +2151,7 @@ PassRefPtr<TextMetrics> CanvasRenderingContext2D::measureText(const String& text
     Font::setCodePath(Font::Complex);
 #endif
 
-    metrics->setWidth(accessFont().width(TextRun(text)));
+    metrics->setWidth(accessFont().width(TextRun(normalizedText)));
 
 #if PLATFORM(QT)
     Font::setCodePath(oldCodePath);
@@ -2123,22 +2160,12 @@ PassRefPtr<TextMetrics> CanvasRenderingContext2D::measureText(const String& text
     return metrics.release();
 }
 
-static void replaceCharacterInString(String& text, WTF::CharacterMatchFunctionPtr matchFunction, const String& replacement)
-{
-    const size_t replacementLength = replacement.length();
-    size_t index = 0;
-    while ((index = text.find(matchFunction, index)) != notFound) {
-        text.replace(index, 1, replacement);
-        index += replacementLength;
-    }
-}
-
 void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, float y, bool fill, float maxWidth, bool useMaxWidth)
 {
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-    if (!state().m_invertibleCTM)
+    if (!state().m_hasInvertibleTransform)
         return;
     if (!std::isfinite(x) | !std::isfinite(y))
         return;
@@ -2158,9 +2185,9 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
 
     const Font& font = accessFont();
     const FontMetrics& fontMetrics = font.fontMetrics();
-    // According to spec, all the space characters must be replaced with U+0020 SPACE characters.
+
     String normalizedText = text;
-    replaceCharacterInString(normalizedText, isSpaceOrNewline, " ");
+    normalizeSpaces(normalizedText);
 
     // FIXME: Need to turn off font smoothing.
 

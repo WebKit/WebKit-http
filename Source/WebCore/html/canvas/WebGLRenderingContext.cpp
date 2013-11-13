@@ -77,7 +77,7 @@
 #include <runtime/Operations.h>
 #include <runtime/TypedArrayInlines.h>
 #include <runtime/Uint32Array.h>
-#include <wtf/OwnArrayPtr.h>
+#include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -404,7 +404,7 @@ private:
     WebGLRenderingContext* m_context;
 };
 
-PassOwnPtr<WebGLRenderingContext> WebGLRenderingContext::create(HTMLCanvasElement* canvas, WebGLContextAttributes* attrs)
+OwnPtr<WebGLRenderingContext> WebGLRenderingContext::create(HTMLCanvasElement* canvas, WebGLContextAttributes* attrs)
 {
     Document& document = canvas->document();
     Frame* frame = document.frame();
@@ -429,6 +429,9 @@ PassOwnPtr<WebGLRenderingContext> WebGLRenderingContext::create(HTMLCanvasElemen
     attributes.noExtensions = true;
     attributes.shareResources = false;
     attributes.preferDiscreteGPU = true;
+
+    if (frame->settings().multithreadedWebGLEnabled())
+        attributes.multithreaded = true;
 
     RefPtr<GraphicsContext3D> context(GraphicsContext3D::create(attributes, hostWindow));
 
@@ -1465,7 +1468,7 @@ void WebGLRenderingContext::copyTexSubImage2D(GC3Denum target, GC3Dint level, GC
         if (clip2D(x, y, width, height, getBoundFramebufferWidth(), getBoundFramebufferHeight(), &clippedX, &clippedY, &clippedWidth, &clippedHeight)) {
             GC3Denum format = tex->getInternalFormat(target, level);
             GC3Denum type = tex->getType(target, level);
-            OwnArrayPtr<unsigned char> zero;
+            std::unique_ptr<unsigned char[]> zero;
             if (width && height) {
                 unsigned int size;
                 GC3Denum error = m_context->computeImageSizeInBytes(format, type, width, height, m_unpackAlignment, &size, 0);
@@ -1473,7 +1476,7 @@ void WebGLRenderingContext::copyTexSubImage2D(GC3Denum target, GC3Dint level, GC
                     synthesizeGLError(error, "copyTexSubImage2D", "bad dimensions");
                     return;
                 }
-                zero = adoptArrayPtr(new unsigned char[size]);
+                zero = std::make_unique<unsigned char[]>(size);
                 if (!zero) {
                     synthesizeGLError(GraphicsContext3D::INVALID_VALUE, "copyTexSubImage2D", "out of memory");
                     return;
@@ -5556,7 +5559,7 @@ bool WebGLRenderingContext::validateHTMLImageElement(const char* functionName, H
         synthesizeGLError(GraphicsContext3D::INVALID_VALUE, functionName, "no image");
         return false;
     }
-    const KURL& url = image->cachedImage()->response().url();
+    const URL& url = image->cachedImage()->response().url();
     if (url.isNull() || url.isEmpty() || !url.isValid()) {
         synthesizeGLError(GraphicsContext3D::INVALID_VALUE, functionName, "invalid image");
         return false;
@@ -5727,7 +5730,7 @@ bool WebGLRenderingContext::simulateVertexAttrib0(GC3Dsizei numVertex)
             || attribValue.value[1] != m_vertexAttrib0BufferValue[1]
             || attribValue.value[2] != m_vertexAttrib0BufferValue[2]
             || attribValue.value[3] != m_vertexAttrib0BufferValue[3])) {
-        OwnArrayPtr<GC3Dfloat> bufferData = adoptArrayPtr(new GC3Dfloat[(numVertex + 1) * 4]);
+        auto bufferData = std::make_unique<GC3Dfloat[]>((numVertex + 1) * 4);
         for (GC3Dsizei ii = 0; ii < numVertex + 1; ++ii) {
             bufferData[ii * 4] = attribValue.value[0];
             bufferData[ii * 4 + 1] = attribValue.value[1];
@@ -5857,7 +5860,7 @@ String WebGLRenderingContext::ensureNotNull(const String& text) const
 }
 
 WebGLRenderingContext::LRUImageBufferCache::LRUImageBufferCache(int capacity)
-    : m_buffers(adoptArrayPtr(new OwnPtr<ImageBuffer>[capacity]))
+    : m_buffers(std::make_unique<OwnPtr<ImageBuffer>[]>(capacity))
     , m_capacity(capacity)
 {
 }

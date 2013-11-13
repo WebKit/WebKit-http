@@ -41,7 +41,7 @@ namespace WebCore {
 
 class CachedImage;
 class FilterSubimageObserverProxy;
-class RenderObject;
+class RenderElement;
 class Document;
 class StyleResolver;
 
@@ -57,12 +57,12 @@ public:
 
     String customCSSText() const;
 
-    PassRefPtr<Image> image(RenderObject*, const IntSize&);
+    PassRefPtr<Image> image(RenderElement*, const IntSize&);
     bool isFixedSize() const { return true; }
-    IntSize fixedSize(const RenderObject*);
+    IntSize fixedSize(const RenderElement*);
 
     bool isPending() const;
-    bool knownToBeOpaque(const RenderObject*) const;
+    bool knownToBeOpaque(const RenderElement*) const;
 
     void loadSubimages(CachedResourceLoader*);
 
@@ -119,11 +119,7 @@ private:
     FilterSubimageObserverProxy m_filterSubimageObserver;
 };
 
-inline CSSFilterImageValue* toCSSFilterImageValue(CSSImageGeneratorValue* value)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isFilterImageValue());
-    return static_cast<CSSFilterImageValue*>(value);
-}
+CSS_VALUE_TYPE_CASTS(FilterImageValue)
 
 } // namespace WebCore
 

@@ -26,14 +26,16 @@
 #ifndef RenderFrameBase_h
 #define RenderFrameBase_h
 
-#include "RenderPart.h"
+#include "RenderWidget.h"
 
 namespace WebCore {
 
+class HTMLFrameElementBase;
+
 // Base class for RenderFrame and RenderIFrame
-class RenderFrameBase : public RenderPart {
+class RenderFrameBase : public RenderWidget {
 protected:
-    explicit RenderFrameBase(Element*);
+    explicit RenderFrameBase(HTMLFrameElementBase&);
 
 public:
     void layoutWithFlattening(bool fixedWidth, bool fixedHeight);

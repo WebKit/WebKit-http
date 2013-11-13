@@ -30,16 +30,18 @@
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
 #include <WebCore/GraphicsContext.h>
-#include <wtf/PassOwnPtr.h>
 
 using namespace WebCore;
 using namespace WebKit;
 
 class PageOverlayClientImpl : public PageOverlay::Client {
 public:
-    static PassOwnPtr<PageOverlayClientImpl> create(WKBundlePageOverlayClient* client)
+    explicit PageOverlayClientImpl(WKBundlePageOverlayClient* client)
+        : m_client()
+        , m_accessibilityClient()
     {
-        return adoptPtr(new PageOverlayClientImpl(client));
+        if (client)
+            m_client = *client;
     }
 
     virtual void setAccessibilityClient(WKBundlePageOverlayAccessibilityClient* client)
@@ -49,14 +51,6 @@ public:
     }
 
 private:
-    explicit PageOverlayClientImpl(WKBundlePageOverlayClient* client)
-        : m_client()
-        , m_accessibilityClient()
-    {
-        if (client)
-            m_client = *client;
-    }
-
     // PageOverlay::Client.
     virtual void pageOverlayDestroyed(PageOverlay*)
     {
@@ -150,8 +144,9 @@ WKBundlePageOverlayRef WKBundlePageOverlayCreate(WKBundlePageOverlayClient* wkCl
     if (wkClient && wkClient->version)
         return 0;
 
-    OwnPtr<PageOverlayClientImpl> clientImpl = PageOverlayClientImpl::create(wkClient);
+    auto clientImpl = createOwned<PageOverlayClientImpl>(wkClient);
 
+    // FIXME: Looks like this leaks the clientImpl.
     return toAPI(PageOverlay::create(clientImpl.leakPtr()).leakRef());
 }
 

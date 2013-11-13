@@ -104,7 +104,6 @@ private:
     virtual int visibleHeight() const OVERRIDE;
     virtual int visibleWidth() const OVERRIDE;
     virtual IntSize contentsSize() const OVERRIDE;
-    virtual bool scrollbarsCanBeActive() const OVERRIDE;
     virtual IntRect scrollableAreaBoundingBox() const OVERRIDE;
 
     // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.
@@ -120,8 +119,8 @@ private:
     PopupMenuClient* m_popupClient;
     RefPtr<Scrollbar> m_scrollbar;
     HWND m_popup;
-    HDC m_DC;
-    HBITMAP m_bmp;
+    GDIObject<HDC> m_DC;
+    GDIObject<HBITMAP> m_bmp;
     bool m_wasClicked;
     IntRect m_windowRect;
     int m_itemHeight;

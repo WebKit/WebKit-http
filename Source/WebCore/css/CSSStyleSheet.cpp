@@ -84,11 +84,11 @@ PassRefPtr<CSSStyleSheet> CSSStyleSheet::create(PassRefPtr<StyleSheetContents> s
     return adoptRef(new CSSStyleSheet(sheet, ownerNode, false));
 }
 
-PassRefPtr<CSSStyleSheet> CSSStyleSheet::createInline(Node* ownerNode, const KURL& baseURL, const String& encoding)
+PassRefPtr<CSSStyleSheet> CSSStyleSheet::createInline(Node& ownerNode, const URL& baseURL, const String& encoding)
 {
-    CSSParserContext parserContext(&ownerNode->document(), baseURL, encoding);
+    CSSParserContext parserContext(ownerNode.document(), baseURL, encoding);
     RefPtr<StyleSheetContents> sheet = StyleSheetContents::create(baseURL.string(), parserContext);
-    return adoptRef(new CSSStyleSheet(sheet.release(), ownerNode, true));
+    return adoptRef(new CSSStyleSheet(sheet.release(), &ownerNode, true));
 }
 
 CSSStyleSheet::CSSStyleSheet(PassRefPtr<StyleSheetContents> contents, CSSImportRule* ownerRule)
@@ -166,7 +166,7 @@ void CSSStyleSheet::didMutateRules(RuleMutationType mutationType, WhetherContent
     if (!owner)
         return;
 
-    if (mutationType == RuleInsertion && !contentsWereClonedForMutation && !owner->styleSheetCollection()->activeStyleSheetsContains(this)) {
+    if (mutationType == RuleInsertion && !contentsWereClonedForMutation && !owner->styleSheetCollection().activeStyleSheetsContains(this)) {
         owner->scheduleOptimizedStyleSheetUpdate();
         return;
     }
@@ -251,7 +251,7 @@ bool CSSStyleSheet::canAccessRules() const
 {
     if (m_isInlineStylesheet)
         return true;
-    KURL baseURL = m_contents->baseURL();
+    URL baseURL = m_contents->baseURL();
     if (baseURL.isEmpty())
         return true;
     Document* document = ownerDocument();
@@ -363,7 +363,7 @@ String CSSStyleSheet::href() const
     return m_contents->originalURL();
 }
 
-KURL CSSStyleSheet::baseURL() const
+URL CSSStyleSheet::baseURL() const
 {
     return m_contents->baseURL();
 }

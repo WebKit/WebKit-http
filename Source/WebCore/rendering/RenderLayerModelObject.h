@@ -23,15 +23,15 @@
 #ifndef RenderLayerModelObject_h
 #define RenderLayerModelObject_h
 
-#include "RenderObject.h"
+#include "RenderElement.h"
 
 namespace WebCore {
 
 class RenderLayer;
 
-class RenderLayerModelObject : public RenderObject {
+class RenderLayerModelObject : public RenderElement {
 public:
-    explicit RenderLayerModelObject(ContainerNode*);
+    explicit RenderLayerModelObject(Element*);
     virtual ~RenderLayerModelObject();
 
     // Called by RenderObject::willBeDestroyed() and is the only way layers should ever be destroyed
@@ -49,9 +49,6 @@ public:
     // Returns true if the background is painted opaque in the given rect.
     // The query rect is given in local coordinate system.
     virtual bool backgroundIsKnownToBeOpaqueInRect(const LayoutRect&) const { return false; }
-
-    // This is null for anonymous renderers.
-    ContainerNode* node() const { return toContainerNode(RenderObject::node()); }
 
 protected:
     void ensureLayer();

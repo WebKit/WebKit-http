@@ -106,21 +106,23 @@ void Arguments::createStrictModeCallerIfNecessary(ExecState* exec)
     if (m_overrodeCaller)
         return;
 
+    VM& vm = exec->vm();
     m_overrodeCaller = true;
     PropertyDescriptor descriptor;
-    descriptor.setAccessorDescriptor(globalObject()->throwTypeErrorGetterSetter(exec), DontEnum | DontDelete | Accessor);
-    methodTable()->defineOwnProperty(this, exec, exec->propertyNames().caller, descriptor, false);
+    descriptor.setAccessorDescriptor(globalObject()->throwTypeErrorGetterSetter(vm), DontEnum | DontDelete | Accessor);
+    methodTable()->defineOwnProperty(this, exec, vm.propertyNames->caller, descriptor, false);
 }
 
 void Arguments::createStrictModeCalleeIfNecessary(ExecState* exec)
 {
     if (m_overrodeCallee)
         return;
-    
+
+    VM& vm = exec->vm();
     m_overrodeCallee = true;
     PropertyDescriptor descriptor;
-    descriptor.setAccessorDescriptor(globalObject()->throwTypeErrorGetterSetter(exec), DontEnum | DontDelete | Accessor);
-    methodTable()->defineOwnProperty(this, exec, exec->propertyNames().callee, descriptor, false);
+    descriptor.setAccessorDescriptor(globalObject()->throwTypeErrorGetterSetter(vm), DontEnum | DontDelete | Accessor);
+    methodTable()->defineOwnProperty(this, exec, vm.propertyNames->callee, descriptor, false);
 }
 
 bool Arguments::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -311,8 +313,8 @@ void Arguments::tearOff(CallFrame* callFrame)
     // Must be called for the same call frame from which it was created.
     ASSERT(bitwise_cast<WriteBarrier<Unknown>*>(callFrame) == m_registers);
     
-    m_registerArray = adoptArrayPtr(new WriteBarrier<Unknown>[m_numArguments]);
-    m_registers = m_registerArray.get() + CallFrame::offsetFor(m_numArguments + 1);
+    m_registerArray = std::make_unique<WriteBarrier<Unknown>[]>(m_numArguments);
+    m_registers = m_registerArray.get() - CallFrame::offsetFor(1) - 1;
 
     // If we have a captured argument that logically aliases activation storage,
     // but we optimize away the activation, the argument needs to tear off into
@@ -326,14 +328,8 @@ void Arguments::tearOff(CallFrame* callFrame)
         }
     }
 
-    if (!callFrame->isInlinedFrame()) {
-        for (size_t i = 0; i < m_numArguments; ++i)
-            trySetArgument(callFrame->vm(), i, callFrame->argumentAfterCapture(i));
-        return;
-    }
-
-    tearOffForInlineCallFrame(
-        callFrame->vm(), callFrame->registers(), callFrame->inlineCallFrame());
+    for (size_t i = 0; i < m_numArguments; ++i)
+        trySetArgument(callFrame->vm(), i, callFrame->argumentAfterCapture(i));
 }
 
 void Arguments::didTearOffActivation(ExecState* exec, JSActivation* activation)
@@ -357,53 +353,12 @@ void Arguments::tearOff(CallFrame* callFrame, InlineCallFrame* inlineCallFrame)
     if (!m_numArguments)
         return;
     
-    m_registerArray = adoptArrayPtr(new WriteBarrier<Unknown>[m_numArguments]);
-    m_registers = m_registerArray.get() + CallFrame::offsetFor(m_numArguments + 1);
+    m_registerArray = std::make_unique<WriteBarrier<Unknown>[]>(m_numArguments);
+    m_registers = m_registerArray.get() - CallFrame::offsetFor(1) - 1;
 
-    tearOffForInlineCallFrame(
-        callFrame->vm(), callFrame->registers() + inlineCallFrame->stackOffset,
-        inlineCallFrame);
-}
-
-void Arguments::tearOffForInlineCallFrame(VM& vm, Register* registers, InlineCallFrame* inlineCallFrame)
-{
     for (size_t i = 0; i < m_numArguments; ++i) {
         ValueRecovery& recovery = inlineCallFrame->arguments[i + 1];
-        // In the future we'll support displaced recoveries (indicating that the
-        // argument was flushed to a different location), but for now we don't do
-        // that so this code will fail if that were to happen. On the other hand,
-        // it's much less likely that we'll support in-register recoveries since
-        // this code does not (easily) have access to registers.
-        JSValue value;
-        Register* location = &registers[CallFrame::argumentOffset(i)];
-        switch (recovery.technique()) {
-        case AlreadyInJSStack:
-            value = location->jsValue();
-            break;
-        case AlreadyInJSStackAsUnboxedInt32:
-            value = jsNumber(location->unboxedInt32());
-            break;
-        case AlreadyInJSStackAsUnboxedCell:
-            value = location->unboxedCell();
-            break;
-        case AlreadyInJSStackAsUnboxedBoolean:
-            value = jsBoolean(location->unboxedBoolean());
-            break;
-        case AlreadyInJSStackAsUnboxedDouble:
-#if USE(JSVALUE64)
-            value = jsNumber(*bitwise_cast<double*>(location));
-#else
-            value = location->jsValue();
-#endif
-            break;
-        case Constant:
-            value = recovery.constant();
-            break;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            break;
-        }
-        trySetArgument(vm, i, value);
+        trySetArgument(callFrame->vm(), i, recovery.recover(callFrame));
     }
 }
 

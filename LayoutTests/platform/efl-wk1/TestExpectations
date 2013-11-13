@@ -147,7 +147,6 @@ webkit.org/b/117574 editing/selection/selection-actions.html [ ImageOnlyFailure 
 webkit.org/b/117574 editing/selection/selection-button-text.html [ ImageOnlyFailure ]
  
 webkit.org/b/111984 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
-webkit.org/b/111986 accessibility/aria-invalid.html [ Failure ]
 webkit.org/b/111987 accessibility/aria-link-supports-press.html [ Failure ]
 webkit.org/b/111988 accessibility/aria-readonly.html [ Failure ]
 webkit.org/b/111991 accessibility/aria-text-role.html [ Failure ]
@@ -156,9 +155,8 @@ webkit.org/b/111993 accessibility/button-press-action.html [ Failure ]
 webkit.org/b/111994 accessibility/canvas-accessibilitynodeobject.html [ Failure ]
 webkit.org/b/111996 accessibility/canvas-fallback-content-2.html [ Failure ]
 webkit.org/b/111999 accessibility/disabled-controls-not-focusable.html [ Failure ]
-webkit.org/b/112000 accessibility/heading-level.html [ Failure ]
+webkit.org/b/122109 accessibility/file-upload-button-stringvalue.html [ Failure ]
 webkit.org/b/112002 accessibility/inline-continuations.html [ Failure ]
-webkit.org/b/112003 accessibility/loading-iframe-sends-notification.html [ Failure ]
 webkit.org/b/112023 accessibility/loading-iframe-updates-axtree.html [ Failure ]
 webkit.org/b/112005 accessibility/onclick-handlers.html [ Failure ]
 webkit.org/b/112006 accessibility/secure-textfield-title-ui.html [ Failure ]
@@ -171,17 +169,14 @@ webkit.org/b/112016 accessibility/textarea-selected-text-range.html [ Failure ]
 webkit.org/b/112017 accessibility/textbox-role-reports-selection.html [ Failure ]
 webkit.org/b/112018 accessibility/th-as-title-ui.html [ Failure ]
 webkit.org/b/112019 accessibility/title-ui-element-correctness.html [ Failure ]
-webkit.org/b/112020 accessibility/transformed-element.html [ Failure Crash ]
 webkit.org/b/112021 accessibility/visible-elements.html [ Failure Crash ]
 
 accessibility/aria-checkbox-sends-notification.html [ Skip ]
 accessibility/deleting-iframe-destroys-axcache.html [ Skip ]
 accessibility/img-fallsback-to-title.html [ Skip ]
 accessibility/internal-link-anchors2.html [ Skip ]
-accessibility/lists.html [ Skip ]
 accessibility/media-element.html [ Skip ]
 accessibility/multiselect-list-reports-active-option.html [ Skip ]
-accessibility/plugin.html [ Skip ]
 accessibility/radio-button-group-members.html [ Skip ]
 accessibility/table-attributes.html [ Skip ]
 accessibility/table-cell-spans.html [ Skip ]
@@ -189,7 +184,6 @@ accessibility/table-cells.html [ Skip ]
 accessibility/table-detection.html [ Skip ]
 accessibility/table-one-cell.html [ Skip ]
 accessibility/table-sections.html [ Skip ]
-accessibility/table-with-aria-role.html [ Skip ]
 accessibility/table-with-rules.html [ Skip ]
 
 # Frame flattening does not work properly for EFL port
@@ -221,9 +215,6 @@ webkit.org/b/98231 http/tests/security/cross-origin-plugin-private-browsing-togg
 webkit.org/b/98231 http/tests/security/storage-blocking-loosened-plugin.html [ Failure ]
 webkit.org/b/98231 http/tests/security/storage-blocking-loosened-private-browsing-plugin.html [ Failure ]
  
-# EFL's DumpRenderTree should support LayoutTestController's dumpEditingCallbacks()
-webkit.org/b/84835 editing/execCommand/indent-paragraphs.html [ Failure ]
- 
 # Incomplete policy delegate dumping (missing "originated from")
 Bug(EFL) http/tests/misc/policy-delegate-called-twice.html [ Failure ]
  
@@ -240,7 +231,6 @@ webkit.org/b/86498 http/tests/appcache/origins-with-appcache.html [ Failure ]
 webkit.org/b/84589 fast/animation/request-animation-frame-during-modal.html [ Failure ]
 webkit.org/b/84589 fast/dom/Window/open-window-min-size.html [ Failure ]
 webkit.org/b/84589 http/tests/security/cross-frame-access-call.html [ Failure ]
-webkit.org/b/84589 inspector/console/console-long-eval-crash.html [ Failure ]
 
 # Needs custom policy delegate enhancement to log DOM node info - EFL port is missing DOM node abstraction
 webkit.org/b/87972 fast/forms/mailto/formenctype-attribute-button-html.html [ Failure ]
@@ -253,7 +243,7 @@ webkit.org/b/86182 fast/frames/seamless/seamless-inherited-document-style.html [
 webkit.org/b/97021 fast/events/dont-loose-last-event.html [ Failure ]
 
 # Feature not mature yet and disabled by default on WebCore
-webkit.org/b/87088 fast/js/names.html [ Failure ]
+webkit.org/b/87088 js/names.html [ Failure ]
 
 # Failing after 125592
 webkit.org/b/94194 http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html [ Failure ]
@@ -317,10 +307,6 @@ fast/block/lineboxcontain/block-font.html
 fast/block/lineboxcontain/block-glyphs.html
 fast/block/lineboxcontain/font.html
 
-# following tests started failing on EFL after r122952.
-webkit.org/b/82886 inspector/styles/override-screen-size.html
-inspector/timeline/timeline-paint.html
-
 # Incorrect rendering results after r115846
 webkit.org/b/85599 http/tests/navigation/postredirect-basic.html [ Failure ]
 webkit.org/b/85599 http/tests/navigation/postredirect-goback1.html [ Failure ]
@@ -369,7 +355,6 @@ webkit.org/b/77219 http/tests/canvas/webgl/origin-clean-conformance.html [ Skip 
 webkit.org/b/77219 http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html [ Skip ]
 webkit.org/b/77219 http/tests/security/webgl-remote-read-remote-image-allowed.html [ Skip ]
 webkit.org/b/77219 http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html [ Skip ]
-webkit.org/b/77219 inspector/profiler/webgl [ Skip ]
 webkit.org/b/77219 fast/canvas/webgl/oes-vertex-array-object.html [ Skip ]
 webkit.org/b/77219 fast/canvas/webgl/read-pixels-test.html [ Skip ]
 webkit.org/b/77219 fast/canvas/webgl/context-attributes-alpha-depth-stencil-antialias.html [ Skip ]

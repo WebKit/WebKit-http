@@ -41,27 +41,27 @@ class Document;
 class Element;
 class Frame;
 class Node;
-class RenderObject;
+class RenderElement;
 class RenderStyle;
 
 class AnimationController {
 public:
-    AnimationController(Frame*);
+    explicit AnimationController(Frame&);
     ~AnimationController();
 
-    void cancelAnimations(RenderObject*);
-    PassRefPtr<RenderStyle> updateAnimations(RenderObject*, RenderStyle* newStyle);
-    PassRefPtr<RenderStyle> getAnimatedStyleForRenderer(RenderObject*);
+    void cancelAnimations(RenderElement*);
+    PassRefPtr<RenderStyle> updateAnimations(RenderElement*, RenderStyle* newStyle);
+    PassRefPtr<RenderStyle> getAnimatedStyleForRenderer(RenderElement*);
 
     // This is called when an accelerated animation or transition has actually started to animate.
-    void notifyAnimationStarted(RenderObject*, double startTime);
+    void notifyAnimationStarted(RenderElement*, double startTime);
 
-    bool pauseAnimationAtTime(RenderObject*, const AtomicString& name, double t); // To be used only for testing
-    bool pauseTransitionAtTime(RenderObject*, const String& property, double t); // To be used only for testing
+    bool pauseAnimationAtTime(RenderElement*, const AtomicString& name, double t); // To be used only for testing
+    bool pauseTransitionAtTime(RenderElement*, const String& property, double t); // To be used only for testing
     unsigned numberOfActiveAnimations(Document*) const; // To be used only for testing
     
-    bool isRunningAnimationOnRenderer(RenderObject*, CSSPropertyID, bool isRunningNow = true) const;
-    bool isRunningAcceleratedAnimationOnRenderer(RenderObject*, CSSPropertyID, bool isRunningNow = true) const;
+    bool isRunningAnimationOnRenderer(RenderElement*, CSSPropertyID, bool isRunningNow = true) const;
+    bool isRunningAcceleratedAnimationOnRenderer(RenderElement*, CSSPropertyID, bool isRunningNow = true) const;
 
     bool isSuspended() const;
     void suspendAnimations();
@@ -83,7 +83,7 @@ public:
     static bool supportsAcceleratedAnimationOfProperty(CSSPropertyID);
 
 private:
-    OwnPtr<AnimationControllerPrivate> m_data;
+    const OwnPtr<AnimationControllerPrivate> m_data;
     int m_beginAnimationUpdateCount;
 };
 

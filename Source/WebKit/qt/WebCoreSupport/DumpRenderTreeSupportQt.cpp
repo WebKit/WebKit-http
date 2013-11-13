@@ -2,7 +2,7 @@
     Copyright (C) 2010 Robert Hogan <robert@roberthogan.net>
     Copyright (C) 2008,2009,2010 Nokia Corporation and/or its subsidiary(-ies)
     Copyright (C) 2007 Staikos Computing Services Inc.
-    Copyright (C) 2007, 2012 Apple Inc.
+    Copyright (C) 2007, 2012, 2013 Apple Inc.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -39,7 +39,6 @@
 #include "Element.h"
 #include "FocusController.h"
 #include "Font.h"
-#include "Frame.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoaderClientQt.h"
 #include "FrameView.h"
@@ -54,6 +53,7 @@
 #include "HistoryItem.h"
 #include "InspectorController.h"
 #include "JSNode.h"
+#include "MainFrame.h"
 #include "NodeList.h"
 #include "NotificationPresenterClientQt.h"
 #include "Page.h"
@@ -733,7 +733,7 @@ QUrl DumpRenderTreeSupportQt::mediaContentUrlByElementId(QWebFrameAdapter* adapt
 // API Candidate?
 void DumpRenderTreeSupportQt::setAlternateHtml(QWebFrameAdapter* adapter, const QString& html, const QUrl& baseUrl, const QUrl& failingUrl)
 {
-    KURL kurl(baseUrl);
+    URL kurl(baseUrl);
     WebCore::Frame* coreFrame = adapter->frame;
     WebCore::ResourceRequest request(kurl);
     const QByteArray utf8 = html.toUtf8();
@@ -862,7 +862,7 @@ void DumpRenderTreeSupportQt::getTrackedRepaintRects(QWebFrameAdapter* adapter, 
 void DumpRenderTreeSupportQt::setSeamlessIFramesEnabled(bool enabled)
 {
 #if ENABLE(IFRAME_SEAMLESS)
-    WebCore::RuntimeEnabledFeatures::setSeamlessIFramesEnabled(enabled);
+    WebCore::RuntimeEnabledFeatures::sharedFeatures().setSeamlessIFramesEnabled(enabled);
 #else
     UNUSED_PARAM(enabled);
 #endif

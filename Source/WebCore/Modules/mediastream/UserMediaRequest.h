@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Ericsson AB. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,9 +35,8 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "ActiveDOMObject.h"
-#include "ExceptionBase.h"
+#include "MediaStreamCreationClient.h"
 #include "MediaStreamSource.h"
-#include "MediaStreamSourcesQueryClient.h"
 #include "NavigatorUserMediaErrorCallback.h"
 #include "NavigatorUserMediaSuccessCallback.h"
 #include <wtf/PassRefPtr.h>
@@ -48,41 +48,43 @@ namespace WebCore {
 class Dictionary;
 class Document;
 class MediaConstraints;
-class MediaConstraintsImpl;
 class MediaStreamDescriptor;
 class UserMediaController;
+class SecurityOrigin;
 
-class UserMediaRequest : public MediaStreamSourcesQueryClient, public ContextDestructionObserver {
+typedef int ExceptionCode;
+
+class UserMediaRequest : public MediaStreamCreationClient, public ContextDestructionObserver {
 public:
     static PassRefPtr<UserMediaRequest> create(ScriptExecutionContext*, UserMediaController*, const Dictionary& options, PassRefPtr<NavigatorUserMediaSuccessCallback>, PassRefPtr<NavigatorUserMediaErrorCallback>, ExceptionCode&);
     ~UserMediaRequest();
 
-    NavigatorUserMediaSuccessCallback* successCallback() const { return m_successCallback.get(); }
-    NavigatorUserMediaErrorCallback* errorCallback() const { return m_errorCallback.get(); }
-    Document* ownerDocument();
+    SecurityOrigin* securityOrigin() const;
 
     void start();
-
-    void succeed(const MediaStreamSourceVector& audioSources, const MediaStreamSourceVector& videoSources);
-    void succeed(PassRefPtr<MediaStreamDescriptor>);
-    void fail();
-
-    MediaConstraints* audioConstraints() const;
-    MediaConstraints* videoConstraints() const;
-
-    // MediaStreamSourcesQueryClient
-    virtual bool audio() const;
-    virtual bool video() const;
-    virtual void didCompleteQuery(const MediaStreamSourceVector& audioSources, const MediaStreamSourceVector& videoSources);
-
-    // ContextDestructionObserver
-    virtual void contextDestroyed();
+    void userMediaAccessGranted();
+    void userMediaAccessDenied();
 
 private:
-    UserMediaRequest(ScriptExecutionContext*, UserMediaController*, PassRefPtr<MediaConstraintsImpl> audio, PassRefPtr<MediaConstraintsImpl> video, PassRefPtr<NavigatorUserMediaSuccessCallback>, PassRefPtr<NavigatorUserMediaErrorCallback>);
+    UserMediaRequest(ScriptExecutionContext*, UserMediaController*, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints, PassRefPtr<NavigatorUserMediaSuccessCallback>, PassRefPtr<NavigatorUserMediaErrorCallback>);
 
-    RefPtr<MediaConstraintsImpl> m_audio;
-    RefPtr<MediaConstraintsImpl> m_video;
+    // MediaStreamCreationClient
+    virtual void constraintsValidated() OVERRIDE FINAL;
+    virtual void constraintsInvalid(const String& constraintName) OVERRIDE FINAL;
+    virtual void didCreateStream(PassRefPtr<MediaStreamDescriptor>) OVERRIDE FINAL;
+    virtual void failedToCreateStreamWithConstraintsError(const String& constraintName) OVERRIDE FINAL;
+    virtual void failedToCreateStreamWithPermissionError() OVERRIDE FINAL;
+
+    // ContextDestructionObserver
+    virtual void contextDestroyed() OVERRIDE FINAL;
+    
+    void callSuccessHandler(PassRefPtr<MediaStreamDescriptor>);
+    void callErrorHandler(PassRefPtr<NavigatorUserMediaError>);
+    void requestPermission();
+    void createMediaStream();
+
+    RefPtr<MediaConstraints> m_audioConstraints;
+    RefPtr<MediaConstraints> m_videoConstraints;
 
     UserMediaController* m_controller;
 

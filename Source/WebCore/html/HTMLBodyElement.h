@@ -32,8 +32,8 @@ class Document;
 
 class HTMLBodyElement FINAL : public HTMLElement {
 public:
-    static PassRefPtr<HTMLBodyElement> create(Document*);
-    static PassRefPtr<HTMLBodyElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<HTMLBodyElement> create(Document&);
+    static PassRefPtr<HTMLBodyElement> create(const QualifiedName&, Document&);
     virtual ~HTMLBodyElement();
 
     String aLink() const;
@@ -68,15 +68,14 @@ public:
 #endif
 
 private:
-    HTMLBodyElement(const QualifiedName&, Document*);
+    HTMLBodyElement(const QualifiedName&, Document&);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    virtual void didNotifySubtreeInsertions(ContainerNode*) OVERRIDE;
-    
+
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
     
     virtual bool supportsFocus() const OVERRIDE;
@@ -90,7 +89,7 @@ private:
     virtual int scrollHeight();
     virtual int scrollWidth();
     
-    virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
 };
 
 } //namespace

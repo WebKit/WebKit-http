@@ -32,10 +32,10 @@ namespace WebCore {
 class SVGEllipseElement FINAL : public SVGGraphicsElement,
                                 public SVGExternalResourcesRequired {
 public:
-    static PassRefPtr<SVGEllipseElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGEllipseElement> create(const QualifiedName&, Document&);
 
 private:
-    SVGEllipseElement(const QualifiedName&, Document*);
+    SVGEllipseElement(const QualifiedName&, Document&);
     
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool supportsFocus() const OVERRIDE { return true; }
@@ -46,7 +46,7 @@ private:
 
     virtual bool selfHasRelativeLengths() const;
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGEllipseElement)
         DECLARE_ANIMATED_LENGTH(Cx, cx)
@@ -56,6 +56,8 @@ private:
         DECLARE_ANIMATED_BOOLEAN(ExternalResourcesRequired, externalResourcesRequired)
     END_DECLARE_ANIMATED_PROPERTIES
 };
+
+ELEMENT_TYPE_CASTS(SVGEllipseElement)
 
 } // namespace WebCore
 

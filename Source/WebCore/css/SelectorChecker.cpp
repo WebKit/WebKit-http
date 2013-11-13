@@ -48,7 +48,7 @@
 #include "InspectorInstrumentation.h"
 #include "NodeRenderStyle.h"
 #include "Page.h"
-#include "RenderObject.h"
+#include "RenderElement.h"
 #include "RenderScrollbar.h"
 #include "RenderStyle.h"
 #include "ScrollableArea.h"
@@ -148,9 +148,9 @@ SelectorChecker::SelectorChecker(Document& document, Mode mode)
 // * SelectorFailsLocally     - the selector fails for the element e
 // * SelectorFailsAllSiblings - the selector fails for e and any sibling of e
 // * SelectorFailsCompletely  - the selector fails for e and any sibling or ancestor of e
-SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& context, PseudoId& dynamicPseudo) const
+SelectorChecker::Match SelectorChecker::matchRecursively(const SelectorCheckingContext& context, PseudoId& dynamicPseudo) const
 {
-    // first selector has to match
+    // The first selector has to match.
     if (!checkOne(context))
         return SelectorFailsLocally;
 
@@ -170,8 +170,8 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
 
             PseudoId pseudoId = CSSSelector::pseudoId(context.selector->pseudoType());
             if (pseudoId == FIRST_LETTER)
-                context.element->document().styleSheetCollection()->setUsesFirstLetterRules(true);
-            if (pseudoId != NOPSEUDO && m_mode != SharingRules)
+                context.element->document().styleSheetCollection().setUsesFirstLetterRules(true);
+            if (pseudoId != NOPSEUDO)
                 dynamicPseudo = pseudoId;
         }
     }
@@ -181,13 +181,8 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
 
     // Prepare next selector
     const CSSSelector* historySelector = context.selector->tagHistory();
-    if (!historySelector) {
-        if (context.behaviorAtBoundary == CrossesBoundary) {
-            ASSERT(context.scope);
-            return context.scope->contains(context.element) ? SelectorMatches : SelectorFailsLocally;
-        }
+    if (!historySelector)
         return SelectorMatches;
-    }
 
     SelectorCheckingContext nextContext(context);
     nextContext.selector = historySelector;
@@ -215,7 +210,7 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
         nextContext.isSubSelector = false;
         nextContext.elementStyle = 0;
         for (; nextContext.element; nextContext.element = nextContext.element->parentElement()) {
-            Match match = this->match(nextContext, ignoreDynamicPseudo);
+            Match match = this->matchRecursively(nextContext, ignoreDynamicPseudo);
             if (match == SelectorMatches || match == SelectorFailsCompletely)
                 return match;
             if (nextContext.element == nextContext.scope && nextContext.behaviorAtBoundary != StaysWithinTreeScope)
@@ -229,7 +224,7 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
             return SelectorFailsCompletely;
         nextContext.isSubSelector = false;
         nextContext.elementStyle = 0;
-        return match(nextContext, ignoreDynamicPseudo);
+        return matchRecursively(nextContext, ignoreDynamicPseudo);
 
     case CSSSelector::DirectAdjacent:
         if (m_mode == ResolvingStyle) {
@@ -241,7 +236,7 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
             return SelectorFailsAllSiblings;
         nextContext.isSubSelector = false;
         nextContext.elementStyle = 0;
-        return match(nextContext, ignoreDynamicPseudo);
+        return matchRecursively(nextContext, ignoreDynamicPseudo);
 
     case CSSSelector::IndirectAdjacent:
         if (m_mode == ResolvingStyle) {
@@ -252,7 +247,7 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
         nextContext.isSubSelector = false;
         nextContext.elementStyle = 0;
         for (; nextContext.element; nextContext.element = nextContext.element->previousElementSibling()) {
-            Match match = this->match(nextContext, ignoreDynamicPseudo);
+            Match match = this->matchRecursively(nextContext, ignoreDynamicPseudo);
             if (match == SelectorMatches || match == SelectorFailsAllSiblings || match == SelectorFailsCompletely)
                 return match;
         };
@@ -269,7 +264,7 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
             && !(nextContext.hasScrollbarPseudo && nextContext.selector->m_match == CSSSelector::PseudoClass))
             return SelectorFailsCompletely;
         nextContext.isSubSelector = true;
-        return match(nextContext, dynamicPseudo);
+        return matchRecursively(nextContext, dynamicPseudo);
 
     case CSSSelector::ShadowDescendant:
         {
@@ -282,7 +277,7 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
             nextContext.element = shadowHostNode;
             nextContext.isSubSelector = false;
             nextContext.elementStyle = 0;
-            return match(nextContext, ignoreDynamicPseudo);
+            return matchRecursively(nextContext, ignoreDynamicPseudo);
         }
     }
 
@@ -452,7 +447,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
                     element->setStyleAffectedByEmpty();
                     if (context.elementStyle)
                         context.elementStyle->setEmptyState(result);
-                    else if (element->renderStyle() && (element->document().styleSheetCollection()->usesSiblingRules() || element->renderStyle()->unique()))
+                    else if (element->renderStyle() && (element->document().styleSheetCollection().usesSiblingRules() || element->renderStyle()->unique()))
                         element->renderStyle()->setEmptyState(result);
                 }
                 return result;
@@ -596,7 +591,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
                 subContext.isSubSelector = true;
                 PseudoId ignoreDynamicPseudo = NOPSEUDO;
                 for (subContext.selector = selector->selectorList()->first(); subContext.selector; subContext.selector = CSSSelectorList::next(subContext.selector)) {
-                    if (match(subContext, ignoreDynamicPseudo) == SelectorMatches)
+                    if (matchRecursively(subContext, ignoreDynamicPseudo) == SelectorMatches)
                         return true;
                 }
             }
@@ -629,7 +624,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
         case CSSSelector::PseudoHover:
             // If we're in quirks mode, then hover should never match anchors with no
             // href and *:hover should not match anything. This is important for sites like wsj.com.
-            if (m_strictParsing || context.isSubSelector || (selector->m_match == CSSSelector::Tag && selector->tagQName() != anyQName() && !isHTMLAnchorElement(element)) || element->isLink()) {
+            if (m_strictParsing || context.isSubSelector || element->isLink()) {
                 if (m_mode == ResolvingStyle) {
                     if (context.elementStyle)
                         context.elementStyle->setAffectedByHover();
@@ -643,7 +638,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
         case CSSSelector::PseudoActive:
             // If we're in quirks mode, then :active should never match anchors with no
             // href and *:active should not match anything.
-            if (m_strictParsing || context.isSubSelector || (selector->m_match == CSSSelector::Tag && selector->tagQName() != anyQName() && !isHTMLAnchorElement(element)) || element->isLink()) {
+            if (m_strictParsing || context.isSubSelector || element->isLink()) {
                 if (m_mode == ResolvingStyle) {
                     if (context.elementStyle)
                         context.elementStyle->setAffectedByActive();
@@ -760,7 +755,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
 
         case CSSSelector::PseudoScope:
             {
-                const Node* contextualReferenceNode = !context.scope || context.behaviorAtBoundary == CrossesBoundary ? element->document().documentElement() : context.scope;
+                const Node* contextualReferenceNode = !context.scope ? element->document().documentElement() : context.scope;
                 if (element == contextualReferenceNode)
                     return true;
                 break;
@@ -794,7 +789,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context) const
         PseudoId ignoreDynamicPseudo = NOPSEUDO;
         const CSSSelector* const & selector = context.selector;
         for (subContext.selector = selector->selectorList()->first(); subContext.selector; subContext.selector = CSSSelectorList::next(subContext.selector)) {
-            if (match(subContext, ignoreDynamicPseudo) == SelectorMatches)
+            if (matchRecursively(subContext, ignoreDynamicPseudo) == SelectorMatches)
                 return true;
         }
         return false;
@@ -930,7 +925,7 @@ unsigned SelectorChecker::determineLinkMatchType(const CSSSelector* selector)
     return linkMatchType;
 }
 
-bool SelectorChecker::isFrameFocused(const Element* element)
+static bool isFrameFocused(const Element* element)
 {
     return element->document().frame() && element->document().frame()->selection().isFocusedAndActive();
 }

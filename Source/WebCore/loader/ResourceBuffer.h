@@ -76,10 +76,10 @@ public:
     PassOwnPtr<PurgeableBuffer> releasePurgeableBuffer();
 
 #if PLATFORM(MAC)
-    NSData *createNSData();
+    SharedBuffer::NSDataRetainPtrWithoutImplicitConversionOperator createNSData();
 #endif
 #if USE(CF)
-    CFDataRef createCFData();
+    RetainPtr<CFDataRef> createCFData();
 #endif
 
 protected:

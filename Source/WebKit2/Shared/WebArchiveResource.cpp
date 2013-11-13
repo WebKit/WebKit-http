@@ -30,7 +30,7 @@
 
 #include "WebData.h"
 #include <WebCore/ArchiveResource.h>
-#include <WebCore/KURL.h>
+#include <WebCore/URL.h>
 #include <wtf/RetainPtr.h>
 
 using namespace WebCore;
@@ -48,7 +48,7 @@ PassRefPtr<WebArchiveResource> WebArchiveResource::create(PassRefPtr<ArchiveReso
 }
 
 WebArchiveResource::WebArchiveResource(WebData* data, const String& URL, const String& MIMEType, const String& textEncoding)
-    : m_archiveResource(ArchiveResource::create(SharedBuffer::create(data->bytes(), data->size()), KURL(KURL(), URL), MIMEType, textEncoding, String()))
+    : m_archiveResource(ArchiveResource::create(SharedBuffer::create(data->bytes(), data->size()), WebCore::URL(WebCore::URL(), URL), MIMEType, textEncoding, String()))
 {
 }
 
@@ -69,7 +69,7 @@ static void releaseCFData(unsigned char*, const void* data)
 
 PassRefPtr<WebData> WebArchiveResource::data()
 {
-    RetainPtr<CFDataRef> cfData = adoptCF(m_archiveResource->data()->createCFData());
+    RetainPtr<CFDataRef> cfData = m_archiveResource->data()->createCFData();
 
     // Balanced by CFRelease in releaseCFData.
     CFRetain(cfData.get());

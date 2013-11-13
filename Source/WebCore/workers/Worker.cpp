@@ -84,7 +84,7 @@ PassRefPtr<Worker> Worker::create(ScriptExecutionContext* context, const String&
 
     worker->suspendIfNeeded();
 
-    KURL scriptURL = worker->resolveURL(url, ec);
+    URL scriptURL = worker->resolveURL(url, ec);
     if (scriptURL.isEmpty())
         return 0;
 
@@ -108,9 +108,9 @@ Worker::~Worker()
     m_contextProxy->workerObjectDestroyed();
 }
 
-const AtomicString& Worker::interfaceName() const
+EventTargetInterface Worker::eventTargetInterface() const
 {
-    return eventNames().interfaceForWorker;
+    return WorkerEventTargetInterfaceType;
 }
 
 void Worker::postMessage(PassRefPtr<SerializedScriptValue> message, MessagePort* port, ExceptionCode& ec)

@@ -43,6 +43,7 @@ class ElementRareData;
 class HTMLDocument;
 class IntSize;
 class Locale;
+class PlatformWheelEvent;
 class PseudoElement;
 class RenderRegion;
 class ShadowRoot;
@@ -66,7 +67,7 @@ enum SpellcheckAttributeState {
 
 class Element : public ContainerNode {
 public:
-    static PassRefPtr<Element> create(const QualifiedName&, Document*);
+    static PassRefPtr<Element> create(const QualifiedName&, Document&);
     virtual ~Element();
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(abort);
@@ -249,7 +250,7 @@ public:
     virtual const AtomicString& prefix() const OVERRIDE FINAL { return m_tagName.prefix(); }
     virtual const AtomicString& namespaceURI() const OVERRIDE FINAL { return m_tagName.namespaceURI(); }
 
-    virtual KURL baseURI() const OVERRIDE FINAL;
+    virtual URL baseURI() const OVERRIDE FINAL;
 
     virtual String nodeName() const;
 
@@ -301,7 +302,7 @@ public:
     void lazyAttach(ShouldSetAttached = SetAttached);
     void lazyReattach(ShouldSetAttached = SetAttached);
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     virtual bool rendererIsNeeded(const RenderStyle&);
     void didAffectSelector(AffectedSelectorMask);
 
@@ -380,8 +381,8 @@ public:
     virtual bool isURLAttribute(const Attribute&) const { return false; }
     virtual bool isHTMLContentAttribute(const Attribute&) const { return false; }
 
-    KURL getURLAttribute(const QualifiedName&) const;
-    KURL getNonEmptyURLAttribute(const QualifiedName&) const;
+    URL getURLAttribute(const QualifiedName&) const;
+    URL getNonEmptyURLAttribute(const QualifiedName&) const;
 
     virtual const AtomicString& imageSourceURL() const;
     virtual String target() const { return String(); }
@@ -531,6 +532,8 @@ public:
     IntSize savedLayerScrollOffset() const;
     void setSavedLayerScrollOffset(const IntSize&);
 
+    bool dispatchWheelEvent(const PlatformWheelEvent&);
+    bool dispatchKeyEvent(const PlatformKeyboardEvent&);
     void dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions = SendNoEvents, SimulatedClickVisualOptions = ShowPressedLook);
     void dispatchFocusInEvent(const AtomicString& eventType, PassRefPtr<Element> oldFocusedElement);
     void dispatchFocusOutEvent(const AtomicString& eventType, PassRefPtr<Element> newFocusedElement);
@@ -551,8 +554,8 @@ public:
     void clearHoverAndActiveStatusBeforeDetachingRenderer();
 
 protected:
-    Element(const QualifiedName& tagName, Document* document, ConstructionType type)
-        : ContainerNode(document, type)
+    Element(const QualifiedName& tagName, Document& document, ConstructionType type)
+        : ContainerNode(&document, type)
         , m_tagName(tagName)
     {
     }
@@ -590,6 +593,7 @@ private:
     void setAfterPseudoElement(PassRefPtr<PseudoElement>);
     void clearBeforePseudoElement();
     void clearAfterPseudoElement();
+    void resetNeedsNodeRenderingTraversalSlowPath();
 
     virtual bool areAuthorShadowsAllowed() const { return true; }
     virtual void didAddUserAgentShadowRoot(ShadowRoot*) { }
@@ -610,11 +614,11 @@ private:
 
     void updateName(const AtomicString& oldName, const AtomicString& newName);
     void updateNameForTreeScope(TreeScope*, const AtomicString& oldName, const AtomicString& newName);
-    void updateNameForDocument(HTMLDocument*, const AtomicString& oldName, const AtomicString& newName);
+    void updateNameForDocument(HTMLDocument&, const AtomicString& oldName, const AtomicString& newName);
     void updateId(const AtomicString& oldId, const AtomicString& newId);
     void updateIdForTreeScope(TreeScope*, const AtomicString& oldId, const AtomicString& newId);
     enum HTMLDocumentNamedItemMapsUpdatingCondition { AlwaysUpdateHTMLDocumentNamedItemMaps, UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute };
-    void updateIdForDocument(HTMLDocument*, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition);
+    void updateIdForDocument(HTMLDocument&, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition);
     void updateLabel(TreeScope*, const AtomicString& oldForAttributeValue, const AtomicString& newForAttributeValue);
 
     void scrollByUnits(int units, ScrollGranularity);
@@ -657,7 +661,7 @@ private:
 
     SpellcheckAttributeState spellcheckAttributeState() const;
 
-    void unregisterNamedFlowContentNode();
+    void unregisterNamedFlowContentElement();
 
     void createUniqueElementData();
 
@@ -676,20 +680,34 @@ private:
     RefPtr<ElementData> m_elementData;
 };
 
-inline Element* toElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isElementNode());
-    return static_cast<Element*>(node);
-}
+inline bool isElement(const Node& node) { return node.isElementNode(); }
 
-inline const Element* toElement(const Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isElementNode());
-    return static_cast<const Element*>(node);
-}
 
-// This will catch anyone doing an unnecessary cast.
-void toElement(const Element*);
+#define ELEMENT_TYPE_CASTS(ElementClassName) \
+inline const ElementClassName* to##ElementClassName(const Node* node) \
+{ \
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || is##ElementClassName(*node)); \
+    return static_cast<const ElementClassName*>(node); \
+} \
+inline ElementClassName* to##ElementClassName(Node* node) \
+{ \
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || is##ElementClassName(*node)); \
+    return static_cast<ElementClassName*>(node); \
+} \
+inline const ElementClassName& to##ElementClassName(const Node& node) \
+{ \
+    ASSERT_WITH_SECURITY_IMPLICATION(is##ElementClassName(node)); \
+    return static_cast<const ElementClassName&>(node); \
+} \
+inline ElementClassName& to##ElementClassName(Node& node) \
+{ \
+    ASSERT_WITH_SECURITY_IMPLICATION(is##ElementClassName(node)); \
+    return static_cast<ElementClassName&>(node); \
+} \
+void to##ElementClassName(const ElementClassName*); \
+void to##ElementClassName(const ElementClassName&);
+
+ELEMENT_TYPE_CASTS(Element)
 
 template <typename Type> bool isElementOfType(const Element*);
 template <typename Type> bool isElementOfType(const Node* node) { return node->isElementNode() && isElementOfType<Type>(toElement(node)); }

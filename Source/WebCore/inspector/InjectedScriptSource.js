@@ -331,7 +331,7 @@ InjectedScript.prototype = {
                     value: this._wrapObject(property.value, objectGroupName)
                 };
                 descriptors.push(descriptor);
-            } 
+            }
         }
         return descriptors;
     },
@@ -403,7 +403,7 @@ InjectedScript.prototype = {
                         // Not all bindings provide proper descriptors. Fall back to the writable, configurable property.
                         try {
                             descriptor = { name: name, value: object[name], writable: false, configurable: false, enumerable: false};
-                            if (o === object) 
+                            if (o === object)
                                 descriptor.isOwn = true;
                             descriptors.push(descriptor);
                         } catch (e) {
@@ -418,7 +418,7 @@ InjectedScript.prototype = {
                 }
 
                 descriptor.name = name;
-                if (o === object) 
+                if (o === object)
                     descriptor.isOwn = true;
                 descriptors.push(descriptor);
             }
@@ -483,7 +483,7 @@ InjectedScript.prototype = {
             return this._createThrownValue(e, objectGroup);
         }
     },
-    
+
     /**
      * Resolves a value from CallArgument description.
      * @param {RuntimeAgent.CallArgument} callArgumentJson
@@ -653,67 +653,6 @@ InjectedScript.prototype = {
     /**
      * @param {Object} topCallFrame
      * @param {string} callFrameId
-     * @return {*}
-     */
-    restartFrame: function(topCallFrame, callFrameId)
-    {
-        var callFrame = this._callFrameForId(topCallFrame, callFrameId);
-        if (!callFrame)
-            return "Could not find call frame with given id";
-        var result = callFrame.restart();
-        if (result === false)
-            result = "Restart frame is not supported"; 
-        return result;
-    },
-
-    /**
-     * Either callFrameId or functionObjectId must be specified.
-     * @param {Object} topCallFrame
-     * @param {string|boolean} callFrameId or false
-     * @param {string|boolean} functionObjectId or false
-     * @param {number} scopeNumber
-     * @param {string} variableName
-     * @param {string} newValueJsonString RuntimeAgent.CallArgument structure serialized as string 
-     * @return {string|undefined} undefined if success or an error message 
-     */
-    setVariableValue: function(topCallFrame, callFrameId, functionObjectId, scopeNumber, variableName, newValueJsonString)
-    {   
-        var setter;
-        if (typeof callFrameId === "string") {
-            var callFrame = this._callFrameForId(topCallFrame, callFrameId);
-            if (!callFrame)
-                return "Could not find call frame with given id";
-            setter = callFrame.setVariableValue.bind(callFrame);    
-        } else {
-            var parsedFunctionId = this._parseObjectId(/** @type {string} */(functionObjectId));
-            var func = this._objectForId(parsedFunctionId);
-            if (typeof func !== "function")
-                return "Cannot resolve function by id.";
-            setter = InjectedScriptHost.setFunctionVariableValue.bind(InjectedScriptHost, func); 
-        }
-        var newValueJson;
-        try {
-            newValueJson = InjectedScriptHost.evaluate("(" + newValueJsonString + ")");
-        } catch (e) {
-            return "Failed to parse new value JSON " + newValueJsonString + " : " + e;
-        }
-        var resolvedValue;
-        try {
-            resolvedValue = this._resolveCallArgument(newValueJson);
-        } catch (e) {
-            return String(e);
-        }
-        try {
-            setter(scopeNumber, variableName, resolvedValue);
-        } catch (e) {
-            return "Failed to change variable value: " + e;
-        }
-        return undefined;
-    },
-
-    /**
-     * @param {Object} topCallFrame
-     * @param {string} callFrameId
      * @return {Object}
      */
     _callFrameForId: function(topCallFrame, callFrameId)
@@ -760,7 +699,7 @@ InjectedScript.prototype = {
     /**
      * @param {string} name
      * @return {Object}
-     */ 
+     */
     module: function(name)
     {
         return this._modules[name];
@@ -770,7 +709,7 @@ InjectedScript.prototype = {
      * @param {string} name
      * @param {string} source
      * @return {Object}
-     */ 
+     */
     injectModule: function(name, source)
     {
         delete this._modules[name];
@@ -1005,7 +944,7 @@ InjectedScript.RemoteObject.prototype = {
                     this._appendPropertyPreview(preview, { name: name, type: "object", value: "null" }, propertiesThreshold);
                     continue;
                 }
-    
+
                 const maxLength = 100;
                 var type = typeof value;
 

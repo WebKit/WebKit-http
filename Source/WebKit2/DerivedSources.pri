@@ -45,6 +45,7 @@ VPATH = \
     WebProcess/Geolocation \
     WebProcess/IconDatabase \
     WebProcess/MediaCache \
+    WebProcess/Network \
     WebProcess/NetworkInfo \
     WebProcess/Notifications \
     WebProcess/Plugins \
@@ -57,6 +58,7 @@ VPATH = \
     UIProcess \
     UIProcess/CoordinatedGraphics \
     UIProcess/Downloads \
+    UIProcess/Network/CustomProtocols \
     UIProcess/Notifications \
     UIProcess/Plugins \
     UIProcess/Storage \
@@ -67,6 +69,7 @@ VPATH = \
 MESSAGE_RECEIVERS = \
     AuthenticationManager.messages.in \
     CoordinatedLayerTreeHostProxy.messages.in \
+    CustomProtocolManagerProxy.messages.in \
     DownloadProxy.messages.in \
     DrawingAreaProxy.messages.in \
     EventDispatcher.messages.in \

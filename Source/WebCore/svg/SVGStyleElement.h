@@ -30,7 +30,7 @@ namespace WebCore {
 
 class SVGStyleElement FINAL : public SVGElement {
 public:
-    static PassRefPtr<SVGStyleElement> create(const QualifiedName&, Document*, bool createdByParser);
+    static PassRefPtr<SVGStyleElement> create(const QualifiedName&, Document&, bool createdByParser);
     virtual ~SVGStyleElement();
 
     CSSStyleSheet* sheet() const { return m_styleSheetOwner.sheet(); }
@@ -48,7 +48,7 @@ public:
     void setTitle(const AtomicString&, ExceptionCode&);
 
 private:
-    SVGStyleElement(const QualifiedName&, Document*, bool createdByParser);
+    SVGStyleElement(const QualifiedName&, Document&, bool createdByParser);
 
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
@@ -61,13 +61,15 @@ private:
     virtual void finishParsingChildren();
 
     virtual bool isLoading() const { return m_styleSheetOwner.isLoading(); }
-    virtual bool sheetLoaded() OVERRIDE { return m_styleSheetOwner.sheetLoaded(&document()); }
-    virtual void startLoadingDynamicSheet() OVERRIDE { m_styleSheetOwner.startLoadingDynamicSheet(&document()); }
+    virtual bool sheetLoaded() OVERRIDE { return m_styleSheetOwner.sheetLoaded(document()); }
+    virtual void startLoadingDynamicSheet() OVERRIDE { m_styleSheetOwner.startLoadingDynamicSheet(document()); }
     virtual Timer<SVGElement>* svgLoadEventTimer() OVERRIDE { return &m_svgLoadEventTimer; }
 
     InlineStyleSheetOwner m_styleSheetOwner;
     Timer<SVGElement> m_svgLoadEventTimer;
 };
+
+ELEMENT_TYPE_CASTS(SVGStyleElement)
 
 } // namespace WebCore
 

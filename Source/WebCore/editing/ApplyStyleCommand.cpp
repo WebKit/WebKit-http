@@ -116,16 +116,14 @@ bool isEmptyFontTag(const Element* element, ShouldStyleAttributeBeEmpty shouldSt
     return hasNoAttributeOrOnlyStyleAttribute(toHTMLElement(element), shouldStyleAttributeBeEmpty);
 }
 
-static PassRefPtr<Element> createFontElement(Document* document)
+static PassRefPtr<Element> createFontElement(Document& document)
 {
-    RefPtr<Element> fontNode = createHTMLElement(document, fontTag);
-    return fontNode.release();
+    return createHTMLElement(document, fontTag);
 }
 
-PassRefPtr<HTMLElement> createStyleSpanElement(Document* document)
+PassRefPtr<HTMLElement> createStyleSpanElement(Document& document)
 {
-    RefPtr<HTMLElement> styleElement = createHTMLElement(document, spanTag);
-    return styleElement.release();
+    return createHTMLElement(document, spanTag);
 }
 
 ApplyStyleCommand::ApplyStyleCommand(Document& document, const EditingStyle* style, EditAction editingAction, EPropertyLevel propertyLevel)
@@ -392,7 +390,7 @@ void ApplyStyleCommand::applyRelativeFontStyleChange(EditingStyle* style)
         } else if (node->isTextNode() && node->renderer() && node->parentNode() != lastStyledNode) {
             // Last styled node was not parent node of this text node, but we wish to style this
             // text node. To make this possible, add a style span to surround this text node.
-            RefPtr<HTMLElement> span = createStyleSpanElement(&document());
+            RefPtr<HTMLElement> span = createStyleSpanElement(document());
             surroundNodeRangeWithElement(node, node, span.get());
             element = span.release();
         }  else {
@@ -1020,6 +1018,8 @@ void ApplyStyleCommand::applyInlineStyleToPushDown(Node* node, EditingStyle* sty
 
     if (node->renderer()->isText() && static_cast<RenderText*>(node->renderer())->isAllCollapsibleWhitespace())
         return;
+    if (node->renderer()->isBR() && !node->renderer()->style()->preserveNewline())
+        return;
 
     // We can't wrap node with the styled element here because new styled element will never be removed if we did.
     // If we modified the child pointer in pushDownInlineStyleAroundNode to point to new style element
@@ -1037,14 +1037,15 @@ void ApplyStyleCommand::pushDownInlineStyleAroundNode(EditingStyle* style, Node*
     RefPtr<Node> current = highestAncestor;
     // Along the way, styled elements that contain targetNode are removed and accumulated into elementsToPushDown.
     // Each child of the removed element, exclusing ancestors of targetNode, is then wrapped by clones of elements in elementsToPushDown.
-    Vector<RefPtr<Element> > elementsToPushDown;
+    Vector<Ref<Element>> elementsToPushDown;
     while (current && current != targetNode && current->contains(targetNode)) {
         NodeVector currentChildren;
-        getChildNodes(current.get(), currentChildren);
+        getChildNodes(*current.get(), currentChildren);
+
         RefPtr<StyledElement> styledElement;
         if (current->isStyledElement() && isStyledInlineElementToRemove(toElement(current.get()))) {
             styledElement = static_cast<StyledElement*>(current.get());
-            elementsToPushDown.append(styledElement);
+            elementsToPushDown.append(*styledElement);
         }
 
         RefPtr<EditingStyle> styleToPushDown = EditingStyle::create();
@@ -1054,26 +1055,26 @@ void ApplyStyleCommand::pushDownInlineStyleAroundNode(EditingStyle* style, Node*
         // The inner loop will go through children on each level
         // FIXME: we should aggregate inline child elements together so that we don't wrap each child separately.
         for (size_t i = 0; i < currentChildren.size(); ++i) {
-            Node* child = currentChildren[i].get();
-            if (!child->parentNode())
+            Node& child = currentChildren[i].get();
+            if (!child.parentNode())
                 continue;
-            if (!child->contains(targetNode) && elementsToPushDown.size()) {
+            if (!child.contains(targetNode) && elementsToPushDown.size()) {
                 for (size_t i = 0; i < elementsToPushDown.size(); i++) {
                     RefPtr<Element> wrapper = elementsToPushDown[i]->cloneElementWithoutChildren();
                     wrapper->removeAttribute(styleAttr);
-                    surroundNodeRangeWithElement(child, child, wrapper);
+                    surroundNodeRangeWithElement(&child, &child, wrapper);
                 }
             }
 
             // Apply style to all nodes containing targetNode and their siblings but NOT to targetNode
             // But if we've removed styledElement then go ahead and always apply the style.
-            if (child != targetNode || styledElement)
-                applyInlineStyleToPushDown(child, styleToPushDown.get());
+            if (&child != targetNode || styledElement)
+                applyInlineStyleToPushDown(&child, styleToPushDown.get());
 
             // We found the next node for the outer loop (contains targetNode)
             // When reached targetNode, stop the outer loop upon the completion of the current inner loop
-            if (child == targetNode || child->contains(targetNode))
-                current = child;
+            if (&child == targetNode || child.contains(targetNode))
+                current = &child;
         }
     }
 }
@@ -1415,7 +1416,7 @@ Position ApplyStyleCommand::positionToComputeInlineStyleChange(PassRefPtr<Node> 
 {
     // It's okay to obtain the style at the startNode because we've removed all relevant styles from the current run.
     if (!startNode->isElementNode()) {
-        dummyElement = createStyleSpanElement(&document());
+        dummyElement = createStyleSpanElement(document());
         insertNodeAt(dummyElement, positionBeforeNode(startNode.get()));
         return firstPositionInOrBeforeNode(dummyElement.get());
     }
@@ -1455,7 +1456,7 @@ void ApplyStyleCommand::applyInlineStyleChange(PassRefPtr<Node> passedStart, Pas
             if (styleChange.applyFontSize())
                 setNodeAttribute(fontContainer, sizeAttr, styleChange.fontSize());
         } else {
-            RefPtr<Element> fontElement = createFontElement(&document());
+            RefPtr<Element> fontElement = createFontElement(document());
             if (styleChange.applyFontColor())
                 fontElement->setAttribute(colorAttr, styleChange.fontColor());
             if (styleChange.applyFontFace())
@@ -1479,28 +1480,28 @@ void ApplyStyleCommand::applyInlineStyleChange(PassRefPtr<Node> passedStart, Pas
             } else
                 setNodeAttribute(styleContainer, styleAttr, styleChange.cssStyle());
         } else {
-            RefPtr<Element> styleElement = createStyleSpanElement(&document());
+            RefPtr<Element> styleElement = createStyleSpanElement(document());
             styleElement->setAttribute(styleAttr, styleChange.cssStyle());
             surroundNodeRangeWithElement(startNode, endNode, styleElement.release());
         }
     }
 
     if (styleChange.applyBold())
-        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(&document(), bTag));
+        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(document(), bTag));
 
     if (styleChange.applyItalic())
-        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(&document(), iTag));
+        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(document(), iTag));
 
     if (styleChange.applyUnderline())
-        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(&document(), uTag));
+        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(document(), uTag));
 
     if (styleChange.applyLineThrough())
-        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(&document(), strikeTag));
+        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(document(), strikeTag));
 
     if (styleChange.applySubscript())
-        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(&document(), subTag));
+        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(document(), subTag));
     else if (styleChange.applySuperscript())
-        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(&document(), supTag));
+        surroundNodeRangeWithElement(startNode, endNode, createHTMLElement(document(), supTag));
 
     if (m_styledInlineElement && addStyledElement == AddStyledElement)
         surroundNodeRangeWithElement(startNode, endNode, m_styledInlineElement->cloneElementWithoutChildren());

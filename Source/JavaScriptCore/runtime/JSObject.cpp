@@ -1192,8 +1192,11 @@ void JSObject::putDirectAccessor(ExecState* exec, PropertyName propertyName, JSV
         return;
     }
 
-    VM& vm = exec->vm();
+    putDirectNonIndexAccessor(exec->vm(), propertyName, value, attributes);
+}
 
+void JSObject::putDirectNonIndexAccessor(VM& vm, PropertyName propertyName, JSValue value, unsigned attributes)
+{
     PutPropertySlot slot;
     putDirectInternal<PutModeDefineOwnProperty>(vm, propertyName, value, attributes, slot, getCallableObject(value));
 
@@ -1632,11 +1635,13 @@ NEVER_INLINE void JSObject::fillGetterPropertySlot(PropertySlot& slot, JSValue g
 
 void JSObject::putIndexedDescriptor(ExecState* exec, SparseArrayEntry* entryInMap, const PropertyDescriptor& descriptor, PropertyDescriptor& oldDescriptor)
 {
+    VM& vm = exec->vm();
+
     if (descriptor.isDataDescriptor()) {
         if (descriptor.value())
-            entryInMap->set(exec->vm(), this, descriptor.value());
+            entryInMap->set(vm, this, descriptor.value());
         else if (oldDescriptor.isAccessorDescriptor())
-            entryInMap->set(exec->vm(), this, jsUndefined());
+            entryInMap->set(vm, this, jsUndefined());
         entryInMap->attributes = descriptor.attributesOverridingCurrent(oldDescriptor) & ~Accessor;
         return;
     }
@@ -1653,13 +1658,13 @@ void JSObject::putIndexedDescriptor(ExecState* exec, SparseArrayEntry* entryInMa
         else if (oldDescriptor.isAccessorDescriptor())
             setter = oldDescriptor.setterObject();
 
-        GetterSetter* accessor = GetterSetter::create(exec);
+        GetterSetter* accessor = GetterSetter::create(vm);
         if (getter)
-            accessor->setGetter(exec->vm(), getter);
+            accessor->setGetter(vm, getter);
         if (setter)
-            accessor->setSetter(exec->vm(), setter);
+            accessor->setSetter(vm, setter);
 
-        entryInMap->set(exec->vm(), this, accessor);
+        entryInMap->set(vm, this, accessor);
         entryInMap->attributes = descriptor.attributesOverridingCurrent(oldDescriptor) & ~ReadOnly;
         return;
     }
@@ -2196,22 +2201,22 @@ bool JSObject::putDirectIndexBeyondVectorLength(ExecState* exec, unsigned i, JSV
     }
 }
 
-void JSObject::putDirectNativeFunction(ExecState* exec, JSGlobalObject* globalObject, const PropertyName& propertyName, unsigned functionLength, NativeFunction nativeFunction, Intrinsic intrinsic, unsigned attributes)
+void JSObject::putDirectNativeFunction(VM& vm, JSGlobalObject* globalObject, const PropertyName& propertyName, unsigned functionLength, NativeFunction nativeFunction, Intrinsic intrinsic, unsigned attributes)
 {
     StringImpl* name = propertyName.publicName();
     ASSERT(name);
-    
-    JSFunction* function = JSFunction::create(exec, globalObject, functionLength, name, nativeFunction, intrinsic);
-    putDirect(exec->vm(), propertyName, function, attributes);
+
+    JSFunction* function = JSFunction::create(vm, globalObject, functionLength, name, nativeFunction, intrinsic);
+    putDirect(vm, propertyName, function, attributes);
 }
 
-void JSObject::putDirectNativeFunctionWithoutTransition(ExecState* exec, JSGlobalObject* globalObject, const PropertyName& propertyName, unsigned functionLength, NativeFunction nativeFunction, Intrinsic intrinsic, unsigned attributes)
+void JSObject::putDirectNativeFunctionWithoutTransition(VM& vm, JSGlobalObject* globalObject, const PropertyName& propertyName, unsigned functionLength, NativeFunction nativeFunction, Intrinsic intrinsic, unsigned attributes)
 {
     StringImpl* name = propertyName.publicName();
     ASSERT(name);
-    
-    JSFunction* function = JSFunction::create(exec, globalObject, functionLength, name, nativeFunction, intrinsic);
-    putDirectWithoutTransition(exec->vm(), propertyName, function, attributes);
+
+    JSFunction* function = JSFunction::create(vm, globalObject, functionLength, name, nativeFunction, intrinsic);
+    putDirectWithoutTransition(vm, propertyName, function, attributes);
 }
 
 ALWAYS_INLINE unsigned JSObject::getNewVectorLength(unsigned currentVectorLength, unsigned currentLength, unsigned desiredLength)
@@ -2396,13 +2401,14 @@ bool JSObject::getOwnPropertyDescriptor(ExecState* exec, PropertyName propertyNa
 
 static bool putDescriptor(ExecState* exec, JSObject* target, PropertyName propertyName, const PropertyDescriptor& descriptor, unsigned attributes, const PropertyDescriptor& oldDescriptor)
 {
+    VM& vm = exec->vm();
     if (descriptor.isGenericDescriptor() || descriptor.isDataDescriptor()) {
         if (descriptor.isGenericDescriptor() && oldDescriptor.isAccessorDescriptor()) {
-            GetterSetter* accessor = GetterSetter::create(exec);
+            GetterSetter* accessor = GetterSetter::create(vm);
             if (oldDescriptor.getterPresent())
-                accessor->setGetter(exec->vm(), oldDescriptor.getterObject());
+                accessor->setGetter(vm, oldDescriptor.getterObject());
             if (oldDescriptor.setterPresent())
-                accessor->setSetter(exec->vm(), oldDescriptor.setterObject());
+                accessor->setSetter(vm, oldDescriptor.setterObject());
             target->putDirectAccessor(exec, propertyName, accessor, attributes | Accessor);
             return true;
         }
@@ -2411,22 +2417,22 @@ static bool putDescriptor(ExecState* exec, JSObject* target, PropertyName proper
             newValue = descriptor.value();
         else if (oldDescriptor.value())
             newValue = oldDescriptor.value();
-        target->putDirect(exec->vm(), propertyName, newValue, attributes & ~Accessor);
+        target->putDirect(vm, propertyName, newValue, attributes & ~Accessor);
         if (attributes & ReadOnly)
             target->structure()->setContainsReadOnlyProperties();
         return true;
     }
     attributes &= ~ReadOnly;
-    GetterSetter* accessor = GetterSetter::create(exec);
+    GetterSetter* accessor = GetterSetter::create(vm);
 
     if (descriptor.getterPresent())
-        accessor->setGetter(exec->vm(), descriptor.getterObject());
+        accessor->setGetter(vm, descriptor.getterObject());
     else if (oldDescriptor.getterPresent())
-        accessor->setGetter(exec->vm(), oldDescriptor.getterObject());
+        accessor->setGetter(vm, oldDescriptor.getterObject());
     if (descriptor.setterPresent())
-        accessor->setSetter(exec->vm(), descriptor.setterObject());
+        accessor->setSetter(vm, descriptor.setterObject());
     else if (oldDescriptor.setterPresent())
-        accessor->setSetter(exec->vm(), oldDescriptor.setterObject());
+        accessor->setSetter(vm, oldDescriptor.setterObject());
 
     target->putDirectAccessor(exec, propertyName, accessor, attributes | Accessor);
     return true;

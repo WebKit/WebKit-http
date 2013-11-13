@@ -147,26 +147,6 @@ TextTrack::~TextTrack()
     clearClient();
 }
 
-const AtomicString& TextTrack::interfaceName() const
-{
-    return eventNames().interfaceForTextTrack;
-}
-
-ScriptExecutionContext* TextTrack::scriptExecutionContext() const
-{
-    return m_scriptExecutionContext;
-}
-
-EventTargetData* TextTrack::eventTargetData()
-{
-    return &m_eventTargetData;
-}
-
-EventTargetData& TextTrack::ensureEventTargetData()
-{
-    return m_eventTargetData;
-}
-
 bool TextTrack::isValidKind(const AtomicString& value) const
 {
     return TextTrack::isValidKindKeyword(value);

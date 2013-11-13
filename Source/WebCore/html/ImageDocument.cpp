@@ -30,7 +30,6 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "ExceptionCodePlaceholder.h"
-#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
@@ -38,10 +37,12 @@
 #include "HTMLImageElement.h"
 #include "HTMLNames.h"
 #include "LocalizedStrings.h"
+#include "MainFrame.h"
 #include "MouseEvent.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "RawDataDocumentParser.h"
+#include "RenderElement.h"
 #include "ResourceBuffer.h"
 #include "Settings.h"
 
@@ -99,12 +100,12 @@ private:
 
 class ImageDocumentElement FINAL : public HTMLImageElement {
 public:
-    static PassRefPtr<ImageDocumentElement> create(ImageDocument*);
+    static PassRefPtr<ImageDocumentElement> create(ImageDocument&);
 
 private:
-    ImageDocumentElement(ImageDocument* document)
+    ImageDocumentElement(ImageDocument& document)
         : HTMLImageElement(imgTag, document)
-        , m_imageDocument(document)
+        , m_imageDocument(&document)
     {
     }
 
@@ -114,7 +115,7 @@ private:
     ImageDocument* m_imageDocument;
 };
 
-inline PassRefPtr<ImageDocumentElement> ImageDocumentElement::create(ImageDocument* document)
+inline PassRefPtr<ImageDocumentElement> ImageDocumentElement::create(ImageDocument& document)
 {
     return adoptRef(new ImageDocumentElement(document));
 }
@@ -176,7 +177,7 @@ void ImageDocumentParser::finish()
     
 // --------
 
-ImageDocument::ImageDocument(Frame* frame, const KURL& url)
+ImageDocument::ImageDocument(Frame* frame, const URL& url)
     : HTMLDocument(frame, url, ImageDocumentClass)
     , m_imageElement(0)
     , m_imageSizeIsKnown(false)
@@ -206,7 +207,7 @@ void ImageDocument::createDocumentStructure()
     
     rootElement->appendChild(body, IGNORE_EXCEPTION);
     
-    RefPtr<ImageDocumentElement> imageElement = ImageDocumentElement::create(this);
+    RefPtr<ImageDocumentElement> imageElement = ImageDocumentElement::create(*this);
     
     imageElement->setAttribute(styleAttr, "-webkit-user-select: none");        
     imageElement->setLoadManually(true);
@@ -373,7 +374,7 @@ CachedImage* ImageDocument::cachedImage()
 
 bool ImageDocument::shouldShrinkToFit() const
 {
-    return frame()->settings().shrinksStandaloneImagesToFit() && frame()->page()->frameIsMainFrame(frame());
+    return frame()->settings().shrinksStandaloneImagesToFit() && frame()->isMainFrame();
 }
 
 void ImageEventListener::handleEvent(ScriptExecutionContext*, Event* event)

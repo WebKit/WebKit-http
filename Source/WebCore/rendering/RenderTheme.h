@@ -91,7 +91,9 @@ public:
     virtual String extraQuirksStyleSheet() { return String(); }
     virtual String extraPlugInsStyleSheet() { return String(); }
 #if ENABLE(VIDEO)
+    virtual String mediaControlsStyleSheet() { return String(); }
     virtual String extraMediaControlsStyleSheet() { return String(); }
+    virtual String mediaControlsScript() { return String() ; }
 #endif
 #if ENABLE(FULLSCREEN_API)
     virtual String extraFullScreenStyleSheet() { return String(); }
@@ -189,6 +191,7 @@ public:
     virtual double animationRepeatIntervalForProgressBar(RenderProgress*) const;
     // Returns the duration of the animation for the progress bar.
     virtual double animationDurationForProgressBar(RenderProgress*) const;
+    virtual IntRect progressBarRectForBounds(const RenderObject*, const IntRect&) const;
 #endif
 
 #if ENABLE(VIDEO)

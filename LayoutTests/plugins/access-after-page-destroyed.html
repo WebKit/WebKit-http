@@ -1,30 +1,40 @@
 <html>
 <head>
-<script>
-if (window.testRunner) {
-    testRunner.setCanOpenWindows();
-    testRunner.dumpAsText();
-    testRunner.waitUntilDone();
-}
-
-var w = open();
-var p = w.navigator.mimeTypes.item(0);
-w.close();
-w = open();
-p = w.navigator.mimeTypes.item(0);
-w.navigator.plugins.refresh();
-w.close();
-w = null;
-
-setTimeout(function(){
-    p.enabledPlugin;
-    if (window.testRunner)
-        testRunner.notifyDone();
-}, 50); // Pause is necessary for the page to get freed
-
-</script>
+<script src="../resources/js-test-pre.js"></script>
 </head>
 <body>
-If the page does not trigger a crash the test passed.
+<p>If the page does not trigger a crash the test passed.</p>
+<div id=console></div>
+<script>
+if (window.testRunner)
+    testRunner.setCanOpenWindows();
+
+jsTestIsAsync = true;
+
+function test()
+{
+    var w = open();
+    var p = w.navigator.mimeTypes.item(0);
+    if (!p)
+        testFailed("navigator.mimeTypes is " + p);
+    w.close();
+    w = null;
+
+    setTimeout(gc, 0);
+
+    setTimeout(function() {
+        try {
+            p.enabledPlugin;
+        } catch (ex) {
+            testFailed(ex.toString());
+        }
+        finishJSTest();
+    }, 50); // Pause is necessary for the page to get freed
+}
+
+onload = test;
+
+</script>
+<script src="../resources/js-test-post.js"></script>
 </body>
 </html>

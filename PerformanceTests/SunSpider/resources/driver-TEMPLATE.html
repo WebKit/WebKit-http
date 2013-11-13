@@ -29,7 +29,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 -->
 
-<title>SunSpider 1.0.1 JavaScript Benchmark (@SUITE@ test suite - In Progress...)</title>
+<title>SunSpider 1.0.2 JavaScript Benchmark (@SUITE@ test suite - In Progress...)</title>
 <link rel="stylesheet" href="../sunspider.css">
 </head>
 
@@ -53,16 +53,13 @@ for (var i = 0; i < output.length; i++) {
 
 function start() 
 {
-    window.setTimeout(reallyNext, 500);
+    window.setTimeout(next, 500);
 }
 
-function next() 
+function next()
 {
-    window.setTimeout(reallyNext, 0);
-}
+    var timeout = window.setTimeout(next, 0);
 
-function reallyNext() 
-{
     document.getElementById("frameparent").innerHTML = "";
     document.getElementById("frameparent").innerHTML = "<iframe id='testframe'>";
     var testFrame = document.getElementById("testframe");
@@ -77,6 +74,7 @@ function reallyNext()
         testFrame.contentDocument.write(testContents[testIndex]);
         testFrame.contentDocument.close();
     } else {
+        window.clearTimeout(timeout);
         finish();
     }
 }
@@ -85,7 +83,6 @@ function recordResult(time)
 {
     if (currentRepeat >= 0) // negative repeats are warmups
         output[currentRepeat][tests[testIndex]] = time;
-    next();
 }
 
 function finish()

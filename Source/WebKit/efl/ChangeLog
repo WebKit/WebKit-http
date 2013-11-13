@@ -1,3 +1,116 @@
+2013-09-30  Sam Weinig  <sam@webkit.org>
+
+        Fix the build.
+
+        * ewk/ewk_settings.cpp:
+
+2013-09-30  Sam Weinig  <sam@webkit.org>
+
+        Remove support for DOMFileSystem
+        https://bugs.webkit.org/show_bug.cgi?id=122137
+
+        Reviewed by Anders Carlsson.
+
+        * ewk/ewk_settings.cpp:
+        (ewk_settings_file_system_path_set):
+
+2013-09-28  Darin Adler  <darin@apple.com>
+
+        Add Frame::mainFrame and Frame::isMainFrame
+        https://bugs.webkit.org/show_bug.cgi?id=122064
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::dispatchWillSendRequest):
+        (WebCore::FrameLoaderClientEfl::assignIdentifierToInitialRequest):
+        (WebCore::FrameLoaderClientEfl::updateGlobalHistory):
+        Call isMainFrame.
+
+2013-09-26  Darin Adler  <darin@apple.com>
+
+        rename KURL to URL
+        https://bugs.webkit.org/show_bug.cgi?id=16214
+
+        Reviewed by Andreas Kling.
+
+        * many files: Renamed, using script.
+
+2013-09-27  Darin Adler  <darin@apple.com>
+
+        Add empty MainFrame class
+        https://bugs.webkit.org/show_bug.cgi?id=121770
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/AcceleratedCompositingContextEfl.cpp:
+        * WebCoreSupport/InspectorClientEfl.cpp:
+        * ewk/ewk_view.cpp:
+        Include MainFrame.h instead of Frame.h as needed.
+
+2013-09-25  Brent Fulgham  <bfulgham@apple.com>
+
+        Refactor RuntimeEnabledFeatures as a Singleton.
+        https://bugs.webkit.org/show_bug.cgi?id=121883.
+
+        Reviewed by Jer Noble.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::setCSSRegionsEnabled): Use singleton.
+        (DumpRenderTreeSupportEfl::setSeamlessIFramesEnabled): Ditto.
+        * ewk/ewk_settings.cpp:
+        (ewk_settings_shadow_dom_enable_get): Ditto.
+        (ewk_settings_shadow_dom_enable_set):
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new): Ditto.
+
+2013-09-20  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Do not expose aria-help in ATK based platforms
+        https://bugs.webkit.org/show_bug.cgi?id=121675
+
+        Reviewed by Chris Fleizach.
+
+        Removed accessibilityHelpText() helper method from
+        DumpRenderSupportEfl's API, since it's not longer needed.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp: Removed method.
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h: Ditto.
+
+2013-09-16  Enrica Casucci  <enrica@apple.com>
+
+        Remove unused function didSetSelectionTypesForPasteboard from EditorClient.
+        https://bugs.webkit.org/show_bug.cgi?id=121464
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/EditorClientEfl.cpp:
+        * WebCoreSupport/EditorClientEfl.h:
+
+2013-09-12  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        Remove home-brewed nullptr
+        https://bugs.webkit.org/show_bug.cgi?id=119624
+
+        Reviewed by Anders Carlsson.
+
+        The standard C++11 nullptr and std::nullptr_t type should be used now.
+
+        * tests/UnitTestUtils/EWKTestView.cpp:
+
+2013-09-10  Marcelo Morais  <m.morais@samsung.com>
+
+        [EFL] WebInspector: Move to new webinspector
+        https://bugs.webkit.org/show_bug.cgi?id=119559
+
+        Reviewed by Gyuyoung Kim.
+
+        Loading the new Web Inspector page instead of the old inspector.
+        Co-author: Andre Loureiro <andre.vl@samsung.com>
+
+        * WebCoreSupport/InspectorClientEfl.cpp:
+        (WebCore::InspectorClientEfl::openInspectorFrontend):
+
 2013-09-05  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [CMAKE] Add c++0x into CXX_FLAGS as a default

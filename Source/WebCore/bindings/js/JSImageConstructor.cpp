@@ -39,11 +39,11 @@ JSImageConstructor::JSImageConstructor(Structure* structure, JSDOMGlobalObject* 
 {
 }
 
-void JSImageConstructor::finishCreation(ExecState* exec, JSDOMGlobalObject* globalObject)
+void JSImageConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)
 {
     Base::finishCreation(globalObject);
     ASSERT(inherits(info()));
-    putDirect(exec->vm(), exec->propertyNames().prototype, JSHTMLImageElementPrototype::self(exec, globalObject), None);
+    putDirect(vm, vm.propertyNames->prototype, JSHTMLImageElementPrototype::self(vm, globalObject), None);
 }
 
 static EncodedJSValue JSC_HOST_CALL constructImage(ExecState* exec)
@@ -71,7 +71,7 @@ static EncodedJSValue JSC_HOST_CALL constructImage(ExecState* exec)
     }
 
     return JSValue::encode(asObject(toJS(exec, jsConstructor->globalObject(),
-        HTMLImageElement::createForJSConstructor(document, optionalWidth, optionalHeight))));
+        HTMLImageElement::createForJSConstructor(*document, optionalWidth, optionalHeight))));
 }
 
 ConstructType JSImageConstructor::getConstructData(JSCell*, ConstructData& constructData)

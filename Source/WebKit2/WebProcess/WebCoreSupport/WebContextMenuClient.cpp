@@ -34,8 +34,8 @@
 #include "WebPage.h"
 #include <WebCore/ContextMenu.h>
 #include <WebCore/Event.h>
-#include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
+#include <WebCore/MainFrame.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
 #include <WebCore/UserGestureIndicator.h>
@@ -68,7 +68,7 @@ void WebContextMenuClient::contextMenuItemSelected(ContextMenuItem*, const Conte
     notImplemented();
 }
 
-void WebContextMenuClient::downloadURL(const KURL&)
+void WebContextMenuClient::downloadURL(const URL&)
 {
     // This is handled in the UI process.
     ASSERT_NOT_REACHED();
@@ -86,7 +86,7 @@ void WebContextMenuClient::searchWithGoogle(const Frame* frame)
 
     if (Page* page = frame->page()) {
         UserGestureIndicator indicator(DefinitelyProcessingUserGesture);
-        page->mainFrame().loader().urlSelected(KURL(ParsedURLString, url), String(), 0, false, false, MaybeSendReferrer);
+        page->mainFrame().loader().urlSelected(URL(ParsedURLString, url), String(), 0, false, false, MaybeSendReferrer);
     }
 }
 #endif

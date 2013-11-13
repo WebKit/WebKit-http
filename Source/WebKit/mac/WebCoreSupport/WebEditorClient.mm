@@ -91,9 +91,6 @@ static WebViewInsertAction kit(EditorInsertAction coreAction)
     return static_cast<WebViewInsertAction>(coreAction);
 }
 
-static const int InvalidCorrectionPanelTag = 0;
-
-
 @interface WebUndoStep : NSObject
 {
     RefPtr<UndoStep> m_step;   
@@ -329,11 +326,6 @@ void WebEditorClient::willWriteSelectionToPasteboard(WebCore::Range*)
 void WebEditorClient::getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer> >& pasteboardData)
 {
     // Not implemented WebKit, only WebKit2.
-}
-
-void WebEditorClient::didSetSelectionTypesForPasteboard()
-{
-    [[m_webView _editingDelegateForwarder] webView:m_webView didSetSelectionTypesForPasteboard:[NSPasteboard generalPasteboard]];
 }
 
 NSString *WebEditorClient::userVisibleString(NSURL *URL)

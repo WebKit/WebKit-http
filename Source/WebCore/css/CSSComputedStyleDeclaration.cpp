@@ -339,6 +339,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitPerspectiveOrigin,
     CSSPropertyWebkitPrintColorAdjust,
     CSSPropertyWebkitRtlOrdering,
+#if PLATFORM(IOS)
+    CSSPropertyWebkitTouchCallout,
+#endif
 #if ENABLE(CSS_SHAPES)
     CSSPropertyWebkitShapeInside,
     CSSPropertyWebkitShapeOutside,
@@ -354,6 +357,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitTextFillColor,
     CSSPropertyWebkitTextOrientation,
     CSSPropertyWebkitTextSecurity,
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+    CSSPropertyWebkitTextSizeAdjust,
+#endif
     CSSPropertyWebkitTextStrokeColor,
     CSSPropertyWebkitTextStrokeWidth,
     CSSPropertyWebkitTransform,
@@ -700,7 +706,7 @@ PassRefPtr<CSSPrimitiveValue> ComputedStyleExtractor::currentColorOrValidColor(R
     return cssValuePool().createColorValue(color.rgb());
 }
 
-static PassRefPtr<CSSValueList> getBorderRadiusCornerValues(LengthSize radius, const RenderStyle* style, RenderView* renderView)
+static PassRefPtr<CSSValueList> getBorderRadiusCornerValues(const LengthSize& radius, const RenderStyle* style, RenderView* renderView)
 {
     RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
     if (radius.width().type() == Percent)
@@ -714,7 +720,7 @@ static PassRefPtr<CSSValueList> getBorderRadiusCornerValues(LengthSize radius, c
     return list.release();
 }
 
-static PassRefPtr<CSSValue> getBorderRadiusCornerValue(LengthSize radius, const RenderStyle* style, RenderView* renderView)
+static PassRefPtr<CSSValue> getBorderRadiusCornerValue(const LengthSize& radius, const RenderStyle* style, RenderView* renderView)
 {
     if (radius.width() == radius.height()) {
         if (radius.width().type() == Percent)
@@ -1216,7 +1222,8 @@ static PassRefPtr<CSSValue> getDurationValue(const AnimationList* animList)
 
 static PassRefPtr<CSSValue> createTimingFunctionValue(const TimingFunction* timingFunction)
 {
-    if (timingFunction->isCubicBezierTimingFunction()) {
+    switch (timingFunction->type()) {
+    case TimingFunction::CubicBezierFunction: {
         const CubicBezierTimingFunction* bezierTimingFunction = static_cast<const CubicBezierTimingFunction*>(timingFunction);
         if (bezierTimingFunction->timingFunctionPreset() != CubicBezierTimingFunction::Custom) {
             CSSValueID valueId = CSSValueInvalid;
@@ -1241,13 +1248,15 @@ static PassRefPtr<CSSValue> createTimingFunctionValue(const TimingFunction* timi
         }
         return CSSCubicBezierTimingFunctionValue::create(bezierTimingFunction->x1(), bezierTimingFunction->y1(), bezierTimingFunction->x2(), bezierTimingFunction->y2());
     }
-
-    if (timingFunction->isStepsTimingFunction()) {
+    case TimingFunction::StepsFunction: {
         const StepsTimingFunction* stepsTimingFunction = static_cast<const StepsTimingFunction*>(timingFunction);
         return CSSStepsTimingFunctionValue::create(stepsTimingFunction->numberOfSteps(), stepsTimingFunction->stepAtStart());
     }
-
-    return CSSLinearTimingFunctionValue::create();
+    case TimingFunction::LinearFunction:
+        return cssValuePool().createIdentifierValue(CSSValueLinear);
+    }
+    ASSERT_NOT_REACHED();
+    return 0;
 }
 
 static PassRefPtr<CSSValue> getTimingFunctionValue(const AnimationList* animList)
@@ -1580,7 +1589,7 @@ static PassRefPtr<CSSPrimitiveValue> fontWeightFromStyle(RenderStyle* style)
     return cssValuePool().createIdentifierValue(CSSValueNormal);
 }
 
-typedef Length (RenderStyle::*RenderStyleLengthGetter)() const;
+typedef const Length& (RenderStyle::*RenderStyleLengthGetter)() const;
 typedef LayoutUnit (RenderBoxModelObject::*RenderBoxComputedCSSValueGetter)() const;
 
 template<RenderStyleLengthGetter lengthGetter, RenderBoxComputedCSSValueGetter computedCSSValueGetter>
@@ -1687,7 +1696,7 @@ static inline PassRefPtr<RenderStyle> computeRenderStyleForProperty(Node* styled
 
     if (renderer && renderer->isComposited() && AnimationController::supportsAcceleratedAnimationOfProperty(propertyID)) {
         AnimationUpdateBlock animationUpdateBlock(&renderer->animation());
-        RefPtr<RenderStyle> style = renderer->animation().getAnimatedStyleForRenderer(renderer);
+        RefPtr<RenderStyle> style = renderer->animation().getAnimatedStyleForRenderer(toRenderElement(renderer));
         if (pseudoElementSpecifier && !styledNode->isPseudoElement()) {
             // FIXME: This cached pseudo style will only exist if the animation has been run at least once.
             return style->getCachedPseudoStyle(pseudoElementSpecifier);
@@ -1705,7 +1714,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         return 0;
 
     RefPtr<RenderStyle> style;
-    RenderObject* renderer;
+    RenderObject* renderer = 0;
     bool forceFullLayout = false;
     if (updateLayout) {
         Document& document = styledNode->document();
@@ -2128,6 +2137,8 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return valueForGridPosition(style->gridItemRowStart());
         case CSSPropertyWebkitGridRowEnd:
             return valueForGridPosition(style->gridItemRowEnd());
+        case CSSPropertyWebkitGridArea:
+            return getCSSPropertyValuesForGridShorthand(webkitGridAreaShorthand());
         case CSSPropertyWebkitGridColumn:
             return getCSSPropertyValuesForGridShorthand(webkitGridColumnShorthand());
         case CSSPropertyWebkitGridRow:
@@ -2386,6 +2397,14 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return cssValuePool().createIdentifierValue(CSSValueClip);
         case CSSPropertyWebkitTextSecurity:
             return cssValuePool().createValue(style->textSecurity());
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+        case CSSPropertyWebkitTextSizeAdjust:
+            if (style->textSizeAdjust().isAuto())
+                return cssValuePool().createIdentifierValue(CSSValueAuto);
+            if (style->textSizeAdjust().isNone())
+                return cssValuePool().createIdentifierValue(CSSValueNone);
+            return CSSPrimitiveValue::create(style->textSizeAdjust().percentage(), CSSPrimitiveValue::CSS_PERCENTAGE);
+#endif
         case CSSPropertyWebkitTextStrokeColor:
             return currentColorOrValidColor(style.get(), style->textStrokeColor());
         case CSSPropertyWebkitTextStrokeWidth:
@@ -2676,6 +2695,10 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyWebkitTapHighlightColor:
             return currentColorOrValidColor(style.get(), style->tapHighlightColor());
 #endif
+#if PLATFORM(IOS)
+        case CSSPropertyWebkitTouchCallout:
+            return cssValuePool().createIdentifierValue(style->touchCalloutEnabled() ? CSSValueDefault : CSSValueNone);
+#endif
         case CSSPropertyWebkitUserDrag:
             return cssValuePool().createValue(style->userDrag());
         case CSSPropertyWebkitUserSelect:
@@ -2790,7 +2813,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyWebkitClipPath:
             if (ClipPathOperation* operation = style->clipPath()) {
                 if (operation->getOperationType() == ClipPathOperation::SHAPE)
-                    return valueForBasicShape(static_cast<ShapeClipPathOperation*>(operation)->basicShape());
+                    return valueForBasicShape(style.get(), static_cast<ShapeClipPathOperation*>(operation)->basicShape());
 #if ENABLE(SVG)
                 else if (operation->getOperationType() == ClipPathOperation::REFERENCE) {
                     ReferenceClipPathOperation* referenceOperation = static_cast<ReferenceClipPathOperation*>(operation);
@@ -2833,7 +2856,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
                 return cssValuePool().createIdentifierValue(CSSValueNone);
             }
             ASSERT(style->shapeInside()->type() == ShapeValue::Shape);
-            return valueForBasicShape(style->shapeInside()->shape());
+            return valueForBasicShape(style.get(), style->shapeInside()->shape());
         case CSSPropertyWebkitShapeOutside:
             if (!style->shapeOutside())
                 return cssValuePool().createIdentifierValue(CSSValueAuto);
@@ -2843,7 +2866,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
                 return cssValuePool().createIdentifierValue(CSSValueNone);
             }
             ASSERT(style->shapeOutside()->type() == ShapeValue::Shape);
-            return valueForBasicShape(style->shapeOutside()->shape());
+            return valueForBasicShape(style.get(), style->shapeOutside()->shape());
 #endif
 #if ENABLE(CSS_FILTERS)
         case CSSPropertyWebkitFilter:

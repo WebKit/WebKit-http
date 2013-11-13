@@ -63,7 +63,7 @@ void RenderMathMLFraction::updateFromElement()
     if (isEmpty()) 
         return;
     
-    Element* fraction = toElement(node());
+    Element* fraction = element();
     
     RenderObject* numeratorWrapper = firstChild();
     RenderObject* denominatorWrapper = numeratorWrapper->nextSibling();
@@ -102,9 +102,9 @@ void RenderMathMLFraction::addChild(RenderObject* child, RenderObject* /* before
     }
     
     if (firstChild()->isEmpty())
-        firstChild()->addChild(child);
+        toRenderElement(firstChild())->addChild(child);
     else
-        lastChild()->addChild(child);
+        toRenderElement(lastChild())->addChild(child);
     
     updateFromElement();
 }
@@ -123,7 +123,7 @@ RenderMathMLOperator* RenderMathMLFraction::unembellishedOperator()
     RenderObject* numeratorWrapper = firstChild();
     if (!numeratorWrapper)
         return 0;
-    RenderObject* numerator = numeratorWrapper->firstChild();
+    RenderObject* numerator = numeratorWrapper->firstChildSlow();
     if (!numerator || !numerator->isRenderMathMLBlock())
         return 0;
     return toRenderMathMLBlock(numerator)->unembellishedOperator();

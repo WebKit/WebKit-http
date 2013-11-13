@@ -29,6 +29,7 @@
 #include "DFGWorklist.h"
 #include "GCActivityCallback.h"
 #include "GCIncomingRefCountedSetInlines.h"
+#include "HeapIterationScope.h"
 #include "HeapRootVisitor.h"
 #include "HeapStatistics.h"
 #include "IncrementalSweeper.h"
@@ -54,6 +55,8 @@ namespace {
 
 static const size_t largeHeapSize = 32 * MB; // About 1.5X the average webpage.
 static const size_t smallHeapSize = 1 * MB; // Matches the FastMalloc per-thread cache.
+
+#define ENABLE_GC_LOGGING 0
 
 #if ENABLE(GC_LOGGING)
 #if COMPILER(CLANG)
@@ -251,6 +254,8 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_bytesAllocatedLimit(m_minBytesPerCycle)
     , m_bytesAllocated(0)
     , m_bytesAbandoned(0)
+    , m_totalBytesVisited(0)
+    , m_totalBytesCopied(0)
     , m_operationInProgress(NoOperation)
     , m_blockAllocator()
     , m_objectSpace(this)
@@ -411,9 +416,14 @@ inline JSStack& Heap::stack()
     return m_vm->interpreter->stack();
 }
 
-void Heap::canonicalizeCellLivenessData()
+void Heap::willStartIterating()
 {
-    m_objectSpace.canonicalizeCellLivenessData();
+    m_objectSpace.willStartIterating();
+}
+
+void Heap::didFinishIterating()
+{
+    m_objectSpace.didFinishIterating();
 }
 
 void Heap::getConservativeRegisterRoots(HashSet<JSCell*>& roots)
@@ -467,7 +477,8 @@ void Heap::markRoots()
 #endif
 
     {
-        GCPHASE(clearMarks);
+        GCPHASE(ClearLivenessData);
+        m_objectSpace.clearNewlyAllocated();
         m_objectSpace.clearMarks();
     }
 
@@ -590,6 +601,13 @@ void Heap::markRoots()
     MARK_LOG_MESSAGE2("\nNumber of live Objects after full GC %lu, took %.6f secs\n", visitCount, WTF::monotonicallyIncreasingTime() - gcStartTime);
 #endif
 
+    m_totalBytesVisited = visitor.bytesVisited();
+    m_totalBytesCopied = visitor.bytesCopied();
+#if ENABLE(PARALLEL_GC)
+    m_totalBytesVisited += m_sharedData.childBytesVisited();
+    m_totalBytesCopied += m_sharedData.childBytesCopied();
+#endif
+
     visitor.reset();
 #if ENABLE(PARALLEL_GC)
     m_sharedData.resetChildren();
@@ -633,6 +651,16 @@ size_t Heap::capacity()
     return m_objectSpace.capacity() + m_storageSpace.capacity() + extraSize();
 }
 
+size_t Heap::sizeAfterCollect()
+{
+    // The result here may not agree with the normal Heap::size(). 
+    // This is due to the fact that we only count live copied bytes
+    // rather than all used (including dead) copied bytes, thus it's 
+    // always the case that m_totalBytesCopied <= m_storageSpace.size(). 
+    ASSERT(m_totalBytesCopied <= m_storageSpace.size());
+    return m_totalBytesVisited + m_totalBytesCopied + extraSize();
+}
+
 size_t Heap::protectedGlobalObjectCount()
 {
     return forEachProtectedCell<CountIfGlobalObject>();
@@ -640,7 +668,8 @@ size_t Heap::protectedGlobalObjectCount()
 
 size_t Heap::globalObjectCount()
 {
-    return m_objectSpace.forEachLiveCell<CountIfGlobalObject>();
+    HeapIterationScope iterationScope(*this);
+    return m_objectSpace.forEachLiveCell<CountIfGlobalObject>(iterationScope);
 }
 
 size_t Heap::protectedObjectCount()
@@ -655,7 +684,8 @@ PassOwnPtr<TypeCountSet> Heap::protectedObjectTypeCounts()
 
 PassOwnPtr<TypeCountSet> Heap::objectTypeCounts()
 {
-    return m_objectSpace.forEachLiveCell<RecordType>();
+    HeapIterationScope iterationScope(*this);
+    return m_objectSpace.forEachLiveCell<RecordType>(iterationScope);
 }
 
 void Heap::deleteAllCompiledCode()
@@ -741,8 +771,8 @@ void Heap::collect(SweepToggle sweepToggle)
     }
 
     {
-        GCPHASE(Canonicalize);
-        m_objectSpace.canonicalizeCellLivenessData();
+        GCPHASE(StopAllocation);
+        m_objectSpace.stopAllocating();
     }
 
     markRoots();
@@ -797,7 +827,7 @@ void Heap::collect(SweepToggle sweepToggle)
         m_objectSpace.resetAllocators();
     }
     
-    size_t currentHeapSize = size();
+    size_t currentHeapSize = sizeAfterCollect();
     if (Options::gcMaxHeapSize() && currentHeapSize > Options::gcMaxHeapSize())
         HeapStatistics::exitWithFailure();
 
@@ -853,7 +883,8 @@ bool Heap::collectIfNecessaryOrDefer()
 
 void Heap::markDeadObjects()
 {
-    m_objectSpace.forEachDeadCell<MarkObject>();
+    HeapIterationScope iterationScope(*this);
+    m_objectSpace.forEachDeadCell<MarkObject>(iterationScope);
 }
 
 void Heap::setActivityCallback(PassOwnPtr<GCActivityCallback> activityCallback)
@@ -932,7 +963,8 @@ void Heap::zombifyDeadObjects()
 {
     // Sweep now because destructors will crash once we're zombified.
     m_objectSpace.sweep();
-    m_objectSpace.forEachDeadCell<Zombify>();
+    HeapIterationScope iterationScope(*this);
+    m_objectSpace.forEachDeadCell<Zombify>(iterationScope);
 }
 
 void Heap::incrementDeferralDepth()

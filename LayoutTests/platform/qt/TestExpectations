@@ -133,18 +133,6 @@ http/tests/webarchive
 webarchive
 svg/webarchive
 
-# ENABLE(FILE_SYSTEM) is disabled.
-fast/filesystem
-fast/forms/file/input-file-entries.html
-http/tests/filesystem
-http/tests/inspector/filesystem
-http/tests/security/contentSecurityPolicy/filesystem-urls-match-self.html
-http/tests/security/filesystem-iframe-from-remote.html
-http/tests/security/mixedContent/filesystem-url-in-iframe.html
-http/tests/websocket/tests/hybi/send-file-blob.html
-http/tests/websocket/tests/hybi/send-file-blob-fail.html
-fast/dom/MutationObserver/filesystem-callback-delivery.html
-
 # ENABLE(QUOTA) is disabled.
 storage/storageinfo-missing-arguments.html
 storage/storageinfo-no-callbacks.html
@@ -282,7 +270,7 @@ inspector/styles/svg-style.xhtml
 
 # Disable private names by default in WebCore
 # https://bugs.webkit.org/show_bug.cgi?id=87088
-fast/js/names.html
+js/names.html
 
 # Don't have GestureTapCancel event type
 touchadjustment/touch-links-active.html
@@ -417,10 +405,8 @@ fast/events/platform-wheelevent-paging-y-in-scrolling-div.html
 fast/events/platform-wheelevent-paging-y-in-scrolling-page.html
 
 # Tests that require ENABLE(DOWNLOAD_ATTRIBUTE).
-fast/dom/HTMLAnchorElement/anchor-nodownload.html
 fast/dom/HTMLAnchorElement/anchor-download.html
 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html
-fast/dom/HTMLAnchorElement/anchor-download-unset.html
 
 # Require ENABLE(CUSTOM_ELEMENTS) support
 webkit.org/b/110735 fast/dom/custom [ Skip ]
@@ -1407,6 +1393,12 @@ webkit.org/b/114913 sputnik/Conformance/15_Native_Objects/15.8_Math/15.8.2/15.8.
 fast/regions/autoheight-middleregion.html
 fast/regions/autoheight-singleregion-breakbeforealways-minheight.html
 
+webkit.org/b/120848 fast/regions/overflow-in-variable-width-regions.html [ Skip ]
+webkit.org/b/120848 fast/regions/overflow-moving-below-floats-in-variable-width-regions.html [ Skip ]
+webkit.org/b/120848 fast/regions/overflow-not-moving-below-floats-in-variable-width-regions.html [ Skip ]
+webkit.org/b/120848 fast/regions/overflow-rtl-in-variable-width-regions.html [ Skip ]
+webkit.org/b/120848 fast/regions/overflow-size-change-in-variable-width-regions.html [ Skip ]
+
 # [Qt] svg/css/text-gradient-shadow.svg fails
 # https://bugs.webkit.org/show_bug.cgi?id=92734
 svg/css/text-gradient-shadow.svg
@@ -1939,6 +1931,18 @@ webkit.org/b/119732 fast/media/media-query-list-07.html [ Skip ]
 # REGRESSION (r153145): fast/workers/worker-call.html fails
 webkit.org/b/119271 fast/workers/worker-call.html [ Skip ]
 
+# [Qt] New test fast/dom/HTMLInputElement/input-line-height.htm fails after r155324.
+webkit.org/b/121426 fast/dom/HTMLInputElement/input-line-height.html [ Skip ]
+
+# [Qt] New test fast/canvas/canvas-measureText-ideographicSpace.html fails after r155596.
+webkit.org/b/121427 fast/canvas/canvas-measureText-ideographicSpace.html [ Skip ]
+
+# [GTK][Qt] Layout Test fast/images/pdf-as-image-with-annotations.html is failing.
+webkit.org/b/120844 fast/images/pdf-as-image-with-annotations.html [ Skip ]
+
+# [GTK][Qt] Two fast/workers/ test are flaky after the FTL merge
+webkit.org/b/119255 [ Debug ] fast/workers/stress-js-execution.html [ Skip ]
+
 # ============================================================================= #
 # failing security tests
 # ============================================================================= #
@@ -2099,6 +2103,12 @@ http/tests/security/xss-DENIED-xsl-document.xml
 # https://bugs.webkit.org/show_bug.cgi?id=45455
 # See also http://bugreports.qt.nokia.com/browse/QTBUG-13601
 platform/qt/http/tests/cookies/strict-third-party-cookie-blocking.html
+
+# [Qt] Tests fails after using Qt5.1.1.
+webkit.org/b/121678 svg/batik/text/textLayout.svg [ Skip ]
+webkit.org/b/121678 svg/batik/text/textOnPathSpaces.svg [ Skip ]
+webkit.org/b/121678 svg/batik/text/textPosition.svg [ Skip ]
+webkit.org/b/121678 fast/text/letter-spacing-negative-opacity.html [ Skip ]
 
 # ============================================================================= #
 # new skipped tests yet to be sorted
@@ -2266,9 +2276,9 @@ fast/notifications/notifications-without-permission.html
 fast/notifications/notifications-constructor-with-permission.html
 fast/notifications/notifications-constructor-without-permission.html
 
-# [Qt] unexpected result in fast/js/large-expressions.html
+# [Qt] unexpected result in js/large-expressions.html
 # https://bugs.webkit.org/show_bug.cgi?id=76379
-fast/js/large-expressions.html
+js/large-expressions.html
 
 # This should only be a layer change.
 # http://webkit.org/b/82129
@@ -2478,17 +2488,6 @@ http/tests/security/xssAuditor/script-tag-with-16bit-unicode5.html [ Failure ]
 http/tests/security/xssAuditor/script-tag-with-fancy-unicode.html [ Failure ]
 http/tests/security/xssAuditor/script-tag-with-invalid-url-encoding.html [ Failure ]
 
-# [Qt] REGRESSION(r154444): xss-DENIED test results changed
-# https://bugs.webkit.org/show_bug.cgi?id=120595
-http/tests/security/aboutBlank/xss-DENIED-navigate-opener-javascript-url.html
-http/tests/security/aboutBlank/xss-DENIED-set-opener.html
-http/tests/security/dataURL/xss-DENIED-from-data-url-in-foreign-domain-window-open.html
-http/tests/security/dataURL/xss-DENIED-from-data-url-to-data-url.html
-http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-subframe-location-change.html
-http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-subframe.html
-http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-window-open.html
-http/tests/security/dataURL/xss-DENIED-to-data-url-sub-frame-2-level.html
-
 # [Qt] Failing animations tests.
 # https://bugs.webkit.org/show_bug.cgi?id=120603
 animations/cross-fade-background-image.html
@@ -2539,7 +2538,7 @@ webkit.org/b/64526 [ Debug ] svg/animations/svgtransform-animation-1.html [ Cras
 Bug(_qt_slow) [ Debug ] editing/selection/empty-cell-right-click.html [ Pass Slow ]
 Bug(_qt_slow) [ Debug ] editing/selection/dump-as-markup.html [ Pass Slow ]
 Bug(_qt_slow) [ Debug ] fast/overflow/lots-of-sibling-inline-boxes.html [ Pass Slow ]
-Bug(_qt_slow) [ Debug ] fast/js/dfg-inline-function-dot-caller.html [ Pass Slow ]
+Bug(_qt_slow) [ Debug ] js/dfg-inline-function-dot-caller.html [ Pass Slow ]
 
 webkit.org/b/62662 [ Debug ] inspector/cookie-parser.html [ Crash Pass ]
 
@@ -2707,8 +2706,8 @@ fast/workers/worker-close-more.html
 fast/workers/worker-lifecycle.html
 fast/workers/storage/interrupt-database.html
 
-# [Qt] New fast/js/dfg-create-inlined-arguments-in-closure-inline.html asserts on 32 bit
-webkit.org/b/106459 [ Debug ] fast/js/dfg-create-inlined-arguments-in-closure-inline.html
+# [Qt] New js/dfg-create-inlined-arguments-in-closure-inline.html asserts on 32 bit
+webkit.org/b/106459 [ Debug ] js/dfg-create-inlined-arguments-in-closure-inline.html
 
 # Enable when support drag-and-drop autoscrolling
 webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
@@ -2755,8 +2754,8 @@ webkit.org/b/113513 inspector/styles/paste-property.html [ Skip ]
 # New test crashes after r147388
 webkit.org/b/113770 editing/execCommand/format-block-at-root.html [ Skip ]
 
-#[Qt] New test fast/js/dom-static-property-for-in-iteration.html fails on Qt after r147570
-webkit.org/b/114157 fast/js/dom-static-property-for-in-iteration.html [ Failure ]
+#[Qt] New test js/dom/dom-static-property-for-in-iteration.html fails on Qt after r147570
+webkit.org/b/114157 js/dom/dom-static-property-for-in-iteration.html [ Failure ]
 
 # Nested opacity with overflow may display wrong results when composited
 webkit.org/b/114338 compositing/overlap-blending/nested-overlap-overflow.html [ Skip ]
@@ -2782,8 +2781,8 @@ webkit.org/b/116259 http/tests/cache/willsendrequest-returns-null-for-memory-cac
 # [Qt] Newly added test http/tests/uri/curly-braces-escaping.html fails
 webkit.org/b/117036 http/tests/uri/curly-braces-escaping.html [ Skip ]
 
-# [Qt] REGRESSION(r151020): fast/js/custom-constructors.html makes next test crashing
-webkit.org/b/117141 fast/js/custom-constructors.html [ Skip ]
+# [Qt] REGRESSION(r151020): js/custom-constructors.html makes next test crashing
+webkit.org/b/117141 js/dom/custom-constructors.html [ Skip ]
 
 # REGRESSION(r151146) fast/forms/control-clip-overflow.html fails
 webkit.org/b/117185 fast/forms/control-clip-overflow.html [ Skip ]
@@ -2794,3 +2793,6 @@ fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]
 # Failing tests after r155014
 webkit.org/b/120671 editing/selection/doubleclick-japanese-text.html [ Skip ]
 webkit.org/b/120671 editing/style/make-text-writing-direction-inline-win.html [ Skip ]
+
+# REGRESSION(r155771): js/stack-overflow-arrity-catch.html is crashing on non-Mac platforms
+webkit.org/b/121376 js/stack-overflow-arrity-catch.html [ Skip ]

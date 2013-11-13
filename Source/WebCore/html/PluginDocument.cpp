@@ -120,7 +120,7 @@ void PluginDocumentParser::appendBytes(DocumentWriter*, const char*, size_t)
     // can synchronously redirect data to the plugin.
     frame->view()->flushAnyPendingPostLayoutTasks();
 
-    if (RenderPart* renderer = m_embedElement->renderPart()) {
+    if (RenderWidget* renderer = m_embedElement->renderWidget()) {
         if (Widget* widget = renderer->widget()) {
             frame->loader().client().redirectDataToPlugin(widget);
             // In a plugin document, the main resource is the plugin. If we have a null widget, that means
@@ -131,7 +131,7 @@ void PluginDocumentParser::appendBytes(DocumentWriter*, const char*, size_t)
     }
 }
 
-PluginDocument::PluginDocument(Frame* frame, const KURL& url)
+PluginDocument::PluginDocument(Frame* frame, const URL& url)
     : HTMLDocument(frame, url, PluginDocumentClass)
     , m_shouldLoadPluginManually(true)
 {
@@ -158,12 +158,11 @@ void PluginDocument::setPluginElement(PassRefPtr<HTMLPlugInElement> element)
     m_pluginElement = element;
 }
 
-void PluginDocument::detach()
+void PluginDocument::detachFromPluginElement()
 {
     // Release the plugin Element so that we don't have a circular reference.
     m_pluginElement = 0;
     frame()->loader().client().redirectDataToPlugin(0);
-    Document::detach();
 }
 
 void PluginDocument::cancelManualPluginLoad()

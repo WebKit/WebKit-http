@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2010 Apple Inc.
+ * Copyright (C) 2006, 2007, 2008, 2010, 2013 Apple Inc.
  * Copyright (C) 2006 Michael Emmel mike.emmel@gmail.com
  * Copyright (C) 2007 Holger Hans Peter Freyther
  * Copyright (C) 2007 Pioneer Research Center USA, Inc.
@@ -31,7 +31,7 @@
 #include "wince/FontPlatformData.h"
 #elif PLATFORM(HAIKU)
 #include "haiku/FontPlatformData.h"
-#elif PLATFORM(EFL) || PLATFORM(GTK)
+#elif PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(NIX)
 #include "freetype/FontPlatformData.h"
 #else
 
@@ -42,7 +42,7 @@
 #include "FontWidthVariant.h"
 
 #if PLATFORM(WIN)
-#include "RefCountedGDIHandle.h"
+#include "SharedGDIObject.h"
 #endif
 
 #if USE(CAIRO)
@@ -64,6 +64,7 @@ typedef const struct __CTFont* CTFontRef;
 #include <wtf/text/StringImpl.h>
 
 #if PLATFORM(WIN)
+#include <wtf/win/GDIObject.h>
 typedef struct HFONT__* HFONT;
 #endif
 
@@ -102,18 +103,18 @@ public:
 #endif
 #endif
 #if PLATFORM(WIN)
-    FontPlatformData(HFONT, float size, bool syntheticBold, bool syntheticOblique, bool useGDI);
+    FontPlatformData(GDIObject<HFONT>, float size, bool syntheticBold, bool syntheticOblique, bool useGDI);
 #if USE(CG)
-    FontPlatformData(HFONT, CGFontRef, float size, bool syntheticBold, bool syntheticOblique, bool useGDI);
+    FontPlatformData(GDIObject<HFONT>, CGFontRef, float size, bool syntheticBold, bool syntheticOblique, bool useGDI);
 #elif USE(CAIRO)
-    FontPlatformData(HFONT, cairo_font_face_t*, float size, bool bold, bool italic);
+    FontPlatformData(GDIObject<HFONT>, cairo_font_face_t*, float size, bool bold, bool italic);
 #endif
 #endif
 
     ~FontPlatformData();
 
 #if PLATFORM(WIN)
-    HFONT hfont() const { return m_font ? m_font->handle() : 0; }
+    HFONT hfont() const { return m_font ? m_font->get() : 0; }
     bool useGDI() const { return m_useGDI; }
 #elif OS(DARWIN)
     NSFont* font() const { return m_font; }
@@ -229,7 +230,7 @@ private:
 #if OS(DARWIN)
     NSFont* m_font;
 #elif PLATFORM(WIN)
-    RefPtr<RefCountedGDIHandle<HFONT> > m_font;
+    RefPtr<SharedGDIObject<HFONT>> m_font;
 #endif
 
 #if USE(CG)

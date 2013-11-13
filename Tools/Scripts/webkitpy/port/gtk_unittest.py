@@ -36,6 +36,7 @@ from webkitpy.common.system.outputcapture import OutputCapture
 from webkitpy.port.gtk import GtkPort
 from webkitpy.port.pulseaudio_sanitizer_mock import PulseAudioSanitizerMock
 from webkitpy.port import port_testcase
+from webkitpy.port.base import Port
 from webkitpy.thirdparty.mock import Mock
 from webkitpy.tool.mocktool import MockOptions
 
@@ -82,29 +83,32 @@ class GtkPortTest(port_testcase.PortTestCase):
         self.assertEqual(self.make_port(options=MockOptions(configuration='Debug')).default_timeout_ms(), 12000)
 
     def test_get_crash_log(self):
-        core_directory = os.environ.get('WEBKIT_CORE_DUMPS_DIRECTORY', '/path/to/coredumps')
-        core_pattern = os.path.join(core_directory, "core-pid_%p-_-process_%e")
-        mock_empty_crash_log = """\
-Crash log for DumpRenderTree (pid 28529):
+        # This function tested in linux_get_crash_log_unittest.py
+        pass
 
-Coredump core-pid_28529-_-process_DumpRenderTree not found. To enable crash logs:
+    def test_commands(self):
+        port = self.make_port(port_name="gtk")
+        self.assertEqual(port.tooling_flag(), "--port=gtk")
+        self.assertEqual(port.update_webkit_command(), Port.script_shell_command("update-webkit"))
+        self.assertEqual(port.check_webkit_style_command(), Port.script_shell_command("check-webkit-style"))
+        self.assertEqual(port.prepare_changelog_command(), Port.script_shell_command("prepare-ChangeLog"))
+        self.assertEqual(port.build_webkit_command(), Port.script_shell_command("build-webkit") + ["--gtk", "--update-gtk", "--no-webkit2", port.make_args()])
+        self.assertEqual(port.run_javascriptcore_tests_command(), Port.script_shell_command("run-javascriptcore-tests"))
+        self.assertEqual(port.run_webkit_unit_tests_command(), None)
+        self.assertEqual(port.run_webkit_tests_command(), Port.script_shell_command("run-webkit-tests") + ["--gtk"])
+        self.assertEqual(port.run_python_unittests_command(), Port.script_shell_command("test-webkitpy"))
+        self.assertEqual(port.run_perl_unittests_command(), Port.script_shell_command("test-webkitperl"))
+        self.assertEqual(port.run_bindings_tests_command(), Port.script_shell_command("run-bindings-tests"))
 
-- run this command as super-user: echo "%(core_pattern)s" > /proc/sys/kernel/core_pattern
-- enable core dumps: ulimit -c unlimited
-- set the WEBKIT_CORE_DUMPS_DIRECTORY environment variable: export WEBKIT_CORE_DUMPS_DIRECTORY=%(core_directory)s
-
-
-STDERR: <empty>""" % locals()
-
-        def _mock_gdb_output(coredump_path):
-            return (mock_empty_crash_log, [])
-
-        port = self.make_port()
-        port._get_gdb_output = mock_empty_crash_log
-        stderr, log = port._get_crash_log("DumpRenderTree", 28529, "", "", newer_than=None)
-        self.assertEqual(stderr, "")
-        self.assertMultiLineEqual(log, mock_empty_crash_log)
-
-        stderr, log = port._get_crash_log("DumpRenderTree", 28529, "", "", newer_than=0.0)
-        self.assertEqual(stderr, "")
-        self.assertMultiLineEqual(log, mock_empty_crash_log)
+        port = self.make_port(port_name="gtk", options=MockOptions(webkit_test_runner=True))
+        self.assertEqual(port.tooling_flag(), "--port=gtk-wk2")
+        self.assertEqual(port.update_webkit_command(), Port.script_shell_command("update-webkit"))
+        self.assertEqual(port.check_webkit_style_command(), Port.script_shell_command("check-webkit-style"))
+        self.assertEqual(port.prepare_changelog_command(), Port.script_shell_command("prepare-ChangeLog"))
+        self.assertEqual(port.build_webkit_command(), Port.script_shell_command("build-webkit") + ["--gtk", "--update-gtk", "--no-webkit1", port.make_args()])
+        self.assertEqual(port.run_javascriptcore_tests_command(), Port.script_shell_command("run-javascriptcore-tests"))
+        self.assertEqual(port.run_webkit_unit_tests_command(), None)
+        self.assertEqual(port.run_webkit_tests_command(), Port.script_shell_command("run-webkit-tests") + ["--gtk", "-2"])
+        self.assertEqual(port.run_python_unittests_command(), Port.script_shell_command("test-webkitpy"))
+        self.assertEqual(port.run_perl_unittests_command(), Port.script_shell_command("test-webkitperl"))
+        self.assertEqual(port.run_bindings_tests_command(), Port.script_shell_command("run-bindings-tests"))

@@ -567,6 +567,14 @@ void TestRunner::setTabKeyCyclesThroughElements(bool cycles)
     [[mainFrame webView] setTabKeyCyclesThroughElements:cycles];
 }
 
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+void TestRunner::setTextAutosizingEnabled(bool enabled)
+{
+    const float phoneMinimumZoomFontSize = 15;
+    [[[mainFrame webView] preferences] _setMinimumZoomFontSize:(enabled ? phoneMinimumZoomFontSize : 0)];
+}
+#endif
+
 void TestRunner::setUseDashboardCompatibilityMode(bool flag)
 {
     [[mainFrame webView] _setDashboardBehavior:WebDashboardBehaviorUseBackwardCompatibilityMode to:flag];
@@ -836,7 +844,7 @@ void TestRunner::evaluateScriptInIsolatedWorld(unsigned worldID, JSObjectRef glo
     if (!worldID)
         world = [WebScriptWorld world];
     else {
-        RetainPtr<WebScriptWorld>& worldSlot = worldMap().add(worldID, 0).iterator->value;
+        RetainPtr<WebScriptWorld>& worldSlot = worldMap().add(worldID, nullptr).iterator->value;
         if (!worldSlot)
             worldSlot = adoptNS([[WebScriptWorld alloc] init]);
         world = worldSlot.get();

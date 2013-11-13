@@ -56,7 +56,7 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGImageElement)
     REGISTER_PARENT_ANIMATED_PROPERTIES(SVGGraphicsElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
-inline SVGImageElement::SVGImageElement(const QualifiedName& tagName, Document* document)
+inline SVGImageElement::SVGImageElement(const QualifiedName& tagName, Document& document)
     : SVGGraphicsElement(tagName, document)
     , m_x(LengthModeWidth)
     , m_y(LengthModeHeight)
@@ -68,7 +68,7 @@ inline SVGImageElement::SVGImageElement(const QualifiedName& tagName, Document* 
     registerAnimatedPropertiesForSVGImageElement();
 }
 
-PassRefPtr<SVGImageElement> SVGImageElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGImageElement> SVGImageElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new SVGImageElement(tagName, document));
 }
@@ -183,9 +183,9 @@ bool SVGImageElement::selfHasRelativeLengths() const
         || height().isRelative();
 }
 
-RenderObject* SVGImageElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SVGImageElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
-    return new (arena) RenderSVGImage(this);
+    return new (arena) RenderSVGImage(*this);
 }
 
 bool SVGImageElement::haveLoadedRequiredResources()
@@ -219,7 +219,7 @@ const AtomicString& SVGImageElement::imageSourceURL() const
     return getAttribute(XLinkNames::hrefAttr);
 }
 
-void SVGImageElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) const
+void SVGImageElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     SVGGraphicsElement::addSubresourceAttributeURLs(urls);
 

@@ -35,17 +35,17 @@ class SVGSymbolElement FINAL : public SVGElement,
                                public SVGExternalResourcesRequired,
                                public SVGFitToViewBox {
 public:
-    static PassRefPtr<SVGSymbolElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGSymbolElement> create(const QualifiedName&, Document&);
 
 private:
-    SVGSymbolElement(const QualifiedName&, Document*);
+    SVGSymbolElement(const QualifiedName&, Document&);
 
     virtual bool supportsFocus() const OVERRIDE { return true; }
 
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&);
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 
     virtual bool selfHasRelativeLengths() const;
 

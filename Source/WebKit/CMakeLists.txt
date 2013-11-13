@@ -89,8 +89,6 @@ set(WebKit_LIBRARIES
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
-add_definitions(-DBUILDING_WebKit)
-
 IF (HAIKU)
     foreach(inc ${WebKit_LOCAL_INCLUDE_DIRECTORIES})
         ADD_DEFINITIONS(-iquote ${inc})
@@ -104,6 +102,7 @@ ENDIF (HAIKU)
 add_library(WebKit ${WebKit_LIBRARY_TYPE} ${WebKit_SOURCES})
 add_dependencies(WebKit WebCore)
 target_link_libraries(WebKit ${WebKit_LIBRARIES})
+set_target_properties(WebKit PROPERTIES COMPILE_DEFINITIONS "BUILDING_WebKit")
 set_target_properties(WebKit PROPERTIES FOLDER "WebKit")
 set_target_properties(WebKit PROPERTIES LINK_INTERFACE_LIBRARIES "")
 

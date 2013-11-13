@@ -67,6 +67,9 @@
 - (void)setDelegate:(id)delegate;
 - (void)hideOverlayScrollers;
 - (void)flashScrollers;
+- (void)lockOverlayScrollerState:(NSUInteger)state;
+- (BOOL)overlayScrollerStateIsLocked;
+- (void)unlockOverlayScrollerState;
 - (id)horizontalScrollerImp;
 - (void)setHorizontalScrollerImp:(id)horizontal;
 - (id)verticalScrollerImp;
@@ -89,15 +92,6 @@
 @end
 
 namespace WebCore {
-
-static inline bool isScrollbarOverlayAPIAvailable()
-{
-#if USE(SCROLLBAR_PAINTER)
-    return true;
-#else
-    return false;
-#endif
-}
 
 NSScrollerStyle recommendedScrollerStyle();
 

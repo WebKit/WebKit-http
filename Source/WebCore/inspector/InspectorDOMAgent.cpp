@@ -60,7 +60,6 @@
 #include "EventTarget.h"
 #include "File.h"
 #include "FileList.h"
-#include "Frame.h"
 #include "FrameTree.h"
 #include "HTMLElement.h"
 #include "HTMLFrameOwnerElement.h"
@@ -78,6 +77,8 @@
 #include "InspectorState.h"
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
+#include "JSEventListener.h"
+#include "MainFrame.h"
 #include "MutationEvent.h"
 #include "Node.h"
 #include "NodeList.h"
@@ -86,7 +87,7 @@
 #include "Pasteboard.h"
 #include "RenderStyle.h"
 #include "RenderStyleConstants.h"
-#include "ScriptEventListener.h"
+#include "ScriptState.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "StylePropertySet.h"
@@ -94,16 +95,14 @@
 #include "StyleSheetList.h"
 #include "Text.h"
 #include "XPathResult.h"
-
 #include "htmlediting.h"
 #include "markup.h"
-
-#include <wtf/text/CString.h>
-#include <wtf/text/WTFString.h>
 #include <wtf/HashSet.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -670,7 +669,7 @@ void InspectorDOMAgent::setAttributesAsText(ErrorString* errorString, int elemen
     if (!element)
         return;
 
-    RefPtr<HTMLElement> parsedElement = createHTMLElement(&element->document(), spanTag);
+    RefPtr<HTMLElement> parsedElement = createHTMLElement(element->document(), spanTag);
     ExceptionCode ec = 0;
     parsedElement.get()->setInnerHTML("<span " + text + "></span>", ec);
     if (ec) {
@@ -1090,7 +1089,7 @@ void InspectorDOMAgent::focusNode()
     if (!frame)
         return;
 
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(mainWorldScriptState(frame));
+    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(mainWorldExecState(frame));
     if (injectedScript.hasNoValue())
         return;
 
@@ -1481,35 +1480,47 @@ PassRefPtr<TypeBuilder::Array<TypeBuilder::DOM::Node> > InspectorDOMAgent::build
 PassRefPtr<TypeBuilder::DOM::EventListener> InspectorDOMAgent::buildObjectForEventListener(const RegisteredEventListener& registeredEventListener, const AtomicString& eventType, Node* node, const String* objectGroupId)
 {
     RefPtr<EventListener> eventListener = registeredEventListener.listener;
-    RefPtr<TypeBuilder::DOM::EventListener> value = TypeBuilder::DOM::EventListener::create()
-        .setType(eventType)
-        .setUseCapture(registeredEventListener.useCapture)
-        .setIsAttribute(eventListener->isAttribute())
-        .setNodeId(pushNodePathToFrontend(node))
-        .setHandlerBody(eventListenerHandlerBody(&node->document(), eventListener.get()));
-    if (objectGroupId) {
-        ScriptValue functionValue = eventListenerHandler(&node->document(), eventListener.get());
-        if (!functionValue.hasNoValue()) {
-            if (Frame* frame = node->document().frame()) {
-                ScriptState* scriptState = eventListenerHandlerScriptState(frame, eventListener.get());
-                if (scriptState) {
-                    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(scriptState);
-                    if (!injectedScript.hasNoValue()) {
-                        RefPtr<TypeBuilder::Runtime::RemoteObject> valueJson = injectedScript.wrapObject(functionValue, *objectGroupId);
-                        value->setHandler(valueJson);
+
+    JSC::ExecState* state = nullptr;
+    JSC::JSObject* handler = nullptr;
+    String body;
+    int lineNumber = 0;
+    String scriptId;
+    String sourceName;
+    if (auto scriptListener = JSEventListener::cast(eventListener.get())) {
+        JSC::JSLockHolder lock(scriptListener->isolatedWorld()->vm());
+        state = execStateFromNode(scriptListener->isolatedWorld(), &node->document());
+        handler = scriptListener->jsFunction(&node->document());
+        if (handler) {
+            body = handler->toString(state)->value(state);
+            if (auto function = JSC::jsDynamicCast<JSC::JSFunction*>(handler)) {
+                if (!function->isHostFunction()) {
+                    if (auto executable = function->jsExecutable()) {
+                        lineNumber = executable->lineNo() - 1;
+                        scriptId = executable->sourceID() == JSC::SourceProvider::nullID ? emptyString() : String::number(executable->sourceID());
+                        sourceName = executable->sourceURL();
                     }
                 }
             }
         }
     }
-    String sourceName;
-    String scriptId;
-    int lineNumber;
-    if (eventListenerHandlerLocation(&node->document(), eventListener.get(), sourceName, scriptId, lineNumber)) {
+
+    RefPtr<TypeBuilder::DOM::EventListener> value = TypeBuilder::DOM::EventListener::create()
+        .setType(eventType)
+        .setUseCapture(registeredEventListener.useCapture)
+        .setIsAttribute(eventListener->isAttribute())
+        .setNodeId(pushNodePathToFrontend(node))
+        .setHandlerBody(body);
+    if (objectGroupId && handler && state) {
+        InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(state);
+        if (!injectedScript.hasNoValue())
+            value->setHandler(injectedScript.wrapObject(ScriptValue(state->vm(), handler), *objectGroupId));
+    }
+    if (!scriptId.isNull()) {
         RefPtr<TypeBuilder::Debugger::Location> location = TypeBuilder::Debugger::Location::create()
             .setScriptId(scriptId)
             .setLineNumber(lineNumber);
-        value->setLocation(location);
+        value->setLocation(location.release());
         if (!sourceName.isEmpty())
             value->setSourceName(sourceName);
     }
@@ -1815,7 +1826,7 @@ PassRefPtr<TypeBuilder::Runtime::RemoteObject> InspectorDOMAgent::resolveNode(No
     if (!frame)
         return 0;
 
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(mainWorldScriptState(frame));
+    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(mainWorldExecState(frame));
     if (injectedScript.hasNoValue())
         return 0;
 

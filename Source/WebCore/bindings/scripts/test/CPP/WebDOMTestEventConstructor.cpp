@@ -21,8 +21,8 @@
 #include "config.h"
 #include "WebDOMTestEventConstructor.h"
 
-#include "KURL.h"
 #include "TestEventConstructor.h"
+#include "URL.h"
 #include "WebDOMString.h"
 #include "WebExceptionHandler.h"
 #include <wtf/GetPtr.h>

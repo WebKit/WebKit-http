@@ -52,6 +52,8 @@ const char* exitKindToString(ExitKind kind)
         return "Overflow";
     case NegativeZero:
         return "NegativeZero";
+    case Int52Overflow:
+        return "Int52Overflow";
     case StoreToHole:
         return "StoreToHole";
     case LoadFromHole:

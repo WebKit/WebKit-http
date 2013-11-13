@@ -44,13 +44,13 @@ class FileList;
 
 class FileInputType : public BaseClickableWithKeyInputType, private FileChooserClient, private FileIconLoaderClient {
 public:
-    static PassOwnPtr<InputType> create(HTMLInputElement*);
+    static OwnPtr<InputType> create(HTMLInputElement&);
     virtual ~FileInputType();
 
     static Vector<FileChooserFileInfo> filesFromFormControlState(const FormControlState&);
 
 private:
-    explicit FileInputType(HTMLInputElement*);
+    explicit FileInputType(HTMLInputElement&);
 
     virtual const AtomicString& formControlType() const OVERRIDE;
     virtual FormControlState saveFormControlState() const OVERRIDE;
@@ -59,7 +59,7 @@ private:
     virtual bool valueMissing(const String&) const OVERRIDE;
     virtual String valueMissingText() const OVERRIDE;
     virtual void handleDOMActivateEvent(Event*) OVERRIDE;
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) const OVERRIDE;
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) const OVERRIDE;
     virtual bool canSetStringValue() const OVERRIDE;
     virtual bool canChangeFromAnotherType() const OVERRIDE;
     virtual FileList* files() OVERRIDE;
@@ -68,9 +68,6 @@ private:
     virtual bool getTypeSpecificValue(String&) OVERRIDE; // Checked first, before internal storage or the value attribute.
     virtual void setValue(const String&, bool valueChanged, TextFieldEventBehavior) OVERRIDE;
     virtual bool receiveDroppedFiles(const DragData*) OVERRIDE;
-#if ENABLE(FILE_SYSTEM)
-    virtual String droppedFileSystemId() OVERRIDE;
-#endif
     virtual Icon* icon() const OVERRIDE;
     virtual bool isFileUpload() const OVERRIDE;
     virtual void createShadowSubtree() OVERRIDE;
@@ -97,10 +94,6 @@ private:
 
     RefPtr<FileList> m_fileList;
     RefPtr<Icon> m_icon;
-
-#if ENABLE(FILE_SYSTEM)
-    String m_droppedFileSystemId;
-#endif
 };
 
 } // namespace WebCore

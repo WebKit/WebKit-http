@@ -45,7 +45,6 @@
 #include "EventNames.h"
 #include "ExceptionCodePlaceholder.h"
 #include "FormState.h"
-#include "Frame.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
@@ -55,12 +54,12 @@
 #include "HitTestResult.h"
 #include "InspectorController.h"
 #include "LocalizedStrings.h"
+#include "MainFrame.h"
 #include "MouseEvent.h"
 #include "NavigationAction.h"
 #include "Node.h"
 #include "Page.h"
 #include "PlatformEvent.h"
-#include "RenderObject.h"
 #include "ReplaceSelectionCommand.h"
 #include "ResourceRequest.h"
 #include "Settings.h"
@@ -81,22 +80,15 @@ using namespace Unicode;
 
 namespace WebCore {
 
-ContextMenuController::ContextMenuController(Page* page, ContextMenuClient* client)
+ContextMenuController::ContextMenuController(Page& page, ContextMenuClient& client)
     : m_page(page)
     , m_client(client)
 {
-    ASSERT_ARG(page, page);
-    ASSERT_ARG(client, client);
 }
 
 ContextMenuController::~ContextMenuController()
 {
-    m_client->contextMenuDestroyed();
-}
-
-PassOwnPtr<ContextMenuController> ContextMenuController::create(Page* page, ContextMenuClient* client)
-{
-    return adoptPtr(new ContextMenuController(page, client));
+    m_client.contextMenuDestroyed();
 }
 
 void ContextMenuController::clearContextMenu()
@@ -165,20 +157,20 @@ PassOwnPtr<ContextMenu> ContextMenuController::createContextMenu(Event* event)
 void ContextMenuController::showContextMenu(Event* event)
 {
 #if ENABLE(INSPECTOR)
-    if (m_page->inspectorController()->enabled())
+    if (m_page.inspectorController()->enabled())
         addInspectElementItem();
 #endif
 
 #if USE(CROSS_PLATFORM_CONTEXT_MENUS)
-    m_contextMenu = m_client->customizeMenu(m_contextMenu.release());
+    m_contextMenu = m_client.customizeMenu(m_contextMenu.release());
 #else
-    PlatformMenuDescription customMenu = m_client->getCustomMenuFromDefaultItems(m_contextMenu.get());
+    PlatformMenuDescription customMenu = m_client.getCustomMenuFromDefaultItems(m_contextMenu.get());
     m_contextMenu->setPlatformDescription(customMenu);
 #endif
     event->setDefaultHandled();
 }
 
-static void openNewWindow(const KURL& urlToLoad, Frame* frame)
+static void openNewWindow(const URL& urlToLoad, Frame* frame)
 {
     if (Page* oldPage = frame->page()) {
         FrameLoadRequest request(frame->document()->securityOrigin(), ResourceRequest(urlToLoad, frame->loader().outgoingReferrer()));
@@ -209,7 +201,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
     ASSERT(item->type() == ActionType || item->type() == CheckableActionType);
 
     if (item->action() >= ContextMenuItemBaseApplicationTag) {
-        m_client->contextMenuItemSelected(item, m_contextMenu.get());
+        m_client.contextMenuItemSelected(item, m_contextMenu.get());
         return;
     }
 
@@ -229,7 +221,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         break;
     case ContextMenuItemTagDownloadLinkToDisk:
         // FIXME: Some day we should be able to do this from within WebCore. (Bug 117709)
-        m_client->downloadURL(m_hitTestResult.absoluteLinkURL());
+        m_client.downloadURL(m_hitTestResult.absoluteLinkURL());
         break;
     case ContextMenuItemTagCopyLinkToClipboard:
         frame->editor().copyURL(m_hitTestResult.absoluteLinkURL(), m_hitTestResult.textContent());
@@ -239,7 +231,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         break;
     case ContextMenuItemTagDownloadImageToDisk:
         // FIXME: Some day we should be able to do this from within WebCore. (Bug 117709)
-        m_client->downloadURL(m_hitTestResult.absoluteImageURL());
+        m_client.downloadURL(m_hitTestResult.absoluteImageURL());
         break;
     case ContextMenuItemTagCopyImageToClipboard:
         // FIXME: The Pasteboard class is not written yet
@@ -256,7 +248,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         break;
     case ContextMenuItemTagDownloadMediaToDisk:
         // FIXME: Some day we should be able to do this from within WebCore. (Bug 117709)
-        m_client->downloadURL(m_hitTestResult.absoluteMediaURL());
+        m_client.downloadURL(m_hitTestResult.absoluteMediaURL());
         break;
     case ContextMenuItemTagCopyMediaLinkToClipboard:
         frame->editor().copyURL(m_hitTestResult.absoluteMediaURL(), m_hitTestResult.textContent());
@@ -292,11 +284,11 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         break;
     case ContextMenuItemTagGoBack:
         if (Page* page = frame->page())
-            page->backForward()->goBackOrForward(-1);
+            page->backForward().goBackOrForward(-1);
         break;
     case ContextMenuItemTagGoForward:
         if (Page* page = frame->page())
-            page->backForward()->goBackOrForward(1);
+            page->backForward().goBackOrForward(1);
         break;
     case ContextMenuItemTagStop:
         frame->loader().stop();
@@ -380,11 +372,11 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         frame->editor().learnSpelling();
         break;
     case ContextMenuItemTagSearchWeb:
-        m_client->searchWithGoogle(frame);
+        m_client.searchWithGoogle(frame);
         break;
     case ContextMenuItemTagLookUpInDictionary:
         // FIXME: Some day we may be able to do this from within WebCore.
-        m_client->lookUpInDictionary(frame);
+        m_client.lookUpInDictionary(frame);
         break;
     case ContextMenuItemTagOpenLink:
         if (Frame* targetFrame = m_hitTestResult.targetFrame())
@@ -415,11 +407,11 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
             selectedRange = document.createRange();
             selectedRange->selectNode(document.documentElement(), IGNORE_EXCEPTION);
         }
-        m_client->speak(plainText(selectedRange.get()));
+        m_client.speak(plainText(selectedRange.get()));
         break;
     }
     case ContextMenuItemTagStopSpeaking:
-        m_client->stopSpeaking();
+        m_client.stopSpeaking();
         break;
     case ContextMenuItemTagDefaultDirection:
         frame->editor().setBaseWritingDirection(NaturalWritingDirection);
@@ -441,7 +433,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         break;
 #if PLATFORM(MAC)
     case ContextMenuItemTagSearchInSpotlight:
-        m_client->searchWithSpotlight();
+        m_client.searchWithSpotlight();
         break;
 #endif
     case ContextMenuItemTagShowSpellingPanel:
@@ -827,7 +819,7 @@ void ContextMenuController::populate()
 
     if (!m_hitTestResult.isContentEditable()) {
         FrameLoader& loader = frame->loader();
-        KURL linkURL = m_hitTestResult.absoluteLinkURL();
+        URL linkURL = m_hitTestResult.absoluteLinkURL();
         if (!linkURL.isEmpty()) {
             if (loader.client().canHandleRequest(ResourceRequest(linkURL))) {
                 appendItem(OpenLinkItem, m_contextMenu.get());
@@ -841,7 +833,7 @@ void ContextMenuController::populate()
             appendItem(CopyLinkItem, m_contextMenu.get());
         }
 
-        KURL imageURL = m_hitTestResult.absoluteImageURL();
+        URL imageURL = m_hitTestResult.absoluteImageURL();
         if (!imageURL.isEmpty()) {
             if (!linkURL.isEmpty())
                 appendItem(*separatorItem(), m_contextMenu.get());
@@ -855,7 +847,7 @@ void ContextMenuController::populate()
 #endif
         }
 
-        KURL mediaURL = m_hitTestResult.absoluteMediaURL();
+        URL mediaURL = m_hitTestResult.absoluteMediaURL();
         if (!mediaURL.isEmpty()) {
             if (!linkURL.isEmpty() || !imageURL.isEmpty())
                 appendItem(*separatorItem(), m_contextMenu.get());
@@ -912,10 +904,10 @@ void ContextMenuController::populate()
                 appendItem(StopItem, m_contextMenu.get());
                 appendItem(ReloadItem, m_contextMenu.get());
 #else
-                if (frame->page() && frame->page()->backForward()->canGoBackOrForward(-1))
+                if (frame->page() && frame->page()->backForward().canGoBackOrForward(-1))
                     appendItem(BackItem, m_contextMenu.get());
 
-                if (frame->page() && frame->page()->backForward()->canGoBackOrForward(1))
+                if (frame->page() && frame->page()->backForward().canGoBackOrForward(1))
                     appendItem(ForwardItem, m_contextMenu.get());
 
                 // use isLoadingInAPISense rather than isLoading because Stop/Reload are
@@ -929,7 +921,7 @@ void ContextMenuController::populate()
                 }
 #endif
 
-                if (frame->page() && frame != &frame->page()->mainFrame())
+                if (frame->page() && !frame->isMainFrame())
                     appendItem(OpenFrameItem, m_contextMenu.get());
             }
         }
@@ -998,7 +990,7 @@ void ContextMenuController::populate()
         }
 
         FrameLoader& loader = frame->loader();
-        KURL linkURL = m_hitTestResult.absoluteLinkURL();
+        URL linkURL = m_hitTestResult.absoluteLinkURL();
         if (!linkURL.isEmpty()) {
             if (loader.client().canHandleRequest(ResourceRequest(linkURL))) {
                 appendItem(OpenLinkItem, m_contextMenu.get());
@@ -1285,7 +1277,7 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
             shouldCheck = frame->editor().isAutomaticTextReplacementEnabled();
             break;
         case ContextMenuItemTagStopSpeaking:
-            shouldEnable = client() && client()->isSpeaking();
+            shouldEnable = m_client.isSpeaking();
             break;
 #else // PLATFORM(MAC) ends here
         case ContextMenuItemTagStopSpeaking:
@@ -1293,10 +1285,10 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
 #endif
 #if PLATFORM(GTK)
         case ContextMenuItemTagGoBack:
-            shouldEnable = frame->page() && frame->page()->backForward()->canGoBackOrForward(-1);
+            shouldEnable = frame->page() && frame->page()->backForward().canGoBackOrForward(-1);
             break;
         case ContextMenuItemTagGoForward:
-            shouldEnable = frame->page() && frame->page()->backForward()->canGoBackOrForward(1);
+            shouldEnable = frame->page() && frame->page()->backForward().canGoBackOrForward(1);
             break;
         case ContextMenuItemTagStop:
             shouldEnable = frame->loader().documentLoader()->isLoadingInAPISense();
@@ -1420,8 +1412,8 @@ void ContextMenuController::showContextMenuAt(Frame* frame, const IntPoint& clic
     // Simulate a click in the middle of the accessibility object.
     PlatformMouseEvent mouseEvent(clickPoint, clickPoint, RightButton, PlatformEvent::MousePressed, 1, false, false, false, false, currentTime());
     bool handled = frame->eventHandler().sendContextMenuEvent(mouseEvent);
-    if (handled && client())
-        client()->showContextMenu();
+    if (handled)
+        m_client.showContextMenu();
 }
 #endif
 

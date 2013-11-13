@@ -70,15 +70,15 @@ const ClassInfo NumberPrototype::s_info = { "Number", &NumberObject::s_info, 0, 
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(NumberPrototype);
 
-NumberPrototype::NumberPrototype(ExecState* exec, Structure* structure)
-    : NumberObject(exec->vm(), structure)
+NumberPrototype::NumberPrototype(VM& vm, Structure* structure)
+    : NumberObject(vm, structure)
 {
 }
 
-void NumberPrototype::finishCreation(ExecState* exec, JSGlobalObject*)
+void NumberPrototype::finishCreation(VM& vm, JSGlobalObject*)
 {
-    Base::finishCreation(exec->vm());
-    setInternalValue(exec->vm(), jsNumber(0));
+    Base::finishCreation(vm);
+    setInternalValue(vm, jsNumber(0));
 
     ASSERT(inherits(info()));
 }

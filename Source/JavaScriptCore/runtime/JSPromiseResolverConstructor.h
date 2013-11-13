@@ -38,17 +38,17 @@ class JSPromiseResolverConstructor : public InternalFunction {
 public:
     typedef InternalFunction Base;
 
-    static JSPromiseResolverConstructor* create(ExecState*, JSGlobalObject*, Structure*, JSPromiseResolverPrototype*);
+    static JSPromiseResolverConstructor* create(VM&, Structure*, JSPromiseResolverPrototype*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_INFO;
 
 protected:
-    void finishCreation(ExecState*, JSPromiseResolverPrototype*);
+    void finishCreation(VM&, JSPromiseResolverPrototype*);
     static const unsigned StructureFlags = InternalFunction::StructureFlags;
 
 private:
-    JSPromiseResolverConstructor(JSGlobalObject*, Structure*);
+    JSPromiseResolverConstructor(VM&, Structure*);
     static ConstructType getConstructData(JSCell*, ConstructData&);
     static CallType getCallData(JSCell*, CallData&);
 };

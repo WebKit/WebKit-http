@@ -17,7 +17,7 @@
 </style>
 <script src="../../resources/js-test-pre.js"></script>
 </head>
-<body onload="warmUpAndTest()">
+<body onload="testMain()">
 <div id="description"></div>
 <div id="console"></div>
 <hr/>
@@ -30,31 +30,19 @@
 <script>
 description("Bug 49374 - Web Font specified with base64 data URI ending with EOT is not rendered. Each of the following pairs should look identical.");
 
+jsTestIsAsync = true;
+
 function testMain()
 {
-    for (var testId = 0; testId < 2; testId++) {
+    for (var testId = 0; testId < 2; testId++)
         shouldBe("document.getElementById('ref" + testId + "').offsetWidth", "document.getElementById('test" + testId + "').offsetWidth");
-    }
-    if (window.testRunner)
-        window.testRunner.notifyDone();
+
+    finishJSTest();
 }
 
-var trialCount = 0;
+// Force layout, so that fonts begin to load before the document finishes loading, and thus delay the load event.
+document.body.offsetTop;
 
-function warmUpAndTest()
-{
-    document.body.offsetTop; // Force layout.
-    if (trialCount > 20 || document.getElementById("ref0").offsetWidth == document.getElementById("test0").offsetWidth) {
-        // Font has been loaded (or the wait limit has been exceeded). Now run the test.
-        testMain();
-        return;
-    }
-    trialCount++;
-    window.setTimeout(warmUpAndTest, 10);
-}
-
-if (window.testRunner)
-    window.testRunner.waitUntilDone();
 </script>
 <script src="../../resources/js-test-post.js"></script>
 </body>

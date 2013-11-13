@@ -52,16 +52,14 @@ enum ShadowRootUsageOriginType {
     ShadowRootUsageOriginMax
 };
 
-ShadowRoot::ShadowRoot(Document* document, ShadowRootType type)
+ShadowRoot::ShadowRoot(Document& document, ShadowRootType type)
     : DocumentFragment(0, CreateShadowRoot)
-    , TreeScope(this, document)
-    , m_numberOfStyles(0)
+    , TreeScope(this, &document)
     , m_applyAuthorStyles(false)
     , m_resetStyleInheritance(false)
     , m_type(type)
     , m_hostElement(0)
 {
-    ASSERT(document);
 }
 
 ShadowRoot::~ShadowRoot()
@@ -83,7 +81,7 @@ ShadowRoot::~ShadowRoot()
         clearRareData();
 }
 
-void ShadowRoot::dispose()
+void ShadowRoot::dropChildren()
 {
     removeDetachedChildren();
 }
@@ -107,7 +105,7 @@ void ShadowRoot::setInnerHTML(const String& markup, ExceptionCode& ec)
     }
 
     if (RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(markup, hostElement(), AllowScriptingContent, ec))
-        replaceChildrenWithFragment(this, fragment.release(), ec);
+        replaceChildrenWithFragment(*this, fragment.release(), ec);
 }
 
 bool ShadowRoot::childTypeAllowed(NodeType type) const
@@ -155,19 +153,6 @@ void ShadowRoot::childrenChanged(const ChildChange& change)
 
     ContainerNode::childrenChanged(change);
     invalidateDistribution();
-}
-
-void ShadowRoot::registerScopedHTMLStyleChild()
-{
-    ++m_numberOfStyles;
-    setHasScopedHTMLStyleChild(true);
-}
-
-void ShadowRoot::unregisterScopedHTMLStyleChild()
-{
-    ASSERT(hasScopedHTMLStyleChild() && m_numberOfStyles > 0);
-    --m_numberOfStyles;
-    setHasScopedHTMLStyleChild(m_numberOfStyles > 0);
 }
 
 void ShadowRoot::removeAllEventListeners()

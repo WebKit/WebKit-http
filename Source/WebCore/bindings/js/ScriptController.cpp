@@ -23,6 +23,7 @@
 
 #include "BridgeJSC.h"
 #include "ContentSecurityPolicy.h"
+#include "DocumentLoader.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "Frame.h"
@@ -51,8 +52,8 @@
 #include <heap/StrongInlines.h>
 #include <runtime/InitializeThreading.h>
 #include <runtime/JSLock.h>
-#include <wtf/text/TextPosition.h>
 #include <wtf/Threading.h>
+#include <wtf/text/TextPosition.h>
 
 using namespace JSC;
 using namespace std;
@@ -65,7 +66,7 @@ void ScriptController::initializeThreading()
     WTF::initializeMainThread();
 }
 
-ScriptController::ScriptController(Frame* frame)
+ScriptController::ScriptController(Frame& frame)
     : m_frame(frame)
     , m_sourceURL(0)
     , m_paused(false)
@@ -107,7 +108,7 @@ JSDOMWindowShell* ScriptController::createWindowShell(DOMWrapperWorld* world)
 {
     ASSERT(!m_windowShells.contains(world));
     Structure* structure = JSDOMWindowShell::createStructure(*world->vm(), jsNull());
-    Strong<JSDOMWindowShell> windowShell(*world->vm(), JSDOMWindowShell::create(m_frame->document()->domWindow(), structure, world));
+    Strong<JSDOMWindowShell> windowShell(*world->vm(), JSDOMWindowShell::create(m_frame.document()->domWindow(), structure, world));
     Strong<JSDOMWindowShell> windowShell2(windowShell);
     m_windowShells.add(world, windowShell);
     world->didCreateWindowShell(this);
@@ -133,9 +134,9 @@ ScriptValue ScriptController::evaluateInWorld(const ScriptSourceCode& sourceCode
 
     JSLockHolder lock(exec);
 
-    RefPtr<Frame> protect = m_frame;
+    Ref<Frame> protect(m_frame);
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willEvaluateScript(m_frame, sourceURL, sourceCode.startLine());
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willEvaluateScript(&m_frame, sourceURL, sourceCode.startLine());
 
     JSValue evaluationException;
 
@@ -192,7 +193,7 @@ void ScriptController::clearWindowShell(DOMWindow* newDOMWindow, bool goingIntoP
         if (m_cacheableBindingRootObject)
             m_cacheableBindingRootObject->updateGlobalObject(windowShell->window());
 
-        if (Page* page = m_frame->page()) {
+        if (Page* page = m_frame.page()) {
             attachDebugger(windowShell, page->debugger());
             windowShell->window()->setProfileGroup(page->group().identifier());
         }
@@ -214,22 +215,22 @@ JSDOMWindowShell* ScriptController::initScript(DOMWrapperWorld* world)
 
     windowShell->window()->updateDocument();
 
-    if (m_frame->document())
-        windowShell->window()->setEvalEnabled(m_frame->document()->contentSecurityPolicy()->allowEval(0, ContentSecurityPolicy::SuppressReport), m_frame->document()->contentSecurityPolicy()->evalDisabledErrorMessage());   
+    if (m_frame.document())
+        windowShell->window()->setEvalEnabled(m_frame.document()->contentSecurityPolicy()->allowEval(0, ContentSecurityPolicy::SuppressReport), m_frame.document()->contentSecurityPolicy()->evalDisabledErrorMessage());
 
-    if (Page* page = m_frame->page()) {
+    if (Page* page = m_frame.page()) {
         attachDebugger(windowShell, page->debugger());
         windowShell->window()->setProfileGroup(page->group().identifier());
     }
 
-    m_frame->loader().dispatchDidClearWindowObjectInWorld(world);
+    m_frame.loader().dispatchDidClearWindowObjectInWorld(world);
 
     return windowShell;
 }
 
 TextPosition ScriptController::eventHandlerPosition() const
 {
-    ScriptableDocumentParser* parser = m_frame->document()->scriptableDocumentParser();
+    ScriptableDocumentParser* parser = m_frame.document()->scriptableDocumentParser();
     if (parser)
         return parser->textPosition();
     return TextPosition::minimumPosition();
@@ -338,7 +339,7 @@ void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*,
     for (ShellMap::iterator iter = m_windowShells.begin(); iter != m_windowShells.end(); ++iter) {
         JSC::ExecState* exec = iter->value->window()->globalExec();
         SecurityOrigin* origin = iter->value->window()->impl()->document()->securityOrigin();
-        result.append(std::pair<ScriptState*, SecurityOrigin*>(exec, origin));
+        result.append(std::pair<JSC::ExecState*, SecurityOrigin*>(exec, origin));
     }
 }
 
@@ -458,7 +459,7 @@ void ScriptController::clearScriptObjects()
 ScriptValue ScriptController::executeScriptInWorld(DOMWrapperWorld* world, const String& script, bool forceUserGesture)
 {
     UserGestureIndicator gestureIndicator(forceUserGesture ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
-    ScriptSourceCode sourceCode(script, m_frame->document()->url());
+    ScriptSourceCode sourceCode(script, m_frame.document()->url());
 
     if (!canExecuteScripts(AboutToExecuteScript) || isPaused())
         return ScriptValue();
@@ -474,6 +475,89 @@ bool ScriptController::shouldBypassMainWorldContentSecurityPolicy()
     DOMWrapperWorld* domWrapperWorld = currentWorld(callFrame);
     if (domWrapperWorld->isNormal())
         return false;
+    return true;
+}
+
+bool ScriptController::canExecuteScripts(ReasonForCallingCanExecuteScripts reason)
+{
+    if (m_frame.document() && m_frame.document()->isSandboxed(SandboxScripts)) {
+        // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
+        if (reason == AboutToExecuteScript)
+            m_frame.document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked script execution in '" + m_frame.document()->url().stringCenterEllipsizedToLength() + "' because the document's frame is sandboxed and the 'allow-scripts' permission is not set.");
+        return false;
+    }
+
+    if (m_frame.document() && m_frame.document()->isViewSource()) {
+        ASSERT(m_frame.document()->securityOrigin()->isUnique());
+        return true;
+    }
+
+    if (!m_frame.page())
+        return false;
+
+    const bool allowed = m_frame.loader().client().allowScript(m_frame.settings().isScriptEnabled());
+    if (!allowed && reason == AboutToExecuteScript)
+        m_frame.loader().client().didNotAllowScript();
+    return allowed;
+}
+
+ScriptValue ScriptController::executeScript(const String& script, bool forceUserGesture)
+{
+    UserGestureIndicator gestureIndicator(forceUserGesture ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+    return executeScript(ScriptSourceCode(script, m_frame.document()->url()));
+}
+
+ScriptValue ScriptController::executeScript(const ScriptSourceCode& sourceCode)
+{
+    if (!canExecuteScripts(AboutToExecuteScript) || isPaused())
+        return ScriptValue();
+
+    Ref<Frame> protect(m_frame); // Script execution can destroy the frame, and thus the ScriptController.
+
+    return evaluate(sourceCode);
+}
+
+bool ScriptController::executeIfJavaScriptURL(const URL& url, ShouldReplaceDocumentIfJavaScriptURL shouldReplaceDocumentIfJavaScriptURL)
+{
+    if (!protocolIsJavaScript(url))
+        return false;
+
+    if (!m_frame.page() || !m_frame.document()->contentSecurityPolicy()->allowJavaScriptURLs(m_frame.document()->url(), eventHandlerPosition().m_line))
+        return true;
+
+    // We need to hold onto the Frame here because executing script can
+    // destroy the frame.
+    Ref<Frame> protector(m_frame);
+    RefPtr<Document> ownerDocument(m_frame.document());
+
+    const int javascriptSchemeLength = sizeof("javascript:") - 1;
+
+    String decodedURL = decodeURLEscapeSequences(url.string());
+    ScriptValue result = executeScript(decodedURL.substring(javascriptSchemeLength));
+
+    // If executing script caused this frame to be removed from the page, we
+    // don't want to try to replace its document!
+    if (!m_frame.page())
+        return true;
+
+    String scriptResult;
+    JSDOMWindowShell* shell = windowShell(mainThreadNormalWorld());
+    JSC::ExecState* exec = shell->window()->globalExec();
+    if (!result.getString(exec, scriptResult))
+        return true;
+
+    // FIXME: We should always replace the document, but doing so
+    //        synchronously can cause crashes:
+    //        http://bugs.webkit.org/show_bug.cgi?id=16782
+    if (shouldReplaceDocumentIfJavaScriptURL == ReplaceDocumentIfJavaScriptURL) {
+        // We're still in a frame, so there should be a DocumentLoader.
+        ASSERT(m_frame.document()->loader());
+        
+        // DocumentWriter::replaceDocument can cause the DocumentLoader to get deref'ed and possible destroyed,
+        // so protect it with a RefPtr.
+        if (RefPtr<DocumentLoader> loader = m_frame.document()->loader())
+            loader->writer()->replaceDocument(scriptResult, ownerDocument.get());
+    }
     return true;
 }
 

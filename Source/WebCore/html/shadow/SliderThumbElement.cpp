@@ -72,20 +72,18 @@ inline static bool hasVerticalAppearance(HTMLInputElement* input)
     return sliderStyle->appearance() == SliderVerticalPart;
 }
 
-SliderThumbElement* sliderThumbElementOf(Node* node)
+SliderThumbElement* sliderThumbElementOf(HTMLInputElement& inputElement)
 {
-    ASSERT(node);
-    ShadowRoot* shadow = node->toInputElement()->userAgentShadowRoot();
+    ShadowRoot* shadow = inputElement.userAgentShadowRoot();
     ASSERT(shadow);
     Node* thumb = shadow->firstChild()->firstChild()->firstChild();
     ASSERT(thumb);
     return toSliderThumbElement(thumb);
 }
 
-HTMLElement* sliderTrackElementOf(Node* node)
+HTMLElement* sliderTrackElementOf(HTMLInputElement& inputElement)
 {
-    ASSERT(node);
-    ShadowRoot* shadow = node->toInputElement()->userAgentShadowRoot();
+    ShadowRoot* shadow = inputElement.userAgentShadowRoot();
     ASSERT(shadow);
     Node* track = shadow->firstChild()->firstChild();
     ASSERT(track);
@@ -112,7 +110,7 @@ void RenderSliderThumb::updateAppearance(RenderStyle* parentStyle)
     else if (parentStyle->appearance() == MediaFullScreenVolumeSliderPart)
         style()->setAppearance(MediaFullScreenVolumeSliderThumbPart);
     if (style()->hasAppearance())
-        theme()->adjustSliderThumbSize(style(), toElement(node()));
+        theme()->adjustSliderThumbSize(style(), element());
 }
 
 bool RenderSliderThumb::isSliderThumb() const
@@ -137,7 +135,7 @@ private:
 
 void RenderSliderContainer::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
 {
-    HTMLInputElement* input = node()->shadowHost()->toInputElement();
+    HTMLInputElement* input = element()->shadowHost()->toInputElement();
     bool isVertical = hasVerticalAppearance(input);
 
 #if ENABLE(DATALIST_ELEMENT)
@@ -165,7 +163,7 @@ void RenderSliderContainer::computeLogicalHeight(LayoutUnit logicalHeight, Layou
 
 void RenderSliderContainer::layout()
 {
-    HTMLInputElement* input = node()->shadowHost()->toInputElement();
+    HTMLInputElement* input = element()->shadowHost()->toInputElement();
     bool isVertical = hasVerticalAppearance(input);
     style()->setFlexDirection(isVertical ? FlowColumn : FlowRow);
     TextDirection oldTextDirection = style()->direction();
@@ -206,7 +204,7 @@ void RenderSliderContainer::layout()
 
 // --------------------------------
 
-SliderThumbElement::SliderThumbElement(Document* document)
+SliderThumbElement::SliderThumbElement(Document& document)
     : HTMLDivElement(HTMLNames::divTag, document)
     , m_inDragMode(false)
 {
@@ -222,7 +220,7 @@ void SliderThumbElement::setPositionFromValue()
         renderer()->setNeedsLayout(true);
 }
 
-RenderObject* SliderThumbElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SliderThumbElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
     return new (arena) RenderSliderThumb(this);
 }
@@ -258,10 +256,12 @@ void SliderThumbElement::dragFrom(const LayoutPoint& point)
 
 void SliderThumbElement::setPositionFromPoint(const LayoutPoint& absolutePoint)
 {
-    RefPtr<HTMLInputElement> input(hostInput());
-    HTMLElement* trackElement = sliderTrackElementOf(input.get());
+    RefPtr<HTMLInputElement> input = hostInput();
+    if (!input || !input->renderer() || !renderBox())
+        return;
 
-    if (!input->renderer() || !renderBox() || !trackElement->renderBox())
+    HTMLElement* trackElement = sliderTrackElementOf(*input);
+    if (!trackElement->renderBox())
         return;
 
     input->setTextAsOfLastFormControlChangeEvent(input->value());
@@ -444,17 +444,17 @@ const AtomicString& SliderThumbElement::shadowPseudoId() const
 
 // --------------------------------
 
-inline SliderContainerElement::SliderContainerElement(Document* document)
+inline SliderContainerElement::SliderContainerElement(Document& document)
     : HTMLDivElement(HTMLNames::divTag, document)
 {
 }
 
-PassRefPtr<SliderContainerElement> SliderContainerElement::create(Document* document)
+PassRefPtr<SliderContainerElement> SliderContainerElement::create(Document& document)
 {
     return adoptRef(new SliderContainerElement(document));
 }
 
-RenderObject* SliderContainerElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SliderContainerElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
     return new (arena) RenderSliderContainer(this);
 }

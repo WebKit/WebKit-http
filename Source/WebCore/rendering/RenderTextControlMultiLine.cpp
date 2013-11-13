@@ -32,15 +32,20 @@
 
 namespace WebCore {
 
-RenderTextControlMultiLine::RenderTextControlMultiLine(Element* element)
+RenderTextControlMultiLine::RenderTextControlMultiLine(HTMLTextAreaElement& element)
     : RenderTextControl(element)
 {
 }
 
 RenderTextControlMultiLine::~RenderTextControlMultiLine()
 {
-    if (node() && node()->inDocument())
-        toHTMLTextAreaElement(node())->rendererWillBeDestroyed();
+    if (textAreaElement().inDocument())
+        textAreaElement().rendererWillBeDestroyed();
+}
+
+HTMLTextAreaElement& RenderTextControlMultiLine::textAreaElement() const
+{
+    return toHTMLTextAreaElement(RenderTextControl::textFormControlElement());
 }
 
 bool RenderTextControlMultiLine::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
@@ -48,7 +53,7 @@ bool RenderTextControlMultiLine::nodeAtPoint(const HitTestRequest& request, HitT
     if (!RenderTextControl::nodeAtPoint(request, result, locationInContainer, accumulatedOffset, hitTestAction))
         return false;
 
-    if (result.innerNode() == node() || result.innerNode() == innerTextElement())
+    if (result.innerNode() == &textAreaElement() || result.innerNode() == innerTextElement())
         hitInnerTextElement(result, locationInContainer.point(), accumulatedOffset);
 
     return true;
@@ -67,13 +72,12 @@ float RenderTextControlMultiLine::getAvgCharWidth(AtomicString family)
 
 LayoutUnit RenderTextControlMultiLine::preferredContentLogicalWidth(float charWidth) const
 {
-    int factor = toHTMLTextAreaElement(node())->cols();
-    return static_cast<LayoutUnit>(ceilf(charWidth * factor)) + scrollbarThickness();
+    return static_cast<LayoutUnit>(ceilf(charWidth * textAreaElement().cols())) + scrollbarThickness();
 }
 
 LayoutUnit RenderTextControlMultiLine::computeControlLogicalHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const
 {
-    return lineHeight * toHTMLTextAreaElement(node())->rows() + nonContentHeight;
+    return lineHeight * textAreaElement().rows() + nonContentHeight;
 }
 
 int RenderTextControlMultiLine::baselinePosition(FontBaseline baselineType, bool firstLine, LineDirectionMode direction, LinePositionMode linePositionMode) const

@@ -26,7 +26,7 @@
 #include "config.h"
 #include "WebProcessConnection.h"
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
 
 #include "ActivityAssertion.h"
 #include "ArgumentCoders.h"
@@ -67,12 +67,12 @@ WebProcessConnection::WebProcessConnection(CoreIPC::Connection::Identifier conne
     m_connection->open();
 }
 
-void WebProcessConnection::addPluginControllerProxy(PassOwnPtr<PluginControllerProxy> pluginController)
+void WebProcessConnection::addPluginControllerProxy(std::unique_ptr<PluginControllerProxy> pluginController)
 {
     uint64_t pluginInstanceID = pluginController->pluginInstanceID();
 
     ASSERT(!m_pluginControllers.contains(pluginInstanceID));
-    m_pluginControllers.set(pluginInstanceID, pluginController);
+    m_pluginControllers.set(pluginInstanceID, std::move(pluginController));
 }
 
 void WebProcessConnection::destroyPluginControllerProxy(PluginControllerProxy* pluginController)
@@ -87,8 +87,8 @@ void WebProcessConnection::removePluginControllerProxy(PluginControllerProxy* pl
     {
         ASSERT(m_pluginControllers.contains(pluginController->pluginInstanceID()));
 
-        OwnPtr<PluginControllerProxy> pluginControllerOwnPtr = m_pluginControllers.take(pluginController->pluginInstanceID());
-        ASSERT(pluginControllerOwnPtr == pluginController);
+        std::unique_ptr<PluginControllerProxy> pluginControllerUniquePtr = m_pluginControllers.take(pluginController->pluginInstanceID());
+        ASSERT(pluginControllerUniquePtr.get() == pluginController);
     }
 
     // Invalidate all objects related to this plug-in.
@@ -139,7 +139,7 @@ void WebProcessConnection::didReceiveMessage(CoreIPC::Connection* connection, Co
     pluginControllerProxy->didReceivePluginControllerProxyMessage(connection, decoder);
 }
 
-void WebProcessConnection::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+void WebProcessConnection::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, std::unique_ptr<CoreIPC::MessageEncoder>& replyEncoder)
 {
     // Force all timers to run at full speed when processing a synchronous message
     ActivityAssertion activityAssertion(PluginProcess::shared());
@@ -205,13 +205,13 @@ void WebProcessConnection::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIP
 
 void WebProcessConnection::createPluginInternal(const PluginCreationParameters& creationParameters, bool& result, bool& wantsWheelEvents, uint32_t& remoteLayerClientID)
 {
-    OwnPtr<PluginControllerProxy> pluginControllerProxy = PluginControllerProxy::create(this, creationParameters);
+    auto pluginControllerProxy = std::make_unique<PluginControllerProxy>(this, creationParameters);
 
     PluginControllerProxy* pluginControllerProxyPtr = pluginControllerProxy.get();
 
     // Make sure to add the proxy to the map before initializing it, since the plug-in might call out to the web process from 
     // its NPP_New function. This will hand over ownership of the proxy to the web process connection.
-    addPluginControllerProxy(pluginControllerProxy.release());
+    addPluginControllerProxy(std::move(pluginControllerProxy));
 
     // Now try to initialize the plug-in.
     result = pluginControllerProxyPtr->initialize(creationParameters);
@@ -292,7 +292,7 @@ void WebProcessConnection::createPluginAsynchronously(const PluginCreationParame
 
     // The call to createPluginInternal can potentially cause the plug-in to be destroyed and
     // thus free the WebProcessConnection object. Protect it.
-    RefPtr<WebProcessConnection> protect(this);
+    Ref<WebProcessConnection> protect(*this);
     createPluginInternal(creationParameters, result, wantsWheelEvents, remoteLayerClientID);
 
     if (!m_connection) {
@@ -322,4 +322,4 @@ void WebProcessConnection::createPluginAsynchronously(const PluginCreationParame
 
 } // namespace WebKit
 
-#endif // ENABLE(PLUGIN_PROCESS)
+#endif // ENABLE(NETSCAPE_PLUGIN_API)

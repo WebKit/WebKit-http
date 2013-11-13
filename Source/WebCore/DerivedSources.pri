@@ -59,7 +59,10 @@ INSPECTOR_JSON = $$PWD/inspector/Inspector.json
 
 INSPECTOR_BACKEND_COMMANDS_QRC = $$PWD/inspector/front-end/InspectorBackendCommands.qrc
 
-INSPECTOR_OVERLAY_PAGE = $$PWD/inspector/InspectorOverlayPage.html
+INSPECTOR_OVERLAY_PAGE = \
+    $$PWD/inspector/InspectorOverlayPage.html \
+    $$PWD/inspector/InspectorOverlayPage.css \
+    $$PWD/inspector/InspectorOverlayPage.js
 
 INJECTED_SCRIPT_SOURCE = $$PWD/inspector/InjectedScriptSource.js
 
@@ -90,29 +93,6 @@ PLUGINS_EMBED = \
     $$PWD/Resources/plugIns.js
 
 IDL_BINDINGS += \
-    $$PWD/Modules/filesystem/DOMFileSystem.idl \
-    $$PWD/Modules/filesystem/DOMFileSystemSync.idl \
-    $$PWD/Modules/filesystem/DOMWindowFileSystem.idl \
-    $$PWD/Modules/filesystem/DirectoryEntry.idl \
-    $$PWD/Modules/filesystem/DirectoryEntrySync.idl \
-    $$PWD/Modules/filesystem/DirectoryReader.idl \
-    $$PWD/Modules/filesystem/DirectoryReaderSync.idl \
-    $$PWD/Modules/filesystem/EntriesCallback.idl \
-    $$PWD/Modules/filesystem/Entry.idl \
-    $$PWD/Modules/filesystem/EntryArray.idl \
-    $$PWD/Modules/filesystem/EntryArraySync.idl \
-    $$PWD/Modules/filesystem/EntryCallback.idl \
-    $$PWD/Modules/filesystem/EntrySync.idl \
-    $$PWD/Modules/filesystem/ErrorCallback.idl \
-    $$PWD/Modules/filesystem/FileCallback.idl \
-    $$PWD/Modules/filesystem/FileEntry.idl \
-    $$PWD/Modules/filesystem/FileEntrySync.idl \
-    $$PWD/Modules/filesystem/FileSystemCallback.idl \
-    $$PWD/Modules/filesystem/FileWriter.idl \
-    $$PWD/Modules/filesystem/FileWriterCallback.idl \
-    $$PWD/Modules/filesystem/Metadata.idl \
-    $$PWD/Modules/filesystem/MetadataCallback.idl \
-    $$PWD/Modules/filesystem/WorkerGlobalScopeFileSystem.idl \
     $$PWD/Modules/geolocation/Coordinates.idl \
     $$PWD/Modules/geolocation/Geolocation.idl \
     $$PWD/Modules/geolocation/Geoposition.idl \
@@ -226,6 +206,7 @@ IDL_BINDINGS += \
     $$PWD/css/WebKitCSSViewportRule.idl \
     $$PWD/dom/Attr.idl \
     $$PWD/dom/BeforeLoadEvent.idl \
+    $$PWD/dom/BeforeUnloadEvent.idl \
     $$PWD/dom/CharacterData.idl \
     $$PWD/dom/ChildNode.idl \
     $$PWD/dom/ClientRect.idl \
@@ -419,7 +400,6 @@ IDL_BINDINGS += \
     $$PWD/html/TimeRanges.idl \
     $$PWD/html/ValidityState.idl \
     $$PWD/html/VoidCallback.idl \
-    $$PWD/html/shadow/HTMLContentElement.idl \
     $$PWD/inspector/InjectedScriptHost.idl \
     $$PWD/inspector/InspectorFrontendHost.idl \
     $$PWD/inspector/JavaScriptCallFrame.idl \
@@ -658,7 +638,11 @@ enable?(MEDIA_SOURCE) {
   IDL_BINDINGS += \
     $$PWD/Modules/mediasource/MediaSource.idl \
     $$PWD/Modules/mediasource/SourceBuffer.idl \
-    $$PWD/Modules/mediasource/SourceBufferList.idl
+    $$PWD/Modules/mediasource/SourceBufferList.idl \
+    $$PWD/Modules/mediasource/URLMediaSource.idl \
+    $$PWD/Modules/mediasource/WebKitMediaSource.idl \
+    $$PWD/Modules/mediasource/WebKitSourceBuffer.idl \
+    $$PWD/Modules/mediasource/WebKitSourceBufferList.idl
 }
 
 qtPrepareTool(QMAKE_MOC, moc)
@@ -759,7 +743,6 @@ generateBindings.script = $$PWD/bindings/scripts/generate-bindings.pl
 generateBindings.commands = $$setEnvironmentVariable(SOURCE_ROOT, $$toSystemPath($$PWD)) && perl -I$$PWD/bindings/scripts $$generateBindings.script \
                             --defines \"$$javascriptFeatureDefines()\" \
                             --generator JS \
-                            --include Modules/filesystem \
                             --include Modules/geolocation \
                             --include Modules/indexeddb \
                             --include Modules/mediasource \
@@ -824,21 +807,22 @@ GENERATORS += inspectorBackendCommands
 
 inspectorOverlayPage.output = InspectorOverlayPage.h
 inspectorOverlayPage.input = INSPECTOR_OVERLAY_PAGE
-inspectorOverlayPage.commands = perl $$PWD/inspector/xxd.pl InspectorOverlayPage_html ${QMAKE_FILE_IN} ${QMAKE_FILE_OUT}
+inspectorOverlayPage.commands = python $$PWD/inspector/Scripts/inline-and-minify-stylesheets-and-scripts.py $$PWD/inspector/InspectorOverlayPage.html ${QMAKE_FUNC_FILE_OUT_PATH}/InspectorOverlayPage.combined.html && perl $$PWD/inspector/xxd.pl InspectorOverlayPage_html ${QMAKE_FUNC_FILE_OUT_PATH}/InspectorOverlayPage.combined.html ${QMAKE_FILE_OUT}
+inspectorOverlayPage.depends = $$INSPECTOR_OVERLAY_PAGE $$PWD/inspector/Scripts/inline-and-minify-stylesheets-and-scripts.py
 inspectorOverlayPage.add_output_to_sources = false
 GENERATORS += inspectorOverlayPage
 
 # GENERATOR 2: inspector injected script source compiler
 injectedScriptSource.output = InjectedScriptSource.h
 injectedScriptSource.input = INJECTED_SCRIPT_SOURCE
-injectedScriptSource.commands = perl $$PWD/inspector/xxd.pl InjectedScriptSource_js ${QMAKE_FILE_IN} ${QMAKE_FILE_OUT}
+injectedScriptSource.commands = python $$PWD/inspector/Scripts/jsmin.py <${QMAKE_FILE_IN} > ${QMAKE_FUNC_FILE_OUT_PATH}/InjectedScriptSource.min.js && perl $$PWD/inspector/xxd.pl InjectedScriptSource_js ${QMAKE_FUNC_FILE_OUT_PATH}/InjectedScriptSource.min.js ${QMAKE_FILE_OUT}
 injectedScriptSource.add_output_to_sources = false
 GENERATORS += injectedScriptSource
 
 # GENERATOR 3: inspector canvas injected script source compiler
 InjectedScriptCanvasModuleSource.output = InjectedScriptCanvasModuleSource.h
 InjectedScriptCanvasModuleSource.input = INJECTED_SCRIPT_CANVAS_MODULE_SOURCE
-InjectedScriptCanvasModuleSource.commands = perl $$PWD/inspector/xxd.pl InjectedScriptCanvasModuleSource_js ${QMAKE_FILE_IN} ${QMAKE_FILE_OUT}
+InjectedScriptCanvasModuleSource.commands = python $$PWD/inspector/Scripts/jsmin.py <${QMAKE_FILE_IN} > ${QMAKE_FUNC_FILE_OUT_PATH}/InjectedScriptCanvasModuleSource.min.js && perl $$PWD/inspector/xxd.pl InjectedScriptCanvasModuleSource_js ${QMAKE_FUNC_FILE_OUT_PATH}/InjectedScriptCanvasModuleSource.min.js ${QMAKE_FILE_OUT}
 InjectedScriptCanvasModuleSource.add_output_to_sources = false
 GENERATORS += InjectedScriptCanvasModuleSource
 
@@ -930,9 +914,9 @@ enable?(XSLT) {
     xmlviewercss.output = XMLViewerCSS.h
     xmlviewercss.input = XMLVIEWER_CSS
     xmlviewercss.script = $$PWD/inspector/xxd.pl
-    xmlviewercss.commands = perl $$xmlviewercss.script XMLViewer_css $$XMLVIEWER_CSS ${QMAKE_FILE_OUT}
-    xmlviewercss.clean = ${QMAKE_FILE_OUT}
-    xmlviewercss.depends = $$PWD/inspector/xxd.pl
+    xmlviewercss.commands = python $$PWD/inspector/Scripts/cssmin.py <$$XMLVIEWER_CSS > ${QMAKE_FUNC_FILE_OUT_PATH}/XMLViewer.min.css && perl $$xmlviewercss.script XMLViewer_css ${QMAKE_FUNC_FILE_OUT_PATH}/XMLViewer.min.css ${QMAKE_FILE_OUT}
+    xmlviewercss.clean = ${QMAKE_FILE_OUT} ${QMAKE_FUNC_FILE_OUT_PATH}/XMLViewer.min.css
+    xmlviewercss.depends = $$PWD/inspector/xxd.pl $$PWD/inspector/Scripts/cssmin.py
     xmlviewercss.add_output_to_sources = false
     GENERATORS += xmlviewercss
 
@@ -940,9 +924,9 @@ enable?(XSLT) {
     xmlviewerjs.output = XMLViewerJS.h
     xmlviewerjs.input = XMLVIEWER_JS
     xmlviewerjs.script = $$PWD/inspector/xxd.pl
-    xmlviewerjs.commands = perl $$xmlviewerjs.script XMLViewer_js $$XMLVIEWER_JS ${QMAKE_FILE_OUT}
-    xmlviewerjs.clean = ${QMAKE_FILE_OUT}
-    xmlviewerjs.depends = $$PWD/inspector/xxd.pl
+    xmlviewerjs.commands = python $$PWD/inspector/Scripts/jsmin.py <$$XMLVIEWER_JS > ${QMAKE_FUNC_FILE_OUT_PATH}/XMLViewer.min.js && perl $$xmlviewerjs.script XMLViewer_js ${QMAKE_FUNC_FILE_OUT_PATH}/XMLViewer.min.js ${QMAKE_FILE_OUT}
+    xmlviewerjs.clean = ${QMAKE_FILE_OUT} ${QMAKE_FUNC_FILE_OUT_PATH}/XMLViewer.min.js
+    xmlviewerjs.depends = $$PWD/inspector/xxd.pl $$PWD/inspector/Scripts/jsmin.py
     xmlviewerjs.add_output_to_sources = false
     GENERATORS += xmlviewerjs
 }

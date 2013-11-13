@@ -41,27 +41,19 @@ namespace WebCore {
 
 RenderSVGResourceType RenderSVGResourceMasker::s_resourceType = MaskerResourceType;
 
-RenderSVGResourceMasker::RenderSVGResourceMasker(SVGMaskElement* node)
-    : RenderSVGResourceContainer(node)
+RenderSVGResourceMasker::RenderSVGResourceMasker(SVGMaskElement& element)
+    : RenderSVGResourceContainer(element)
 {
 }
 
 RenderSVGResourceMasker::~RenderSVGResourceMasker()
 {
-    if (m_masker.isEmpty())
-        return;
-
-    deleteAllValues(m_masker);
-    m_masker.clear();
 }
 
 void RenderSVGResourceMasker::removeAllClientsFromCache(bool markForInvalidation)
 {
     m_maskContentBoundaries = FloatRect();
-    if (!m_masker.isEmpty()) {
-        deleteAllValues(m_masker);
-        m_masker.clear();
-    }
+    m_masker.clear();
 
     markAllClientsForInvalidation(markForInvalidation ? LayoutAndBoundariesInvalidation : ParentOnlyInvalidation);
 }
@@ -69,9 +61,7 @@ void RenderSVGResourceMasker::removeAllClientsFromCache(bool markForInvalidation
 void RenderSVGResourceMasker::removeClientFromCache(RenderObject* client, bool markForInvalidation)
 {
     ASSERT(client);
-
-    if (m_masker.contains(client))
-        delete m_masker.take(client);
+    m_masker.remove(client);
 
     markClientForInvalidation(client, markForInvalidation ? BoundariesInvalidation : ParentOnlyInvalidation);
 }
@@ -84,7 +74,7 @@ bool RenderSVGResourceMasker::applyResource(RenderObject* object, RenderStyle*, 
 
     bool missingMaskerData = !m_masker.contains(object);
     if (missingMaskerData)
-        m_masker.set(object, new MaskerData);
+        m_masker.set(object, createOwned<MaskerData>().release());
 
     MaskerData* maskerData = m_masker.get(object);
 
@@ -94,10 +84,6 @@ bool RenderSVGResourceMasker::applyResource(RenderObject* object, RenderStyle*, 
     FloatRect repaintRect = object->repaintRectInLocalCoordinates();
 
     if (!maskerData->maskImage && !repaintRect.isEmpty()) {
-        SVGMaskElement* maskElement = toSVGMaskElement(node());
-        if (!maskElement)
-            return false;
-
         ASSERT(style());
         const SVGRenderStyle* svgStyle = style()->svgStyle();
         ASSERT(svgStyle);
@@ -105,7 +91,7 @@ bool RenderSVGResourceMasker::applyResource(RenderObject* object, RenderStyle*, 
         if (!SVGRenderingContext::createImageBuffer(repaintRect, absoluteTransform, maskerData->maskImage, colorSpace, Unaccelerated))
             return false;
 
-        if (!drawContentIntoMaskImage(maskerData, colorSpace, maskElement, object)) {
+        if (!drawContentIntoMaskImage(maskerData, colorSpace, object)) {
             maskerData->maskImage.clear();
         }
     }
@@ -117,14 +103,14 @@ bool RenderSVGResourceMasker::applyResource(RenderObject* object, RenderStyle*, 
     return true;
 }
 
-bool RenderSVGResourceMasker::drawContentIntoMaskImage(MaskerData* maskerData, ColorSpace colorSpace, const SVGMaskElement* maskElement, RenderObject* object)
+bool RenderSVGResourceMasker::drawContentIntoMaskImage(MaskerData* maskerData, ColorSpace colorSpace, RenderObject* object)
 {
     GraphicsContext* maskImageContext = maskerData->maskImage->context();
     ASSERT(maskImageContext);
 
     // Eventually adjust the mask image context according to the target objectBoundingBox.
     AffineTransform maskContentTransformation;
-    if (maskElement->maskContentUnits() == SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX) {
+    if (maskElement().maskContentUnits() == SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX) {
         FloatRect objectBoundingBox = object->objectBoundingBox();
         maskContentTransformation.translate(objectBoundingBox.x(), objectBoundingBox.y());
         maskContentTransformation.scaleNonUniform(objectBoundingBox.width(), objectBoundingBox.height());
@@ -132,7 +118,7 @@ bool RenderSVGResourceMasker::drawContentIntoMaskImage(MaskerData* maskerData, C
     }
 
     // Draw the content into the ImageBuffer.
-    for (Node* node = maskElement->firstChild(); node; node = node->nextSibling()) {
+    for (Node* node = maskElement().firstChild(); node; node = node->nextSibling()) {
         RenderObject* renderer = node->renderer();
         if (!node->isSVGElement() || !renderer)
             continue;
@@ -161,7 +147,7 @@ bool RenderSVGResourceMasker::drawContentIntoMaskImage(MaskerData* maskerData, C
 
 void RenderSVGResourceMasker::calculateMaskContentRepaintRect()
 {
-    for (Node* childNode = node()->firstChild(); childNode; childNode = childNode->nextSibling()) {
+    for (Node* childNode = maskElement().firstChild(); childNode; childNode = childNode->nextSibling()) {
         RenderObject* renderer = childNode->renderer();
         if (!childNode->isSVGElement() || !renderer)
             continue;
@@ -174,11 +160,8 @@ void RenderSVGResourceMasker::calculateMaskContentRepaintRect()
 
 FloatRect RenderSVGResourceMasker::resourceBoundingBox(RenderObject* object)
 {
-    SVGMaskElement* maskElement = toSVGMaskElement(node());
-    ASSERT(maskElement);
-
     FloatRect objectBoundingBox = object->objectBoundingBox();
-    FloatRect maskBoundaries = SVGLengthContext::resolveRectangle<SVGMaskElement>(maskElement, maskElement->maskUnits(), objectBoundingBox);
+    FloatRect maskBoundaries = SVGLengthContext::resolveRectangle<SVGMaskElement>(&maskElement(), maskElement().maskUnits(), objectBoundingBox);
 
     // Resource was not layouted yet. Give back clipping rect of the mask.
     if (selfNeedsLayout())
@@ -188,7 +171,7 @@ FloatRect RenderSVGResourceMasker::resourceBoundingBox(RenderObject* object)
         calculateMaskContentRepaintRect();
 
     FloatRect maskRect = m_maskContentBoundaries;
-    if (maskElement->maskContentUnits() == SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX) {
+    if (maskElement().maskContentUnits() == SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX) {
         AffineTransform transform;
         transform.translate(objectBoundingBox.x(), objectBoundingBox.y());
         transform.scaleNonUniform(objectBoundingBox.width(), objectBoundingBox.height());

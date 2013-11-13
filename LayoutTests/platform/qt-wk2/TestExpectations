@@ -39,8 +39,8 @@ css2.1/t1202-counter-09-b.html
 css2.1/t1202-counter-15-b.html
 css2.1/t1202-counters-09-b.html
 css2.1/t1202-counters-15-b.html
-fast/js/regexp-range-bound-ffff.html
-fast/js/switch-behaviour.html
+js/regexp-range-bound-ffff.html
+js/switch-behaviour.html
 fast/text/format-control.html
 fast/url/anchor.html
 ########################################
@@ -72,6 +72,7 @@ fast/url/anchor.html
 # - CSS tests.
 # - Unidentified failures.
 # - Unsorted tests.
+# - Regressions occured after Qt version update
 
 # =========================================================================== #
 # Compositing tests.                                                          #
@@ -475,6 +476,9 @@ fast/inline/inline-box-background-repeat-y.html
 fast/inline/inline-box-background.html
 fast/text/international/bidi-ignored-for-first-child-inline.html
 fast/text/international/unicode-bidi-plaintext-in-textarea.html
+
+# [GTK][Qt] Layout Test fast/sub-pixel/sub-pixel-composited-layers.html is failing
+webkit.org/b/119841 fast/sub-pixel/sub-pixel-composited-layers.html [ Skip ]
 
 # =========================================================================== #
 # Fullscreen tests.                                                          #
@@ -947,7 +951,6 @@ fast/frames/frame-set-scaling-hit.html [ ImageOnlyFailure ]
 fast/multicol/vertical-rl/rule-style.html [ ImageOnlyFailure ]
 fast/overflow/paged-x-with-column-gap.html [ ImageOnlyFailure ]
 fast/regions/hover-in-second-region.html [ ImageOnlyFailure ]
-fast/replaced/border-radius-clip.html [ ImageOnlyFailure ]
 transitions/opacity-transition-zindex.html [ ImageOnlyFailure ]
 svg/as-background-image/tiled-background-image.html [ Skip ]
 svg/filters/feImage-reference-svg-primitive.svg [ ImageOnlyFailure ] # Reni said this is actually a know svg issue with feImage.
@@ -1003,3 +1006,13 @@ webkit.org/b/76986 scrollbars/scroll-rtl-or-bt-layer.html
 
 # [Qt] Images scale differently in WK1 and WK2
 webkit.org/b/92015 tables/mozilla_expected_failures/bugs/bug85016.html
+
+# =========================================================================== #
+# - Regressions occured after Qt version update
+# =========================================================================== #
+
+# [Qt][WK2] New fast/regions/selection-direction.html ref tests fails after r155974.
+webkit.org/b/121679 fast/regions/selection-direction.html [ Skip ]
+
+#[Qt] Tests fails after using Qt5.1.1.
+webkit.org/b/121678 fast/dom/DeviceMotion/no-page-cache.html [ Skip ]

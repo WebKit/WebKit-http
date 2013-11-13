@@ -35,13 +35,13 @@ namespace WebCore {
 using namespace HTMLNames;
 
 
-inline HTMLLegendElement::HTMLLegendElement(const QualifiedName& tagName, Document* document)
+inline HTMLLegendElement::HTMLLegendElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
 {
     ASSERT(hasTagName(legendTag));
 }
 
-PassRefPtr<HTMLLegendElement> HTMLLegendElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<HTMLLegendElement> HTMLLegendElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new HTMLLegendElement(tagName, document));
 }
@@ -56,9 +56,7 @@ HTMLFormControlElement* HTMLLegendElement::associatedControl()
 
     // Find first form element inside the fieldset that is not a legend element.
     // FIXME: Should we consider tabindex?
-    auto fieldsetFormControlDescendants = descendantsOfType<HTMLFormControlElement>(&*enclosingFieldset);
-    auto firstFormControl = fieldsetFormControlDescendants.begin();
-    return firstFormControl != fieldsetFormControlDescendants.end() ? &*firstFormControl : nullptr;
+    return descendantsOfType<HTMLFormControlElement>(&*enclosingFieldset).first();
 }
 
 void HTMLLegendElement::focus(bool, FocusDirection direction)

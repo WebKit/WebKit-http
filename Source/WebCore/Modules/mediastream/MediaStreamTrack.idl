@@ -23,10 +23,10 @@
  */
 
 [
-    NoInterfaceObject,
     Conditional=MEDIA_STREAM,
     EventTarget,
-    ActiveDOMObject
+    ActiveDOMObject,
+    SkipVTableValidation
 ] interface MediaStreamTrack {
     readonly attribute DOMString kind;
     readonly attribute DOMString id;
@@ -38,6 +38,8 @@
     attribute EventListener onmute;
     attribute EventListener onunmute;
     attribute EventListener onended;
+
+    [CallWith=ScriptExecutionContext, RaisesException] static void getSources(MediaStreamTrackSourcesCallback callback);
 
     // EventTarget interface
     void addEventListener(DOMString type,

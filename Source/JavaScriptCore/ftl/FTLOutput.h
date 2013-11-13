@@ -166,6 +166,18 @@ public:
     {
         return call(mulWithOverflow32Intrinsic(), left, right);
     }
+    LValue addWithOverflow64(LValue left, LValue right)
+    {
+        return call(addWithOverflow64Intrinsic(), left, right);
+    }
+    LValue subWithOverflow64(LValue left, LValue right)
+    {
+        return call(subWithOverflow64Intrinsic(), left, right);
+    }
+    LValue mulWithOverflow64(LValue left, LValue right)
+    {
+        return call(mulWithOverflow64Intrinsic(), left, right);
+    }
     LValue doubleAbs(LValue value)
     {
         return call(doubleAbsIntrinsic(), value);
@@ -174,7 +186,9 @@ public:
     LValue signExt(LValue value, LType type) { return buildSExt(m_builder, value, type); }
     LValue zeroExt(LValue value, LType type) { return buildZExt(m_builder, value, type); }
     LValue fpToInt(LValue value, LType type) { return buildFPToSI(m_builder, value, type); }
+    LValue fpToUInt(LValue value, LType type) { return buildFPToUI(m_builder, value, type); }
     LValue fpToInt32(LValue value) { return fpToInt(value, int32); }
+    LValue fpToUInt32(LValue value) { return fpToUInt(value, int32); }
     LValue intToFP(LValue value, LType type) { return buildSIToFP(m_builder, value, type); }
     LValue intToDouble(LValue value) { return intToFP(value, doubleType); }
     LValue unsignedToFP(LValue value, LType type) { return buildUIToFP(m_builder, value, type); }
@@ -207,9 +221,12 @@ public:
     LValue loadPtr(TypedPointer pointer) { return load(pointer, refPtr); }
     LValue loadFloat(TypedPointer pointer) { return load(pointer, refFloat); }
     LValue loadDouble(TypedPointer pointer) { return load(pointer, refDouble); }
+    void store8(LValue value, TypedPointer pointer) { store(value, pointer, ref8); }
+    void store16(LValue value, TypedPointer pointer) { store(value, pointer, ref16); }
     void store32(LValue value, TypedPointer pointer) { store(value, pointer, ref32); }
     void store64(LValue value, TypedPointer pointer) { store(value, pointer, ref64); }
     void storePtr(LValue value, TypedPointer pointer) { store(value, pointer, refPtr); }
+    void storeFloat(LValue value, TypedPointer pointer) { store(value, pointer, refFloat); }
     void storeDouble(LValue value, TypedPointer pointer) { store(value, pointer, refDouble); }
 
     LValue addPtr(LValue value, ptrdiff_t immediate = 0)

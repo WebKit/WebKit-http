@@ -74,6 +74,7 @@ namespace WTF {
         // The return value is a pair of an interator to the new value's location, 
         // and a bool that is true if an new entry was added.
         AddResult add(const ValueType&);
+        AddResult add(ValueType&&);
 
         // An alternate version of add() that finds the object by hashing and comparing
         // with some other type, to avoid the cost of type conversion if the object is already
@@ -91,6 +92,8 @@ namespace WTF {
         bool remove(const ValueType&);
         bool remove(iterator);
         void clear();
+
+        ValueType take(const ValueType&);
 
         static bool isValidValue(const ValueType&);
         
@@ -141,19 +144,19 @@ namespace WTF {
     }
 
     template<typename T, typename U, typename V>
-    inline typename HashSet<T, U, V>::iterator HashSet<T, U, V>::begin() const
+    inline auto HashSet<T, U, V>::begin() const -> iterator
     {
         return m_impl.begin(); 
     }
 
     template<typename T, typename U, typename V>
-    inline typename HashSet<T, U, V>::iterator HashSet<T, U, V>::end() const
+    inline auto HashSet<T, U, V>::end() const -> iterator
     {
         return m_impl.end(); 
     }
 
     template<typename T, typename U, typename V>
-    inline typename HashSet<T, U, V>::iterator HashSet<T, U, V>::find(const ValueType& value) const
+    inline auto HashSet<T, U, V>::find(const ValueType& value) const -> iterator
     {
         return m_impl.find(value); 
     }
@@ -166,8 +169,7 @@ namespace WTF {
 
     template<typename Value, typename HashFunctions, typename Traits>
     template<typename HashTranslator, typename T>
-    typename HashSet<Value, HashFunctions, Traits>::iterator
-    inline HashSet<Value, HashFunctions, Traits>::find(const T& value) const
+    inline auto HashSet<Value, HashFunctions, Traits>::find(const T& value) const -> iterator
     {
         return m_impl.template find<HashSetTranslatorAdapter<HashTranslator> >(value);
     }
@@ -180,15 +182,20 @@ namespace WTF {
     }
 
     template<typename T, typename U, typename V>
-    inline typename HashSet<T, U, V>::AddResult HashSet<T, U, V>::add(const ValueType& value)
+    inline auto HashSet<T, U, V>::add(const ValueType& value) -> AddResult
     {
         return m_impl.add(value);
     }
 
+    template<typename T, typename U, typename V>
+    inline auto HashSet<T, U, V>::add(ValueType&& value) -> AddResult
+    {
+        return m_impl.add(std::move(value));
+    }
+
     template<typename Value, typename HashFunctions, typename Traits>
     template<typename HashTranslator, typename T>
-    inline typename HashSet<Value, HashFunctions, Traits>::AddResult
-    HashSet<Value, HashFunctions, Traits>::add(const T& value)
+    inline auto HashSet<Value, HashFunctions, Traits>::add(const T& value) -> AddResult
     {
         return m_impl.template addPassingHashCode<HashSetTranslatorAdapter<HashTranslator> >(value, value);
     }
@@ -223,6 +230,18 @@ namespace WTF {
     inline void HashSet<T, U, V>::clear()
     {
         m_impl.clear(); 
+    }
+
+    template<typename T, typename U, typename V>
+    auto HashSet<T, U, V>::take(const ValueType& value) -> ValueType
+    {
+        auto it = find(value);
+        if (it == end())
+            return ValueTraits::emptyValue();
+
+        ValueType result = std::move(const_cast<ValueType&>(*it));
+        remove(it);
+        return result;
     }
 
     template<typename T, typename U, typename V>

@@ -22,18 +22,19 @@
 #if ENABLE(SVG) && ENABLE(SVG_FONTS)
 #include "SVGAltGlyphItemElement.h"
 
+#include "ElementIterator.h"
 #include "SVGGlyphRefElement.h"
 #include "SVGNames.h"
 
 namespace WebCore {
 
-inline SVGAltGlyphItemElement::SVGAltGlyphItemElement(const QualifiedName& tagName, Document* document)
+inline SVGAltGlyphItemElement::SVGAltGlyphItemElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::altGlyphItemTag));
 }
 
-PassRefPtr<SVGAltGlyphItemElement> SVGAltGlyphItemElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGAltGlyphItemElement> SVGAltGlyphItemElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new SVGAltGlyphItemElement(tagName, document));
 }
@@ -48,15 +49,14 @@ bool SVGAltGlyphItemElement::hasValidGlyphElements(Vector<String>& glyphNames) c
     //
     // Here we fill glyphNames and return true only if all referenced glyphs are valid and
     // there is at least one glyph.
-    for (Node* child = firstChild(); child; child = child->nextSibling()) {
-        if (child->hasTagName(SVGNames::glyphRefTag)) {
-            String referredGlyphName;
-            if (static_cast<SVGGlyphRefElement*>(child)->hasValidGlyphElement(referredGlyphName))
-                glyphNames.append(referredGlyphName);
-            else {
-                glyphNames.clear();
-                return false;
-            }
+
+    for (auto glyphRef = childrenOfType<SVGGlyphRefElement>(this).begin(), end = childrenOfType<SVGGlyphRefElement>(this).end(); glyphRef != end; ++glyphRef) {
+        String referredGlyphName;
+        if (glyphRef->hasValidGlyphElement(referredGlyphName))
+            glyphNames.append(referredGlyphName);
+        else {
+            glyphNames.clear();
+            return false;
         }
     }
     return !glyphNames.isEmpty();

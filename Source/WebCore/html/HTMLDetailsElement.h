@@ -27,15 +27,15 @@ namespace WebCore {
 
 class HTMLDetailsElement FINAL : public HTMLElement {
 public:
-    static PassRefPtr<HTMLDetailsElement> create(const QualifiedName& tagName, Document* document);
+    static PassRefPtr<HTMLDetailsElement> create(const QualifiedName& tagName, Document& document);
     void toggleOpen();
 
     Element* findMainSummary() const;
 
 private:
-    HTMLDetailsElement(const QualifiedName&, Document*);
+    HTMLDetailsElement(const QualifiedName&, Document&);
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 

@@ -30,7 +30,7 @@
 
 #include "ActiveDOMObject.h"
 #include "ConsoleTypes.h"
-#include "KURL.h"
+#include "URL.h"
 #include "SecurityContext.h"
 #include "Supplementable.h"
 #include <wtf/HashSet.h>
@@ -51,8 +51,6 @@ class EventTarget;
 class MessagePort;
 class ScriptCallStack;
 
-typedef JSC::ExecState ScriptState;
-
 #if ENABLE(BLOB)
 class PublicURLManager;
 #endif
@@ -68,10 +66,10 @@ public:
     virtual bool isContextThread() const { return true; }
     virtual bool isJSExecutionForbidden() const = 0;
 
-    const KURL& url() const { return virtualURL(); }
-    KURL completeURL(const String& url) const { return virtualCompleteURL(url); }
+    virtual const URL& url() const = 0;
+    virtual URL completeURL(const String& url) const = 0;
 
-    virtual String userAgent(const KURL&) const = 0;
+    virtual String userAgent(const URL&) const = 0;
 
     virtual void disableEval(const String& errorMessage) = 0;
 
@@ -79,7 +77,7 @@ public:
     // FIXME: <http://webkit.org/b/114315> ScriptExecutionContext log exception should include a column number
     void reportException(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, PassRefPtr<ScriptCallStack>, CachedScript* = 0);
 
-    void addConsoleMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, ScriptState* = 0, unsigned long requestIdentifier = 0);
+    void addConsoleMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
     virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) = 0;
 
     virtual SecurityOrigin* topOrigin() const = 0;
@@ -150,7 +148,7 @@ public:
     void didChangeTimerAlignmentInterval();
     virtual double timerAlignmentInterval() const;
 
-    virtual EventQueue* eventQueue() const = 0;
+    virtual EventQueue& eventQueue() const = 0;
 
 #if ENABLE(SQL_DATABASE)
     void setDatabaseContext(DatabaseContext*);
@@ -179,10 +177,7 @@ protected:
     ActiveDOMObject::ReasonForSuspension reasonForSuspendingActiveDOMObjects() const { return m_reasonForSuspendingActiveDOMObjects; }
 
 private:
-    virtual const KURL& virtualURL() const = 0;
-    virtual KURL virtualCompleteURL(const String&) const = 0;
-
-    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, ScriptState* = 0, unsigned long requestIdentifier = 0) = 0;
+    virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) = 0;
     virtual EventTarget* errorEventTarget() = 0;
     virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<ScriptCallStack>) = 0;
     bool dispatchErrorEvent(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, CachedScript*);

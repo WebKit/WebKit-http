@@ -27,7 +27,7 @@
 #define WebURL_h
 
 #include "APIObject.h"
-#include <WebCore/KURL.h>
+#include <WebCore/URL.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
@@ -46,13 +46,14 @@ public:
 
     static PassRefPtr<WebURL> create(const WebURL* baseURL, const String& relativeURL)
     {
-        using WebCore::KURL;
+        using WebCore::URL;
 
         ASSERT(baseURL);
         baseURL->parseURLIfNecessary();
-        KURL* absoluteURL = new KURL(*baseURL->m_parsedURL.get(), relativeURL);
+        auto absoluteURL = std::make_unique<URL>(*baseURL->m_parsedURL.get(), relativeURL);
+        const String& absoluteURLString = absoluteURL->string();
 
-        return adoptRef(new WebURL(adoptPtr(absoluteURL), absoluteURL->string()));
+        return adoptRef(new WebURL(std::move(absoluteURL), absoluteURLString));
     }
 
     bool isNull() const { return m_string.isNull(); }
@@ -90,9 +91,9 @@ private:
     {
     }
 
-    WebURL(PassOwnPtr<WebCore::KURL> parsedURL, const String& string)
+    WebURL(std::unique_ptr<WebCore::URL> parsedURL, const String& string)
         : m_string(string)
-        , m_parsedURL(parsedURL)
+        , m_parsedURL(std::move(parsedURL))
     {
     }
 
@@ -100,11 +101,11 @@ private:
     {
         if (m_parsedURL)
             return;
-        m_parsedURL = WTF::adoptPtr(new WebCore::KURL(WebCore::KURL(), m_string));
+        m_parsedURL = std::make_unique<WebCore::URL>(WebCore::URL(), m_string);
     }
 
     String m_string;
-    mutable OwnPtr<WebCore::KURL> m_parsedURL;
+    mutable std::unique_ptr<WebCore::URL> m_parsedURL;
 };
 
 } // namespace WebKit

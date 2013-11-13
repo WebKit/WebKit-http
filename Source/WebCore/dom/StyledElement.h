@@ -63,7 +63,7 @@ public:
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) { }
 
 protected:
-    StyledElement(const QualifiedName& name, Document* document, ConstructionType type)
+    StyledElement(const QualifiedName& name, Document& document, ConstructionType type)
         : Element(name, document, type)
     {
     }
@@ -76,7 +76,7 @@ protected:
     void addPropertyToPresentationAttributeStyle(MutableStylePropertySet*, CSSPropertyID, double value, CSSPrimitiveValue::UnitTypes);
     void addPropertyToPresentationAttributeStyle(MutableStylePropertySet*, CSSPropertyID, const String& value);
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
 
 private:
     void styleAttributeChanged(const AtomicString& newStyleString, AttributeModificationReason);

@@ -36,14 +36,14 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGSwitchElement)
     REGISTER_PARENT_ANIMATED_PROPERTIES(SVGGraphicsElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
-inline SVGSwitchElement::SVGSwitchElement(const QualifiedName& tagName, Document* document)
+inline SVGSwitchElement::SVGSwitchElement(const QualifiedName& tagName, Document& document)
     : SVGGraphicsElement(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::switchTag));
     registerAnimatedPropertiesForSVGSwitchElement();
 }
 
-PassRefPtr<SVGSwitchElement> SVGSwitchElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGSwitchElement> SVGSwitchElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new SVGSwitchElement(tagName, document));
 }
@@ -66,9 +66,9 @@ bool SVGSwitchElement::childShouldCreateRenderer(const Node* child) const
     return false;
 }
 
-RenderObject* SVGSwitchElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SVGSwitchElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
-    return new (arena) RenderSVGTransformableContainer(this);
+    return new (arena) RenderSVGTransformableContainer(*this);
 }
 
 }

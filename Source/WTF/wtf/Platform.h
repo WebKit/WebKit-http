@@ -506,17 +506,6 @@
 #define WTF_USE_QUERY_PERFORMANCE_COUNTER  1
 #endif
 
-#if OS(WINCE) && !PLATFORM(QT)
-#define NOSHLWAPI      /* shlwapi.h not available on WinCe */
-
-/* MSDN documentation says these functions are provided with uspce.lib.  But we cannot find this file. */
-#define __usp10__      /* disable "usp10.h" */
-
-#define _INC_ASSERT    /* disable "assert.h" */
-#define assert(x)
-
-#endif  /* OS(WINCE) && !PLATFORM(QT) */
-
 #if !USE(WCHAR_UNICODE)
 #define WTF_USE_ICU_UNICODE 1
 #endif
@@ -526,7 +515,6 @@
 #define WTF_USE_PLUGIN_HOST_PROCESS 1
 #endif
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
-#define WTF_USE_SCROLLBAR_PAINTER 1
 #define HAVE_XPC 1
 #endif
 #define WTF_USE_CF 1
@@ -537,6 +525,12 @@
 #endif
 #define WTF_USE_APPKIT 1
 #define WTF_USE_SECURITY_FRAMEWORK 1
+
+/* OS X defines a series of platform macros for debugging. */
+/* Some of them are really annoying because they use common names (e.g. check()). */
+/* Disable those macros so that we are not limited in how we name methods and functions. */
+#undef __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES
+#define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
 #endif /* PLATFORM(MAC) && !PLATFORM(IOS) */
 
 #if PLATFORM(IOS)
@@ -912,15 +906,6 @@
 #define ENABLE_EXECUTABLE_ALLOCATOR_FIXED 1
 #else
 #define ENABLE_EXECUTABLE_ALLOCATOR_DEMAND 1
-#endif
-#endif
-
-/* Use the QXmlStreamReader implementation for XMLDocumentParser */
-/* Use the QXmlQuery implementation for XSLTProcessor */
-#if PLATFORM(QT)
-#if !USE(LIBXML2)
-#define WTF_USE_QXMLSTREAM 1
-#define WTF_USE_QXMLQUERY 1
 #endif
 #endif
 

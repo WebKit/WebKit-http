@@ -33,8 +33,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderButton::RenderButton(Element* element)
-    : RenderFlexibleBox(element)
+RenderButton::RenderButton(HTMLFormControlElement& element)
+    : RenderFlexibleBox(&element)
     , m_buttonText(0)
     , m_inner(0)
     , m_default(false)
@@ -43,6 +43,21 @@ RenderButton::RenderButton(Element* element)
 
 RenderButton::~RenderButton()
 {
+}
+
+HTMLFormControlElement& RenderButton::formControlElement() const
+{
+    return toHTMLFormControlElement(nodeForNonAnonymous());
+}
+
+bool RenderButton::canBeSelectionLeaf() const
+{
+    return formControlElement().rendererIsEditable();
+}
+
+bool RenderButton::hasLineIfEmpty() const
+{
+    return formControlElement().toInputElement();
 }
 
 void RenderButton::addChild(RenderObject* newChild, RenderObject* beforeChild)
@@ -90,8 +105,6 @@ void RenderButton::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
 {
     RenderBlock::styleDidChange(diff, oldStyle);
 
-    if (m_buttonText)
-        m_buttonText->setStyle(style());
     if (m_inner) // RenderBlock handled updating the anonymous block's style.
         setupInnerStyle(m_inner->style());
 
@@ -122,9 +135,9 @@ void RenderButton::setupInnerStyle(RenderStyle* innerStyle)
 void RenderButton::updateFromElement()
 {
     // If we're an input element, we may need to change our button text.
-    if (isHTMLInputElement(node())) {
-        HTMLInputElement* input = toHTMLInputElement(node());
-        String value = input->valueWithDefault();
+    if (isHTMLInputElement(formControlElement())) {
+        HTMLInputElement& input = toHTMLInputElement(formControlElement());
+        String value = input.valueWithDefault();
         setText(value);
     }
 }
@@ -140,8 +153,7 @@ void RenderButton::setText(const String& str)
         if (m_buttonText)
             m_buttonText->setText(str.impl());
         else {
-            m_buttonText = new (renderArena()) RenderTextFragment(&document(), str.impl());
-            m_buttonText->setStyle(style());
+            m_buttonText = RenderTextFragment::createAnonymous(document(), str);
             addChild(m_buttonText);
         }
     }
@@ -157,7 +169,7 @@ bool RenderButton::canHaveGeneratedChildren() const
     // Input elements can't have generated children, but button elements can. We'll
     // write the code assuming any other button types that might emerge in the future
     // can also have children.
-    return !isHTMLInputElement(node());
+    return !isHTMLInputElement(formControlElement());
 }
 
 LayoutRect RenderButton::controlClipRect(const LayoutPoint& additionalOffset) const

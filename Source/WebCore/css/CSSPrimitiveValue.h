@@ -154,6 +154,7 @@ public:
 #endif
         UOther
     };
+    static UnitCategory unitCategory(CSSPrimitiveValue::UnitTypes);
 
     bool isAngle() const
     {
@@ -202,8 +203,12 @@ public:
     bool isVariableName() const { return primitiveType() == CSS_VARIABLE_NAME; }
 #endif
     bool isViewportPercentageLength() const { return m_primitiveUnitType >= CSS_VW && m_primitiveUnitType <= CSS_VMAX; }
+    bool isViewportPercentageWidth() const { return m_primitiveUnitType == CSS_VW; }
+    bool isViewportPercentageHeight() const { return m_primitiveUnitType == CSS_VH; }
+    bool isViewportPercentageMax() const { return m_primitiveUnitType == CSS_VMAX; }
+    bool isViewportPercentageMin() const { return m_primitiveUnitType == CSS_VMIN; }
     bool isValueID() const { return m_primitiveUnitType == CSS_VALUE_ID; }
-    
+
     static PassRefPtr<CSSPrimitiveValue> createIdentifier(CSSValueID valueID) { return adoptRef(new CSSPrimitiveValue(valueID)); }
     static PassRefPtr<CSSPrimitiveValue> createIdentifier(CSSPropertyID propertyID) { return adoptRef(new CSSPrimitiveValue(propertyID)); }
     static PassRefPtr<CSSPrimitiveValue> createParserOperator(int parserOperator) { return adoptRef(new CSSPrimitiveValue(parserOperator)); }
@@ -211,6 +216,7 @@ public:
     static PassRefPtr<CSSPrimitiveValue> createColor(unsigned rgbValue) { return adoptRef(new CSSPrimitiveValue(rgbValue)); }
     static PassRefPtr<CSSPrimitiveValue> create(double value, UnitTypes type) { return adoptRef(new CSSPrimitiveValue(value, type)); }
     static PassRefPtr<CSSPrimitiveValue> create(const String& value, UnitTypes type) { return adoptRef(new CSSPrimitiveValue(value, type)); }
+    static PassRefPtr<CSSPrimitiveValue> create(const Length& value, const RenderStyle* style) { return adoptRef(new CSSPrimitiveValue(value, style)); }
 
     template<typename T> static PassRefPtr<CSSPrimitiveValue> create(T value)
     {
@@ -310,7 +316,7 @@ public:
 #endif
 
     CSSBasicShape* getShapeValue() const { return m_primitiveUnitType != CSS_SHAPE ? 0 : m_value.shape; }
-    
+
     CSSCalcValue* cssCalcValue() const { return m_primitiveUnitType != CSS_CALC ? 0 : m_value.calc; }
 
     CSSPropertyID getPropertyID() const { return m_primitiveUnitType == CSS_PROPERTY_ID ? m_value.propertyID : CSSPropertyInvalid; }
@@ -326,14 +332,17 @@ public:
 
     bool isQuirkValue() { return m_isQuirkValue; }
 
-    void addSubresourceStyleURLs(ListHashSet<KURL>&, const StyleSheetContents*) const;
+    void addSubresourceStyleURLs(ListHashSet<URL>&, const StyleSheetContents*) const;
 
     Length viewportPercentageLength() const;
-    
+
     PassRefPtr<CSSPrimitiveValue> cloneForCSSOM() const;
     void setCSSOMSafe() { m_isCSSOMSafe = true; }
 
     bool equals(const CSSPrimitiveValue&) const;
+
+    static UnitTypes canonicalUnitTypeForCategory(UnitCategory);
+    static double conversionToCanonicalUnitsScaleFactor(unsigned short unitType);
 
 private:
     CSSPrimitiveValue(CSSValueID);
@@ -342,6 +351,7 @@ private:
     CSSPrimitiveValue(int parserOperator);
     CSSPrimitiveValue(unsigned color); // RGB value
     CSSPrimitiveValue(const Length&);
+    CSSPrimitiveValue(const Length&, const RenderStyle*);
     CSSPrimitiveValue(const String&, UnitTypes);
     CSSPrimitiveValue(double, UnitTypes);
 
@@ -362,8 +372,7 @@ private:
     static void create(unsigned); // compile-time guard
     template<typename T> operator T*(); // compile-time guard
 
-    static UnitTypes canonicalUnitTypeForCategory(UnitCategory category);
-
+    void init(const Length&);
     void init(PassRefPtr<Counter>);
     void init(PassRefPtr<Rect>);
     void init(PassRefPtr<Pair>);
@@ -391,6 +400,18 @@ private:
         CSSCalcValue* calc;
     } m_value;
 };
+
+inline CSSPrimitiveValue* toCSSPrimitiveValue(CSSValue* value)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isPrimitiveValue());
+    return static_cast<CSSPrimitiveValue*>(value);
+}
+
+inline const CSSPrimitiveValue* toCSSPrimitiveValue(const CSSValue* value)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isPrimitiveValue());
+    return static_cast<const CSSPrimitiveValue*>(value);
+}
 
 } // namespace WebCore
 

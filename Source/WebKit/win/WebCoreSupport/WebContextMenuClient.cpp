@@ -30,17 +30,16 @@
 #include "WebElementPropertyBag.h"
 #include "WebLocalizableStrings.h"
 #include "WebView.h"
-
 #include <WebCore/ContextMenu.h>
 #include <WebCore/ContextMenuController.h>
 #include <WebCore/Editor.h>
 #include <WebCore/Event.h>
-#include <WebCore/Frame.h>
-#include <WebCore/FrameLoader.h>
 #include <WebCore/FrameLoadRequest.h>
+#include <WebCore/FrameLoader.h>
+#include <WebCore/MainFrame.h>
+#include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
 #include <WebCore/ResourceRequest.h>
-#include <WebCore/NotImplemented.h>
 
 using namespace WebCore;
 
@@ -104,7 +103,7 @@ void WebContextMenuClient::contextMenuItemSelected(ContextMenuItem* item, const 
     uiDelegate->contextMenuItemSelected(m_webView, &selectedItem, propertyBag.get());
 }
 
-void WebContextMenuClient::downloadURL(const KURL& url)
+void WebContextMenuClient::downloadURL(const URL& url)
 {
     m_webView->downloadURL(url);
 }
@@ -122,7 +121,7 @@ void WebContextMenuClient::searchWithGoogle(const Frame* frame)
 
     if (Page* page = frame->page()) {
         UserGestureIndicator indicator(DefinitelyProcessingUserGesture);
-        page->mainFrame().loader().urlSelected(KURL(ParsedURLString, url), String(), 0, false, false, MaybeSendReferrer);
+        page->mainFrame().loader().urlSelected(URL(ParsedURLString, url), String(), 0, false, false, MaybeSendReferrer);
     }
 }
 

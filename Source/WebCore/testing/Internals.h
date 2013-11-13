@@ -78,7 +78,6 @@ public:
     bool isPreloaded(const String& url);
     bool isLoadingFromMemoryCache(const String& url);
 
-    size_t numberOfScopedHTMLStyleChildren(const Node*, ExceptionCode&) const;
     PassRefPtr<CSSComputedStyleDeclaration> computedStyleIncludingVisitedInfo(Node*, ExceptionCode&) const;
 
 #if ENABLE(SHADOW_DOM)
@@ -109,8 +108,6 @@ public:
     bool pauseTransitionAtTimeOnElement(const String& propertyName, double pauseTime, Element*, ExceptionCode&);
     bool pauseTransitionAtTimeOnPseudoElement(const String& property, double pauseTime, Element*, const String& pseudoId, ExceptionCode&);
 
-    PassRefPtr<Element> createContentElement(ExceptionCode&);
-    bool isValidContentSelect(Element* insertionPoint, ExceptionCode&);
     Node* treeScopeRootNode(Node*, ExceptionCode&);
     Node* parentTreeScope(Node*, ExceptionCode&);
     bool hasSelectorForIdInShadow(Element* host, const String& idValue, ExceptionCode&);
@@ -119,13 +116,6 @@ public:
     bool hasSelectorForPseudoClassInShadow(Element* host, const String& pseudoClass, ExceptionCode&);
 
     bool attached(Node*, ExceptionCode&);
-
-    // FIXME: Rename these functions if walker is prefered.
-    Node* nextSiblingByWalker(Node*, ExceptionCode&);
-    Node* firstChildByWalker(Node*, ExceptionCode&);
-    Node* lastChildByWalker(Node*, ExceptionCode&);
-    Node* nextNodeByWalker(Node*, ExceptionCode&);
-    Node* previousNodeByWalker(Node*, ExceptionCode&);
 
     String visiblePlaceholder(Element*);
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -139,6 +129,7 @@ public:
     PassRefPtr<ClientRect> boundingBox(Element*, ExceptionCode&);
 
     PassRefPtr<ClientRectList> inspectorHighlightRects(Document*, ExceptionCode&);
+    String inspectorHighlightObject(Document*, ExceptionCode&);
 
     unsigned markerCountForNode(Node*, const String&, ExceptionCode&);
     PassRefPtr<Range> markerRangeForNode(Node*, const String& markerType, unsigned index, ExceptionCode&);
@@ -239,8 +230,8 @@ public:
 
     void allowRoundingHacks() const;
 
-    void insertAuthorCSS(Document*, const String&) const;
-    void insertUserCSS(Document*, const String&) const;
+    void insertAuthorCSS(Document*, const String&, ExceptionCode&) const;
+    void insertUserCSS(Document*, const String&, ExceptionCode&) const;
 
 #if ENABLE(INSPECTOR)
     unsigned numberOfLiveNodes() const;

@@ -33,11 +33,11 @@
 #include "Chrome.h"
 #include "DocumentLoader.h"
 #include "ElementIterator.h"
-#include "Frame.h"
 #include "FrameView.h"
 #include "ImageBuffer.h"
 #include "ImageObserver.h"
 #include "IntRect.h"
+#include "MainFrame.h"
 #include "RenderSVGRoot.h"
 #include "RenderStyle.h"
 #include "SVGDocument.h"
@@ -75,8 +75,7 @@ bool SVGImage::hasSingleSecurityOrigin() const
         return true;
 
     // Don't allow foreignObject elements since they can leak information with arbitrary HTML (like spellcheck or control theme).
-    auto foreignObjectDescendants = descendantsOfType<SVGForeignObjectElement>(rootElement);
-    if (foreignObjectDescendants.begin() != foreignObjectDescendants.end())
+    if (descendantsOfType<SVGForeignObjectElement>(rootElement).first())
         return false;
 
     // Because SVG image rendering disallows external resources and links,
@@ -201,6 +200,9 @@ void SVGImage::drawPatternForContainer(GraphicsContext* context, const FloatSize
     if (!buffer) // Failed to allocate buffer.
         return;
     drawForContainer(buffer->context(), containerSize, zoom, imageBufferSize, zoomedContainerRect, ColorSpaceDeviceRGB, CompositeSourceOver, BlendModeNormal);
+    if (context->drawLuminanceMask())
+        buffer->convertToLuminanceMask();
+
     RefPtr<Image> image = buffer->copyImage(DontCopyBackingStore, Unscaled);
     image->setSpaceSize(spaceSize());
 
@@ -210,6 +212,7 @@ void SVGImage::drawPatternForContainer(GraphicsContext* context, const FloatSize
     AffineTransform unscaledPatternTransform(patternTransform);
     unscaledPatternTransform.scale(1 / imageBufferScale.width(), 1 / imageBufferScale.height());
 
+    context->setDrawLuminanceMask(false);
     image->drawPattern(context, scaledSrcRect, unscaledPatternTransform, phase, colorSpace, compositeOp, dstRect);
 }
 
@@ -368,7 +371,7 @@ bool SVGImage::dataChanged(bool allDataReceived)
 
         ASSERT(loader.activeDocumentLoader()); // DocumentLoader should have been created by frame->init().
         loader.activeDocumentLoader()->writer()->setMIMEType("image/svg+xml");
-        loader.activeDocumentLoader()->writer()->begin(KURL()); // create the empty document
+        loader.activeDocumentLoader()->writer()->begin(URL()); // create the empty document
         loader.activeDocumentLoader()->writer()->addData(data()->data(), data()->size());
         loader.activeDocumentLoader()->writer()->end();
 

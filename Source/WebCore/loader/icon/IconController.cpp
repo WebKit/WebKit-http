@@ -37,7 +37,6 @@
 
 #include "Document.h"
 #include "DocumentLoader.h"
-#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "IconDatabase.h"
@@ -45,6 +44,7 @@
 #include "IconLoader.h"
 #include "IconURL.h"
 #include "Logging.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "Settings.h"
 
@@ -60,10 +60,10 @@ IconController::~IconController()
 {
 }
 
-KURL IconController::url()
+URL IconController::url()
 {
     IconURLs iconURLs = urlsForTypes(Favicon);
-    return iconURLs.isEmpty() ? KURL() : iconURLs[0].m_iconURL;
+    return iconURLs.isEmpty() ? URL() : iconURLs[0].m_iconURL;
 }
 
 IconURL IconController::iconURL(IconType iconType) const
@@ -119,7 +119,7 @@ IconURLs IconController::urlsForTypes(int iconTypesMask)
     return iconURLs;
 }
 
-void IconController::commitToDatabase(const KURL& icon)
+void IconController::commitToDatabase(const URL& icon)
 {
     LOG(IconDatabase, "Committing iconURL %s to database for pageURLs %s and %s", icon.string().ascii().data(), m_frame->document()->url().string().ascii().data(), m_frame->loader().initialRequest().url().string().ascii().data());
     iconDatabase().setIconURLForPageURL(icon.string(), m_frame->document()->url().string());
@@ -130,7 +130,8 @@ void IconController::startLoader()
 {
     // FIXME: We kick off the icon loader when the frame is done receiving its main resource.
     // But we should instead do it when we're done parsing the head element.
-    if (!m_frame->loader().isLoadingMainFrame())
+
+    if (!m_frame->isMainFrame())
         return;
 
     if (!iconDatabase().isEnabled())
@@ -140,7 +141,7 @@ void IconController::startLoader()
     if (!documentCanHaveIcon(m_frame->document()->url()))
         return;
 
-    KURL iconURL(url());
+    URL iconURL(url());
     String urlString(iconURL.string());
     if (urlString.isEmpty())
         return;
@@ -206,7 +207,7 @@ void IconController::continueLoadWithDecision(IconLoadDecision iconLoadDecision)
         return;
 
     if (iconLoadDecision == IconLoadNo) {
-        KURL iconURL(url());
+        URL iconURL(url());
         String urlString(iconURL.string());
         if (urlString.isEmpty())
             return;
@@ -253,11 +254,11 @@ bool IconController::appendToIconURLs(IconType iconType, IconURLs* iconURLs)
 IconURL IconController::defaultURL(IconType iconType)
 {
     // Don't return a favicon iconURL unless we're http or https
-    KURL documentURL = m_frame->document()->url();
+    URL documentURL = m_frame->document()->url();
     if (!documentURL.protocolIsInHTTPFamily())
         return IconURL();
 
-    KURL url;
+    URL url;
     bool couldSetProtocol = url.setProtocol(documentURL.protocol());
     ASSERT_UNUSED(couldSetProtocol, couldSetProtocol);
     url.setHost(documentURL.host());

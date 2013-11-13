@@ -41,7 +41,7 @@
 
 namespace WebCore {
 
-MediaStreamCenter& MediaStreamCenter::instance()
+MediaStreamCenter& MediaStreamCenter::platformCenter()
 {
     ASSERT(isMainThread());
     DEFINE_STATIC_LOCAL(MediaStreamCenterBlackBerry, center, ());
@@ -56,32 +56,47 @@ MediaStreamCenterBlackBerry::~MediaStreamCenterBlackBerry()
 {
 }
 
-void MediaStreamCenterBlackBerry::queryMediaStreamSources(PassRefPtr<MediaStreamSourcesQueryClient> client)
+void MediaStreamCenterBlackBerry::validateRequestConstraints(PassRefPtr<MediaStreamCreationClient>, PassRefPtr<MediaConstraints>, PassRefPtr<MediaConstraints>)
 {
-    MediaStreamSourceVector audioSources, videoSources;
-    client->didCompleteQuery(audioSources, videoSources);
+    notImplemented();
+}
+    
+void MediaStreamCenterBlackBerry::createMediaStream(PassRefPtr<MediaStreamCreationClient>, PassRefPtr<MediaConstraints>, PassRefPtr<MediaConstraints>)
+{
+    notImplemented();
 }
 
-void MediaStreamCenterBlackBerry::didSetMediaStreamTrackEnabled(MediaStreamDescriptor*, MediaStreamComponent*)
+bool MediaStreamCenterBlackBerry::getMediaStreamTrackSources(PassRefPtr<MediaStreamTrackSourcesRequestClient>)
 {
-}
-
-bool MediaStreamCenterBlackBerry::didAddMediaStreamTrack(MediaStreamDescriptor*, MediaStreamComponent*)
-{
+    notImplemented();
     return false;
 }
 
-bool MediaStreamCenterBlackBerry::didRemoveMediaStreamTrack(MediaStreamDescriptor*, MediaStreamComponent*)
+void MediaStreamCenterBlackBerry::didSetMediaStreamTrackEnabled(MediaStreamSource*)
 {
+    notImplemented();
+}
+
+bool MediaStreamCenterBlackBerry::didAddMediaStreamTrack(MediaStreamSource*)
+{
+    notImplemented();
     return false;
 }
 
-void MediaStreamCenterBlackBerry::didStopLocalMediaStream(MediaStreamDescriptor*)
+bool MediaStreamCenterBlackBerry::didRemoveMediaStreamTrack(MediaStreamSource*)
 {
+    notImplemented();
+    return false;
+}
+
+void MediaStreamCenterBlackBerry::didStopLocalMediaStream(MediaStreamDescriptor* stream)
+{
+    endLocalMediaStream(stream);
 }
 
 void MediaStreamCenterBlackBerry::didCreateMediaStream(MediaStreamDescriptor*)
 {
+    notImplemented();
 }
 
 } // namespace WebCore

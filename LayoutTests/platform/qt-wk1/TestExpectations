@@ -130,6 +130,10 @@ fast/dom/HTMLAnchorElement/anchor-no-multiple-windows.html
 fast/dom/Window/window-open-no-multiple-windows.html
 fast/forms/post-popup-no-multiple-windows.html
 
+webkit.org/b/121474 fast/history/go-back-to-iframe-with-plugin.html [ Skip ]
+
+webkit.org/b/121475 inspector/storage-panel-dom-storage-update.html [ Skip ]
+
 # TestRunner::overridePreference() does not support the 'WebKitShouldRespectImageOrientation' preference
 fast/images/exif-orientation-composited.html
 
@@ -185,3 +189,9 @@ webkit.org/b/119684 fast/events/setDragImage-in-document-element-crash.html [ Sk
 
 # [EFL][GTK][Qt][WK1] New fast/dom/Window/open-zero-size-as-default.html test fails after r153913.
 webkit.org/b/119729 fast/dom/Window/open-zero-size-as-default.html [ Skip ]
+
+# [Qt][WK1] New js/basic-weakmap.html test fails after r155473.
+webkit.org/b/121428 js/basic-weakmap.html [ Skip ]
+
+# [Qt][WK1] New js/dom/basic-weakmap.html fails after r156066.
+webkit.org/b/121680 js/dom/basic-weakmap.html [ Skip ]

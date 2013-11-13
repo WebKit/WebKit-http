@@ -33,35 +33,31 @@
 
 namespace JSC {
     
-    class DebuggerCallFrame {
-    public:
-        enum Type { ProgramType, FunctionType };
+class DebuggerCallFrame {
+public:
+    enum Type { ProgramType, FunctionType };
 
-        DebuggerCallFrame(CallFrame* callFrame)
-            : m_callFrame(callFrame)
-        {
-        }
+    JS_EXPORT_PRIVATE explicit DebuggerCallFrame(CallFrame*);
 
-        DebuggerCallFrame(CallFrame* callFrame, JSValue exception)
-            : m_callFrame(callFrame)
-            , m_exception(exception)
-        {
-        }
+    CallFrame* callFrame() const { return m_callFrame; }
+    JS_EXPORT_PRIVATE intptr_t sourceId() const;
+    unsigned line() const { return m_line; }
+    unsigned column() const { return m_column; }
+    JSGlobalObject* dynamicGlobalObject() const { return m_callFrame->dynamicGlobalObject(); }
+    JSScope* scope() const { return m_callFrame->scope(); }
+    JS_EXPORT_PRIVATE String functionName() const;
+    JS_EXPORT_PRIVATE String calculatedFunctionName() const;
+    JS_EXPORT_PRIVATE Type type() const;
+    JS_EXPORT_PRIVATE JSObject* thisObject() const;
+    JS_EXPORT_PRIVATE JSValue evaluate(const String&, JSValue& exception) const;
 
-        CallFrame* callFrame() const { return m_callFrame; }
-        JSGlobalObject* dynamicGlobalObject() const { return m_callFrame->dynamicGlobalObject(); }
-        JSScope* scope() const { return m_callFrame->scope(); }
-        JS_EXPORT_PRIVATE String functionName() const;
-        JS_EXPORT_PRIVATE String calculatedFunctionName() const;
-        JS_EXPORT_PRIVATE Type type() const;
-        JS_EXPORT_PRIVATE JSObject* thisObject() const;
-        JS_EXPORT_PRIVATE JSValue evaluate(const String&, JSValue& exception) const;
-        JSValue exception() const { return m_exception; }
+    void clear();
 
-    private:
-        CallFrame* m_callFrame;
-        JSValue m_exception;
-    };
+private:
+    CallFrame* m_callFrame;
+    unsigned m_line;
+    unsigned m_column;
+};
 
 } // namespace JSC
 

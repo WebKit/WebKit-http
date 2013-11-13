@@ -37,7 +37,7 @@
 namespace WebCore {
 
 class CachedResourceLoader;
-class KURL;
+class URL;
 class StyleCachedShader;
 class StyleShader;
 
@@ -49,7 +49,7 @@ public:
     const String& format() const { return m_format; }
     void setFormat(const String& format) { m_format = format; }
 
-    KURL completeURL(CachedResourceLoader*) const;
+    URL completeURL(CachedResourceLoader*) const;
     StyleCachedShader* cachedShader(CachedResourceLoader*);
     StyleShader* cachedOrPendingShader();
 
@@ -71,7 +71,8 @@ WebKitCSSShaderValue* toWebKitCSSShaderValue(const WebKitCSSShaderValue*);
 
 inline WebKitCSSShaderValue* toWebKitCSSShaderValue(CSSValue* value)
 {
-    return value->isWebKitCSSShaderValue() ? static_cast<WebKitCSSShaderValue*>(value) : 0;
+    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->isWebKitCSSShaderValue());
+    return static_cast<WebKitCSSShaderValue*>(value);
 }
 
 } // namespace WebCore

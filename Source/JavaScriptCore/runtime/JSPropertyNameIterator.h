@@ -33,6 +33,7 @@
 #include "JSString.h"
 #include "Operations.h"
 #include "PropertyNameArray.h"
+#include <memory>
 
 namespace JSC {
 
@@ -76,12 +77,12 @@ namespace JSC {
         DECLARE_EXPORT_INFO;
 
     protected:
-        void finishCreation(ExecState* exec, PropertyNameArrayData* propertyNameArrayData, JSObject* object)
+        void finishCreation(VM& vm, PropertyNameArrayData* propertyNameArrayData, JSObject* object)
         {
-            Base::finishCreation(exec->vm());
+            Base::finishCreation(vm);
             PropertyNameArrayData::PropertyNameVector& propertyNameVector = propertyNameArrayData->propertyNameVector();
             for (size_t i = 0; i < m_jsStringsSize; ++i)
-                m_jsStrings[i].set(exec->vm(), this, jsOwnedString(exec, propertyNameVector[i].string()));
+                m_jsStrings[i].set(vm, this, jsOwnedString(&vm, propertyNameVector[i].string()));
             m_cachedStructureInlineCapacity = object->structure()->inlineCapacity();
         }
 
@@ -95,7 +96,7 @@ namespace JSC {
         uint32_t m_numCacheableSlots;
         uint32_t m_jsStringsSize;
         unsigned m_cachedStructureInlineCapacity;
-        OwnArrayPtr<WriteBarrier<Unknown> > m_jsStrings;
+        std::unique_ptr<WriteBarrier<Unknown>[]> m_jsStrings;
     };
 
     ALWAYS_INLINE JSPropertyNameIterator* Register::propertyNameIterator() const

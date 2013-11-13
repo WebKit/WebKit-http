@@ -48,6 +48,8 @@
 #include "VideoTrack.h"
 #endif
 
+
+
 namespace WebCore {
 
 #if USE(AUDIO_SESSION)
@@ -60,9 +62,10 @@ class MediaElementAudioSourceNode;
 class Event;
 class HTMLSourceElement;
 class HTMLTrackElement;
-class KURL;
+class URL;
 class MediaController;
 class MediaControls;
+class MediaControlsHost;
 class MediaError;
 class PageActivityAssertionToken;
 class TimeRanges;
@@ -138,7 +141,7 @@ public:
 
 // network state
     void setSrc(const String&);
-    const KURL& currentSrc() const { return m_currentSrc; }
+    const URL& currentSrc() const { return m_currentSrc; }
 
     enum NetworkState { NETWORK_EMPTY, NETWORK_IDLE, NETWORK_LOADING, NETWORK_NO_SOURCE };
     NetworkState networkState() const;
@@ -148,7 +151,7 @@ public:
 
     PassRefPtr<TimeRanges> buffered() const;
     void load();
-    String canPlayType(const String& mimeType, const String& keySystem = String(), const KURL& = KURL()) const;
+    String canPlayType(const String& mimeType, const String& keySystem = String(), const URL& = URL()) const;
 
 // ready state
     ReadyState readyState() const;
@@ -191,7 +194,7 @@ public:
 
 #if ENABLE(MEDIA_SOURCE)
 //  Media Source.
-    void setSourceState(const String&);
+    void closeMediaSource();
 #endif 
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -320,7 +323,7 @@ public:
     void setNeedWidgetUpdate(bool needWidgetUpdate) { m_needWidgetUpdate = needWidgetUpdate; }
     void deliverNotification(MediaPlayerProxyNotificationType notification);
     void setMediaPlayerProxy(WebMediaPlayerProxy* proxy);
-    void getPluginProxyParams(KURL& url, Vector<String>& names, Vector<String>& values);
+    void getPluginProxyParams(URL& url, Vector<String>& names, Vector<String>& values);
     void createMediaPlayerProxy();
     void updateWidget(PluginCreationOption);
 #endif
@@ -330,7 +333,7 @@ public:
     // causes an ambiguity error at compile time. This class's constructor
     // ensures that both implementations return document, so return the result
     // of one of them here.
-    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE { return HTMLElement::scriptExecutionContext(); }
+    using HTMLElement::scriptExecutionContext;
 
     bool hasSingleSecurityOrigin() const { return !m_player || m_player->hasSingleSecurityOrigin(); }
     
@@ -368,7 +371,7 @@ public:
 #endif
 
     enum InvalidURLAction { DoNothing, Complain };
-    bool isSafeToLoadURL(const KURL&, InvalidURLAction);
+    bool isSafeToLoadURL(const URL&, InvalidURLAction);
 
     const String& mediaGroup() const;
     void setMediaGroup(const String&);
@@ -381,7 +384,7 @@ public:
     virtual bool willRespondToMouseClickEvents() OVERRIDE;
 
 protected:
-    HTMLMediaElement(const QualifiedName&, Document*, bool);
+    HTMLMediaElement(const QualifiedName&, Document&, bool);
     virtual ~HTMLMediaElement();
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
@@ -434,7 +437,7 @@ private:
     virtual bool supportsFocus() const OVERRIDE;
     virtual bool isMouseFocusable() const OVERRIDE;
     virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     virtual bool childShouldCreateRenderer(const Node*) const OVERRIDE;
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
@@ -483,7 +486,7 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual void mediaPlayerKeyAdded(MediaPlayer*, const String& keySystem, const String& sessionId) OVERRIDE;
     virtual void mediaPlayerKeyError(MediaPlayer*, const String& keySystem, const String& sessionId, MediaPlayerClient::MediaKeyErrorCode, unsigned short systemCode) OVERRIDE;
-    virtual void mediaPlayerKeyMessage(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength, const KURL& defaultURL) OVERRIDE;
+    virtual void mediaPlayerKeyMessage(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength, const URL& defaultURL) OVERRIDE;
     virtual bool mediaPlayerKeyNeeded(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength) OVERRIDE;
 #endif
 
@@ -535,7 +538,7 @@ private:
     
     // loading
     void selectMediaResource();
-    void loadResource(const KURL&, ContentType&, const String& keySystem);
+    void loadResource(const URL&, ContentType&, const String& keySystem);
     void scheduleNextSourceChild();
     void loadNextSourceChild();
     void userCancelledLoad();
@@ -547,7 +550,7 @@ private:
     void waitForSourceChange();
     void prepareToPlay();
 
-    KURL selectNextSourceChild(ContentType*, String* keySystem, InvalidURLAction);
+    URL selectNextSourceChild(ContentType*, String* keySystem, InvalidURLAction);
 
     void mediaLoadingFailed(MediaPlayer::NetworkState);
 
@@ -622,11 +625,17 @@ private:
     bool shouldDisableSleep() const;
 #endif
 
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    virtual void didAddUserAgentShadowRoot(ShadowRoot*) OVERRIDE;
+    DOMWrapperWorld* ensureIsolatedWorld();
+    bool ensureMediaControlsInjectedScript();
+#endif
+
     Timer<HTMLMediaElement> m_loadTimer;
     Timer<HTMLMediaElement> m_progressEventTimer;
     Timer<HTMLMediaElement> m_playbackProgressTimer;
     RefPtr<TimeRanges> m_playedTimeRanges;
-    OwnPtr<GenericEventQueue> m_asyncEventQueue;
+    GenericEventQueue m_asyncEventQueue;
 
     double m_playbackRate;
     double m_defaultPlaybackRate;
@@ -634,7 +643,7 @@ private:
     NetworkState m_networkState;
     ReadyState m_readyState;
     ReadyState m_readyStateMaximum;
-    KURL m_currentSrc;
+    URL m_currentSrc;
 
     RefPtr<MediaError> m_error;
 
@@ -673,7 +682,7 @@ private:
     int m_processingMediaPlayerCallback;
 
 #if ENABLE(MEDIA_SOURCE)
-    RefPtr<MediaSource> m_mediaSource;
+    RefPtr<HTMLMediaSource> m_mediaSource;
 #endif
 
     mutable double m_cachedTime;
@@ -772,8 +781,13 @@ private:
     OwnPtr<AudioSessionManagerToken> m_audioSessionManagerToken;
 #endif
 
-    OwnPtr<PageActivityAssertionToken> m_activityToken;
+    std::unique_ptr<PageActivityAssertionToken> m_activityToken;
     size_t m_reportedExtraMemoryCost;
+
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    RefPtr<MediaControlsHost> m_mediaControlsHost;
+    RefPtr<DOMWrapperWorld> m_isolatedWorld;
+#endif
 };
 
 #if ENABLE(VIDEO_TRACK)
@@ -802,11 +816,20 @@ inline bool isMediaElement(Node* node)
     return node && node->isElementNode() && toElement(node)->isMediaElement();
 }
 
+inline HTMLMediaElement& toHTMLMediaElement(Node& node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(isMediaElement(&node));
+    return static_cast<HTMLMediaElement&>(node);
+}
+
 inline HTMLMediaElement* toHTMLMediaElement(Node* node)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!node || isMediaElement(node));
     return static_cast<HTMLMediaElement*>(node);
 }
+
+void toHTMLMediaElement(const HTMLMediaElement&);
+void toHTMLMediaElement(const HTMLMediaElement*);
 
 } //namespace
 

@@ -42,27 +42,31 @@ public:
 
     template<typename U> bool send(const U& message, uint64_t destinationID)
     {
-        COMPILE_ASSERT(!U::isSync, AsyncMessageExpected);
-        OwnPtr<MessageEncoder> encoder = MessageEncoder::create(U::receiverName(), U::name(), destinationID);
-        encoder->encode(message);
+        static_assert(!U::isSync, "Message is sync!");
+
+        auto encoder = std::make_unique<MessageEncoder>(U::receiverName(), U::name(), destinationID);
+        encoder->encode(message.arguments());
         
-        return sendMessage(encoder.release());
+        return sendMessage(std::move(encoder));
     }
 
-    template<typename U> bool sendSync(const U& message, const typename U::Reply& reply, double timeout = Connection::NoTimeout)
+    template<typename T>
+    bool sendSync(T&& message, typename T::Reply&& reply, double timeout = Connection::NoTimeout)
     {
-        COMPILE_ASSERT(U::isSync, SyncMessageExpected);
-        return sendSync(message, reply, messageSenderDestinationID(), timeout);
+        static_assert(T::isSync, "Message is not sync!");
+
+        return sendSync(std::forward<T>(message), std::move(reply), messageSenderDestinationID(), timeout);
     }
 
-    template<typename U> bool sendSync(const U& message, const typename U::Reply& reply, uint64_t destinationID, double timeout = Connection::NoTimeout)
+    template<typename T>
+    bool sendSync(T&& message, typename T::Reply&& reply, uint64_t destinationID, double timeout = Connection::NoTimeout)
     {
         ASSERT(messageSenderConnection());
 
-        return messageSenderConnection()->sendSync(message, reply, destinationID, timeout);
+        return messageSenderConnection()->sendSync(std::move(message), std::move(reply), destinationID, timeout);
     }
 
-    bool sendMessage(PassOwnPtr<MessageEncoder>);
+    bool sendMessage(std::unique_ptr<MessageEncoder>);
 
 private:
     virtual Connection* messageSenderConnection() = 0;

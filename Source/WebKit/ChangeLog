@@ -1,3 +1,227 @@
+2013-09-30  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove the code guarded by STYLE_SCOPED
+        https://bugs.webkit.org/show_bug.cgi?id=122123
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-09-30  Alex Christensen  <achristensen@webkit.org>
+
+        [Windows] Unreviewed build fix for Win64.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Added correct 64-bit BitmapImage::create symbol.
+
+2013-09-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Compile errors in WebKit (via peavo@outlook.com).
+        https://bugs.webkit.org/show_bug.cgi?id=122106
+
+        Reviewed by Darin Adler.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add link
+        declarations missed in r156655.
+
+2013-09-28  Mark Rowe  <mrowe@apple.com>
+
+        Take Xcode's advice and enable some extra warnings.
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-09-27  Alex Christensen  <achristensen@webkit.org>
+
+        [Windows] Unreviewed build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Fixed linker symbols I broke last time.
+
+2013-09-27  Alex Christensen  <alex.christensen@flexsim.com>
+
+        [Windows] Unreviewed build fix for Win64.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Added and fixed 64-bit linker symbols.
+
+2013-09-26  Darin Adler  <darin@apple.com>
+
+        rename KURL to URL
+        https://bugs.webkit.org/show_bug.cgi?id=16214
+
+        Reviewed by Andreas Kling.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Let the script to try to rename here.
+
+2013-09-26  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] make MediaStream testable
+        https://bugs.webkit.org/show_bug.cgi?id=121967
+
+        Reviewed by Dean Jackson.
+
+        * WebKit.xcodeproj/project.pbxproj: Add WebUserMediaClient.
+
+2013-09-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed Build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add missing
+        symbol export to support tests.
+
+2013-09-25  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Unreviewed Build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Enabled AssembleBuildLogs on WinCairo port.
+        https://bugs.webkit.org/show_bug.cgi?id=121923
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.sln:
+        Build AssembleBuildLogs in WinCairo port.
+
+2013-09-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Refactor RuntimeEnabledFeatures as a Singleton 
+        https://bugs.webkit.org/show_bug.cgi?id=121883
+
+        Reviewed by Jer Noble.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Expose singleton accessor for DLL clients.
+
+2013-09-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix after r156408.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add new
+        version of symbol export declaration.
+
+2013-09-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix after r156408.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Remove
+        symbol export declaration for WebCore::CSSParserContext::CSSParserContext,
+        which is no longer provided by the system.
+
+2013-09-25  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Fix build with Qt 5.2 QtPosition module
+        https://bugs.webkit.org/show_bug.cgi?id=121089
+
+        Reviewed by Simon Hausmann.
+
+        QtLocation -> QtPositioning
+
+        * WebKit1.pri:
+
+2013-09-23  Patrick Gansterer  <paroga@webkit.org>
+
+        Cleanup CMake files in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=121763
+
+        Reviewed by Gyuyoung Kim.
+
+        Sort files and unify style.
+
+        * PlatformBlackBerry.cmake:
+        * PlatformEfl.cmake:
+        * PlatformWinCE.cmake:
+
+2013-09-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix after r156216.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: I
+        accidentally exposed the symbol of the calling function, not
+        the missing symbol!
+
+2013-09-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix after r156215.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Expose
+        missing symbols needed by DRT.
+
+2013-09-20  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Use COMPILE_DEFINITIONS target property for setting BUILDING_* defines
+        https://bugs.webkit.org/show_bug.cgi?id=121672
+
+        Reviewed by Gyuyoung Kim.
+
+        Since the scope of add_definitions() is always a whole file, we need to use
+        target properties instead to set definitions only for specific targets.
+
+        * CMakeLists.txt:
+
+2013-09-19  Bear Travis  <betravis@adobe.com>
+
+        CSS_SHAPES not supported on AppleWin port
+        https://bugs.webkit.org/show_bug.cgi?id=118810
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add required symbol for enabling CSS Shapes.
+
+2013-09-18  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] TestWebKitAPI does not compile.
+        https://bugs.webkit.org/show_bug.cgi?id=121485
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Export needed symbols.
+
+2013-09-17  Andreas Kling  <akling@apple.com>
+
+        Some build juice for Windows.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-09-13  Tim Horton  <timothy_horton@apple.com>
+
+        Unreviewed; part one of build fix for Windows.
+        Sorry for the noise, I thought I'd fixed it.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-09-12  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] TestWebKitAPI fails to link.
+        https://bugs.webkit.org/show_bug.cgi?id=121223
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add required symbol.
+
+2013-09-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Avoid converting from IntSize->SIZE->IntSize
+        https://bugs.webkit.org/show_bug.cgi?id=121180
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Remove unused symbol export.
+
+2013-09-08  Antti Koivisto  <antti@apple.com>
+
+        Fix window build.
+        
+        Not reviewed.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
 2013-08-30  Brent Fulgham  <bfulgham@apple.com>
 
         [Windows] Unreviewed build correction.

@@ -52,7 +52,7 @@ PassRefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createLocalStorageNamespa
 {
     uint64_t pageGroupID = WebProcess::shared().webPageGroup(pageGroup)->pageGroupID();
 
-    LocalStorageNamespaceMap::AddResult result = localStorageNamespaceMap().add(pageGroupID, 0);
+    LocalStorageNamespaceMap::AddResult result = localStorageNamespaceMap().add(pageGroupID, nullptr);
     if (!result.isNewEntry)
         return result.iterator->value;
 
@@ -85,7 +85,7 @@ StorageNamespaceImpl::~StorageNamespaceImpl()
 
 PassRefPtr<StorageArea> StorageNamespaceImpl::storageArea(PassRefPtr<SecurityOrigin> securityOrigin)
 {
-    HashMap<RefPtr<WebCore::SecurityOrigin>, RefPtr<StorageAreaMap>>::AddResult result = m_storageAreaMaps.add(securityOrigin.get(), 0);
+    auto result = m_storageAreaMaps.add(securityOrigin.get(), nullptr);
     if (result.isNewEntry)
         result.iterator->value = StorageAreaMap::create(this, securityOrigin);
 

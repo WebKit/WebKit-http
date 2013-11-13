@@ -71,56 +71,10 @@ webkit.org/b/109945 webgl/conformance/uniforms/uniform-default-values.html [ Cra
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/97560 http/tests/inspector/extensions-useragent.html [ Failure Pass ]
-webkit.org/b/97560 inspector/extensions/extensions-api.html [ Failure Pass ]
-webkit.org/b/97560 inspector/extensions/extensions-audits.html [ Failure Pass ]
 webkit.org/b/111612 animations/animation-delay-changed.html [ Failure Pass ]
 
-Bug(EFL) editing/deleting/4875189.html [ Crash Pass ]
 Bug(EFL) editing/selection/first-letter-selection-crash.html [ Crash Pass ]
-Bug(EFL) editing/selection/fake-doubleclick.html [ Failure Pass ]
 Bug(EFL) http/tests/security/contentSecurityPolicy/connect-src-websocket-blocked.html [ Crash Pass ]
-Bug(EFL) inspector/elements/delete-from-document.html [ Failure Pass ]
-Bug(EFL) inspector/elements/insert-node.html [ Failure Pass ]
-Bug(EFL) inspector/elements/elements-inspect-iframe-from-different-domain.html [ Failure Pass ]
-Bug(EFL) inspector/elements/elements-panel-styles.html [ Failure Pass ]
-Bug(EFL) inspector/elements/elements-panel-selection-on-refresh.html [ Failure Pass ]
-Bug(EFL) inspector/elements/elements-panel-limited-children.html [ Failure Pass ]
-Bug(EFL) inspector/elements/elements-panel-reload-assert.html [ Failure Pass ]
-Bug(EFL) inspector/elements/elements-panel-rewrite-href.html [ Failure Pass ]
-Bug(EFL) inspector/elements/event-listener-sidebar.html [ Failure Pass ]
-Bug(EFL) inspector/elements/elements-panel-structure.html [ Failure Pass ]
-Bug(EFL) inspector/elements/highlight-node-scaled.html [ Failure Pass ]
-Bug(EFL) inspector/console/console-format.html [ Failure Pass ]
-Bug(EFL) inspector/console/command-line-api-inspect.html [ Failure Pass ]
-Bug(EFL) inspector/console/console-api-on-call-frame.html [ Failure Pass ]
-Bug(EFL) inspector/console/console-big-array.html [ Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-activation-crash2.html [ Crash Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-breakpoints-not-activated-on-reload.html [ Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-eval-while-paused.html [ Failure Pass ]
-Bug(EFL) inspector/debugger/callstack-placards-discarded.html [ Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-autocontinue-on-syntax-error.html [ Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-activation-crash.html [ Crash Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-pause-in-eval-script.html [ Crash Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-pause-on-debugger-statement.html [ Crash Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-pause-on-failed-assertion.html [ Crash Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-proto-property.html [ Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-set-breakpoint-regex.html [ Crash Failure Pass ]
-Bug(EFL) inspector/debugger/debugger-step-out.html [ Crash Failure Pass ]
-Bug(EFL) inspector/debugger/pause-in-inline-script.html [ Failure Pass ]
-Bug(EFL) inspector/debugger/breakpoint-manager.html [ Crash Failure Pass ]
-Bug(EFL) inspector/debugger/copy-stack-trace.html [ Failure Pass ]
-Bug(EFL) inspector/timeline/timeline-animation-frame.html [ Failure Pass ]
-Bug(EFL) inspector/timeline/timeline-timer.html [ Failure Pass ]
-Bug(EFL) inspector/cookie-parser.html [ Failure Pass ]
-Bug(EFL) inspector/profiler/cpu-profiler-profiling.html [ Failure Pass ]
-Bug(EFL) inspector/extensions/extensions-resources.html [ Failure Pass ]
-Bug(EFL) inspector/extensions/extensions-audits-api.html [ Failure Pass ]
-Bug(EFL) inspector/extensions/extensions-reload.html [ Failure Pass ]
-Bug(EFL) inspector/editor/highlighter-basics.html [ Failure Pass ]
-Bug(EFL) inspector/editor/highlighter-long-line.html [ Failure Pass ]
-Bug(EFL) inspector/audits/audits-panel-functional.html [ Failure Pass ]
-Bug(EFL) inspector/runtime/runtime-callFunctionOn.html [ Failure Pass ]
-Bug(EFL) inspector/storage-panel-dom-storage-update.html [ Failure Pass ]
 Bug(EFL) media/video-played-reset.html [ Failure Pass ]
 Bug(EFL) fast/loader/fragment-after-redirect-gets-back-entry.html [ Failure Pass ]
 Bug(EFL) fast/loader/child-frame-add-after-back-forward.html [ Failure Pass ]
@@ -132,23 +86,10 @@ Bug(EFL) fast/layers/no-clipping-overflow-hidden-hardware-acceleration.html [ Im
 Bug(EFL) fast/events/domactivate-sets-underlying-click-event-as-handled.html [ Failure Pass ]
 Bug(EFL) http/tests/inspector/change-iframe-src.html [ Failure Pass ]
 Bug(EFL) http/tests/loading/fire-error-event-empty-404-script.html [ Crash Failure Pass ]
-Bug(EFL) fast/js/create-lots-of-workers.html [ Crash Failure Pass ]
+Bug(EFL) js/create-lots-of-workers.html [ Crash Failure Pass ]
 Bug(EFL) media/track/track-element-load-event.html [ Crash Failure Pass ]
 
 webkit.org/b/98761 svg/text/selection-tripleclick.svg [ Failure Pass ]
-
-# ASSERTION FAILED: m_suspended in WebCore::SuspendableTimer::resume()
-webkit.org/b/81574 inspector/debugger/debugger-no-nested-pause.html [ Crash Failure Pass ]
-webkit.org/b/81574 inspector/debugger/debugger-pause-in-internal.html [ Crash Failure Pass ]
-webkit.org/b/81574 inspector/debugger/debugger-pause-on-exception.html [ Crash Failure Pass ]
-webkit.org/b/81574 inspector/debugger/debugger-reload-on-pause.html [ Crash Failure Pass ]
-webkit.org/b/81574 inspector/debugger/debugger-scripts.html [ Crash Failure Pass ]
-webkit.org/b/81574 inspector/debugger/debugger-step-in.html [ Crash Failure Pass ]
-webkit.org/b/81574 inspector/debugger/debugger-step-over.html [ Crash Failure Pass ]
-webkit.org/b/81574 inspector/debugger/disable-script.html [ Crash Failure Pass ]
-webkit.org/b/81574 inspector/debugger/function-details.html [ Crash Failure Pass ]
-webkit.org/b/81574 inspector/debugger/script-extract-outline.html [ Crash Failure Pass ]
-webkit.org/b/81574 inspector/debugger/source-frame-count.html [ Crash Failure Pass ]
 
 # Test is flaky and needs to be fixed
 webkit.org/b/56985 http/tests/loading/bad-server-subframe.html [ Crash Pass ]
@@ -173,16 +114,12 @@ webkit.org/b/102204 http/tests/security/frameNavigation/inactive-function-in-pop
 webkit.org/b/95428 media/video-controls-captions.html [ Failure ]
 webkit.org/b/113106 media/track/track-prefer-captions.html [ Failure ]
 
-webkit.org/b/113513 inspector/styles/paste-property.html [ Failure ]
-
 # Flaky on Debug bot. See also webkit.org/b/102190
 webkit.org/b/103043 fast/events/overflow-scroll-fake-mouse-move.html [ Failure Pass ]
 webkit.org/b/103043 fast/events/frame-scroll-fake-mouse-move.html [ Failure Pass ]
 
 # Failures after r130363.
 webkit.org/b/98573 fast/forms/multiple-form-submission-protection-mouse.html [ Failure Pass ]
-
-webkit.org/b/103113 editing/deleting/delete-ligature-003.html [ Failure Pass ]
 
 webkit.org/b/103115 http/tests/loading/remove-child-triggers-parser.html [ Failure Pass ]
 
@@ -203,7 +140,7 @@ webkit.org/b/108257 compositing/overflow/automatically-opt-into-composited-scrol
 webkit.org/b/108257 compositing/overflow/composited-scrolling-creates-a-stacking-container.html [ Missing Failure ]
 
 # Asserts when destroying WebCore::Database (possibly because r141207)
-webkit.org/b/108355 fast/js/caller-property.html [ Crash Pass ]
+webkit.org/b/108355 js/caller-property.html [ Crash Pass ]
 webkit.org/b/108355 storage/websql/close-during-stress-test.html [ Crash Pass ]
 webkit.org/b/108355 storage/websql/sql-error-codes.html [ Crash Pass ]
 
@@ -217,21 +154,16 @@ webkit.org/b/108355 storage/websql/sql-error-codes.html [ Crash Pass ]
 
 # Missing EFL's accessibility functions
 webkit.org/b/111984 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
-webkit.org/b/111986 accessibility/aria-invalid.html [ Failure ]
 webkit.org/b/111987 accessibility/aria-link-supports-press.html [ Failure ]
 webkit.org/b/111988 accessibility/aria-readonly.html [ Failure ]
 webkit.org/b/111991 accessibility/aria-text-role.html [ Failure ]
-webkit.org/b/111992 accessibility/aria-used-on-image-maps.html [ Failure ]
 webkit.org/b/111993 accessibility/button-press-action.html [ Failure ]
 webkit.org/b/111994 accessibility/canvas-accessibilitynodeobject.html [ Failure ]
 webkit.org/b/111996 accessibility/canvas-fallback-content-2.html [ Failure ]
 webkit.org/b/111999 accessibility/disabled-controls-not-focusable.html [ Failure ]
-webkit.org/b/112000 accessibility/heading-level.html [ Failure ]
 webkit.org/b/112002 accessibility/inline-continuations.html [ Failure ]
-webkit.org/b/112003 accessibility/loading-iframe-sends-notification.html [ Failure ]
 webkit.org/b/112005 accessibility/onclick-handlers.html [ Failure ]
 webkit.org/b/112006 accessibility/secure-textfield-title-ui.html [ Failure ]
-webkit.org/b/112007 accessibility/selection-states.html [ Failure ]
 webkit.org/b/112008 accessibility/spinbutton-value.html [ Failure ]
 webkit.org/b/112012 accessibility/svg-bounds.html [ Failure ]
 webkit.org/b/112013 accessibility/svg-remote-element.html [ Failure ]
@@ -240,7 +172,6 @@ webkit.org/b/112015 accessibility/textarea-line-for-index.html [ Failure ]
 webkit.org/b/112016 accessibility/textarea-selected-text-range.html [ Failure ]
 webkit.org/b/112017 accessibility/textbox-role-reports-selection.html [ Failure ]
 webkit.org/b/112018 accessibility/th-as-title-ui.html [ Failure ]
-webkit.org/b/112020 accessibility/transformed-element.html [ Failure Crash ]
 webkit.org/b/112021 accessibility/visible-elements.html [ Failure Crash ]
 
 # New accessibility test added in r149858 that is failing for EFL.
@@ -255,16 +186,13 @@ accessibility/aria-checkbox-sends-notification.html [ Skip ]
 accessibility/deleting-iframe-destroys-axcache.html [ Skip ]
 accessibility/img-fallsback-to-title.html [ Skip ]
 accessibility/internal-link-anchors2.html [ Skip ]
-accessibility/lists.html [ Skip ]
 accessibility/media-element.html [ Skip ]
 accessibility/multiselect-list-reports-active-option.html [ Skip ]
-accessibility/plugin.html [ Skip ]
 accessibility/radio-button-group-members.html [ Skip ]
 accessibility/table-attributes.html [ Skip ]
 accessibility/table-detection.html [ Skip ]
 accessibility/table-one-cell.html [ Skip ]
 accessibility/table-sections.html [ Skip ]
-accessibility/table-with-aria-role.html [ Skip ]
 accessibility/table-with-rules.html [ Skip ]
 
 # EFL port doesn't support webarchives.
@@ -371,11 +299,8 @@ webkit.org/b/99562 http/tests/plugins/post-url-file.html [ Failure ]
 # Comparison of two javascript objects in C++ is failing.
 webkit.org/b/98739 plugins/npruntime/embed-property-equality.html [ Failure ]
 
-# EFL's EventSender contextClick should return objects that implements click() method
-webkit.org/b/98410 editing/pasteboard/can-read-in-copy-and-cut-events.html [ Failure ]
-webkit.org/b/98410 editing/pasteboard/can-read-in-dragstart-event.html [ Failure ]
-webkit.org/b/98410 editing/pasteboard/copy-standalone-image-crash.html [ Failure ]
-webkit.org/b/98410 media/context-menu-actions.html [ Failure ]
+webkit.org/b/113094 editing/pasteboard/can-read-in-copy-and-cut-events.html [ Failure ]
+webkit.org/b/113094 editing/pasteboard/can-read-in-dragstart-event.html [ Failure ]
 
 webkit.org/b/102201 fast/dom/Window/open-window-min-size.html [ Failure ]
 

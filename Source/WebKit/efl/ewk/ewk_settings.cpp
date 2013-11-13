@@ -2,6 +2,7 @@
     Copyright (C) 2009-2010 ProFUSION embedded systems
     Copyright (C) 2009-2010 Samsung Electronics
     Copyright (C) 2012 Intel Corporation
+    Copyright (C) 2013 Apple Inc. All rights reserved.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -32,8 +33,7 @@
 #include "IconDatabase.h"
 #include "Image.h"
 #include "IntSize.h"
-#include "KURL.h"
-#include "LocalFileSystem.h"
+#include "URL.h"
 #include "MemoryCache.h"
 #include "PageCache.h"
 #include "RuntimeEnabledFeatures.h"
@@ -134,7 +134,7 @@ void ewk_settings_local_storage_database_origin_clear(const char* url)
 {
     EINA_SAFETY_ON_NULL_RETURN(url);
 
-    const WebCore::KURL kurl(WebCore::KURL(), WTF::String::fromUTF8(url));
+    const WebCore::URL kurl(WebCore::URL(), WTF::String::fromUTF8(url));
     WebCore::StorageTracker::tracker().deleteOrigin(WebCore::SecurityOrigin::create(kurl).get());
 }
 
@@ -213,7 +213,7 @@ cairo_surface_t* ewk_settings_icon_database_icon_surface_get(const char* url)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(url, 0);
 
-    WebCore::KURL kurl(WebCore::KURL(), WTF::String::fromUTF8(url));
+    WebCore::URL kurl(WebCore::URL(), WTF::String::fromUTF8(url));
     RefPtr<cairo_surface_t> icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(kurl.string(), WebCore::IntSize(16, 16));
     if (!icon)
         ERR("no icon for url %s", url);
@@ -226,7 +226,7 @@ Evas_Object* ewk_settings_icon_database_icon_object_get(const char* url, Evas* c
     EINA_SAFETY_ON_NULL_RETURN_VAL(url, 0);
     EINA_SAFETY_ON_NULL_RETURN_VAL(canvas, 0);
 
-    WebCore::KURL kurl(WebCore::KURL(), WTF::String::fromUTF8(url));
+    WebCore::URL kurl(WebCore::URL(), WTF::String::fromUTF8(url));
     RefPtr<cairo_surface_t> surface = WebCore::iconDatabase().synchronousNativeIconForPageURL(kurl.string(), WebCore::IntSize(16, 16));
 
     if (!surface) {
@@ -255,7 +255,7 @@ void ewk_settings_object_cache_enable_set(Eina_Bool enable)
 Eina_Bool ewk_settings_shadow_dom_enable_get()
 {
 #if ENABLE(SHADOW_DOM)
-    return WebCore::RuntimeEnabledFeatures::shadowDOMEnabled();
+    return WebCore::RuntimeEnabledFeatures::sharedFeatures().shadowDOMEnabled();
 #else
     return false;
 #endif
@@ -265,7 +265,7 @@ Eina_Bool ewk_settings_shadow_dom_enable_set(Eina_Bool enable)
 {
 #if ENABLE(SHADOW_DOM)
     enable = !!enable;
-    WebCore::RuntimeEnabledFeatures::setShadowDOMEnabled(enable);
+    WebCore::RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(enable);
     return true;
 #else
     UNUSED_PARAM(enable);
@@ -350,11 +350,7 @@ const char* ewk_settings_default_user_agent_get()
  */
 void ewk_settings_file_system_path_set(const char* path)
 {
-#if ENABLE(FILE_SYSTEM)
-    WebCore::LocalFileSystem::initializeLocalFileSystem(String::fromUTF8(path));
-#else
     UNUSED_PARAM(path);
-#endif
 }
 
 void ewk_settings_application_cache_path_set(const char* path)

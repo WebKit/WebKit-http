@@ -29,13 +29,13 @@ namespace WebCore {
 
 class HTMLBaseElement FINAL : public HTMLElement {
 public:
-    static PassRefPtr<HTMLBaseElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<HTMLBaseElement> create(const QualifiedName&, Document&);
 
-    KURL href() const;
+    URL href() const;
     void setHref(const AtomicString&);
 
 private:
-    HTMLBaseElement(const QualifiedName&, Document*);
+    HTMLBaseElement(const QualifiedName&, Document&);
 
     virtual String target() const;
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
@@ -43,6 +43,8 @@ private:
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
 };
+
+ELEMENT_TYPE_CASTS(HTMLBaseElement)
 
 } // namespace
 

@@ -22,9 +22,11 @@ AXSelected: 0
 AXBlockQuoteLevel: 0
 AXTopLevelUIElement: <AXLink>
 AXLanguage: 
+AXDOMIdentifier: 
+AXDOMClassList: <array of size 0>
 AXURL: http://www.apple.com/
 AXAccessKey: (null)
-AXARIABusy: 0
+AXElementBusy: 0
 AXPath: <AXLink>
 
 ------------
@@ -50,9 +52,11 @@ AXSelected: 0
 AXBlockQuoteLevel: 0
 AXTopLevelUIElement: <AXLink>
 AXLanguage: 
+AXDOMIdentifier: 
+AXDOMClassList: <array of size 0>
 AXURL: http://www.apple.com/
 AXAccessKey: (null)
-AXARIABusy: 0
+AXElementBusy: 0
 AXPath: <AXLink>
 
 ------------
@@ -78,9 +82,11 @@ AXSelected: 0
 AXBlockQuoteLevel: 0
 AXTopLevelUIElement: <AXLink: 'link 3'>
 AXLanguage: 
+AXDOMIdentifier: 
+AXDOMClassList: <array of size 0>
 AXURL: http://webkit.org/
 AXAccessKey: (null)
-AXARIABusy: 0
+AXElementBusy: 0
 
 ------------
 AXRole: AXLink
@@ -105,9 +111,11 @@ AXSelected: 0
 AXBlockQuoteLevel: 0
 AXTopLevelUIElement: <AXLink: 'link 4'>
 AXLanguage: 
+AXDOMIdentifier: 
+AXDOMClassList: <array of size 0>
 AXURL: LayoutTests/platform/mac/accessibility/document-links.html#asdf
 AXAccessKey: (null)
-AXARIABusy: 0
+AXElementBusy: 0
 
 ------------
 

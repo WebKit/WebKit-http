@@ -94,6 +94,7 @@ my $qmakebin = "qmake"; # Allow override of the qmake binary from $PATH
 my $isGtk;
 my $isWinCE;
 my $isWinCairo;
+my $isWin64;
 my $isEfl;
 my $isHaiku;
 my $isBlackBerry;
@@ -627,18 +628,21 @@ sub determinePassedConfiguration
             splice(@ARGV, $i, 1);
             $passedConfiguration = "Debug";
             $passedConfiguration .= "_WinCairo" if (isWinCairo() && isCygwin());
+            $passedConfiguration .= "|x64" if isWin64();
             return;
         }
         if ($opt =~ /^--release$/i) {
             splice(@ARGV, $i, 1);
             $passedConfiguration = "Release";
             $passedConfiguration .= "_WinCairo" if (isWinCairo() && isCygwin());
+            $passedConfiguration .= "|x64" if isWin64();
             return;
         }
         if ($opt =~ /^--profil(e|ing)$/i) {
             splice(@ARGV, $i, 1);
             $passedConfiguration = "Profiling";
             $passedConfiguration .= "_WinCairo" if (isWinCairo() && isCygwin());
+            $passedConfiguration .= "|x64" if isWin64();
             return;
         }
     }
@@ -1213,6 +1217,18 @@ sub determineIsWinCairo()
     $isWinCairo = checkForArgumentAndRemoveFromARGV("--wincairo");
 }
 
+sub isWin64()
+{
+    determineIsWin64();
+    return $isWin64;
+}
+
+sub determineIsWin64()
+{
+    return if defined($isWin64);
+    $isWin64 = checkForArgumentAndRemoveFromARGV("--64-bit");
+}
+
 sub isCygwin()
 {
     return ($^O eq "cygwin") || 0;
@@ -1523,23 +1539,19 @@ sub checkRequiredSystemConfig
 {
     if (isDarwin()) {
         chomp(my $productVersion = `sw_vers -productVersion`);
-        if (eval "v$productVersion" lt v10.4) {
+        if (eval "v$productVersion" lt v10.7.5) {
             print "*************************************************************\n";
-            print "Mac OS X Version 10.4.0 or later is required to build WebKit.\n";
+            print "Mac OS X Version 10.7.5 or later is required to build WebKit.\n";
             print "You have " . $productVersion . ", thus the build will most likely fail.\n";
             print "*************************************************************\n";
         }
         my $xcodebuildVersionOutput = `xcodebuild -version`;
-        my $devToolsCoreVersion = ($xcodebuildVersionOutput =~ /DevToolsCore-(\d+)/) ? $1 : undef;
         my $xcodeVersion = ($xcodebuildVersionOutput =~ /Xcode ([0-9](\.[0-9]+)*)/) ? $1 : undef;
-        if (!$devToolsCoreVersion && !$xcodeVersion
-            || $devToolsCoreVersion && $devToolsCoreVersion < 747
-            || $xcodeVersion && eval "v$xcodeVersion" lt v2.3) {
+        if (!$xcodeVersion || $xcodeVersion && eval "v$xcodeVersion" lt v4.6) {
             print "*************************************************************\n";
-            print "Xcode Version 2.3 or later is required to build WebKit.\n";
+            print "Xcode Version 4.6 or later is required to build WebKit.\n";
             print "You have an earlier version of Xcode, thus the build will\n";
-            print "most likely fail.  The latest Xcode is available from the web:\n";
-            print "http://developer.apple.com/tools/xcode\n";
+            print "most likely fail. The latest Xcode is available from the App Store.\n";
             print "*************************************************************\n";
         }
     } elsif (isGtk() or isQt() or isEfl() or isHaiku()) {
@@ -1888,6 +1900,9 @@ sub runAutogenForAutotoolsProjectIfNecessary($@)
 
     # Always enable introspection when building WebKitGTK+.
     unshift(@buildArgs, "--enable-introspection");
+
+    # Also, always enable developer mode for developer/test builds.
+    unshift(@buildArgs, "--enable-developer-mode");
 
     my $joinedBuildArgs = join(" ", @buildArgs);
 
@@ -2490,7 +2505,7 @@ EOF
 sub argumentsForRunAndDebugMacWebKitApp()
 {
     my @args = ();
-    push @args, ("-ApplePersistenceIgnoreState", "YES") if !isSnowLeopard() && checkForArgumentAndRemoveFromArrayRef("--no-saved-state", \@args);
+    push @args, ("-ApplePersistenceIgnoreState", "YES") if checkForArgumentAndRemoveFromARGV("--no-saved-state");
     push @args, ("-WebKit2UseXPCServiceForWebProcess", "YES") if shouldUseXPCServiceForWebProcess();
     unshift @args, @ARGV;
 

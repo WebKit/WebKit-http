@@ -37,7 +37,6 @@
 #include "CachedImage.h"
 #include "Document.h"
 #include "Element.h"
-#include "Frame.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLHeadElement.h"
 #include "HTMLImageElement.h"
@@ -48,8 +47,10 @@
 #include "HTTPParsers.h"
 #include "Image.h"
 #include "MIMETypeRegistry.h"
+#include "MainFrame.h"
 #include "MarkupAccumulator.h"
 #include "Page.h"
+#include "RenderElement.h"
 #include "StyleCachedImage.h"
 #include "StyleImage.h"
 #include "StylePropertySet.h"
@@ -91,7 +92,7 @@ static bool shouldIgnoreElement(Element* element)
 static const QualifiedName& frameOwnerURLAttributeName(const HTMLFrameOwnerElement& frameOwner)
 {
     // FIXME: We should support all frame owners including applets.
-    return frameOwner.hasTagName(HTMLNames::objectTag) ? HTMLNames::dataAttr : HTMLNames::srcAttr;
+    return isHTMLObjectElement(frameOwner) ? HTMLNames::dataAttr : HTMLNames::srcAttr;
 }
 
 class SerializerMarkupAccumulator : public WebCore::MarkupAccumulator {
@@ -155,7 +156,7 @@ void SerializerMarkupAccumulator::appendCustomAttributes(StringBuilder& out, Ele
     if (!frame)
         return;
 
-    KURL url = frame->document()->url();
+    URL url = frame->document()->url();
     if (url.isValid() && !url.isBlankURL())
         return;
 
@@ -174,7 +175,7 @@ PageSerializer::Resource::Resource()
 {
 }
 
-PageSerializer::Resource::Resource(const KURL& url, const String& mimeType, PassRefPtr<SharedBuffer> data)
+PageSerializer::Resource::Resource(const URL& url, const String& mimeType, PassRefPtr<SharedBuffer> data)
     : url(url)
     , mimeType(mimeType)
     , data(data)
@@ -195,7 +196,7 @@ void PageSerializer::serialize(Page* page)
 void PageSerializer::serializeFrame(Frame* frame)
 {
     Document* document = frame->document();
-    KURL url = document->url();
+    URL url = document->url();
     if (!url.isValid() || url.isBlankURL()) {
         // For blank frames we generate a fake URL so they can be referenced by their containing frame.
         url = urlForBlankFrame(frame);
@@ -233,19 +234,19 @@ void PageSerializer::serializeFrame(Frame* frame)
 
         if (isHTMLImageElement(element)) {
             HTMLImageElement* imageElement = toHTMLImageElement(element);
-            KURL url = document->completeURL(imageElement->getAttribute(HTMLNames::srcAttr));
+            URL url = document->completeURL(imageElement->getAttribute(HTMLNames::srcAttr));
             CachedImage* cachedImage = imageElement->cachedImage();
             addImageToResources(cachedImage, imageElement->renderer(), url);
         } else if (element->hasTagName(HTMLNames::linkTag)) {
             HTMLLinkElement* linkElement = static_cast<HTMLLinkElement*>(element);
             if (CSSStyleSheet* sheet = linkElement->sheet()) {
-                KURL url = document->completeURL(linkElement->getAttribute(HTMLNames::hrefAttr));
+                URL url = document->completeURL(linkElement->getAttribute(HTMLNames::hrefAttr));
                 serializeCSSStyleSheet(sheet, url);
                 ASSERT(m_resourceURLs.contains(url));
             }
         } else if (isHTMLStyleElement(element)) {
             if (CSSStyleSheet* sheet = toHTMLStyleElement(element)->sheet())
-                serializeCSSStyleSheet(sheet, KURL());
+                serializeCSSStyleSheet(sheet, URL());
         }
     }
 
@@ -253,7 +254,7 @@ void PageSerializer::serializeFrame(Frame* frame)
         serializeFrame(childFrame);
 }
 
-void PageSerializer::serializeCSSStyleSheet(CSSStyleSheet* styleSheet, const KURL& url)
+void PageSerializer::serializeCSSStyleSheet(CSSStyleSheet* styleSheet, const URL& url)
 {
     StringBuilder cssText;
     for (unsigned i = 0; i < styleSheet->length(); ++i) {
@@ -268,7 +269,7 @@ void PageSerializer::serializeCSSStyleSheet(CSSStyleSheet* styleSheet, const KUR
         // Some rules have resources associated with them that we need to retrieve.
         if (rule->type() == CSSRule::IMPORT_RULE) {
             CSSImportRule* importRule = static_cast<CSSImportRule*>(rule);
-            KURL importURL = document->completeURL(importRule->href());
+            URL importURL = document->completeURL(importRule->href());
             if (m_resourceURLs.contains(importURL))
                 continue;
             serializeCSSStyleSheet(importRule->styleSheet(), importURL);
@@ -290,7 +291,7 @@ void PageSerializer::serializeCSSStyleSheet(CSSStyleSheet* styleSheet, const KUR
     }
 }
 
-void PageSerializer::addImageToResources(CachedImage* image, RenderObject* imageRenderer, const KURL& url)
+void PageSerializer::addImageToResources(CachedImage* image, RenderElement* imageRenderer, const URL& url)
 {
     if (!url.isValid() || m_resourceURLs.contains(url))
         return;
@@ -331,26 +332,25 @@ void PageSerializer::retrieveResourcesForProperties(const StylePropertySet* styl
         if (!cssValue->isImageValue())
             continue;
 
-        CSSImageValue* imageValue = static_cast<CSSImageValue*>(cssValue.get());
-        StyleImage* styleImage = imageValue->cachedOrPendingImage();
+        StyleImage* styleImage = toCSSImageValue(cssValue.get())->cachedOrPendingImage();
         // Non cached-images are just place-holders and do not contain data.
         if (!styleImage || !styleImage->isCachedImage())
             continue;
 
         CachedImage* image = static_cast<StyleCachedImage*>(styleImage)->cachedImage();
 
-        KURL url = document->completeURL(image->url());
+        URL url = document->completeURL(image->url());
         addImageToResources(image, 0, url);
     }
 }
 
-KURL PageSerializer::urlForBlankFrame(Frame* frame)
+URL PageSerializer::urlForBlankFrame(Frame* frame)
 {
-    HashMap<Frame*, KURL>::iterator iter = m_blankFrameURLs.find(frame);
+    HashMap<Frame*, URL>::iterator iter = m_blankFrameURLs.find(frame);
     if (iter != m_blankFrameURLs.end())
         return iter->value;
     String url = "wyciwyg://frame/" + String::number(m_blankFrameCounter++);
-    KURL fakeURL(ParsedURLString, url);
+    URL fakeURL(ParsedURLString, url);
     m_blankFrameURLs.add(frame, fakeURL);
 
     return fakeURL;

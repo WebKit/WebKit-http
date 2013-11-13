@@ -36,6 +36,10 @@
 #include "StyleVariableData.h"
 #endif
 
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+#include "TextSizeAdjustment.h"
+#endif
+
 namespace WebCore {
 
 class CursorList;
@@ -124,6 +128,10 @@ public:
 #endif // CSS3_TEXT
     unsigned m_rubyPosition : 1; // RubyPosition
 
+#if PLATFORM(IOS)
+    unsigned touchCalloutEnabled : 1;
+#endif
+
     AtomicString hyphenationString;
     short hyphenationLimitBefore;
     short hyphenationLimitAfter;
@@ -136,6 +144,10 @@ public:
 
     AtomicString m_lineGrid;
     unsigned m_tabSize;
+
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+    TextSizeAdjustment textSizeAdjust;
+#endif
 
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     float m_imageResolution;

@@ -31,10 +31,10 @@ class FlexBoxIterator;
 
 class RenderDeprecatedFlexibleBox FINAL : public RenderBlock {
 public:
-    RenderDeprecatedFlexibleBox(Element*);
+    explicit RenderDeprecatedFlexibleBox(Element&);
     virtual ~RenderDeprecatedFlexibleBox();
 
-    static RenderDeprecatedFlexibleBox* createAnonymous(Document*);
+    Element& element() const { return toElement(nodeForNonAnonymous()); }
 
     virtual const char* renderName() const;
 
@@ -51,7 +51,7 @@ public:
 
     void placeChild(RenderBox* child, const LayoutPoint& location, LayoutSize* childLayoutDelta = 0);
 
-protected:
+private:
     virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const OVERRIDE;
     virtual void computePreferredLogicalWidths() OVERRIDE;
 
@@ -61,11 +61,10 @@ protected:
     bool isVertical() const { return style()->boxOrient() == VERTICAL; }
     bool isHorizontal() const { return style()->boxOrient() == HORIZONTAL; }
 
-    bool m_stretchingChildren;
-
-private:
     void applyLineClamp(FlexBoxIterator&, bool relayoutChildren);
     void clearLineClamp();
+
+    bool m_stretchingChildren;
 };
 
 } // namespace WebCore

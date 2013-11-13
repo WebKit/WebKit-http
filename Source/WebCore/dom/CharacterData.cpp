@@ -31,6 +31,7 @@
 #include "MutationEvent.h"
 #include "MutationObserverInterestGroup.h"
 #include "MutationRecord.h"
+#include "ProcessingInstruction.h"
 #include "RenderText.h"
 #include "StyleInheritedData.h"
 #include "Text.h"
@@ -202,6 +203,9 @@ void CharacterData::setDataAndUpdate(const String& newData, unsigned offsetOfRep
     if (isTextNode())
         Style::updateTextRendererAfterContentChange(*toText(this), offsetOfReplacedData, oldLength);
 
+    if (nodeType() == PROCESSING_INSTRUCTION_NODE)
+        toProcessingInstruction(this)->checkStyleSheet();
+
     if (document().frame())
         document().frame()->selection().textWasReplaced(this, offsetOfReplacedData, oldLength, newLength);
 
@@ -211,8 +215,9 @@ void CharacterData::setDataAndUpdate(const String& newData, unsigned offsetOfRep
 
 void CharacterData::dispatchModifiedEvent(const String& oldData)
 {
-    if (OwnPtr<MutationObserverInterestGroup> mutationRecipients = MutationObserverInterestGroup::createForCharacterDataMutation(this))
-        mutationRecipients->enqueueMutationRecord(MutationRecord::createCharacterData(this, oldData));
+    if (OwnPtr<MutationObserverInterestGroup> mutationRecipients = MutationObserverInterestGroup::createForCharacterDataMutation(*this))
+        mutationRecipients->enqueueMutationRecord(MutationRecord::createCharacterData(*this, oldData));
+
     if (!isInShadowTree()) {
         if (parentNode()) {
             ContainerNode::ChildChange change = {

@@ -24,7 +24,6 @@
 
 #include "FrameLoaderTypes.h"
 #include "JSDOMWindowShell.h"
-#include "ScriptControllerBase.h"
 #include <JavaScriptCore/JSBase.h>
 #include <heap/Strong.h>
 #include <wtf/Forward.h>
@@ -60,12 +59,17 @@ class Widget;
 
 typedef HashMap<void*, RefPtr<JSC::Bindings::RootObject> > RootObjectMap;
 
+enum ReasonForCallingCanExecuteScripts {
+    AboutToExecuteScript,
+    NotAboutToExecuteScript
+};
+
 class ScriptController {
     friend class ScriptCachedFrameData;
     typedef WTF::HashMap< RefPtr<DOMWrapperWorld>, JSC::Strong<JSDOMWindowShell> > ShellMap;
 
 public:
-    ScriptController(Frame*);
+    explicit ScriptController(Frame&);
     ~ScriptController();
 
     static PassRefPtr<DOMWrapperWorld> createWorld();
@@ -95,7 +99,7 @@ public:
     ScriptValue executeScriptInWorld(DOMWrapperWorld*, const String& script, bool forceUserGesture = false);
 
     // Returns true if argument is a JavaScript URL.
-    bool executeIfJavaScriptURL(const KURL&, ShouldReplaceDocumentIfJavaScriptURL shouldReplaceDocumentIfJavaScriptURL = ReplaceDocumentIfJavaScriptURL);
+    bool executeIfJavaScriptURL(const URL&, ShouldReplaceDocumentIfJavaScriptURL shouldReplaceDocumentIfJavaScriptURL = ReplaceDocumentIfJavaScriptURL);
 
     // This function must be called from the main thread. It is safe to call it repeatedly.
     // Darwin is an exception to this rule: it is OK to call this function from any thread, even reentrantly.
@@ -165,7 +169,7 @@ private:
     void disconnectPlatformScriptObjects();
 
     ShellMap m_windowShells;
-    Frame* m_frame;
+    Frame& m_frame;
     const String* m_sourceURL;
 
     bool m_paused;

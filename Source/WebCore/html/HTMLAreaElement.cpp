@@ -39,7 +39,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-inline HTMLAreaElement::HTMLAreaElement(const QualifiedName& tagName, Document* document)
+inline HTMLAreaElement::HTMLAreaElement(const QualifiedName& tagName, Document& document)
     : HTMLAnchorElement(tagName, document)
     , m_coordsLen(0)
     , m_lastSize(-1, -1)
@@ -48,7 +48,7 @@ inline HTMLAreaElement::HTMLAreaElement(const QualifiedName& tagName, Document* 
     ASSERT(hasTagName(areaTag));
 }
 
-PassRefPtr<HTMLAreaElement> HTMLAreaElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<HTMLAreaElement> HTMLAreaElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new HTMLAreaElement(tagName, document));
 }
@@ -94,7 +94,7 @@ bool HTMLAreaElement::mapMouseEvent(LayoutPoint location, const LayoutSize& size
     return true;
 }
 
-Path HTMLAreaElement::computePath(RenderObject* obj) const
+Path HTMLAreaElement::computePath(RenderElement* obj) const
 {
     if (!obj)
         return Path();
@@ -119,7 +119,7 @@ Path HTMLAreaElement::computePath(RenderObject* obj) const
     return p;
 }
     
-LayoutRect HTMLAreaElement::computeRect(RenderObject* obj) const
+LayoutRect HTMLAreaElement::computeRect(RenderElement* obj) const
 {
     return enclosingLayoutRect(computePath(obj).fastBoundingRect());
 }
@@ -220,7 +220,7 @@ void HTMLAreaElement::setFocus(bool shouldBeFocused)
     if (!imageElement)
         return;
 
-    RenderObject* renderer = imageElement->renderer();
+    auto renderer = imageElement->renderer();
     if (!renderer || !renderer->isImage())
         return;
 

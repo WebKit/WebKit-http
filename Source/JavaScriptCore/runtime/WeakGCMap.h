@@ -34,51 +34,59 @@ namespace JSC {
 
 // A HashMap with Weak<JSCell> values, which automatically removes values once they're garbage collected.
 
-template<typename KeyArg, typename RawMappedArg, typename HashArg = typename DefaultHash<KeyArg>::Hash,
-    typename KeyTraitsArg = HashTraits<KeyArg> >
-class WeakGCMap : public HashMap<KeyArg, Weak<RawMappedArg>, HashArg, KeyTraitsArg> {
-    typedef Weak<RawMappedArg> MappedType;
-    typedef HashMap<KeyArg, MappedType, HashArg, KeyTraitsArg> Base;
-    typedef WeakGCMap<KeyArg, RawMappedArg, HashArg, KeyTraitsArg> Self;
-    typedef HashTraits<MappedType> MappedTraits;
-    typedef typename MappedTraits::PassInType MappedPassInType;
+template<typename KeyArg, typename ValueArg, typename HashArg = typename DefaultHash<KeyArg>::Hash,
+    typename KeyTraitsArg = HashTraits<KeyArg>>
+class WeakGCMap {
+    typedef Weak<ValueArg> ValueType;
+    typedef HashMap<KeyArg, ValueType, HashArg, KeyTraitsArg> HashMapType;
 
 public:
-    typedef typename Base::KeyType KeyType;
-    typedef typename Base::AddResult AddResult;
-    typedef typename Base::iterator iterator;
-    typedef typename Base::const_iterator const_iterator;
-    using Base::begin;
-    using Base::end;
-    using Base::size;
-    using Base::remove;
+    typedef typename HashMapType::KeyType KeyType;
+    typedef typename HashMapType::AddResult AddResult;
+    typedef typename HashMapType::iterator iterator;
+    typedef typename HashMapType::const_iterator const_iterator;
 
     WeakGCMap()
         : m_gcThreshold(minGCThreshold)
     {
     }
 
-    AddResult set(const KeyType& key, MappedPassInType value)
+    ValueArg* get(const KeyType& key) const
     {
-        gcMapIfNeeded();
-        return Base::set(key, value);
+        return m_map.get(key);
     }
 
-    AddResult add(const KeyType& key, MappedPassInType value)
+    AddResult set(const KeyType& key, ValueType value)
     {
         gcMapIfNeeded();
-        AddResult addResult = Base::add(key, nullptr);
+        return m_map.set(key, std::move(value));
+    }
+
+    AddResult add(const KeyType& key, ValueType value)
+    {
+        gcMapIfNeeded();
+        AddResult addResult = m_map.add(key, nullptr);
         if (!addResult.iterator->value) { // New value or found a zombie value.
             addResult.isNewEntry = true;
-            addResult.iterator->value = value;
+            addResult.iterator->value = std::move(value);
         }
         return addResult;
     }
 
+    bool remove(const KeyType& key)
+    {
+        return m_map.remove(key);
+    }
+
+    void clear()
+    {
+        m_map.clear();
+    }
+
     iterator find(const KeyType& key)
     {
-        iterator it = Base::find(key);
-        iterator end = Base::end();
+        iterator it = m_map.find(key);
+        iterator end = m_map.end();
         if (it != end && !it->value) // Found a zombie value.
             return end;
         return it;
@@ -86,12 +94,12 @@ public:
 
     const_iterator find(const KeyType& key) const
     {
-        return const_cast<Self*>(this)->find(key);
+        return const_cast<WeakGCMap*>(this)->find(key);
     }
 
     bool contains(const KeyType& key) const
     {
-        return find(key) != end();
+        return find(key) != m_map.end();
     }
 
 private:
@@ -100,24 +108,26 @@ private:
     void gcMap()
     {
         Vector<KeyType, 4> zombies;
-        iterator end = this->end();
-        for (iterator it = begin(); it != end; ++it) {
+
+        for (iterator it = m_map.begin(), end = m_map.end(); it != end; ++it) {
             if (!it->value)
                 zombies.append(it->key);
         }
+
         for (size_t i = 0; i < zombies.size(); ++i)
-            remove(zombies[i]);
+            m_map.remove(zombies[i]);
     }
 
     void gcMapIfNeeded()
     {
-        if (size() < m_gcThreshold)
+        if (m_map.size() < m_gcThreshold)
             return;
 
         gcMap();
-        m_gcThreshold = std::max(minGCThreshold, size() * 2 - 1);
+        m_gcThreshold = std::max(minGCThreshold, m_map.size() * 2 - 1);
     }
 
+    HashMapType m_map;
     int m_gcThreshold;
 };
 

@@ -52,8 +52,8 @@
 
 namespace WebCore {
 
-RenderSVGShape::RenderSVGShape(SVGGraphicsElement* node)
-    : RenderSVGModelObject(node)
+RenderSVGShape::RenderSVGShape(SVGGraphicsElement& element)
+    : RenderSVGModelObject(element)
     , m_needsBoundariesUpdate(false) // Default is false, the cached rects are empty from the beginning.
     , m_needsShapeUpdate(true) // Default is true, so we grab a Path object once from SVGGraphicsElement.
     , m_needsTransformUpdate(true) // Default is true, so we grab a AffineTransform object once from SVGGraphicsElement.
@@ -70,8 +70,7 @@ void RenderSVGShape::updateShapeFromElement()
     m_path = adoptPtr(new Path);
     ASSERT(RenderSVGShape::isEmpty());
 
-    SVGGraphicsElement* element = toSVGGraphicsElement(node());
-    updatePathFromGraphicsElement(element, path());
+    updatePathFromGraphicsElement(&graphicsElement(), path());
     processMarkerPositions();
 
     m_fillBoundingBox = calculateObjectBoundingBox();
@@ -147,7 +146,6 @@ void RenderSVGShape::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
     LayoutRepainter repainter(*this, SVGRenderSupport::checkForSVGRepaintDuringLayout(this) && selfNeedsLayout());
-    SVGGraphicsElement* element = toSVGGraphicsElement(node());
 
     bool updateCachedBoundariesInParents = false;
 
@@ -160,7 +158,7 @@ void RenderSVGShape::layout()
     }
 
     if (m_needsTransformUpdate) {
-        m_localTransform = element->animatedLocalTransform();
+        m_localTransform = graphicsElement().animatedLocalTransform();
         m_needsTransformUpdate = false;
         updateCachedBoundariesInParents = true;
     }
@@ -199,8 +197,7 @@ bool RenderSVGShape::setupNonScalingStrokeContext(AffineTransform& strokeTransfo
 
 AffineTransform RenderSVGShape::nonScalingStrokeTransform() const
 {
-    SVGGraphicsElement* element = toSVGGraphicsElement(node());
-    return element->getScreenCTM(SVGLocatable::DisallowStyleUpdate);
+    return graphicsElement().getScreenCTM(SVGLocatable::DisallowStyleUpdate);
 }
 
 bool RenderSVGShape::shouldGenerateMarkerPositions() const
@@ -208,8 +205,7 @@ bool RenderSVGShape::shouldGenerateMarkerPositions() const
     if (!style()->svgStyle()->hasMarkers())
         return false;
 
-    SVGGraphicsElement* element = toSVGGraphicsElement(node());
-    if (!element->supportsMarkers())
+    if (!graphicsElement().supportsMarkers())
         return false;
 
     SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(this);
@@ -416,8 +412,7 @@ void RenderSVGShape::updateRepaintBoundingBox()
 
 float RenderSVGShape::strokeWidth() const
 {
-    SVGElement* svgElement = toSVGElement(node());
-    SVGLengthContext lengthContext(svgElement);
+    SVGLengthContext lengthContext(&graphicsElement());
     return style()->svgStyle()->strokeWidth().value(lengthContext);
 }
 

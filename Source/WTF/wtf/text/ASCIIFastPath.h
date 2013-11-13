@@ -26,11 +26,16 @@
 #include <emmintrin.h>
 #endif
 #include <stdint.h>
-#include <wtf/Alignment.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/unicode/Unicode.h>
 
 namespace WTF {
+
+template <uintptr_t mask>
+inline bool isAlignedTo(const void* pointer)
+{
+    return !(reinterpret_cast<uintptr_t>(pointer) & mask);
+}
 
 // Assuming that a pointer is the size of a "machine word", then
 // uintptr_t is an integer type that is also a machine word.
@@ -39,7 +44,7 @@ const uintptr_t machineWordAlignmentMask = sizeof(MachineWord) - 1;
 
 inline bool isAlignedToMachineWord(const void* pointer)
 {
-    return !(reinterpret_cast<uintptr_t>(pointer) & machineWordAlignmentMask);
+    return isAlignedTo<machineWordAlignmentMask>(pointer);
 }
 
 template<typename T> inline T* alignToMachineWord(T* pointer)

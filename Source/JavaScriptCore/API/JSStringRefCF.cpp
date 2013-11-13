@@ -31,7 +31,7 @@
 #include "JSStringRef.h"
 #include "OpaqueJSString.h"
 #include <runtime/JSCJSValue.h>
-#include <wtf/OwnArrayPtr.h>
+#include <wtf/StdLibExtras.h>
 
 JSStringRef JSStringCreateWithCFString(CFStringRef string)
 {
@@ -47,7 +47,7 @@ JSStringRef JSStringCreateWithCFString(CFStringRef string)
         if (static_cast<size_t>(convertedSize) == length && static_cast<size_t>(usedBufferLength) == length)
             return OpaqueJSString::create(lcharBuffer.data(), length).leakRef();
 
-        OwnArrayPtr<UniChar> buffer = adoptArrayPtr(new UniChar[length]);
+        auto buffer = std::make_unique<UniChar[]>(length);
         CFStringGetCharacters(string, CFRangeMake(0, length), buffer.get());
         COMPILE_ASSERT(sizeof(UniChar) == sizeof(UChar), unichar_and_uchar_must_be_same_size);
         return OpaqueJSString::create(reinterpret_cast<UChar*>(buffer.get()), length).leakRef();
@@ -58,5 +58,8 @@ JSStringRef JSStringCreateWithCFString(CFStringRef string)
 
 CFStringRef JSStringCopyCFString(CFAllocatorRef alloc, JSStringRef string)
 {
+    if (!string->length())
+        return CFSTR("");
+
     return CFStringCreateWithCharacters(alloc, reinterpret_cast<const UniChar*>(string->characters()), string->length());
 }

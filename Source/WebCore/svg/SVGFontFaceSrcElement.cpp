@@ -33,13 +33,13 @@ namespace WebCore {
     
 using namespace SVGNames;
     
-inline SVGFontFaceSrcElement::SVGFontFaceSrcElement(const QualifiedName& tagName, Document* document)
+inline SVGFontFaceSrcElement::SVGFontFaceSrcElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
 {
     ASSERT(hasTagName(font_face_srcTag));
 }
 
-PassRefPtr<SVGFontFaceSrcElement> SVGFontFaceSrcElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGFontFaceSrcElement> SVGFontFaceSrcElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new SVGFontFaceSrcElement(tagName, document));
 }
@@ -49,10 +49,10 @@ PassRefPtr<CSSValueList> SVGFontFaceSrcElement::srcValue() const
     RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
     for (Node* child = firstChild(); child; child = child->nextSibling()) {
         RefPtr<CSSFontFaceSrcValue> srcValue;
-        if (child->hasTagName(font_face_uriTag))
-            srcValue = static_cast<SVGFontFaceUriElement*>(child)->srcValue();
-        else if (child->hasTagName(font_face_nameTag))
-            srcValue = static_cast<SVGFontFaceNameElement*>(child)->srcValue();
+        if (isSVGFontFaceUriElement(child))
+            srcValue = toSVGFontFaceUriElement(child)->srcValue();
+        else if (isSVGFontFaceNameElement(child))
+            srcValue = toSVGFontFaceNameElement(child)->srcValue();
         if (srcValue && srcValue->resource().length())
             list->append(srcValue);
     }

@@ -24,9 +24,8 @@
 #if USE(CF) || defined(__OBJC__)
 
 #include <wtf/HashTraits.h>
-#include <wtf/NullPtr.h>
-#include <wtf/TypeTraits.h>
 #include <algorithm>
+#include <cstddef>
 
 #if USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
@@ -49,6 +48,11 @@ namespace WTF {
     // Unlike most most of our smart pointers, RetainPtr can take either the pointer type or the pointed-to type,
     // so both RetainPtr<NSDictionary> and RetainPtr<CFDictionaryRef> will work.
 
+#if !PLATFORM(IOS)
+    #define AdoptCF DeprecatedAdoptCF
+    #define AdoptNS DeprecatedAdoptNS
+#endif
+
     enum AdoptCFTag { AdoptCF };
     enum AdoptNSTag { AdoptNS };
     
@@ -70,7 +74,7 @@ namespace WTF {
 
     template<typename T> class RetainPtr {
     public:
-        typedef typename RemovePointer<T>::Type ValueType;
+        typedef typename std::remove_pointer<T>::type ValueType;
         typedef ValueType* PtrType;
         typedef CFTypeRef StorageType;
 
@@ -294,7 +298,7 @@ namespace WTF {
     template<typename T> inline RetainPtr<T> retainPtr(T) WARN_UNUSED_RETURN;
     template<typename T> inline RetainPtr<T> retainPtr(T o)
     {
-        return RetainPtr<T>(o);
+        return o;
     }
 
     template<typename P> struct HashTraits<RetainPtr<P> > : SimpleClassHashTraits<RetainPtr<P> > { };
@@ -332,14 +336,23 @@ namespace WTF {
         }
         static const bool safeToCompareToEmptyOrDeleted = false;
     };
+
+#if !PLATFORM(IOS)
+    #undef AdoptCF
+    #undef AdoptNS
+#endif
+
 } // namespace WTF
 
-using WTF::AdoptCF;
-using WTF::AdoptNS;
+using WTF::RetainPtr;
 using WTF::adoptCF;
 using WTF::adoptNS;
-using WTF::RetainPtr;
 using WTF::retainPtr;
+
+#if PLATFORM(IOS)
+using WTF::AdoptCF;
+using WTF::AdoptNS;
+#endif
 
 #endif // USE(CF) || defined(__OBJC__)
 

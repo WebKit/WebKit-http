@@ -26,20 +26,25 @@
 #import "config.h"
 #import "Editor.h"
 
-#import "ColorMac.h"
-#import "Clipboard.h"
 #import "CachedResourceLoader.h"
-#import "DocumentFragment.h"
+#import "Clipboard.h"
+#import "ColorMac.h"
 #import "DOMRangeInternal.h"
+#import "DocumentFragment.h"
+#import "DocumentLoader.h"
 #import "Editor.h"
 #import "EditorClient.h"
 #import "Font.h"
 #import "Frame.h"
+#import "FrameLoaderClient.h"
 #import "FrameView.h"
 #import "HTMLConverter.h"
+#import "HTMLElement.h"
 #import "HTMLNames.h"
 #import "LegacyWebArchive.h"
+#import "MIMETypeRegistry.h"
 #import "NodeTraversal.h"
+#import "Page.h"
 #import "Pasteboard.h"
 #import "PasteboardStrategy.h"
 #import "PlatformStrategies.h"
@@ -52,8 +57,10 @@
 #import "StylePropertySet.h"
 #import "Text.h"
 #import "TypingCommand.h"
-#import "htmlediting.h"
+#import "UUID.h"
 #import "WebNSAttributedStringExtras.h"
+#import "htmlediting.h"
+#import "markup.h"
 
 namespace WebCore {
 
@@ -77,18 +84,22 @@ void Editor::showColorPanel()
 void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText)
 {
     RefPtr<Range> range = selectedRange();
-    bool choosePlainText;
-    
+
+    // FIXME: How can this hard-coded pasteboard name be right, given that the passed-in pasteboard has a name?
     client()->setInsertionPasteboard(NSGeneralPboard);
-    RefPtr<DocumentFragment> fragment = pasteboard->documentFragment(&m_frame, range, allowPlainText, choosePlainText);
+
+    bool chosePlainText;
+    RefPtr<DocumentFragment> fragment = webContentFromPasteboard(*pasteboard, *range, allowPlainText, chosePlainText);
+
     if (fragment && shouldInsertFragment(fragment, range, EditorInsertActionPasted))
-        pasteAsFragment(fragment, canSmartReplaceWithPasteboard(pasteboard), false);
+        pasteAsFragment(fragment, canSmartReplaceWithPasteboard(*pasteboard), false);
+
     client()->setInsertionPasteboard(String());
 }
 
 bool Editor::insertParagraphSeparatorInQuotedContent()
 {
-    // FIXME: Why is this missing calls to canEdit, canEditRichly, etc...
+    // FIXME: Why is this missing calls to canEdit, canEditRichly, etc.?
     TypingCommand::insertParagraphSeparatorInQuotedContent(m_frame.document());
     revealSelectionAfterEditingOperation();
     return true;
@@ -112,7 +123,7 @@ static RenderStyle* styleForSelectionStart(Frame* frame, Node *&nodeToRemove)
     RefPtr<Element> styleElement = frame->document()->createElement(spanTag, false);
 
     String styleText = typingStyle->style()->asText() + " display: inline";
-    styleElement->setAttribute(styleAttr, styleText.impl());
+    styleElement->setAttribute(styleAttr, styleText);
 
     styleElement->appendChild(frame->document()->createEditingTextNode(""), ASSERT_NO_EXCEPTION);
 
@@ -148,7 +159,7 @@ const SimpleFontData* Editor::fontForSelection(bool& hasMultipleFonts) const
         // In the loop below, n should eventually match pastEnd and not become nil, but we've seen at least one
         // unreproducible case where this didn't happen, so check for null also.
         for (Node* node = startNode; node && node != pastEnd; node = NodeTraversal::next(node)) {
-            RenderObject* renderer = node->renderer();
+            auto renderer = node->renderer();
             if (!renderer)
                 continue;
             // FIXME: Are there any node types that have renderers, but that we should be skipping?
@@ -251,7 +262,7 @@ void Editor::readSelectionFromPasteboard(const String& pasteboardName)
     if (m_frame.selection().isContentRichlyEditable())
         pasteWithPasteboard(&pasteboard, true);
     else
-        pasteAsPlainTextWithPasteboard(&pasteboard);   
+        pasteAsPlainTextWithPasteboard(pasteboard);
 }
 
 // FIXME: Makes no sense that selectedTextForClipboard always includes alt text, but stringSelectionForPasteboard does not.
@@ -343,14 +354,12 @@ void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
     content.dataInStringFormat = stringSelectionForPasteboardWithImageAltText();
     client()->getClientPasteboardDataForRange(selectedRange().get(), content.clientTypes, content.clientData);
 
-    pasteboard.setTypes(content);
-    client()->didSetSelectionTypesForPasteboard();
-    pasteboard.writeAfterSettingTypes(content);
+    pasteboard.write(content);
 }
 
 static void getImage(Element& imageElement, RefPtr<Image>& image, CachedImage*& cachedImage)
 {
-    RenderObject* renderer = imageElement.renderer();
+    auto renderer = imageElement.renderer();
     if (!renderer || !renderer->isImage())
         return;
 
@@ -367,17 +376,25 @@ static void getImage(Element& imageElement, RefPtr<Image>& image, CachedImage*& 
     cachedImage = tentativeCachedImage;
 }
 
-void Editor::writeURLToPasteboard(Pasteboard& pasteboard, const KURL& url, const String& title)
+void Editor::fillInUserVisibleForm(PasteboardURL& pasteboardURL)
 {
-    PasteboardURL pasteboardURL;
-    pasteboardURL.url = url;
-    pasteboardURL.title = title;
     pasteboardURL.userVisibleForm = client()->userVisibleString(pasteboardURL.url);
-
-    pasteboard.write(pasteboardURL);
 }
 
-void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElement, const KURL& url, const String& title)
+String Editor::plainTextFromPasteboard(const PasteboardPlainText& text)
+{
+    String string = text.text;
+
+    // FIXME: It's not clear this is 100% correct since we know -[NSURL URLWithString:] does not handle
+    // all the same cases we handle well in the URL code for creating an NSURL.
+    if (text.isURL)
+        string = client()->userVisibleString([NSURL URLWithString:string]);
+
+    // FIXME: WTF should offer a non-Mac-specific way to convert string to precomposed form so we can do it for all platforms.
+    return [(NSString *)string precomposedStringWithCanonicalMapping];
+}
+
+void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElement, const URL& url, const String& title)
 {
     PasteboardImage pasteboardImage;
 
@@ -394,6 +411,215 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
     pasteboardImage.resourceMIMEType = cachedImage->response().mimeType();
 
     pasteboard.write(pasteboardImage);
+}
+
+class Editor::WebContentReader FINAL : public PasteboardWebContentReader {
+public:
+    Frame& frame;
+    Range& context;
+    const bool allowPlainText;
+
+    RefPtr<DocumentFragment> fragment;
+    bool madeFragmentFromPlainText;
+
+    WebContentReader(Frame& frame, Range& context, bool allowPlainText)
+        : frame(frame)
+        , context(context)
+        , allowPlainText(allowPlainText)
+        , madeFragmentFromPlainText(false)
+    {
+    }
+
+private:
+    virtual bool readWebArchive(PassRefPtr<SharedBuffer>) override;
+    virtual bool readFilenames(const Vector<String>&) override;
+    virtual bool readHTML(const String&) override;
+    virtual bool readRTFD(PassRefPtr<SharedBuffer>) override;
+    virtual bool readRTF(PassRefPtr<SharedBuffer>) override;
+    virtual bool readImage(PassRefPtr<SharedBuffer>, const String& type) override;
+    virtual bool readURL(const URL&, const String& title) override;
+    virtual bool readPlainText(const String&) override;
+};
+
+bool Editor::WebContentReader::readWebArchive(PassRefPtr<SharedBuffer> buffer)
+{
+    if (!frame.document())
+        return false;
+
+    RefPtr<LegacyWebArchive> archive = LegacyWebArchive::create(URL(), buffer.get());
+    if (!archive)
+        return false;
+
+    RefPtr<ArchiveResource> mainResource = archive->mainResource();
+    if (!mainResource)
+        return false;
+
+    const String& type = mainResource->mimeType();
+
+    if (frame.loader().client().canShowMIMETypeAsHTML(type)) {
+        // FIXME: The code in createFragmentAndAddResources calls setDefersLoading(true). Don't we need that here?
+        if (DocumentLoader* loader = frame.loader().documentLoader())
+            loader->addAllArchiveResources(archive.get());
+
+        String markupString = String::fromUTF8(mainResource->data()->data(), mainResource->data()->size());
+        fragment = createFragmentFromMarkup(frame.document(), markupString, mainResource->url(), DisallowScriptingAndPluginContent);
+        return true;
+    }
+
+    if (MIMETypeRegistry::isSupportedImageMIMEType(type)) {
+        fragment = frame.editor().createFragmentForImageResourceAndAddResource(mainResource.release());
+        return true;
+    }
+
+    return false;
+}
+
+bool Editor::WebContentReader::readFilenames(const Vector<String>& paths)
+{
+    size_t size = paths.size();
+    if (!size)
+        return false;
+
+    if (!frame.document())
+        return false;
+    Document& document = *frame.document();
+
+    fragment = document.createDocumentFragment();
+
+    for (size_t i = 0; i < size; i++) {
+        String text = paths[i];
+        text = frame.editor().client()->userVisibleString([NSURL fileURLWithPath:text]);
+
+        RefPtr<HTMLElement> paragraph = createDefaultParagraphElement(document);
+        paragraph->appendChild(document.createTextNode(text));
+        fragment->appendChild(paragraph.release());
+    }
+
+    return true;
+}
+
+bool Editor::WebContentReader::readHTML(const String& string)
+{
+    String stringOmittingMicrosoftPrefix = string;
+
+    // This code was added to make HTML paste from Microsoft Word on Mac work, back in 2004.
+    // It's a simple-minded way to ignore the CF_HTML clipboard format, just skipping over the
+    // description part and parsing the entire context plus fragment.
+    if (string.startsWith("Version:")) {
+        size_t location = string.findIgnoringCase("<html");
+        if (location != notFound)
+            stringOmittingMicrosoftPrefix = string.substring(location);
+    }
+
+    if (stringOmittingMicrosoftPrefix.isEmpty())
+        return false;
+
+    fragment = createFragmentFromMarkup(frame.document(), stringOmittingMicrosoftPrefix, emptyString(), DisallowScriptingAndPluginContent);
+    return fragment;
+}
+
+bool Editor::WebContentReader::readRTFD(PassRefPtr<SharedBuffer> buffer)
+{
+    fragment = frame.editor().createFragmentAndAddResources(adoptNS([[NSAttributedString alloc] initWithRTFD:buffer->createNSData().get() documentAttributes:nullptr]).get());
+    return fragment;
+}
+
+bool Editor::WebContentReader::readRTF(PassRefPtr<SharedBuffer> buffer)
+{
+    fragment = frame.editor().createFragmentAndAddResources(adoptNS([[NSAttributedString alloc] initWithRTF:buffer->createNSData().get() documentAttributes:nullptr]).get());
+    return fragment;
+}
+
+bool Editor::WebContentReader::readImage(PassRefPtr<SharedBuffer> buffer, const String& type)
+{
+    ASSERT(type.contains('/'));
+    String typeAsFilenameWithExtension = type;
+    typeAsFilenameWithExtension.replace('/', '.');
+    URL imageURL = URL(URL(), "webkit-fake-url://" + createCanonicalUUIDString() + '/' + typeAsFilenameWithExtension);
+
+    fragment = frame.editor().createFragmentForImageResourceAndAddResource(ArchiveResource::create(buffer, imageURL, type, emptyString(), emptyString()));
+    return fragment;
+}
+
+bool Editor::WebContentReader::readURL(const URL& url, const String& title)
+{
+    if (url.string().isEmpty())
+        return false;
+
+    RefPtr<Element> anchor = frame.document()->createElement(HTMLNames::aTag, false);
+    anchor->setAttribute(HTMLNames::hrefAttr, url.string());
+    anchor->appendChild(frame.document()->createTextNode([title precomposedStringWithCanonicalMapping]));
+
+    fragment = frame.document()->createDocumentFragment();
+    fragment->appendChild(anchor.release());
+    return true;
+}
+
+bool Editor::WebContentReader::readPlainText(const String& text)
+{
+    if (!allowPlainText)
+        return false;
+
+    fragment = createFragmentFromText(&context, [text precomposedStringWithCanonicalMapping]);
+    if (!fragment)
+        return false;
+
+    madeFragmentFromPlainText = true;
+    return true;
+}
+
+// FIXME: Should give this function a name that makes it clear it adds resources to the document loader as a side effect.
+// Or refactor so it does not do that.
+PassRefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard, Range& context, bool allowPlainText, bool& chosePlainText)
+{
+    WebContentReader reader(m_frame, context, allowPlainText);
+    pasteboard.read(reader);
+    chosePlainText = reader.madeFragmentFromPlainText;
+    return reader.fragment.release();
+}
+
+PassRefPtr<DocumentFragment> Editor::createFragmentForImageResourceAndAddResource(PassRefPtr<ArchiveResource> resource)
+{
+    if (!resource)
+        return nullptr;
+
+    RefPtr<Element> imageElement = m_frame.document()->createElement(HTMLNames::imgTag, false);
+    imageElement->setAttribute(HTMLNames::srcAttr, resource->url().string());
+
+    RefPtr<DocumentFragment> fragment = m_frame.document()->createDocumentFragment();
+    fragment->appendChild(imageElement.release());
+
+    // FIXME: The code in createFragmentAndAddResources calls setDefersLoading(true). Don't we need that here?
+    if (DocumentLoader* loader = m_frame.loader().documentLoader())
+        loader->addArchiveResource(resource.get());
+
+    return fragment.release();
+}
+
+PassRefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedString *string)
+{
+    if (!m_frame.page() || !m_frame.document() || !m_frame.document()->isHTMLDocument())
+        return nullptr;
+
+    if (!string)
+        return nullptr;
+
+    bool wasDeferringCallbacks = m_frame.page()->defersLoading();
+    if (!wasDeferringCallbacks)
+        m_frame.page()->setDefersLoading(true);
+
+    Vector<RefPtr<ArchiveResource>> resources;
+    RefPtr<DocumentFragment> fragment = client()->documentFragmentFromAttributedString(string, resources);
+
+    if (DocumentLoader* loader = m_frame.loader().documentLoader()) {
+        for (size_t i = 0, size = resources.size(); i < size; ++i)
+            loader->addArchiveResource(resources[i]);
+    }
+
+    if (!wasDeferringCallbacks)
+        m_frame.page()->setDefersLoading(false);
+
+    return fragment.release();
 }
 
 } // namespace WebCore

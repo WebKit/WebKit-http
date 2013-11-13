@@ -56,12 +56,12 @@ private:
     virtual WebCore::VisitedLinkStrategy* createVisitedLinkStrategy() OVERRIDE;
 
     // WebCore::CookiesStrategy
-    virtual String cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::KURL& firstParty, const WebCore::KURL&) OVERRIDE;
-    virtual void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WebCore::KURL& firstParty, const WebCore::KURL&, const String&) OVERRIDE;
-    virtual bool cookiesEnabled(const WebCore::NetworkStorageSession&, const WebCore::KURL& firstParty, const WebCore::KURL&) OVERRIDE;
-    virtual String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::KURL& firstParty, const WebCore::KURL&) OVERRIDE;
-    virtual bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::KURL& firstParty, const WebCore::KURL&, Vector<WebCore::Cookie>&) OVERRIDE;
-    virtual void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::KURL&, const String&) OVERRIDE;
+    virtual String cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) OVERRIDE;
+    virtual void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, const String&) OVERRIDE;
+    virtual bool cookiesEnabled(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) OVERRIDE;
+    virtual String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) OVERRIDE;
+    virtual bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&) OVERRIDE;
+    virtual void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&) OVERRIDE;
 
     // WebCore::DatabaseStrategy
 #if ENABLE(SQL_DATABASE)
@@ -81,7 +81,7 @@ private:
     virtual void refreshPlugins() OVERRIDE;
     virtual void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) OVERRIDE;
 
-    // WebCore::SharedWorkerStrategy.
+    // WebCore::SharedWorkerStrategy
     virtual bool isAvailable() const OVERRIDE;
 
     // WebCore::StorageStrategy.
@@ -90,11 +90,21 @@ private:
     virtual PassRefPtr<WebCore::StorageNamespace> sessionStorageNamespace(WebCore::Page*) OVERRIDE;
 
     // WebCore::VisitedLinkStrategy
-    virtual bool isLinkVisited(WebCore::Page*, WebCore::LinkHash, const WebCore::KURL& baseURL, const WTF::AtomicString& attributeURL) OVERRIDE;
+    virtual bool isLinkVisited(WebCore::Page*, WebCore::LinkHash, const WebCore::URL& baseURL, const WTF::AtomicString& attributeURL) OVERRIDE;
     virtual void addVisitedLink(WebCore::Page*, WebCore::LinkHash) OVERRIDE;
 
-#if PLATFORM(MAC)
     // WebCore::PasteboardStrategy
+#if PLATFORM(IOS)
+    virtual void writeToPasteboard(const WebCore::PasteboardWebContent&) OVERRIDE;
+    virtual void writeToPasteboard(const WebCore::PasteboardImage&) OVERRIDE;
+    virtual void writeToPasteboard(const String& pasteboardType, const String&) OVERRIDE;
+    virtual int getPasteboardItemsCount() OVERRIDE;
+    virtual String readStringFromPasteboard(int index, const String& pasteboardType) OVERRIDE;
+    virtual PassRefPtr<WebCore::SharedBuffer> readBufferFromPasteboard(int index, const String& pasteboardType) OVERRIDE;
+    virtual WebCore::URL readURLFromPasteboard(int index, const String& pasteboardType) OVERRIDE;
+    virtual long changeCount() OVERRIDE;
+#endif
+#if PLATFORM(MAC)
     virtual void getTypes(Vector<String>& types, const String& pasteboardName) OVERRIDE;
     virtual PassRefPtr<WebCore::SharedBuffer> bufferForType(const String& pasteboardType, const String& pasteboardName) OVERRIDE;
     virtual void getPathnamesForType(Vector<String>& pathnames, const String& pasteboardType, const String& pasteboardName) OVERRIDE;
@@ -102,7 +112,7 @@ private:
     virtual long changeCount(const String& pasteboardName) OVERRIDE;
     virtual String uniqueName() OVERRIDE;
     virtual WebCore::Color color(const String& pasteboardName) OVERRIDE;
-    virtual WebCore::KURL url(const String& pasteboardName) OVERRIDE;
+    virtual WebCore::URL url(const String& pasteboardName) OVERRIDE;
 
     virtual long addTypes(const Vector<String>& pasteboardTypes, const String& pasteboardName) OVERRIDE;
     virtual long setTypes(const Vector<String>& pasteboardTypes, const String& pasteboardName) OVERRIDE;
@@ -119,12 +129,12 @@ private:
     bool m_shouldRefreshPlugins;
     Vector<WebCore::PluginInfo> m_cachedPlugins;
     Vector<WebCore::PluginInfo> m_cachedApplicationPlugins;
-#endif // ENABLE(PLUGIN_PROCESS)
+#endif // ENABLE(NETSCAPE_PLUGIN_API)
 };
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 void handleDidGetPlugins(uint64_t requestID, const Vector<WebCore::PluginInfo>&, const Vector<WebCore::PluginInfo>& applicationPlugins);
-#endif // ENABLE(PLUGIN_PROCESS)
+#endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 } // namespace WebKit
 

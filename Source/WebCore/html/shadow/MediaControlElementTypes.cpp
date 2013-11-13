@@ -105,13 +105,13 @@ void MediaControlElement::setDisplayType(MediaControlElementType displayType)
         return;
 
     m_displayType = displayType;
-    if (RenderObject* object = m_element->renderer())
+    if (auto object = m_element->renderer())
         object->repaint();
 }
 
 // ----------------------------
 
-MediaControlDivElement::MediaControlDivElement(Document* document, MediaControlElementType displayType)
+MediaControlDivElement::MediaControlDivElement(Document& document, MediaControlElementType displayType)
     : HTMLDivElement(divTag, document)
     , MediaControlElement(displayType, this)
 {
@@ -119,7 +119,7 @@ MediaControlDivElement::MediaControlDivElement(Document* document, MediaControlE
 
 // ----------------------------
 
-MediaControlInputElement::MediaControlInputElement(Document* document, MediaControlElementType displayType)
+MediaControlInputElement::MediaControlInputElement(Document& document, MediaControlElementType displayType)
     : HTMLInputElement(inputTag, document, 0, false)
     , MediaControlElement(displayType, this)
 {
@@ -127,7 +127,7 @@ MediaControlInputElement::MediaControlInputElement(Document* document, MediaCont
 
 // ----------------------------
 
-MediaControlTimeDisplayElement::MediaControlTimeDisplayElement(Document* document, MediaControlElementType displayType)
+MediaControlTimeDisplayElement::MediaControlTimeDisplayElement(Document& document, MediaControlElementType displayType)
     : MediaControlDivElement(document, displayType)
     , m_currentValue(0)
 {
@@ -140,7 +140,7 @@ void MediaControlTimeDisplayElement::setCurrentValue(double time)
 
 // ----------------------------
 
-MediaControlMuteButtonElement::MediaControlMuteButtonElement(Document* document, MediaControlElementType displayType)
+MediaControlMuteButtonElement::MediaControlMuteButtonElement(Document& document, MediaControlElementType displayType)
     : MediaControlInputElement(document, displayType)
 {
 }
@@ -167,7 +167,7 @@ void MediaControlMuteButtonElement::updateDisplayType()
 
 // ----------------------------
 
-MediaControlSeekButtonElement::MediaControlSeekButtonElement(Document* document, MediaControlElementType displayType)
+MediaControlSeekButtonElement::MediaControlSeekButtonElement(Document& document, MediaControlElementType displayType)
     : MediaControlInputElement(document, displayType)
     , m_actionOnStop(Nothing)
     , m_seekType(Skip)
@@ -247,7 +247,7 @@ void MediaControlSeekButtonElement::seekTimerFired(Timer<MediaControlSeekButtonE
 
 // ----------------------------
 
-MediaControlVolumeSliderElement::MediaControlVolumeSliderElement(Document* document)
+MediaControlVolumeSliderElement::MediaControlVolumeSliderElement(Document& document)
     : MediaControlInputElement(document, MediaVolumeSlider)
     , m_clearMutedOnUserInteraction(false)
 {

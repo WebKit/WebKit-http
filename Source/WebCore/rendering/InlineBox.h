@@ -34,7 +34,7 @@ class RootInlineBox;
 // some RenderObject (i.e., it represents a portion of that RenderObject).
 class InlineBox {
 public:
-    InlineBox(RenderObject& renderer)
+    explicit InlineBox(RenderObject& renderer)
         : m_next(0)
         , m_prev(0)
         , m_parent(0)
@@ -63,13 +63,13 @@ public:
 
     virtual ~InlineBox();
 
-    virtual void destroy(RenderArena*);
+    virtual void destroy(RenderArena&);
 
-    virtual void deleteLine(RenderArena*);
+    virtual void deleteLine(RenderArena&);
     virtual void extractLine();
     virtual void attachLine();
 
-    virtual bool isLineBreak() const { return false; }
+    virtual bool isLineBreak() const { return renderer().isLineBreak(); }
 
     virtual void adjustPosition(float dx, float dy);
     void adjustLogicalPosition(float deltaLogicalLeft, float deltaLogicalTop)
@@ -98,7 +98,7 @@ public:
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom);
 
     // Overloaded new operator.
-    void* operator new(size_t, RenderArena*);
+    void* operator new(size_t, RenderArena&);
 
     // Overridden to prevent the normal delete from being called.
     void operator delete(void*, size_t);
@@ -117,8 +117,8 @@ public:
     virtual const char* boxName() const;
 #endif
 
-    bool isText() const { return m_bitfields.isText(); }
-    void setIsText(bool isText) { m_bitfields.setIsText(isText); }
+    bool behavesLikeText() const { return m_bitfields.behavesLikeText(); }
+    void setBehavesLikeText(bool behavesLikeText) { m_bitfields.setBehavesLikeText(behavesLikeText); }
  
     virtual bool isInlineFlowBox() const { return false; }
     virtual bool isInlineTextBox() const { return false; }
@@ -151,8 +151,8 @@ public:
 
     void setExtracted(bool extracted = true) { m_bitfields.setExtracted(extracted); }
     
-    void setFirstLineStyleBit(bool firstLine) { m_bitfields.setFirstLine(firstLine); }
-    bool isFirstLineStyle() const { return m_bitfields.firstLine(); }
+    void setIsFirstLine(bool firstLine) { m_bitfields.setFirstLine(firstLine); }
+    bool isFirstLine() const { return m_bitfields.firstLine(); }
 
     void remove();
 
@@ -185,13 +185,13 @@ public:
 
     InlineFlowBox* parent() const
     {
-        ASSERT(!m_hasBadParent);
+        ASSERT_WITH_SECURITY_IMPLICATION(!m_hasBadParent);
         return m_parent;
     }
     void setParent(InlineFlowBox* par) { m_parent = par; }
 
-    const RootInlineBox* root() const;
-    RootInlineBox* root();
+    const RootInlineBox& root() const;
+    RootInlineBox& root();
 
     // x() is the left side of the box in the containing block's coordinate system.
     void setX(float x) { m_topLeft.setX(x); }
@@ -279,8 +279,10 @@ public:
     int expansion() const { return m_bitfields.expansion(); }
 
     bool visibleToHitTesting() const { return renderer().style()->visibility() == VISIBLE && renderer().style()->pointerEvents() != PE_NONE; }
+
+    const RenderStyle& lineStyle() const { return m_bitfields.firstLine() ? *renderer().firstLineStyle() : *renderer().style(); }
     
-    EVerticalAlign verticalAlign() const { return renderer().style(m_bitfields.firstLine())->verticalAlign(); }
+    EVerticalAlign verticalAlign() const { return lineStyle().verticalAlign(); }
 
     // Use with caution! The type is not checked!
     RenderBoxModelObject* boxModelObject() const
@@ -323,7 +325,7 @@ public:
 
     class InlineBoxBitfields {
     public:
-        InlineBoxBitfields(bool firstLine = false, bool constructed = false, bool dirty = false, bool extracted = false, bool isHorizontal = true)
+        explicit InlineBoxBitfields(bool firstLine = false, bool constructed = false, bool dirty = false, bool extracted = false, bool isHorizontal = true)
             : m_firstLine(firstLine)
             , m_constructed(constructed)
             , m_bidiEmbeddingLevel(0)
@@ -336,7 +338,7 @@ public:
             , m_knownToHaveNoOverflow(true)  
             , m_hasEllipsisBoxOrHyphen(false)
             , m_dirOverride(false)
-            , m_isText(false)
+            , m_behavesLikeText(false)
             , m_determinedIfNextOnLineExists(false)
             , m_nextOnLineExists(false)
             , m_expansion(0)
@@ -367,7 +369,7 @@ public:
         ADD_BOOLEAN_BITFIELD(hasEllipsisBoxOrHyphen, HasEllipsisBoxOrHyphen);
         // for InlineTextBox
         ADD_BOOLEAN_BITFIELD(dirOverride, DirOverride);
-        ADD_BOOLEAN_BITFIELD(isText, IsText); // Whether or not this object represents text with a non-zero height. Includes non-image list markers, text boxes.
+        ADD_BOOLEAN_BITFIELD(behavesLikeText, BehavesLikeText); // Whether or not this object represents text with a non-zero height. Includes non-image list markers, text boxes, br.
 
     private:
         mutable unsigned m_determinedIfNextOnLineExists : 1;

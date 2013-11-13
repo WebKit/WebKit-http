@@ -33,10 +33,10 @@ namespace WebCore {
 class SVGRectElement FINAL : public SVGGraphicsElement,
                              public SVGExternalResourcesRequired {
 public:
-    static PassRefPtr<SVGRectElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGRectElement> create(const QualifiedName&, Document&);
 
 private:
-    SVGRectElement(const QualifiedName&, Document*);
+    SVGRectElement(const QualifiedName&, Document&);
     
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool supportsFocus() const OVERRIDE { return true; }
@@ -47,7 +47,7 @@ private:
 
     virtual bool selfHasRelativeLengths() const;
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGRectElement)
         DECLARE_ANIMATED_LENGTH(X, x)
@@ -60,11 +60,7 @@ private:
     END_DECLARE_ANIMATED_PROPERTIES
 };
 
-inline SVGRectElement* toSVGRectElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(SVGNames::rectTag));
-    return static_cast<SVGRectElement*>(node);
-}
+ELEMENT_TYPE_CASTS(SVGRectElement)
 
 } // namespace WebCore
 

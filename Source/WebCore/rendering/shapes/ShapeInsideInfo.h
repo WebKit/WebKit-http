@@ -40,13 +40,14 @@ namespace WebCore {
 
 class InlineIterator;
 class RenderBlock;
+class RenderElement;
 class RenderObject;
 
 struct LineSegmentIterator {
-    RenderObject* root;
+    RenderElement* root;
     RenderObject* object;
     unsigned offset;
-    LineSegmentIterator(RenderObject* root, RenderObject* object, unsigned offset)
+    LineSegmentIterator(RenderElement* root, RenderObject* object, unsigned offset)
         : root(root)
         , object(object)
         , offset(offset)
@@ -62,16 +63,16 @@ struct LineSegmentRange {
 
 typedef Vector<LineSegmentRange> SegmentRangeList;
 
-class ShapeInsideInfo : public ShapeInfo<RenderBlock, &RenderStyle::resolvedShapeInside, &Shape::getIncludedIntervals> {
+class ShapeInsideInfo FINAL : public ShapeInfo<RenderBlock> { 
 public:
     static PassOwnPtr<ShapeInsideInfo> createInfo(const RenderBlock* renderer) { return adoptPtr(new ShapeInsideInfo(renderer)); }
 
     static bool isEnabledFor(const RenderBlock* renderer);
 
-    bool computeSegmentsForLine(LayoutSize lineOffset, LayoutUnit lineHeight)
+    bool updateSegmentsForLine(LayoutSize lineOffset, LayoutUnit lineHeight)
     {
         m_segmentRanges.clear();
-        bool result = ShapeInfo<RenderBlock, &RenderStyle::resolvedShapeInside, &Shape::getIncludedIntervals>::computeSegmentsForLine(lineOffset.height(), lineHeight);
+        bool result = updateSegmentsForLine(lineOffset.height(), lineHeight);
         for (size_t i = 0; i < m_segments.size(); i++) {
             m_segments[i].logicalLeft -= lineOffset.width();
             m_segments[i].logicalRight -= lineOffset.width();
@@ -79,10 +80,18 @@ public:
         return result;
     }
 
-    virtual bool computeSegmentsForLine(LayoutUnit lineTop, LayoutUnit lineHeight) OVERRIDE
+    bool updateSegmentsForLine(LayoutUnit lineTop, LayoutUnit lineHeight)
     {
+        ASSERT(lineHeight >= 0);
+        m_shapeLineTop = lineTop - logicalTopOffset();
+        m_lineHeight = lineHeight;
+        m_segments.clear();
         m_segmentRanges.clear();
-        return ShapeInfo<RenderBlock, &RenderStyle::resolvedShapeInside, &Shape::getIncludedIntervals>::computeSegmentsForLine(lineTop, lineHeight);
+
+        if (lineOverlapsShapeBounds())
+            m_segments = computeSegmentsForLine(lineTop, lineHeight);
+
+        return m_segments.size();
     }
 
     bool hasSegments() const
@@ -103,22 +112,36 @@ public:
         ASSERT(m_segmentRanges.size() < m_segments.size());
         return &m_segments[m_segmentRanges.size()];
     }
+    void clearSegments() { m_segments.clear(); }
     bool adjustLogicalLineTop(float minSegmentWidth);
+    LayoutUnit computeFirstFitPositionForFloat(const LayoutSize) const;
 
     void setNeedsLayout(bool value) { m_needsLayout = value; }
     bool needsLayout() { return m_needsLayout; }
 
+    virtual bool lineOverlapsShapeBounds() const OVERRIDE
+    {
+        // The <= test is to handle the case of a zero height line or a zero height shape.
+        return logicalLineTop() < shapeLogicalBottom() && shapeLogicalTop() <= logicalLineBottom();
+    }
+
 protected:
     virtual LayoutRect computedShapeLogicalBoundingBox() const OVERRIDE { return computedShape()->shapePaddingLogicalBoundingBox(); }
+    virtual ShapeValue* shapeValue() const OVERRIDE;
+    virtual void getIntervals(LayoutUnit lineTop, LayoutUnit lineHeight, SegmentList& segments) const OVERRIDE
+    {
+        return computedShape()->getIncludedIntervals(lineTop, lineHeight, segments);
+    }
 
 private:
     ShapeInsideInfo(const RenderBlock* renderer)
-    : ShapeInfo<RenderBlock, &RenderStyle::resolvedShapeInside, &Shape::getIncludedIntervals> (renderer)
+    : ShapeInfo<RenderBlock> (renderer)
     , m_needsLayout(false)
     { }
 
     SegmentRangeList m_segmentRanges;
     bool m_needsLayout:1;
+    SegmentList m_segments;
 };
 
 }

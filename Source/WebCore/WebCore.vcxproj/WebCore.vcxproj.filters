@@ -25,6 +25,9 @@
     <Filter Include="Modules\quota">
       <UniqueIdentifier>{47f62e6e-87ae-4091-993d-d1d78f2c8ba9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Modules\mediacontrols">
+      <UniqueIdentifier>{63ec45f2-29a3-4f42-90af-dd4fedaca99b}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Modules\mediasource">
       <UniqueIdentifier>{614031cc-d79e-45b1-939e-dabeefe1fc9d}</UniqueIdentifier>
     </Filter>
@@ -300,72 +303,6 @@
     <ClCompile Include="..\bindings\js\JSIDBAnyCustom.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\DirectoryEntry.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\DirectoryEntrySync.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\DirectoryReader.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\DirectoryReaderSync.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\DOMFilePath.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\DOMFileSystem.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\DOMFileSystemBase.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\DOMFileSystemSync.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\DOMWindowFileSystem.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\Entry.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\EntryArray.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\EntryArraySync.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\EntryBase.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\EntrySync.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\FileEntry.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\FileEntrySync.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\FileSystemCallbacks.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\FileWriter.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\FileWriterBase.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\FileWriterSync.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\LocalFileSystem.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\filesystem\WorkerGlobalScopeFileSystem.cpp">
-      <Filter>Modules\filesystem</Filter>
-    </ClCompile>
     <ClCompile Include="..\Modules\geolocation\Coordinates.cpp">
       <Filter>Modules\geolocation</Filter>
     </ClCompile>
@@ -387,19 +324,10 @@
     <ClCompile Include="..\Modules\indexeddb\IDBCursor.cpp">
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\indexeddb\IDBCursorBackendImpl.cpp">
-      <Filter>Modules\indexeddb</Filter>
-    </ClCompile>
     <ClCompile Include="..\Modules\indexeddb\IDBDatabase.cpp">
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\indexeddb\IDBDatabaseBackendImpl.cpp">
-      <Filter>Modules\indexeddb</Filter>
-    </ClCompile>
     <ClCompile Include="..\Modules\indexeddb\IDBFactory.cpp">
-      <Filter>Modules\indexeddb</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\indexeddb\IDBFactoryBackendImpl.cpp">
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\indexeddb\IDBFactoryBackendInterface.cpp">
@@ -415,9 +343,6 @@
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\indexeddb\IDBObjectStore.cpp">
-      <Filter>Modules\indexeddb</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\indexeddb\IDBObjectStoreBackendImpl.cpp">
       <Filter>Modules\indexeddb</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\indexeddb\IDBRequest.cpp">
@@ -768,9 +693,6 @@
     <ClCompile Include="..\page\Frame.cpp">
       <Filter>page</Filter>
     </ClCompile>
-    <ClCompile Include="..\page\FrameActionScheduler.cpp">
-      <Filter>page</Filter>
-    </ClCompile>
     <ClCompile Include="..\page\FrameDestructionObserver.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -793,6 +715,9 @@
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\Location.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
+    <ClCompile Include="..\page\MainFrame.cpp">
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\PrintContext.cpp">
@@ -1071,9 +996,6 @@
     <ClCompile Include="..\platform\Arena.cpp">
       <Filter>platform</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\AsyncFileSystem.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\CalculationValue.cpp">
       <Filter>platform</Filter>
     </ClCompile>
@@ -1128,7 +1050,7 @@
     <ClCompile Include="..\platform\KillRingNone.cpp">
       <Filter>platform</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\KURL.cpp">
+    <ClCompile Include="..\platform\URL.cpp">
       <Filter>platform</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\Language.cpp">
@@ -1159,9 +1081,6 @@
       <Filter>platform</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\PlatformEvent.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\PlatformInstrumentation.cpp">
       <Filter>platform</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\PlatformStrategies.cpp">
@@ -1365,13 +1284,13 @@
     <ClCompile Include="..\platform\graphics\FloatQuad.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\GeneratorGeneratedImage.cpp">
-      <Filter>platform\graphics</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\graphics\GlyphPageTreeNode.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\Gradient.cpp">
+      <Filter>platform\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\GradientImage.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\GraphicsContext.cpp">
@@ -1974,6 +1893,9 @@
     <ClCompile Include="..\platform\network\curl\FormDataStreamCurl.cpp">
       <Filter>platform\network\curl</Filter>
     </ClCompile>
+    <ClCompile Include="..\platform\network\curl\MultipartHandle.cpp">
+      <Filter>platform\network\curl</Filter>
+    </ClCompile>
     <ClCompile Include="..\platform\network\curl\ProxyServerCurl.cpp">
       <Filter>platform\network\curl</Filter>
     </ClCompile>
@@ -2102,9 +2024,6 @@
     </ClCompile>
     <ClCompile Include="..\platform\text\win\TextBreakIteratorInternalICUWin.cpp">
       <Filter>platform\text\win</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\text\transcoder\FontTranscoder.cpp">
-      <Filter>platform\text\transcoder</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\image-decoders\cairo\ImageDecoderCairo.cpp">
       <Filter>platform\image-decoders\cairo</Filter>
@@ -2490,9 +2409,6 @@
     <ClCompile Include="..\rendering\PointerEventsHitRules.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
-    <ClCompile Include="..\rendering\RenderApplet.cpp">
-      <Filter>rendering</Filter>
-    </ClCompile>
     <ClCompile Include="..\rendering\RenderArena.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
@@ -2506,9 +2422,6 @@
       <Filter>rendering</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\RenderBoxModelObject.cpp">
-      <Filter>rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="..\rendering\RenderBR.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\RenderButton.cpp">
@@ -2638,12 +2551,6 @@
       <Filter>rendering</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\RenderObject.cpp">
-      <Filter>rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="..\rendering\RenderObjectChildList.cpp">
-      <Filter>rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="..\rendering\RenderPart.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\RenderProgress.cpp">
@@ -2814,9 +2721,6 @@
     <ClCompile Include="..\rendering\RenderWidget.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
-    <ClCompile Include="..\rendering\RenderWordBreak.cpp">
-      <Filter>rendering</Filter>
-    </ClCompile>
     <ClCompile Include="..\rendering\RootInlineBox.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
@@ -2871,7 +2775,7 @@
     <ClCompile Include="..\rendering\mathml\RenderMathMLSquareRoot.cpp">
       <Filter>rendering\mathml</Filter>
     </ClCompile>
-    <ClCompile Include="..\rendering\mathml\RenderMathMLSubSup.cpp">
+    <ClCompile Include="..\rendering\mathml\RenderMathMLScripts.cpp">
       <Filter>rendering\mathml</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\mathml\RenderMathMLUnderOver.cpp">
@@ -2989,9 +2893,6 @@
       <Filter>rendering\svg</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\svg\RenderSVGTextPath.cpp">
-      <Filter>rendering\svg</Filter>
-    </ClCompile>
-    <ClCompile Include="..\rendering\svg\RenderSVGTSpan.cpp">
       <Filter>rendering\svg</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\svg\SVGInlineFlowBox.cpp">
@@ -3178,9 +3079,6 @@
       <Filter>dom</Filter>
     </ClCompile>
     <ClCompile Include="..\dom\Comment.cpp">
-      <Filter>dom</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dom\ComposedShadowTreeWalker.cpp">
       <Filter>dom</Filter>
     </ClCompile>
     <ClCompile Include="..\dom\CompositionEvent.cpp">
@@ -4296,9 +4194,6 @@
     <ClCompile Include="..\html\shadow\DetailsMarkerControl.cpp">
       <Filter>html\shadow</Filter>
     </ClCompile>
-    <ClCompile Include="..\html\shadow\HTMLContentElement.cpp">
-      <Filter>html\shadow</Filter>
-    </ClCompile>
     <ClCompile Include="..\html\shadow\InsertionPoint.cpp">
       <Filter>html\shadow</Filter>
     </ClCompile>
@@ -4365,9 +4260,6 @@
     <ClCompile Include="..\html\track\WebVTTTokenizer.cpp">
       <Filter>html\track</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\ScriptControllerBase.cpp">
-      <Filter>bindings</Filter>
-    </ClCompile>
     <ClCompile Include="..\bindings\generic\ActiveDOMCallback.cpp">
       <Filter>bindings\generic</Filter>
     </ClCompile>
@@ -4425,21 +4317,6 @@
     <ClCompile Include="..\bindings\js\JSClipboardCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSConsoleCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSCSSFontFaceRuleCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSCSSImportRuleCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSCSSMediaRuleCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSCSSPageRuleCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSCSSRuleCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
@@ -4447,9 +4324,6 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSCSSStyleDeclarationCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSCSSStyleRuleCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSCSSValueCustom.cpp">
@@ -4488,9 +4362,6 @@
     <ClCompile Include="..\bindings\js\JSDOMGlobalObjectTask.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSDOMImplementationCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSDOMMimeTypeArrayCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
@@ -4504,9 +4375,6 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSDOMStringMapCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSEntrySyncCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSErrorHandler.cpp">
@@ -4548,9 +4416,6 @@
     <ClCompile Include="..\bindings\js\JSHTMLSelectElementCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSHTMLStyleElementCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSImageConstructor.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
@@ -4576,9 +4441,6 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSMainThreadExecState.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSMediaListCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSMessageChannelCustom.cpp">
@@ -4615,9 +4477,6 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSPluginElementFunctions.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSProcessingInstructionCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSRequestAnimationFrameCallbackCustom.cpp">
@@ -4662,12 +4521,6 @@
     <ClCompile Include="..\bindings\js\JSTreeWalkerCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSWebKitCSSKeyframeRuleCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSWebKitCSSKeyframesRuleCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSWebKitPointCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
@@ -4681,9 +4534,6 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSXMLHttpRequestCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSXMLHttpRequestUploadCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSXPathResultCustom.cpp">
@@ -4708,9 +4558,6 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\ScriptDebugServer.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\ScriptEventListener.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\ScriptFunctionCall.cpp">
@@ -4848,10 +4695,13 @@
     <ClCompile Include="..\svg\properties\SVGPathSegListPropertyTearOff.cpp">
       <Filter>rendering\svg\properties</Filter>
     </ClCompile>
+    <ClCompile Include="..\svg\properties\SVGPropertyInfo.cpp">
+      <Filter>rendering\svg\properties</Filter>
+    </ClCompile>
     <ClCompile Include="..\history\BackForwardController.cpp">
       <Filter>history</Filter>
     </ClCompile>
-    <ClCompile Include="..\history\BackForwardListImpl.cpp">
+    <ClCompile Include="..\history\BackForwardList.cpp">
       <Filter>history</Filter>
     </ClCompile>
     <ClCompile Include="..\history\CachedFrame.cpp">
@@ -5019,9 +4869,6 @@
     <ClCompile Include="..\inspector\InspectorDOMStorageAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
-    <ClCompile Include="..\inspector\InspectorFileSystemAgent.cpp">
-      <Filter>inspector</Filter>
-    </ClCompile>
     <ClCompile Include="..\inspector\InspectorFrontendClientLocal.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -5163,7 +5010,7 @@
     <ClCompile Include="..\platform\cf\FileSystemCF.cpp">
       <Filter>platform\cf</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\cf\KURLCFNet.cpp">
+    <ClCompile Include="..\platform\cf\URLCF.cpp">
       <Filter>platform\cf</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\cf\win\CertificateCFWin.cpp">
@@ -5301,12 +5148,6 @@
     <ClCompile Include="..\bindings\js\JSHTMLDocumentCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSDOMTokenListCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSEntryCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSDOMWindowBase.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
@@ -5358,9 +5199,6 @@
     </ClCompile>
     <ClCompile Include="..\svg\graphics\SVGImageForContainer.cpp">
       <Filter>rendering\svg\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="..\inspector\TimelineTraceEventProcessor.cpp">
-      <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\HitTestLocation.cpp">
       <Filter>rendering</Filter>
@@ -5575,18 +5413,6 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSDeviceOrientationEvent.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDirectoryEntry.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDirectoryEntrySync.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDirectoryReader.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDirectoryReaderSync.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDocument.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -5603,12 +5429,6 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMError.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMFileSystem.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMFileSystemSync.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMFormData.cpp">
@@ -5665,27 +5485,6 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntityReference.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntriesCallback.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntry.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntryArray.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntryArraySync.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntryCallback.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntrySync.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSErrorCallback.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSErrorEvent.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -5704,15 +5503,6 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFile.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileCallback.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileEntry.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileEntrySync.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileError.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -5726,18 +5516,6 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileReaderSync.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileSystemCallback.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileWriter.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileWriterCallback.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileWriterSync.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFontLoader.cpp">
@@ -5789,9 +5567,6 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLCollection.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLContentElement.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLDataListElement.cpp">
@@ -6031,6 +5806,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSLocation.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMediaControlsHost.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMediaError.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6050,12 +5828,6 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMessagePort.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMetadata.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMetadataCallback.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMouseEvent.cpp">
@@ -7103,119 +6875,19 @@
     <ClCompile Include="..\platform\win\StructuredExceptionHandlerSuppressor.cpp">
       <Filter>platform\win</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSBeforeUnloadEvent.cpp" />
+    <ClCompile Include="..\rendering\FloatingObjects.cpp" />
+    <ClCompile Include="..\Modules\indexeddb\leveldb\IDBCursorBackendLevelDB.cpp" />
+    <ClCompile Include="..\Modules\indexeddb\leveldb\IDBDatabaseBackendLevelDB.cpp" />
+    <ClCompile Include="..\Modules\indexeddb\leveldb\IDBFactoryBackendLevelDB.cpp" />
+    <ClCompile Include="..\Modules\indexeddb\leveldb\IDBObjectStoreBackendLevelDB.cpp" />
+    <ClCompile Include="..\platform\graphics\FloatPolygon.cpp" />
+    <ClCompile Include="..\rendering\LineWidth.cpp" />
+    <ClCompile Include="..\rendering\RenderLineBreak.cpp" />
+    <ClCompile Include="..\rendering\RenderElement.cpp" />
+    <ClCompile Include="..\rendering\shapes\ShapeInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Modules\filesystem\AsyncFileWriter.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\AsyncFileWriterClient.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\DirectoryEntry.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\DirectoryEntrySync.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\DirectoryReader.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\DirectoryReaderBase.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\DirectoryReaderSync.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\DOMFilePath.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\DOMFileSystem.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\DOMFileSystemBase.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\DOMFileSystemSync.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\DOMWindowFileSystem.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\EntriesCallback.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\Entry.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\EntryArray.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\EntryArraySync.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\EntryBase.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\EntryCallback.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\EntrySync.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\ErrorCallback.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileCallback.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileEntry.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileEntrySync.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileSystemCallback.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileSystemCallbacks.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileSystemFlags.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileSystemType.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileWriter.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileWriterBase.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileWriterBaseCallback.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileWriterCallback.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\FileWriterSync.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\LocalFileSystem.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\Metadata.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\MetadataCallback.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\SyncCallbackHelper.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\filesystem\WorkerGlobalScopeFileSystem.h">
-      <Filter>Modules\filesystem</Filter>
-    </ClInclude>
     <ClInclude Include="..\Modules\geolocation\Coordinates.h">
       <Filter>Modules\geolocation</Filter>
     </ClInclude>
@@ -7353,6 +7025,9 @@
     </ClInclude>
     <ClInclude Include="..\Modules\quota\StorageUsageCallback.h">
       <Filter>Modules\quota</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\mediacontrols\MediaControlsHost.h">
+      <Filter>Modules\mediacontrols</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\mediasource\MediaSource.h">
       <Filter>Modules\mediasource</Filter>
@@ -7747,9 +7422,6 @@
     <ClInclude Include="..\page\Frame.h">
       <Filter>page</Filter>
     </ClInclude>
-    <ClInclude Include="..\page\FrameActionScheduler.h">
-      <Filter>page</Filter>
-    </ClInclude>
     <ClInclude Include="..\page\FrameDestructionObserver.h">
       <Filter>page</Filter>
     </ClInclude>
@@ -7772,6 +7444,9 @@
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\Location.h">
+      <Filter>page</Filter>
+    </ClInclude>
+    <ClInclude Include="..\page\MainFrame.h">
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\PrintContext.h">
@@ -8098,12 +7773,6 @@
     <ClInclude Include="..\platform\Arena.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\AsyncFileSystem.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\AsyncFileSystemCallbacks.h">
-      <Filter>platform</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\CalculationValue.h">
       <Filter>platform</Filter>
     </ClInclude>
@@ -8176,10 +7845,10 @@
     <ClInclude Include="..\platform\KillRing.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\KURL.h">
+    <ClInclude Include="..\platform\URL.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\KURLHash.h">
+    <ClInclude Include="..\platform\URLHash.h">
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\Language.h">
@@ -8222,9 +7891,6 @@
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\PlatformEvent.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\PlatformInstrumentation.h">
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\PlatformKeyboardEvent.h">
@@ -8588,9 +8254,6 @@
       <Filter>platform\graphics\win</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\opentype\OpenTypeVerticalData.h">
-      <Filter>platform\graphics\win</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\win\RefCountedGDIHandle.h">
       <Filter>platform\graphics\win</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\win\UniscribeController.h">
@@ -9097,9 +8760,6 @@
     <ClInclude Include="..\platform\text\WritingMode.h">
       <Filter>platform\text</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\text\transcoder\FontTranscoder.h">
-      <Filter>platform\text\transcoder</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\animation\Animation.h">
       <Filter>platform\animation</Filter>
     </ClInclude>
@@ -9502,9 +9162,6 @@
     <ClInclude Include="..\rendering\PointerEventsHitRules.h">
       <Filter>rendering</Filter>
     </ClInclude>
-    <ClInclude Include="..\rendering\RenderApplet.h">
-      <Filter>rendering</Filter>
-    </ClInclude>
     <ClInclude Include="..\rendering\RenderArena.h">
       <Filter>rendering</Filter>
     </ClInclude>
@@ -9515,9 +9172,6 @@
       <Filter>rendering</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\RenderBoxModelObject.h">
-      <Filter>rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="..\rendering\RenderBR.h">
       <Filter>rendering</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\RenderButton.h">
@@ -9638,12 +9292,6 @@
       <Filter>rendering</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\RenderObject.h">
-      <Filter>rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="..\rendering\RenderObjectChildList.h">
-      <Filter>rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="..\rendering\RenderPart.h">
       <Filter>rendering</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\RenderProgress.h">
@@ -9808,9 +9456,6 @@
     <ClInclude Include="..\rendering\RenderWidget.h">
       <Filter>rendering</Filter>
     </ClInclude>
-    <ClInclude Include="..\rendering\RenderWordBreak.h">
-      <Filter>rendering</Filter>
-    </ClInclude>
     <ClInclude Include="..\rendering\RootInlineBox.h">
       <Filter>rendering</Filter>
     </ClInclude>
@@ -9874,7 +9519,7 @@
     <ClInclude Include="..\rendering\mathml\RenderMathMLSquareRoot.h">
       <Filter>rendering\mathml</Filter>
     </ClInclude>
-    <ClInclude Include="..\rendering\mathml\RenderMathMLSubSup.h">
+    <ClInclude Include="..\rendering\mathml\RenderMathMLScripts.h">
       <Filter>rendering\mathml</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\mathml\RenderMathMLUnderOver.h">
@@ -10247,9 +9892,6 @@
       <Filter>dom</Filter>
     </ClInclude>
     <ClInclude Include="..\dom\Comment.h">
-      <Filter>dom</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dom\ComposedShadowTreeWalker.h">
       <Filter>dom</Filter>
     </ClInclude>
     <ClInclude Include="..\dom\CompositionEvent.h">
@@ -11485,9 +11127,6 @@
     <ClInclude Include="..\html\shadow\DetailsMarkerControl.h">
       <Filter>html\shadow</Filter>
     </ClInclude>
-    <ClInclude Include="..\html\shadow\HTMLContentElement.h">
-      <Filter>html\shadow</Filter>
-    </ClInclude>
     <ClInclude Include="..\html\shadow\InsertionPoint.h">
       <Filter>html\shadow</Filter>
     </ClInclude>
@@ -11556,9 +11195,6 @@
     </ClInclude>
     <ClInclude Include="..\html\track\WebVTTTokenizer.h">
       <Filter>html\track</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bindings\ScriptControllerBase.h">
-      <Filter>bindings</Filter>
     </ClInclude>
     <ClInclude Include="..\bindings\generic\ActiveDOMCallback.h">
       <Filter>bindings\generic</Filter>
@@ -11672,9 +11308,6 @@
       <Filter>bindings\js</Filter>
     </ClInclude>
     <ClInclude Include="..\bindings\js\ScriptDebugServer.h">
-      <Filter>bindings\js</Filter>
-    </ClInclude>
-    <ClInclude Include="..\bindings\js\ScriptEventListener.h">
       <Filter>bindings\js</Filter>
     </ClInclude>
     <ClInclude Include="..\bindings\js\ScriptFunctionCall.h">
@@ -12406,13 +12039,13 @@
     <ClInclude Include="..\ForwardingHeaders\heap\Strong.h">
       <Filter>ForwardingHeaders\heap</Filter>
     </ClInclude>
+    <ClInclude Include="..\history\BackForwardClient.h">
+      <Filter>history</Filter>
+    </ClInclude>
     <ClInclude Include="..\history\BackForwardController.h">
       <Filter>history</Filter>
     </ClInclude>
     <ClInclude Include="..\history\BackForwardList.h">
-      <Filter>history</Filter>
-    </ClInclude>
-    <ClInclude Include="..\history\BackForwardListImpl.h">
       <Filter>history</Filter>
     </ClInclude>
     <ClInclude Include="..\history\CachedFrame.h">
@@ -12605,9 +12238,6 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorDOMStorageAgent.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
-    <ClInclude Include="..\inspector\InspectorFileSystemAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorFrontendChannel.h">
@@ -13146,9 +12776,6 @@
     <ClInclude Include="..\svg\graphics\SVGImageForContainer.h">
       <Filter>rendering\svg\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="..\inspector\TimelineTraceEventProcessor.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
     <ClInclude Include="..\rendering\HitTestLocation.h">
       <Filter>rendering</Filter>
     </ClInclude>
@@ -13365,18 +12992,6 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSDeviceOrientationEvent.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDirectoryEntry.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDirectoryEntrySync.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDirectoryReader.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDirectoryReaderSync.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDocument.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -13393,12 +13008,6 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMError.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMFileSystem.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMFileSystemSync.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDOMFormData.h">
@@ -13455,27 +13064,6 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntityReference.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntriesCallback.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntry.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntryArray.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntryArraySync.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntryCallback.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEntrySync.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSErrorCallback.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSErrorEvent.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -13494,15 +13082,6 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFile.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileCallback.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileEntry.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileEntrySync.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileError.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -13516,18 +13095,6 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileReaderSync.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileSystemCallback.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileWriter.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileWriterCallback.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFileWriterSync.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSFontLoader.h">
@@ -13579,9 +13146,6 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLCollection.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLContentElement.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLDataListElement.h">
@@ -13815,6 +13379,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSLocation.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMediaControlsHost.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMediaError.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -13834,12 +13401,6 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMessagePort.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMetadata.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMetadataCallback.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSMouseEvent.h">
@@ -14909,6 +14470,19 @@
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\HTMLElementTypeHelpers.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\SVGElementTypeHelpers.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSBeforeUnloadEvent.h" />
+    <ClInclude Include="..\rendering\FloatingObjects.h" />
+    <ClInclude Include="..\platform\graphics\win\SharedGDIObject.h">
+      <Filter>platform\graphics\win</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\mediacontrols\MediaControlsHost.cpp" />
+    <ClInclude Include="..\platform\graphics\FloatPolygon.h" />
+    <ClInclude Include="..\rendering\LineInfo.h" />
+    <ClInclude Include="..\rendering\LineLayoutState.h" />
+    <ClInclude Include="..\rendering\LineWidth.h" />
+    <ClInclude Include="..\rendering\RenderElement.h" />
+    <ClInclude Include="..\rendering\RenderLineBreak.h" />
+    <ClInclude Include="..\rendering\shapes\ShapeInfo.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\css\CSSGrammar.y.in">
@@ -14924,9 +14498,6 @@
       <Filter>css</Filter>
     </None>
     <None Include="..\css\fullscreen.css">
-      <Filter>css</Filter>
-    </None>
-    <None Include="..\css\fullscreenQuickTime.css">
       <Filter>css</Filter>
     </None>
     <None Include="..\css\html.css">
@@ -15747,9 +15318,6 @@
     <None Include="..\css\view-source.css">
       <Filter>css</Filter>
     </None>
-    <None Include="..\css\mediaControlsQuickTime.css">
-      <Filter>css</Filter>
-    </None>
     <None Include="..\css\svg.css">
       <Filter>css</Filter>
     </None>
@@ -15825,6 +15393,9 @@
       <Filter>platform\network\curl</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\network\curl\FormDataStreamCurl.h">
+      <Filter>platform\network\curl</Filter>
+    </CustomBuildStep>
+    <CustomBuildStep Include="..\platform\network\curl\MultipartHandle.h">
       <Filter>platform\network\curl</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\network\curl\ResourceError.h">

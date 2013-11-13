@@ -22,9 +22,9 @@
 #include "HTMLDetailsElement.h"
 
 #if ENABLE(DETAILS_ELEMENT)
-#include "HTMLContentElement.h"
 #include "HTMLNames.h"
 #include "HTMLSummaryElement.h"
+#include "InsertionPoint.h"
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "RenderBlockFlow.h"
@@ -43,11 +43,11 @@ static const AtomicString& summaryQuerySelector()
 
 class DetailsContentElement : public InsertionPoint {
 public:
-    static PassRefPtr<DetailsContentElement> create(Document*);
+    static PassRefPtr<DetailsContentElement> create(Document&);
 
 private:
-    DetailsContentElement(Document* document)
-        : InsertionPoint(HTMLNames::webkitShadowContentTag, document)
+    DetailsContentElement(Document& document)
+        : InsertionPoint(webkitShadowContentTag, document)
     {
     }
 
@@ -59,14 +59,14 @@ private:
     }
 };
 
-PassRefPtr<DetailsContentElement> DetailsContentElement::create(Document* document)
+PassRefPtr<DetailsContentElement> DetailsContentElement::create(Document& document)
 {
     return adoptRef(new DetailsContentElement(document));
 }
 
 class DetailsSummaryElement : public InsertionPoint {
 public:
-    static PassRefPtr<DetailsSummaryElement> create(Document*);
+    static PassRefPtr<DetailsSummaryElement> create(Document&);
 
     Element* fallbackSummary()
     {
@@ -75,9 +75,10 @@ public:
     }
 
 private:
-    DetailsSummaryElement(Document* document)
-        : InsertionPoint(HTMLNames::webkitShadowContentTag, document)
-    { }
+    DetailsSummaryElement(Document& document)
+        : InsertionPoint(webkitShadowContentTag, document)
+    {
+    }
 
     virtual MatchType matchTypeFor(Node* node) const OVERRIDE
     {
@@ -87,7 +88,7 @@ private:
     }
 };
 
-PassRefPtr<DetailsSummaryElement> DetailsSummaryElement::create(Document* document)
+PassRefPtr<DetailsSummaryElement> DetailsSummaryElement::create(Document& document)
 {
     RefPtr<HTMLSummaryElement> summary = HTMLSummaryElement::create(summaryTag, document);
     summary->appendChild(Text::create(document, defaultDetailsSummaryText()), ASSERT_NO_EXCEPTION);
@@ -97,29 +98,29 @@ PassRefPtr<DetailsSummaryElement> DetailsSummaryElement::create(Document* docume
     return detailsSummary.release();
 }
 
-PassRefPtr<HTMLDetailsElement> HTMLDetailsElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<HTMLDetailsElement> HTMLDetailsElement::create(const QualifiedName& tagName, Document& document)
 {
     RefPtr<HTMLDetailsElement> details = adoptRef(new HTMLDetailsElement(tagName, document));
     details->ensureUserAgentShadowRoot();
     return details.release();
 }
 
-HTMLDetailsElement::HTMLDetailsElement(const QualifiedName& tagName, Document* document)
+HTMLDetailsElement::HTMLDetailsElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
     , m_isOpen(false)
 {
     ASSERT(hasTagName(detailsTag));
 }
 
-RenderObject* HTMLDetailsElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* HTMLDetailsElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
     return new (arena) RenderBlockFlow(this);
 }
 
 void HTMLDetailsElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 {
-    root->appendChild(DetailsSummaryElement::create(&document()), ASSERT_NO_EXCEPTION, AttachLazily);
-    root->appendChild(DetailsContentElement::create(&document()), ASSERT_NO_EXCEPTION, AttachLazily);
+    root->appendChild(DetailsSummaryElement::create(document()), ASSERT_NO_EXCEPTION, AttachLazily);
+    root->appendChild(DetailsContentElement::create(document()), ASSERT_NO_EXCEPTION, AttachLazily);
 }
 
 Element* HTMLDetailsElement::findMainSummary() const

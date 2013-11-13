@@ -38,12 +38,14 @@ public:
     {
         return adoptRef(new DOMError(name));
     }
+    virtual ~DOMError() { }
 
     const String& name() const { return m_name; }
 
-private:
+protected:
     explicit DOMError(const String& name);
 
+private:
     const String m_name;
 };
 

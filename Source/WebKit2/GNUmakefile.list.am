@@ -9,6 +9,7 @@ webkit2_h_api += \
 	$(WebKit2)/Shared/API/c/WKContextMenuItem.h \
 	$(WebKit2)/Shared/API/c/WKContextMenuItemTypes.h \
 	$(WebKit2)/Shared/API/c/WKData.h \
+	$(WebKit2)/Shared/API/c/WKDeclarationSpecifiers.h \
 	$(WebKit2)/Shared/API/c/WKDictionary.h \
 	$(WebKit2)/Shared/API/c/WKError.h \
 	$(WebKit2)/Shared/API/c/WKEvent.h \
@@ -34,7 +35,9 @@ webkit2_h_api += \
 	$(WebKit2)/Shared/API/c/WKURL.h \
 	$(WebKit2)/Shared/API/c/WKURLRequest.h \
 	$(WebKit2)/Shared/API/c/WKURLResponse.h \
+	$(WebKit2)/Shared/API/c/WKUserContentInjectedFrames.h \
 	$(WebKit2)/Shared/API/c/WKUserContentURLPattern.h \
+	$(WebKit2)/Shared/API/c/WKUserScriptInjectionTime.h \
 	$(WebKit2)/UIProcess/API/C/gtk/WKAPICastGtk.h \
 	$(WebKit2)/UIProcess/API/C/gtk/WKFullScreenClientGtk.h \
 	$(WebKit2)/UIProcess/API/C/gtk/WKInspectorClientGtk.h \
@@ -146,6 +149,8 @@ webkit2_web_extension_h_api += \
 webkit2_built_sources += \
 	DerivedSources/WebKit2/AuthenticationManagerMessageReceiver.cpp \
 	DerivedSources/WebKit2/AuthenticationManagerMessages.h \
+	DerivedSources/WebKit2/CustomProtocolManagerProxyMessageReceiver.cpp \
+	DerivedSources/WebKit2/CustomProtocolManagerProxyMessages.h \
 	DerivedSources/WebKit2/DownloadProxyMessageReceiver.cpp \
 	DerivedSources/WebKit2/DownloadProxyMessages.h \
 	DerivedSources/WebKit2/DrawingAreaMessageReceiver.cpp \
@@ -234,6 +239,8 @@ webkit2_built_sources += \
 	DerivedSources/WebKit2/WebProcessMessages.h \
 	DerivedSources/WebKit2/WebProcessProxyMessageReceiver.cpp \
 	DerivedSources/WebKit2/WebProcessProxyMessages.h \
+	DerivedSources/WebKit2/WebResourceLoaderMessageReceiver.cpp \
+	DerivedSources/WebKit2/WebResourceLoaderMessages.h \
 	DerivedSources/WebKit2/WebSoupRequestManagerMessageReceiver.cpp \
 	DerivedSources/WebKit2/WebSoupRequestManagerMessages.h \
 	DerivedSources/WebKit2/WebSoupRequestManagerProxyMessageReceiver.cpp \
@@ -329,6 +336,7 @@ webkit2_sources += \
 	Source/WebKit2/Shared/API/c/WKContextMenuItemTypes.h \
 	Source/WebKit2/Shared/API/c/WKData.cpp \
 	Source/WebKit2/Shared/API/c/WKData.h \
+	Source/WebKit2/Shared/API/c/WKDeclarationSpecifiers.h \
 	Source/WebKit2/Shared/API/c/WKDictionary.cpp \
 	Source/WebKit2/Shared/API/c/WKDictionary.h \
 	Source/WebKit2/Shared/API/c/WKError.cpp \
@@ -375,6 +383,8 @@ webkit2_sources += \
 	Source/WebKit2/Shared/API/c/WKURLResponse.h \
 	Source/WebKit2/Shared/API/c/WKUserContentURLPattern.cpp \
 	Source/WebKit2/Shared/API/c/WKUserContentURLPattern.h \
+	Source/WebKit2/Shared/API/c/WKUserContentInjectedFrames.h \
+	Source/WebKit2/Shared/API/c/WKUserScriptInjectionTime.h \
 	Source/WebKit2/Shared/APIObject.cpp \
 	Source/WebKit2/Shared/APIObject.h \
 	Source/WebKit2/Shared/ActivityAssertion.cpp \
@@ -442,7 +452,6 @@ webkit2_sources += \
 	Source/WebKit2/Shared/PrintInfo.h \
 	Source/WebKit2/Shared/Plugins/Netscape/NetscapePluginModule.cpp \
 	Source/WebKit2/Shared/Plugins/Netscape/NetscapePluginModule.h \
-	Source/WebKit2/Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp \
 	Source/WebKit2/Shared/Plugins/Netscape/PluginInformation.cpp \
 	Source/WebKit2/Shared/Plugins/Netscape/PluginInformation.h \
 	Source/WebKit2/Shared/Plugins/NPIdentifierData.cpp \
@@ -1130,7 +1139,6 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapeBrowserFuncs.h \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePlugin.cpp \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePlugin.h \
-	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePluginNone.cpp \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePluginStream.cpp \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePluginStream.h \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NPJSObject.cpp \
@@ -1262,7 +1270,7 @@ webkit2_sources += \
 if TARGET_X11
 webkit2_sources += \
 	Source/WebKit2/Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp \
-	Source/WebKit2/WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp \
+	Source/WebKit2/WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp
 else
 webkit2_sources += \
 	Source/WebKit2/Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp \

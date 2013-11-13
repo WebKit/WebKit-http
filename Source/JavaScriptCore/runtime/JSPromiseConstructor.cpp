@@ -65,10 +65,10 @@ const ClassInfo JSPromiseConstructor::s_info = { "Function", &InternalFunction::
 @end
 */
 
-JSPromiseConstructor* JSPromiseConstructor::create(ExecState* exec, JSGlobalObject* globalObject, Structure* structure, JSPromisePrototype* promisePrototype)
+JSPromiseConstructor* JSPromiseConstructor::create(VM& vm, Structure* structure, JSPromisePrototype* promisePrototype)
 {
-    JSPromiseConstructor* constructor = new (NotNull, allocateCell<JSPromiseConstructor>(*exec->heap())) JSPromiseConstructor(globalObject, structure);
-    constructor->finishCreation(exec, promisePrototype);
+    JSPromiseConstructor* constructor = new (NotNull, allocateCell<JSPromiseConstructor>(vm.heap)) JSPromiseConstructor(vm, structure);
+    constructor->finishCreation(vm, promisePrototype);
     return constructor;
 }
 
@@ -77,16 +77,16 @@ Structure* JSPromiseConstructor::createStructure(VM& vm, JSGlobalObject* globalO
     return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
 }
 
-JSPromiseConstructor::JSPromiseConstructor(JSGlobalObject* globalObject, Structure* structure)
-    : InternalFunction(globalObject, structure) 
+JSPromiseConstructor::JSPromiseConstructor(VM& vm, Structure* structure)
+    : InternalFunction(vm, structure)
 {
 }
 
-void JSPromiseConstructor::finishCreation(ExecState* exec, JSPromisePrototype* promisePrototype)
+void JSPromiseConstructor::finishCreation(VM& vm, JSPromisePrototype* promisePrototype)
 {
-    Base::finishCreation(exec->vm(), "Promise");
-    putDirectWithoutTransition(exec->vm(), exec->propertyNames().prototype, promisePrototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(exec->vm(), exec->propertyNames().length, jsNumber(1), ReadOnly | DontEnum | DontDelete);
+    Base::finishCreation(vm, "Promise");
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, promisePrototype, DontEnum | DontDelete | ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum | DontDelete);
 }
 
 static EncodedJSValue JSC_HOST_CALL constructPromise(ExecState* exec)
@@ -94,7 +94,7 @@ static EncodedJSValue JSC_HOST_CALL constructPromise(ExecState* exec)
     if (!exec->argumentCount())
         return throwVMError(exec, createTypeError(exec, "Expected at least one argument"));
 
-    JSValue function = exec->argument(0);
+    JSValue function = exec->uncheckedArgument(0);
 
     CallData callData;
     CallType callType = getCallData(function, callData);
@@ -151,7 +151,7 @@ EncodedJSValue JSC_HOST_CALL JSPromiseConstructorFuncFulfill(ExecState* exec)
     JSGlobalObject* globalObject = exec->callee()->globalObject();
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject);
-    promise->resolver()->fulfill(exec, exec->argument(0));
+    promise->resolver()->fulfill(exec, exec->uncheckedArgument(0));
 
     return JSValue::encode(promise);
 }
@@ -164,7 +164,7 @@ EncodedJSValue JSC_HOST_CALL JSPromiseConstructorFuncResolve(ExecState* exec)
     JSGlobalObject* globalObject = exec->callee()->globalObject();
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject);
-    promise->resolver()->resolve(exec, exec->argument(0));
+    promise->resolver()->resolve(exec, exec->uncheckedArgument(0));
 
     return JSValue::encode(promise);
 }
@@ -177,7 +177,7 @@ EncodedJSValue JSC_HOST_CALL JSPromiseConstructorFuncReject(ExecState* exec)
     JSGlobalObject* globalObject = exec->callee()->globalObject();
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject);
-    promise->resolver()->reject(exec, exec->argument(0));
+    promise->resolver()->reject(exec, exec->uncheckedArgument(0));
 
     return JSValue::encode(promise);
 }

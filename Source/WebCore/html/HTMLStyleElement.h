@@ -36,20 +36,8 @@ typedef EventSender<HTMLStyleElement> StyleEventSender;
 
 class HTMLStyleElement FINAL : public HTMLElement {
 public:
-    static PassRefPtr<HTMLStyleElement> create(const QualifiedName&, Document*, bool createdByParser);
+    static PassRefPtr<HTMLStyleElement> create(const QualifiedName&, Document&, bool createdByParser);
     virtual ~HTMLStyleElement();
-
-    bool scoped() const;
-    void setScoped(bool);
-    Element* scopingElement() const;
-    bool isRegisteredAsScoped() const
-    {
-        // Note: We cannot rely on the 'scoped' attribute still being present when this method is invoked.
-        // Therefore we cannot rely on scoped()!
-        if (m_scopedStyleRegistrationState == NotRegistered)
-            return false;
-        return true;
-    }
 
     CSSStyleSheet* sheet() const { return m_styleSheetOwner.sheet(); }
 
@@ -60,7 +48,7 @@ public:
     static void dispatchPendingLoadEvents();
 
 private:
-    HTMLStyleElement(const QualifiedName&, Document*, bool createdByParser);
+    HTMLStyleElement(const QualifiedName&, Document&, bool createdByParser);
 
     // overload from HTMLElement
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
@@ -71,27 +59,18 @@ private:
     virtual void finishParsingChildren();
 
     virtual bool isLoading() const { return m_styleSheetOwner.isLoading(); }
-    virtual bool sheetLoaded() { return m_styleSheetOwner.sheetLoaded(&document()); }
+    virtual bool sheetLoaded() { return m_styleSheetOwner.sheetLoaded(document()); }
     virtual void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred);
-    virtual void startLoadingDynamicSheet() { m_styleSheetOwner.startLoadingDynamicSheet(&document()); }
+    virtual void startLoadingDynamicSheet() { m_styleSheetOwner.startLoadingDynamicSheet(document()); }
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
-
-    void scopedAttributeChanged(bool);
-    void registerWithScopingNode(bool);
-    void unregisterWithScopingNode(ContainerNode*);
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
 
     InlineStyleSheetOwner m_styleSheetOwner;
     bool m_firedLoad;
     bool m_loadedSheet;
-
-    enum ScopedStyleRegistrationState {
-        NotRegistered,
-        RegisteredAsScoped,
-        RegisteredInShadowRoot
-    };
-    ScopedStyleRegistrationState m_scopedStyleRegistrationState;
 };
+
+ELEMENT_TYPE_CASTS(HTMLStyleElement)
 
 } //namespace
 

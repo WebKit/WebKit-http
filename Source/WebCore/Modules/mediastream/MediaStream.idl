@@ -29,11 +29,8 @@
     Constructor(MediaStream stream),
     Constructor(MediaStreamTrack[] tracks),
     ConstructorCallWith=ScriptExecutionContext,
-    SkipVTableValidation,
     InterfaceName=webkitMediaStream
 ] interface MediaStream {
-    // DEPRECATED
-    readonly attribute DOMString label;
 
     readonly attribute DOMString id;
 
@@ -45,6 +42,7 @@
     MediaStreamTrack getTrackById(DOMString trackId);
 
     readonly attribute boolean ended;
+    void stop();
 
     attribute EventListener onended;
     attribute EventListener onaddtrack;

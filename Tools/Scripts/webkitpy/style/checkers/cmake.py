@@ -24,9 +24,7 @@
 
 """Supports checking WebKit style in cmake files.(.cmake, CMakeLists.txt)"""
 
-import re
-
-from common import TabChecker
+from common import TabChecker, match, search, searchIgnorecase
 
 
 class CMakeChecker(object):
@@ -95,18 +93,19 @@ class CMakeChecker(object):
         self._num_lines = len(lines)
         for l in xrange(self._num_lines):
             self._process_line(l + 1, lines[l])
+        self._check_list_order(lines)
 
     def _process_line(self, line_number, line_content):
-        if re.match('(^|\ +)#', line_content):
+        if match('(^|\ +)#', line_content):
             # ignore comment line
             return
         l = line_content.expandtabs(4)
         # check command like message( "testing")
-        if re.search('\(\ +', l):
+        if search('\(\ +', l):
             self._handle_style_error(line_number, 'whitespace/parentheses', 5,
                                      'No space after "("')
         # check command like message("testing" )
-        if re.search('\ +\)', l) and not re.search('^\ +\)$', l):
+        if search('\ +\)', l) and not search('^\ +\)$', l):
             self._handle_style_error(line_number, 'whitespace/parentheses', 5,
                                      'No space before ")"')
         self._check_trailing_whitespace(line_number, l)
@@ -127,7 +126,7 @@ class CMakeChecker(object):
         # check command like "SET    (" or "Set("
         for t in self.NO_SPACE_CMDS:
             self._check_non_lowercase_cmd(line_number, line_content, t)
-            if re.search('(^|\ +)' + t.lower() + '\ +\(', line_content):
+            if search('(^|\ +)' + t.lower() + '\ +\(', line_content):
                 msg = 'No space between command "' + t.lower() + '" and its parentheses, should be "' + t + '("'
                 self._handle_style_error(line_number, 'whitespace/parentheses', 5, msg)
 
@@ -135,16 +134,72 @@ class CMakeChecker(object):
         # check command like "IF (" or "if(" or "if   (" or "If ()"
         for t in self.ONE_SPACE_CMDS:
             self._check_non_lowercase_cmd(line_number, line_content, t)
-            if re.search('(^|\ +)' + t.lower() + '(\(|\ \ +\()', line_content):
+            if search('(^|\ +)' + t.lower() + '(\(|\ \ +\()', line_content):
                 msg = 'One space between command "' + t.lower() + '" and its parentheses, should be "' + t + ' ("'
                 self._handle_style_error(line_number, 'whitespace/parentheses', 5, msg)
 
     def _check_non_lowercase_cmd(self, line_number, line_content, cmd):
-        if re.search('(^|\ +)' + cmd + '\ *\(', line_content, flags=re.IGNORECASE) and \
-           (not re.search('(^|\ +)' + cmd.lower() + '\ *\(', line_content)):
+        if searchIgnorecase('(^|\ +)' + cmd + '\ *\(', line_content) and \
+           (not search('(^|\ +)' + cmd.lower() + '\ *\(', line_content)):
             msg = 'Use lowercase command "' + cmd.lower() + '"'
             self._handle_style_error(line_number, 'command/lowercase', 5, msg)
 
     def _check_indent(self, line_number, line_content):
         #TODO (halton): add indent checking
         pass
+
+    def _check_list_order(self, lines):
+        last_line = None
+
+        line_number = 0
+        for line in lines:
+            line_number += 1
+            line = line.strip()
+
+            if last_line == None:
+                matched = match('(set\(|list\((APPEND|REMOVE_ITEM) )(?P<name>\w+)(?P<item>\s+\w+)?$', line)
+                if matched:
+                    # FIXME: Add handling for include directories.
+                    if 'INCLUDE_DIRECTORIES' in matched.group('name'):
+                        continue
+                    empty_lines_count = 0
+                    last_line = ''
+                    if matched.group('item'):
+                        msg = 'First listitem "%s" should be in a new line.' % matched.group('item').strip()
+                        self._handle_style_error(line_number, 'list/parentheses', 5, msg)
+            else:
+                matched = match('(?P<item>.+)?\)$', line)
+                if matched:
+                    last_line = None
+                    if matched.group('item'):
+                        msg = 'The parentheses after the last listitem "%s" should be in a new line.' % matched.group('item').strip()
+                        self._handle_style_error(line_number, 'list/parentheses', 5, msg)
+                elif line == '':
+                    empty_lines_count += 1
+                else:
+                    last_line_path = self._list_item_path(last_line)
+                    line_path = self._list_item_path(line)
+
+                    if line == last_line:
+                        msg = 'The item "%s" should be added only once to the list.' % line
+                        self._handle_style_error(line_number, 'list/duplicate', 5, msg)
+                    elif line_path < last_line_path or line_path == last_line_path and line < last_line:
+                        msg = 'Alphabetical sorting problem. "%s" should be before "%s".' % (line, last_line)
+                        self._handle_style_error(line_number, 'list/order', 5, msg)
+                    elif last_line != '':
+                        if line_path != last_line_path:
+                            if empty_lines_count != 1:
+                                msg = 'There should be exactly one empty line instead of %d between "%s" and "%s".' % (empty_lines_count, last_line, line)
+                                self._handle_style_error(line_number, 'list/emptyline', 5, msg)
+                        elif empty_lines_count != 0:
+                            msg = 'There should be no empty line between "%s" and "%s".' % (last_line, line)
+                            self._handle_style_error(line_number, 'list/emptyline', 5, msg)
+
+                    last_line = line
+                    empty_lines_count = 0
+
+    def _list_item_path(self, item):
+        token = item.split('/')
+        if len(token) < 2:
+            return ''
+        return '/'.join(token[:-1])

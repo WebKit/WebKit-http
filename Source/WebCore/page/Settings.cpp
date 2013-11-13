@@ -34,12 +34,12 @@
 #include "Document.h"
 #include "Font.h"
 #include "FontGenericFamilies.h"
-#include "Frame.h"
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "HTMLMediaElement.h"
 #include "HistoryItem.h"
 #include "InspectorInstrumentation.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "StorageMap.h"
@@ -111,6 +111,16 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
 #endif
     ;
 }
+
+#if PLATFORM(IOS)
+static const bool defaultMediaPlaybackAllowsInline = false;
+static const bool defaultMediaPlaybackRequiresUserGesture = true;
+static const bool defaultShouldRespectImageOrientation = true;
+#else
+static const bool defaultMediaPlaybackAllowsInline = true;
+static const bool defaultMediaPlaybackRequiresUserGesture = false;
+static const bool defaultShouldRespectImageOrientation = false;
+#endif
 
 static const double defaultIncrementalRenderingSuppressionTimeoutInSeconds = 5;
 #if USE(UNIFIED_TEXT_CHECKING)
@@ -404,7 +414,7 @@ void Settings::setPrivateBrowsingEnabled(bool privateBrowsingEnabled)
     m_page->privateBrowsingStateChanged();
 }
 
-void Settings::setUserStyleSheetLocation(const KURL& userStyleSheetLocation)
+void Settings::setUserStyleSheetLocation(const URL& userStyleSheetLocation)
 {
     if (m_userStyleSheetLocation == userStyleSheetLocation)
         return;
@@ -468,10 +478,10 @@ void Settings::setUsesPageCache(bool usesPageCache)
         
     m_usesPageCache = usesPageCache;
     if (!m_usesPageCache) {
-        int first = -m_page->backForward()->backCount();
-        int last = m_page->backForward()->forwardCount();
+        int first = -m_page->backForward().backCount();
+        int last = m_page->backForward().forwardCount();
         for (int i = first; i <= last; i++)
-            pageCache()->remove(m_page->backForward()->itemAtIndex(i));
+            pageCache()->remove(m_page->backForward().itemAtIndex(i));
     }
 }
 

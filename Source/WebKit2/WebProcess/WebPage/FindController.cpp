@@ -35,9 +35,9 @@
 #include <WebCore/DocumentMarkerController.h>
 #include <WebCore/FloatQuad.h>
 #include <WebCore/FocusController.h>
-#include <WebCore/Frame.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/GraphicsContext.h>
+#include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
 #include <WebCore/PluginDocument.h>
 
@@ -215,7 +215,7 @@ bool FindController::getFindIndicatorBitmapAndRect(Frame* frame, ShareableBitmap
     if (!findIndicatorTextBackingStore)
         return false;
 
-    OwnPtr<GraphicsContext> graphicsContext = findIndicatorTextBackingStore->createGraphicsContext();
+    auto graphicsContext = findIndicatorTextBackingStore->createGraphicsContext();
     graphicsContext->scale(FloatSize(m_webPage->corePage()->deviceScaleFactor(), m_webPage->corePage()->deviceScaleFactor()));
 
     IntRect paintRect = selectionRect;
@@ -387,7 +387,6 @@ void FindController::didMoveToWebPage(PageOverlay*, WebPage*)
 static const float shadowOffsetX = 0.0;
 static const float shadowOffsetY = 1.0;
 static const float shadowBlurRadius = 2.0;
-static const float whiteFrameThickness = 1.0;
 
 static const float overlayBackgroundRed = 0.1;
 static const float overlayBackgroundGreen = 0.1;

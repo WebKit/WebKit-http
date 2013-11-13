@@ -30,6 +30,8 @@
 
 namespace WebCore {
 
+class RenderTableRow;
+
 enum CollapsedBorderSide {
     CBSBefore,
     CBSAfter,
@@ -62,16 +64,13 @@ class RenderTableRow;
 
 class RenderTableSection FINAL : public RenderBox {
 public:
-    RenderTableSection(Element*);
+    explicit RenderTableSection(Element*);
     virtual ~RenderTableSection();
 
-    RenderObject* firstChild() const { ASSERT(children() == virtualChildren()); return children()->firstChild(); }
-    RenderObject* lastChild() const { ASSERT(children() == virtualChildren()); return children()->lastChild(); }
+    RenderTableRow* firstRow() const;
+    RenderTableRow* lastRow() const;
 
-    const RenderObjectChildList* children() const { return &m_children; }
-    RenderObjectChildList* children() { return &m_children; }
-
-    virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0);
+    virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0) OVERRIDE;
 
     virtual int firstLineBoxBaseline() const OVERRIDE;
 
@@ -199,24 +198,23 @@ public:
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
 
 protected:
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) OVERRIDE;
 
 private:
-    virtual RenderObjectChildList* virtualChildren() { return children(); }
-    virtual const RenderObjectChildList* virtualChildren() const { return children(); }
+    virtual const char* renderName() const OVERRIDE { return (isAnonymous() || isPseudoElement()) ? "RenderTableSection (anonymous)" : "RenderTableSection"; }
 
-    virtual const char* renderName() const { return (isAnonymous() || isPseudoElement()) ? "RenderTableSection (anonymous)" : "RenderTableSection"; }
+    virtual bool canHaveChildren() const OVERRIDE { return true; }
 
-    virtual bool isTableSection() const { return true; }
+    virtual bool isTableSection() const OVERRIDE { return true; }
 
     virtual void willBeRemovedFromTree() OVERRIDE;
 
-    virtual void layout();
+    virtual void layout() OVERRIDE;
 
-    virtual void paintCell(RenderTableCell*, PaintInfo&, const LayoutPoint&);
-    virtual void paintObject(PaintInfo&, const LayoutPoint&);
+    void paintCell(RenderTableCell*, PaintInfo&, const LayoutPoint&);
+    virtual void paintObject(PaintInfo&, const LayoutPoint&) OVERRIDE;
 
-    virtual void imageChanged(WrappedImagePtr, const IntRect* = 0);
+    virtual void imageChanged(WrappedImagePtr, const IntRect* = 0) OVERRIDE;
 
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
@@ -245,7 +243,8 @@ private:
 
     void setLogicalPositionForCell(RenderTableCell*, unsigned effectiveColumn) const;
 
-    RenderObjectChildList m_children;
+    void firstChild() const WTF_DELETED_FUNCTION;
+    void lastChild() const WTF_DELETED_FUNCTION;
 
     Vector<RowStruct> m_grid;
     Vector<int> m_rowPos;

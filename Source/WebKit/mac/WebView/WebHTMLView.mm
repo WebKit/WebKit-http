@@ -104,6 +104,7 @@
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/LegacyWebArchive.h>
 #import <WebCore/MIMETypeRegistry.h>
+#import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/Range.h>
@@ -3652,10 +3653,9 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
     
     if (WebCore::CachedImage* tiffResource = [self promisedDragTIFFDataSource]) {
         if (ResourceBuffer *buffer = static_cast<CachedResource*>(tiffResource)->resourceBuffer()) {
-            NSData *data = buffer->createNSData();
             NSURLResponse *response = tiffResource->response().nsURLResponse();
             draggingImageURL = [response URL];
-            wrapper = [[[NSFileWrapper alloc] initRegularFileWithContents:data] autorelease];
+            wrapper = [[[NSFileWrapper alloc] initRegularFileWithContents:buffer->createNSData().get()] autorelease];
             NSString* filename = [response suggestedFilename];
             NSString* trueExtension(tiffResource->image()->filenameExtension());
             if (!matchesExtensionOrEquivalent(filename, trueExtension))
@@ -3674,7 +3674,7 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
         if (!page) 
             return nil; 
         
-        const KURL& imageURL = page->dragController().draggingImageURL();
+        const URL& imageURL = page->dragController().draggingImageURL();
         ASSERT(!imageURL.isEmpty());
         draggingImageURL = imageURL;
 

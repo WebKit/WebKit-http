@@ -29,16 +29,6 @@
 #include "ContextMenu.h"
 #include "ContextMenuClientQt.h"
 #include "ContextMenuController.h"
-#if ENABLE(DEVICE_ORIENTATION)
-#include "DeviceMotionClientMock.h"
-#include "DeviceMotionController.h"
-#include "DeviceOrientationClientMock.h"
-#include "DeviceOrientationController.h"
-#if HAVE(QTSENSORS)
-#include "DeviceMotionClientQt.h"
-#include "DeviceOrientationClientQt.h"
-#endif
-#endif
 #include "DocumentLoader.h"
 #include "DragClientQt.h"
 #include "DragController.h"
@@ -51,13 +41,6 @@
 #include "FrameLoadRequest.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
-#if ENABLE(GEOLOCATION)
-#include "GeolocationClientMock.h"
-#include "GeolocationController.h"
-#if HAVE(QTLOCATION)
-#include "GeolocationClientQt.h"
-#endif
-#endif
 #include "GeolocationPermissionClientQt.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLInputElement.h"
@@ -68,6 +51,7 @@
 #include "InspectorServerQt.h"
 #include "LocalizedStrings.h"
 #include "MIMETypeRegistry.h"
+#include "MainFrame.h"
 #include "MemoryCache.h"
 #include "NetworkingContext.h"
 #include "NodeList.h"
@@ -105,6 +89,25 @@
 #include <QTextCharFormat>
 #include <QTouchEvent>
 #include <QWheelEvent>
+
+#if ENABLE(DEVICE_ORIENTATION)
+#include "DeviceMotionClientMock.h"
+#include "DeviceMotionController.h"
+#include "DeviceOrientationClientMock.h"
+#include "DeviceOrientationController.h"
+#if HAVE(QTSENSORS)
+#include "DeviceMotionClientQt.h"
+#include "DeviceOrientationClientQt.h"
+#endif
+#endif
+
+#if ENABLE(GEOLOCATION)
+#include "GeolocationClientMock.h"
+#include "GeolocationController.h"
+#if HAVE(QTLOCATION)
+#include "GeolocationClientQt.h"
+#endif
+#endif
 
 // from text/qfont.cpp
 QT_BEGIN_NAMESPACE
@@ -275,7 +278,7 @@ void QWebPageAdapter::initializeWebCorePage()
     WebCore::provideNotification(page, NotificationPresenterClientQt::notificationPresenter());
 #endif
 
-    history.d = new QWebHistoryPrivate(static_cast<WebCore::BackForwardListImpl*>(page->backForwardList()));
+    history.d = new QWebHistoryPrivate(static_cast<WebCore::BackForwardList*>(page->backForwardClient()));
 
     PageGroup::setShouldTrackVisitedLinks(true);
 }
@@ -733,8 +736,8 @@ QVariant QWebPageAdapter::inputMethodQuery(Qt::InputMethodQuery property) const
         return QVariant(frame->selection().extent().offsetInContainerNode());
     }
     case Qt::ImSurroundingText: {
-        if (renderTextControl && renderTextControl->textFormControlElement()) {
-            QString text = renderTextControl->textFormControlElement()->value();
+        if (renderTextControl) {
+            QString text = renderTextControl->textFormControlElement().value();
             RefPtr<Range> range = editor.compositionRange();
             if (range)
                 text.remove(range->startPosition().offsetInContainerNode(), TextIterator::rangeLength(range.get()));
@@ -743,11 +746,11 @@ QVariant QWebPageAdapter::inputMethodQuery(Qt::InputMethodQuery property) const
         return QVariant();
     }
     case Qt::ImCurrentSelection: {
-        if (!editor.hasComposition() && renderTextControl && renderTextControl->textFormControlElement()) {
+        if (!editor.hasComposition() && renderTextControl) {
             int start = frame->selection().start().offsetInContainerNode();
             int end = frame->selection().end().offsetInContainerNode();
             if (end > start)
-                return QVariant(QString(renderTextControl->textFormControlElement()->value()).mid(start, end - start));
+                return QVariant(QString(renderTextControl->textFormControlElement().value()).mid(start, end - start));
         }
         return QVariant();
 
@@ -1068,7 +1071,7 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
         frame.loader().loadFrameRequest(frameLoadRequest(hitTestResult->linkUrl, &frame), /*lockHistory*/ false, /*lockBackForwardList*/ false, /*event*/ 0, /*FormState*/ 0, MaybeSendReferrer);
         break;
     case OpenFrameInNewWindow: {
-        KURL url = frame.loader().documentLoader()->unreachableURL();
+        URL url = frame.loader().documentLoader()->unreachableURL();
         if (url.isEmpty())
             url = frame.loader().documentLoader()->url();
         openNewWindow(url, &frame);

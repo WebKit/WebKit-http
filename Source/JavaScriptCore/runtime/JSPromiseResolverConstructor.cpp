@@ -40,10 +40,10 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(JSPromiseResolverConstructor);
 
 const ClassInfo JSPromiseResolverConstructor::s_info = { "Function", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(JSPromiseResolverConstructor) };
 
-JSPromiseResolverConstructor* JSPromiseResolverConstructor::create(ExecState* exec, JSGlobalObject* globalObject, Structure* structure, JSPromiseResolverPrototype* promisePrototype)
+JSPromiseResolverConstructor* JSPromiseResolverConstructor::create(VM& vm, Structure* structure, JSPromiseResolverPrototype* promisePrototype)
 {
-    JSPromiseResolverConstructor* constructor = new (NotNull, allocateCell<JSPromiseResolverConstructor>(*exec->heap())) JSPromiseResolverConstructor(globalObject, structure);
-    constructor->finishCreation(exec, promisePrototype);
+    JSPromiseResolverConstructor* constructor = new (NotNull, allocateCell<JSPromiseResolverConstructor>(vm.heap)) JSPromiseResolverConstructor(vm, structure);
+    constructor->finishCreation(vm, promisePrototype);
     return constructor;
 }
 
@@ -52,15 +52,15 @@ Structure* JSPromiseResolverConstructor::createStructure(VM& vm, JSGlobalObject*
     return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
 }
 
-JSPromiseResolverConstructor::JSPromiseResolverConstructor(JSGlobalObject* globalObject, Structure* structure)
-    : InternalFunction(globalObject, structure) 
+JSPromiseResolverConstructor::JSPromiseResolverConstructor(VM& vm, Structure* structure)
+    : InternalFunction(vm, structure)
 {
 }
 
-void JSPromiseResolverConstructor::finishCreation(ExecState* exec, JSPromiseResolverPrototype* promiseResolverPrototype)
+void JSPromiseResolverConstructor::finishCreation(VM& vm, JSPromiseResolverPrototype* promiseResolverPrototype)
 {
-    Base::finishCreation(exec->vm(), "PromiseResolver");
-    putDirectWithoutTransition(exec->vm(), exec->propertyNames().prototype, promiseResolverPrototype, DontEnum | DontDelete | ReadOnly);
+    Base::finishCreation(vm, "PromiseResolver");
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, promiseResolverPrototype, DontEnum | DontDelete | ReadOnly);
 }
 
 ConstructType JSPromiseResolverConstructor::getConstructData(JSCell*, ConstructData&)

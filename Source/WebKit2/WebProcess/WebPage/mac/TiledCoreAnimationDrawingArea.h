@@ -26,8 +26,6 @@
 #ifndef TiledCoreAnimationDrawingArea_h
 #define TiledCoreAnimationDrawingArea_h
 
-#if ENABLE(THREADED_SCROLLING)
-
 #include "DrawingArea.h"
 #include "LayerTreeContext.h"
 #include <WebCore/FloatRect.h>
@@ -42,6 +40,7 @@ OBJC_CLASS CALayer;
 OBJC_CLASS WKContentLayer;
 
 namespace WebCore {
+class FrameView;
 class TiledBacking;
 }
 
@@ -51,12 +50,10 @@ class LayerHostingContext;
 
 class TiledCoreAnimationDrawingArea : public DrawingArea, WebCore::GraphicsLayerClient, WebCore::LayerFlushSchedulerClient {
 public:
-    static PassOwnPtr<TiledCoreAnimationDrawingArea> create(WebPage*, const WebPageCreationParameters&);
+    TiledCoreAnimationDrawingArea(WebPage*, const WebPageCreationParameters&);
     virtual ~TiledCoreAnimationDrawingArea();
 
 private:
-    TiledCoreAnimationDrawingArea(WebPage*, const WebPageCreationParameters&);
-
     // DrawingArea
     virtual void setNeedsDisplay() OVERRIDE;
     virtual void setNeedsDisplayInRect(const WebCore::IntRect&) OVERRIDE;
@@ -82,6 +79,8 @@ private:
     virtual void didChangeScrollOffsetForAnyFrame() OVERRIDE;
 
     virtual void dispatchAfterEnsuringUpdatedScrollPosition(const Function<void ()>&) OVERRIDE;
+
+    virtual bool shouldUseTiledBackingForFrameView(const WebCore::FrameView*);
 
     // WebCore::GraphicsLayerClient
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) OVERRIDE;
@@ -119,14 +118,14 @@ private:
     bool m_layerTreeStateIsFrozen;
     WebCore::LayerFlushScheduler m_layerFlushScheduler;
 
-    OwnPtr<LayerHostingContext> m_layerHostingContext;
+    std::unique_ptr<LayerHostingContext> m_layerHostingContext;
 
     RetainPtr<CALayer> m_rootLayer;
     RetainPtr<CALayer> m_pendingRootCompositingLayer;
 
     RetainPtr<CALayer> m_debugInfoLayer;
 
-    typedef HashMap<PageOverlay*, OwnPtr<WebCore::GraphicsLayer>> PageOverlayLayerMap;
+    typedef HashMap<PageOverlay*, std::unique_ptr<WebCore::GraphicsLayer>> PageOverlayLayerMap;
     PageOverlayLayerMap m_pageOverlayLayers;
     mutable HashMap<const WebCore::GraphicsLayer*, RetainPtr<CALayer>> m_pageOverlayPlatformLayers;
 
@@ -143,7 +142,5 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // ENABLE(THREADED_SCROLLING)
 
 #endif // TiledCoreAnimationDrawingArea_h

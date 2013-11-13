@@ -71,7 +71,7 @@ namespace JSC {
 #endif
 
 #if ENABLE(LLINT)
-#define RETURN_TO_THROW(exec, pc)   pc = LLInt::returnToThrow(exec, pc)
+#define RETURN_TO_THROW(exec, pc)   pc = LLInt::returnToThrow(exec)
 #else
 #define RETURN_TO_THROW(exec, pc)
 #endif
@@ -125,12 +125,12 @@ namespace JSC {
     } while (false)
 
 #if ENABLE(VALUE_PROFILER)
-#define RETURN_PROFILED(opcode, value) do {               \
+#define RETURN_PROFILED(opcode, value) do {                  \
         JSValue rpPeturnValue = (value);                     \
-        CHECK_EXCEPTION();                                \
-        OP(1) = rpPeturnValue;                         \
-        PROFILE_VALUE(opcode, rpPeturnValue);          \
-        END_IMPL();                                       \
+        CHECK_EXCEPTION();                                   \
+        OP(1) = rpPeturnValue;                               \
+        PROFILE_VALUE(opcode, rpPeturnValue);                \
+        END_IMPL();                                          \
     } while (false)
 
 #define PROFILE_VALUE(opcode, value) do { \
@@ -147,18 +147,18 @@ namespace JSC {
 
 #define CALL_END_IMPL(exec, callTarget) RETURN_TWO((callTarget), (exec))
 
-#define CALL_THROW(exec, pc, exceptionToThrow) do {               \
-        ExecState* ctExec = (exec);                                  \
-        Instruction* ctPC = (pc);                                    \
+#define CALL_THROW(exec, pc, exceptionToThrow) do {                     \
+        ExecState* ctExec = (exec);                                     \
+        Instruction* ctPC = (pc);                                       \
         vm.throwException(exec, exceptionToThrow);                      \
-        CALL_END_IMPL(ctExec, LLInt::callToThrow(ctExec, ctPC)); \
+        CALL_END_IMPL(ctExec, LLInt::callToThrow(ctExec));              \
     } while (false)
 
-#define CALL_CHECK_EXCEPTION(exec, pc) do {                       \
+#define CALL_CHECK_EXCEPTION(exec, pc) do {                          \
         ExecState* cceExec = (exec);                                 \
         Instruction* ccePC = (pc);                                   \
-        if (UNLIKELY(vm.exception()))                              \
-            CALL_END_IMPL(cceExec, LLInt::callToThrow(cceExec, ccePC)); \
+        if (UNLIKELY(vm.exception()))                                \
+            CALL_END_IMPL(cceExec, LLInt::callToThrow(cceExec));     \
     } while (false)
 
 #define CALL_RETURN(exec, pc, callTarget) do {                    \
@@ -174,9 +174,8 @@ SLOW_PATH_DECL(slow_path_call_arityCheck)
     BEGIN();
     int SlotsToAdd = CommonSlowPaths::arityCheckFor(exec, &vm.interpreter->stack(), CodeForCall);
     if (SlotsToAdd < 0) {
-        ReturnAddressPtr returnPC = exec->returnPC();
         exec = exec->callerFrame();
-        CommonSlowPaths::interpreterThrowInCaller(exec, returnPC, createStackOverflowError(exec));
+        CommonSlowPaths::interpreterThrowInCaller(exec, createStackOverflowError(exec));
         RETURN_TWO(bitwise_cast<void*>(static_cast<uintptr_t>(1)), exec);
     }
     RETURN_TWO(0, reinterpret_cast<ExecState*>(SlotsToAdd));
@@ -187,12 +186,19 @@ SLOW_PATH_DECL(slow_path_construct_arityCheck)
     BEGIN();
     int SlotsToAdd = CommonSlowPaths::arityCheckFor(exec, &vm.interpreter->stack(), CodeForConstruct);
     if (SlotsToAdd < 0) {
-        ReturnAddressPtr returnPC = exec->returnPC();
         exec = exec->callerFrame();
-        CommonSlowPaths::interpreterThrowInCaller(exec, returnPC, createStackOverflowError(exec));
+        CommonSlowPaths::interpreterThrowInCaller(exec, createStackOverflowError(exec));
         RETURN_TWO(bitwise_cast<void*>(static_cast<uintptr_t>(1)), exec);
     }
     RETURN_TWO(0, reinterpret_cast<ExecState*>(SlotsToAdd));
+}
+
+SLOW_PATH_DECL(slow_path_get_callee)
+{
+    BEGIN();
+    JSFunction* callee = jsCast<JSFunction*>(exec->callee());
+    pc[2].u.jsCell.set(exec->vm(), exec->codeBlock()->ownerExecutable(), callee);
+    RETURN(callee);
 }
 
 SLOW_PATH_DECL(slow_path_create_arguments)
@@ -201,7 +207,7 @@ SLOW_PATH_DECL(slow_path_create_arguments)
     JSValue arguments = JSValue(Arguments::create(vm, exec));
     CHECK_EXCEPTION();
     exec->uncheckedR(pc[1].u.operand) = arguments;
-    exec->uncheckedR(unmodifiedArgumentsRegister(pc[1].u.operand)) = arguments;
+    exec->uncheckedR(unmodifiedArgumentsRegister(VirtualRegister(pc[1].u.operand)).offset()) = arguments;
     END();
 }
 
@@ -224,10 +230,10 @@ SLOW_PATH_DECL(slow_path_to_this)
 {
     BEGIN();
     JSValue v1 = OP(1).jsValue();
-#if ENABLE(VALUE_PROFILER)
-    pc[OPCODE_LENGTH(op_to_this) - 1].u.profile->m_buckets[0] =
-        JSValue::encode(v1.structureOrUndefined());
-#endif
+    if (v1.isCell())
+        pc[2].u.structure.set(exec->vm(), exec->codeBlock()->ownerExecutable(), v1.asCell()->structure());
+    else
+        pc[2].u.structure.clear();
     RETURN(v1.toThis(exec, exec->codeBlock()->isStrictMode() ? StrictMode : NotStrictMode));
 }
 
@@ -463,7 +469,7 @@ SLOW_PATH_DECL(slow_path_del_by_val)
 SLOW_PATH_DECL(slow_path_strcat)
 {
     BEGIN();
-    RETURN(jsString(exec, &OP(2), pc[3].u.operand));
+    RETURN(jsStringFromRegisterArray(exec, &OP(2), pc[3].u.operand));
 }
 
 SLOW_PATH_DECL(slow_path_to_primitive)

@@ -26,40 +26,41 @@
 
 namespace JSC {
 
-    class DebuggerCallFrame;
-    class ExecState;
-    class VM;
-    class JSGlobalObject;
-    class JSValue;
-    class SourceProvider;
+class DebuggerCallFrame;
+class ExecState;
+class VM;
+class JSGlobalObject;
+class JSValue;
+class SourceProvider;
 
-    class JS_EXPORT_PRIVATE Debugger {
-    public:
-        virtual ~Debugger();
+typedef ExecState CallFrame;
 
-        void attach(JSGlobalObject*);
-        virtual void detach(JSGlobalObject*);
+class JS_EXPORT_PRIVATE Debugger {
+public:
+    virtual ~Debugger();
 
-        virtual void sourceParsed(ExecState*, SourceProvider*, int errorLineNumber, const WTF::String& errorMessage) = 0;
+    void attach(JSGlobalObject*);
+    virtual void detach(JSGlobalObject*);
 
-        virtual void exception(const DebuggerCallFrame&, intptr_t, int, int, bool) = 0;
-        virtual void atStatement(const DebuggerCallFrame&, intptr_t, int, int) = 0;
-        virtual void callEvent(const DebuggerCallFrame&, intptr_t, int, int) = 0;
-        virtual void returnEvent(const DebuggerCallFrame&, intptr_t, int, int) = 0;
+    virtual void sourceParsed(ExecState*, SourceProvider*, int errorLineNumber, const WTF::String& errorMessage) = 0;
 
-        virtual void willExecuteProgram(const DebuggerCallFrame&, intptr_t, int, int) = 0;
-        virtual void didExecuteProgram(const DebuggerCallFrame&, intptr_t, int, int) = 0;
-        virtual void didReachBreakpoint(const DebuggerCallFrame&, intptr_t, int, int) = 0;
+    virtual void exception(CallFrame*, JSValue exceptionValue, bool hasHandler) = 0;
+    virtual void atStatement(CallFrame*) = 0;
+    virtual void callEvent(CallFrame*) = 0;
+    virtual void returnEvent(CallFrame*) = 0;
 
+    virtual void willExecuteProgram(CallFrame*) = 0;
+    virtual void didExecuteProgram(CallFrame*) = 0;
+    virtual void didReachBreakpoint(CallFrame*) = 0;
 
-        void recompileAllJSFunctions(VM*);
+    void recompileAllJSFunctions(VM*);
 
-    private:
-        HashSet<JSGlobalObject*> m_globalObjects;
-    };
+private:
+    HashSet<JSGlobalObject*> m_globalObjects;
+};
 
-    // This function exists only for backwards compatibility with existing WebScriptDebugger clients.
-    JS_EXPORT_PRIVATE JSValue evaluateInGlobalCallFrame(const WTF::String&, JSValue& exception, JSGlobalObject*);
+// This function exists only for backwards compatibility with existing WebScriptDebugger clients.
+JS_EXPORT_PRIVATE JSValue evaluateInGlobalCallFrame(const WTF::String&, JSValue& exception, JSGlobalObject*);
 
 } // namespace JSC
 

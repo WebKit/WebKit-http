@@ -25,7 +25,7 @@
 
 #include "HTMLAnchorElement.h"
 #include "LayoutRect.h"
-#include <wtf/OwnArrayPtr.h>
+#include <memory>
 
 namespace WebCore {
 
@@ -35,20 +35,20 @@ class Path;
 
 class HTMLAreaElement FINAL : public HTMLAnchorElement {
 public:
-    static PassRefPtr<HTMLAreaElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<HTMLAreaElement> create(const QualifiedName&, Document&);
 
     bool isDefault() const { return m_shape == Default; }
 
     bool mapMouseEvent(LayoutPoint location, const LayoutSize&, HitTestResult&);
 
-    LayoutRect computeRect(RenderObject*) const;
-    Path computePath(RenderObject*) const;
+    LayoutRect computeRect(RenderElement*) const;
+    Path computePath(RenderElement*) const;
 
     // The parent map's image.
     HTMLImageElement* imageElement() const;
     
 private:
-    HTMLAreaElement(const QualifiedName&, Document*);
+    HTMLAreaElement(const QualifiedName&, Document&);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool supportsFocus() const OVERRIDE;
@@ -64,11 +64,13 @@ private:
     void invalidateCachedRegion();
 
     OwnPtr<Path> m_region;
-    OwnArrayPtr<Length> m_coords;
+    std::unique_ptr<Length[]> m_coords;
     int m_coordsLen;
     LayoutSize m_lastSize;
     Shape m_shape;
 };
+
+ELEMENT_TYPE_CASTS(HTMLAreaElement)
 
 } //namespace
 

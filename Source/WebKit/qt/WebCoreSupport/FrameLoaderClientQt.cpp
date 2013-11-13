@@ -49,11 +49,9 @@
 #include "HTTPStatusCodes.h"
 #include "HistoryItem.h"
 #include "HitTestResult.h"
-#if ENABLE(ICONDATABASE)
-#include "IconDatabaseClientQt.h"
-#endif
 #include "JSDOMWindowBase.h"
 #include "MIMETypeRegistry.h"
+#include "MainFrame.h"
 #include "MouseEvent.h"
 #include "NotImplemented.h"
 #include "Page.h"
@@ -67,7 +65,6 @@
 #include "QWebPageAdapter.h"
 #include "QWebPageClient.h"
 #include "QtPluginWidgetAdapter.h"
-#include "RenderPart.h"
 #include "ResourceHandle.h"
 #include "ResourceHandleInternal.h"
 #include "ResourceLoader.h"
@@ -83,7 +80,6 @@
 #include "qwebhistoryinterface.h"
 #include "qwebpluginfactory.h"
 #include "qwebsettings.h"
-
 #include <QCoreApplication>
 #include <QDebug>
 #include <QFileInfo>
@@ -93,6 +89,10 @@
 #include <QStringList>
 #include <wtf/OwnPtr.h>
 #include <wtf/text/StringBuilder.h>
+
+#if ENABLE(ICONDATABASE)
+#include "IconDatabaseClientQt.h"
+#endif
 
 static QMap<unsigned long, QString> dumpAssignedUrls;
 
@@ -120,7 +120,7 @@ static QString drtPrintFrameUserGestureStatus(WebCore::Frame* frame)
     return QString::fromLatin1("Frame with user gesture \"%1\"").arg(QLatin1String("false"));
 }
 
-static QString drtDescriptionSuitableForTestResult(const WebCore::KURL& kurl)
+static QString drtDescriptionSuitableForTestResult(const WebCore::URL& kurl)
 {
     if (kurl.isEmpty() || !kurl.isLocalFile())
         return kurl.string();
@@ -244,7 +244,7 @@ void FrameLoaderClientQt::setFrame(QWebFrameAdapter* webFrame, Frame* frame)
 
 void FrameLoaderClientQt::callPolicyFunction(FramePolicyFunction function, PolicyAction action)
 {
-    (m_frame->loader().policyChecker()->*function)(action);
+    (m_frame->loader().policyChecker().*function)(action);
 }
 
 bool FrameLoaderClientQt::hasWebView() const
@@ -365,7 +365,7 @@ void FrameLoaderClientQt::dispatchDidCancelClientRedirect()
 }
 
 
-void FrameLoaderClientQt::dispatchWillPerformClientRedirect(const KURL& url, double, double)
+void FrameLoaderClientQt::dispatchWillPerformClientRedirect(const URL& url, double, double)
 {
     if (dumpFrameLoaderCallbacks)
         printf("%s - willPerformClientRedirectToURL: %s \n", qPrintable(drtDescriptionSuitableForTestResult(m_frame)), qPrintable(drtDescriptionSuitableForTestResult(url)));
@@ -686,7 +686,7 @@ void FrameLoaderClientQt::prepareForDataSourceReplacement()
 {
 }
 
-void FrameLoaderClientQt::setTitle(const StringWithDirection& title, const KURL& url)
+void FrameLoaderClientQt::setTitle(const StringWithDirection& title, const URL& url)
 {
     // Used by Apple WebKit to update the title of an existing history item.
     // QtWebKit doesn't accomodate this on history items. If it ever does,
@@ -701,7 +701,7 @@ void FrameLoaderClientQt::setTitle(const StringWithDirection& title, const KURL&
 }
 
 
-String FrameLoaderClientQt::userAgent(const KURL& url)
+String FrameLoaderClientQt::userAgent(const URL& url)
 {
     if (m_webFrame)
         return m_webFrame->pageAdapter->userAgentForUrl(url).remove(QLatin1Char('\n')).remove(QLatin1Char('\r'));
@@ -836,7 +836,7 @@ void FrameLoaderClientQt::didDisplayInsecureContent()
     notImplemented();
 }
 
-void FrameLoaderClientQt::didRunInsecureContent(WebCore::SecurityOrigin*, const KURL&)
+void FrameLoaderClientQt::didRunInsecureContent(WebCore::SecurityOrigin*, const URL&)
 {
     if (dumpFrameLoaderCallbacks)
         printf("didRunInsecureContent\n");
@@ -844,7 +844,7 @@ void FrameLoaderClientQt::didRunInsecureContent(WebCore::SecurityOrigin*, const 
     notImplemented();
 }
 
-void FrameLoaderClientQt::didDetectXSS(const KURL&, bool)
+void FrameLoaderClientQt::didDetectXSS(const URL&, bool)
 {
     if (dumpFrameLoaderCallbacks)
         printf("didDetectXSS\n");
@@ -983,12 +983,17 @@ WTF::PassRefPtr<WebCore::DocumentLoader> FrameLoaderClientQt::createDocumentLoad
     return loader.release();
 }
 
-void FrameLoaderClientQt::convertMainResourceLoadToDownload(WebCore::DocumentLoader* documentLoader, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&)
+void FrameLoaderClientQt::convertMainResourceLoadToDownload(WebCore::DocumentLoader* documentLoader, const WebCore::ResourceRequest& request, const WebCore::ResourceResponse&)
 {
     if (!m_webFrame)
         return;
 
     QNetworkReplyHandler* handler = documentLoader->mainResourceLoader()->handle()->getInternal()->m_job;
+    if (!handler) {
+        qWarning("Attempted to download unsupported URL %s", request.url().string().characters8());
+        return;
+    }
+
     QNetworkReply* reply = handler->release();
     if (reply) {
         if (m_webFrame->pageAdapter->forwardUnsupportedContent)
@@ -1149,8 +1154,8 @@ bool FrameLoaderClientQt::callErrorPageExtension(const WebCore::ResourceError& e
     if (!page->errorPageExtension(&option, &output))
         return false;
 
-    KURL baseUrl(output.baseUrl);
-    KURL failingUrl(option.url);
+    URL baseUrl(output.baseUrl);
+    URL failingUrl(option.url);
 
     WebCore::ResourceRequest request(baseUrl);
     WTF::RefPtr<WebCore::SharedBuffer> buffer = WebCore::SharedBuffer::create(output.content.constData(), output.content.length());
@@ -1296,7 +1301,7 @@ void FrameLoaderClientQt::startDownload(const WebCore::ResourceRequest& request,
     m_webFrame->pageAdapter->emitDownloadRequested(request.toNetworkRequest(m_frame->loader().networkingContext()));
 }
 
-PassRefPtr<Frame> FrameLoaderClientQt::createFrame(const KURL& url, const String& name, HTMLFrameOwnerElement* ownerElement, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight)
+PassRefPtr<Frame> FrameLoaderClientQt::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement* ownerElement, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight)
 {
     if (!m_webFrame)
         return 0;
@@ -1321,7 +1326,7 @@ PassRefPtr<Frame> FrameLoaderClientQt::createFrame(const KURL& url, const String
 
     // FIXME: Set override encoding if we have one.
 
-    KURL urlToLoad = url;
+    URL urlToLoad = url;
     if (urlToLoad.isEmpty())
         urlToLoad = blankURL();
 
@@ -1334,7 +1339,7 @@ PassRefPtr<Frame> FrameLoaderClientQt::createFrame(const KURL& url, const String
     return frameData.frame.release();
 }
 
-ObjectContentType FrameLoaderClientQt::objectContentType(const KURL& url, const String& mimeTypeIn, bool shouldPreferPlugInsForImages)
+ObjectContentType FrameLoaderClientQt::objectContentType(const URL& url, const String& mimeTypeIn, bool shouldPreferPlugInsForImages)
 {
     // qDebug()<<" ++++++++++++++++ url is "<<url.string()<<", mime = "<<mimeTypeIn;
     QFileInfo fi(url.path());
@@ -1456,7 +1461,7 @@ private:
 };
 
 
-PassRefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, HTMLPlugInElement* element, const KURL& url, const Vector<String>& paramNames, const Vector<String>& paramValues, const String& mimeType, bool loadManually)
+PassRefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, HTMLPlugInElement* element, const URL& url, const Vector<String>& paramNames, const Vector<String>& paramValues, const String& mimeType, bool loadManually)
 {
     // qDebug()<<"------ Creating plugin in FrameLoaderClientQt::createPlugin for "<<url.string() << mimeType;
     // qDebug()<<"------\t url = "<<url.string();
@@ -1559,7 +1564,7 @@ void FrameLoaderClientQt::redirectDataToPlugin(Widget* pluginWidget)
         m_hasSentResponseToPlugin = false;
 }
 
-PassRefPtr<Widget> FrameLoaderClientQt::createJavaAppletWidget(const IntSize& pluginSize, HTMLAppletElement* element, const KURL& url, const Vector<String>& paramNames, const Vector<String>& paramValues)
+PassRefPtr<Widget> FrameLoaderClientQt::createJavaAppletWidget(const IntSize& pluginSize, HTMLAppletElement* element, const URL& url, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
     return createPlugin(pluginSize, element, url, paramNames, paramValues, "application/x-java-applet", true);
 }

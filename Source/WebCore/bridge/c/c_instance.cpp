@@ -92,7 +92,8 @@ CInstance::~CInstance()
 
 RuntimeObject* CInstance::newRuntimeObject(ExecState* exec)
 {
-    return CRuntimeObject::create(exec, exec->lexicalGlobalObject(), this);
+    // FIXME: deprecatedGetDOMStructure uses the prototype off of the wrong global object.
+    return CRuntimeObject::create(exec->vm(), WebCore::deprecatedGetDOMStructure<CRuntimeObject>(exec), this);
 }
 
 Class *CInstance::getClass() const
@@ -167,7 +168,7 @@ JSValue CInstance::invokeMethod(ExecState* exec, RuntimeMethod* runtimeMethod)
 
     unsigned i;
     for (i = 0; i < count; i++)
-        convertValueToNPVariant(exec, exec->argument(i), &cArgs[i]);
+        convertValueToNPVariant(exec, exec->uncheckedArgument(i), &cArgs[i]);
 
     // Invoke the 'C' method.
     bool retval = true;
@@ -203,7 +204,7 @@ JSValue CInstance::invokeDefaultMethod(ExecState* exec)
 
     unsigned i;
     for (i = 0; i < count; i++)
-        convertValueToNPVariant(exec, exec->argument(i), &cArgs[i]);
+        convertValueToNPVariant(exec, exec->uncheckedArgument(i), &cArgs[i]);
 
     // Invoke the 'C' method.
     bool retval = true;

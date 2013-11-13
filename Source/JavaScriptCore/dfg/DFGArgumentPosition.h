@@ -48,6 +48,20 @@ public:
         m_variables.append(variable);
     }
     
+    VariableAccessData* someVariable() const
+    {
+        if (m_variables.isEmpty())
+            return 0;
+        return m_variables[0]->find();
+    }
+    
+    FlushFormat flushFormat() const
+    {
+        if (VariableAccessData* variable = someVariable())
+            return variable->flushFormat();
+        return DeadFlush;
+    }
+    
     bool mergeShouldNeverUnbox(bool shouldNeverUnbox)
     {
         return checkAndSet(m_shouldNeverUnbox, m_shouldNeverUnbox | shouldNeverUnbox);
@@ -104,15 +118,15 @@ public:
     {
         for (unsigned i = 0; i < m_variables.size(); ++i) {
             VariableAccessData* variable = m_variables[i]->find();
-            int operand = variable->operand();
+            VirtualRegister operand = variable->local();
 
             if (i)
                 out.print(" ");
 
-            if (operandIsArgument(operand))
-                out.print("arg", operandToArgument(operand), "(", VariableAccessDataDump(*graph, variable), ")");
+            if (operand.isArgument())
+                out.print("arg", operand.toArgument(), "(", VariableAccessDataDump(*graph, variable), ")");
             else
-                out.print("r", operand, "(", VariableAccessDataDump(*graph, variable), ")");
+                out.print("r", operand.toLocal(), "(", VariableAccessDataDump(*graph, variable), ")");
         }
         out.print("\n");
     }

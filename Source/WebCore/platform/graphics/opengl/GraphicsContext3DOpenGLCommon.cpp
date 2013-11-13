@@ -42,6 +42,7 @@
 #include "ImageData.h"
 #include "IntRect.h"
 #include "IntSize.h"
+#include "Logging.h"
 #include "NotImplemented.h"
 #include <cstring>
 #include <runtime/ArrayBuffer.h>
@@ -50,14 +51,13 @@
 #include <runtime/Int32Array.h>
 #include <runtime/Uint8Array.h>
 #include <wtf/MainThread.h>
-#include <wtf/OwnArrayPtr.h>
 #include <wtf/text/CString.h>
 
 #if USE(OPENGL_ES_2)
 #include "OpenGLESShims.h"
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT) || PLATFORM(WIN) || PLATFORM(NIX)
 #include "OpenGLShims.h"
 #endif
 
@@ -66,6 +66,42 @@
 #endif
 
 namespace WebCore {
+
+static ShaderNameHash* currentNameHashMapForShader;
+
+// Hash function used by the ANGLE translator/compiler to do
+// symbol name mangling. Since this is a static method, before
+// calling compileShader we set currentNameHashMapForShader
+// to point to the map kept by the current instance of GraphicsContext3D.
+
+static uint64_t nameHashForShader(const char* name, size_t length)
+{
+    if (!length)
+        return 0;
+
+    CString nameAsCString = CString(name);
+
+    // Look up name in our local map.
+    if (currentNameHashMapForShader) {
+        ShaderNameHash::iterator result = currentNameHashMapForShader->find(nameAsCString);
+        if (result != currentNameHashMapForShader->end())
+            return result->value;
+    }
+
+    unsigned hashValue = nameAsCString.hash();
+
+    // Convert the 32-bit hash from CString::hash into a 64-bit result
+    // by shifting then adding the size of our table. Overflow would
+    // only be a problem if we're already hashing to the same value (and
+    // we're hoping that over the lifetime of the context we
+    // don't have that many symbols).
+
+    uint64_t result = hashValue;
+    result = (result << 32) + (currentNameHashMapForShader->size() + 1);
+
+    currentNameHashMapForShader->set(nameAsCString, result);
+    return result;
+}
 
 PassRefPtr<GraphicsContext3D> GraphicsContext3D::createForCurrentGLContext()
 {
@@ -102,7 +138,7 @@ void GraphicsContext3D::paintRenderingResultsToCanvas(ImageBuffer* imageBuffer, 
     int rowBytes = m_currentWidth * 4;
     int totalBytes = rowBytes * m_currentHeight;
 
-    OwnArrayPtr<unsigned char> pixels = adoptArrayPtr(new unsigned char[totalBytes]);
+    auto pixels = std::make_unique<unsigned char[]>(totalBytes);
     if (!pixels)
         return;
 
@@ -219,7 +255,7 @@ void GraphicsContext3D::reshape(int width, int height)
     if (width == m_currentWidth && height == m_currentHeight)
         return;
 
-#if (PLATFORM(QT) || PLATFORM(EFL)) && USE(GRAPHICS_SURFACE)
+#if (PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(NIX)) && USE(GRAPHICS_SURFACE)
     ::glFlush(); // Make sure all GL calls have been committed before resizing.
     createGraphicsSurfaces(IntSize(width, height));
 #endif
@@ -314,7 +350,10 @@ void GraphicsContext3D::bindAttribLocation(Platform3DObject program, GC3Duint in
 {
     ASSERT(program);
     makeContextCurrent();
-    ::glBindAttribLocation(program, index, name.utf8().data());
+
+    String mappedName = mappedSymbolName(program, SHADER_SYMBOL_TYPE_ATTRIBUTE, name);
+    LOG(WebGL, "::bindAttribLocation is mapping %s to %s", name.utf8().data(), mappedName.utf8().data());
+    ::glBindAttribLocation(program, index, mappedName.utf8().data());
 }
 
 void GraphicsContext3D::bindBuffer(GC3Denum target, Platform3DObject buffer)
@@ -440,7 +479,22 @@ void GraphicsContext3D::compileShader(Platform3DObject shader)
     ASSERT(shader);
     makeContextCurrent();
 
+    // Turn on name mapping. Due to the way ANGLE name hashing works, we
+    // point a global hashmap to the map owned by this context.
+    ShBuiltInResources ANGLEResources = m_compiler.getResources();
+    ShHashFunction64 previousHashFunction = ANGLEResources.HashFunction;
+    ANGLEResources.HashFunction = nameHashForShader;
+
+    if (!nameHashMapForShaders)
+        nameHashMapForShaders = adoptPtr(new ShaderNameHash);
+    currentNameHashMapForShader = nameHashMapForShaders.get();
+    m_compiler.setResources(ANGLEResources);
+
     String translatedShaderSource = m_extensions->getTranslatedShaderSourceANGLE(shader);
+
+    ANGLEResources.HashFunction = previousHashFunction;
+    m_compiler.setResources(ANGLEResources);
+    currentNameHashMapForShader = nullptr;
 
     if (!translatedShaderSource.length())
         return;
@@ -448,7 +502,10 @@ void GraphicsContext3D::compileShader(Platform3DObject shader)
     const CString& translatedShaderCString = translatedShaderSource.utf8();
     const char* translatedShaderPtr = translatedShaderCString.data();
     int translatedShaderLength = translatedShaderCString.length();
-    
+
+    LOG(WebGL, "--- begin original shader source ---\n%s\n--- end original shader source ---\n", getShaderSource(shader).utf8().data());
+    LOG(WebGL, "--- begin translated shader source ---\n%s\n--- end translated shader source ---", translatedShaderPtr);
+
     ::glShaderSource(shader, 1, &translatedShaderPtr, &translatedShaderLength);
     
     ::glCompileShader(shader);
@@ -457,27 +514,28 @@ void GraphicsContext3D::compileShader(Platform3DObject shader)
     
     ::glGetShaderiv(shader, COMPILE_STATUS, &GLCompileSuccess);
 
+    ShaderSourceMap::iterator result = m_shaderSourceMap.find(shader);
+    GraphicsContext3D::ShaderSourceEntry& entry = result->value;
+
     // Populate the shader log
     GLint length = 0;
     ::glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
 
     if (length) {
-        ShaderSourceMap::iterator result = m_shaderSourceMap.find(shader);
-        GraphicsContext3D::ShaderSourceEntry& entry = result->value;
-
         GLsizei size = 0;
-        OwnArrayPtr<GLchar> info = adoptArrayPtr(new GLchar[length]);
+        auto info = std::make_unique<GLchar[]>(length);
         ::glGetShaderInfoLog(shader, length, &size, info.get());
 
         entry.log = info.get();
     }
-    
-    // ASSERT that ANGLE generated GLSL will be accepted by OpenGL.
-    ASSERT(GLCompileSuccess == GL_TRUE);
+
+    if (GLCompileSuccess != GL_TRUE) {
+        entry.isValid = false;
+        LOG(WebGL, "Error: shader translator produced a shader that OpenGL would not compile.");
 #if PLATFORM(BLACKBERRY) && !defined(NDEBUG)
-    if (GLCompileSuccess != GL_TRUE)
         BBLOG(BlackBerry::Platform::LogLevelWarn, "The shader validated, but didn't compile.\n");
 #endif
+    }
 }
 
 void GraphicsContext3D::copyTexImage2D(GC3Denum target, GC3Dint level, GC3Denum internalformat, GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsizei height, GC3Dint border)
@@ -619,7 +677,7 @@ bool GraphicsContext3D::getActiveAttrib(Platform3DObject program, GC3Duint index
     makeContextCurrent();
     GLint maxAttributeSize = 0;
     ::glGetProgramiv(program, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &maxAttributeSize);
-    OwnArrayPtr<GLchar> name = adoptArrayPtr(new GLchar[maxAttributeSize]); // GL_ACTIVE_ATTRIBUTE_MAX_LENGTH includes null termination.
+    auto name = std::make_unique<GLchar[]>(maxAttributeSize); // GL_ACTIVE_ATTRIBUTE_MAX_LENGTH includes null termination.
     GLsizei nameLength = 0;
     GLint size = 0;
     GLenum type = 0;
@@ -646,7 +704,7 @@ bool GraphicsContext3D::getActiveUniform(Platform3DObject program, GC3Duint inde
     GLint maxUniformSize = 0;
     ::glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxUniformSize);
 
-    OwnArrayPtr<GLchar> name = adoptArrayPtr(new GLchar[maxUniformSize]); // GL_ACTIVE_UNIFORM_MAX_LENGTH includes null termination.
+    auto name = std::make_unique<GLchar[]>(maxUniformSize); // GL_ACTIVE_UNIFORM_MAX_LENGTH includes null termination.
     GLsizei nameLength = 0;
     GLint size = 0;
     GLenum type = 0;
@@ -719,11 +777,8 @@ int GraphicsContext3D::getAttribLocation(Platform3DObject program, const String&
 
     makeContextCurrent();
 
-    // The attribute name may have been translated during ANGLE compilation.
-    // Look through the corresponding ShaderSourceMap to make sure we
-    // reference the mapped name rather than the external name.
     String mappedName = mappedSymbolName(program, SHADER_SYMBOL_TYPE_ATTRIBUTE, name);
-
+    LOG(WebGL, "::getAttribLocation is mapping %s to %s", name.utf8().data(), mappedName.utf8().data());
     return ::glGetAttribLocation(program, mappedName.utf8().data());
 }
 
@@ -1155,7 +1210,7 @@ String GraphicsContext3D::getProgramInfoLog(Platform3DObject program)
         return String(); 
 
     GLsizei size = 0;
-    OwnArrayPtr<GLchar> info = adoptArrayPtr(new GLchar[length]);
+    auto info = std::make_unique<GLchar[]>(length);
     ::glGetProgramInfoLog(program, length, &size, info.get());
 
     return String(info.get());
@@ -1222,7 +1277,7 @@ String GraphicsContext3D::getShaderInfoLog(Platform3DObject shader)
         return String(); 
 
     GLsizei size = 0;
-    OwnArrayPtr<GLchar> info = adoptArrayPtr(new GLchar[length]);
+    auto info = std::make_unique<GLchar[]>(length);
     ::glGetShaderInfoLog(shader, length, &size, info.get());
 
     return String(info.get());
@@ -1272,11 +1327,8 @@ GC3Dint GraphicsContext3D::getUniformLocation(Platform3DObject program, const St
 
     makeContextCurrent();
 
-    // The uniform name may have been translated during ANGLE compilation.
-    // Look through the corresponding ShaderSourceMap to make sure we
-    // reference the mapped name rather than the external name.
     String mappedName = mappedSymbolName(program, SHADER_SYMBOL_TYPE_UNIFORM, name);
-
+    LOG(WebGL, "::getUniformLocation is mapping %s to %s", name.utf8().data(), mappedName.utf8().data());
     return ::glGetUniformLocation(program, mappedName.utf8().data());
 }
 

@@ -34,7 +34,7 @@
 
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
-#include "KURL.h"
+#include "URL.h"
 #include "ThreadableLoaderClient.h"
 #include "Timer.h"
 #include <wtf/RefPtr.h>
@@ -48,7 +48,8 @@ class ResourceResponse;
 class TextResourceDecoder;
 class ThreadableLoader;
 
-class EventSource : public RefCounted<EventSource>, public EventTarget, private ThreadableLoaderClient, public ActiveDOMObject {
+// FIXME: This class should be marked FINAL once <http://webkit.org/b/121747> is fixed.
+class EventSource : public RefCounted<EventSource>, public EventTargetWithInlineData, private ThreadableLoaderClient, public ActiveDOMObject {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     static PassRefPtr<EventSource> create(ScriptExecutionContext*, const String& url, const Dictionary&, ExceptionCode&);
@@ -75,16 +76,14 @@ public:
     using RefCounted<EventSource>::ref;
     using RefCounted<EventSource>::deref;
 
-    virtual const AtomicString& interfaceName() const;
-    virtual ScriptExecutionContext* scriptExecutionContext() const;
+    virtual EventTargetInterface eventTargetInterface() const OVERRIDE FINAL { return EventSourceEventTargetInterfaceType; }
+    virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL { return ActiveDOMObject::scriptExecutionContext(); }
 
 private:
-    EventSource(ScriptExecutionContext*, const KURL&, const Dictionary&);
+    EventSource(ScriptExecutionContext*, const URL&, const Dictionary&);
 
-    virtual void refEventTarget() OVERRIDE { ref(); }
-    virtual void derefEventTarget() OVERRIDE { deref(); }
-    virtual EventTargetData* eventTargetData() OVERRIDE;
-    virtual EventTargetData& ensureEventTargetData() OVERRIDE;
+    virtual void refEventTarget() OVERRIDE FINAL { ref(); }
+    virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
 
     virtual void didReceiveResponse(unsigned long, const ResourceResponse&);
     virtual void didReceiveData(const char*, int);
@@ -105,7 +104,7 @@ private:
     void parseEventStreamLine(unsigned pos, int fieldLength, int lineLength);
     PassRefPtr<MessageEvent> createMessageEvent();
 
-    KURL m_url;
+    URL m_url;
     bool m_withCredentials;
     State m_state;
 
@@ -122,8 +121,6 @@ private:
     String m_lastEventId;
     unsigned long long m_reconnectDelay;
     String m_eventStreamOrigin;
-
-    EventTargetData m_eventTargetData;
 };
 
 } // namespace WebCore

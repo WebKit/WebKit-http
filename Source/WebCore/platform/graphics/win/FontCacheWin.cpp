@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2013 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@
 #include <windows.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringHash.h>
+#include <wtf/win/GDIObject.h>
 #if USE(CG)
 #include <ApplicationServices/ApplicationServices.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
@@ -440,7 +441,7 @@ static int CALLBACK matchImprovingEnumProc(CONST LOGFONT* candidate, CONST TEXTM
     return 1;
 }
 
-static HFONT createGDIFont(const AtomicString& family, LONG desiredWeight, bool desiredItalic, int size, bool synthesizeItalic)
+static GDIObject<HFONT> createGDIFont(const AtomicString& family, LONG desiredWeight, bool desiredItalic, int size, bool synthesizeItalic)
 {
     HWndDC hdc(0);
 
@@ -455,7 +456,7 @@ static HFONT createGDIFont(const AtomicString& family, LONG desiredWeight, bool 
     EnumFontFamiliesEx(hdc, &logFont, matchImprovingEnumProc, reinterpret_cast<LPARAM>(&matchData), 0);
 
     if (!matchData.m_hasMatched)
-        return 0;
+        return nullptr;
 
     matchData.m_chosen.lfHeight = -size;
     matchData.m_chosen.lfWidth = 0;
@@ -475,23 +476,21 @@ static HFONT createGDIFont(const AtomicString& family, LONG desiredWeight, bool 
    if (desiredItalic && !matchData.m_chosen.lfItalic && synthesizeItalic)
        matchData.m_chosen.lfItalic = 1;
 
-    HFONT result = CreateFontIndirect(&matchData.m_chosen);
-    if (!result)
-        return 0;
+    auto chosenFont = adoptGDIObject(::CreateFontIndirect(&matchData.m_chosen));
+    if (!chosenFont)
+        return nullptr;
 
     HWndDC dc(0);
     SaveDC(dc);
-    SelectObject(dc, result);
+    SelectObject(dc, chosenFont.get());
     WCHAR actualName[LF_FACESIZE];
     GetTextFace(dc, LF_FACESIZE, actualName);
     RestoreDC(dc, -1);
 
-    if (wcsicmp(matchData.m_chosen.lfFaceName, actualName)) {
-        DeleteObject(result);
-        result = 0;
-    }
+    if (wcsicmp(matchData.m_chosen.lfFaceName, actualName))
+        return nullptr;
 
-    return result;
+    return chosenFont;
 }
 
 struct TraitsInFamilyProcData {
@@ -554,8 +553,8 @@ PassOwnPtr<FontPlatformData> FontCache::createFontPlatformData(const FontDescrip
     // FIXME: We will eventually want subpixel precision for GDI mode, but the scaled rendering doesn't
     // look as nice. That may be solvable though.
     LONG weight = adjustedGDIFontWeight(toGDIFontWeight(fontDescription.weight()), family);
-    HFONT hfont = createGDIFont(family, weight, fontDescription.italic(),
-                                fontDescription.computedPixelSize() * (useGDI ? 1 : 32), useGDI);
+    auto hfont = createGDIFont(family, weight, fontDescription.italic(),
+        fontDescription.computedPixelSize() * (useGDI ? 1 : 32), useGDI);
 
     if (!hfont)
         return nullptr;
@@ -564,12 +563,12 @@ PassOwnPtr<FontPlatformData> FontCache::createFontPlatformData(const FontDescrip
         useGDI = false; // Never use GDI for Lucida Grande.
 
     LOGFONT logFont;
-    GetObject(hfont, sizeof(LOGFONT), &logFont);
+    GetObject(hfont.get(), sizeof(LOGFONT), &logFont);
 
     bool synthesizeBold = isGDIFontWeightBold(weight) && !isGDIFontWeightBold(logFont.lfWeight);
     bool synthesizeItalic = fontDescription.italic() && !logFont.lfItalic;
 
-    FontPlatformData* result = new FontPlatformData(hfont, fontDescription.computedPixelSize(), synthesizeBold, synthesizeItalic, useGDI);
+    FontPlatformData* result = new FontPlatformData(std::move(hfont), fontDescription.computedPixelSize(), synthesizeBold, synthesizeItalic, useGDI);
 
 #if USE(CG)
     bool fontCreationFailed = !result->cgFont();
@@ -582,7 +581,6 @@ PassOwnPtr<FontPlatformData> FontCache::createFontPlatformData(const FontDescrip
         // absolutely sure that we don't use this font, go ahead and return 0 so that we can fall back to the next
         // font.
         delete result;
-        DeleteObject(hfont);
         return nullptr;
     }        
 

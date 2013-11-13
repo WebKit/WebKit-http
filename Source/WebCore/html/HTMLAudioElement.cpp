@@ -33,20 +33,20 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-HTMLAudioElement::HTMLAudioElement(const QualifiedName& tagName, Document* document, bool createdByParser)
+HTMLAudioElement::HTMLAudioElement(const QualifiedName& tagName, Document& document, bool createdByParser)
     : HTMLMediaElement(tagName, document, createdByParser)
 {
     ASSERT(hasTagName(audioTag));
 }
 
-PassRefPtr<HTMLAudioElement> HTMLAudioElement::create(const QualifiedName& tagName, Document* document, bool createdByParser)
+PassRefPtr<HTMLAudioElement> HTMLAudioElement::create(const QualifiedName& tagName, Document& document, bool createdByParser)
 {
     RefPtr<HTMLAudioElement> audioElement(adoptRef(new HTMLAudioElement(tagName, document, createdByParser)));
     audioElement->suspendIfNeeded();
     return audioElement.release();
 }
 
-PassRefPtr<HTMLAudioElement> HTMLAudioElement::createForJSConstructor(Document* document, const String& src)
+PassRefPtr<HTMLAudioElement> HTMLAudioElement::createForJSConstructor(Document& document, const String& src)
 {
     RefPtr<HTMLAudioElement> audio = adoptRef(new HTMLAudioElement(audioTag, document, false));
     audio->setPreload("auto");

@@ -31,6 +31,8 @@
 #include "SlotVisitorInlines.h"
 #include "StructureInlines.h"
 
+#include <wtf/CryptographicallyRandomNumber.h>
+
 namespace JSC {
 
 const ClassInfo PropertyTable::s_info = { "PropertyTable", 0, 0, 0, CREATE_METHOD_TABLE(PropertyTable) };

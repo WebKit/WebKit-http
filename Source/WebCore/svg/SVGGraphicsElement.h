@@ -49,10 +49,10 @@ public:
 
     // "base class" methods for all the elements which render as paths
     virtual void toClipPath(Path&);
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 
 protected:
-    SVGGraphicsElement(const QualifiedName&, Document*);
+    SVGGraphicsElement(const QualifiedName&, Document&);
 
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
@@ -74,12 +74,22 @@ private:
     OwnPtr<AffineTransform> m_supplementalTransform;
 };
 
+inline SVGGraphicsElement& toSVGGraphicsElement(Node& node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(node.isSVGElement());
+    ASSERT_WITH_SECURITY_IMPLICATION(toSVGElement(node).isSVGGraphicsElement());
+    return static_cast<SVGGraphicsElement&>(node);
+}
+
 inline SVGGraphicsElement* toSVGGraphicsElement(Node* node)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isSVGElement());
     ASSERT_WITH_SECURITY_IMPLICATION(!node || toSVGElement(node)->isSVGGraphicsElement());
     return static_cast<SVGGraphicsElement*>(node);
 }
+
+void toSVGGraphicsElement(const SVGGraphicsElement&);
+void toSVGGraphicsElement(const SVGGraphicsElement*);
 
 } // namespace WebCore
 

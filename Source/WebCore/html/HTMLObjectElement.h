@@ -32,7 +32,7 @@ class HTMLFormElement;
 
 class HTMLObjectElement FINAL : public HTMLPlugInImageElement, public FormAssociatedElement {
 public:
-    static PassRefPtr<HTMLObjectElement> create(const QualifiedName&, Document*, HTMLFormElement*, bool createdByParser);
+    static PassRefPtr<HTMLObjectElement> create(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
     virtual ~HTMLObjectElement();
 
     bool isDocNamedItem() const { return m_docNamedItem; }
@@ -64,7 +64,7 @@ public:
     virtual bool canContainRangeEndPoint() const { return useFallbackContent(); }
 
 private:
-    HTMLObjectElement(const QualifiedName&, Document*, HTMLFormElement*, bool createdByParser);
+    HTMLObjectElement(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
@@ -73,7 +73,6 @@ private:
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
 
-    virtual bool rendererIsNeeded(const RenderStyle&);
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
@@ -83,7 +82,7 @@ private:
 
     virtual RenderWidget* renderWidgetForJSBindings() const;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
 
     virtual void updateWidget(PluginCreationOption);
     void updateDocNamedItem();
@@ -109,11 +108,7 @@ private:
     bool m_useFallbackContent : 1;
 };
 
-inline HTMLObjectElement* toHTMLObjectElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(HTMLNames::objectTag));
-    return static_cast<HTMLObjectElement*>(node);
-}
+ELEMENT_TYPE_CASTS(HTMLObjectElement)
 
 }
 

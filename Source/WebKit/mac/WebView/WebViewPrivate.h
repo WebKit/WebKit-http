@@ -47,6 +47,7 @@
 
 @protocol WebDeviceOrientationProvider;
 @protocol WebFormDelegate;
+@protocol WebUserMediaClient;
 
 extern NSString *_WebCanGoBackKey;
 extern NSString *_WebCanGoForwardKey;
@@ -69,6 +70,8 @@ extern NSString *WebElementIsInScrollBarKey;
 
 // One of the subviews of the WebView entered compositing mode.
 extern NSString *_WebViewDidStartAcceleratedCompositingNotification;
+
+extern NSString * const WebViewWillCloseNotification;
 
 #if ENABLE_DASHBOARD_SUPPORT
 typedef enum {
@@ -712,6 +715,11 @@ Could be worth adding to the API.
 @interface WebView (WebViewDeviceOrientation)
 - (void)_setDeviceOrientationProvider:(id<WebDeviceOrientationProvider>)deviceOrientationProvider;
 - (id<WebDeviceOrientationProvider>)_deviceOrientationProvider;
+@end
+
+@interface WebView (WebViewUserMedia)
+- (void)_setUserMediaClient:(id<WebUserMediaClient>)userMediaClient;
+- (id<WebUserMediaClient>)_userMediaClient;
 @end
 
 @protocol WebGeolocationProvider <NSObject>

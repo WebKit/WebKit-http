@@ -30,7 +30,7 @@
 #include "HTMLDocument.h"
 #include "HTMLNames.h"
 #include "HTMLParamElement.h"
-#include "RenderApplet.h"
+#include "RenderEmbeddedObject.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "SubframeLoader.h"
@@ -40,7 +40,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-HTMLAppletElement::HTMLAppletElement(const QualifiedName& tagName, Document* document, bool createdByParser)
+HTMLAppletElement::HTMLAppletElement(const QualifiedName& tagName, Document& document, bool createdByParser)
     : HTMLPlugInImageElement(tagName, document, createdByParser, ShouldNotPreferPlugInsForImages)
 {
     ASSERT(hasTagName(appletTag));
@@ -48,7 +48,7 @@ HTMLAppletElement::HTMLAppletElement(const QualifiedName& tagName, Document* doc
     m_serviceType = "application/x-java-applet";
 }
 
-PassRefPtr<HTMLAppletElement> HTMLAppletElement::create(const QualifiedName& tagName, Document* document, bool createdByParser)
+PassRefPtr<HTMLAppletElement> HTMLAppletElement::create(const QualifiedName& tagName, Document& document, bool createdByParser)
 {
     return adoptRef(new HTMLAppletElement(tagName, document, createdByParser));
 }
@@ -75,12 +75,12 @@ bool HTMLAppletElement::rendererIsNeeded(const RenderStyle& style)
     return HTMLPlugInImageElement::rendererIsNeeded(style);
 }
 
-RenderObject* HTMLAppletElement::createRenderer(RenderArena*, RenderStyle* style)
+RenderElement* HTMLAppletElement::createRenderer(RenderArena&, RenderStyle& style)
 {
     if (!canEmbedJava())
-        return RenderObject::createObject(this, style);
+        return RenderElement::createFor(*this, style);
 
-    return new (document().renderArena()) RenderApplet(this);
+    return RenderEmbeddedObject::createForApplet(*this);
 }
 
 RenderWidget* HTMLAppletElement::renderWidgetForJSBindings() const
@@ -89,7 +89,7 @@ RenderWidget* HTMLAppletElement::renderWidgetForJSBindings() const
         return 0;
 
     document().updateLayoutIgnorePendingStylesheets();
-    return renderPart();
+    return renderWidget();
 }
 
 void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)

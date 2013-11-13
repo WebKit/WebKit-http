@@ -294,7 +294,7 @@ void RenderThemeEfl::clearThemePartCache()
 
 }
 
-void RenderThemeEfl::applyEdjeStateFromForm(Evas_Object* object, ControlStates states)
+void RenderThemeEfl::applyEdjeStateFromForm(Evas_Object* object, ControlStates states, bool haveBackground)
 {
     const char *signals[] = { // keep in sync with WebCore/platform/ThemeTypes.h
         "hovered",
@@ -315,6 +315,9 @@ void RenderThemeEfl::applyEdjeStateFromForm(Evas_Object* object, ControlStates s
         if (states & (1 << i))
             edje_object_signal_emit(object, signals[i], "");
     }
+
+    if (haveBackground)
+        edje_object_signal_emit(object, "styled", "");
 }
 
 void RenderThemeEfl::applyEdjeRTLState(Evas_Object* edje, RenderObject* object, FormType type, const IntRect& rect)
@@ -324,7 +327,7 @@ void RenderThemeEfl::applyEdjeRTLState(Evas_Object* edje, RenderObject* object, 
             return; // probably have -webkit-appearance: slider..
 
         RenderSlider* renderSlider = toRenderSlider(object);
-        HTMLInputElement* input = renderSlider->node()->toInputElement();
+        HTMLInputElement* input = renderSlider->element()->toInputElement();
         double valueRange = input->maximum() - input->minimum();
 
         OwnPtr<Edje_Message_Float_Set> msg = adoptPtr(static_cast<Edje_Message_Float_Set*>(::operator new (sizeof(Edje_Message_Float_Set) + sizeof(double))));
@@ -363,6 +366,11 @@ void RenderThemeEfl::applyEdjeRTLState(Evas_Object* edje, RenderObject* object, 
     }
 }
 
+bool RenderThemeEfl::isControlStyled(const RenderStyle* style, const BorderData& border, const FillLayer& background, const Color& backgroundColor) const
+{
+    return RenderTheme::isControlStyled(style, border, background, backgroundColor) || style->appearance() == MenulistButtonPart;
+}
+
 bool RenderThemeEfl::paintThemePart(RenderObject* object, FormType type, const PaintInfo& info, const IntRect& rect)
 {
     loadThemeIfNeeded();
@@ -372,7 +380,9 @@ bool RenderThemeEfl::paintThemePart(RenderObject* object, FormType type, const P
     if (!entry)
         return false;
 
-    applyEdjeStateFromForm(entry->edje(), controlStatesForRenderer(object));
+    bool haveBackgroundColor = isControlStyled(object->style(), object->style()->border(), *object->style()->backgroundLayers(), Color::white);
+    applyEdjeStateFromForm(entry->edje(), controlStatesForRenderer(object), haveBackgroundColor);
+
     applyEdjeRTLState(entry->edje(), object, type, rect);
 
     edje_object_calc_force(entry->edje());

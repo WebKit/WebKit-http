@@ -359,14 +359,13 @@ public:
     virtual String plugInExtraStyleSheet() const { return String(); }
     virtual String plugInExtraScript() const { return String(); }
 
-    // FIXME: Port should return true using heuristic based on scrollable(RenderBox).
-    virtual bool shouldAutoscrollForDragAndDrop(RenderBox*) const { return false; }
-
     virtual void didAssociateFormControls(const Vector<RefPtr<Element> >&) { };
     virtual bool shouldNotifyOnFormChanges() { return false; };
 
     virtual void didAddHeaderLayer(GraphicsLayer*) { }
     virtual void didAddFooterLayer(GraphicsLayer*) { }
+
+    virtual bool shouldUseTiledBackingForFrameView(const FrameView*) const { return false; }
 
     // These methods are used to report pages that are performing
     // some task that we consider to be "active", and so the user

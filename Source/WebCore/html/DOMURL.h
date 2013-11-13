@@ -27,7 +27,7 @@
 #ifndef DOMURL_h
 #define DOMURL_h
 
-#include "KURL.h"
+#include "URL.h"
 #include <wtf/HashSet.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -36,9 +36,8 @@
 namespace WebCore {
 
 class Blob;
-class MediaSource;
-class MediaStream;
 class ScriptExecutionContext;
+class URLRegistrable;
 
 class DOMURL : public RefCounted<DOMURL> {
 
@@ -50,12 +49,8 @@ public:
 
     static String createObjectURL(ScriptExecutionContext*, Blob*);
     static void revokeObjectURL(ScriptExecutionContext*, const String&);
-#if ENABLE(MEDIA_SOURCE)
-    static String createObjectURL(ScriptExecutionContext*, MediaSource*);
-#endif
-#if ENABLE(MEDIA_STREAM)
-    static String createObjectURL(ScriptExecutionContext*, MediaStream*);
-#endif
+
+    static String createPublicURL(ScriptExecutionContext*, URLRegistrable*);
 #endif
 };
 

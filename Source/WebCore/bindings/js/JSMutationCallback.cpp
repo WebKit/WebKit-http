@@ -42,7 +42,7 @@ namespace WebCore {
 
 JSMutationCallback::JSMutationCallback(JSObject* callback, JSDOMGlobalObject* globalObject)
     : ActiveDOMCallback(globalObject->scriptExecutionContext())
-    , m_callback(PassWeak<JSObject>(callback))
+    , m_callback(callback)
     , m_isolatedWorld(globalObject->world())
 {
 }
@@ -56,7 +56,7 @@ void JSMutationCallback::call(const Vector<RefPtr<MutationRecord> >& mutations, 
     if (!canInvokeCallback())
         return;
 
-    RefPtr<JSMutationCallback> protect(this);
+    Ref<JSMutationCallback> protect(*this);
 
     JSLockHolder lock(m_isolatedWorld->vm());
 

@@ -55,6 +55,7 @@ required_packages = frozenset(["apache",
                                "gcc",
                                "gperf",
                                "keychain",
+                               "lighttpd",
                                "make",
                                "minires",
                                "nano",
@@ -77,7 +78,7 @@ required_packages = frozenset(["apache",
 
 print "Using Cygwin mirror server " + package_mirror_url + " to download setup.ini..."
 
-urllib.urlretrieve(package_mirror_url + "setup.ini", "setup.ini.orig")
+urllib.urlretrieve(package_mirror_url + "x86/setup.ini", "setup.ini.orig")
 
 downloaded_packages_file_path = "setup.ini.orig"
 downloaded_packages_file = file(downloaded_packages_file_path, "r")
@@ -134,7 +135,7 @@ for name in package_names:
                 downloaded_so_far += 1
                 download_package(packages[name], "Downloading package %3d of %3d (%s)" % (downloaded_so_far, len(names_to_download), name))
 
-download_url_to_file("http://cygwin.com/setup.exe", "setup.exe", "Downloading setup.exe")
+download_url_to_file("http://cygwin.com/setup-x86.exe", "setup.exe", "Downloading setup.exe")
 
 seconds_to_sleep = 10
 

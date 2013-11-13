@@ -41,20 +41,27 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderHTMLCanvas::RenderHTMLCanvas(HTMLCanvasElement* element)
-    : RenderReplaced(element, element->size())
+RenderHTMLCanvas::RenderHTMLCanvas(HTMLCanvasElement& element)
+    : RenderReplaced(&element, element.size())
 {
     // Actual size is not known yet, report the default intrinsic size.
     view().frameView().incrementVisuallyNonEmptyPixelCount(roundedIntSize(intrinsicSize()));
+}
+
+HTMLCanvasElement& RenderHTMLCanvas::canvasElement() const
+{
+    return toHTMLCanvasElement(nodeForNonAnonymous());
 }
 
 bool RenderHTMLCanvas::requiresLayer() const
 {
     if (RenderReplaced::requiresLayer())
         return true;
-    
-    HTMLCanvasElement* canvas = static_cast<HTMLCanvasElement*>(node());
-    return canvas && canvas->renderingContext() && canvas->renderingContext()->isAccelerated();
+
+    if (CanvasRenderingContext* context = canvasElement().renderingContext())
+        return context->isAccelerated();
+
+    return false;
 }
 
 void RenderHTMLCanvas::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -78,12 +85,12 @@ void RenderHTMLCanvas::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& pa
     }
 
     bool useLowQualityScale = style()->imageRendering() == ImageRenderingCrispEdges || style()->imageRendering() == ImageRenderingOptimizeSpeed;
-    static_cast<HTMLCanvasElement*>(node())->paint(context, paintRect, useLowQualityScale);
+    canvasElement().paint(context, paintRect, useLowQualityScale);
 }
 
 void RenderHTMLCanvas::canvasSizeChanged()
 {
-    IntSize canvasSize = static_cast<HTMLCanvasElement*>(node())->size();
+    IntSize canvasSize = canvasElement().size();
     LayoutSize zoomedSize(canvasSize.width() * style()->effectiveZoom(), canvasSize.height() * style()->effectiveZoom());
 
     if (zoomedSize == intrinsicSize())

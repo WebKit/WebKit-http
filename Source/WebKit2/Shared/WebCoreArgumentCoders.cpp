@@ -39,7 +39,7 @@
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/GraphicsLayer.h>
 #include <WebCore/Image.h>
-#include <WebCore/KURL.h>
+#include <WebCore/URL.h>
 #include <WebCore/PluginData.h>
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/ResourceError.h>
@@ -312,6 +312,7 @@ static bool decodeImage(ArgumentDecoder& decoder, RefPtr<Image>& image)
     return true;
 }
 
+#if !PLATFORM(IOS)
 void ArgumentCoder<Cursor>::encode(ArgumentEncoder& encoder, const Cursor& cursor)
 {
     encoder.encodeEnum(cursor.type());
@@ -371,6 +372,7 @@ bool ArgumentCoder<Cursor>::decode(ArgumentDecoder& decoder, Cursor& cursor)
     cursor = Cursor(image.get(), hotSpot);
     return true;
 }
+#endif
 
 void ArgumentCoder<ResourceRequest>::encode(ArgumentEncoder& encoder, const ResourceRequest& resourceRequest)
 {
@@ -405,7 +407,7 @@ bool ArgumentCoder<ResourceRequest>::decode(ArgumentDecoder& decoder, ResourceRe
         String url;
         if (!decoder.decode(url))
             return false;
-        request.setURL(KURL(KURL(), url));
+        request.setURL(URL(URL(), url));
 
         String httpMethod;
         if (!decoder.decode(httpMethod))
@@ -430,7 +432,7 @@ bool ArgumentCoder<ResourceRequest>::decode(ArgumentDecoder& decoder, ResourceRe
         String firstPartyForCookies;
         if (!decoder.decode(firstPartyForCookies))
             return false;
-        request.setFirstPartyForCookies(KURL(KURL(), firstPartyForCookies));
+        request.setFirstPartyForCookies(URL(URL(), firstPartyForCookies));
 
         resourceRequest = request;
     }
@@ -501,7 +503,7 @@ bool ArgumentCoder<ResourceResponse>::decode(ArgumentDecoder& decoder, ResourceR
         String url;
         if (!decoder.decode(url))
             return false;
-        response.setURL(KURL(KURL(), url));
+        response.setURL(URL(URL(), url));
 
         int32_t httpStatusCode;
         if (!decoder.decode(httpStatusCode))
@@ -784,6 +786,105 @@ bool ArgumentCoder<DatabaseDetails>::decode(ArgumentDecoder& decoder, DatabaseDe
     details = DatabaseDetails(name, displayName, expectedUsage, currentUsage);
     return true;
 }
+
+#endif
+
+#if PLATFORM(IOS)
+
+static void encodeSharedBuffer(ArgumentEncoder& encoder, SharedBuffer* buffer)
+{
+    SharedMemory::Handle handle;
+    encoder << (buffer ? static_cast<uint64_t>(buffer->size()): 0);
+    if (buffer) {
+        RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::create(buffer->size());
+        memcpy(sharedMemoryBuffer->data(), buffer->data(), buffer->size());
+        sharedMemoryBuffer->createHandle(handle, SharedMemory::ReadOnly);
+        encoder << handle;
+    }
+}
+
+static bool decodeSharedBuffer(ArgumentDecoder& decoder, RefPtr<SharedBuffer>& buffer)
+{
+    uint64_t bufferSize = 0;
+    if (!decoder.decode(bufferSize))
+        return false;
+
+    if (bufferSize) {
+        SharedMemory::Handle handle;
+        if (!decoder.decode(handle))
+            return false;
+
+        RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::create(handle, SharedMemory::ReadOnly);
+        buffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryBuffer->data()), bufferSize);
+    }
+
+    return true;
+}
+
+void ArgumentCoder<PasteboardWebContent>::encode(ArgumentEncoder& encoder, const WebCore::PasteboardWebContent& content)
+{
+    encoder << content.canSmartCopyOrDelete;
+    encoder << content.dataInStringFormat;
+
+    encodeSharedBuffer(encoder, content.dataInWebArchiveFormat.get());
+    encodeSharedBuffer(encoder, content.dataInRTFDFormat.get());
+    encodeSharedBuffer(encoder, content.dataInRTFFormat.get());
+
+    encoder << content.clientTypes;
+    encoder << static_cast<uint64_t>(content.clientData.size());
+    for (size_t i = 0; i < content.clientData.size(); i++)
+        encodeSharedBuffer(encoder, content.clientData[i].get());
+}
+
+bool ArgumentCoder<PasteboardWebContent>::decode(ArgumentDecoder& decoder, WebCore::PasteboardWebContent& content)
+{
+    if (!decoder.decode(content.canSmartCopyOrDelete))
+        return false;
+    if (!decoder.decode(content.dataInStringFormat))
+        return false;
+    if (!decodeSharedBuffer(decoder, content.dataInWebArchiveFormat))
+        return false;
+    if (!decodeSharedBuffer(decoder, content.dataInRTFDFormat))
+        return false;
+    if (!decodeSharedBuffer(decoder, content.dataInRTFFormat))
+        return false;
+    if (!decoder.decode(content.clientTypes))
+        return false;
+    uint64_t clientDataSize;
+    if (!decoder.decode(clientDataSize))
+        return false;
+    if (clientDataSize)
+        content.clientData.resize(clientDataSize);
+    for (size_t i = 0; i < clientDataSize; i++)
+        decodeSharedBuffer(decoder, content.clientData[i]);
+    return true;
+}
+
+void ArgumentCoder<PasteboardImage>::encode(ArgumentEncoder& encoder, const WebCore::PasteboardImage& pasteboardImage)
+{
+    encodeImage(encoder, pasteboardImage.image.get());
+    encoder << pasteboardImage.url.url;
+    encoder << pasteboardImage.url.title;
+    encoder << pasteboardImage.resourceMIMEType;
+    if (pasteboardImage.resourceData)
+        encodeSharedBuffer(encoder, pasteboardImage.resourceData.get());
+}
+
+bool ArgumentCoder<PasteboardImage>::decode(ArgumentDecoder& decoder, WebCore::PasteboardImage& pasteboardImage)
+{
+    if (!decodeImage(decoder, pasteboardImage.image))
+        return false;
+    if (!decoder.decode(pasteboardImage.url.url))
+        return false;
+    if (!decoder.decode(pasteboardImage.url.title))
+        return false;
+    if (!decoder.decode(pasteboardImage.resourceMIMEType))
+        return false;
+    if (!decodeSharedBuffer(decoder, pasteboardImage.resourceData))
+        return false;
+    return true;
+}
+
 #endif
 
 void ArgumentCoder<DictationAlternative>::encode(ArgumentEncoder& encoder, const DictationAlternative& dictationAlternative)
@@ -933,17 +1034,17 @@ bool ArgumentCoder<DragSession>::decode(ArgumentDecoder& decoder, DragSession& r
     return true;
 }
 
-void ArgumentCoder<KURL>::encode(ArgumentEncoder& encoder, const KURL& result)
+void ArgumentCoder<URL>::encode(ArgumentEncoder& encoder, const URL& result)
 {
     encoder << result.string();
 }
     
-bool ArgumentCoder<KURL>::decode(ArgumentDecoder& decoder, KURL& result)
+bool ArgumentCoder<URL>::decode(ArgumentDecoder& decoder, URL& result)
 {
     String urlAsString;
     if (!decoder.decode(urlAsString))
         return false;
-    result = KURL(WebCore::ParsedURLString, urlAsString);
+    result = URL(WebCore::ParsedURLString, urlAsString);
     return true;
 }
 
@@ -963,7 +1064,7 @@ bool ArgumentCoder<WebCore::UserStyleSheet>::decode(ArgumentDecoder& decoder, We
     if (!decoder.decode(source))
         return false;
 
-    KURL url;
+    URL url;
     if (!decoder.decode(url))
         return false;
 
@@ -1003,7 +1104,7 @@ bool ArgumentCoder<WebCore::UserScript>::decode(ArgumentDecoder& decoder, WebCor
     if (!decoder.decode(source))
         return false;
 
-    KURL url;
+    URL url;
     if (!decoder.decode(url))
         return false;
 

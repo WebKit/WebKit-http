@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2005, 2006, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2009, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 #include "PositionIterator.h"
 #include "RenderBlock.h"
 #include "RenderInline.h"
+#include "RenderLineBreak.h"
 #include "RenderText.h"
 #include "RuntimeEnabledFeatures.h"
 #include "Text.h"
@@ -50,6 +51,17 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
+static bool hasInlineBoxWrapper(RenderObject& renderer)
+{
+    if (renderer.isBox() && toRenderBox(renderer).inlineBoxWrapper())
+        return true;
+    if (renderer.isText() && toRenderText(renderer).firstTextBox())
+        return true;
+    if (renderer.isLineBreak() && toRenderLineBreak(renderer).inlineBoxWrapper())
+        return true;
+    return false;
+}
+
 static Node* nextRenderedEditable(Node* node)
 {
     while ((node = nextLeafNode(node))) {
@@ -58,7 +70,7 @@ static Node* nextRenderedEditable(Node* node)
         RenderObject* renderer = node->renderer();
         if (!renderer)
             continue;
-        if ((renderer->isBox() && toRenderBox(renderer)->inlineBoxWrapper()) || (renderer->isText() && toRenderText(renderer)->firstTextBox()))
+        if (hasInlineBoxWrapper(*renderer))
             return node;
     }
     return 0;
@@ -72,7 +84,7 @@ static Node* previousRenderedEditable(Node* node)
         RenderObject* renderer = node->renderer();
         if (!renderer)
             continue;
-        if ((renderer->isBox() && toRenderBox(renderer)->inlineBoxWrapper()) || (renderer->isText() && toRenderText(renderer)->firstTextBox()))
+        if (hasInlineBoxWrapper(*renderer))
             return node;
     }
     return 0;
@@ -85,10 +97,9 @@ Position::Position(PassRefPtr<Node> anchorNode, LegacyEditingOffset offset)
     , m_isLegacyEditingPosition(true)
 {
 #if ENABLE(SHADOW_DOM)
-    ASSERT((m_anchorNode && RuntimeEnabledFeatures::shadowDOMEnabled())
-           || !m_anchorNode || !m_anchorNode->isShadowRoot());
+    ASSERT((m_anchorNode && RuntimeEnabledFeatures::sharedFeatures().shadowDOMEnabled()) || !m_anchorNode || !m_anchorNode->isShadowRoot() || m_anchorNode == containerNode());
 #else
-    ASSERT(!m_anchorNode || !m_anchorNode->isShadowRoot());
+    ASSERT(!m_anchorNode || !m_anchorNode->isShadowRoot() || m_anchorNode == containerNode());
 #endif
     ASSERT(!m_anchorNode || !m_anchorNode->isPseudoElement());
 }
@@ -100,10 +111,9 @@ Position::Position(PassRefPtr<Node> anchorNode, AnchorType anchorType)
     , m_isLegacyEditingPosition(false)
 {
 #if ENABLE(SHADOW_DOM)
-    ASSERT((m_anchorNode && RuntimeEnabledFeatures::shadowDOMEnabled())
-           || !m_anchorNode || !m_anchorNode->isShadowRoot());
+    ASSERT((m_anchorNode && RuntimeEnabledFeatures::sharedFeatures().shadowDOMEnabled()) || !m_anchorNode || !m_anchorNode->isShadowRoot() || m_anchorNode == containerNode());
 #else
-    ASSERT(!m_anchorNode || !m_anchorNode->isShadowRoot());
+    ASSERT(!m_anchorNode || !m_anchorNode->isShadowRoot() || m_anchorNode == containerNode());
 #endif
 
     ASSERT(!m_anchorNode || !m_anchorNode->isPseudoElement());
@@ -120,7 +130,7 @@ Position::Position(PassRefPtr<Node> anchorNode, int offset, AnchorType anchorTyp
     , m_isLegacyEditingPosition(false)
 {
 #if ENABLE(SHADOW_DOM)
-    ASSERT((m_anchorNode && RuntimeEnabledFeatures::shadowDOMEnabled())
+    ASSERT((m_anchorNode && RuntimeEnabledFeatures::sharedFeatures().shadowDOMEnabled())
            || !m_anchorNode || !editingIgnoresContent(m_anchorNode.get()) || !m_anchorNode->isShadowRoot());
 #else
     ASSERT(!m_anchorNode || !editingIgnoresContent(m_anchorNode.get()) || !m_anchorNode->isShadowRoot());
@@ -841,16 +851,34 @@ static int boundingBoxLogicalHeight(RenderObject *o, const IntRect &rect)
     return o->style()->isHorizontalWritingMode() ? rect.height() : rect.width();
 }
 
-bool Position::hasRenderedNonAnonymousDescendantsWithHeight(RenderObject* renderer)
+bool Position::hasRenderedNonAnonymousDescendantsWithHeight(const RenderElement& renderer)
 {
-    RenderObject* stop = renderer->nextInPreOrderAfterChildren();
-    for (RenderObject *o = renderer->firstChild(); o && o != stop; o = o->nextInPreOrder())
-        if (o->nonPseudoNode()) {
-            if ((o->isText() && boundingBoxLogicalHeight(o, toRenderText(o)->linesBoundingBox()))
-                || (o->isBox() && toRenderBox(o)->pixelSnappedLogicalHeight())
-                || (o->isRenderInline() && isEmptyInline(o) && boundingBoxLogicalHeight(o, toRenderInline(o)->linesBoundingBox())))
+    RenderObject* stop = renderer.nextInPreOrderAfterChildren();
+    for (RenderObject* o = renderer.firstChild(); o && o != stop; o = o->nextInPreOrder()) {
+        if (!o->nonPseudoNode())
+            continue;
+        if (o->isText()) {
+            if (boundingBoxLogicalHeight(o, toRenderText(o)->linesBoundingBox()))
                 return true;
+            continue;
         }
+        if (o->isLineBreak()) {
+            if (boundingBoxLogicalHeight(o, toRenderLineBreak(o)->linesBoundingBox()))
+                return true;
+            continue;
+        }
+        if (o->isBox()) {
+            if (toRenderBox(o)->pixelSnappedLogicalHeight())
+                return true;
+            continue;
+        }
+        if (o->isRenderInline()) {
+            const RenderInline& renderInline = toRenderInline(*o);
+            if (isEmptyInline(renderInline) && boundingBoxLogicalHeight(o, renderInline.linesBoundingBox()))
+                return true;
+            continue;
+        }
+    }
     return false;
 }
 
@@ -864,7 +892,7 @@ ContainerNode* Position::findParent(const Node* node)
     // FIXME: See http://web.ug/82697
 
 #if ENABLE(SHADOW_DOM)
-    if (RuntimeEnabledFeatures::shadowDOMEnabled())
+    if (RuntimeEnabledFeatures::sharedFeatures().shadowDOMEnabled())
         return node->parentNode();
 #endif
 
@@ -925,9 +953,10 @@ bool Position::isCandidate() const
     if (m_anchorNode->hasTagName(htmlTag))
         return false;
         
-    if (renderer->isBlockFlowFlexBoxOrGrid()) {
-        if (toRenderBlock(renderer)->logicalHeight() || m_anchorNode->hasTagName(bodyTag)) {
-            if (!Position::hasRenderedNonAnonymousDescendantsWithHeight(renderer))
+    if (renderer->isRenderBlockFlow()) {
+        RenderBlock& block = toRenderBlock(*renderer);
+        if (block.logicalHeight() || m_anchorNode->hasTagName(bodyTag)) {
+            if (!Position::hasRenderedNonAnonymousDescendantsWithHeight(block))
                 return atFirstEditingPositionForNode() && !Position::nodeIsUserSelectNone(deprecatedNode());
             return m_anchorNode->rendererIsEditable() && !Position::nodeIsUserSelectNone(deprecatedNode()) && atEditingBoundary();
         }
@@ -1060,7 +1089,7 @@ bool Position::rendersInDifferentPosition(const Position &pos) const
         return false;
     }
 
-    if (b1->root() != b2->root()) {
+    if (&b1->root() != &b2->root()) {
         return true;
     }
 
@@ -1123,9 +1152,9 @@ void Position::getInlineBoxAndOffset(EAffinity affinity, InlineBox*& inlineBox, 
 
 static bool isNonTextLeafChild(RenderObject* object)
 {
-    if (object->firstChild())
-        return false;
     if (object->isText())
+        return false;
+    if (toRenderElement(object)->firstChild())
         return false;
     return true;
 }
@@ -1183,28 +1212,9 @@ void Position::getInlineBoxAndOffset(EAffinity affinity, TextDirection primaryDi
     caretOffset = deprecatedEditingOffset();
     RenderObject* renderer = deprecatedNode()->renderer();
 
-    if (!renderer->isText()) {
-        inlineBox = 0;
-        if (canHaveChildrenForEditing(deprecatedNode()) && renderer->isBlockFlowFlexBoxOrGrid() && hasRenderedNonAnonymousDescendantsWithHeight(renderer)) {
-            // Try a visually equivalent position with possibly opposite editability. This helps in case |this| is in
-            // an editable block but surrounded by non-editable positions. It acts to negate the logic at the beginning
-            // of RenderObject::createVisiblePosition().
-            Position equivalent = downstreamIgnoringEditingBoundaries(*this);
-            if (equivalent == *this) {
-                equivalent = upstreamIgnoringEditingBoundaries(*this);
-                if (equivalent == *this || downstreamIgnoringEditingBoundaries(equivalent) == *this)
-                    return;
-            }
-
-            equivalent.getInlineBoxAndOffset(UPSTREAM, primaryDirection, inlineBox, caretOffset);
-            return;
-        }
-        if (renderer->isBox()) {
-            inlineBox = toRenderBox(renderer)->inlineBoxWrapper();
-            if (!inlineBox || (caretOffset > inlineBox->caretMinOffset() && caretOffset < inlineBox->caretMaxOffset()))
-                return;
-        }
-    } else {
+    if (renderer->isBR())
+        inlineBox = !caretOffset ? toRenderLineBreak(renderer)->inlineBoxWrapper() : nullptr;
+    else if (renderer->isText()) {
         RenderText* textRenderer = toRenderText(renderer);
 
         InlineTextBox* box;
@@ -1235,6 +1245,27 @@ void Position::getInlineBoxAndOffset(EAffinity affinity, TextDirection primaryDi
                 caretOffset = box->caretMinOffset();
         }
         inlineBox = box ? box : candidate;
+    } else {
+        inlineBox = 0;
+        if (canHaveChildrenForEditing(deprecatedNode()) && renderer->isRenderBlockFlow() && hasRenderedNonAnonymousDescendantsWithHeight(toRenderBlock(*renderer))) {
+            // Try a visually equivalent position with possibly opposite editability. This helps in case |this| is in
+            // an editable block but surrounded by non-editable positions. It acts to negate the logic at the beginning
+            // of RenderObject::createVisiblePosition().
+            Position equivalent = downstreamIgnoringEditingBoundaries(*this);
+            if (equivalent == *this) {
+                equivalent = upstreamIgnoringEditingBoundaries(*this);
+                if (equivalent == *this || downstreamIgnoringEditingBoundaries(equivalent) == *this)
+                    return;
+            }
+
+            equivalent.getInlineBoxAndOffset(UPSTREAM, primaryDirection, inlineBox, caretOffset);
+            return;
+        }
+        if (renderer->isBox()) {
+            inlineBox = toRenderBox(renderer)->inlineBoxWrapper();
+            if (!inlineBox || (caretOffset > inlineBox->caretMinOffset() && caretOffset < inlineBox->caretMaxOffset()))
+                return;
+        }
     }
 
     if (!inlineBox)
@@ -1333,7 +1364,7 @@ TextDirection Position::primaryDirection() const
 {
     TextDirection primaryDirection = LTR;
     for (const RenderObject* r = m_anchorNode->renderer(); r; r = r->parent()) {
-        if (r->isBlockFlowFlexBoxOrGrid()) {
+        if (r->isRenderBlockFlow()) {
             primaryDirection = r->style()->direction();
             break;
         }

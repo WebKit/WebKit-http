@@ -33,13 +33,13 @@
 
 namespace WebCore {
 
-inline SVGTextElement::SVGTextElement(const QualifiedName& tagName, Document* doc)
-    : SVGTextPositioningElement(tagName, doc)
+inline SVGTextElement::SVGTextElement(const QualifiedName& tagName, Document& document)
+    : SVGTextPositioningElement(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::textTag));
 }
 
-PassRefPtr<SVGTextElement> SVGTextElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGTextElement> SVGTextElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new SVGTextElement(tagName, document));
 }
@@ -68,9 +68,9 @@ AffineTransform SVGTextElement::animatedLocalTransform() const
     return matrix;
 }
 
-RenderObject* SVGTextElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SVGTextElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
-    return new (arena) RenderSVGText(this);
+    return new (arena) RenderSVGText(*this);
 }
 
 bool SVGTextElement::childShouldCreateRenderer(const Node* child) const

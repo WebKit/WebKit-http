@@ -53,7 +53,7 @@ ALWAYS_INLINE int arityCheckFor(ExecState* exec, JSStack* stack, CodeSpecializat
     int argumentCountIncludingThis = exec->argumentCountIncludingThis();
     
     // This ensures enough space for the worst case scenario of zero arguments passed by the caller.
-    if (!stack->grow(exec->registers() + newCodeBlock->numParameters() + newCodeBlock->m_numCalleeRegisters))
+    if (!stack->grow(exec->registers() - newCodeBlock->numParameters() - newCodeBlock->m_numCalleeRegisters))
         return -1;
     
     ASSERT(argumentCountIncludingThis < newCodeBlock->numParameters());
@@ -153,6 +153,7 @@ SLOW_PATH_HIDDEN_DECL(slow_path_call_arityCheck);
 SLOW_PATH_HIDDEN_DECL(slow_path_construct_arityCheck);
 SLOW_PATH_HIDDEN_DECL(slow_path_create_arguments);
 SLOW_PATH_HIDDEN_DECL(slow_path_create_this);
+SLOW_PATH_HIDDEN_DECL(slow_path_get_callee);
 SLOW_PATH_HIDDEN_DECL(slow_path_to_this);
 SLOW_PATH_HIDDEN_DECL(slow_path_not);
 SLOW_PATH_HIDDEN_DECL(slow_path_eq);

@@ -46,7 +46,7 @@ class InjectedScriptManager;
 class InspectorFrontend;
 class InspectorObject;
 class InstrumentingAgents;
-class KURL;
+class URL;
 class Page;
 
 typedef String ErrorString;
@@ -67,8 +67,8 @@ public:
     void enable(ErrorString*);
     void disable(ErrorString*);
 
-    KURL inspectedURL() const;
-    KURL inspectedURLWithoutFragment() const;
+    URL inspectedURL() const;
+    URL inspectedURLWithoutFragment() const;
 
     InspectorFrontend* frontend() const { return m_frontend; }
 
@@ -92,22 +92,13 @@ public:
 private:
     InspectorAgent(Page*, InjectedScriptManager*, InstrumentingAgents*, InspectorCompositeState*);
 
-    void unbindAllResources();
-
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    void toggleRecordButton(bool);
-#endif
-
-    bool isMainResourceLoader(DocumentLoader*, const KURL& requestUrl);
-
     Page* m_inspectedPage;
     InspectorFrontend* m_frontend;
     InjectedScriptManager* m_injectedScriptManager;
 
-    Vector<pair<long, String> > m_pendingEvaluateTestCommands;
-    pair<RefPtr<TypeBuilder::Runtime::RemoteObject>, RefPtr<InspectorObject> > m_pendingInspectData;
-    typedef HashMap<String, String> InjectedScriptForOriginMap;
-    InjectedScriptForOriginMap m_injectedScriptForOrigin;
+    Vector<pair<long, String>> m_pendingEvaluateTestCommands;
+    pair<RefPtr<TypeBuilder::Runtime::RemoteObject>, RefPtr<InspectorObject>> m_pendingInspectData;
+    HashMap<String, String> m_injectedScriptForOrigin;
 };
 
 } // namespace WebCore

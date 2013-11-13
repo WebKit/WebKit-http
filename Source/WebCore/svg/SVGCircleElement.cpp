@@ -50,7 +50,7 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGCircleElement)
     REGISTER_PARENT_ANIMATED_PROPERTIES(SVGGraphicsElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
-inline SVGCircleElement::SVGCircleElement(const QualifiedName& tagName, Document* document)
+inline SVGCircleElement::SVGCircleElement(const QualifiedName& tagName, Document& document)
     : SVGGraphicsElement(tagName, document)
     , m_cx(LengthModeWidth)
     , m_cy(LengthModeHeight)
@@ -60,7 +60,7 @@ inline SVGCircleElement::SVGCircleElement(const QualifiedName& tagName, Document
     registerAnimatedPropertiesForSVGCircleElement();
 }
 
-PassRefPtr<SVGCircleElement> SVGCircleElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGCircleElement> SVGCircleElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new SVGCircleElement(tagName, document));
 }
@@ -139,9 +139,9 @@ bool SVGCircleElement::selfHasRelativeLengths() const
         || r().isRelative();
 }
 
-RenderObject* SVGCircleElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SVGCircleElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
-    return new (arena) RenderSVGEllipse(this);
+    return new (arena) RenderSVGEllipse(*this);
 }
 
 }

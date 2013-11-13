@@ -74,6 +74,7 @@ find(\&wanted, "Source/WebCore");
 find(\&wanted, "Source/WebKit");
 find(\&wanted, "Source/WebKit2");
 find(\&wanted, "Tools/DumpRenderTree");
+find(\&wanted, "Tools/TestWebKitAPI");
 
 sub wanted
 {
@@ -93,10 +94,15 @@ sub wanted
 
 # Setting isDOMTypeRename to 1 rather than 0 expands the regexps used
 # below to handle custom JavaScript bindings.
-my $isDOMTypeRename = 1;
+my $isDOMTypeRename = 0;
 my %renames = (
     # Renames go here in the form of:
-    "WaveTable" => "PeriodicWave",
+    "WKURL" => "WKURL",
+    "KURL" => "URL",
+    "KURLCFNet" => "URLCF",
+    "KURLHash" => "URLHash",
+    "KURLMac" => "URLMac",
+    "KURL_h" => "URL_h",
 );
 
 my %renamesContemplatedForTheFuture = (
@@ -104,25 +110,8 @@ my %renamesContemplatedForTheFuture = (
 
     "DOMObject" => "JSDOMObject",
 
-    "runtimeObjectGetter" => "pluginElementGetter",
-    "runtimeObjectPropertyGetter" => "pluginElementPropertyGetter",
-    "runtimeObjectCustomGetOwnPropertySlot" => "pluginElementCustomGetOwnPropertySlot",
-    "runtimeObjectCustomPut" => "pluginElementCustomPut",
-    "runtimeObjectImplementsCall" => "pluginElementImplementsCall",
-    "runtimeObjectCallAsFunction" => "pluginElementCallAsFunction",
-
-    "CLONE_CONTENTS" => "Clone",
-    "DELETE_CONTENTS" => "Delete",
-    "EXTRACT_CONTENTS" => "Extract",
-
     "DateInstance" => "JSDate",
     "ErrorInstance" => "JSError",
-
-    "KURL" => "URL",
-    "KURLCFNet" => "URLCF",
-    "KURLHash" => "URLHash",
-    "KURLMac" => "URLMac",
-    "KURL_h" => "URL_h",
 
     "TreeShared" => "TreeRefCounted",
 
@@ -140,31 +129,20 @@ my %renamesContemplatedForTheFuture = (
 
     "equalIgnoringCase" => "equalFoldingCase",
 
-    "FTPDirectoryTokenizer" => "FTPDirectoryDocumentBuilder",
-    "HTMLTokenizer" => "HTMLDocumentBuilder",
-    "ImageTokenizer" => "ImageDocumentBuilder",
-    "PluginTokenizer" => "PluginDocumentBuilder",
-    "TextTokenizer" => "TextDocumentBuilder",
-    "Tokenizer" => "DocumentBuilder",
-    "Tokenizer_h" => "DocumentBuilder_h",
-    "XMLTokenizer" => "XMLDocumentBuilder",
-    "isHTMLTokenizer" => "isHTMLDocumentBuilder",
-    "m_tokenizer" => "m_builder",
-    "createTokenizer" => "createBuilder",
-    "tokenizerProcessedData" => "documentBuilderProcessedData",
-
     "WTF_UNICODE_H" => "Unicode_h",
     "WTF_UNICODE_ICU_H" => "UnicodeICU_h",
-    "WTF_UNICODE_QT4_H" => "UnicodeQt4_h",
     "UnicodeIcu" => "UnicodeICU",
 
-    "m_invertibleCTM" => "m_transformIsInvertible",
+    "LegacyWebArchive" => "WebArchive",
+    "LegacyWebArchive_h" => "WebArchive_h",
 
     "NativeFunctionWrapper_h" => "JSHostFunction_h",
     "NativeFunctionWrapper" => "JSHostFunction",
     "nativeFunctionThunk" => "hostFunctionThunk",
     "nativeFunction" => "hostFunction",
     "NativeFunction" => "HostFunction",
+
+    "OVERRIDE" => "override",
 );
 
 # Sort the keys of the renames hash in order of decreasing length. This

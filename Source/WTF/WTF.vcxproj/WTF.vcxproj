@@ -79,7 +79,6 @@
     <ClCompile Include="..\wtf\MD5.cpp" />
     <ClCompile Include="..\wtf\MediaTime.cpp" />
     <ClCompile Include="..\wtf\MetaAllocator.cpp" />
-    <ClCompile Include="..\wtf\NullPtr.cpp" />
     <ClCompile Include="..\wtf\NumberOfCores.cpp" />
     <ClCompile Include="..\wtf\OSAllocatorWin.cpp" />
     <ClCompile Include="..\wtf\OSRandomSource.cpp" />
@@ -109,18 +108,15 @@
     <ClCompile Include="..\wtf\threadspecificWin.cpp" />
     <ClCompile Include="..\wtf\threads\BinarySemaphore.cpp" />
     <ClCompile Include="..\wtf\threads\win\BinarySemaphoreWin.cpp" />
-    <ClCompile Include="..\wtf\TypeTraits.cpp" />
     <ClCompile Include="..\wtf\unicode\icu\CollatorICU.cpp" />
     <ClCompile Include="..\wtf\unicode\UTF8.cpp" />
     <ClCompile Include="..\wtf\win\MainThreadWin.cpp" />
-    <ClCompile Include="..\wtf\win\OwnPtrWin.cpp" />
     <ClCompile Include="..\wtf\WTFThreadData.cpp" />
     <ClCompile Include="..\wtf\SchedulePairCF.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\wtf\CompilationThread.h" />
     <ClInclude Include="..\WTF\config.h" />
-    <ClInclude Include="..\wtf\Alignment.h" />
     <ClInclude Include="..\wtf\ASCIICType.h" />
     <ClInclude Include="..\wtf\Assertions.h" />
     <ClInclude Include="..\wtf\Atomics.h" />
@@ -192,12 +188,8 @@
     <ClInclude Include="..\wtf\MetaAllocatorHandle.h" />
     <ClInclude Include="..\wtf\NeverDestroyed.h" />
     <ClInclude Include="..\wtf\Noncopyable.h" />
-    <ClInclude Include="..\wtf\NonCopyingSort.h" />
-    <ClInclude Include="..\wtf\NotFound.h" />
-    <ClInclude Include="..\wtf\NullPtr.h" />
     <ClInclude Include="..\wtf\NumberOfCores.h" />
     <ClInclude Include="..\wtf\OSRandomSource.h" />
-    <ClInclude Include="..\wtf\OwnArrayPtr.h" />
     <ClInclude Include="..\wtf\OwnPtr.h" />
     <ClInclude Include="..\wtf\OwnPtrCommon.h" />
     <ClInclude Include="..\wtf\PackedIntVector.h" />
@@ -211,7 +203,6 @@
     <ClInclude Include="..\wtf\ParallelJobsOpenMP.h" />
     <ClInclude Include="..\wtf\PassOwnPtr.h" />
     <ClInclude Include="..\wtf\PassRefPtr.h" />
-    <ClInclude Include="..\wtf\PassTraits.h" />
     <ClInclude Include="..\wtf\Platform.h" />
     <ClInclude Include="..\wtf\PossiblyNull.h" />
     <ClInclude Include="..\wtf\PrintStream.h" />
@@ -263,7 +254,6 @@
     <ClInclude Include="..\wtf\threadsafeRefCounted.h" />
     <ClInclude Include="..\wtf\threadspecific.h" />
     <ClInclude Include="..\wtf\threads\BinarySemaphore.h" />
-    <ClInclude Include="..\wtf\TypeTraits.h" />
     <ClInclude Include="..\wtf\unicode\CharacterNames.h" />
     <ClInclude Include="..\wtf\unicode\Collator.h" />
     <ClInclude Include="..\wtf\unicode\icu\UnicodeIcu.h" />
@@ -273,6 +263,7 @@
     <ClInclude Include="..\wtf\ValueCheck.h" />
     <ClInclude Include="..\wtf\Vector.h" />
     <ClInclude Include="..\wtf\VMTags.h" />
+    <ClInclude Include="..\wtf\win\GDIObject.h" />
     <ClInclude Include="..\wtf\WTFThreadData.h" />
   </ItemGroup>
   <ItemGroup>

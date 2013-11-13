@@ -190,12 +190,12 @@ private:
     virtual void frameDidFinishLoading(uint64_t requestID);
     virtual void frameDidFail(uint64_t requestID, bool wasCancelled);
     virtual void didEvaluateJavaScript(uint64_t requestID, const String& result);
-    virtual void streamDidReceiveResponse(uint64_t streamID, const WebCore::KURL& responseURL, uint32_t streamLength, 
+    virtual void streamDidReceiveResponse(uint64_t streamID, const WebCore::URL& responseURL, uint32_t streamLength, 
                                           uint32_t lastModifiedTime, const String& mimeType, const String& headers, const String& suggestedFileName);
     virtual void streamDidReceiveData(uint64_t streamID, const char* bytes, int length);
     virtual void streamDidFinishLoading(uint64_t streamID);
     virtual void streamDidFail(uint64_t streamID, bool wasCancelled);
-    virtual void manualStreamDidReceiveResponse(const WebCore::KURL& responseURL, uint32_t streamLength, 
+    virtual void manualStreamDidReceiveResponse(const WebCore::URL& responseURL, uint32_t streamLength, 
                                                 uint32_t lastModifiedTime, const String& mimeType, const String& headers, const String& suggestedFileName);
     virtual void manualStreamDidReceiveData(const char* bytes, int length);
     virtual void manualStreamDidFinishLoading();
@@ -313,15 +313,13 @@ private:
     public:
         typedef void (*TimerFunc)(NPP, uint32_t timerID);
 
-        static PassOwnPtr<Timer> create(NetscapePlugin*, unsigned timerID, unsigned interval, bool repeat, TimerFunc);
+        Timer(NetscapePlugin*, unsigned timerID, unsigned interval, bool repeat, TimerFunc);
         ~Timer();
 
         void start();
         void stop();
 
     private:
-        Timer(NetscapePlugin*, unsigned timerID, unsigned interval, bool repeat, TimerFunc);
-
         void timerFired();
 
         // This is a weak pointer since Timer objects are destroyed before the NetscapePlugin object itself is destroyed.
@@ -334,7 +332,7 @@ private:
 
         WebCore::RunLoop::Timer<Timer> m_timer;
     };
-    typedef HashMap<unsigned, OwnPtr<Timer>> TimerMap;
+    typedef HashMap<unsigned, std::unique_ptr<Timer>> TimerMap;
     TimerMap m_timers;
     unsigned m_nextTimerID;
 

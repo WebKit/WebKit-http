@@ -30,9 +30,9 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "AssemblyHelpers.h"
 #include "CodeBlock.h"
 #include "DFGArgumentPosition.h"
-#include "DFGAssemblyHelpers.h"
 #include "DFGBasicBlock.h"
 #include "DFGDominators.h"
 #include "DFGLongLivedState.h"
@@ -41,6 +41,7 @@
 #include "DFGNodeAllocator.h"
 #include "DFGPlan.h"
 #include "DFGVariadicFunction.h"
+#include "InlineCallFrameSet.h"
 #include "JSStack.h"
 #include "MethodOfGettingAValueProfile.h"
 #include <wtf/BitVector.h>
@@ -61,9 +62,9 @@ struct StorageAccessData {
 };
 
 enum AddSpeculationMode {
-    DontSpeculateInteger,
-    SpeculateIntegerAndTruncateConstants,
-    SpeculateInteger
+    DontSpeculateInt32,
+    SpeculateInt32AndTruncateConstants,
+    SpeculateInt32
 };
 
 //
@@ -190,7 +191,7 @@ public:
         return speculationFromValue(node->valueOfJSConstant(m_codeBlock));
     }
     
-    AddSpeculationMode addSpeculationMode(Node* add, bool leftShouldSpeculateInteger, bool rightShouldSpeculateInteger)
+    AddSpeculationMode addSpeculationMode(Node* add, bool leftShouldSpeculateInt32, bool rightShouldSpeculateInt32)
     {
         ASSERT(add->op() == ValueAdd || add->op() == ArithAdd || add->op() == ArithSub);
         
@@ -198,21 +199,21 @@ public:
         Node* right = add->child2().node();
         
         if (left->hasConstant())
-            return addImmediateShouldSpeculateInteger(add, rightShouldSpeculateInteger, left);
+            return addImmediateShouldSpeculateInt32(add, rightShouldSpeculateInt32, left);
         if (right->hasConstant())
-            return addImmediateShouldSpeculateInteger(add, leftShouldSpeculateInteger, right);
+            return addImmediateShouldSpeculateInt32(add, leftShouldSpeculateInt32, right);
         
-        return (leftShouldSpeculateInteger && rightShouldSpeculateInteger && add->canSpeculateInteger()) ? SpeculateInteger : DontSpeculateInteger;
+        return (leftShouldSpeculateInt32 && rightShouldSpeculateInt32 && add->canSpeculateInt32()) ? SpeculateInt32 : DontSpeculateInt32;
     }
     
     AddSpeculationMode valueAddSpeculationMode(Node* add)
     {
-        return addSpeculationMode(add, add->child1()->shouldSpeculateIntegerExpectingDefined(), add->child2()->shouldSpeculateIntegerExpectingDefined());
+        return addSpeculationMode(add, add->child1()->shouldSpeculateInt32ExpectingDefined(), add->child2()->shouldSpeculateInt32ExpectingDefined());
     }
     
     AddSpeculationMode arithAddSpeculationMode(Node* add)
     {
-        return addSpeculationMode(add, add->child1()->shouldSpeculateIntegerForArithmetic(), add->child2()->shouldSpeculateIntegerForArithmetic());
+        return addSpeculationMode(add, add->child1()->shouldSpeculateInt32ForArithmetic(), add->child2()->shouldSpeculateInt32ForArithmetic());
     }
     
     AddSpeculationMode addSpeculationMode(Node* add)
@@ -223,25 +224,68 @@ public:
         return arithAddSpeculationMode(add);
     }
     
-    bool addShouldSpeculateInteger(Node* add)
+    bool addShouldSpeculateInt32(Node* add)
     {
-        return addSpeculationMode(add) != DontSpeculateInteger;
+        return addSpeculationMode(add) != DontSpeculateInt32;
     }
     
-    bool mulShouldSpeculateInteger(Node* mul)
+    bool addShouldSpeculateMachineInt(Node* add)
+    {
+        if (!enableInt52())
+            return false;
+        
+        Node* left = add->child1().node();
+        Node* right = add->child2().node();
+
+        bool speculation;
+        if (add->op() == ValueAdd)
+            speculation = Node::shouldSpeculateMachineInt(left, right);
+        else
+            speculation = Node::shouldSpeculateMachineInt(left, right);
+
+        return speculation && !hasExitSite(add, Int52Overflow);
+    }
+    
+    bool mulShouldSpeculateInt32(Node* mul)
     {
         ASSERT(mul->op() == ArithMul);
         
         Node* left = mul->child1().node();
         Node* right = mul->child2().node();
         
-        return Node::shouldSpeculateIntegerForArithmetic(left, right) && mul->canSpeculateInteger();
+        return Node::shouldSpeculateInt32ForArithmetic(left, right)
+            && mul->canSpeculateInt32();
     }
     
-    bool negateShouldSpeculateInteger(Node* negate)
+    bool mulShouldSpeculateMachineInt(Node* mul)
+    {
+        ASSERT(mul->op() == ArithMul);
+        
+        if (!enableInt52())
+            return false;
+        
+        Node* left = mul->child1().node();
+        Node* right = mul->child2().node();
+
+        return Node::shouldSpeculateMachineInt(left, right)
+            && mul->canSpeculateInt52()
+            && !hasExitSite(mul, Int52Overflow);
+    }
+    
+    bool negateShouldSpeculateInt32(Node* negate)
     {
         ASSERT(negate->op() == ArithNegate);
-        return negate->child1()->shouldSpeculateIntegerForArithmetic() && negate->canSpeculateInteger();
+        return negate->child1()->shouldSpeculateInt32ForArithmetic() && negate->canSpeculateInt32();
+    }
+    
+    bool negateShouldSpeculateMachineInt(Node* negate)
+    {
+        ASSERT(negate->op() == ArithNegate);
+        if (!enableInt52())
+            return false;
+        return negate->child1()->shouldSpeculateMachineInt()
+            && !hasExitSite(negate, Int52Overflow)
+            && negate->canSpeculateInt52();
     }
     
     // Helper methods to check nodes for constants.
@@ -380,17 +424,22 @@ public:
         return baselineCodeBlockFor(codeOrigin)->hasExitSite(FrequentExitSite(codeOrigin.bytecodeIndex, exitKind));
     }
     
-    int argumentsRegisterFor(const CodeOrigin& codeOrigin)
+    bool hasExitSite(Node* node, ExitKind exitKind)
+    {
+        return hasExitSite(node->codeOrigin, exitKind);
+    }
+    
+    VirtualRegister argumentsRegisterFor(const CodeOrigin& codeOrigin)
     {
         if (!codeOrigin.inlineCallFrame)
             return m_codeBlock->argumentsRegister();
         
-        return baselineCodeBlockForInlineCallFrame(
-            codeOrigin.inlineCallFrame)->argumentsRegister() +
-            codeOrigin.inlineCallFrame->stackOffset;
+        return VirtualRegister(baselineCodeBlockForInlineCallFrame(
+            codeOrigin.inlineCallFrame)->argumentsRegister().offset() +
+            codeOrigin.inlineCallFrame->stackOffset);
     }
     
-    int uncheckedArgumentsRegisterFor(const CodeOrigin& codeOrigin)
+    VirtualRegister uncheckedArgumentsRegisterFor(const CodeOrigin& codeOrigin)
     {
         if (!codeOrigin.inlineCallFrame)
             return m_codeBlock->uncheckedArgumentsRegister();
@@ -398,13 +447,13 @@ public:
         CodeBlock* codeBlock = baselineCodeBlockForInlineCallFrame(
             codeOrigin.inlineCallFrame);
         if (!codeBlock->usesArguments())
-            return InvalidVirtualRegister;
+            return VirtualRegister();
         
-        return codeBlock->argumentsRegister() +
-            codeOrigin.inlineCallFrame->stackOffset;
+        return VirtualRegister(codeBlock->argumentsRegister().offset() +
+            codeOrigin.inlineCallFrame->stackOffset);
     }
     
-    int uncheckedActivationRegisterFor(const CodeOrigin&)
+    VirtualRegister uncheckedActivationRegisterFor(const CodeOrigin&)
     {
         // This will ignore CodeOrigin because we don't inline code that uses activations.
         // Hence for inlined call frames it will return the outermost code block's
@@ -423,14 +472,14 @@ public:
         CodeBlock* profiledBlock = baselineCodeBlockFor(node->codeOrigin);
         
         if (node->op() == GetArgument)
-            return profiledBlock->valueProfileForArgument(operandToArgument(node->local()));
+            return profiledBlock->valueProfileForArgument(node->local().toArgument());
         
         if (node->hasLocal(*this)) {
             if (m_form == SSA)
                 return 0;
-            if (!operandIsArgument(node->local()))
+            if (!node->local().isArgument())
                 return 0;
-            int argument = operandToArgument(node->local());
+            int argument = node->local().toArgument();
             if (node->variableAccessData() != m_arguments[argument]->variableAccessData())
                 return 0;
             return profiledBlock->valueProfileForArgument(argument);
@@ -699,6 +748,7 @@ public:
     SegmentedVector<StructureTransitionData, 8> m_structureTransitionData;
     SegmentedVector<NewArrayBufferData, 4> m_newArrayBufferData;
     SegmentedVector<SwitchData, 4> m_switchData;
+    OwnPtr<InlineCallFrameSet> m_inlineCallFrames;
     bool m_hasArguments;
     HashSet<ExecutableBase*> m_executablesWhoseArgumentsEscaped;
     BitVector m_preservedVars;
@@ -717,29 +767,29 @@ private:
     void handleSuccessor(Vector<BasicBlock*, 16>& worklist, BasicBlock*, BasicBlock* successor);
     void addForDepthFirstSort(Vector<BasicBlock*>& result, Vector<BasicBlock*, 16>& worklist, HashSet<BasicBlock*>& seen, BasicBlock*);
     
-    AddSpeculationMode addImmediateShouldSpeculateInteger(Node* add, bool variableShouldSpeculateInteger, Node* immediate)
+    AddSpeculationMode addImmediateShouldSpeculateInt32(Node* add, bool variableShouldSpeculateInt32, Node* immediate)
     {
         ASSERT(immediate->hasConstant());
         
         JSValue immediateValue = immediate->valueOfJSConstant(m_codeBlock);
         if (!immediateValue.isNumber())
-            return DontSpeculateInteger;
+            return DontSpeculateInt32;
         
-        if (!variableShouldSpeculateInteger)
-            return DontSpeculateInteger;
+        if (!variableShouldSpeculateInt32)
+            return DontSpeculateInt32;
         
         if (immediateValue.isInt32())
-            return add->canSpeculateInteger() ? SpeculateInteger : DontSpeculateInteger;
+            return add->canSpeculateInt32() ? SpeculateInt32 : DontSpeculateInt32;
         
         double doubleImmediate = immediateValue.asDouble();
         const double twoToThe48 = 281474976710656.0;
         if (doubleImmediate < -twoToThe48 || doubleImmediate > twoToThe48)
-            return DontSpeculateInteger;
+            return DontSpeculateInt32;
         
-        return nodeCanTruncateInteger(add->arithNodeFlags()) ? SpeculateIntegerAndTruncateConstants : DontSpeculateInteger;
+        return bytecodeCanTruncateInteger(add->arithNodeFlags()) ? SpeculateInt32AndTruncateConstants : DontSpeculateInt32;
     }
     
-    bool mulImmediateShouldSpeculateInteger(Node* mul, Node* variable, Node* immediate)
+    bool mulImmediateShouldSpeculateInt32(Node* mul, Node* variable, Node* immediate)
     {
         ASSERT(immediate->hasConstant());
         
@@ -747,7 +797,7 @@ private:
         if (!immediateValue.isInt32())
             return false;
         
-        if (!variable->shouldSpeculateIntegerForArithmetic())
+        if (!variable->shouldSpeculateInt32ForArithmetic())
             return false;
         
         int32_t intImmediate = immediateValue.asInt32();
@@ -755,12 +805,12 @@ private:
         // magnitude possible int32 value) and any value less than 2^22 to not result in any
         // rounding in a double multiplication - hence it will be equivalent to an integer
         // multiplication, if we are doing int32 truncation afterwards (which is what
-        // canSpeculateInteger() implies).
+        // canSpeculateInt32() implies).
         const int32_t twoToThe22 = 1 << 22;
         if (intImmediate <= -twoToThe22 || intImmediate >= twoToThe22)
-            return mul->canSpeculateInteger() && !nodeMayOverflow(mul->arithNodeFlags());
+            return mul->canSpeculateInt32() && !nodeMayOverflow(mul->arithNodeFlags());
 
-        return mul->canSpeculateInteger();
+        return mul->canSpeculateInt32();
     }
 };
 

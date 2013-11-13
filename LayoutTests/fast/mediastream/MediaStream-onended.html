@@ -1,8 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
-<script src="../js/resources/js-test-pre.js"></script>
+<script src="../../resources/js-test-pre.js"></script>
 </head>
 <body>
 <p id="description"></p>
@@ -26,20 +25,45 @@ function getUserMedia(dictionary, callback) {
 
 var stream;
 
-function streamEnded() {
-    testPassed('streamEnded was called.');
+function streamEnded2() {
+    debug("");
+    testPassed('streamEnded2 was called.');
     shouldBeTrue('stream.ended');
     finishJSTest();
 }
 
-function gotStream(s) {
+function gotStream2(s) {
+    debug("");
+    testPassed('gotStream2 was called.');
     stream = new webkitMediaStream(s);
     shouldBeFalse('stream.ended');
     try {
-        stream.onended = streamEnded;
-        s.stop();
+        stream.onended = streamEnded2;
+        stream.stop();
     } catch (e) {
-        testFailed('LocalMediaStream threw exception :' + e);
+        testFailed('MediaStream threw exception :' + e);
+        finishJSTest();
+    }
+}
+
+function streamEnded() {
+    debug("");
+    testPassed('streamEnded was called.');
+    shouldBeTrue('stream.ended');
+
+    getUserMedia({audio:true, video:true}, gotStream2);
+}
+
+function gotStream(s) {
+    debug("");
+    testPassed('gotStream was called.');
+    stream = s;
+    shouldBeFalse('stream.ended');
+    try {
+        stream.onended = streamEnded;
+        stream.stop();
+    } catch (e) {
+        testFailed('MediaStream threw exception :' + e);
         finishJSTest();
     }
 }
@@ -49,6 +73,6 @@ getUserMedia({audio:true, video:true}, gotStream);
 window.jsTestIsAsync = true;
 window.successfullyParsed = true;
 </script>
-<script src="../js/resources/js-test-post.js"></script>
+<script src="../../resources/js-test-post.js"></script>
 </body>
 </html>

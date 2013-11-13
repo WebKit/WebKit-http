@@ -82,7 +82,7 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGPathElement)
     REGISTER_PARENT_ANIMATED_PROPERTIES(SVGGraphicsElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
-inline SVGPathElement::SVGPathElement(const QualifiedName& tagName, Document* document)
+inline SVGPathElement::SVGPathElement(const QualifiedName& tagName, Document& document)
     : SVGGraphicsElement(tagName, document)
     , m_pathByteStream(SVGPathByteStream::create())
     , m_pathSegList(PathSegUnalteredRole)
@@ -92,7 +92,7 @@ inline SVGPathElement::SVGPathElement(const QualifiedName& tagName, Document* do
     registerAnimatedPropertiesForSVGPathElement();
 }
 
-PassRefPtr<SVGPathElement> SVGPathElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGPathElement> SVGPathElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new SVGPathElement(tagName, document));
 }
@@ -405,10 +405,10 @@ FloatRect SVGPathElement::getBBox(StyleUpdateStrategy styleUpdateStrategy)
     return renderer->path().boundingRect();
 }
 
-RenderObject* SVGPathElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SVGPathElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
     // By default, any subclass is expected to do path-based drawing
-    return new (arena) RenderSVGPath(this);
+    return new (arena) RenderSVGPath(*this);
 }
 
 }

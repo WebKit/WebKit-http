@@ -241,6 +241,7 @@ static PassRefPtr<IDBIndex> indexForObjectStore(IDBObjectStore* idbObjectStore, 
     return idbIndex;
 }
 
+#if !PLATFORM(MAC)
 static PassRefPtr<KeyPath> keyPathFromIDBKeyPath(const IDBKeyPath& idbKeyPath)
 {
     RefPtr<KeyPath> keyPath;
@@ -267,6 +268,7 @@ static PassRefPtr<KeyPath> keyPathFromIDBKeyPath(const IDBKeyPath& idbKeyPath)
 
     return keyPath.release();
 }
+#endif // !PLATFORM(MAC)
 
 class DatabaseLoader : public ExecutableWithDatabase {
 public:
@@ -279,6 +281,9 @@ public:
 
     virtual void execute(PassRefPtr<IDBDatabase> prpDatabase)
     {
+#if PLATFORM(MAC)
+        ASSERT_UNUSED(prpDatabase, prpDatabase);
+#else
         RefPtr<IDBDatabase> idbDatabase = prpDatabase;
         if (!requestCallback()->isActive())
             return;
@@ -312,11 +317,12 @@ public:
         }
         RefPtr<DatabaseWithObjectStores> result = DatabaseWithObjectStores::create()
             .setName(databaseMetadata.name)
-            .setIntVersion(databaseMetadata.intVersion)
-            .setVersion(databaseMetadata.version)
+            .setIntVersion(databaseMetadata.version)
+            .setVersion(String::number(databaseMetadata.version))
             .setObjectStores(objectStores);
 
         m_requestCallback->sendSuccess(result);
+#endif // PLATFORM(MAC)
     }
 
     virtual RequestCallback* requestCallback() { return m_requestCallback.get(); }
@@ -657,7 +663,7 @@ void InspectorIndexedDBAgent::requestData(ErrorString* errorString, const String
     if (!idbFactory)
         return;
 
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(mainWorldScriptState(frame));
+    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(mainWorldExecState(frame));
 
     RefPtr<IDBKeyRange> idbKeyRange = keyRange ? idbKeyRangeFromKeyRange(keyRange->get()) : 0;
     if (keyRange && !idbKeyRange) {

@@ -33,12 +33,13 @@
 namespace WebCore {
 
 class FloatPoint;
-    
+class RenderElement;
+
 typedef void (*NodeCallback)(Node*, unsigned);
 
 namespace Private { 
     template<class GenericNode, class GenericNodeContainer>
-    void addChildNodesToDeletionQueue(GenericNode*& head, GenericNode*& tail, GenericNodeContainer*);
+    void addChildNodesToDeletionQueue(GenericNode*& head, GenericNode*& tail, GenericNodeContainer&);
 };
 
 class NoEventDispatchAssertion {
@@ -98,7 +99,7 @@ public:
     // They don't send DOM mutation events or handle reparenting.
     // However, arbitrary code may be run by beforeload handlers.
     void parserAppendChild(PassRefPtr<Node>);
-    void parserRemoveChild(Node*);
+    void parserRemoveChild(Node&);
     void parserInsertBefore(PassRefPtr<Node> newChild, Node* refChild);
 
     void removeChildren();
@@ -123,25 +124,30 @@ public:
 
     virtual bool childShouldCreateRenderer(const Node*) const { return true; }
 
+    using Node::setAttributeEventListener;
+    void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
+
+    RenderElement* renderer() const;
+
 protected:
-    ContainerNode(Document*, ConstructionType = CreateContainer);
+    explicit ContainerNode(Document*, ConstructionType = CreateContainer);
 
     static void queuePostAttachCallback(NodeCallback, Node*, unsigned = 0);
     static bool postAttachCallbacksAreSuspended();
 
     template<class GenericNode, class GenericNodeContainer>
-    friend void appendChildToContainer(GenericNode* child, GenericNodeContainer*);
+    friend void appendChildToContainer(GenericNode* child, GenericNodeContainer&);
 
     template<class GenericNode, class GenericNodeContainer>
-    friend void Private::addChildNodesToDeletionQueue(GenericNode*& head, GenericNode*& tail, GenericNodeContainer*);
+    friend void Private::addChildNodesToDeletionQueue(GenericNode*& head, GenericNode*& tail, GenericNodeContainer&);
 
     void removeDetachedChildren();
     void setFirstChild(Node* child) { m_firstChild = child; }
     void setLastChild(Node* child) { m_lastChild = child; }
 
 private:
-    void removeBetween(Node* previousChild, Node* nextChild, Node* oldChild);
-    void insertBeforeCommon(Node* nextChild, Node* oldChild);
+    void removeBetween(Node* previousChild, Node* nextChild, Node& oldChild);
+    void insertBeforeCommon(Node& nextChild, Node& oldChild);
 
     static void dispatchPostAttachCallbacks();
     void suspendPostAttachCallbacks();
@@ -150,10 +156,10 @@ private:
     bool getUpperLeftCorner(FloatPoint&) const;
     bool getLowerRightCorner(FloatPoint&) const;
 
-    void notifyChildInserted(Node* child, ChildChangeSource);
-    void notifyChildRemoved(Node* child, Node* previousSibling, Node* nextSibling, ChildChangeSource);
+    void notifyChildInserted(Node& child, ChildChangeSource);
+    void notifyChildRemoved(Node& child, Node* previousSibling, Node* nextSibling, ChildChangeSource);
 
-    void updateTreeAfterInsertion(Node* child, AttachBehavior);
+    void updateTreeAfterInsertion(Node& child, AttachBehavior);
 
     bool isContainerNode() const WTF_DELETED_FUNCTION;
 
@@ -173,8 +179,20 @@ inline const ContainerNode* toContainerNode(const Node* node)
     return static_cast<const ContainerNode*>(node);
 }
 
+inline ContainerNode& toContainerNode(Node& node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(node.isContainerNode());
+    return static_cast<ContainerNode&>(node);
+}
+inline const ContainerNode& toContainerNode(const Node& node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(node.isContainerNode());
+    return static_cast<const ContainerNode&>(node);
+}
+
 // This will catch anyone doing an unnecessary cast.
 void toContainerNode(const ContainerNode*);
+void toContainerNode(const ContainerNode&);
 
 inline ContainerNode::ContainerNode(Document* document, ConstructionType type)
     : Node(document, type)
@@ -220,12 +238,12 @@ inline Node* Node::highestAncestor() const
     return highest;
 }
 
-inline bool Node::needsShadowTreeWalker() const
+inline bool Node::needsNodeRenderingTraversalSlowPath() const
 {
-    if (getFlag(NeedsShadowTreeWalkerFlag))
+    if (getFlag(NeedsNodeRenderingTraversalSlowPathFlag))
         return true;
     ContainerNode* parent = parentOrShadowHostNode();
-    return parent && parent->getFlag(NeedsShadowTreeWalkerFlag);
+    return parent && parent->getFlag(NeedsNodeRenderingTraversalSlowPathFlag);
 }
 
 inline bool Node::isTreeScope() const
@@ -237,21 +255,21 @@ inline bool Node::isTreeScope() const
 // for a Node Vector that is used to store child Nodes of a given Node.
 // FIXME: Optimize the value.
 const int initialNodeVectorSize = 11;
-typedef Vector<RefPtr<Node>, initialNodeVectorSize> NodeVector;
+typedef Vector<Ref<Node>, initialNodeVectorSize> NodeVector;
 
-inline void getChildNodes(Node* node, NodeVector& nodes)
+inline void getChildNodes(Node& node, NodeVector& nodes)
 {
-    ASSERT(!nodes.size());
-    for (Node* child = node->firstChild(); child; child = child->nextSibling())
-        nodes.append(child);
+    ASSERT(nodes.isEmpty());
+    for (Node* child = node.firstChild(); child; child = child->nextSibling())
+        nodes.append(*child);
 }
 
 class ChildNodesLazySnapshot {
     WTF_MAKE_NONCOPYABLE(ChildNodesLazySnapshot);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit ChildNodesLazySnapshot(Node* parentNode)
-        : m_currentNode(parentNode->firstChild())
+    explicit ChildNodesLazySnapshot(Node& parentNode)
+        : m_currentNode(parentNode.firstChild())
         , m_currentIndex(0)
     {
         m_nextSnapshot = latestSnapshot;

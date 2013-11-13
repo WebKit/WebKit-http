@@ -27,7 +27,6 @@
 #import "WebContext.h"
 
 #import "PluginProcessManager.h"
-#import "SharedWorkerProcessManager.h"
 #import "TextChecker.h"
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKBrowsingContextControllerInternal.h"
@@ -39,6 +38,7 @@
 #import <WebCore/FileSystem.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformPasteboard.h>
+#import <WebCore/SharedBuffer.h>
 #import <sys/param.h>
 
 #if ENABLE(NETWORK_PROCESS)
@@ -103,14 +103,11 @@ static void updateProcessSuppressionStateOfGlobalChildProcesses()
 {
     // The plan is to have all child processes become context specific.  This function
     // can be removed once that is complete.
-#if ENABLE(PLUGIN_PROCESS) || ENABLE(SHARED_WORKER_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API) || ENABLE(SHARED_WORKER_PROCESS)
     bool canEnable = WebContext::canEnableProcessSuppressionForGlobalChildProcesses();
 #endif
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
     PluginProcessManager::shared().setProcessSuppressionEnabled(canEnable);
-#endif
-#if ENABLE(SHARED_WORKER_PROCESS)
-    SharedWorkerProcessManager::shared().setProcessSuppressionEnabled(canEnable);
 #endif
 }
 
@@ -459,6 +456,50 @@ void WebContext::setPasteboardBufferForType(const String& pasteboardName, const 
     newChangeCount = PlatformPasteboard(pasteboardName).setBufferForType(buffer, pasteboardType);
 }
 
+#if PLATFORM(IOS)
+void WebContext::writeWebContentToPasteboard(const WebCore::PasteboardWebContent& content)
+{
+    PlatformPasteboard().write(content);
+}
+
+void WebContext::writeImageToPasteboard(const WebCore::PasteboardImage& pasteboardImage)
+{
+    PlatformPasteboard().write(pasteboardImage);
+}
+
+void WebContext::writeStringToPasteboard(const String& pasteboardType, const String& text)
+{
+    PlatformPasteboard().write(pasteboardType, text);
+}
+
+void WebContext::readStringFromPasteboard(uint64_t index, const String& pasteboardType, WTF::String& value)
+{
+    value = PlatformPasteboard().readString(index, pasteboardType);
+}
+
+void WebContext::readURLFromPasteboard(uint64_t index, const String& pasteboardType, String& url)
+{
+    url = PlatformPasteboard().readURL(index, pasteboardType);
+}
+
+void WebContext::readBufferFromPasteboard(uint64_t index, const String& pasteboardType, SharedMemory::Handle& handle, uint64_t& size)
+{
+    RefPtr<SharedBuffer> buffer = PlatformPasteboard().readBuffer(index, pasteboardType);
+    if (!buffer)
+        return;
+    size = buffer->size();
+    RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::create(size);
+    memcpy(sharedMemoryBuffer->data(), buffer->data(), size);
+    sharedMemoryBuffer->createHandle(handle, SharedMemory::ReadOnly);
+}
+
+void WebContext::getPasteboardItemsCount(uint64_t& itemsCount)
+{
+    itemsCount = PlatformPasteboard().count();
+}
+
+#endif
+
 void WebContext::setProcessSuppressionEnabled(bool enabled)
 {
     if (m_processSuppressionEnabled == enabled)
@@ -587,7 +628,7 @@ static CFURLStorageSessionRef privateBrowsingSession()
 bool WebContext::isURLKnownHSTSHost(const String& urlString, bool privateBrowsingEnabled) const
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-    RetainPtr<CFURLRef> url = KURL(KURL(), urlString).createCFURL();
+    RetainPtr<CFURLRef> url = URL(URL(), urlString).createCFURL();
 
     return _CFNetworkIsKnownHSTSHostWithSession(url.get(), privateBrowsingEnabled ? privateBrowsingSession() : nullptr);
 #else

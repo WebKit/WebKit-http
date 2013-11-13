@@ -50,15 +50,15 @@ const ClassInfo BooleanPrototype::s_info = { "Boolean", &BooleanObject::s_info, 
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(BooleanPrototype);
 
-BooleanPrototype::BooleanPrototype(ExecState* exec, Structure* structure)
-    : BooleanObject(exec->vm(), structure)
+BooleanPrototype::BooleanPrototype(VM& vm, Structure* structure)
+    : BooleanObject(vm, structure)
 {
 }
 
-void BooleanPrototype::finishCreation(ExecState* exec, JSGlobalObject*)
+void BooleanPrototype::finishCreation(VM& vm, JSGlobalObject*)
 {
-    Base::finishCreation(exec->vm());
-    setInternalValue(exec->vm(), jsBoolean(false));
+    Base::finishCreation(vm);
+    setInternalValue(vm, jsBoolean(false));
 
     ASSERT(inherits(info()));
 }

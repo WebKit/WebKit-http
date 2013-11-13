@@ -28,13 +28,13 @@
 
 #include "CSSCalculationValue.h"
 #include "CSSValueKeywords.h"
-#include "GeneratorGeneratedImage.h"
 #include "Gradient.h"
+#include "GradientImage.h"
 #include "Image.h"
 #include "IntSize.h"
 #include "IntSizeHash.h"
 #include "NodeRenderStyle.h"
-#include "RenderObject.h"
+#include "RenderElement.h"
 #include "StyleResolver.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
@@ -43,7 +43,7 @@ using namespace std;
 
 namespace WebCore {
 
-PassRefPtr<Image> CSSGradientValue::image(RenderObject* renderer, const IntSize& size)
+PassRefPtr<Image> CSSGradientValue::image(RenderElement* renderer, const IntSize& size)
 {
     if (size.isEmpty())
         return 0;
@@ -60,14 +60,14 @@ PassRefPtr<Image> CSSGradientValue::image(RenderObject* renderer, const IntSize&
 
     RefPtr<Gradient> gradient;
 
-    if (isLinearGradient())
-        gradient = static_cast<CSSLinearGradientValue*>(this)->createGradient(renderer, size);
+    if (isLinearGradientValue())
+        gradient = toCSSLinearGradientValue(this)->createGradient(renderer, size);
     else {
-        ASSERT(isRadialGradient());
-        gradient = static_cast<CSSRadialGradientValue*>(this)->createGradient(renderer, size);
+        ASSERT(isRadialGradientValue());
+        gradient = toCSSRadialGradientValue(this)->createGradient(renderer, size);
     }
 
-    RefPtr<GeneratorGeneratedImage> newImage = GeneratorGeneratedImage::create(gradient, size);
+    RefPtr<GradientImage> newImage = GradientImage::create(gradient, size);
     if (cacheable)
         saveCachedImageForSize(size, newImage);
 
@@ -117,10 +117,10 @@ PassRefPtr<CSSGradientValue> CSSGradientValue::gradientWithStylesResolved(StyleR
     RefPtr<CSSGradientValue> result;
     if (!derived)
         result = this;
-    else if (isLinearGradient())
-        result = static_cast<CSSLinearGradientValue*>(this)->clone();
-    else if (isRadialGradient())
-        result = static_cast<CSSRadialGradientValue*>(this)->clone();
+    else if (isLinearGradientValue())
+        result = toCSSLinearGradientValue(this)->clone();
+    else if (isRadialGradientValue())
+        result = toCSSRadialGradientValue(this)->clone();
     else {
         ASSERT_NOT_REACHED();
         return 0;
@@ -132,7 +132,7 @@ PassRefPtr<CSSGradientValue> CSSGradientValue::gradientWithStylesResolved(StyleR
     return result.release();
 }
 
-void CSSGradientValue::addStops(Gradient* gradient, RenderObject* renderer, RenderStyle* rootStyle, float maxLengthForRepeat)
+void CSSGradientValue::addStops(Gradient* gradient, RenderElement* renderer, RenderStyle* rootStyle, float maxLengthForRepeat)
 {
     RenderStyle* style = renderer->style();
 
@@ -165,9 +165,9 @@ void CSSGradientValue::addStops(Gradient* gradient, RenderObject* renderer, Rend
 
     FloatPoint gradientStart = gradient->p0();
     FloatPoint gradientEnd;
-    if (isLinearGradient())
+    if (isLinearGradientValue())
         gradientEnd = gradient->p1();
-    else if (isRadialGradient())
+    else if (isRadialGradientValue())
         gradientEnd = gradientStart + FloatSize(gradient->endRadius(), 0);
 
     for (size_t i = 0; i < numStops; ++i) {
@@ -268,7 +268,7 @@ void CSSGradientValue::addStops(Gradient* gradient, RenderObject* renderer, Rend
 
             // Radial gradients may need to extend further than the endpoints, because they have
             // to repeat out to the corners of the box.
-            if (isRadialGradient()) {
+            if (isRadialGradientValue()) {
                 if (!computedGradientLength) {
                     FloatSize gradientSize(gradientStart - gradientEnd);
                     gradientLength = gradientSize.diagonalLength();
@@ -326,7 +326,7 @@ void CSSGradientValue::addStops(Gradient* gradient, RenderObject* renderer, Rend
 
     // If the gradient goes outside the 0-1 range, normalize it by moving the endpoints, and adjusting the stops.
     if (numStops > 1 && (stops[0].offset < 0 || stops[numStops - 1].offset > 1)) {
-        if (isLinearGradient()) {
+        if (isLinearGradientValue()) {
             float firstOffset = stops[0].offset;
             float lastOffset = stops[numStops - 1].offset;
             if (firstOffset != lastOffset) {
@@ -344,7 +344,7 @@ void CSSGradientValue::addStops(Gradient* gradient, RenderObject* renderer, Rend
                 for (size_t i = 0; i < numStops; ++i)
                     stops[i].offset = 1;
             }
-        } else if (isRadialGradient()) {
+        } else if (isRadialGradientValue()) {
             // Rather than scaling the points < 0, we truncate them, so only scale according to the largest point.
             float firstOffset = 0;
             float lastOffset = stops[numStops - 1].offset;
@@ -459,7 +459,7 @@ bool CSSGradientValue::isCacheable() const
     return true;
 }
 
-bool CSSGradientValue::knownToBeOpaque(const RenderObject*) const
+bool CSSGradientValue::knownToBeOpaque(const RenderElement*) const
 {
     for (size_t i = 0; i < m_stops.size(); ++i) {
         if (m_stops[i].m_resolvedColor.hasAlpha())
@@ -643,7 +643,7 @@ static void endPointsFromAngle(float angleDeg, const IntSize& size, FloatPoint& 
     firstPoint.set(halfWidth - endX, halfHeight + endY);
 }
 
-PassRefPtr<Gradient> CSSLinearGradientValue::createGradient(RenderObject* renderer, const IntSize& size)
+PassRefPtr<Gradient> CSSLinearGradientValue::createGradient(RenderElement* renderer, const IntSize& size)
 {
     ASSERT(!size.isEmpty());
 
@@ -983,7 +983,7 @@ static inline float horizontalEllipseRadius(const FloatSize& p, float aspectRati
 }
 
 // FIXME: share code with the linear version
-PassRefPtr<Gradient> CSSRadialGradientValue::createGradient(RenderObject* renderer, const IntSize& size)
+PassRefPtr<Gradient> CSSRadialGradientValue::createGradient(RenderElement* renderer, const IntSize& size)
 {
     ASSERT(!size.isEmpty());
 

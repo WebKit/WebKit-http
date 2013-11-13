@@ -36,8 +36,6 @@
 #include "HTMLParserIdioms.h"
 #include "Page.h"
 #include "RenderImage.h"
-#include "ScriptEventListener.h"
-#include <wtf/NotFound.h>
 
 using namespace std;
 
@@ -45,7 +43,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-HTMLImageElement::HTMLImageElement(const QualifiedName& tagName, Document* document, HTMLFormElement* form)
+HTMLImageElement::HTMLImageElement(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
     : HTMLElement(tagName, document)
     , m_imageLoader(this)
     , m_form(form)
@@ -57,12 +55,12 @@ HTMLImageElement::HTMLImageElement(const QualifiedName& tagName, Document* docum
         form->registerImgElement(this);
 }
 
-PassRefPtr<HTMLImageElement> HTMLImageElement::create(Document* document)
+PassRefPtr<HTMLImageElement> HTMLImageElement::create(Document& document)
 {
     return adoptRef(new HTMLImageElement(imgTag, document));
 }
 
-PassRefPtr<HTMLImageElement> HTMLImageElement::create(const QualifiedName& tagName, Document* document, HTMLFormElement* form)
+PassRefPtr<HTMLImageElement> HTMLImageElement::create(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
 {
     return adoptRef(new HTMLImageElement(tagName, document, form));
 }
@@ -73,7 +71,7 @@ HTMLImageElement::~HTMLImageElement()
         m_form->removeImgElement(this);
 }
 
-PassRefPtr<HTMLImageElement> HTMLImageElement::createForJSConstructor(Document* document, const int* optionalWidth, const int* optionalHeight)
+PassRefPtr<HTMLImageElement> HTMLImageElement::createForJSConstructor(Document& document, const int* optionalWidth, const int* optionalHeight)
 {
     RefPtr<HTMLImageElement> image = adoptRef(new HTMLImageElement(imgTag, document));
     if (optionalWidth)
@@ -128,7 +126,7 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicStr
     } else if (name == usemapAttr)
         setIsLink(!value.isNull() && !shouldProhibitLinks(this));
     else if (name == onbeforeloadAttr)
-        setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, name, value));
+        setAttributeEventListener(eventNames().beforeloadEvent, name, value);
     else if (name == compositeAttr) {
         // FIXME: images don't support blend modes in their compositing attribute.
         BlendMode blendOp = BlendModeNormal;
@@ -164,10 +162,10 @@ String HTMLImageElement::altText() const
     return alt;
 }
 
-RenderObject* HTMLImageElement::createRenderer(RenderArena* arena, RenderStyle* style)
+RenderElement* HTMLImageElement::createRenderer(RenderArena& arena, RenderStyle& style)
 {
-    if (style->hasContent())
-        return RenderObject::createObject(this, style);
+    if (style.hasContent())
+        return RenderElement::createFor(*this, style);
 
     RenderImage* image = new (arena) RenderImage(this);
     image->setImageResource(RenderImageResource::create());
@@ -311,7 +309,7 @@ void HTMLImageElement::setHeight(int value)
     setAttribute(heightAttr, String::number(value));
 }
 
-KURL HTMLImageElement::src() const
+URL HTMLImageElement::src() const
 {
     return document().completeURL(getAttribute(srcAttr));
 }
@@ -328,24 +326,22 @@ void HTMLImageElement::setWidth(int value)
 
 int HTMLImageElement::x() const
 {
-    RenderObject* r = renderer();
-    if (!r)
+    auto renderer = this->renderer();
+    if (!renderer)
         return 0;
 
     // FIXME: This doesn't work correctly with transforms.
-    FloatPoint absPos = r->localToAbsolute();
-    return absPos.x();
+    return renderer->localToAbsolute().x();
 }
 
 int HTMLImageElement::y() const
 {
-    RenderObject* r = renderer();
-    if (!r)
+    auto renderer = this->renderer();
+    if (!renderer)
         return 0;
 
     // FIXME: This doesn't work correctly with transforms.
-    FloatPoint absPos = r->localToAbsolute();
-    return absPos.y();
+    return renderer->localToAbsolute().y();
 }
 
 bool HTMLImageElement::complete() const
@@ -353,7 +349,7 @@ bool HTMLImageElement::complete() const
     return m_imageLoader.imageComplete();
 }
 
-void HTMLImageElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) const
+void HTMLImageElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     HTMLElement::addSubresourceAttributeURLs(urls);
 
@@ -381,5 +377,17 @@ bool HTMLImageElement::isServerMap() const
 
     return document().completeURL(stripLeadingAndTrailingHTMLSpaces(usemap)).isEmpty();
 }
+
+#if PLATFORM(IOS)
+// FIXME: This is a workaround for <rdar://problem/7725158>. We should find a better place for the touchCalloutEnabled() logic.
+bool HTMLImageElement::willRespondToMouseClickEvents()
+{
+    auto renderer = this->renderer();
+    RenderStyle* style = renderer ? renderer->style() : nullptr;
+    if (!style || style->touchCalloutEnabled())
+        return true;
+    return HTMLElement::willRespondToMouseClickEvents();
+}
+#endif
 
 }

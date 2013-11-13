@@ -38,10 +38,11 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <WebCore/BString.h>
 #include <WebCore/HistoryItem.h>
-#include <WebCore/KURL.h>
+#include <WebCore/URL.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/SharedBuffer.h>
 #include <functional>
+#include <wtf/DateMath.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
@@ -75,6 +76,65 @@ static COMPtr<CFDictionaryPropertyBag> createUserInfoFromHistoryItem(BSTR notifi
     return info;
 }
 
+static inline void addDayToSystemTime(SYSTEMTIME& systemTime)
+{
+    systemTime.wDay += 1;
+    if (systemTime.wDay > 31) {
+        systemTime.wDay = 1;
+        systemTime.wMonth += 1;
+    }
+    if (systemTime.wMonth > 12) {
+        systemTime.wMonth = 1;
+        systemTime.wYear += 1;
+    }
+
+    // Convert to and from VariantTime to fix invalid dates like 2001-04-31.
+    DATE date = 0.0;
+    ::SystemTimeToVariantTime(&systemTime, &date);
+    ::VariantTimeToSystemTime(date, &systemTime);
+}
+
+static void getDayBoundaries(DATE day, DATE& beginningOfDay, DATE& beginningOfNextDay)
+{
+    SYSTEMTIME systemTime;
+    ::VariantTimeToSystemTime(day, &systemTime);
+
+    SYSTEMTIME beginningLocalTime;
+    ::SystemTimeToTzSpecificLocalTime(0, &systemTime, &beginningLocalTime);
+    beginningLocalTime.wHour = 0;
+    beginningLocalTime.wMinute = 0;
+    beginningLocalTime.wSecond = 0;
+    beginningLocalTime.wMilliseconds = 0;
+
+    SYSTEMTIME beginningOfNextDayLocalTime = beginningLocalTime;
+    addDayToSystemTime(beginningOfNextDayLocalTime);
+
+    SYSTEMTIME beginningSystemTime;
+    ::TzSpecificLocalTimeToSystemTime(0, &beginningLocalTime, &beginningSystemTime);
+    ::SystemTimeToVariantTime(&beginningSystemTime, &beginningOfDay);
+
+    SYSTEMTIME beginningOfNextDaySystemTime;
+    ::TzSpecificLocalTimeToSystemTime(0, &beginningOfNextDayLocalTime, &beginningOfNextDaySystemTime);
+    ::SystemTimeToVariantTime(&beginningOfNextDaySystemTime, &beginningOfNextDay);
+}
+
+static inline DATE beginningOfDay(DATE date)
+{
+    static DATE cachedBeginningOfDay = std::numeric_limits<DATE>::quiet_NaN();
+    static DATE cachedBeginningOfNextDay;
+    if (!(date >= cachedBeginningOfDay && date < cachedBeginningOfNextDay))
+        getDayBoundaries(date, cachedBeginningOfDay, cachedBeginningOfNextDay);
+    return cachedBeginningOfDay;
+}
+
+static inline WebHistory::DateKey dateKey(DATE date)
+{
+    // Converting from double (DATE) to int64_t (WebHistoryDateKey) is safe
+    // here because all sensible dates are in the range -2**48 .. 2**47 which
+    // safely fits in an int64_t.
+    return beginningOfDay(date) * secondsPerDay;
+}
+
 // WebHistory -----------------------------------------------------------------
 
 WebHistory::WebHistory()
@@ -83,8 +143,6 @@ WebHistory::WebHistory()
 {
     gClassCount++;
     gClassNameCount.add("WebHistory");
-
-    m_entriesByURL = adoptCF(CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &MarshallingHelpers::kIUnknownDictionaryValueCallBacks));
 
     m_preferences = WebPreferences::sharedStandardPreferences();
 }
@@ -242,14 +300,15 @@ HRESULT STDMETHODCALLTYPE WebHistory::removeItems(
 HRESULT STDMETHODCALLTYPE WebHistory::removeAllItems( void)
 {
     m_entriesByDate.clear();
-    m_orderedLastVisitedDays.clear();
+    m_orderedLastVisitedDays = nullptr;
 
-    CFIndex itemCount = CFDictionaryGetCount(m_entriesByURL.get());
-    Vector<IWebHistoryItem*> itemsVector(itemCount);
-    CFDictionaryGetKeysAndValues(m_entriesByURL.get(), 0, (const void**)itemsVector.data());
-    RetainPtr<CFArrayRef> allItems = adoptCF(CFArrayCreate(kCFAllocatorDefault, (const void**)itemsVector.data(), itemCount, &MarshallingHelpers::kIUnknownArrayCallBacks));
+    Vector<IWebHistoryItem*> itemsVector;
+    itemsVector.reserveInitialCapacity(m_entriesByURL.size());
+    for (auto it = m_entriesByURL.begin(); it != m_entriesByURL.end(); ++it)
+        itemsVector.append(it->value.get());
+    RetainPtr<CFArrayRef> allItems = adoptCF(CFArrayCreate(kCFAllocatorDefault, (const void**)itemsVector.data(), itemsVector.size(), &MarshallingHelpers::kIUnknownArrayCallBacks));
 
-    CFDictionaryRemoveAllValues(m_entriesByURL.get());
+    m_entriesByURL.clear();
 
     PageGroup::removeAllVisitedLinks();
 
@@ -274,11 +333,11 @@ HRESULT STDMETHODCALLTYPE WebHistory::orderedLastVisitedDays(
 
     *count = dateCount;
     if (!m_orderedLastVisitedDays) {
-        m_orderedLastVisitedDays = adoptArrayPtr(new DATE[dateCount]);
+        m_orderedLastVisitedDays = std::make_unique<DATE[]>(dateCount);
         DateToEntriesMap::const_iterator::Keys end = m_entriesByDate.end().keys();
         int i = 0;
         for (DateToEntriesMap::const_iterator::Keys it = m_entriesByDate.begin().keys(); it != end; ++it, ++i)
-            m_orderedLastVisitedDays[i] = MarshallingHelpers::CFAbsoluteTimeToDATE(*it);
+            m_orderedLastVisitedDays[i] = *it / secondsPerDay;
         // Use std::greater to sort the days in descending order (i.e., most-recent first).
         sort(m_orderedLastVisitedDays.get(), m_orderedLastVisitedDays.get() + dateCount, greater<DATE>());
     }
@@ -292,19 +351,14 @@ HRESULT STDMETHODCALLTYPE WebHistory::orderedItemsLastVisitedOnDay(
     /* [in] */ IWebHistoryItem** items,
     /* [in] */ DATE calendarDate)
 {
-    DateKey dateKey;
-    if (!findKey(&dateKey, MarshallingHelpers::DATEToCFAbsoluteTime(calendarDate))) {
+    auto found = m_entriesByDate.find(dateKey(calendarDate));
+    if (found == m_entriesByDate.end()) {
         *count = 0;
         return 0;
     }
 
-    CFArrayRef entries = m_entriesByDate.get(dateKey).get();
-    if (!entries) {
-        *count = 0;
-        return 0;
-    }
-
-    int newCount = CFArrayGetCount(entries);
+    auto& entriesForDate = found->value;
+    int newCount = entriesForDate.size();
 
     if (!items) {
         *count = newCount;
@@ -317,11 +371,8 @@ HRESULT STDMETHODCALLTYPE WebHistory::orderedItemsLastVisitedOnDay(
     }
 
     *count = newCount;
-    for (int i = 0; i < newCount; i++) {
-        IWebHistoryItem* item = (IWebHistoryItem*)CFArrayGetValueAtIndex(entries, i);
-        item->AddRef();
-        items[i] = item;
-    }
+    for (int i = 0; i < newCount; ++i)
+        entriesForDate[i].copyRefTo(&items[i]);
 
     return S_OK;
 }
@@ -330,7 +381,7 @@ HRESULT STDMETHODCALLTYPE WebHistory::allItems(
     /* [out][in] */ int* count,
     /* [out][retval] */ IWebHistoryItem** items)
 {
-    int entriesByURLCount = CFDictionaryGetCount(m_entriesByURL.get());
+    int entriesByURLCount = m_entriesByURL.size();
 
     if (!items) {
         *count = entriesByURLCount;
@@ -343,9 +394,11 @@ HRESULT STDMETHODCALLTYPE WebHistory::allItems(
     }
 
     *count = entriesByURLCount;
-    CFDictionaryGetKeysAndValues(m_entriesByURL.get(), 0, (const void**)items);
-    for (int i = 0; i < entriesByURLCount; i++)
+    int i = 0;
+    for (auto it = m_entriesByURL.begin(); it != m_entriesByURL.end(); ++i, ++it) {
+        items[i] = it->value.get();
         items[i]->AddRef();
+    }
 
     return S_OK;
 }
@@ -403,16 +456,19 @@ HRESULT WebHistory::removeItem(IWebHistoryItem* entry)
     if (FAILED(hr))
         return hr;
 
-    RetainPtr<CFStringRef> urlString = adoptCF(MarshallingHelpers::BSTRToCFStringRef(urlBStr));
+    String urlString(urlBStr, SysStringLen(urlBStr));
+
+    auto it = m_entriesByURL.find(urlString);
+    if (it == m_entriesByURL.end())
+        return E_FAIL;
 
     // If this exact object isn't stored, then make no change.
     // FIXME: Is this the right behavior if this entry isn't present, but another entry for the same URL is?
     // Maybe need to change the API to make something like removeEntryForURLString public instead.
-    IWebHistoryItem *matchingEntry = (IWebHistoryItem*)CFDictionaryGetValue(m_entriesByURL.get(), urlString.get());
-    if (matchingEntry != entry)
+    if (it->value.get() != entry)
         return E_FAIL;
 
-    hr = removeItemForURLString(urlString.get());
+    hr = removeItemForURLString(urlString);
     if (FAILED(hr))
         return hr;
 
@@ -435,19 +491,18 @@ HRESULT WebHistory::addItem(IWebHistoryItem* entry, bool discardDuplicate, bool*
     if (FAILED(hr))
         return hr;
 
-    RetainPtr<CFStringRef> urlString = adoptCF(MarshallingHelpers::BSTRToCFStringRef(urlBStr));
+    String urlString(urlBStr, SysStringLen(urlBStr));
 
-    COMPtr<IWebHistoryItem> oldEntry((IWebHistoryItem*) CFDictionaryGetValue(
-        m_entriesByURL.get(), urlString.get()));
-    
+    COMPtr<IWebHistoryItem> oldEntry(m_entriesByURL.get(urlString));
+
     if (oldEntry) {
         if (discardDuplicate) {
             if (added)
                 *added = false;
             return S_OK;
         }
-        
-        removeItemForURLString(urlString.get());
+
+        removeItemForURLString(urlString);
 
         // If we already have an item with this URL, we need to merge info that drives the
         // URL autocomplete heuristics from that item into the new one.
@@ -463,7 +518,7 @@ HRESULT WebHistory::addItem(IWebHistoryItem* entry, bool discardDuplicate, bool*
     if (FAILED(hr))
         return hr;
 
-    CFDictionarySetValue(m_entriesByURL.get(), urlString.get(), entry);
+    m_entriesByURL.set(urlString, entry);
 
     COMPtr<CFDictionaryPropertyBag> userInfo = createUserInfoFromHistoryItem(
         getNotificationString(kWebHistoryItemsAddedNotification), entry);
@@ -475,11 +530,9 @@ HRESULT WebHistory::addItem(IWebHistoryItem* entry, bool discardDuplicate, bool*
     return hr;
 }
 
-void WebHistory::visitedURL(const KURL& url, const String& title, const String& httpMethod, bool wasFailure, bool increaseVisitCount)
+void WebHistory::visitedURL(const URL& url, const String& title, const String& httpMethod, bool wasFailure, bool increaseVisitCount)
 {
-    RetainPtr<CFStringRef> urlString = url.string().createCFString();
-
-    IWebHistoryItem* entry = (IWebHistoryItem*)CFDictionaryGetValue(m_entriesByURL.get(), urlString.get());
+    IWebHistoryItem* entry = m_entriesByURL.get(url.string()).get();
     if (entry) {
         COMPtr<IWebHistoryItemPrivate> entryPrivate(Query, entry);
         if (!entryPrivate)
@@ -507,7 +560,7 @@ void WebHistory::visitedURL(const KURL& url, const String& title, const String& 
         
         item->recordInitialVisit();
 
-        CFDictionarySetValue(m_entriesByURL.get(), urlString.get(), entry);
+        m_entriesByURL.set(url.string(), entry);
     }
 
     addItemToDateCaches(entry);
@@ -528,41 +581,30 @@ void WebHistory::visitedURL(const KURL& url, const String& title, const String& 
     postNotification(kWebHistoryItemsAddedNotification, userInfo.get());
 }
 
-HRESULT WebHistory::itemForURLString(
-    /* [in] */ CFStringRef urlString,
-    /* [retval][out] */ IWebHistoryItem** item) const
+HRESULT WebHistory::itemForURL(BSTR url, IWebHistoryItem** item)
 {
     if (!item)
         return E_FAIL;
     *item = 0;
 
-    IWebHistoryItem* foundItem = (IWebHistoryItem*) CFDictionaryGetValue(m_entriesByURL.get(), urlString);
-    if (!foundItem)
+    auto it = m_entriesByURL.find(url);
+    if (it == m_entriesByURL.end())
         return E_FAIL;
 
-    foundItem->AddRef();
-    *item = foundItem;
+    it->value.copyRefTo(item);
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE WebHistory::itemForURL( 
-    /* [in] */ BSTR url,
-    /* [retval][out] */ IWebHistoryItem** item)
+HRESULT WebHistory::removeItemForURLString(const WTF::String& urlString)
 {
-    RetainPtr<CFStringRef> urlString = adoptCF(MarshallingHelpers::BSTRToCFStringRef(url));
-    return itemForURLString(urlString.get(), item);
-}
-
-HRESULT WebHistory::removeItemForURLString(CFStringRef urlString)
-{
-    IWebHistoryItem* entry = (IWebHistoryItem*) CFDictionaryGetValue(m_entriesByURL.get(), urlString);
-    if (!entry) 
+    auto it = m_entriesByURL.find(urlString);
+    if (it == m_entriesByURL.end())
         return E_FAIL;
 
-    HRESULT hr = removeItemFromDateCaches(entry);
-    CFDictionaryRemoveValue(m_entriesByURL.get(), urlString);
+    HRESULT hr = removeItemFromDateCaches(it->value.get());
+    m_entriesByURL.remove(it);
 
-    if (!CFDictionaryGetCount(m_entriesByURL.get()))
+    if (!m_entriesByURL.size())
         PageGroup::removeAllVisitedLinks();
 
     return hr;
@@ -572,144 +614,77 @@ COMPtr<IWebHistoryItem> WebHistory::itemForURLString(const String& urlString) co
 {
     if (!urlString)
         return 0;
-    COMPtr<IWebHistoryItem> item;
-    if (FAILED(itemForURLString(urlString.createCFString().get(), &item)))
-        return 0;
-    return item;
-}
-
-HRESULT WebHistory::addItemToDateCaches(IWebHistoryItem* entry)
-{
-    HRESULT hr = S_OK;
-
-    DATE lastVisitedCOMTime;
-    entry->lastVisitedTimeInterval(&lastVisitedCOMTime);
-    
-    DateKey dateKey;
-    if (findKey(&dateKey, MarshallingHelpers::DATEToCFAbsoluteTime(lastVisitedCOMTime))) {
-        // other entries already exist for this date
-        hr = insertItem(entry, dateKey);
-    } else {
-        ASSERT(!m_entriesByDate.contains(dateKey));
-        // no other entries exist for this date
-        RetainPtr<CFMutableArrayRef> entryArray = adoptCF(
-            CFArrayCreateMutable(0, 0, &MarshallingHelpers::kIUnknownArrayCallBacks));
-        CFArrayAppendValue(entryArray.get(), entry);
-        m_entriesByDate.set(dateKey, entryArray);
-        // Clear m_orderedLastVisitedDays so it will be regenerated when next requested.
-        m_orderedLastVisitedDays.clear();
-    }
-
-    return hr;
+    return m_entriesByURL.get(urlString);
 }
 
 HRESULT WebHistory::removeItemFromDateCaches(IWebHistoryItem* entry)
 {
-    HRESULT hr = S_OK;
+    DATE lastVisitedTime;
+    entry->lastVisitedTimeInterval(&lastVisitedTime);
 
-    DATE lastVisitedCOMTime;
-    entry->lastVisitedTimeInterval(&lastVisitedCOMTime);
+    auto found = m_entriesByDate.find(dateKey(lastVisitedTime));
+    if (found == m_entriesByDate.end())
+        return S_OK;
 
-    DateKey dateKey;
-    if (!findKey(&dateKey, MarshallingHelpers::DATEToCFAbsoluteTime(lastVisitedCOMTime)))
-        return E_FAIL;
+    auto& entriesForDate = found->value;
+    int count = entriesForDate.size();
 
-    DateToEntriesMap::iterator found = m_entriesByDate.find(dateKey);
-    ASSERT(found != m_entriesByDate.end());
-    CFMutableArrayRef entriesForDate = found->value.get();
-
-    CFIndex count = CFArrayGetCount(entriesForDate);
     for (int i = count - 1; i >= 0; --i) {
-        if ((IWebHistoryItem*)CFArrayGetValueAtIndex(entriesForDate, i) == entry)
-            CFArrayRemoveValueAtIndex(entriesForDate, i);
+        if (entriesForDate[i] == entry)
+            entriesForDate.remove(i);
     }
 
     // remove this date entirely if there are no other entries on it
-    if (CFArrayGetCount(entriesForDate) == 0) {
+    if (entriesForDate.isEmpty()) {
         m_entriesByDate.remove(found);
         // Clear m_orderedLastVisitedDays so it will be regenerated when next requested.
-        m_orderedLastVisitedDays.clear();
+        m_orderedLastVisitedDays = nullptr;
     }
 
-    return hr;
+    return S_OK;
 }
 
-static void getDayBoundaries(CFAbsoluteTime day, CFAbsoluteTime& beginningOfDay, CFAbsoluteTime& beginningOfNextDay)
-{
-    RetainPtr<CFTimeZoneRef> timeZone = adoptCF(CFTimeZoneCopyDefault());
-    CFGregorianDate date = CFAbsoluteTimeGetGregorianDate(day, timeZone.get());
-    date.hour = 0;
-    date.minute = 0;
-    date.second = 0;
-    beginningOfDay = CFGregorianDateGetAbsoluteTime(date, timeZone.get());
-    date.day += 1;
-    beginningOfNextDay = CFGregorianDateGetAbsoluteTime(date, timeZone.get());
-}
-
-static inline CFAbsoluteTime beginningOfDay(CFAbsoluteTime date)
-{
-    static CFAbsoluteTime cachedBeginningOfDay = numeric_limits<CFAbsoluteTime>::quiet_NaN();
-    static CFAbsoluteTime cachedBeginningOfNextDay;
-    if (!(date >= cachedBeginningOfDay && date < cachedBeginningOfNextDay))
-        getDayBoundaries(date, cachedBeginningOfDay, cachedBeginningOfNextDay);
-    return cachedBeginningOfDay;
-}
-
-static inline WebHistory::DateKey dateKey(CFAbsoluteTime date)
-{
-    // Converting from double (CFAbsoluteTime) to int64_t (WebHistoryDateKey) is
-    // safe here because all sensible dates are in the range -2**48 .. 2**47 which
-    // safely fits in an int64_t.
-    return beginningOfDay(date);
-}
-
-// Returns whether the day is already in the list of days,
-// and fills in *key with the found or proposed key.
-bool WebHistory::findKey(DateKey* key, CFAbsoluteTime forDay)
-{
-    ASSERT_ARG(key, key);
-
-    *key = dateKey(forDay);
-    return m_entriesByDate.contains(*key);
-}
-
-HRESULT WebHistory::insertItem(IWebHistoryItem* entry, DateKey dateKey)
+HRESULT WebHistory::addItemToDateCaches(IWebHistoryItem* entry)
 {
     ASSERT_ARG(entry, entry);
-    ASSERT_ARG(dateKey, m_entriesByDate.contains(dateKey));
 
-    HRESULT hr = S_OK;
+    DATE lastVisitedTime;
+    entry->lastVisitedTimeInterval(&lastVisitedTime);
 
-    if (!entry)
-        return E_FAIL;
+    DateKey key = dateKey(lastVisitedTime);
+    auto found = m_entriesByDate.find(key);
+    if (found == m_entriesByDate.end()) {
+        Vector<COMPtr<IWebHistoryItem>> entries;
+        entries.append(entry);
+        m_entriesByDate.set(key, entries);
+        // Clear m_orderedLastVisitedDays so it will be regenerated when next requested.
+        m_orderedLastVisitedDays = nullptr;
+        return S_OK;
+    }
 
-    DATE entryTime;
-    entry->lastVisitedTimeInterval(&entryTime);
-    CFMutableArrayRef entriesForDate = m_entriesByDate.get(dateKey).get();
-    unsigned count = CFArrayGetCount(entriesForDate);
+    auto& entriesForDate = found->value;
+    size_t count = entriesForDate.size();
 
     // The entries for each day are stored in a sorted array with the most recent entry first
     // Check for the common cases of the entry being newer than all existing entries or the first entry of the day
     bool isNewerThanAllEntries = false;
     if (count) {
-        IWebHistoryItem* item = const_cast<IWebHistoryItem*>(static_cast<const IWebHistoryItem*>(CFArrayGetValueAtIndex(entriesForDate, 0)));
         DATE itemTime;
-        isNewerThanAllEntries = SUCCEEDED(item->lastVisitedTimeInterval(&itemTime)) && itemTime < entryTime;
+        isNewerThanAllEntries = SUCCEEDED(entriesForDate.first()->lastVisitedTimeInterval(&itemTime)) && itemTime < lastVisitedTime;
     }
     if (!count || isNewerThanAllEntries) {
-        CFArrayInsertValueAtIndex(entriesForDate, 0, entry);
+        entriesForDate.insert(0, entry);
         return S_OK;
     }
 
     // .. or older than all existing entries
     bool isOlderThanAllEntries = false;
     if (count > 0) {
-        IWebHistoryItem* item = const_cast<IWebHistoryItem*>(static_cast<const IWebHistoryItem*>(CFArrayGetValueAtIndex(entriesForDate, count - 1)));
         DATE itemTime;
-        isOlderThanAllEntries = SUCCEEDED(item->lastVisitedTimeInterval(&itemTime)) && itemTime >= entryTime;
+        isOlderThanAllEntries = SUCCEEDED(entriesForDate.last()->lastVisitedTimeInterval(&itemTime)) && itemTime >= lastVisitedTime;
     }
     if (isOlderThanAllEntries) {
-        CFArrayInsertValueAtIndex(entriesForDate, count, entry);
+        entriesForDate.append(entry);
         return S_OK;
     }
 
@@ -717,70 +692,25 @@ HRESULT WebHistory::insertItem(IWebHistoryItem* entry, DateKey dateKey)
     unsigned high = count;
     while (low < high) {
         unsigned mid = low + (high - low) / 2;
-        IWebHistoryItem* item = const_cast<IWebHistoryItem*>(static_cast<const IWebHistoryItem*>(CFArrayGetValueAtIndex(entriesForDate, mid)));
         DATE itemTime;
-        if (FAILED(item->lastVisitedTimeInterval(&itemTime)))
+        if (FAILED(entriesForDate[mid]->lastVisitedTimeInterval(&itemTime)))
             return E_FAIL;
 
-        if (itemTime >= entryTime)
+        if (itemTime >= lastVisitedTime)
             low = mid + 1;
         else
             high = mid;
     }
 
     // low is now the index of the first entry that is older than entryDate
-    CFArrayInsertValueAtIndex(entriesForDate, low, entry);
+    entriesForDate.insert(low, entry);
     return S_OK;
-}
-
-CFAbsoluteTime WebHistory::timeToDate(CFAbsoluteTime time)
-{
-    // can't just divide/round since the day boundaries depend on our current time zone
-    const double secondsPerDay = 60 * 60 * 24;
-    CFTimeZoneRef timeZone = CFTimeZoneCopySystem();
-    CFGregorianDate date = CFAbsoluteTimeGetGregorianDate(time, timeZone);
-    date.hour = date.minute = 0;
-    date.second = 0.0;
-    CFAbsoluteTime timeInDays = CFGregorianDateGetAbsoluteTime(date, timeZone);
-    if (areEqualOrClose(time - timeInDays, secondsPerDay))
-        timeInDays += secondsPerDay;
-    return timeInDays;
-}
-
-// Return a date that marks the age limit for history entries saved to or
-// loaded from disk. Any entry older than this item should be rejected.
-HRESULT WebHistory::ageLimitDate(CFAbsoluteTime* time)
-{
-    // get the current date as a CFAbsoluteTime
-    CFAbsoluteTime currentDate = timeToDate(CFAbsoluteTimeGetCurrent());
-
-    CFGregorianUnits ageLimit = {0};
-    int historyLimitDays;
-    HRESULT hr = historyAgeInDaysLimit(&historyLimitDays);
-    if (FAILED(hr))
-        return hr;
-    ageLimit.days = -historyLimitDays;
-    *time = CFAbsoluteTimeAddGregorianUnits(currentDate, CFTimeZoneCopySystem(), ageLimit);
-    return S_OK;
-}
-
-static void addVisitedLinkToPageGroup(const void* key, const void*, void* context)
-{
-    CFStringRef url = static_cast<CFStringRef>(key);
-    PageGroup* group = static_cast<PageGroup*>(context);
-
-    CFIndex length = CFStringGetLength(url);
-    const UChar* characters = reinterpret_cast<const UChar*>(CFStringGetCharactersPtr(url));
-    if (characters)
-        group->addVisitedLink(characters, length);
-    else {
-        Vector<UChar, 512> buffer(length);
-        CFStringGetCharacters(url, CFRangeMake(0, length), reinterpret_cast<UniChar*>(buffer.data()));
-        group->addVisitedLink(buffer.data(), length);
-    }
 }
 
 void WebHistory::addVisitedLinksToPageGroup(PageGroup& group)
 {
-    CFDictionaryApplyFunction(m_entriesByURL.get(), addVisitedLinkToPageGroup, &group);
+    for (auto it = m_entriesByURL.begin(); it != m_entriesByURL.end(); ++it) {
+        const String& url = it->key;
+        group.addVisitedLink(url.characters(), url.length());
+    }
 }

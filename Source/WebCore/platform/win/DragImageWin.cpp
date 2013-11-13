@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc.  All rights reserved.
+ * Copyright (C) 2007, 2008, 2013 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,17 +33,18 @@
 #include "GraphicsContext.h"
 #include "HWndDC.h"
 #include "Image.h"
-#include "KURL.h"
+#include "URL.h"
 #include "StringTruncator.h"
 #include "TextRun.h"
 #include "WebCoreTextRenderer.h"
 #include <wtf/RetainPtr.h>
+#include <wtf/win/GDIObject.h>
 
 #include <windows.h>
 
 namespace WebCore {
 
-HBITMAP allocImage(HDC, IntSize, PlatformGraphicsContext** targetRef);
+GDIObject<HBITMAP> allocImage(HDC, IntSize, PlatformGraphicsContext** targetRef);
 void deallocContext(PlatformGraphicsContext* target);
 
 IntSize dragImageSize(DragImageRef image)
@@ -120,7 +121,7 @@ static Font dragLabelFont(int size, bool bold, FontRenderingMode renderingMode)
     return result;
 }
 
-DragImageRef createDragImageForLink(KURL& url, const String& inLabel, FontRenderingMode fontRenderingMode)
+DragImageRef createDragImageForLink(URL& url, const String& inLabel, FontRenderingMode fontRenderingMode)
 {
     // This is more or less an exact match for the Mac OS X code.
 
@@ -177,20 +178,17 @@ DragImageRef createDragImageForLink(KURL& url, const String& inLabel, FontRender
 
     // We now know how big the image needs to be, so we create and
     // fill the background
-    HBITMAP image = 0;
     HWndDC dc(0);
-    HDC workingDC = CreateCompatibleDC(dc);
+    auto workingDC = adoptGDIObject(::CreateCompatibleDC(dc));
     if (!workingDC)
         return 0;
 
     PlatformGraphicsContext* contextRef;
-    image = allocImage(workingDC, imageSize, &contextRef);
-    if (!image) {
-        DeleteDC(workingDC);
+    auto image = allocImage(workingDC.get(), imageSize, &contextRef);
+    if (!image)
         return 0;
-    }
         
-    SelectObject(workingDC, image);
+    ::SelectObject(workingDC.get(), image.get());
     GraphicsContext context(contextRef);
     // On Mac alpha is {0.7, 0.7, 0.7, 0.8}, however we can't control alpha
     // for drag images on win, so we use 1
@@ -216,8 +214,7 @@ DragImageRef createDragImageForLink(KURL& url, const String& inLabel, FontRender
     WebCoreDrawDoubledTextAtPoint(context, label, textPos, *labelFont, topColor, bottomColor);
 
     deallocContext(contextRef);
-    DeleteDC(workingDC);
-    return image;
+    return image.leak();
 }
 
 }

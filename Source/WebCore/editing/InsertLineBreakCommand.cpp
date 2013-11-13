@@ -34,7 +34,7 @@
 #include "HTMLNames.h"
 #include "HTMLTableElement.h"
 #include "Range.h"
-#include "RenderObject.h"
+#include "RenderElement.h"
 #include "Text.h"
 #include "VisiblePosition.h"
 #include "VisibleUnits.h"
@@ -109,7 +109,7 @@ void InsertLineBreakCommand::doApply()
 
     RefPtr<Node> nodeToInsert;
     if (shouldUseBreakElement(pos))
-        nodeToInsert = createBreakElement(&document());
+        nodeToInsert = createBreakElement(document());
     else
         nodeToInsert = document().createTextNode("\n");
     

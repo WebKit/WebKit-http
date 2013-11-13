@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2011 Google Inc. All rights reserved.
@@ -46,22 +46,20 @@ class StyleSheetList;
 class DocumentStyleSheetCollection {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassOwnPtr<DocumentStyleSheetCollection> create(Document* document) { return adoptPtr(new DocumentStyleSheetCollection(document)); }
+    explicit DocumentStyleSheetCollection(Document&);
 
-    ~DocumentStyleSheetCollection();
+    const Vector<RefPtr<StyleSheet>>& styleSheetsForStyleSheetList() const { return m_styleSheetsForStyleSheetList; }
 
-    const Vector<RefPtr<StyleSheet> >& styleSheetsForStyleSheetList() const { return m_styleSheetsForStyleSheetList; }
-
-    const Vector<RefPtr<CSSStyleSheet> >& activeAuthorStyleSheets() const { return m_activeAuthorStyleSheets; }
+    const Vector<RefPtr<CSSStyleSheet>>& activeAuthorStyleSheets() const { return m_activeAuthorStyleSheets; }
 
     CSSStyleSheet* pageUserSheet();
-    const Vector<RefPtr<CSSStyleSheet> >& documentUserStyleSheets() const { return m_userStyleSheets; }
-    const Vector<RefPtr<CSSStyleSheet> >& documentAuthorStyleSheets() const { return m_authorStyleSheets; }
-    const Vector<RefPtr<CSSStyleSheet> >& injectedUserStyleSheets() const;
-    const Vector<RefPtr<CSSStyleSheet> >& injectedAuthorStyleSheets() const;
+    const Vector<RefPtr<CSSStyleSheet>>& documentUserStyleSheets() const { return m_userStyleSheets; }
+    const Vector<RefPtr<CSSStyleSheet>>& documentAuthorStyleSheets() const { return m_authorStyleSheets; }
+    const Vector<RefPtr<CSSStyleSheet>>& injectedUserStyleSheets() const;
+    const Vector<RefPtr<CSSStyleSheet>>& injectedAuthorStyleSheets() const;
 
-    void addStyleSheetCandidateNode(Node*, bool createdByParser);
-    void removeStyleSheetCandidateNode(Node*);
+    void addStyleSheetCandidateNode(Node&, bool createdByParser);
+    void removeStyleSheetCandidateNode(Node&);
 
     void clearPageUserSheet();
     void updatePageUserSheet();
@@ -117,9 +115,9 @@ public:
 
     bool activeStyleSheetsContains(const CSSStyleSheet*) const;
 
-private:
-    DocumentStyleSheetCollection(Document*);
+    void detachFromDocument();
 
+private:
     void collectActiveStyleSheets(Vector<RefPtr<StyleSheet> >&);
     enum StyleResolverUpdateType {
         Reconstruct,
@@ -128,7 +126,7 @@ private:
     };
     void analyzeStyleSheetChange(UpdateFlag, const Vector<RefPtr<CSSStyleSheet> >& newStylesheets, StyleResolverUpdateType&, bool& requiresFullStyleRecalc);
 
-    Document* m_document;
+    Document& m_document;
 
     Vector<RefPtr<StyleSheet> > m_styleSheetsForStyleSheetList;
     Vector<RefPtr<CSSStyleSheet> > m_activeAuthorStyleSheets;
@@ -144,12 +142,12 @@ private:
 
     RefPtr<CSSStyleSheet> m_pageUserSheet;
 
-    mutable Vector<RefPtr<CSSStyleSheet> > m_injectedUserStyleSheets;
-    mutable Vector<RefPtr<CSSStyleSheet> > m_injectedAuthorStyleSheets;
+    mutable Vector<RefPtr<CSSStyleSheet>> m_injectedUserStyleSheets;
+    mutable Vector<RefPtr<CSSStyleSheet>> m_injectedAuthorStyleSheets;
     mutable bool m_injectedStyleSheetCacheValid;
 
-    Vector<RefPtr<CSSStyleSheet> > m_userStyleSheets;
-    Vector<RefPtr<CSSStyleSheet> > m_authorStyleSheets;
+    Vector<RefPtr<CSSStyleSheet>> m_userStyleSheets;
+    Vector<RefPtr<CSSStyleSheet>> m_authorStyleSheets;
 
     bool m_hadActiveLoadingStylesheet;
     UpdateFlag m_pendingUpdateType;

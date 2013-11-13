@@ -126,7 +126,7 @@ void SVGResourcesCache::clientStyleChanged(RenderObject* renderer, StyleDifferen
         return;
 
     // In this case the proper SVGFE*Element will decide whether the modified CSS properties require a relayout or repaint.
-    if (renderer->isSVGResourceFilterPrimitive() && (diff == StyleDifferenceRepaint || diff == StyleDifferenceRepaintIfText))
+    if (renderer->isSVGResourceFilterPrimitive() && (diff == StyleDifferenceRepaint || diff == StyleDifferenceRepaintIfTextOrBorderOrOutline))
         return;
 
     // Dynamic changes of CSS properties like 'clip-path' may require us to recompute the associated resources for a renderer.
@@ -193,11 +193,11 @@ void SVGResourcesCache::resourceDestroyed(RenderSVGResourceContainer* resource)
         it->value->resourceDestroyed(resource);
 
         // Mark users of destroyed resources as pending resolution based on the id of the old resource.
-        Element* resourceElement = toElement(resource->node());
+        Element& resourceElement = resource->element();
         Element* clientElement = toElement(it->key->node());
         SVGDocumentExtensions* extensions = clientElement->document().accessSVGExtensions();
 
-        extensions->addPendingResource(resourceElement->fastGetAttribute(HTMLNames::idAttr), clientElement);
+        extensions->addPendingResource(resourceElement.fastGetAttribute(HTMLNames::idAttr), clientElement);
     }
 }
 

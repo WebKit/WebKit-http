@@ -22,9 +22,9 @@
 #include "WebDOMTestEventTarget.h"
 
 #include "Event.h"
-#include "KURL.h"
 #include "Node.h"
 #include "TestEventTarget.h"
+#include "URL.h"
 #include "WebDOMEvent.h"
 #include "WebDOMNode.h"
 #include "WebDOMString.h"

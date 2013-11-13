@@ -30,7 +30,7 @@ namespace WebCore {
 
 class HTMLButtonElement FINAL : public HTMLFormControlElement {
 public:
-    static PassRefPtr<HTMLButtonElement> create(const QualifiedName&, Document*, HTMLFormElement*);
+    static PassRefPtr<HTMLButtonElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
     void setType(const AtomicString&);
     
@@ -39,13 +39,13 @@ public:
     virtual bool willRespondToMouseClickEvents() OVERRIDE;
 
 private:
-    HTMLButtonElement(const QualifiedName& tagName, Document*, HTMLFormElement*);
+    HTMLButtonElement(const QualifiedName& tagName, Document&, HTMLFormElement*);
 
     enum Type { SUBMIT, RESET, BUTTON };
 
     virtual const AtomicString& formControlType() const;
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 
     // HTMLFormControlElement always creates one, but buttons don't need it.
     virtual bool alwaysCreateUserAgentShadowRoot() const OVERRIDE { return false; }

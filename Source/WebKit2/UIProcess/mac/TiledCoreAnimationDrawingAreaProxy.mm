@@ -26,8 +26,6 @@
 #import "config.h"
 #import "TiledCoreAnimationDrawingAreaProxy.h"
 
-#if ENABLE(THREADED_SCROLLING)
-
 #import "ColorSpaceData.h"
 #import "DrawingAreaMessages.h"
 #import "DrawingAreaProxyMessages.h"
@@ -38,11 +36,6 @@
 using namespace WebCore;
 
 namespace WebKit {
-
-PassOwnPtr<TiledCoreAnimationDrawingAreaProxy> TiledCoreAnimationDrawingAreaProxy::create(WebPageProxy* webPageProxy)
-{
-    return adoptPtr(new TiledCoreAnimationDrawingAreaProxy(webPageProxy));
-}
 
 TiledCoreAnimationDrawingAreaProxy::TiledCoreAnimationDrawingAreaProxy(WebPageProxy* webPageProxy)
     : DrawingAreaProxy(DrawingAreaTypeTiledCoreAnimation, webPageProxy)
@@ -162,5 +155,3 @@ void TiledCoreAnimationDrawingAreaProxy::sendUpdateGeometry()
 }
 
 } // namespace WebKit
-
-#endif // ENABLE(THREADED_SCROLLING)

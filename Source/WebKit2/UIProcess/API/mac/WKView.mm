@@ -156,7 +156,7 @@ struct WKViewInterpretKeyEventsParameters {
 
 @interface WKViewData : NSObject {
 @public
-    OwnPtr<PageClientImpl> _pageClient;
+    std::unique_ptr<PageClientImpl> _pageClient;
     RefPtr<WebPageProxy> _page;
     
     // Cache of the associated WKBrowsingContextController.
@@ -661,7 +661,7 @@ WEBCORE_COMMAND(yankAndSelect)
             [pasteboard setString:_data->_page->stringSelectionForPasteboard() forType:NSStringPboardType];
         else {
             RefPtr<SharedBuffer> buffer = _data->_page->dataSelectionForPasteboard([types objectAtIndex:i]);
-            [pasteboard setData:buffer ? [buffer->createNSData() autorelease] : nil forType:[types objectAtIndex:i]];
+            [pasteboard setData:buffer ? buffer->createNSData().get() : nil forType:[types objectAtIndex:i]];
        }
     }
     return YES;
@@ -2365,18 +2365,16 @@ static void drawPageBackground(CGContextRef context, WebPageProxy* page, const I
 
 @implementation WKView (Internal)
 
-- (PassOwnPtr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy
+- (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy
 {
-#if ENABLE(THREADED_SCROLLING)
     if ([self _shouldUseTiledDrawingArea]) {
         if (getenv("WK_USE_REMOTE_LAYER_TREE_DRAWING_AREA"))
-            return RemoteLayerTreeDrawingAreaProxy::create(_data->_page.get());
+            return std::make_unique<RemoteLayerTreeDrawingAreaProxy>(_data->_page.get());
 
-        return TiledCoreAnimationDrawingAreaProxy::create(_data->_page.get());
+        return std::make_unique<TiledCoreAnimationDrawingAreaProxy>(_data->_page.get());
     }
-#endif
 
-    return DrawingAreaProxyImpl::create(_data->_page.get());
+    return std::make_unique<DrawingAreaProxyImpl>(_data->_page.get());
 }
 
 - (BOOL)_isFocused
@@ -2659,7 +2657,7 @@ static void drawPageBackground(CGContextRef context, WebPageProxy* page, const I
     }
 
     if (!_data->_findIndicatorWindow)
-        _data->_findIndicatorWindow = FindIndicatorWindow::create(self);
+        _data->_findIndicatorWindow = createOwned<FindIndicatorWindow>(self);
 
     _data->_findIndicatorWindow->setFindIndicator(findIndicator, fadeOut, animate);
 }
@@ -2791,7 +2789,7 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
     [pasteboard setPropertyList:[NSArray arrayWithObject:extension] forType:NSFilesPromisePboardType];
 
     if (archiveBuffer)
-        [pasteboard setData:[archiveBuffer->createNSData() autorelease] forType:PasteboardTypes::WebArchivePboardType];
+        [pasteboard setData:archiveBuffer->createNSData().get() forType:PasteboardTypes::WebArchivePboardType];
 
     _data->_promisedImage = image;
     _data->_promisedFilename = filename;
@@ -2859,9 +2857,9 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     RetainPtr<NSData> data;
     
     if (_data->_promisedImage) {
-        data = adoptNS(_data->_promisedImage->data()->createNSData());
+        data = _data->_promisedImage->data()->createNSData();
         wrapper = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:data.get()]);
-        [wrapper.get() setPreferredFilename:_data->_promisedFilename];
+        [wrapper setPreferredFilename:_data->_promisedFilename];
     }
     
     if (!wrapper) {
@@ -3065,7 +3063,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     _data = [[WKViewData alloc] init];
 
-    _data->_pageClient = PageClientImpl::create(self);
+    _data->_pageClient = std::make_unique<PageClientImpl>(self);
     _data->_page = toImpl(contextRef)->createWebPage(_data->_pageClient.get(), toImpl(pageGroupRef), toImpl(relatedPage));
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
     _data->_page->initializeWebPage();

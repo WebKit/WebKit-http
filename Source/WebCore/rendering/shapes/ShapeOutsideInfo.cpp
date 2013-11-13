@@ -33,6 +33,8 @@
 
 #include "ShapeOutsideInfo.h"
 
+#include "FloatingObjects.h"
+#include "RenderBlock.h"
 #include "RenderBox.h"
 
 namespace WebCore {
@@ -52,26 +54,33 @@ bool ShapeOutsideInfo::isEnabledFor(const RenderBox* box)
     }
 }
 
-bool ShapeOutsideInfo::computeSegmentsForContainingBlockLine(LayoutUnit lineTop, LayoutUnit floatTop, LayoutUnit lineHeight)
+void ShapeOutsideInfo::updateDeltasForContainingBlockLine(const RenderBlock* containingBlock, const FloatingObject* floatingObject, LayoutUnit lineTop, LayoutUnit lineHeight)
 {
-    LayoutUnit lineTopInShapeCoordinates = lineTop - floatTop + logicalTopOffset();
-    return computeSegmentsForLine(lineTopInShapeCoordinates, lineHeight);
+    LayoutUnit shapeTop = floatingObject->logicalTop(containingBlock->isHorizontalWritingMode()) + std::max(LayoutUnit(), containingBlock->marginBeforeForChild(m_renderer));
+    LayoutUnit lineTopInShapeCoordinates = lineTop - shapeTop + logicalTopOffset();
+
+    if (shapeSizeDirty() || m_lineTop != lineTopInShapeCoordinates || m_lineHeight != lineHeight) {
+        m_lineTop = lineTopInShapeCoordinates;
+        m_shapeLineTop = lineTopInShapeCoordinates - logicalTopOffset();
+        m_lineHeight = lineHeight;
+
+        if (lineOverlapsShapeBounds()) {
+            SegmentList segments = computeSegmentsForLine(lineTopInShapeCoordinates, lineHeight);
+            if (segments.size()) {
+                m_leftMarginBoxDelta = segments[0].logicalLeft + m_renderer->marginStart();
+                m_rightMarginBoxDelta = segments[segments.size()-1].logicalRight - m_renderer->logicalWidth() - m_renderer->marginEnd();
+                return;
+            }
+        }
+
+        m_leftMarginBoxDelta = m_renderer->logicalWidth() + m_renderer->marginStart();
+        m_rightMarginBoxDelta = -m_renderer->logicalWidth() - m_renderer->marginEnd();
+    }
 }
 
-bool ShapeOutsideInfo::computeSegmentsForLine(LayoutUnit lineTop, LayoutUnit lineHeight)
+ShapeValue* ShapeOutsideInfo::shapeValue() const
 {
-    if (shapeSizeDirty() || m_lineTop != lineTop || m_lineHeight != lineHeight) {
-        if (ShapeInfo<RenderBox, &RenderStyle::shapeOutside, &Shape::getExcludedIntervals>::computeSegmentsForLine(lineTop, lineHeight)) {
-            m_leftSegmentMarginBoxDelta = m_segments[0].logicalLeft + m_renderer->marginStart();
-            m_rightSegmentMarginBoxDelta = m_segments[m_segments.size()-1].logicalRight - m_renderer->logicalWidth() - m_renderer->marginEnd();
-        } else {
-            m_leftSegmentMarginBoxDelta = m_renderer->logicalWidth() + m_renderer->marginStart();
-            m_rightSegmentMarginBoxDelta = -m_renderer->logicalWidth() - m_renderer->marginEnd();
-        }
-        m_lineTop = lineTop;
-    }
-
-    return m_segments.size();
+    return m_renderer->style()->shapeOutside();
 }
 
 }

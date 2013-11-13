@@ -46,14 +46,14 @@ class SVGPatternElement FINAL : public SVGElement,
                                 public SVGExternalResourcesRequired,
                                 public SVGFitToViewBox {
 public:
-    static PassRefPtr<SVGPatternElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGPatternElement> create(const QualifiedName&, Document&);
 
     void collectPatternAttributes(PatternAttributes&) const;
 
     virtual AffineTransform localCoordinateSpaceTransform(SVGLocatable::CTMScope) const;
 
 private:
-    SVGPatternElement(const QualifiedName&, Document*);
+    SVGPatternElement(const QualifiedName&, Document&);
     
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool needsPendingResourceHandling() const { return false; }
@@ -63,7 +63,7 @@ private:
     virtual void svgAttributeChanged(const QualifiedName&);
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 
     virtual bool selfHasRelativeLengths() const;
 
@@ -87,11 +87,7 @@ private:
     virtual void synchronizeSystemLanguage() { SVGTests::synchronizeSystemLanguage(this); }
 };
 
-inline SVGPatternElement* toSVGPatternElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(SVGNames::patternTag));
-    return static_cast<SVGPatternElement*>(node);
-}
+ELEMENT_TYPE_CASTS(SVGPatternElement)
 
 } // namespace WebCore
 

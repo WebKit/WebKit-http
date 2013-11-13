@@ -28,17 +28,17 @@
 
 namespace WebCore {
 
-DocumentType::DocumentType(Document* document, const String& name, const String& publicId, const String& systemId)
-    : Node(document, CreateOther)
+DocumentType::DocumentType(Document& document, const String& name, const String& publicId, const String& systemId)
+    : Node(&document, CreateOther)
     , m_name(name)
     , m_publicId(publicId)
     , m_systemId(systemId)
 {
 }
 
-KURL DocumentType::baseURI() const
+URL DocumentType::baseURI() const
 {
-    return KURL();
+    return URL();
 }
 
 String DocumentType::nodeName() const
@@ -53,7 +53,7 @@ Node::NodeType DocumentType::nodeType() const
 
 PassRefPtr<Node> DocumentType::cloneNode(bool /*deep*/)
 {
-    return create(&document(), m_name, m_publicId, m_systemId);
+    return create(document(), m_name, m_publicId, m_systemId);
 }
 
 }

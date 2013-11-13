@@ -35,7 +35,8 @@ class RenderMultiColumnFlowThread;
 
 class RenderMultiColumnBlock FINAL : public RenderBlockFlow {
 public:
-    RenderMultiColumnBlock(Element*);
+    explicit RenderMultiColumnBlock(Element&);
+    Element& element() const { return toElement(nodeForNonAnonymous()); }
 
     LayoutUnit columnHeightAvailable() const { return m_columnHeightAvailable; }
 
@@ -48,7 +49,6 @@ public:
 
 private:
     virtual bool isRenderMultiColumnBlock() const { return true; }
-    
     virtual const char* renderName() const;
 
     virtual RenderObject* layoutSpecialExcludedChild(bool relayoutChildren) OVERRIDE;

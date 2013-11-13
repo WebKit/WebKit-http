@@ -155,7 +155,7 @@ public:
 };
 
 // Test to get inspector server page list from the test server.
-// Should contain only one entry pointing to http://127.0.0.1:2999/webinspector/inspector.html?page=1
+// Should contain only one entry pointing to http://127.0.0.1:2999/webinspector/Main.html?page=1
 static void testInspectorServerPageList(InspectorServerTest* test, gconstpointer)
 {
     GOwnPtr<GError> error;
@@ -184,7 +184,7 @@ static void testInspectorServerPageList(InspectorServerTest* test, gconstpointer
     g_assert(javascriptResult);
     g_assert(!error.get());
     valueString.set(WebViewTest::javascriptResultToCString(javascriptResult));
-    String validInspectorURL = String("/inspector.html?page=") + String::number(pageId);
+    String validInspectorURL = String("/Main.html?page=") + String::number(pageId);
     ASSERT_CMP_CSTRING(valueString.get(), ==, validInspectorURL.utf8());
 }
 
@@ -215,8 +215,8 @@ static void testRemoteDebuggingMessage(InspectorServerTest* test, gconstpointer)
 
 static void openRemoteDebuggingSession(InspectorServerTest* test, gconstpointer)
 {
-    // To test the whole pipeline this exploits a behavior of the inspector front-end which won't provide any title unless the
-    // debugging session was established correctly through web socket. It should be something like "Web Inspector - <Page URL>".
+    // To test the whole pipeline this exploits a behavior of the inspector front-end which won't provide the page address as title unless the
+    // debugging session was established correctly through web socket.
     // In our case page URL should be http://127.0.0.1:2999/
     // So this test case will fail if:
     // - The page list didn't return a valid inspector URL
@@ -235,11 +235,45 @@ static void openRemoteDebuggingSession(InspectorServerTest* test, gconstpointer)
 
     String resolvedURL = String("http://127.0.0.1:2999/") + String::fromUTF8(WebViewTest::javascriptResultToCString(javascriptResult));
     test->loadURI(resolvedURL.utf8().data());
-    test->waitUntilTitleChanged();
+    test->waitUntilLoadFinished();
 
-    g_assert_cmpstr(webkit_web_view_get_title(test->m_webView), ==, "Web Inspector - http://127.0.0.1:2999/");
+    javascriptResult = test->runJavaScriptAndWaitUntilFinished("window.document.getElementsByTagName('li')[0].title", &error.outPtr());
+    g_assert(javascriptResult);
+    g_assert(!error.get());
+
+    GOwnPtr<char> title(WebViewTest::javascriptResultToCString(javascriptResult));
+    g_assert_cmpstr(title.get(), ==, "http://127.0.0.1:2999/");
 }
 
+static void sendIncompleteRequest(InspectorServerTest* test, gconstpointer)
+{
+    GOwnPtr<GError> error;
+
+    // Connect to the inspector server.
+    GRefPtr<GSocketClient> client = adoptGRef(g_socket_client_new());
+    GRefPtr<GSocketConnection> connection = adoptGRef(g_socket_client_connect_to_host(client.get(), "127.0.0.1", 2999, 0, &error.outPtr()));
+    g_assert_no_error(error.get());
+
+    // Send incomplete request (missing blank line after headers) and check if inspector server
+    // replies. The server should not reply to an incomplete request and the test should timeout
+    // on read.
+    GOutputStream* ostream = g_io_stream_get_output_stream(G_IO_STREAM(connection.get()));
+    // Request missing blank line after headers.
+    const gchar* incompleteRequest = "GET /devtools/page/1 HTTP/1.1\r\nHost: Localhost\r\n";
+    g_output_stream_write(ostream, incompleteRequest, strlen(incompleteRequest), 0, &error.outPtr());
+    g_assert_no_error(error.get());
+
+    GInputStream* istream = g_io_stream_get_input_stream(G_IO_STREAM(connection.get()));
+    char response[16];
+    memset(response, 0, sizeof(response));
+    GRefPtr<GCancellable> cancel = adoptGRef(g_cancellable_new());
+    g_input_stream_read_async(istream, response, sizeof(response) - 1, G_PRIORITY_DEFAULT, cancel.get(), 0, 0);
+    // Give a chance for the server to reply.
+    test->wait(1);
+    g_cancellable_cancel(cancel.get());
+    // If we got any answer it means the server replied to an incomplete request, lets fail.
+    g_assert(response[0] == '\0');
+}
 
 void beforeAll()
 {
@@ -250,6 +284,7 @@ void beforeAll()
     InspectorServerTest::add("WebKitWebInspectorServer", "test-page-list", testInspectorServerPageList);
     InspectorServerTest::add("WebKitWebInspectorServer", "test-remote-debugging-message", testRemoteDebuggingMessage);
     InspectorServerTest::add("WebKitWebInspectorServer", "test-open-debugging-session", openRemoteDebuggingSession);
+    InspectorServerTest::add("WebKitWebInspectorServer", "test-incomplete-request", sendIncompleteRequest);
 
 }
 

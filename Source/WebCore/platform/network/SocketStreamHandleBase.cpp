@@ -38,7 +38,7 @@ namespace WebCore {
 
 const unsigned int bufferSize = 100 * 1024 * 1024;
 
-SocketStreamHandleBase::SocketStreamHandleBase(const KURL& url, SocketStreamHandleClient* client)
+SocketStreamHandleBase::SocketStreamHandleBase(const URL& url, SocketStreamHandleClient* client)
     : m_url(url)
     , m_client(client)
     , m_state(Connecting)
@@ -93,7 +93,7 @@ void SocketStreamHandleBase::close()
 
 void SocketStreamHandleBase::disconnect()
 {
-    RefPtr<SocketStreamHandle> protect(static_cast<SocketStreamHandle*>(this)); // platformClose calls the client, which may make the handle get deallocated immediately.
+    Ref<SocketStreamHandle> protect(*static_cast<SocketStreamHandle*>(this)); // platformClose calls the client, which may make the handle get deallocated immediately.
 
     platformClose();
     m_state = Closed;

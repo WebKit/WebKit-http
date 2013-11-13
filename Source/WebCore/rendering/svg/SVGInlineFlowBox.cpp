@@ -58,7 +58,7 @@ void SVGInlineFlowBox::paint(PaintInfo& paintInfo, const LayoutPoint&, LayoutUni
     if (renderingContext.isRenderingPrepared()) {
         for (InlineBox* child = firstChild(); child; child = child->nextOnLine()) {
             if (child->isSVGInlineTextBox())
-                computeTextMatchMarkerRectForRenderer(&toRenderSVGInlineText(toSVGInlineTextBox(child)->textRenderer()));
+                computeTextMatchMarkerRectForRenderer(&toRenderSVGInlineText(toSVGInlineTextBox(child)->renderer()));
 
             child->paint(paintInfo, LayoutPoint(), 0, 0);
         }
@@ -80,15 +80,15 @@ void SVGInlineFlowBox::computeTextMatchMarkerRectForRenderer(RenderSVGInlineText
 {
     ASSERT(textRenderer);
 
-    Node* node = textRenderer->node();
-    if (!node || !node->inDocument())
+    Text& textNode = textRenderer->textNode();
+    if (!textNode.inDocument())
         return;
 
     RenderStyle* style = textRenderer->style();
     ASSERT(style);
 
     AffineTransform fragmentTransform;
-    Vector<DocumentMarker*> markers = textRenderer->document().markers().markersFor(textRenderer->node());
+    Vector<DocumentMarker*> markers = textRenderer->document().markers().markersFor(&textNode);
 
     Vector<DocumentMarker*>::iterator markerEnd = markers.end();
     for (Vector<DocumentMarker*>::iterator markerIt = markers.begin(); markerIt != markerEnd; ++markerIt) {

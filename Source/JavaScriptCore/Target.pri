@@ -65,6 +65,7 @@ SOURCES += \
     bytecode/ExecutionCounter.cpp \
     bytecode/ExitKind.cpp \
     bytecode/GetByIdStatus.cpp \
+    bytecode/InlineCallFrameSet.cpp \
     bytecode/JumpTable.cpp \
     bytecode/LazyOperandValueProfile.cpp \
     bytecode/MethodOfGettingAValueProfile.cpp \
@@ -79,6 +80,7 @@ SOURCES += \
     bytecode/StructureStubClearingWatchpoint.cpp \
     bytecode/StructureStubInfo.cpp \
     bytecode/UnlinkedCodeBlock.cpp \
+    bytecode/ValueRecovery.cpp \
     bytecode/Watchpoint.cpp \
     bytecompiler/BytecodeGenerator.cpp \
     bytecompiler/NodesCodegen.cpp \
@@ -117,7 +119,6 @@ SOURCES += \
     dfg/DFGAbstractValue.cpp \
     dfg/DFGArgumentsSimplificationPhase.cpp \
     dfg/DFGArrayMode.cpp \
-    dfg/DFGAssemblyHelpers.cpp \
     dfg/DFGAtTailAbstractState.cpp \
     dfg/DFGBackwardsPropagationPhase.cpp \
     dfg/DFGBasicBlock.cpp \
@@ -183,7 +184,6 @@ SOURCES += \
     dfg/DFGPlan.cpp \
     dfg/DFGPredictionPropagationPhase.cpp \
     dfg/DFGPredictionInjectionPhase.cpp \
-    dfg/DFGRepatch.cpp \
     dfg/DFGSSAConversionPhase.cpp \
     dfg/DFGSpeculativeJIT.cpp \
     dfg/DFGSpeculativeJIT32_64.cpp \
@@ -206,6 +206,7 @@ SOURCES += \
     interpreter/Interpreter.cpp \
     interpreter/JSStack.cpp \
     interpreter/StackVisitor.cpp \
+    jit/AssemblyHelpers.cpp \
     jit/ClosureCallStubRoutine.cpp \
     jit/ExecutableAllocatorFixedVMPool.cpp \
     jit/ExecutableAllocator.cpp \
@@ -221,6 +222,7 @@ SOURCES += \
     jit/JITExceptions.cpp \
     jit/JITOpcodes.cpp \
     jit/JITOpcodes32_64.cpp \
+    jit/JITOperations.cpp \
     jit/JITPropertyAccess.cpp \
     jit/JITPropertyAccess32_64.cpp \
     jit/JITStubRoutine.cpp \
@@ -228,6 +230,7 @@ SOURCES += \
     jit/JITThunks.cpp \
     jit/JITToDFGDeferredCompilationCallback.cpp \
     jit/JumpReplacementWatchpoint.cpp \
+    jit/Repatch.cpp \
     jit/ThunkGenerators.cpp \
     llint/LLIntCLoop.cpp \
     llint/LLIntData.cpp \
@@ -350,6 +353,7 @@ SOURCES += \
     runtime/JSTypedArrayPrototypes.cpp \
     runtime/JSTypedArrays.cpp \
     runtime/JSVariableObject.cpp \
+    runtime/JSWeakMap.cpp \
     runtime/JSWithScope.cpp \
     runtime/JSWrapperObject.cpp \
     runtime/LiteralParser.cpp \
@@ -404,6 +408,9 @@ SOURCES += \
     runtime/VM.cpp \
     runtime/Watchdog.cpp \
     runtime/WatchdogNone.cpp \
+    runtime/WeakMapConstructor.cpp \
+    runtime/WeakMapData.cpp \
+    runtime/WeakMapPrototype.cpp \
     tools/CodeProfile.cpp \
     tools/CodeProfiling.cpp \
     yarr/YarrJIT.cpp \

@@ -21,6 +21,7 @@
 #define EllipsisBox_h
 
 #include "InlineBox.h"
+#include "RenderBlock.h"
 
 namespace WebCore {
 
@@ -29,26 +30,19 @@ class HitTestResult;
 
 class EllipsisBox FINAL : public InlineBox {
 public:
-    EllipsisBox(RenderObject& renderer, const AtomicString& ellipsisStr, InlineFlowBox* parent,
-                int width, int height, int y, bool firstLine, bool isVertical, InlineBox* markupBox)
-        : InlineBox(renderer, FloatPoint(0, y), width, firstLine, true, false, false, isVertical, 0, 0, parent)
-        , m_shouldPaintMarkupBox(markupBox)
-        , m_height(height)
-        , m_str(ellipsisStr)
-        , m_selectionState(RenderObject::SelectionNone)
-    {
-    }
-
+    EllipsisBox(RenderBlock&, const AtomicString& ellipsisStr, InlineFlowBox* parent, int width, int height, int y, bool firstLine, bool isVertical, InlineBox* markupBox);
     virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom);
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) OVERRIDE;
     void setSelectionState(RenderObject::SelectionState s) { m_selectionState = s; }
     IntRect selectionRect();
 
+    RenderBlock& renderer() const { return toRenderBlock(InlineBox::renderer()); }
+
 private:
-    void paintMarkupBox(PaintInfo&, const LayoutPoint& paintOffset, LayoutUnit lineTop, LayoutUnit lineBottom, RenderStyle*);
+    void paintMarkupBox(PaintInfo&, const LayoutPoint& paintOffset, LayoutUnit lineTop, LayoutUnit lineBottom, const RenderStyle&);
     virtual int height() const { return m_height; }
     virtual RenderObject::SelectionState selectionState() { return m_selectionState; }
-    void paintSelection(GraphicsContext*, const LayoutPoint&, RenderStyle*, const Font&);
+    void paintSelection(GraphicsContext*, const LayoutPoint&, const RenderStyle&, const Font&);
     InlineBox* markupBox() const;
 
     bool m_shouldPaintMarkupBox;

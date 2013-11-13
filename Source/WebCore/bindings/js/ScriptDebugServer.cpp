@@ -304,7 +304,7 @@ void ScriptDebugServer::dispatchDidPause(ScriptDebugListener* listener)
 {
     ASSERT(m_paused);
     JSGlobalObject* globalObject = m_currentCallFrame->scopeChain()->globalObject();
-    ScriptState* state = globalObject->globalExec();
+    JSC::ExecState* state = globalObject->globalExec();
     JSValue jsCallFrame;
     {
         if (m_currentCallFrame->isValid() && globalObject->inherits(JSDOMGlobalObject::info())) {
@@ -429,25 +429,25 @@ void ScriptDebugServer::dispatchFunctionToListeners(JavaScriptExecutionCallback 
     m_callingListeners = false;
 }
 
-void ScriptDebugServer::createCallFrame(const DebuggerCallFrame& debuggerCallFrame, intptr_t sourceID, int lineNumber, int columnNumber)
+void ScriptDebugServer::createCallFrame(CallFrame* callFrame)
 {
-    TextPosition textPosition(OrdinalNumber::fromOneBasedInt(lineNumber), OrdinalNumber::fromOneBasedInt(columnNumber));
-    m_currentCallFrame = JavaScriptCallFrame::create(debuggerCallFrame, m_currentCallFrame, sourceID, textPosition);
-    if (m_lastExecutedSourceId != sourceID) {
+    DebuggerCallFrame debuggerCallFrame(callFrame);
+    m_currentCallFrame = JavaScriptCallFrame::create(debuggerCallFrame, m_currentCallFrame);
+    intptr_t sourceId = m_currentCallFrame->sourceID();
+    if (m_lastExecutedSourceId != sourceId) {
         m_lastExecutedLine = -1;
-        m_lastExecutedSourceId = sourceID;
+        m_lastExecutedSourceId = sourceId;
     }
 }
 
-void ScriptDebugServer::updateCallFrameAndPauseIfNeeded(const DebuggerCallFrame& debuggerCallFrame, intptr_t sourceID, int lineNumber, int columnNumber)
+void ScriptDebugServer::updateCallFrameAndPauseIfNeeded(CallFrame* callFrame)
 {
     // ASSERT(m_currentCallFrame);
     if (!m_currentCallFrame)
         return;
 
-    TextPosition textPosition(OrdinalNumber::fromOneBasedInt(lineNumber), OrdinalNumber::fromOneBasedInt(columnNumber));
-    m_currentCallFrame->update(debuggerCallFrame, sourceID, textPosition);
-    pauseIfNeeded(debuggerCallFrame.dynamicGlobalObject());
+    m_currentCallFrame->update(DebuggerCallFrame(callFrame));
+    pauseIfNeeded(callFrame->dynamicGlobalObject());
 }
 
 void ScriptDebugServer::pauseIfNeeded(JSGlobalObject* dynamicGlobalObject)
@@ -493,26 +493,26 @@ void ScriptDebugServer::pauseIfNeeded(JSGlobalObject* dynamicGlobalObject)
     m_paused = false;
 }
 
-void ScriptDebugServer::callEvent(const DebuggerCallFrame& debuggerCallFrame, intptr_t sourceID, int lineNumber, int columnNumber)
+void ScriptDebugServer::callEvent(CallFrame* callFrame)
 {
     if (!m_paused) {
-        createCallFrame(debuggerCallFrame, sourceID, lineNumber, columnNumber);
-        pauseIfNeeded(debuggerCallFrame.dynamicGlobalObject());
+        createCallFrame(callFrame);
+        pauseIfNeeded(callFrame->dynamicGlobalObject());
     }
 }
 
-void ScriptDebugServer::atStatement(const DebuggerCallFrame& debuggerCallFrame, intptr_t sourceID, int lineNumber, int columnNumber)
+void ScriptDebugServer::atStatement(CallFrame* callFrame)
 {
     if (!m_paused)
-        updateCallFrameAndPauseIfNeeded(debuggerCallFrame, sourceID, lineNumber, columnNumber);
+        updateCallFrameAndPauseIfNeeded(callFrame);
 }
 
-void ScriptDebugServer::returnEvent(const DebuggerCallFrame& debuggerCallFrame, intptr_t sourceID, int lineNumber, int columnNumber)
+void ScriptDebugServer::returnEvent(CallFrame* callFrame)
 {
     if (m_paused)
         return;
 
-    updateCallFrameAndPauseIfNeeded(debuggerCallFrame, sourceID, lineNumber, columnNumber);
+    updateCallFrameAndPauseIfNeeded(callFrame);
 
     // detach may have been called during pauseIfNeeded
     if (!m_currentCallFrame)
@@ -524,7 +524,7 @@ void ScriptDebugServer::returnEvent(const DebuggerCallFrame& debuggerCallFrame, 
     m_currentCallFrame = m_currentCallFrame->caller();
 }
 
-void ScriptDebugServer::exception(const DebuggerCallFrame& debuggerCallFrame, intptr_t sourceID, int lineNumber, int columnNumber, bool hasHandler)
+void ScriptDebugServer::exception(CallFrame* callFrame, JSValue, bool hasHandler)
 {
     if (m_paused)
         return;
@@ -532,23 +532,23 @@ void ScriptDebugServer::exception(const DebuggerCallFrame& debuggerCallFrame, in
     if (m_pauseOnExceptionsState == PauseOnAllExceptions || (m_pauseOnExceptionsState == PauseOnUncaughtExceptions && !hasHandler))
         m_pauseOnNextStatement = true;
 
-    updateCallFrameAndPauseIfNeeded(debuggerCallFrame, sourceID, lineNumber, columnNumber);
+    updateCallFrameAndPauseIfNeeded(callFrame);
 }
 
-void ScriptDebugServer::willExecuteProgram(const DebuggerCallFrame& debuggerCallFrame, intptr_t sourceID, int lineNumber, int columnNumber)
+void ScriptDebugServer::willExecuteProgram(CallFrame* callFrame)
 {
     if (!m_paused) {
-        createCallFrame(debuggerCallFrame, sourceID, lineNumber, columnNumber);
-        pauseIfNeeded(debuggerCallFrame.dynamicGlobalObject());
+        createCallFrame(callFrame);
+        pauseIfNeeded(callFrame->dynamicGlobalObject());
     }
 }
 
-void ScriptDebugServer::didExecuteProgram(const DebuggerCallFrame& debuggerCallFrame, intptr_t sourceID, int lineNumber, int columnNumber)
+void ScriptDebugServer::didExecuteProgram(CallFrame* callFrame)
 {
     if (m_paused)
         return;
 
-    updateCallFrameAndPauseIfNeeded(debuggerCallFrame, sourceID, lineNumber, columnNumber);
+    updateCallFrameAndPauseIfNeeded(callFrame);
 
     // Treat stepping over the end of a program like stepping out.
     if (!m_currentCallFrame)
@@ -561,13 +561,13 @@ void ScriptDebugServer::didExecuteProgram(const DebuggerCallFrame& debuggerCallF
     m_currentCallFrame = m_currentCallFrame->caller();
 }
 
-void ScriptDebugServer::didReachBreakpoint(const DebuggerCallFrame& debuggerCallFrame, intptr_t sourceID, int lineNumber, int columnNumber)
+void ScriptDebugServer::didReachBreakpoint(CallFrame* callFrame)
 {
     if (m_paused)
         return;
 
     m_pauseOnNextStatement = true;
-    updateCallFrameAndPauseIfNeeded(debuggerCallFrame, sourceID, lineNumber, columnNumber);
+    updateCallFrameAndPauseIfNeeded(callFrame);
 }
 
 void ScriptDebugServer::recompileAllJSFunctionsSoon()
@@ -575,7 +575,7 @@ void ScriptDebugServer::recompileAllJSFunctionsSoon()
     m_recompileTimer.startOneShot(0);
 }
 
-void ScriptDebugServer::compileScript(ScriptState*, const String&, const String&, String*, String*)
+void ScriptDebugServer::compileScript(JSC::ExecState*, const String&, const String&, String*, String*)
 {
     // FIXME(89652): implement this.
 }
@@ -585,7 +585,7 @@ void ScriptDebugServer::clearCompiledScripts()
     // FIXME(89652): implement this.
 }
 
-void ScriptDebugServer::runScript(ScriptState*, const String&, ScriptValue*, bool*, String*)
+void ScriptDebugServer::runScript(JSC::ExecState*, const String&, ScriptValue*, bool*, String*)
 {
     // FIXME(89652): implement this.
 }

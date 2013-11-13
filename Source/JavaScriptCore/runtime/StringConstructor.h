@@ -31,10 +31,10 @@ namespace JSC {
     public:
         typedef InternalFunction Base;
 
-        static StringConstructor* create(ExecState* exec, JSGlobalObject* globalObject , Structure* structure, StringPrototype* stringPrototype)
+        static StringConstructor* create(VM& vm, Structure* structure, StringPrototype* stringPrototype)
         {
-            StringConstructor* constructor = new (NotNull, allocateCell<StringConstructor>(*exec->heap())) StringConstructor(globalObject, structure);
-            constructor->finishCreation(exec, stringPrototype);
+            StringConstructor* constructor = new (NotNull, allocateCell<StringConstructor>(vm.heap)) StringConstructor(vm, structure);
+            constructor->finishCreation(vm, stringPrototype);
             return constructor;
         }
 
@@ -49,8 +49,8 @@ namespace JSC {
         static const unsigned StructureFlags = OverridesGetOwnPropertySlot | InternalFunction::StructureFlags;
 
     private:
-        StringConstructor(JSGlobalObject*, Structure*);
-        void finishCreation(ExecState*, StringPrototype*);
+        StringConstructor(VM&, Structure*);
+        void finishCreation(VM&, StringPrototype*);
         static ConstructType getConstructData(JSCell*, ConstructData&);
         static CallType getCallData(JSCell*, CallData&);
 

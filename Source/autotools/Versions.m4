@@ -1,6 +1,6 @@
 m4_define([webkit_major_version], [2])
-m4_define([webkit_minor_version], [1])
-m4_define([webkit_micro_version], [4])
+m4_define([webkit_minor_version], [3])
+m4_define([webkit_micro_version], [0])
 
 # This is the version we'll be using as part of our User-Agent string,
 # e.g., AppleWebKit/$(webkit_user_agent_version) ...
@@ -16,9 +16,8 @@ m4_define([libjavascriptcoregtk_version], [15:0:15])
 m4_define([libwebkit2gtk_version], [27:0:2])
 
 m4_define([gtk2_required_version], [2.24.10])
-m4_define([gail2_required_version], [1.8])
 m4_define([gtk3_required_version], [3.6.0])
-m4_define([gail3_required_version], [3.0])
+m4_define([gtk3_wayland_required_version], [3.10.0])
 
 m4_define([atspi2_required_version], [2.5.3])
 m4_define([cairo_required_version], [1.10])

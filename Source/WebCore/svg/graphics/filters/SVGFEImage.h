@@ -31,12 +31,12 @@ namespace WebCore {
 
 class Document;
 class Image;
-class RenderObject;
+class RenderElement;
 
 class FEImage : public FilterEffect {
 public:
     static PassRefPtr<FEImage> createWithImage(Filter*, PassRefPtr<Image>, const SVGPreserveAspectRatio&);
-    static PassRefPtr<FEImage> createWithIRIReference(Filter*, Document*, const String&, const SVGPreserveAspectRatio&);
+    static PassRefPtr<FEImage> createWithIRIReference(Filter*, Document&, const String&, const SVGPreserveAspectRatio&);
 
     virtual void platformApplySoftware();
 #if ENABLE(OPENCL)
@@ -53,8 +53,8 @@ public:
 private:
     virtual ~FEImage() { }
     FEImage(Filter*, PassRefPtr<Image>, const SVGPreserveAspectRatio&);
-    FEImage(Filter*, Document*, const String&, const SVGPreserveAspectRatio&);
-    RenderObject* referencedRenderer() const;
+    FEImage(Filter*, Document&, const String&, const SVGPreserveAspectRatio&);
+    RenderElement* referencedRenderer() const;
 
     RefPtr<Image> m_image;
 

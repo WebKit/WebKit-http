@@ -73,6 +73,7 @@ interface AccessibilityUIElement {
     readonly attribute boolean isRequired;
     readonly attribute boolean isFocused;
     readonly attribute boolean isFocusable;
+    readonly attribute boolean isSelectable;
     readonly attribute boolean isSelected;
     readonly attribute boolean isMultiSelectable;
     readonly attribute boolean isExpanded;
@@ -86,7 +87,8 @@ interface AccessibilityUIElement {
     readonly attribute int hierarchicalLevel;
     readonly attribute boolean ariaIsGrabbed;
     readonly attribute DOMString ariaDropEffects;
-    
+    readonly attribute DOMString classList;
+
     readonly attribute int x;
     readonly attribute int y;
     readonly attribute int width;

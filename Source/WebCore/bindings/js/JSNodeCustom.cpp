@@ -141,9 +141,8 @@ void JSNodeOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 
 JSValue JSNode::insertBefore(ExecState* exec)
 {
-    Node* imp = static_cast<Node*>(impl());
     ExceptionCode ec = 0;
-    bool ok = imp->insertBefore(toNode(exec->argument(0)), toNode(exec->argument(1)), ec, AttachLazily);
+    bool ok = impl()->insertBefore(toNode(exec->argument(0)), toNode(exec->argument(1)), ec, AttachLazily);
     setDOMException(exec, ec);
     if (ok)
         return exec->argument(0);
@@ -152,9 +151,8 @@ JSValue JSNode::insertBefore(ExecState* exec)
 
 JSValue JSNode::replaceChild(ExecState* exec)
 {
-    Node* imp = static_cast<Node*>(impl());
     ExceptionCode ec = 0;
-    bool ok = imp->replaceChild(toNode(exec->argument(0)), toNode(exec->argument(1)), ec, AttachLazily);
+    bool ok = impl()->replaceChild(toNode(exec->argument(0)), toNode(exec->argument(1)), ec, AttachLazily);
     setDOMException(exec, ec);
     if (ok)
         return exec->argument(1);
@@ -163,9 +161,8 @@ JSValue JSNode::replaceChild(ExecState* exec)
 
 JSValue JSNode::removeChild(ExecState* exec)
 {
-    Node* imp = static_cast<Node*>(impl());
     ExceptionCode ec = 0;
-    bool ok = imp->removeChild(toNode(exec->argument(0)), ec);
+    bool ok = impl()->removeChild(toNode(exec->argument(0)), ec);
     setDOMException(exec, ec);
     if (ok)
         return exec->argument(0);
@@ -174,9 +171,8 @@ JSValue JSNode::removeChild(ExecState* exec)
 
 JSValue JSNode::appendChild(ExecState* exec)
 {
-    Node* imp = static_cast<Node*>(impl());
     ExceptionCode ec = 0;
-    bool ok = imp->appendChild(toNode(exec->argument(0)), ec, AttachLazily);
+    bool ok = impl()->appendChild(toNode(exec->argument(0)), ec, AttachLazily);
     setDOMException(exec, ec);
     if (ok)
         return exec->argument(0);
@@ -276,7 +272,7 @@ JSValue toJSNewlyCreated(ExecState* exec, JSDOMGlobalObject* globalObject, Node*
 
 void willCreatePossiblyOrphanedTreeByRemovalSlowCase(Node* root)
 {
-    ScriptState* scriptState = mainWorldScriptState(root->document().frame());
+    JSC::ExecState* scriptState = mainWorldExecState(root->document().frame());
     if (!scriptState)
         return;
 

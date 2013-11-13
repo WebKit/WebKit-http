@@ -776,11 +776,6 @@ IntPoint PDFPlugin::maximumScrollPosition() const
     return maximumOffset;
 }
 
-bool PDFPlugin::scrollbarsCanBeActive() const
-{
-    return !pluginView()->frame()->document()->inPageCache();
-}
-
 void PDFPlugin::scrollbarStyleChanged(int, bool forceUpdate)
 {
     if (!forceUpdate)
@@ -917,7 +912,7 @@ void PDFPlugin::pdfDocumentDidLoad()
         createPasswordEntryForm();
 }
 
-void PDFPlugin::streamDidReceiveResponse(uint64_t streamID, const KURL&, uint32_t, uint32_t, const String& mimeType, const String&, const String& suggestedFilename)
+void PDFPlugin::streamDidReceiveResponse(uint64_t streamID, const URL&, uint32_t, uint32_t, const String& mimeType, const String&, const String& suggestedFilename)
 {
     ASSERT_UNUSED(streamID, streamID == pdfDocumentRequestID);
 
@@ -952,7 +947,7 @@ void PDFPlugin::streamDidFail(uint64_t streamID, bool wasCancelled)
     m_data.clear();
 }
 
-void PDFPlugin::manualStreamDidReceiveResponse(const KURL& responseURL, uint32_t streamLength,  uint32_t lastModifiedTime, const String& mimeType, const String& headers, const String& suggestedFilename)
+void PDFPlugin::manualStreamDidReceiveResponse(const URL& responseURL, uint32_t streamLength,  uint32_t lastModifiedTime, const String& mimeType, const String& headers, const String& suggestedFilename)
 {
     m_suggestedFilename = suggestedFilename;
 
@@ -1137,7 +1132,7 @@ PassRefPtr<ShareableBitmap> PDFPlugin::snapshot()
     backingStoreSize.scale(contentsScaleFactor);
 
     RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(backingStoreSize, ShareableBitmap::SupportsAlpha);
-    OwnPtr<GraphicsContext> context = bitmap->createGraphicsContext();
+    auto context = bitmap->createGraphicsContext();
 
     context->scale(FloatSize(contentsScaleFactor, -contentsScaleFactor));
     context->translate(0, -size().height());

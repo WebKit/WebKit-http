@@ -57,7 +57,7 @@ public:
 
     const String& serviceType() const { return m_serviceType; }
     const String& url() const { return m_url; }
-    const KURL& loadedUrl() const { return m_loadedUrl; }
+    const URL& loadedUrl() const { return m_loadedUrl; }
 
     const String loadedMimeType() const
     {
@@ -79,7 +79,7 @@ public:
     void restartSnapshottedPlugIn();
 
     // Plug-in URL might not be the same as url() with overriding parameters.
-    void subframeLoaderWillCreatePlugIn(const KURL& plugInURL);
+    void subframeLoaderWillCreatePlugIn(const URL& plugInURL);
     void subframeLoaderDidCreatePlugIn(const Widget*);
 
     void setIsPrimarySnapshottedPlugIn(bool);
@@ -99,14 +99,14 @@ public:
     SnapshotDecision snapshotDecision() const { return m_snapshotDecision; }
 
 protected:
-    HTMLPlugInImageElement(const QualifiedName& tagName, Document*, bool createdByParser, PreferPlugInsForImagesOption);
+    HTMLPlugInImageElement(const QualifiedName& tagName, Document&, bool createdByParser, PreferPlugInsForImagesOption);
 
     bool isImageType();
 
     OwnPtr<HTMLImageLoader> m_imageLoader;
     String m_serviceType;
     String m_url;
-    KURL m_loadedUrl;
+    URL m_loadedUrl;
 
     static void updateWidgetCallback(Node*, unsigned = 0);
     virtual void didAttachRenderers() OVERRIDE;
@@ -125,7 +125,7 @@ protected:
     virtual bool isRestartedPlugin() const OVERRIDE { return m_isRestartedPlugin; }
 
 private:
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
     virtual bool willRecalcStyle(Style::Change) OVERRIDE;
 
     void didAddUserAgentShadowRoot(ShadowRoot*) OVERRIDE;
@@ -165,6 +165,14 @@ private:
     IntSize m_sizeWhenSnapshotted;
     SnapshotDecision m_snapshotDecision;
 };
+
+inline HTMLPlugInImageElement& toHTMLPlugInImageElement(Node& node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(node.isPluginElement());
+    HTMLPlugInElement& plugInElement = static_cast<HTMLPlugInElement&>(node);
+    ASSERT_WITH_SECURITY_IMPLICATION(plugInElement.isPlugInImageElement());
+    return static_cast<HTMLPlugInImageElement&>(plugInElement);
+}
 
 inline HTMLPlugInImageElement* toHTMLPlugInImageElement(Node* node)
 {

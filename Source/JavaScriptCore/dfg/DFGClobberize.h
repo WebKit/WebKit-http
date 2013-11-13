@@ -112,6 +112,8 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
     case LogicalNot:
     case Int32ToDouble:
     case ExtractOSREntryLocal:
+    case Int52ToDouble:
+    case Int52ToValue:
         return;
         
     case MovHintAndCheck:
@@ -124,8 +126,6 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
     case SetArgument:
     case InlineStart:
     case Breakpoint:
-    case CreateActivation:
-    case CreateArguments:
     case PhantomArguments:
     case Jump:
     case Branch:
@@ -141,6 +141,13 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         write(SideState);
         return;
 
+    case CreateActivation:
+    case CreateArguments:
+        write(SideState);
+        read(GCState);
+        write(GCState);
+        return;
+
     // These are forward-exiting nodes that assume that the subsequent instruction
     // is a MovHint, and they try to roll forward over this MovHint in their
     // execution. This makes hoisting them impossible without additional magic. We
@@ -150,8 +157,13 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         write(SideState);
         return;
         
-    case CreateThis:
     case ToThis:
+    case CreateThis:
+        read(MiscFields);
+        read(GCState);
+        write(GCState);
+        return;
+
     case VarInjectionWatchpoint:
     case AllocationProfileWatchpoint:
     case IsObject:
@@ -180,6 +192,7 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         switch (node->binaryUseKind()) {
         case Int32Use:
         case NumberUse:
+        case MachineIntUse:
             return;
         case UntypedUse:
             read(World);
@@ -192,10 +205,6 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         
     case GetCallee:
         read(AbstractHeap(Variables, JSStack::Callee));
-        return;
-        
-    case SetCallee:
-        write(AbstractHeap(Variables, JSStack::Callee));
         return;
         
     case GetLocal:
@@ -412,11 +421,15 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         
     case AllocatePropertyStorage:
         write(JSObject_butterfly);
+        read(GCState);
+        write(GCState);
         return;
         
     case ReallocatePropertyStorage:
         read(JSObject_butterfly);
         write(JSObject_butterfly);
+        read(GCState);
+        write(GCState);
         return;
         
     case GetButterfly:
@@ -429,6 +442,8 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         read(JSObject_butterfly);
         write(JSCell_structure);
         write(JSObject_butterfly);
+        read(GCState);
+        write(GCState);
         return;
         
     case GetIndexedPropertyStorage:
@@ -479,10 +494,6 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         
     case GetMyScope:
         read(AbstractHeap(Variables, JSStack::ScopeChain));
-        return;
-        
-    case SetMyScope:
-        write(AbstractHeap(Variables, JSStack::ScopeChain));
         return;
         
     case SkipTopScope:

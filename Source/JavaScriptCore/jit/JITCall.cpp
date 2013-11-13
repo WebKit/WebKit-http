@@ -76,7 +76,7 @@ void JIT::compileLoadVarargs(Instruction* instruction)
     JumpList slowCase;
     JumpList end;
     bool canOptimize = m_codeBlock->usesArguments()
-        && arguments == m_codeBlock->argumentsRegister()
+        && arguments == m_codeBlock->argumentsRegister().offset()
         && !m_codeBlock->symbolTable()->slowArguments();
 
     if (canOptimize) {
@@ -88,12 +88,13 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         // regT0: argumentCountIncludingThis
 
         move(regT0, regT1);
-        add32(TrustedImm32(firstFreeRegister + JSStack::CallFrameHeaderSize), regT1);
-        lshift32(TrustedImm32(3), regT1);
+        neg64(regT1);
+        add64(TrustedImm32(firstFreeRegister - JSStack::CallFrameHeaderSize), regT1);
+        lshift64(TrustedImm32(3), regT1);
         addPtr(callFrameRegister, regT1);
         // regT1: newCallFrame
 
-        slowCase.append(branchPtr(Below, AbsoluteAddress(m_vm->interpreter->stack().addressOfEnd()), regT1));
+        slowCase.append(branchPtr(Above, AbsoluteAddress(m_vm->interpreter->stack().addressOfEnd()), regT1));
 
         // Initialize ArgumentCount.
         store32(regT0, Address(regT1, JSStack::ArgumentCount * static_cast<int>(sizeof(Register)) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload)));
@@ -103,15 +104,14 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         store64(regT2, Address(regT1, CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register))));
 
         // Copy arguments.
-        neg32(regT0);
         signExtend32ToPtr(regT0, regT0);
-        end.append(branchAdd64(Zero, TrustedImm32(1), regT0));
-        // regT0: -argumentCount
+        end.append(branchSub64(Zero, TrustedImm32(1), regT0));
+        // regT0: argumentCount
 
         Label copyLoop = label();
         load64(BaseIndex(callFrameRegister, regT0, TimesEight, CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register))), regT2);
         store64(regT2, BaseIndex(regT1, regT0, TimesEight, CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register))));
-        branchAdd64(NonZero, TrustedImm32(1), regT0).linkTo(copyLoop, this);
+        branchSub64(NonZero, TrustedImm32(1), regT0).linkTo(copyLoop, this);
 
         end.append(jump());
     }
@@ -146,7 +146,7 @@ void JIT::compileCallEvalSlowCase(Instruction* instruction, Vector<SlowCaseEntry
     linkSlowCase(iter);
 
     emitGetFromCallFrameHeader64(JSStack::Callee, regT0);
-    emitNakedCall(m_vm->getCTIStub(virtualCallGenerator).code());
+    emitNakedCall(m_vm->getCTIStub(oldStyleVirtualCallGenerator).code());
 
     sampleCodeBlock(m_codeBlock);
     
@@ -175,7 +175,7 @@ void JIT::compileOpCall(OpcodeID opcodeID, Instruction* instruction, unsigned ca
         compileLoadVarargs(instruction);
     else {
         int argCount = instruction[3].u.operand;
-        int registerOffset = instruction[4].u.operand;
+        int registerOffset = -instruction[4].u.operand;
 
         if (opcodeID == op_call && shouldEmitProfiling()) {
             emitGetVirtualRegister(registerOffset + CallFrame::argumentOffsetIncludingThis(0), regT0);
@@ -233,7 +233,7 @@ void JIT::compileOpCallSlowCase(OpcodeID opcodeID, Instruction* instruction, Vec
 
     linkSlowCase(iter);
     
-    m_callStructureStubCompilationInfo[callLinkInfoIndex].callReturnLocation = emitNakedCall(opcodeID == op_construct ? m_vm->getCTIStub(linkConstructGenerator).code() : m_vm->getCTIStub(linkCallGenerator).code());
+    m_callStructureStubCompilationInfo[callLinkInfoIndex].callReturnLocation = emitNakedCall(opcodeID == op_construct ? m_vm->getCTIStub(oldStyleLinkConstructGenerator).code() : m_vm->getCTIStub(oldStyleLinkCallGenerator).code());
 
     sampleCodeBlock(m_codeBlock);
     
@@ -263,7 +263,7 @@ void JIT::privateCompileClosureCall(CallLinkInfo* callLinkInfo, CodeBlock* calle
     
     patchBuffer.link(call, FunctionPtr(codePtr.executableAddress()));
     patchBuffer.link(done, callLinkInfo->hotPathOther.labelAtOffset(0));
-    patchBuffer.link(slow, CodeLocationLabel(m_vm->getCTIStub(virtualCallGenerator).code()));
+    patchBuffer.link(slow, CodeLocationLabel(m_vm->getCTIStub(oldStyleVirtualCallGenerator).code()));
     
     RefPtr<ClosureCallStubRoutine> stubRoutine = adoptRef(new ClosureCallStubRoutine(
         FINALIZE_CODE(
@@ -281,7 +281,7 @@ void JIT::privateCompileClosureCall(CallLinkInfo* callLinkInfo, CodeBlock* calle
     repatchBuffer.replaceWithJump(
         RepatchBuffer::startOfBranchPtrWithPatchOnRegister(callLinkInfo->hotPathBegin),
         CodeLocationLabel(stubRoutine->code().code()));
-    repatchBuffer.relink(callLinkInfo->callReturnLocation, m_vm->getCTIStub(virtualCallGenerator).code());
+    repatchBuffer.relink(callLinkInfo->callReturnLocation, m_vm->getCTIStub(oldStyleVirtualCallGenerator).code());
     
     callLinkInfo->stub = stubRoutine.release();
 }

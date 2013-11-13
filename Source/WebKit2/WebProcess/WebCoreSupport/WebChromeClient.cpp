@@ -55,7 +55,6 @@
 #include <WebCore/DocumentLoader.h>
 #include <WebCore/FileChooser.h>
 #include <WebCore/FileIconLoader.h>
-#include <WebCore/Frame.h>
 #include <WebCore/FrameLoadRequest.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
@@ -64,6 +63,7 @@
 #include <WebCore/HTMLParserIdioms.h>
 #include <WebCore/HTMLPlugInImageElement.h>
 #include <WebCore/Icon.h>
+#include <WebCore/MainFrame.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
 #include <WebCore/SecurityOrigin.h>
@@ -534,9 +534,9 @@ void WebChromeClient::unavailablePluginButtonClicked(Element* element, RenderEmb
     String frameURLString = pluginElement->document().frame()->loader().documentLoader()->responseURL().string();
     String pageURLString = m_page->mainFrame()->loader().documentLoader()->responseURL().string();
     String pluginURLString = pluginElement->document().completeURL(pluginElement->url()).string();
-    KURL pluginspageAttributeURL = element->document().completeURL(stripLeadingAndTrailingHTMLSpaces(pluginElement->getAttribute(pluginspageAttr)));
+    URL pluginspageAttributeURL = element->document().completeURL(stripLeadingAndTrailingHTMLSpaces(pluginElement->getAttribute(pluginspageAttr)));
     if (!pluginspageAttributeURL.protocolIsInHTTPFamily())
-        pluginspageAttributeURL = KURL();
+        pluginspageAttributeURL = URL();
     m_page->send(Messages::WebPageProxy::UnavailablePluginButtonClicked(pluginUnavailabilityReason, pluginElement->serviceType(), pluginURLString, pluginspageAttributeURL.string(), frameURLString, pageURLString));
 }
 
@@ -902,6 +902,11 @@ void WebChromeClient::didAddFooterLayer(GraphicsLayer* footerParent)
 {
     if (PageBanner* banner = m_page->footerPageBanner())
         banner->didAddParentLayer(footerParent);
+}
+
+bool WebChromeClient::shouldUseTiledBackingForFrameView(const FrameView* frameView) const
+{
+    return m_page->drawingArea()->shouldUseTiledBackingForFrameView(frameView);
 }
 
 void WebChromeClient::incrementActivePageCount()

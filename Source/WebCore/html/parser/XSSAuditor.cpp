@@ -38,7 +38,7 @@
 #include "HTMLParamElement.h"
 #include "HTMLParserIdioms.h"
 #include "InspectorValues.h"
-#include "KURL.h"
+#include "URL.h"
 #include "Settings.h"
 #include "TextEncoding.h"
 #include "TextResourceDecoder.h"
@@ -156,8 +156,8 @@ static inline String decode16BitUnicodeEscapeSequences(const String& string)
 
 static inline String decodeStandardURLEscapeSequences(const String& string, const TextEncoding& encoding)
 {
-    // We use decodeEscapeSequences() instead of decodeURLEscapeSequences() (declared in KURL.h) to
-    // avoid platform-specific URL decoding differences (e.g. KURLGoogle).
+    // We use decodeEscapeSequences() instead of decodeURLEscapeSequences() (declared in URL.h) to
+    // avoid platform-specific URL decoding differences (e.g. URLGoogle).
     return decodeEscapeSequences<URLEscapeSequence>(string, encoding);
 }
 
@@ -229,7 +229,7 @@ void XSSAuditor::initForFragment()
 
 void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
 {
-    const size_t miniumLengthForSuffixTree = 512; // FIXME: Tune this parameter.
+    const size_t minimumLengthForSuffixTree = 512; // FIXME: Tune this parameter.
     const int suffixTreeDepth = 5;
 
     ASSERT(isMainThread());
@@ -278,7 +278,7 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
         String errorDetails;
         unsigned errorPosition = 0;
         String reportURL;
-        KURL xssProtectionReportURL;
+        URL xssProtectionReportURL;
 
         // Process the X-XSS-Protection header, then mix in the CSP header's value.
         ContentSecurityPolicy::ReflectedXSSDisposition xssProtectionHeader = parseXSSProtectionHeader(headerValue, errorDetails, errorPosition, reportURL);
@@ -288,7 +288,7 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
             if (MixedContentChecker::isMixedContent(document->securityOrigin(), xssProtectionReportURL)) {
                 errorDetails = "insecure reporting URL for secure page";
                 xssProtectionHeader = ContentSecurityPolicy::ReflectedXSSInvalid;
-                xssProtectionReportURL = KURL();
+                xssProtectionReportURL = URL();
             }
         }
         if (xssProtectionHeader == ContentSecurityPolicy::ReflectedXSSInvalid)
@@ -308,7 +308,7 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
                 m_decodedHTTPBody = fullyDecodeString(httpBodyAsString, m_encoding);
                 if (m_decodedHTTPBody.find(isRequiredForInjection) == notFound)
                     m_decodedHTTPBody = String();
-                if (m_decodedHTTPBody.length() >= miniumLengthForSuffixTree)
+                if (m_decodedHTTPBody.length() >= minimumLengthForSuffixTree)
                     m_decodedHTTPBodySuffixTree = adoptPtr(new SuffixTree<ASCIICodebook>(m_decodedHTTPBody, suffixTreeDepth));
             }
         }
@@ -320,7 +320,7 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
     }
 }
 
-PassOwnPtr<XSSInfo> XSSAuditor::filterToken(const FilterTokenRequest& request)
+OwnPtr<XSSInfo> XSSAuditor::filterToken(const FilterTokenRequest& request)
 {
     ASSERT(m_state == Initialized);
     if (!m_isEnabled || m_xssProtection == ContentSecurityPolicy::AllowReflectedXSS)
@@ -720,7 +720,7 @@ bool XSSAuditor::isLikelySafeResource(const String& url)
     if (m_documentURL.host().isEmpty())
         return false;
 
-    KURL resourceURL(m_documentURL, url);
+    URL resourceURL(m_documentURL, url);
     return (m_documentURL.host() == resourceURL.host() && resourceURL.query().isEmpty());
 }
 

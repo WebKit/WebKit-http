@@ -33,7 +33,6 @@ namespace WebCore {
 class FlowThreadController;
 class ImageQualityController;
 class RenderQuote;
-class RenderWidget;
 
 #if USE(ACCELERATED_COMPOSITING)
 class RenderLayerCompositor;
@@ -45,15 +44,13 @@ class CustomFilterGlobalContext;
 
 class RenderView FINAL : public RenderBlockFlow {
 public:
-    explicit RenderView(Document*);
+    explicit RenderView(Document&);
     virtual ~RenderView();
 
     bool hitTest(const HitTestRequest&, HitTestResult&);
     bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&);
 
     virtual const char* renderName() const OVERRIDE { return "RenderView"; }
-
-    virtual bool isRenderView() const OVERRIDE { return true; }
 
     virtual bool requiresLayer() const OVERRIDE { return true; }
 
@@ -110,12 +107,6 @@ public:
     int maximalOutlineSize() const { return m_maximalOutlineSize; }
 
     virtual LayoutRect viewRect() const OVERRIDE;
-
-    void updateWidgetPositions();
-    void addWidget(RenderWidget*);
-    void removeWidget(RenderWidget*);
-    
-    void notifyWidgets(WidgetNotification);
 
     // layoutDelta is used transiently during layout to store how far an object has moved from its
     // last layout location, in order to repaint correctly.
@@ -234,6 +225,11 @@ public:
 
     ImageQualityController& imageQualityController();
 
+#if ENABLE(CSS_FILTERS)
+    void setHasSoftwareFilters(bool hasSoftwareFilters) { m_hasSoftwareFilters = hasSoftwareFilters; }
+    bool hasSoftwareFilters() const { return m_hasSoftwareFilters; }
+#endif
+
 protected:
     virtual void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip, bool* wasFixed = 0) const OVERRIDE;
     virtual const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const OVERRIDE;
@@ -253,7 +249,7 @@ private:
     {
         // We push LayoutState even if layoutState is disabled because it stores layoutDelta too.
         if (!doingFullRepaint() || m_layoutState->isPaginated() || renderer->hasColumns() || renderer->flowThreadContainingBlock()
-            || m_layoutState->lineGrid() || (renderer->style()->lineGrid() != RenderStyle::initialLineGrid() && renderer->isBlockFlowFlexBoxOrGrid())
+            || m_layoutState->lineGrid() || (renderer->style()->lineGrid() != RenderStyle::initialLineGrid() && renderer->isRenderBlockFlow())
 #if ENABLE(CSS_SHAPES)
             || (renderer->isRenderBlock() && toRenderBlock(renderer)->shapeInsideInfo())
             || (m_layoutState->shapeInsideInfo() && renderer->isRenderBlock() && !toRenderBlock(renderer)->allowsShapeInsideInfoSharing())
@@ -289,16 +285,13 @@ private:
     void checkLayoutState(const LayoutState&);
 #endif
 
-    size_t getRetainedWidgets(Vector<RenderWidget*>&);
-    void releaseWidgets(Vector<RenderWidget*>&);
-
     void pushLayoutStateForCurrentFlowThread(const RenderObject*);
     void popLayoutStateForCurrentFlowThread();
     
     friend class LayoutStateMaintainer;
     friend class LayoutStateDisabler;
 
-protected:
+private:
     FrameView& m_frameView;
 
     RenderObject* m_selectionStart;
@@ -326,10 +319,6 @@ protected:
 
     int m_maximalOutlineSize; // Used to apply a fudge factor to dirty-rect checks on blocks/tables.
 
-    typedef HashSet<RenderWidget*> RenderWidgetSet;
-    RenderWidgetSet m_widgets;
-
-private:
     bool shouldUsePrintingLayout() const;
 
     OwnPtr<ImageQualityController> m_imageQualityController;
@@ -350,6 +339,9 @@ private:
     unsigned m_renderCounterCount;
 
     bool m_selectionWasCaret;
+#if ENABLE(CSS_FILTERS)
+    bool m_hasSoftwareFilters;
+#endif
 };
 
 inline RenderView& toRenderView(RenderObject& object)

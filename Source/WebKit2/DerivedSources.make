@@ -1,4 +1,4 @@
-# Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+# Copyright (C) 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,7 +31,6 @@ VPATH = \
     $(WebKit2)/Shared/mac \
     $(WebKit2)/Shared/Authentication \
     $(WebKit2)/Shared/Network/CustomProtocols \
-    $(WebKit2)/SharedWorkerProcess \
     $(WebKit2)/WebProcess/ApplicationCache \
     $(WebKit2)/WebProcess/Cookies \
     $(WebKit2)/WebProcess/FullScreen \
@@ -52,7 +51,6 @@ VPATH = \
     $(WebKit2)/UIProcess/Network/CustomProtocols \
     $(WebKit2)/UIProcess/Notifications \
     $(WebKit2)/UIProcess/Plugins \
-    $(WebKit2)/UIProcess/SharedWorkers \
     $(WebKit2)/UIProcess/Storage \
     $(WebKit2)/UIProcess/mac \
 #
@@ -76,8 +74,6 @@ MESSAGE_RECEIVERS = \
     PluginProcessConnectionManager \
     PluginProcessProxy \
     PluginProxy \
-    SharedWorkerProcess \
-    SharedWorkerProcessProxy \
     StorageManager \
     WebApplicationCacheManager \
     WebApplicationCacheManagerProxy \
@@ -138,9 +134,6 @@ all : \
 	@echo Generating message receiver for $*...
 	@python $(WebKit2)/Scripts/generate-messages-header.py $< > $@
 
-# Mac-specific rules
-
-ifeq ($(PLATFORM_NAME),macosx)
 
 FRAMEWORK_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(FRAMEWORK_SEARCH_PATHS) | perl -e 'print "-F " . join(" -F ", split(" ", <>));')
 HEADER_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(HEADER_SEARCH_PATHS) | perl -e 'print "-I" . join(" -I", split(" ", <>));')
@@ -168,18 +161,3 @@ all: $(SANDBOX_PROFILES)
 	@echo Pre-processing $* sandbox profile...
 	$(CC) $(SDK_FLAGS) $(TEXT_PREPROCESSOR_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" $< > $@
 
-endif # macosx
-
-# ------------------------
-
-# Windows-specific rules
-
-ifeq ($(OS),Windows_NT)
-
-all : HeaderDetection.h
-
-HeaderDetection.h : DerivedSources.make
-	if [ -f "$(WEBKITLIBRARIESDIR)/include/WebKitQuartzCoreAdditions/WebKitQuartzCoreAdditionsBase.h" ] && [ ! -f "$(WEBKITLIBRARIESDIR)/include/cairo/cairo.h" ]; then echo "#define HAVE_WKQCA 1" > $@; else echo > $@; fi
-	if [ -f "$(WEBKITLIBRARIESDIR)/include/AVFoundationCF/AVCFBase.h" ]; then echo "#define HAVE_AVCF 1" >> $@; else echo >> $@; fi
-
-endif # Windows_NT

@@ -25,11 +25,12 @@
 
 #include "config.h"
 
+#include "MoveOnly.h"
 #include <wtf/ListHashSet.h>
 
 namespace TestWebKitAPI {
 
-TEST(WTF, ListHashSetRemoveFirst)
+TEST(WTF_ListHashSet, RemoveFirst)
 {
     ListHashSet<int> list;
     list.add(1);
@@ -48,7 +49,7 @@ TEST(WTF, ListHashSetRemoveFirst)
     ASSERT_TRUE(list.isEmpty());
 }
 
-TEST(WTF, ListHashSetAppendOrMoveToLastNewItems)
+TEST(WTF_ListHashSet, AppendOrMoveToLastNewItems)
 {
     ListHashSet<int> list;
     ListHashSet<int>::AddResult result = list.appendOrMoveToLast(1);
@@ -70,7 +71,7 @@ TEST(WTF, ListHashSetAppendOrMoveToLastNewItems)
     ++iterator;
 }
 
-TEST(WTF, ListHashSetAppendOrMoveToLastWithDuplicates)
+TEST(WTF_ListHashSet, AppendOrMoveToLastWithDuplicates)
 {
     ListHashSet<int> list;
 
@@ -109,7 +110,7 @@ TEST(WTF, ListHashSetAppendOrMoveToLastWithDuplicates)
     ++iterator;
 }
 
-TEST(WTF, ListHashSetPrependOrMoveToLastNewItems)
+TEST(WTF_ListHashSet, PrependOrMoveToLastNewItems)
 {
     ListHashSet<int> list;
     ListHashSet<int>::AddResult result = list.prependOrMoveToFirst(1);
@@ -131,7 +132,7 @@ TEST(WTF, ListHashSetPrependOrMoveToLastNewItems)
     ++iterator;
 }
 
-TEST(WTF, ListHashSetPrependOrMoveToLastWithDuplicates)
+TEST(WTF_ListHashSet, PrependOrMoveToLastWithDuplicates)
 {
     ListHashSet<int> list;
 
@@ -168,6 +169,82 @@ TEST(WTF, ListHashSetPrependOrMoveToLastWithDuplicates)
     ++iterator;
     ASSERT_EQ(1, *iterator);
     ++iterator;
+}
+
+TEST(WTF_ListHashSet, ReverseIterator)
+{
+    ListHashSet<int> list;
+
+    list.add(1);
+    list.add(2);
+    list.add(3);
+
+    auto it = list.rbegin();
+    ASSERT_EQ(3, *it);
+    ++it;
+    ASSERT_EQ(2, *it);
+    ++it;
+    ASSERT_EQ(1, *it);
+    ++it;
+    ASSERT_TRUE(it == list.rend());
+
+    const auto& listHashSet = list;
+
+    auto constIt = listHashSet.rbegin();
+    ASSERT_EQ(3, *constIt);
+    ++constIt;
+    ASSERT_EQ(2, *constIt);
+    ++constIt;
+    ASSERT_EQ(1, *constIt);
+    ++constIt;
+    ASSERT_TRUE(constIt == listHashSet.rend());
+}
+
+TEST(WTF_ListHashSet, MoveOnly)
+{
+    ListHashSet<MoveOnly> list;
+    list.add(MoveOnly(2));
+    list.add(MoveOnly(4));
+
+    // { 2, 4 }
+    ASSERT_EQ(2U, list.first().value());
+    ASSERT_EQ(4U, list.last().value());
+
+    list.appendOrMoveToLast(MoveOnly(3));
+
+    // { 2, 4, 3 }
+    ASSERT_EQ(3U, list.last().value());
+
+    // { 4, 3, 2 }
+    list.appendOrMoveToLast(MoveOnly(2));
+    ASSERT_EQ(4U, list.first().value());
+    ASSERT_EQ(2U, list.last().value());
+
+    list.prependOrMoveToFirst(MoveOnly(5));
+
+    // { 5, 2, 4, 3 }
+    ASSERT_EQ(5U, list.first().value());
+
+    list.prependOrMoveToFirst(MoveOnly(3));
+
+    // { 3, 5, 4, 2 }
+    ASSERT_EQ(3U, list.first().value());
+    ASSERT_EQ(2U, list.last().value());
+
+    list.insertBefore(MoveOnly(4), MoveOnly(1));
+    list.insertBefore(list.end(), MoveOnly(6));
+
+    // { 3, 5, 1, 4, 2, 6 }
+    ASSERT_EQ(3U, list.takeFirst().value());
+    ASSERT_EQ(5U, list.takeFirst().value());
+    ASSERT_EQ(1U, list.takeFirst().value());
+
+    // { 4, 2, 6 }
+    ASSERT_EQ(6U, list.takeLast().value());
+    ASSERT_EQ(2U, list.takeLast().value());
+    ASSERT_EQ(4U, list.takeLast().value());
+
+    ASSERT_TRUE(list.isEmpty());
 }
 
 } // namespace TestWebKitAPI

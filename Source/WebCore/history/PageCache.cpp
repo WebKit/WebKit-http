@@ -36,7 +36,6 @@
 #include "DeviceOrientationController.h"
 #include "Document.h"
 #include "DocumentLoader.h"
-#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameLoaderStateMachine.h"
@@ -45,6 +44,7 @@
 #include "HistoryController.h"
 #include "HistoryItem.h"
 #include "Logging.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "Settings.h"
 #include "SharedWorkerRepository.h"
@@ -95,8 +95,8 @@ static unsigned logCanCacheFrameDecision(Frame* frame, int indentLevel)
         return 1 << NoDocumentLoader;
     }
 
-    KURL currentURL = frame->loader().documentLoader()->url();
-    KURL newURL = frame->loader().provisionalDocumentLoader() ? frame->loader().provisionalDocumentLoader()->url() : KURL();
+    URL currentURL = frame->loader().documentLoader()->url();
+    URL newURL = frame->loader().provisionalDocumentLoader() ? frame->loader().provisionalDocumentLoader()->url() : URL();
     if (!newURL.isEmpty())
         PCLOG(" Determining if frame can be cached navigating from (", currentURL.string(), ") to (", newURL.string(), "):");
     else
@@ -205,7 +205,7 @@ static void logCanCachePageDecision(Page* page)
     // Only bother logging for main frames that have actually loaded and have content.
     if (page->mainFrame().loader().stateMachine()->creatingInitialEmptyDocument())
         return;
-    KURL currentURL = page->mainFrame().loader().documentLoader() ? page->mainFrame().loader().documentLoader()->url() : KURL();
+    URL currentURL = page->mainFrame().loader().documentLoader() ? page->mainFrame().loader().documentLoader()->url() : URL();
     if (currentURL.isEmpty())
         return;
     
@@ -217,7 +217,7 @@ static void logCanCachePageDecision(Page* page)
     if (frameRejectReasons)
         rejectReasons |= 1 << FrameCannotBeInPageCache;
     
-    if (!page->backForward()->isActive()) {
+    if (!page->backForward().isActive()) {
         PCLOG("   -The back/forward list is disabled or has 0 capacity");
         rejectReasons |= 1 << DisabledBackForwardList;
     }
@@ -355,7 +355,7 @@ bool PageCache::canCache(Page* page) const
     
     return m_capacity > 0
         && canCachePageContainingThisFrame(&page->mainFrame())
-        && page->backForward()->isActive()
+        && page->backForward().isActive()
         && page->settings().usesPageCache()
 #if ENABLE(DEVICE_ORIENTATION)
         && !DeviceMotionController::isActiveAt(page)
@@ -400,7 +400,7 @@ void PageCache::markPagesForFullStyleRecalc(Page* page)
 {
     for (HistoryItem* current = m_head; current; current = current->m_next) {
         CachedPage* cachedPage = current->m_cachedPage.get();
-        if (page->frameIsMainFrame(&cachedPage->cachedMainFrame()->view()->frame()))
+        if (&page->mainFrame() == &cachedPage->cachedMainFrame()->view()->frame())
             cachedPage->markForFullStyleRecalc();
     }
 }
@@ -411,7 +411,7 @@ void PageCache::markPagesForDeviceScaleChanged(Page* page)
 {
     for (HistoryItem* current = m_head; current; current = current->m_next) {
         CachedPage* cachedPage = current->m_cachedPage.get();
-        if (page->frameIsMainFrame(&cachedPage->cachedMainFrame()->view()->frame()))
+        if (&page->mainFrame() == &cachedPage->cachedMainFrame()->view()->frame())
             cachedPage->markForDeviceScaleChanged();
     }
 }

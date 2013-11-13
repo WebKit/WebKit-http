@@ -43,7 +43,6 @@ namespace WebKit {
 
 #ifndef NP_NO_CARBON
 static const double nullEventIntervalActive = 0.02;
-static const double nullEventIntervalNotActive = 0.25;
 
 static unsigned buttonStateFromLastMouseEvent;
 
@@ -567,7 +566,7 @@ bool NetscapePlugin::platformHandleMouseEvent(const WebMouseEvent& mouseEvent)
 
             // Protect against NPP_HandleEvent causing the plug-in to be destroyed, since we
             // access m_currentMouseEvent afterwards.
-            RefPtr<NetscapePlugin> protect(this);
+            Ref<NetscapePlugin> protect(*this);
 
             NPP_HandleEvent(&event);
 

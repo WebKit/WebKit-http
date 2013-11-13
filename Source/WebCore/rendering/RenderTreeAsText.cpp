@@ -36,15 +36,14 @@
 #include "InlineTextBox.h"
 #include "PrintContext.h"
 #include "PseudoElement.h"
-#include "RenderBR.h"
 #include "RenderDetailsMarker.h"
 #include "RenderFileUploadControl.h"
 #include "RenderInline.h"
 #include "RenderLayer.h"
+#include "RenderLineBreak.h"
 #include "RenderListItem.h"
 #include "RenderListMarker.h"
 #include "RenderNamedFlowThread.h"
-#include "RenderPart.h"
 #include "RenderRegion.h"
 #include "RenderTableCell.h"
 #include "RenderView.h"
@@ -252,9 +251,15 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
         r = IntRect(text.firstRunX(), text.firstRunY(), linesBox.width(), linesBox.height());
         if (adjustForTableCells && !text.firstTextBox())
             adjustForTableCells = false;
+    } else if (o.isBR()) {
+        const RenderLineBreak& br = toRenderLineBreak(o);
+        IntRect linesBox = br.linesBoundingBox();
+        r = IntRect(linesBox.x(), linesBox.y(), linesBox.width(), linesBox.height());
+        if (!br.inlineBoxWrapper())
+            adjustForTableCells = false;
     } else if (o.isRenderInline()) {
-        // FIXME: Would be better not to just dump 0, 0 as the x and y here.
         const RenderInline& inlineFlow = toRenderInline(o);
+        // FIXME: Would be better not to just dump 0, 0 as the x and y here.
         r = IntRect(0, 0, inlineFlow.linesBoundingBox().width(), inlineFlow.linesBoundingBox().height());
         adjustForTableCells = false;
     } else if (o.isTableCell()) {
@@ -274,7 +279,7 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
     // for consistency with old results.
     ts << " " << enclosingIntRect(r);
 
-    if (!(o.isText() && !o.isBR())) {
+    if (!o.isText()) {
         if (o.isFileUploadControl())
             ts << " " << quoteAndEscapeNonPrintables(toRenderFileUploadControl(&o)->fileTextValue());
 
@@ -303,7 +308,7 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
                 ts << " [textStrokeWidth=" << o.style()->textStrokeWidth() << "]";
         }
 
-        if (!o.isBoxModelObject())
+        if (!o.isBoxModelObject() || o.isLineBreak())
             return;
 
         const RenderBoxModelObject& box = toRenderBoxModelObject(o);
@@ -393,7 +398,7 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
 #if ENABLE(DETAILS_ELEMENT)
     if (o.isDetailsMarker()) {
         ts << ": ";
-        switch (toRenderDetailsMarker(&o)->orientation()) {
+        switch (toRenderDetailsMarker(o).orientation()) {
         case RenderDetailsMarker::Left:
             ts << "left";
             break;
@@ -485,12 +490,25 @@ void RenderTreeAsText::writeRenderObject(TextStream& ts, const RenderObject& o, 
         if (needsLayout)
             ts << ")";
     }
+    
+    if (behavior & RenderAsTextShowOverflow && o.isBox()) {
+        const RenderBox& box = toRenderBox(o);
+        if (box.hasRenderOverflow()) {
+            LayoutRect layoutOverflow = box.layoutOverflowRect();
+            ts << " (layout overflow " << layoutOverflow.x().toInt() << "," << layoutOverflow.y().toInt() << " " << layoutOverflow.width().toInt() << "x" << layoutOverflow.height().toInt() << ")";
+            
+            if (box.hasVisualOverflow()) {
+                LayoutRect visualOverflow = box.visualOverflowRect();
+                ts << " (visual overflow " << visualOverflow.x().toInt() << "," << visualOverflow.y().toInt() << " " << visualOverflow.width().toInt() << "x" << visualOverflow.height().toInt() << ")";
+            }
+        }
+    }
 
 #if PLATFORM(QT)
     // Print attributes of embedded QWidgets. E.g. when the WebCore::Widget
     // is invisible the QWidget should be invisible too.
-    if (o.isRenderPart()) {
-        const RenderPart* part = toRenderPart(const_cast<RenderObject*>(&o));
+    if (o.isWidget()) {
+        const RenderWidget* part = toRenderWidget(const_cast<RenderObject*>(&o));
         if (part->widget() && part->widget()->platformWidget()) {
             QObject* wid = part->widget()->platformWidget();
 
@@ -571,18 +589,18 @@ void write(TextStream& ts, const RenderObject& o, int indent, RenderAsTextBehavi
     RenderTreeAsText::writeRenderObject(ts, o, behavior);
     ts << "\n";
 
-    if (o.isText() && !o.isBR()) {
+    if (o.isText()) {
         const RenderText& text = toRenderText(o);
         for (InlineTextBox* box = text.firstTextBox(); box; box = box->nextTextBox()) {
             writeIndent(ts, indent + 1);
             writeTextRun(ts, text, *box);
         }
-    }
-
-    for (RenderObject* child = o.firstChild(); child; child = child->nextSibling()) {
-        if (child->hasLayer())
-            continue;
-        write(ts, *child, indent + 1, behavior);
+    } else {
+        for (RenderObject* child = toRenderElement(o).firstChild(); child; child = child->nextSibling()) {
+            if (child->hasLayer())
+                continue;
+            write(ts, *child, indent + 1, behavior);
+        }
     }
 
     if (o.isWidget()) {
@@ -590,7 +608,8 @@ void write(TextStream& ts, const RenderObject& o, int indent, RenderAsTextBehavi
         if (widget && widget->isFrameView()) {
             FrameView* view = toFrameView(widget);
             if (RenderView* root = view->frame().contentRenderer()) {
-                view->layout();
+                if (!(behavior & RenderAsTextDontUpdateLayout))
+                    view->layout();
                 RenderLayer* l = root->layer();
                 if (l)
                     writeLayers(ts, l, l, l->rect(), indent + 1, behavior);
@@ -670,7 +689,7 @@ static void writeRenderRegionList(const RenderRegionList& flowThreadRegionList, 
         writeIndent(ts, indent + 2);
         ts << "RenderRegion";
         if (renderRegion->generatingElement()) {
-            String tagName = getTagName(renderRegion->node());
+            String tagName = getTagName(renderRegion->element());
             if (!tagName.isEmpty())
                 ts << " {" << tagName << "}";
             if (renderRegion->generatingElement()->hasID())
@@ -835,14 +854,12 @@ static String nodePosition(Node* node)
     return result.toString();
 }
 
-static void writeSelection(TextStream& ts, const RenderObject* o)
+static void writeSelection(TextStream& ts, const RenderObject* renderer)
 {
-    Node* n = o->node();
-    if (!n || !n->isDocumentNode())
+    if (!renderer->isRenderView())
         return;
 
-    Document* doc = toDocument(n);
-    Frame* frame = doc->frame();
+    Frame* frame = renderer->document().frame();
     if (!frame)
         return;
 
@@ -897,7 +914,7 @@ String externalRepresentation(Element* element, RenderAsTextBehavior behavior)
     return externalRepresentation(toRenderBox(renderer), behavior | RenderAsTextShowAllLayers);
 }
 
-static void writeCounterValuesFromChildren(TextStream& stream, RenderObject* parent, bool& isFirstCounter)
+static void writeCounterValuesFromChildren(TextStream& stream, RenderElement* parent, bool& isFirstCounter)
 {
     if (!parent)
         return;

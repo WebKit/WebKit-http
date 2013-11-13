@@ -75,7 +75,7 @@ public:
 
 protected:
     ElementData();
-    ElementData(unsigned arraySize);
+    explicit ElementData(unsigned arraySize);
     ElementData(const ElementData&, bool isUnique);
 
     unsigned m_isUnique : 1;
@@ -99,6 +99,8 @@ private:
 #if ENABLE(SVG)
     friend class SVGElement;
 #endif
+
+    void destroy();
 
     const Attribute* attributeBase() const;
     const Attribute* findAttributeByName(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
@@ -146,6 +148,13 @@ public:
     mutable RefPtr<StylePropertySet> m_presentationAttributeStyle;
     Vector<Attribute, 4> m_attributeVector;
 };
+
+inline void ElementData::deref()
+{
+    if (!derefBase())
+        return;
+    destroy();
+}
 
 inline unsigned ElementData::length() const
 {
@@ -222,6 +231,21 @@ inline const Attribute& ElementData::attributeAt(unsigned index) const
 {
     RELEASE_ASSERT(index < length());
     return attributeBase()[index];
+}
+
+inline void UniqueElementData::addAttribute(const QualifiedName& attributeName, const AtomicString& value)
+{
+    m_attributeVector.append(Attribute(attributeName, value));
+}
+
+inline void UniqueElementData::removeAttribute(unsigned index)
+{
+    m_attributeVector.remove(index);
+}
+
+inline Attribute& UniqueElementData::attributeAt(unsigned index)
+{
+    return m_attributeVector.at(index);
 }
 
 }

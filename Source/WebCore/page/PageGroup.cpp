@@ -31,8 +31,8 @@
 #include "DOMWrapperWorld.h"
 #include "Document.h"
 #include "DocumentStyleSheetCollection.h"
-#include "Frame.h"
 #include "GroupSettings.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "SecurityOrigin.h"
@@ -67,23 +67,17 @@ PageGroup::PageGroup(const String& name)
 {
 }
 
-PageGroup::PageGroup(Page* page)
+PageGroup::PageGroup(Page& page)
     : m_visitedLinksPopulated(false)
     , m_identifier(getUniqueIdentifier())
     , m_groupSettings(GroupSettings::create())
 {
-    ASSERT(page);
-    addPage(page);
+    addPage(&page);
 }
 
 PageGroup::~PageGroup()
 {
     removeAllUserContent();
-}
-
-PassOwnPtr<PageGroup> PageGroup::create(Page* page)
-{
-    return adoptPtr(new PageGroup(page));
 }
 
 typedef HashMap<String, PageGroup*> PageGroupMap;
@@ -96,7 +90,7 @@ PageGroup* PageGroup::pageGroup(const String& groupName)
     if (!pageGroups)
         pageGroups = new PageGroupMap;
 
-    PageGroupMap::AddResult result = pageGroups->add(groupName, 0);
+    PageGroupMap::AddResult result = pageGroups->add(groupName, nullptr);
 
     if (result.isNewEntry) {
         ASSERT(!result.iterator->value);
@@ -215,7 +209,7 @@ inline void PageGroup::addVisitedLink(LinkHash hash)
     pageCache()->markPagesForVistedLinkStyleRecalc();
 }
 
-void PageGroup::addVisitedLink(const KURL& url)
+void PageGroup::addVisitedLink(const URL& url)
 {
     if (!shouldTrackVisitedLinks)
         return;
@@ -265,7 +259,7 @@ StorageNamespace* PageGroup::localStorage()
 
 StorageNamespace* PageGroup::transientLocalStorage(SecurityOrigin* topOrigin)
 {
-    HashMap<RefPtr<SecurityOrigin>, RefPtr<StorageNamespace> >::AddResult result = m_transientLocalStorageMap.add(topOrigin, 0);
+    auto result = m_transientLocalStorageMap.add(topOrigin, nullptr);
 
     if (result.isNewEntry)
         result.iterator->value = StorageNamespace::transientLocalStorageNamespace(this, topOrigin);
@@ -273,7 +267,7 @@ StorageNamespace* PageGroup::transientLocalStorage(SecurityOrigin* topOrigin)
     return result.iterator->value.get();
 }
 
-void PageGroup::addUserScriptToWorld(DOMWrapperWorld* world, const String& source, const KURL& url,
+void PageGroup::addUserScriptToWorld(DOMWrapperWorld* world, const String& source, const URL& url,
                                      const Vector<String>& whitelist, const Vector<String>& blacklist,
                                      UserScriptInjectionTime injectionTime, UserContentInjectedFrames injectedFrames)
 {
@@ -288,7 +282,7 @@ void PageGroup::addUserScriptToWorld(DOMWrapperWorld* world, const String& sourc
     scriptsInWorld->append(userScript.release());
 }
 
-void PageGroup::addUserStyleSheetToWorld(DOMWrapperWorld* world, const String& source, const KURL& url,
+void PageGroup::addUserStyleSheetToWorld(DOMWrapperWorld* world, const String& source, const URL& url,
                                          const Vector<String>& whitelist, const Vector<String>& blacklist,
                                          UserContentInjectedFrames injectedFrames,
                                          UserStyleLevel level,
@@ -308,7 +302,7 @@ void PageGroup::addUserStyleSheetToWorld(DOMWrapperWorld* world, const String& s
         invalidateInjectedStyleSheetCacheInAllFrames();
 }
 
-void PageGroup::removeUserScriptFromWorld(DOMWrapperWorld* world, const KURL& url)
+void PageGroup::removeUserScriptFromWorld(DOMWrapperWorld* world, const URL& url)
 {
     ASSERT_ARG(world, world);
 
@@ -329,7 +323,7 @@ void PageGroup::removeUserScriptFromWorld(DOMWrapperWorld* world, const KURL& ur
         m_userScripts->remove(it);
 }
 
-void PageGroup::removeUserStyleSheetFromWorld(DOMWrapperWorld* world, const KURL& url)
+void PageGroup::removeUserStyleSheetFromWorld(DOMWrapperWorld* world, const URL& url)
 {
     ASSERT_ARG(world, world);
 
@@ -397,7 +391,7 @@ void PageGroup::invalidateInjectedStyleSheetCacheInAllFrames()
     HashSet<Page*>::const_iterator end = m_pages.end();
     for (HashSet<Page*>::const_iterator it = m_pages.begin(); it != end; ++it) {
         for (Frame* frame = &(*it)->mainFrame(); frame; frame = frame->tree().traverseNext()) {
-            frame->document()->styleSheetCollection()->invalidateInjectedStyleSheetCache();
+            frame->document()->styleSheetCollection().invalidateInjectedStyleSheetCache();
             frame->document()->styleResolverChanged(DeferRecalcStyle);
         }
     }

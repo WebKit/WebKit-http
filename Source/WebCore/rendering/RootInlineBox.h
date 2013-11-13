@@ -38,11 +38,11 @@ class RootInlineBox : public InlineFlowBox {
 public:
     explicit RootInlineBox(RenderBlock&);
 
-    virtual void destroy(RenderArena*) OVERRIDE FINAL;
+    virtual void destroy(RenderArena&) OVERRIDE FINAL;
 
     virtual bool isRootInlineBox() const OVERRIDE FINAL { return true; }
 
-    void detachEllipsisBox(RenderArena*);
+    void detachEllipsisBox(RenderArena&);
 
     RootInlineBox* nextRootBox() const { return static_cast<RootInlineBox*>(m_nextLineBox); }
     RootInlineBox* prevRootBox() const { return static_cast<RootInlineBox*>(m_prevLineBox); }
@@ -85,7 +85,7 @@ public:
         m_lineBottomWithLeading = bottomWithLeading;
     }
 
-    virtual RenderLineBoxList* rendererLineBoxes() const OVERRIDE FINAL;
+    virtual RenderLineBoxList& rendererLineBoxes() const OVERRIDE FINAL;
 
     RenderObject* lineBreakObj() const { return m_lineBreakObj; }
     BidiStatus lineBreakBidiStatus() const;
@@ -134,6 +134,8 @@ public:
 
     GapRects lineSelectionGap(RenderBlock* rootBlock, const LayoutPoint& rootBlockPhysicalPosition, const LayoutSize& offsetFromRootBlock,
         LayoutUnit selTop, LayoutUnit selHeight, const LogicalSelectionOffsetCaches&, const PaintInfo*);
+
+    IntRect computeCaretRect(float logicalLeftPosition, unsigned caretWidth, LayoutUnit* extraWidthToEndOfLine) const;
 
     RenderBlock& block() const;
 

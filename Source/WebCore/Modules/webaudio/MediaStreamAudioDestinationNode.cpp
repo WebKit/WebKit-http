@@ -30,7 +30,7 @@
 
 #include "AudioContext.h"
 #include "AudioNodeInput.h"
-#include "LocalMediaStream.h"
+#include "MediaStream.h"
 #include "MediaStreamCenter.h"
 #include "RTCPeerConnectionHandler.h"
 #include "UUID.h"
@@ -49,12 +49,12 @@ MediaStreamAudioDestinationNode::MediaStreamAudioDestinationNode(AudioContext* c
 {
     setNodeType(NodeTypeMediaStreamAudioDestination);
 
-    m_source = MediaStreamSource::create(ASCIILiteral("WebAudio-") + createCanonicalUUIDString(), MediaStreamSource::TypeAudio, "MediaStreamAudioDestinationNode", MediaStreamSource::ReadyStateLive, true);
+    m_source = MediaStreamSource::create(ASCIILiteral("WebAudio-") + createCanonicalUUIDString(), MediaStreamSource::Audio, "MediaStreamAudioDestinationNode", MediaStreamSource::Live, true);
     MediaStreamSourceVector audioSources;
     audioSources.append(m_source);
     MediaStreamSourceVector videoSources;
-    m_stream = LocalMediaStream::create(context->scriptExecutionContext(), audioSources, videoSources);
-    MediaStreamCenter::instance().didCreateMediaStream(m_stream->descriptor());
+    m_stream = MediaStream::create(context->scriptExecutionContext(), MediaStreamDescriptor::create(audioSources, videoSources));
+    MediaStreamCenter::shared().didCreateMediaStream(m_stream->descriptor());
 
     m_source->setAudioFormat(numberOfChannels, context->sampleRate());
 

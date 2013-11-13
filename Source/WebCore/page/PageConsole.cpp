@@ -37,6 +37,7 @@
 #include "Frame.h"
 #include "InspectorConsoleInstrumentation.h"
 #include "InspectorController.h"
+#include "JSMainThreadExecState.h"
 #include "Page.h"
 #include "ScriptArguments.h"
 #include "ScriptCallStack.h"
@@ -54,9 +55,14 @@ namespace {
     int muteCount = 0;
 }
 
-PageConsole::PageConsole(Page* page) : m_page(page) { }
+PageConsole::PageConsole(Page& page)
+    : m_page(page)
+{
+}
 
-PageConsole::~PageConsole() { }
+PageConsole::~PageConsole()
+{
+}
 
 void PageConsole::printSourceURLAndLine(const String& sourceURL, unsigned lineNumber)
 {
@@ -136,11 +142,15 @@ void PageConsole::addMessage(MessageSource source, MessageLevel level, const Str
     String url;
     if (document)
         url = document->url().string();
-    // FIXME: <http://webkit.org/b/114319> PageConsole::addMessage should automatically determine column number alongside line number
+    // FIXME: <http://webkit.org/b/114319> PageConsole::addMessage should automatically determine column number alongside line number.
+    // FIXME: The below code attempts to determine line numbers for parser generated errors, but this is not the only reason why we can get here.
+    // For example, if we are still parsing and get a WebSocket network error, it will be erroneously attributed to a line where parsing was paused.
+    // Also, we should determine line numbers for script generated messages (e.g. calling getImageData on a canvas).
+    // We probably need to split this function into multiple ones, as appropriate for different call sites. Or maybe decide based on MessageSource.
     unsigned line = 0;
     if (document && document->parsing() && !document->isInDocumentWrite() && document->scriptableDocumentParser()) {
         ScriptableDocumentParser* parser = document->scriptableDocumentParser();
-        if (!parser->isWaitingForScripts() && !parser->isExecutingScript())
+        if (!parser->isWaitingForScripts() && !JSMainThreadExecState::currentState())
             line = parser->lineNumber().oneBasedInt();
     }
     addMessage(source, level, message, url, line, 0, 0, 0, requestIdentifier);
@@ -151,29 +161,25 @@ void PageConsole::addMessage(MessageSource source, MessageLevel level, const Str
     addMessage(source, level, message, String(), 0, 0, callStack, 0);
 }
 
-void PageConsole::addMessage(MessageSource source, MessageLevel level, const String& message, const String& url, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack> callStack, ScriptState* state, unsigned long requestIdentifier)
+void PageConsole::addMessage(MessageSource source, MessageLevel level, const String& message, const String& url, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack> callStack, JSC::ExecState* state, unsigned long requestIdentifier)
 {
     if (muteCount && source != ConsoleAPIMessageSource)
         return;
 
-    Page* page = this->page();
-    if (!page)
-        return;
-
     if (callStack)
-        InspectorInstrumentation::addMessageToConsole(page, source, LogMessageType, level, message, callStack, requestIdentifier);
+        InspectorInstrumentation::addMessageToConsole(&m_page, source, LogMessageType, level, message, callStack, requestIdentifier);
     else
-        InspectorInstrumentation::addMessageToConsole(page, source, LogMessageType, level, message, url, lineNumber, columnNumber, state, requestIdentifier);
+        InspectorInstrumentation::addMessageToConsole(&m_page, source, LogMessageType, level, message, url, lineNumber, columnNumber, state, requestIdentifier);
 
     if (source == CSSMessageSource)
         return;
 
-    if (page->settings().privateBrowsingEnabled())
+    if (m_page.settings().privateBrowsingEnabled())
         return;
 
-    page->chrome().client().addMessageToConsole(source, level, message, lineNumber, columnNumber, url);
+    m_page.chrome().client().addMessageToConsole(source, level, message, lineNumber, columnNumber, url);
 
-    if (!page->settings().logsPageMessagesToSystemConsoleEnabled() && !shouldPrintExceptions())
+    if (!m_page.settings().logsPageMessagesToSystemConsoleEnabled() && !shouldPrintExceptions())
         return;
 
     printSourceURLAndLine(url, lineNumber);

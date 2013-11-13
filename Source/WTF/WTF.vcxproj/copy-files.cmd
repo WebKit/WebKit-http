@@ -15,6 +15,7 @@ for %%d in (
     wtf\threads
     wtf\unicode
     wtf\unicode\icu
+    wtf\win
 ) do (
     mkdir "%PrivateHeadersDirectory%\%%d" 2>NUL
     xcopy /y /d ..\%%d\*.h "%PrivateHeadersDirectory%\%%d" >NUL
@@ -38,3 +39,4 @@ goto :EOF
 echo Deleting copied files...
 if exist "%PrivateHeadersDirectory%" rmdir /s /q "%PrivateHeadersDirectory%" >NUL
 endlocal
+

@@ -29,7 +29,6 @@
 #include "config.h"
 #include "SpatialNavigation.h"
 
-#include "Frame.h"
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "HTMLAreaElement.h"
@@ -37,6 +36,7 @@
 #include "HTMLMapElement.h"
 #include "HTMLNames.h"
 #include "IntRect.h"
+#include "MainFrame.h"
 #include "Node.h"
 #include "Page.h"
 #include "RenderInline.h"
@@ -45,7 +45,6 @@
 
 namespace WebCore {
 
-static RectsAlignment alignmentForRects(FocusDirection, const LayoutRect&, const LayoutRect&, const LayoutSize& viewSize);
 static bool areRectsFullyAligned(FocusDirection, const LayoutRect&, const LayoutRect&);
 static bool areRectsPartiallyAligned(FocusDirection, const LayoutRect&, const LayoutRect&);
 static bool areRectsMoreThanFullScreenApart(FocusDirection, const LayoutRect& curRect, const LayoutRect& targetRect, const LayoutSize& viewSize);
@@ -449,7 +448,7 @@ bool canScrollInDirection(const Node* container, FocusDirection direction)
 {
     ASSERT(container);
 
-    if (container->hasTagName(HTMLNames::selectTag))
+    if (isHTMLSelectElement(container))
         return false;
 
     if (container->isDocumentNode())

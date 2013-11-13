@@ -22,7 +22,7 @@
 #define CSSValue_h
 
 #include "ExceptionCode.h"
-#include "KURLHash.h"
+#include "URLHash.h"
 #include <wtf/ListHashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -71,6 +71,7 @@ public:
 
     bool isAspectRatioValue() const { return m_classType == AspectRatioClass; }
     bool isBorderImageSliceValue() const { return m_classType == BorderImageSliceClass; }
+    bool isCanvasValue() const { return m_classType == CanvasClass; }
     bool isCrossfadeValue() const { return m_classType == CrossfadeClass; }
     bool isCursorImageValue() const { return m_classType == CursorImageClass; }
     bool isFontFeatureValue() const { return m_classType == FontFeatureClass; }
@@ -84,14 +85,15 @@ public:
     bool isImplicitInitialValue() const;
     bool isInheritedValue() const { return m_classType == InheritedClass; }
     bool isInitialValue() const { return m_classType == InitialClass; }
+    bool isLinearGradientValue() const { return m_classType == LinearGradientClass; }
+    bool isRadialGradientValue() const { return m_classType == RadialGradientClass; }
     bool isReflectValue() const { return m_classType == ReflectClass; }
     bool isShadowValue() const { return m_classType == ShadowClass; }
     bool isCubicBezierTimingFunctionValue() const { return m_classType == CubicBezierTimingFunctionClass; }
-    bool isLinearTimingFunctionValue() const { return m_classType == LinearTimingFunctionClass; }
     bool isStepsTimingFunctionValue() const { return m_classType == StepsTimingFunctionClass; }
     bool isWebKitCSSTransformValue() const { return m_classType == WebKitCSSTransformClass; }
-    bool isCSSLineBoxContainValue() const { return m_classType == LineBoxContainClass; }
-    bool isCalculationValue() const {return m_classType == CalculationClass; }
+    bool isLineBoxContainValue() const { return m_classType == LineBoxContainClass; }
+    bool isCalcValue() const {return m_classType == CalculationClass; }
 #if ENABLE(CSS_FILTERS)
     bool isFilterImageValue() const { return m_classType == FilterImageClass; }
     bool isWebKitCSSFilterValue() const { return m_classType == WebKitCSSFilterClass; }
@@ -123,7 +125,7 @@ public:
 
     PassRefPtr<CSSValue> cloneForCSSOM() const;
 
-    void addSubresourceStyleURLs(ListHashSet<KURL>&, const StyleSheetContents*) const;
+    void addSubresourceStyleURLs(ListHashSet<URL>&, const StyleSheetContents*) const;
 
     bool hasFailedOrCanceledSubresources() const;
 
@@ -150,7 +152,6 @@ protected:
 
         // Timing function classes.
         CubicBezierTimingFunctionClass,
-        LinearTimingFunctionClass,
         StepsTimingFunctionClass,
 
         // Other class types.
@@ -265,6 +266,20 @@ inline bool compareCSSValuePtr(const RefPtr<CSSValueType>& first, const RefPtr<C
 {
     return first ? second && first->equals(*second) : !second;
 }
+
+#define CSS_VALUE_TYPE_CASTS(ValueTypeName) \
+inline const CSS##ValueTypeName* toCSS##ValueTypeName(const CSSValue* value) \
+{ \
+    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->is##ValueTypeName()); \
+    return static_cast<const CSS##ValueTypeName*>(value); \
+} \
+inline CSS##ValueTypeName* toCSS##ValueTypeName(CSSValue* value) \
+{ \
+    ASSERT_WITH_SECURITY_IMPLICATION(!value || value->is##ValueTypeName()); \
+    return static_cast<CSS##ValueTypeName*>(value); \
+} \
+void toCSS##ValueTypeName(const CSS##ValueTypeName*); \
+void toCSS##ValueTypeName(const CSS##ValueTypeName&);
 
 } // namespace WebCore
 

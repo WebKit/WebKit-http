@@ -56,7 +56,7 @@ class SVGPathSegListPropertyTearOff;
 class SVGPathElement FINAL : public SVGGraphicsElement,
                              public SVGExternalResourcesRequired {
 public:
-    static PassRefPtr<SVGPathElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGPathElement> create(const QualifiedName&, Document&);
     
     float getTotalLength();
     SVGPoint getPointAtLength(float distance);
@@ -99,7 +99,7 @@ public:
     bool isAnimValObserved() const { return m_isAnimValObserved; }
 
 private:
-    SVGPathElement(const QualifiedName&, Document*);
+    SVGPathElement(const QualifiedName&, Document&);
 
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool supportsFocus() const OVERRIDE { return true; }
@@ -118,7 +118,7 @@ private:
         DECLARE_ANIMATED_BOOLEAN(ExternalResourcesRequired, externalResourcesRequired)
     END_DECLARE_ANIMATED_PROPERTIES
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
 
     virtual Node::InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
@@ -131,11 +131,7 @@ private:
     bool m_isAnimValObserved;
 };
 
-inline SVGPathElement* toSVGPathElement(Element* element)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!element || element->hasTagName(SVGNames::pathTag));
-    return static_cast<SVGPathElement*>(element);
-}
+ELEMENT_TYPE_CASTS(SVGPathElement)
 
 } // namespace WebCore
 

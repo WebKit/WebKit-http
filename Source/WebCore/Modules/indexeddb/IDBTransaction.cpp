@@ -38,7 +38,7 @@
 #include "IDBObjectStore.h"
 #include "IDBOpenDBRequest.h"
 #include "IDBPendingTransactionMonitor.h"
-#include "IDBTracing.h"
+#include "Logging.h"
 #include "ScriptCallStack.h"
 #include "ScriptExecutionContext.h"
 
@@ -136,11 +136,6 @@ void IDBTransaction::setError(PassRefPtr<DOMError> error, const String& errorMes
         m_error = error;
         m_errorMessage = errorMessage;
     }
-}
-
-String IDBTransaction::webkitErrorMessage() const
-{
-    return m_errorMessage;
 }
 
 PassRefPtr<IDBObjectStore> IDBTransaction::objectStore(const String& name, ExceptionCode& ec)
@@ -283,7 +278,7 @@ void IDBTransaction::unregisterRequest(IDBRequest* request)
 
 void IDBTransaction::onAbort(PassRefPtr<IDBDatabaseError> prpError)
 {
-    IDB_TRACE("IDBTransaction::onAbort");
+    LOG(StorageAPI, "IDBTransaction::onAbort");
     RefPtr<IDBDatabaseError> error = prpError;
     ASSERT(m_state != Finished);
 
@@ -317,7 +312,7 @@ void IDBTransaction::onAbort(PassRefPtr<IDBDatabaseError> prpError)
 
 void IDBTransaction::onComplete()
 {
-    IDB_TRACE("IDBTransaction::onComplete");
+    LOG(StorageAPI, "IDBTransaction::onComplete");
     ASSERT(m_state != Finished);
     m_state = Finishing;
     m_objectStoreCleanupMap.clear();
@@ -368,19 +363,9 @@ const AtomicString& IDBTransaction::modeToString(IndexedDB::TransactionMode mode
     return IDBTransaction::modeReadOnly();
 }
 
-const AtomicString& IDBTransaction::interfaceName() const
-{
-    return eventNames().interfaceForIDBTransaction;
-}
-
-ScriptExecutionContext* IDBTransaction::scriptExecutionContext() const
-{
-    return ActiveDOMObject::scriptExecutionContext();
-}
-
 bool IDBTransaction::dispatchEvent(PassRefPtr<Event> event)
 {
-    IDB_TRACE("IDBTransaction::dispatchEvent");
+    LOG(StorageAPI, "IDBTransaction::dispatchEvent");
     ASSERT(m_state != Finished);
     ASSERT(m_hasPendingActivity);
     ASSERT(scriptExecutionContext());
@@ -432,19 +417,8 @@ void IDBTransaction::enqueueEvent(PassRefPtr<Event> event)
     if (m_contextStopped || !scriptExecutionContext())
         return;
 
-    EventQueue* eventQueue = scriptExecutionContext()->eventQueue();
     event->setTarget(this);
-    eventQueue->enqueueEvent(event);
-}
-
-EventTargetData* IDBTransaction::eventTargetData()
-{
-    return &m_eventTargetData;
-}
-
-EventTargetData& IDBTransaction::ensureEventTargetData()
-{
-    return m_eventTargetData;
+    scriptExecutionContext()->eventQueue().enqueueEvent(event);
 }
 
 IDBDatabaseBackendInterface* IDBTransaction::backendDB() const

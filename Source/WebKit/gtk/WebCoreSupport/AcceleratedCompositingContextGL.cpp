@@ -22,11 +22,10 @@
 #if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER_GL)
 
 #include "CairoUtilities.h"
-#include "Chrome.h"
-#include "ChromeClientGtk.h"
-#include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsLayerTextureMapper.h"
+#include "GtkVersioning.h"
+#include "MainFrame.h"
 #include "PlatformContextCairo.h"
 #include "Settings.h"
 #include "TextureMapperGL.h"
@@ -43,6 +42,10 @@
 #include <cairo.h>
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
+
+#if PLATFORM(X11) && defined(GDK_WINDOWING_X11)
+#include <gdk/gdkx.h>
+#endif
 
 const double gFramesPerSecond = 60;
 
@@ -79,6 +82,12 @@ void redirectedWindowDamagedCallback(void* data)
 void AcceleratedCompositingContext::initialize()
 {
     if (m_rootLayer)
+        return;
+
+#if PLATFORM(X11) && defined(GDK_WINDOWING_X11)
+    GdkDisplay* display = gdk_display_manager_get_default_display(gdk_display_manager_get());
+    if (!GDK_IS_X11_DISPLAY(display))
+#endif
         return;
 
     IntSize pageSize = getWebViewSize(m_webView);
@@ -158,7 +167,7 @@ bool AcceleratedCompositingContext::renderLayersToWindow(cairo_t* cr, const IntR
 
     if (!m_layerFlushTimerCallbackId && (toTextureMapperLayer(m_rootLayer.get())->descendantsOrSelfHaveRunningAnimations() || m_needsExtraFlush)) {
         m_needsExtraFlush = false;
-        double nextFlush = max((1 / gFramesPerSecond) - (currentTime() - m_lastFlushTime), 0.0);
+        double nextFlush = std::max((1 / gFramesPerSecond) - (currentTime() - m_lastFlushTime), 0.0);
         m_layerFlushTimerCallbackId = g_timeout_add_full(GDK_PRIORITY_EVENTS, 1000 * nextFlush, reinterpret_cast<GSourceFunc>(layerFlushTimerFiredCallback), this, 0);
     }
 
@@ -325,7 +334,7 @@ void AcceleratedCompositingContext::scheduleLayerFlush()
 
     // We use a GLib timer because otherwise GTK+ event handling during dragging can
     // starve WebCore timers, which have a lower priority.
-    double nextFlush = max(gScheduleDelay - (currentTime() - m_lastFlushTime), 0.0);
+    double nextFlush = std::max(gScheduleDelay - (currentTime() - m_lastFlushTime), 0.0);
     m_layerFlushTimerCallbackId = g_timeout_add_full(GDK_PRIORITY_EVENTS, nextFlush * 1000, reinterpret_cast<GSourceFunc>(layerFlushTimerFiredCallback), this, 0);
 }
 

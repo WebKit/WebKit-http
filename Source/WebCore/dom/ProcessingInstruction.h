@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2000 Peter Kelly (pmk@post.com)
  * Copyright (C) 2006 Apple Inc. All rights reserved.
+ * Copyright (C) 2013 Samsung Electronics. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -24,21 +25,19 @@
 
 #include "CachedResourceHandle.h"
 #include "CachedStyleSheetClient.h"
-#include "Node.h"
+#include "CharacterData.h"
 
 namespace WebCore {
 
 class StyleSheet;
 class CSSStyleSheet;
 
-class ProcessingInstruction FINAL : public Node, private CachedStyleSheetClient {
+class ProcessingInstruction FINAL : public CharacterData, private CachedStyleSheetClient {
 public:
-    static PassRefPtr<ProcessingInstruction> create(Document*, const String& target, const String& data);
+    static PassRefPtr<ProcessingInstruction> create(Document&, const String& target, const String& data);
     virtual ~ProcessingInstruction();
 
     const String& target() const { return m_target; }
-    const String& data() const { return m_data; }
-    void setData(const String&, ExceptionCode&);
 
     void setCreatedByParser(bool createdByParser) { m_createdByParser = createdByParser; }
 
@@ -54,34 +53,30 @@ public:
 #endif
 
 private:
-    ProcessingInstruction(Document*, const String& target, const String& data);
+    friend class CharacterData;
+    ProcessingInstruction(Document&, const String& target, const String& data);
 
     virtual String nodeName() const;
     virtual NodeType nodeType() const;
-    virtual String nodeValue() const;
-    virtual void setNodeValue(const String&, ExceptionCode&);
     virtual PassRefPtr<Node> cloneNode(bool deep);
-    virtual bool offsetInCharacters() const;
-    virtual int maxCharacterOffset() const;
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
 
     void checkStyleSheet();
-    virtual void setCSSStyleSheet(const String& href, const KURL& baseURL, const String& charset, const CachedCSSStyleSheet*);
+    virtual void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet*);
 #if ENABLE(XSLT)
-    virtual void setXSLStyleSheet(const String& href, const KURL& baseURL, const String& sheet);
+    virtual void setXSLStyleSheet(const String& href, const URL& baseURL, const String& sheet);
 #endif
 
     bool isLoading() const;
     virtual bool sheetLoaded();
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
 
     void parseStyleSheet(const String& sheet);
 
     String m_target;
-    String m_data;
     String m_localHref;
     String m_title;
     String m_media;
@@ -95,6 +90,12 @@ private:
     bool m_isXSL;
 #endif
 };
+
+inline ProcessingInstruction* toProcessingInstruction(Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->nodeType() == Node::PROCESSING_INSTRUCTION_NODE);
+    return static_cast<ProcessingInstruction*>(node);
+}
 
 } //namespace
 

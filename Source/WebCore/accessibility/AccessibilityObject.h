@@ -158,6 +158,8 @@ enum AccessibilityRole {
     MenuBarRole,
     MenuButtonRole,
     MenuItemRole,
+    MenuItemCheckboxRole,
+    MenuItemRadioRole,
     MenuListPopupRole,
     MenuListOptionRole,
     OutlineRole,
@@ -276,6 +278,7 @@ enum AccessibilitySortDirection {
     SortDirectionNone,
     SortDirectionAscending,
     SortDirectionDescending,
+    SortDirectionOther
 };
 
 enum AccessibilitySearchDirection {
@@ -467,6 +470,7 @@ public:
     bool isLandmark() const;
     bool isColorWell() const { return roleValue() == ColorWellRole; }
     bool isRangeControl() const;
+    bool isMeter() const;
 
     virtual bool isChecked() const { return false; }
     virtual bool isEnabled() const { return false; }
@@ -544,7 +548,9 @@ public:
     AccessibilitySortDirection sortDirection() const;
     virtual bool canvasHasFallbackContent() const { return false; }
     bool supportsRangeValue() const;
-
+    String identifierAttribute() const;
+    void classList(Vector<String>&) const;
+    
     bool supportsARIASetSize() const;
     bool supportsARIAPosInSet() const;
     int ariaSetSize() const;
@@ -636,7 +642,7 @@ public:
     unsigned selectionStart() const { return selectedTextRange().start; }
     unsigned selectionEnd() const { return selectedTextRange().length; }
     
-    virtual KURL url() const { return KURL(); }
+    virtual URL url() const { return URL(); }
     virtual VisibleSelection selection() const { return VisibleSelection(); }
     virtual String selectedText() const { return String(); }
     virtual const AtomicString& accessKey() const { return nullAtom; }

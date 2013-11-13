@@ -2,6 +2,7 @@
     Copyright (C) 2011 ProFUSION embedded systems
     Copyright (C) 2011 Samsung Electronics
     Copyright (C) 2012 Intel Corporation. All rights reserved.
+    Copyright (C) 2013 Apple Inc. All rights reserved.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -220,13 +221,13 @@ String DumpRenderTreeSupportEfl::suitableDRTFrameName(const Evas_Object* ewkFram
     return String("frame (anonymous)");
 }
 
-const WebCore::KURL DumpRenderTreeSupportEfl::provisionalURL(const Evas_Object* ewkFrame)
+const WebCore::URL DumpRenderTreeSupportEfl::provisionalURL(const Evas_Object* ewkFrame)
 {
-    DRT_SUPPORT_FRAME_GET_OR_RETURN(ewkFrame, frame, WebCore::KURL());
+    DRT_SUPPORT_FRAME_GET_OR_RETURN(ewkFrame, frame, WebCore::URL());
 
     WebCore::DocumentLoader* provisionalDocumentLoader = frame->loader().provisionalDocumentLoader();
     if (!provisionalDocumentLoader)
-        return WebCore::KURL();
+        return WebCore::URL();
 
     return provisionalDocumentLoader->url();
 }
@@ -269,7 +270,7 @@ void DumpRenderTreeSupportEfl::addUserScript(const Evas_Object* ewkView, const S
 {
     DRT_SUPPRT_PAGE_GET_OR_RETURN(ewkView, page);
 
-    page->group().addUserScriptToWorld(WebCore::mainThreadNormalWorld(), sourceCode, WebCore::KURL(),
+    page->group().addUserScriptToWorld(WebCore::mainThreadNormalWorld(), sourceCode, WebCore::URL(),
                                        Vector<String>(), Vector<String>(), runAtStart ? WebCore::InjectAtDocumentStart : WebCore::InjectAtDocumentEnd,
                                        allFrames ? WebCore::InjectInAllFrames : WebCore::InjectInTopFrameOnly);
 }
@@ -285,7 +286,7 @@ void DumpRenderTreeSupportEfl::addUserStyleSheet(const Evas_Object* ewkView, con
 {
     DRT_SUPPRT_PAGE_GET_OR_RETURN(ewkView, page);
 
-    page->group().addUserStyleSheetToWorld(WebCore::mainThreadNormalWorld(), sourceCode, WebCore::KURL(), Vector<String>(), Vector<String>(), allFrames ? WebCore::InjectInAllFrames : WebCore::InjectInTopFrameOnly);
+    page->group().addUserStyleSheetToWorld(WebCore::mainThreadNormalWorld(), sourceCode, WebCore::URL(), Vector<String>(), Vector<String>(), allFrames ? WebCore::InjectInAllFrames : WebCore::InjectInTopFrameOnly);
 }
 
 void DumpRenderTreeSupportEfl::clearUserStyleSheets(const Evas_Object* ewkView)
@@ -320,13 +321,13 @@ void DumpRenderTreeSupportEfl::setCSSRegionsEnabled(const Evas_Object* ewkView, 
 {
     DRT_SUPPRT_PAGE_GET_OR_RETURN(ewkView, page);
 
-    WebCore::RuntimeEnabledFeatures::setCSSRegionsEnabled(enabled);
+    WebCore::RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(enabled);
 }
 
 void DumpRenderTreeSupportEfl::setSeamlessIFramesEnabled(bool enabled)
 {
 #if ENABLE(IFRAME_SEAMLESS)
-    WebCore::RuntimeEnabledFeatures::setSeamlessIFramesEnabled(enabled);
+    WebCore::RuntimeEnabledFeatures::sharedFeatures().setSeamlessIFramesEnabled(enabled);
 #else
     UNUSED_PARAM(enabled);
 #endif
@@ -736,18 +737,6 @@ int DumpRenderTreeSupportEfl::numberOfPendingGeolocationPermissionRequests(const
 }
 
 #if HAVE(ACCESSIBILITY)
-String DumpRenderTreeSupportEfl::accessibilityHelpText(const AtkObject* axObject)
-{
-    if (!axObject || !WEBKIT_IS_ACCESSIBLE(axObject))
-        return String();
-
-    WebCore::AccessibilityObject* coreObject = webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(axObject));
-    if (!coreObject)
-        return String();
-
-    return coreObject->helpText();
-}
-
 AtkObject* DumpRenderTreeSupportEfl::rootAccessibleElement(const Evas_Object* ewkFrame)
 {
     DRT_SUPPORT_FRAME_GET_OR_RETURN(ewkFrame, frame, 0);

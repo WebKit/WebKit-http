@@ -136,7 +136,7 @@ PassOwnPtr<Shape> Shape::createShape(const BasicShape* basicShape, const LayoutS
         const BasicShapeCircle* circle = static_cast<const BasicShapeCircle*>(basicShape);
         float centerX = floatValueForLength(circle->centerX(), boxWidth);
         float centerY = floatValueForLength(circle->centerY(), boxHeight);
-        float radius = floatValueForLength(circle->radius(), std::min(boxHeight, boxWidth));
+        float radius = floatValueForLength(circle->radius(), sqrtf((boxWidth * boxWidth + boxHeight * boxHeight) / 2));
         FloatPoint logicalCenter = physicalPointToLogical(FloatPoint(centerX, centerY), logicalBoxSize.height(), writingMode);
 
         shape = createShapeCircle(logicalCenter, radius);
@@ -207,10 +207,11 @@ PassOwnPtr<Shape> Shape::createShape(const StyleImage* styleImage, float thresho
 {
     ASSERT(styleImage && styleImage->isCachedImage() && styleImage->cachedImage() && styleImage->cachedImage()->image());
 
-    OwnPtr<RasterShapeIntervals> intervals = adoptPtr(new RasterShapeIntervals());
-
     Image* image = styleImage->cachedImage()->image();
     const IntSize& imageSize = image->size();
+
+    OwnPtr<RasterShapeIntervals> intervals = adoptPtr(new RasterShapeIntervals(imageSize.height()));
+
     OwnPtr<ImageBuffer> imageBuffer = ImageBuffer::create(imageSize);
     if (imageBuffer) {
         GraphicsContext* graphicsContext = imageBuffer->context();
@@ -230,7 +231,7 @@ PassOwnPtr<Shape> Shape::createShape(const StyleImage* styleImage, float thresho
                     if (startX == -1 && alphaAboveThreshold) {
                         startX = x;
                     } else if (startX != -1 && (!alphaAboveThreshold || x == imageSize.width() - 1)) {
-                        intervals->addInterval(y, startX, x);
+                        intervals->appendInterval(y, startX, x);
                         startX = -1;
                     }
                 }

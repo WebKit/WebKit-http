@@ -27,12 +27,11 @@
 #include "config.h"
 #include "StyleScopeResolver.h"
 
-#if ENABLE(STYLE_SCOPED) || ENABLE(SHADOW_DOM)
+#if ENABLE(SHADOW_DOM)
 
 #include "CSSStyleRule.h"
 #include "CSSStyleSheet.h"
 #include "ContentDistributor.h"
-#include "ContextFeatures.h"
 #include "HTMLNames.h"
 #include "HTMLStyleElement.h"
 #include "RuleFeature.h"
@@ -226,4 +225,4 @@ void StyleScopeResolver::matchHostRules(const Element* element, Vector<RuleSet*>
 
 }
 
-#endif // ENABLE(STYLE_SCOPED)
+#endif // ENABLE(SHADOW_DOM)

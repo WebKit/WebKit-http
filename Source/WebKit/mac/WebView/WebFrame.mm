@@ -69,7 +69,6 @@
 #import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/EventNames.h>
-#import <WebCore/Frame.h>
 #import <WebCore/FrameLoadRequest.h>
 #import <WebCore/FrameLoader.h>
 #import <WebCore/FrameLoaderStateMachine.h>
@@ -81,12 +80,13 @@
 #import <WebCore/HitTestResult.h>
 #import <WebCore/JSNode.h>
 #import <WebCore/LegacyWebArchive.h>
+#import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/PluginData.h>
 #import <WebCore/PrintContext.h>
-#import <WebCore/RenderPart.h>
 #import <WebCore/RenderView.h>
+#import <WebCore/RenderWidget.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/ScriptController.h>
 #import <WebCore/ScriptValue.h>
@@ -562,7 +562,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 - (BOOL)_getVisibleRect:(NSRect*)rect
 {
     ASSERT_ARG(rect, rect);
-    if (RenderPart* ownerRenderer = _private->coreFrame->ownerRenderer()) {
+    if (RenderWidget* ownerRenderer = _private->coreFrame->ownerRenderer()) {
         if (ownerRenderer->needsLayout())
             return NO;
         *rect = ownerRenderer->pixelSnappedAbsoluteClippedOverflowRect();
@@ -931,6 +931,46 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     }
 }
 #endif
+
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+- (void)resetTextAutosizingBeforeLayout
+{
+    id documentView = [_private->webFrameView documentView];    
+    if (![documentView isKindOfClass:[WebHTMLView class]])
+        return;
+    
+    Frame* coreFrame = core(self);
+    for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame)) {
+        Document *doc = frame->document();
+        if (!doc || !doc->renderer())
+            continue;
+        doc->renderer()->resetTextAutosizing();
+    }
+}
+
+- (void)_setVisibleSize:(CGSize)size
+{
+    [self _setTextAutosizingWidth:size.width];
+}
+
+- (void)_setTextAutosizingWidth:(CGFloat)width
+{
+    WebCore::Frame *frame = core(self);
+    frame->setTextAutosizingWidth(width);
+}
+#else
+- (void)resetTextAutosizingBeforeLayout
+{
+}
+
+- (void)_setVisibleSize:(CGSize)size
+{
+}
+
+- (void)_setTextAutosizingWidth:(CGFloat)width
+{
+}
+#endif // ENABLE(IOS_TEXT_AUTOSIZING)
 
 - (void)_replaceSelectionWithFragment:(DOMDocumentFragment *)fragment selectReplacement:(BOOL)selectReplacement smartReplace:(BOOL)smartReplace matchStyle:(BOOL)matchStyle
 {
@@ -1377,7 +1417,7 @@ static NSURL *createUniqueWebDataURL()
     if (!pthread_main_np())
         return [[self _webkit_invokeOnMainThread] _loadData:data MIMEType:MIMEType textEncodingName:encodingName baseURL:baseURL unreachableURL:unreachableURL];
     
-    KURL responseURL;
+    URL responseURL;
     if (!baseURL) {
         baseURL = blankURL();
         responseURL = createUniqueWebDataURL();

@@ -31,10 +31,10 @@ namespace JSC {
     public:
         typedef ErrorInstance Base;
 
-        static ErrorPrototype* create(ExecState* exec, JSGlobalObject* globalObject, Structure* structure)
+        static ErrorPrototype* create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
         {
-            ErrorPrototype* prototype = new (NotNull, allocateCell<ErrorPrototype>(*exec->heap())) ErrorPrototype(exec, structure);
-            prototype->finishCreation(exec, globalObject);
+            ErrorPrototype* prototype = new (NotNull, allocateCell<ErrorPrototype>(vm.heap)) ErrorPrototype(vm, structure);
+            prototype->finishCreation(vm, globalObject);
             return prototype;
         }
         
@@ -46,8 +46,8 @@ namespace JSC {
         }
 
     protected:
-        ErrorPrototype(ExecState*, Structure*);
-        void finishCreation(ExecState*, JSGlobalObject*);
+        ErrorPrototype(VM&, Structure*);
+        void finishCreation(VM&, JSGlobalObject*);
 
         static const unsigned StructureFlags = OverridesGetOwnPropertySlot | ErrorInstance::StructureFlags;
 

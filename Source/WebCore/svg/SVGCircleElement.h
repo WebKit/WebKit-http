@@ -32,10 +32,10 @@ namespace WebCore {
 class SVGCircleElement FINAL : public SVGGraphicsElement,
                                public SVGExternalResourcesRequired {
 public:
-    static PassRefPtr<SVGCircleElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGCircleElement> create(const QualifiedName&, Document&);
 
 private:
-    SVGCircleElement(const QualifiedName&, Document*);
+    SVGCircleElement(const QualifiedName&, Document&);
 
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool supportsFocus() const OVERRIDE { return true; }
@@ -46,7 +46,7 @@ private:
 
     virtual bool selfHasRelativeLengths() const;
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGCircleElement)
         DECLARE_ANIMATED_LENGTH(Cx, cx)
@@ -55,6 +55,8 @@ private:
         DECLARE_ANIMATED_BOOLEAN(ExternalResourcesRequired, externalResourcesRequired)
     END_DECLARE_ANIMATED_PROPERTIES
 };
+
+ELEMENT_TYPE_CASTS(SVGCircleElement)
 
 } // namespace WebCore
 

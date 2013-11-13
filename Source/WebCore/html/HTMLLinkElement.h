@@ -37,17 +37,17 @@
 namespace WebCore {
 
 class HTMLLinkElement;
-class KURL;
+class URL;
 
 template<typename T> class EventSender;
 typedef EventSender<HTMLLinkElement> LinkEventSender;
 
 class HTMLLinkElement FINAL : public HTMLElement, public CachedStyleSheetClient, public LinkLoaderClient {
 public:
-    static PassRefPtr<HTMLLinkElement> create(const QualifiedName&, Document*, bool createdByParser);
+    static PassRefPtr<HTMLLinkElement> create(const QualifiedName&, Document&, bool createdByParser);
     virtual ~HTMLLinkElement();
 
-    KURL href() const;
+    URL href() const;
     String rel() const;
 
     virtual String target() const;
@@ -83,7 +83,7 @@ private:
     virtual void removedFrom(ContainerNode*) OVERRIDE;
 
     // from CachedResourceClient
-    virtual void setCSSStyleSheet(const String& href, const KURL& baseURL, const String& charset, const CachedCSSStyleSheet* sheet);
+    virtual void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet* sheet);
     virtual bool sheetLoaded();
     virtual void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred);
     virtual void startLoadingDynamicSheet();
@@ -98,7 +98,9 @@ private:
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
 private:
-    virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
+    HTMLLinkElement(const QualifiedName&, Document&, bool createdByParser);
+
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
 
     virtual void finishParsingChildren();
 
@@ -111,9 +113,6 @@ private:
     };
 
     void removePendingSheet(RemovePendingSheetNotificationType = RemovePendingSheetNotifyImmediately);
-
-private:
-    HTMLLinkElement(const QualifiedName&, Document*, bool createdByParser);
 
     LinkLoader m_linkLoader;
     CachedResourceHandle<CachedCSSStyleSheet> m_cachedSheet;

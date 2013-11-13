@@ -291,7 +291,7 @@ static void getGregorianDateTimeUTC(JSContextRef context, JSRealType type, JSVal
     } else {
         double ms = JSValueToNumber(context, value, exception);
         GregorianDateTime convertedGdt;
-        msToGregorianDateTime(exec, ms, /*utc*/ true, convertedGdt);
+        msToGregorianDateTime(exec->vm(), ms, /*utc*/ true, convertedGdt);
         gdt->copyFrom(convertedGdt);
     }
 }
@@ -1301,7 +1301,7 @@ JSObjectRef QtRuntimeMethod::jsObjectRef(JSContextRef context, JSValueRef* excep
     JSObjectSetProperty(context, object, connectStr, connectFunction, attributes, exception);
     JSObjectSetProperty(context, object, disconnectStr, disconnectFunction, attributes, exception);
 
-    m_jsObject = PassWeak<JSObject>(toJS(object));
+    m_jsObject = Weak<JSObject>(toJS(object));
 
     return object;
 }

@@ -2,13 +2,11 @@
 
 # Allow invocation from a separate build directory; in that case, we change
 # to the source directory to run the auto*, then change back before running configure
-srcdir=`dirname $0`
+srcdir=`dirname "$0"`
 test -z "$srcdir" && srcdir=.
 
 ORIGDIR=`pwd`
-cd $srcdir
-
-rm -f $top_srcdir/autom4te.cache
+cd "$srcdir" || exit 1
 
 touch README INSTALL
 
@@ -17,10 +15,11 @@ if test -z `which autoreconf`; then
     exit 1
 fi
 autoreconf --verbose --install -I Source/autotools $ACLOCAL_FLAGS|| exit $?
+rm -rf autom4te.cache
 
-cd $ORIGDIR || exit 1
+cd "$ORIGDIR" || exit 1
 
 if test -z "$NOCONFIGURE"; then
-    $srcdir/configure $AUTOGEN_CONFIGURE_ARGS "$@" || exit $?
+    "$srcdir"/configure $AUTOGEN_CONFIGURE_ARGS "$@" || exit $?
 fi
 

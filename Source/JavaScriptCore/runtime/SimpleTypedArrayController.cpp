@@ -29,7 +29,6 @@
 #include "ArrayBuffer.h"
 #include "JSArrayBuffer.h"
 #include "Operations.h"
-#include "PassWeak.h"
 
 namespace JSC {
 
@@ -44,7 +43,7 @@ JSArrayBuffer* SimpleTypedArrayController::toJS(
     
     JSArrayBuffer* result = JSArrayBuffer::create(
         exec->vm(), globalObject->arrayBufferStructure(), native);
-    native->m_wrapper = PassWeak<JSArrayBuffer>(result);
+    native->m_wrapper = Weak<JSArrayBuffer>(result);
     return result;
 }
 

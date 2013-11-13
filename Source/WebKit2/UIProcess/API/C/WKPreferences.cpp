@@ -479,6 +479,16 @@ bool WKPreferencesGetWebGLEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->webGLEnabled();
 }
 
+void WKPreferencesSetMultithreadedWebGLEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setMultithreadedWebGLEnabled(flag);
+}
+
+bool WKPreferencesGetMultithreadedWebGLEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->multithreadedWebGLEnabled();
+}
+
 void WKPreferencesSetAccelerated2DCanvasEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setAccelerated2dCanvasEnabled(flag);
@@ -1143,4 +1153,14 @@ void WKPreferencesSetIncrementalRenderingSuppressionTimeout(WKPreferencesRef pre
 double WKPreferencesGetIncrementalRenderingSuppressionTimeout(WKPreferencesRef preferencesRef)
 {
     return toAPI(toImpl(preferencesRef)->incrementalRenderingSuppressionTimeout());
+}
+
+void WKPreferencesSetThreadedScrollingEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setThreadedScrollingEnabled(enabled);
+}
+
+bool WKPreferencesGetThreadedScrollingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->threadedScrollingEnabled();
 }

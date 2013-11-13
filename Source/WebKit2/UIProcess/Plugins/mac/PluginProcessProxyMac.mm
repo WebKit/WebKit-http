@@ -26,7 +26,7 @@
 #import "config.h"
 #import "PluginProcessProxy.h"
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
 
 #import "DynamicLinkerEnvironmentExtractor.h"
 #import "EnvironmentVariables.h"
@@ -34,7 +34,7 @@
 #import "PluginProcessMessages.h"
 #import "WebKitSystemInterface.h"
 #import <WebCore/FileSystem.h>
-#import <WebCore/KURL.h>
+#import <WebCore/URL.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <crt_externs.h>
 #import <mach-o/dyld.h>
@@ -306,7 +306,7 @@ void PluginProcessProxy::beginModal()
 
     // The call to -[NSApp runModalForWindow:] below will run a nested run loop, and if the plug-in process
     // crashes the PluginProcessProxy object can be destroyed. Protect against this here.
-    RefPtr<PluginProcessProxy> protect(this);
+    Ref<PluginProcessProxy> protect(*this);
 
     [NSApp runModalForWindow:m_placeholderWindow.get()];
     
@@ -462,10 +462,10 @@ void PluginProcessProxy::openURL(const String& urlString, bool& result, int32_t&
 
     result = true;
     CFURLRef launchedURL;
-    status = LSOpenCFURLRef(KURL(ParsedURLString, urlString).createCFURL().get(), &launchedURL);
+    status = LSOpenCFURLRef(URL(ParsedURLString, urlString).createCFURL().get(), &launchedURL);
 
     if (launchedURL) {
-        launchedURLString = KURL(launchedURL).string();
+        launchedURLString = URL(launchedURL).string();
         CFRelease(launchedURL);
     }
 }
@@ -493,4 +493,4 @@ void PluginProcessProxy::openFile(const String& fullPath, bool& result)
 
 } // namespace WebKit
 
-#endif // ENABLE(PLUGIN_PROCESS)
+#endif // ENABLE(NETSCAPE_PLUGIN_API)

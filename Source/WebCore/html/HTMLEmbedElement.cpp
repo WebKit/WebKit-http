@@ -44,13 +44,13 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-inline HTMLEmbedElement::HTMLEmbedElement(const QualifiedName& tagName, Document* document, bool createdByParser)
+inline HTMLEmbedElement::HTMLEmbedElement(const QualifiedName& tagName, Document& document, bool createdByParser)
     : HTMLPlugInImageElement(tagName, document, createdByParser, ShouldPreferPlugInsForImages)
 {
     ASSERT(hasTagName(embedTag));
 }
 
-PassRefPtr<HTMLEmbedElement> HTMLEmbedElement::create(const QualifiedName& tagName, Document* document, bool createdByParser)
+PassRefPtr<HTMLEmbedElement> HTMLEmbedElement::create(const QualifiedName& tagName, Document& document, bool createdByParser)
 {
     return adoptRef(new HTMLEmbedElement(tagName, document, createdByParser));
 }
@@ -180,10 +180,6 @@ bool HTMLEmbedElement::rendererIsNeeded(const RenderStyle& style)
     if (isImageType())
         return HTMLPlugInImageElement::rendererIsNeeded(style);
 
-    Frame* frame = document().frame();
-    if (!frame)
-        return false;
-
     // If my parent is an <object> and is not set to use fallback content, I
     // should be ignored and not get a renderer.
     ContainerNode* p = parentNode();
@@ -198,7 +194,7 @@ bool HTMLEmbedElement::rendererIsNeeded(const RenderStyle& style)
 
 #if ENABLE(DASHBOARD_SUPPORT)
     // Workaround for <rdar://problem/6642221>.
-    if (frame->settings().usesDashboardBackwardCompatibilityMode())
+    if (document().frame()->settings().usesDashboardBackwardCompatibilityMode())
         return true;
 #endif
 
@@ -215,7 +211,7 @@ const AtomicString& HTMLEmbedElement::imageSourceURL() const
     return getAttribute(srcAttr);
 }
 
-void HTMLEmbedElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) const
+void HTMLEmbedElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     HTMLPlugInImageElement::addSubresourceAttributeURLs(urls);
 

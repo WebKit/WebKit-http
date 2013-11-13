@@ -64,6 +64,7 @@ Programs_TestWebKitAPI_TestWTF_SOURCES = \
 	Tools/TestWebKitAPI/Tests/WTF/MathExtras.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/MediaTime.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/MetaAllocator.cpp \
+	Tools/TestWebKitAPI/Tests/WTF/MoveOnly.h \
 	Tools/TestWebKitAPI/Tests/WTF/RedBlackTree.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/SHA1.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/SaturatedArithmeticOperations.cpp \
@@ -143,7 +144,6 @@ Programs_TestWebKitAPI_TestWebCore_LDADD = \
 	$(FREETYPE_LIBS) \
 	$(GAMEPAD_LIBS) \
 	$(GEOCLUE_LIBS) \
-	$(GAIL_LIBS) \
 	$(GLIB_LIBS) \
 	$(GSTREAMER_LIBS) \
 	$(GTK_LIBS) \
@@ -151,7 +151,6 @@ Programs_TestWebKitAPI_TestWebCore_LDADD = \
 	$(LIBSECRET_LIBS) \
 	$(LIBSOUP_LIBS) \
 	$(LIBXML_LIBS) \
-	$(LIBXSLT_LIBS) \
 	$(OPENGL_LIBS) \
 	$(PANGO_LIBS) \
 	$(PNG_LIBS) \
@@ -167,7 +166,7 @@ Programs_TestWebKitAPI_TestWebCore_LDFLAGS = \
 	-no-fast-install
 
 Programs_TestWebKitAPI_TestWebCore_SOURCES = \
-	Tools/TestWebKitAPI/Tests/WebCore/KURL.cpp \
+	Tools/TestWebKitAPI/Tests/WebCore/URL.cpp \
 	Tools/TestWebKitAPI/Tests/WebCore/LayoutUnit.cpp
 
 Programs_TestWebKitAPI_TestGtk_CPPFLAGS = \

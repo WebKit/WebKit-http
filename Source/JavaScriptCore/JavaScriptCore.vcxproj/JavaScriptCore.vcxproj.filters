@@ -612,6 +612,9 @@
     <ClCompile Include="..\runtime\JSWithScope.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\JSWeakMap.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\JSWrapperObject.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -856,6 +859,15 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSPromise.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\WeakMapConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\WeakMapData.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\WeakMapPrototype.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\heap\CodeBlockSet.cpp">
@@ -1218,6 +1230,9 @@
     <ClInclude Include="..\heap\HeapBlock.h">
       <Filter>heap</Filter>
     </ClInclude>
+    <ClInclude Include="..\heap\HeapOperation.h">
+      <Filter>heap</Filter>
+    </ClInclude>
     <ClInclude Include="..\heap\HeapRootVisitor.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -1261,9 +1276,6 @@
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\MarkStackInlines.h">
-      <Filter>heap</Filter>
-    </ClInclude>
-    <ClInclude Include="..\heap\PassWeak.h">
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\Region.h">

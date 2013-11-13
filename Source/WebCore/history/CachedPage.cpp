@@ -29,8 +29,8 @@
 #include "Document.h"
 #include "Element.h"
 #include "FocusController.h"
-#include "Frame.h"
 #include "FrameView.h"
+#include "MainFrame.h"
 #include "Node.h"
 #include "Page.h"
 #include "Settings.h"
@@ -77,7 +77,7 @@ CachedPage::~CachedPage()
 void CachedPage::restore(Page& page)
 {
     ASSERT(m_cachedMainFrame);
-    ASSERT(page.frameIsMainFrame(&m_cachedMainFrame->view()->frame()));
+    ASSERT(m_cachedMainFrame->view()->frame().isMainFrame());
     ASSERT(!page.subframeCount());
 
     m_cachedMainFrame->open();

@@ -35,8 +35,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderTableCol::RenderTableCol(Element* element)
-    : RenderBox(element)
+RenderTableCol::RenderTableCol(Element& element)
+    : RenderBox(&element)
     , m_span(1)
 {
     // init RenderObject attributes
@@ -59,10 +59,9 @@ void RenderTableCol::styleDidChange(StyleDifference diff, const RenderStyle* old
 void RenderTableCol::updateFromElement()
 {
     unsigned oldSpan = m_span;
-    Node* n = node();
-    if (n && (n->hasTagName(colTag) || n->hasTagName(colgroupTag))) {
-        HTMLTableColElement* tc = static_cast<HTMLTableColElement*>(n);
-        m_span = tc->span();
+    if (element().hasTagName(colTag) || element().hasTagName(colgroupTag)) {
+        HTMLTableColElement& tc = static_cast<HTMLTableColElement&>(element());
+        m_span = tc.span();
     } else
         m_span = !(style() && style()->display() == TABLE_COLUMN_GROUP);
     if (m_span != oldSpan && style() && parent())

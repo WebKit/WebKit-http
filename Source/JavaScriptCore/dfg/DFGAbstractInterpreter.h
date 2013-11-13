@@ -60,7 +60,7 @@ public:
     
     bool needsTypeCheck(Node* node, SpeculatedType typesPassedThrough)
     {
-        return forNode(node).m_type & ~typesPassedThrough;
+        return !forNode(node).isType(typesPassedThrough);
     }
     
     bool needsTypeCheck(Edge edge, SpeculatedType typesPassedThrough)
@@ -159,27 +159,16 @@ private:
     };
     BooleanResult booleanResult(Node*, AbstractValue&);
     
-    bool trySetConstant(Node* node, JSValue value)
+    void setConstant(Node* node, JSValue value)
     {
-        // Make sure we don't constant fold something that will produce values that contravene
-        // predictions. If that happens then we know that the code will OSR exit, forcing
-        // recompilation. But if we tried to constant fold then we'll have a very degenerate
-        // IR: namely we'll have a JSConstant that contravenes its own prediction. There's a
-        // lot of subtle code that assumes that
-        // speculationFromValue(jsConstant) == jsConstant.prediction(). "Hardening" that code
-        // is probably less sane than just pulling back on constant folding.
-        SpeculatedType oldType = node->prediction();
-        if (mergeSpeculations(speculationFromValue(value), oldType) != oldType)
-            return false;
-        
         forNode(node).set(m_graph, value);
-        return true;
+        m_state.setFoundConstants(true);
     }
     
     ALWAYS_INLINE void filterByType(Node* node, Edge& edge, SpeculatedType type)
     {
         AbstractValue& value = forNode(edge);
-        if (value.m_type & ~type) {
+        if (!value.isType(type)) {
             node->setCanExit(true);
             edge.setProofStatus(NeedsCheck);
         } else

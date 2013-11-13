@@ -1,3 +1,247 @@
+2013-09-30  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove the code guarded by STYLE_SCOPED
+        https://bugs.webkit.org/show_bug.cgi?id=122123
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+
+2013-09-28  Darin Adler  <darin@apple.com>
+
+        Add Frame::mainFrame and Frame::isMainFrame
+        https://bugs.webkit.org/show_bug.cgi?id=122064
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::assignIdentifierToInitialRequest):
+        Call isMainFrame.
+
+2013-09-28  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed GTK build fix after r156560.
+
+        * WebCoreSupport/AcceleratedCompositingContext.h:
+
+2013-09-26  Darin Adler  <darin@apple.com>
+
+        rename KURL to URL
+        https://bugs.webkit.org/show_bug.cgi?id=16214
+
+        Reviewed by Andreas Kling.
+
+        * many files: Renamed, using script.
+
+2013-09-27  Darin Adler  <darin@apple.com>
+
+        Add empty MainFrame class
+        https://bugs.webkit.org/show_bug.cgi?id=121770
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        * WebCoreSupport/GtkAdjustmentWatcher.cpp:
+        * webkit/webkitwebframe.cpp:
+        * webkit/webkitwebview.cpp:
+        * webkit/webkitviewportattributes.cpp:
+        Include MainFrame.h instead of Frame.h as needed.
+
+2013-09-25  Brent Fulgham  <bfulgham@apple.com>
+
+        Refactor RuntimeEnabledFeatures as a Singleton.
+        https://bugs.webkit.org/show_bug.cgi?id=121883.
+
+        Reviewed by Jer Noble.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::setCSSRegionsEnabled): Use singleton.
+        (DumpRenderTreeSupportGtk::setExperimentalContentSecurityPolicyFeaturesEnabled):
+        (DumpRenderTreeSupportGtk::setSeamlessIFramesEnabled):
+        (DumpRenderTreeSupportGtk::setShadowDOMEnabled):
+        (DumpRenderTreeSupportGtk::setStyleScopedEnabled):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_update_settings): Ditto.
+
+2013-09-24  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Fix compilation problems when setting ENABLE_DRAG_SUPPORT = FALSE
+        https://bugs.webkit.org/show_bug.cgi?id=121782
+
+        Reviewed by Martin Robinson.
+
+        Disabled drag functions.
+
+        * WebCoreSupport/DragClientGtk.cpp:
+        * WebCoreSupport/DragClientGtk.h:
+
+2013-09-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Fix accelerated compositing disabling under Wayland displays
+        https://bugs.webkit.org/show_bug.cgi?id=121788
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * webkit/webkitwebview.cpp:
+        (updateAcceleratedCompositingSetting): Fix a ridiculous early return in the case of disabling the accelerated
+        compositing setting. There's no need to re-disable the setting if it was already disabled, but it should
+        definitely be disabled if the setting was previously enabled.
+
+2013-09-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed, GTK build fix when building with GTK+ 2.0.
+        Patch provided by Dominique Leuenberger <dimstar@opensuse.org>.
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp: Include GtkVersioning.h to set up
+        the mock GDK_IS_X11_DISPLAY macro if it's not provided by the GTK+ headers.
+
+2013-09-20  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Do not expose aria-help in ATK based platforms
+        https://bugs.webkit.org/show_bug.cgi?id=121675
+
+        Reviewed by Chris Fleizach.
+
+        Removed accessibilityHelpText() helper method from
+        DumpRenderSupportGtk's API, since it's not longer needed.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp: Removed method.
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h: Ditto.
+
+2013-09-16  Enrica Casucci  <enrica@apple.com>
+
+        Remove unused function didSetSelectionTypesForPasteboard from EditorClient.
+        https://bugs.webkit.org/show_bug.cgi?id=121464
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/EditorClientGtk.cpp:
+        * WebCoreSupport/EditorClientGtk.h:
+
+2013-09-16  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Make symbol export filter more strict, and disable for dev/test builds
+        https://bugs.webkit.org/show_bug.cgi?id=120586
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: only use the version script when in developer mode..
+
+2013-09-14  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] WebKitGTK+ is linking against libxslt in too many places
+        https://bugs.webkit.org/show_bug.cgi?id=121356
+
+        Reviewed by Martin Robinson.
+
+        Don't use LIBXSLT_CFLAGS when compiling libwebkitgtk, no source
+        files use libxslt there.
+
+        The webkit tests don't use libxslt, so we shouldn't link against
+        it.
+
+        * GNUmakefile.am:
+
+2013-09-13  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        [GTK] Move to the new web inspector
+        https://bugs.webkit.org/show_bug.cgi?id=120647
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebCoreSupport/InspectorClientGtk.cpp:
+        (WebKit::InspectorClient::openInspectorFrontend): update paths to the internal resource ones.
+        (WebKit::InspectorClient::inspectorFilesPath): ditto.
+        * tests/testwebinspector.c:
+        (consoleMessageCallback): the new inspector currently emits an error when loading, so add it to
+        the list of messages which are not considered failures.
+        * webkit/webkitglobals.cpp:
+        (webkitInit): register resource as a local scheme; currently used by the inspector.
+
+2013-09-13  Alberto Garcia  <berto@igalia.com>
+
+        download-requested arg should be WEBKIT_TYPE_DOWNLOAD not G_TYPE_OBJECT
+        https://bugs.webkit.org/show_bug.cgi?id=57634
+
+        Reviewed by Darin Adler.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_class_init):
+
+2013-09-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WK1] Block accelerated compositing under non-X11 displays
+        https://bugs.webkit.org/show_bug.cgi?id=121165
+
+        Reviewed by Martin Robinson.
+
+        This is analogous to the changes in r154728 and r154729 that enforce disabling accelerated compositing
+        under Wayland displays and made the RedirectedXCompositeWindow use in WebKit2 limited only to the X11 displays.
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp: Remove two unnecessary header includes that also
+        introduce symbols that conflict with the symbols defined in the X headers. Include the <gdk/gdkx.h> header
+        if the GTK+ dependency can provide it.
+        (WebKit::AcceleratedCompositingContext::initialize): Only set up the RedirectedXCompositeWindow instance
+        if running under an X11 display.
+        (WebKit::AcceleratedCompositingContext::renderLayersToWindow): The removal of the unnecessary header
+        inclusions also removed the std::max() injection into the global scope. Using std::max directly instead.
+        (WebKit::AcceleratedCompositingContext::scheduleLayerFlush): Ditto.
+        * webkit/webkitwebview.cpp:
+        (updateAcceleratedCompositingSetting): A helper function that ensures the accelerated compositing feature
+        stays disabled under Wayland displays. It also prints out a warning message the first time the user tries
+        to enable accelerated compositing under Wayland displays, telling that the feature is not supported and
+        will remain disabled.
+        (webkit_web_view_update_settings): Call updateAcceleratedCompositingSetting() to enable the feature if possible.
+        (webkit_web_view_settings_notify): Ditto.
+
+2013-09-11  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Remove Gail dependency from build system for GTK3
+        https://bugs.webkit.org/show_bug.cgi?id=119673
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * GNUmakefile.am: Removed GAIL_CFLAGS and GAIL_LIBS.
+
+2013-09-10  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Reimplement atk_text_get_text_*_offset for LINE boundaries
+        https://bugs.webkit.org/show_bug.cgi?id=114872
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Fixed wrong unit test.
+
+        * tests/testatk.c:
+        (testWebkitAtkGetTextAtOffsetWithPreformattedText): This test was
+        reporting a trailing '\n' for some reason for a <pre> block, which
+        is plainly wrong since, in order to return that, there should be
+        at least a trailing empty space after that and before the </pre>
+        closing tag. This is fixed now.
+        (testWebkitAtkGetTextAtOffsetWithWrappedLines): Uncommented tests
+        that were previously not passing due to a bug in GailTextUtil.
+
+2013-09-11  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Generate more HTML type checks and casting
+        https://bugs.webkit.org/show_bug.cgi?id=121080
+
+        Reviewed by Andreas Kling.
+
+        Clean-up remained functions of HTML elements using auto-generated isFooElement(),
+        and replace toFooElement() with ELEMENT_TYPE_CASTS() macro.
+
+        Besides this patch clean-up unnecessary checks which are being supported by
+        auto-generated isFooElement().
+
+        No new tests, no behavior change.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::supportsFullscreenForNode):
+
 2013-09-04  Zan Dobersek  <zdobersek@igalia.com>
 
         [GTK] Add support for the Wayland build target

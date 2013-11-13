@@ -27,7 +27,7 @@
 
 #include "Decimal.h"
 #include "HTMLIdentifier.h"
-#include "KURL.h"
+#include "URL.h"
 #include "QualifiedName.h"
 #include <limits>
 #include <wtf/MathExtras.h>
@@ -314,44 +314,100 @@ static inline bool compareByScaleFactor(const ImageWithScale& first, const Image
     return first.scaleFactor < second.scaleFactor;
 }
 
-String bestFitSourceForImageAttributes(float deviceScaleFactor, const String& srcAttribute, const String& srcSetAttribute)
+static inline bool isHTMLSpaceOrComma(UChar character)
+{
+    return isHTMLSpace(character) || character == ',';
+}
+
+// See the specifications for more details about the algorithm to follow.
+// http://www.w3.org/TR/2013/WD-html-srcset-20130228/#processing-the-image-candidates.
+static void parseImagesWithScaleFromSrcsetAttribute(const String& srcsetAttribute, ImageCandidates& imageCandidates)
+{
+    ASSERT(imageCandidates.isEmpty());
+
+    size_t imageCandidateStart = 0;
+    unsigned srcsetAttributeLength = srcsetAttribute.length();
+
+    while (imageCandidateStart < srcsetAttributeLength) {
+        float imageScaleFactor = 1;
+        size_t separator;
+
+        // 4. Splitting loop: Skip whitespace.
+        size_t imageURLStart = srcsetAttribute.find(isNotHTMLSpace, imageCandidateStart);
+        if (imageURLStart == notFound)
+            break;
+        // If The current candidate is either totally empty or only contains space, skipping.
+        if (srcsetAttribute[imageURLStart] == ',') {
+            imageCandidateStart = imageURLStart + 1;
+            continue;
+        }
+        // 5. Collect a sequence of characters that are not space characters, and let that be url.
+        size_t imageURLEnd = srcsetAttribute.find(isHTMLSpace, imageURLStart + 1);
+        if (imageURLEnd == notFound) {
+            imageURLEnd = srcsetAttributeLength;
+            separator = srcsetAttributeLength;
+        } else if (srcsetAttribute[imageURLEnd - 1] == ',') {
+            --imageURLEnd;
+            separator = imageURLEnd;
+        } else {
+            // 7. Collect a sequence of characters that are not "," (U+002C) characters, and let that be descriptors.
+            size_t imageScaleStart = srcsetAttribute.find(isNotHTMLSpace, imageURLEnd + 1);
+            if (imageScaleStart == notFound)
+                separator = srcsetAttributeLength;
+            else if (srcsetAttribute[imageScaleStart] == ',')
+                separator = imageScaleStart;
+            else {
+                // This part differs from the spec as the current implementation only supports pixel density descriptors for now.
+                size_t imageScaleEnd = srcsetAttribute.find(isHTMLSpaceOrComma, imageScaleStart + 1);
+                imageScaleEnd = (imageScaleEnd == notFound) ? srcsetAttributeLength : imageScaleEnd;
+                size_t commaPosition = imageScaleEnd;
+                // Make sure there are no other descriptors.
+                while ((commaPosition < srcsetAttributeLength - 1) && isHTMLSpace(srcsetAttribute[commaPosition]))
+                    ++commaPosition;
+                // If the first not html space character after the scale modifier is not a comma,
+                // the current candidate is an invalid input.
+                if ((commaPosition < srcsetAttributeLength - 1) && srcsetAttribute[commaPosition] != ',') {
+                    // Find the nearest comma and skip the input.
+                    commaPosition = srcsetAttribute.find(',', commaPosition + 1);
+                    if (commaPosition == notFound)
+                        break;
+                    imageCandidateStart = commaPosition + 1;
+                    continue;
+                }
+                separator = commaPosition;
+                if (srcsetAttribute[imageScaleEnd - 1] != 'x') {
+                    imageCandidateStart = separator + 1;
+                    continue;
+                }
+                bool validScaleFactor = false;
+                size_t scaleFactorLengthWithoutUnit = imageScaleEnd - imageScaleStart - 1;
+                imageScaleFactor = charactersToFloat(srcsetAttribute.characters() + imageScaleStart, scaleFactorLengthWithoutUnit, &validScaleFactor);
+
+                if (!validScaleFactor) {
+                    imageCandidateStart = separator + 1;
+                    continue;
+                }
+            }
+        }
+        ImageWithScale image;
+        image.imageURL = String(srcsetAttribute.characters() + imageURLStart, imageURLEnd - imageURLStart);
+        image.scaleFactor = imageScaleFactor;
+
+        imageCandidates.append(image);
+        // 11. Return to the step labeled splitting loop.
+        imageCandidateStart = separator + 1;
+    }
+}
+
+String bestFitSourceForImageAttributes(float deviceScaleFactor, const String& srcAttribute, const String& srcsetAttribute)
 {
     ImageCandidates imageCandidates;
 
-    const String srcSetAttributeValue = srcSetAttribute.simplifyWhiteSpace(isHTMLSpace);
-    Vector<String> srcSetTokens;
+    parseImagesWithScaleFromSrcsetAttribute(srcsetAttribute, imageCandidates);
 
-    srcSetAttributeValue.split(',', srcSetTokens);
-    for (size_t i = 0; i < srcSetTokens.size(); ++i) {
-        Vector<String> data;
-        float imgScaleFactor = 1.0;
-        bool validScaleFactor = false;
-
-        srcSetTokens[i].stripWhiteSpace().split(' ', data);
-        // There must be at least one candidate descriptor, and the last one must
-        // be a scale factor. Since we don't support descriptors other than scale,
-        // it's better to discard any rule with such descriptors rather than accept
-        // only the scale data.
-        if (data.size() != 2)
-            continue;
-        if (!data.last().endsWith('x'))
-            continue;
-
-        imgScaleFactor = data.last().substring(0, data.last().length() - 1).toFloat(&validScaleFactor);
-        if (!validScaleFactor)
-            continue;
-
+    if (!srcAttribute.isEmpty()) {
         ImageWithScale image;
-        image.imageURL = decodeURLEscapeSequences(data[0]);
-        image.scaleFactor = imgScaleFactor;
-
-        imageCandidates.append(image);
-    }
-
-    const String src =  srcAttribute.simplifyWhiteSpace(isHTMLSpace);
-    if (!src.isEmpty()) {
-        ImageWithScale image;
-        image.imageURL = decodeURLEscapeSequences(src);
+        image.imageURL = srcAttribute;
         image.scaleFactor = 1.0;
 
         imageCandidates.append(image);
@@ -364,9 +420,9 @@ String bestFitSourceForImageAttributes(float deviceScaleFactor, const String& sr
 
     for (size_t i = 0; i < imageCandidates.size() - 1; ++i) {
         if (imageCandidates[i].scaleFactor >= deviceScaleFactor)
-            return imageCandidates[i].imageURL;
+            return String(imageCandidates[i].imageURL);
     }
-    return imageCandidates.last().imageURL;
+    return String(imageCandidates.last().imageURL);
 }
 
 }

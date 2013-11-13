@@ -34,6 +34,7 @@
 
 #include "EventListenerMap.h"
 #include "EventNames.h"
+#include "EventTargetInterfaces.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -55,9 +56,7 @@ namespace WebCore {
     class IDBRequest;
     class IDBTransaction;
     class ScriptProcessorNode;
-    class LocalMediaStream;
     class MediaController;
-    class MediaSource;
     class MediaStream;
     class MessagePort;
     class Node;
@@ -66,7 +65,6 @@ namespace WebCore {
     class ScriptExecutionContext;
     class SharedWorker;
     class SharedWorkerGlobalScope;
-    class SourceBufferList;
     class TextTrack;
     class TextTrackCue;
     class VideoTrackList;
@@ -102,16 +100,25 @@ namespace WebCore {
         OwnPtr<FiringEventIteratorVector> firingEventIterators;
     };
 
+    enum EventTargetInterface {
+
+    #define DOM_EVENT_INTERFACE_DECLARE(name) name##EventTargetInterfaceType,
+    DOM_EVENT_TARGET_INTERFACES_FOR_EACH(DOM_EVENT_INTERFACE_DECLARE)
+    #undef DOM_EVENT_INTERFACE_DECLARE
+
+    };
+
     class EventTarget {
     public:
         void ref() { refEventTarget(); }
         void deref() { derefEventTarget(); }
 
-        virtual const AtomicString& interfaceName() const = 0;
+        virtual EventTargetInterface eventTargetInterface() const = 0;
         virtual ScriptExecutionContext* scriptExecutionContext() const = 0;
 
         virtual Node* toNode();
         virtual DOMWindow* toDOMWindow();
+        virtual bool isMessagePort() const;
 
         virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture);
         virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture);
@@ -125,7 +132,7 @@ namespace WebCore {
         bool clearAttributeEventListener(const AtomicString& eventType);
         EventListener* getAttributeEventListener(const AtomicString& eventType);
 
-        bool hasEventListeners();
+        bool hasEventListeners() const;
         bool hasEventListeners(const AtomicString& eventType);
         bool hasCapturingEventListeners(const AtomicString& eventType);
         const EventListenerVector& getEventListeners(const AtomicString& eventType);
@@ -150,6 +157,14 @@ namespace WebCore {
         void setupLegacyTypeObserverIfNeeded(const AtomicString& legacyTypeName, bool hasLegacyTypeListeners, bool hasNewTypeListeners);
 
         friend class EventListenerIterator;
+    };
+
+    class EventTargetWithInlineData : public EventTarget {
+    protected:
+        virtual EventTargetData* eventTargetData() OVERRIDE FINAL { return &m_eventTargetData; }
+        virtual EventTargetData& ensureEventTargetData() OVERRIDE FINAL { return m_eventTargetData; }
+    private:
+        EventTargetData m_eventTargetData;
     };
 
     // FIXME: These macros should be split into separate DEFINE and DECLARE
@@ -197,9 +212,9 @@ namespace WebCore {
         return d->firingEventIterators && !d->firingEventIterators->isEmpty();
     }
 
-    inline bool EventTarget::hasEventListeners()
+    inline bool EventTarget::hasEventListeners() const
     {
-        EventTargetData* d = eventTargetData();
+        EventTargetData* d = const_cast<EventTarget*>(this)->eventTargetData();
         if (!d)
             return false;
         return !d->eventListenerMap.isEmpty();

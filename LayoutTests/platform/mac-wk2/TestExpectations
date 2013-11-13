@@ -339,6 +339,15 @@ webkit.org/b/104104 fast/overflow/scrollbar-click-retains-focus.html [ Pass ]
 webkit.org/b/120148 [ Lion Release ] webaudio/javascriptaudionode-upmix2-8channel-input.html [ Pass Failure ]
 webkit.org/b/120161 [ Lion ] webaudio/codec-tests/mp3/128kbps-44khz.html [ Failure ]
 
+webkit.org/b/120544 inspector/storage-panel-dom-storage-update.html [ Failure ]
+
+webkit.org/b/121581 [ Lion ] media/video-object-fit.html [ ImageOnlyFailure ]
+
+webkit.org/b/107018 svg/animations/animate-linear-discrete-additive.svg [ ImageOnlyFailure Pass ]
+webkit.org/b/107018 svg/animations/animate-linear-discrete-additive-b.svg [ ImageOnlyFailure Pass ]
+webkit.org/b/107018 svg/animations/animate-linear-discrete-additive-c.svg  [ ImageOnlyFailure Pass ]
+webkit.org/b/107018 svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg [ ImageOnlyFailure Pass ]
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 

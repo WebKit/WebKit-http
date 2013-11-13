@@ -39,13 +39,13 @@ class HTMLImageLoader;
 class HTMLOptionElement;
 class Icon;
 class InputType;
-class KURL;
+class URL;
 class ListAttributeTargetObserver;
 struct DateTimeChooserParameters;
 
 class HTMLInputElement : public HTMLTextFormControlElement {
 public:
-    static PassRefPtr<HTMLInputElement> create(const QualifiedName&, Document*, HTMLFormElement*, bool createdByParser);
+    static PassRefPtr<HTMLInputElement> create(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
     virtual ~HTMLInputElement();
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitspeechchange);
@@ -188,7 +188,7 @@ public:
     bool canHaveSelection() const;
 
     virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     virtual void willAttachRenderers() OVERRIDE;
     virtual void didAttachRenderers() OVERRIDE;
     virtual void didDetachRenderers() OVERRIDE;
@@ -214,7 +214,7 @@ public:
     void setSize(unsigned);
     void setSize(unsigned, ExceptionCode&);
 
-    KURL src() const;
+    URL src() const;
 
     virtual int maxLength() const;
     void setMaxLength(int, ExceptionCode&);
@@ -229,10 +229,6 @@ public:
 
     // Returns true if the given DragData has more than one dropped files.
     bool receiveDroppedFiles(const DragData*);
-
-#if ENABLE(FILE_SYSTEM)
-    String droppedFileSystemId();
-#endif
 
     Icon* icon() const;
     // These functions are used for rendering the input active during a
@@ -306,7 +302,7 @@ public:
 #endif
 
 protected:
-    HTMLInputElement(const QualifiedName&, Document*, HTMLFormElement*, bool createdByParser);
+    HTMLInputElement(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
 
     virtual void defaultEventHandler(Event*);
 
@@ -372,7 +368,7 @@ private:
     virtual void documentWillSuspendForPageCache() OVERRIDE;
 #endif
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
 
     bool needsSuspensionCallback();
     void registerForSuspensionCallbackIfNeeded();
@@ -442,6 +438,8 @@ private:
     OwnPtr<ListAttributeTargetObserver> m_listAttributeTargetObserver;
 #endif
 };
+
+ELEMENT_TYPE_CASTS(HTMLInputElement)
 
 } //namespace
 #endif

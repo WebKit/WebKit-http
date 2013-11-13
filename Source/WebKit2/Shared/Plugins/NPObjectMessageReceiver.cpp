@@ -26,7 +26,7 @@
 #include "config.h"
 #include "NPObjectMessageReceiver.h"
 
-#if ENABLE(PLUGIN_PROCESS)
+#if ENABLE(NETSCAPE_PLUGIN_API)
 
 #include "NPIdentifierData.h"
 #include "NPRemoteObjectMap.h"
@@ -34,11 +34,6 @@
 #include "NPVariantData.h"
 
 namespace WebKit {
-
-PassOwnPtr<NPObjectMessageReceiver> NPObjectMessageReceiver::create(NPRemoteObjectMap* npRemoteObjectMap, Plugin* plugin, uint64_t npObjectID, NPObject* npObject)
-{
-    return adoptPtr(new NPObjectMessageReceiver(npRemoteObjectMap, plugin, npObjectID, npObject));
-}
 
 NPObjectMessageReceiver::NPObjectMessageReceiver(NPRemoteObjectMap* npRemoteObjectMap, Plugin* plugin, uint64_t npObjectID, NPObject* npObject)
     : m_npRemoteObjectMap(npRemoteObjectMap)
@@ -234,5 +229,5 @@ void NPObjectMessageReceiver::construct(const Vector<NPVariantData>& argumentsDa
 
 } // namespace WebKit
 
-#endif // ENABLE(PLUGIN_PROCESS)
+#endif // ENABLE(NETSCAPE_PLUGIN_API)
 

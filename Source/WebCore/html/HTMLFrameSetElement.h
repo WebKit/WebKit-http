@@ -24,14 +24,14 @@
 #ifndef HTMLFrameSetElement_h
 #define HTMLFrameSetElement_h
 
-#include <wtf/OwnArrayPtr.h>
 #include "HTMLElement.h"
+#include <memory>
 
 namespace WebCore {
 
 class HTMLFrameSetElement FINAL : public HTMLElement {
 public:
-    static PassRefPtr<HTMLFrameSetElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<HTMLFrameSetElement> create(const QualifiedName&, Document&);
 
     bool hasFrameBorder() const { return m_frameborder; }
     bool noResize() const { return m_noresize; }
@@ -67,7 +67,7 @@ public:
 #endif
 
 private:
-    HTMLFrameSetElement(const QualifiedName&, Document*);
+    HTMLFrameSetElement(const QualifiedName&, Document&);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
@@ -75,7 +75,7 @@ private:
 
     virtual void willAttachRenderers() OVERRIDE;
     virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     
     virtual void defaultEventHandler(Event*);
 
@@ -84,8 +84,8 @@ private:
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
 
-    OwnArrayPtr<Length> m_rowLengths;
-    OwnArrayPtr<Length> m_colLengths;
+    std::unique_ptr<Length[]> m_rowLengths;
+    std::unique_ptr<Length[]> m_colLengths;
 
     int m_totalRows;
     int m_totalCols;
@@ -99,6 +99,8 @@ private:
     bool m_frameborderSet;
     bool m_noresize;
 };
+
+ELEMENT_TYPE_CASTS(HTMLFrameSetElement)
 
 } // namespace WebCore
 

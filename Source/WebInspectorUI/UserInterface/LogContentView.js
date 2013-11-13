@@ -41,11 +41,12 @@ WebInspector.LogContentView = function(representedObject)
     this.messagesElement.addEventListener("blur", this._didBlur.bind(this));
     this.messagesElement.addEventListener("keydown", this._keyDown.bind(this));
     this.messagesElement.addEventListener("click", this._click.bind(this), true);
+    this.messagesElement.addEventListener("dragstart", this._ondragstart.bind(this), true);
     this.element.appendChild(this.messagesElement);
 
     this.prompt = WebInspector.quickConsole.prompt;
 
-    this._keyboardShortcutCommandA = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Command, "A");
+    this._keyboardShortcutCommandA = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "A");
     this._keyboardShortcutEsc = new WebInspector.KeyboardShortcut(null, WebInspector.KeyboardShortcut.Key.Escape);
 
     this._logViewController = new WebInspector.JavaScriptLogViewController(this.messagesElement, this.element, this.prompt, this, "console-prompt-history");
@@ -431,6 +432,14 @@ WebInspector.LogContentView.prototype = {
 
         event.stopPropagation();
         delete this._mouseInteractionShouldPreventClickPropagation;
+    },
+
+    _ondragstart: function(event)
+    {
+        if (event.target.enclosingNodeOrSelfWithClass(WebInspector.DOMTreeOutline.StyleClassName)) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
     },
 
     handleEvent: function(event)

@@ -36,9 +36,9 @@ class HTMLFormElement;
 class HTMLImageElement : public HTMLElement, public FormNamedItem {
     friend class HTMLFormElement;
 public:
-    static PassRefPtr<HTMLImageElement> create(Document*);
-    static PassRefPtr<HTMLImageElement> create(const QualifiedName&, Document*, HTMLFormElement*);
-    static PassRefPtr<HTMLImageElement> createForJSConstructor(Document*, const int* optionalWidth, const int* optionalHeight);
+    static PassRefPtr<HTMLImageElement> create(Document&);
+    static PassRefPtr<HTMLImageElement> create(const QualifiedName&, Document&, HTMLFormElement*);
+    static PassRefPtr<HTMLImageElement> createForJSConstructor(Document&, const int* optionalWidth, const int* optionalHeight);
 
     virtual ~HTMLImageElement();
 
@@ -63,7 +63,7 @@ public:
 
     void setHeight(int);
 
-    KURL src() const;
+    URL src() const;
     void setSrc(const String&);
 
     void setWidth(int);
@@ -73,6 +73,10 @@ public:
 
     bool complete() const;
 
+#if PLATFORM(IOS)
+    virtual bool willRespondToMouseClickEvents() OVERRIDE;
+#endif
+
     bool hasPendingActivity() const { return m_imageLoader.hasPendingActivity(); }
 
     virtual bool canContainRangeEndPoint() const { return false; }
@@ -80,7 +84,7 @@ public:
     virtual const AtomicString& imageSourceURL() const OVERRIDE;
 
 protected:
-    HTMLImageElement(const QualifiedName&, Document*, HTMLFormElement* = 0);
+    HTMLImageElement(const QualifiedName&, Document&, HTMLFormElement* = 0);
 
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
@@ -92,7 +96,7 @@ private:
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
 
     virtual void didAttachRenderers() OVERRIDE;
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 
     virtual bool canStartSelection() const;
 
@@ -100,7 +104,7 @@ private:
 
     virtual bool draggable() const;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const;
+    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const;
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
@@ -114,6 +118,8 @@ private:
     CompositeOperator m_compositeOperator;
     AtomicString m_bestFitImageURL;
 };
+
+ELEMENT_TYPE_CASTS(HTMLImageElement)
 
 } //namespace
 

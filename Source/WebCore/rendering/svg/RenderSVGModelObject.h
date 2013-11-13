@@ -33,7 +33,8 @@
 
 #if ENABLE(SVG)
 
-#include "RenderObject.h"
+#include "RenderElement.h"
+#include "SVGElement.h"
 #include "SVGRenderSupport.h"
 
 namespace WebCore {
@@ -45,10 +46,8 @@ namespace WebCore {
 
 class SVGElement;
 
-class RenderSVGModelObject : public RenderObject {
+class RenderSVGModelObject : public RenderElement {
 public:
-    explicit RenderSVGModelObject(SVGElement*);
-
     virtual LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const OVERRIDE;
     virtual void computeFloatRectForRepaint(const RenderLayerModelObject* repaintContainer, FloatRect&, bool fixed = false) const OVERRIDE FINAL;
     virtual LayoutRect outlineBoundsForRepaint(const RenderLayerModelObject* repaintContainer, const RenderGeometryMap*) const OVERRIDE FINAL;
@@ -68,7 +67,11 @@ public:
     bool hasSVGShadow() const { return m_hasSVGShadow; }
     void setHasSVGShadow(bool hasShadow) { m_hasSVGShadow = hasShadow; }
 
+    SVGElement& element() const { return toSVGElement(nodeForNonAnonymous()); }
+
 protected:
+    explicit RenderSVGModelObject(SVGElement&);
+
     virtual void willBeDestroyed() OVERRIDE;
 
 private:

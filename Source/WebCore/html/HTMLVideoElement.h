@@ -35,7 +35,7 @@ class HTMLImageLoader;
 
 class HTMLVideoElement FINAL : public HTMLMediaElement {
 public:
-    static PassRefPtr<HTMLVideoElement> create(const QualifiedName&, Document*, bool);
+    static PassRefPtr<HTMLVideoElement> create(const QualifiedName&, Document&, bool);
 
     unsigned width() const;
     unsigned height() const;
@@ -69,14 +69,14 @@ public:
 
     bool shouldDisplayPosterImage() const { return displayMode() == Poster || displayMode() == PosterWaitingForVideo; }
 
-    KURL posterImageURL() const;
+    URL posterImageURL() const;
 
 private:
-    HTMLVideoElement(const QualifiedName&, Document*, bool);
+    HTMLVideoElement(const QualifiedName&, Document&, bool);
 
     virtual bool rendererIsNeeded(const RenderStyle&);
 #if !ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 #endif
     virtual void didAttachRenderers() OVERRIDE;
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
@@ -98,11 +98,7 @@ private:
     AtomicString m_defaultPosterURL;
 };
 
-inline HTMLVideoElement* toHTMLVideoElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(HTMLNames::videoTag));
-    return static_cast<HTMLVideoElement*>(node);
-}
+ELEMENT_TYPE_CASTS(HTMLVideoElement)
 
 } //namespace
 

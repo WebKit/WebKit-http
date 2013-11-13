@@ -22,9 +22,9 @@
 #include "FrameTree.h"
 
 #include "Document.h"
-#include "Frame.h"
 #include "FrameView.h"
 #include "HTMLFrameOwnerElement.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "PageGroup.h"
 #include <stdarg.h>
@@ -272,42 +272,40 @@ Frame* FrameTree::find(const AtomicString& name) const
         return m_thisFrame;
     
     if (name == "_top")
-        return top();
+        return &top();
     
     if (name == "_parent")
         return parent() ? parent() : m_thisFrame;
 
-    // Since "_blank" should never be any frame's name, the following just amounts to an optimization.
+    // Since "_blank" should never be any frame's name, the following is only an optimization.
     if (name == "_blank")
         return 0;
 
     // Search subtree starting with this frame first.
-    for (Frame* frame = m_thisFrame; frame; frame = frame->tree().traverseNext(m_thisFrame))
+    for (Frame* frame = m_thisFrame; frame; frame = frame->tree().traverseNext(m_thisFrame)) {
         if (frame->tree().uniqueName() == name)
             return frame;
+    }
 
-    // Search the entire tree for this page next.
-    Page* page = m_thisFrame->page();
-
-    // The frame could have been detached from the page, so check it.
-    if (!page)
-        return 0;
-
-    for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext())
+    // Then the rest of the tree.
+    for (Frame* frame = &m_thisFrame->mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (frame->tree().uniqueName() == name)
             return frame;
+    }
 
     // Search the entire tree of each of the other pages in this namespace.
     // FIXME: Is random order OK?
+    Page* page = m_thisFrame->page();
+    if (!page)
+        return 0;
     const HashSet<Page*>& pages = page->group().pages();
-    HashSet<Page*>::const_iterator end = pages.end();
-    for (HashSet<Page*>::const_iterator it = pages.begin(); it != end; ++it) {
+    for (auto it = pages.begin(), end = pages.end(); it != end; ++it) {
         Page* otherPage = *it;
-        if (otherPage != page) {
-            for (Frame* frame = &otherPage->mainFrame(); frame; frame = frame->tree().traverseNext()) {
-                if (frame->tree().uniqueName() == name)
-                    return frame;
-            }
+        if (otherPage == page)
+            continue;
+        for (Frame* frame = &otherPage->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+            if (frame->tree().uniqueName() == name)
+                return frame;
         }
     }
 
@@ -367,7 +365,7 @@ Frame* FrameTree::traverseNextWithWrap(bool wrap) const
         return result;
 
     if (wrap)
-        return &m_thisFrame->page()->mainFrame();
+        return &m_thisFrame->mainFrame();
 
     return 0;
 }
@@ -398,12 +396,12 @@ Frame* FrameTree::deepLastChild() const
     return result;
 }
 
-Frame* FrameTree::top() const
+Frame& FrameTree::top() const
 {
     Frame* frame = m_thisFrame;
     for (Frame* parent = m_thisFrame; parent; parent = parent->tree().parent())
         frame = parent;
-    return frame;
+    return *frame;
 }
 
 } // namespace WebCore
@@ -416,27 +414,27 @@ static void printIndent(int indent)
         printf("    ");
 }
 
-static void printFrames(const WebCore::Frame* frame, const WebCore::Frame* targetFrame, int indent)
+static void printFrames(const WebCore::Frame& frame, const WebCore::Frame* targetFrame, int indent)
 {
-    if (frame == targetFrame) {
+    if (&frame == targetFrame) {
         printf("--> ");
         printIndent(indent - 1);
     } else
         printIndent(indent);
 
-    WebCore::FrameView* view = frame->view();
-    printf("Frame %p %dx%d\n", frame, view ? view->width() : 0, view ? view->height() : 0);
+    WebCore::FrameView* view = frame.view();
+    printf("Frame %p %dx%d\n", &frame, view ? view->width() : 0, view ? view->height() : 0);
     printIndent(indent);
-    printf("  ownerElement=%p\n", frame->ownerElement());
+    printf("  ownerElement=%p\n", frame.ownerElement());
     printIndent(indent);
     printf("  frameView=%p\n", view);
     printIndent(indent);
-    printf("  document=%p\n", frame->document());
+    printf("  document=%p\n", frame.document());
     printIndent(indent);
-    printf("  uri=%s\n\n", frame->document()->documentURI().utf8().data());
+    printf("  uri=%s\n\n", frame.document()->documentURI().utf8().data());
 
-    for (WebCore::Frame* child = frame->tree().firstChild(); child; child = child->tree().nextSibling())
-        printFrames(child, targetFrame, indent + 1);
+    for (WebCore::Frame* child = frame.tree().firstChild(); child; child = child->tree().nextSibling())
+        printFrames(*child, targetFrame, indent + 1);
 }
 
 void showFrameTree(const WebCore::Frame* frame)

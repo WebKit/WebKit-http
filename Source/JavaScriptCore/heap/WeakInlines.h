@@ -26,7 +26,7 @@
 #ifndef WeakInlines_h
 #define WeakInlines_h
 
-#include "PassWeak.h"
+#include "JSCell.h"
 #include "WeakSetInlines.h"
 #include <wtf/Assertions.h>
 #include <wtf/HashTraits.h>
@@ -48,7 +48,7 @@ template<typename T> inline Weak<T>::Weak(typename Weak<T>::HashTableDeletedValu
 {
 }
 
-template<typename T> template<typename U>  inline Weak<T>::Weak(const PassWeak<U>& other)
+template<typename T> inline Weak<T>::Weak(Weak&& other)
     : m_impl(other.leakImpl())
 {
 }
@@ -63,10 +63,10 @@ template<typename T> inline void Weak<T>::swap(Weak& other)
     std::swap(m_impl, other.m_impl);
 }
 
-template<typename T> inline Weak<T>& Weak<T>::operator=(const PassWeak<T>& o)
+template<typename T> inline auto Weak<T>::operator=(Weak&& other) -> Weak&
 {
-    clear();
-    m_impl = o.leakImpl();
+    Weak weak = std::move(other);
+    swap(weak);
     return *this;
 }
 
@@ -104,11 +104,11 @@ template<typename T> inline Weak<T>::operator UnspecifiedBoolType*() const
     return reinterpret_cast<UnspecifiedBoolType*>(!!*this);
 }
 
-template<typename T> inline PassWeak<T> Weak<T>::release()
+template<typename T> inline WeakImpl* Weak<T>::leakImpl()
 {
-    PassWeak<T> tmp = adoptWeak<T>(m_impl);
-    m_impl = 0;
-    return tmp;
+    WeakImpl* impl = m_impl;
+    m_impl = nullptr;
+    return impl;
 }
 
 template<typename T> inline WeakImpl* Weak<T>::hashTableDeletedValue()
@@ -123,10 +123,10 @@ template <typename T> inline bool operator==(const Weak<T>& lhs, const Weak<T>& 
 
 // This function helps avoid modifying a weak table while holding an iterator into it. (Object allocation
 // can run a finalizer that modifies the table. We avoid that by requiring a pre-constructed object as our value.)
-template<typename Map, typename Key, typename Value> inline void weakAdd(Map& map, const Key& key, Value value)
+template<typename Map, typename Key, typename Value> inline void weakAdd(Map& map, const Key& key, Value&& value)
 {
     ASSERT(!map.get(key));
-    map.set(key, value); // The table may still have a zombie for value.
+    map.set(key, std::forward<Value>(value)); // The table may still have a zombie for value.
 }
 
 template<typename Map, typename Key, typename Value> inline void weakRemove(Map& map, const Key& key, Value value)
@@ -151,22 +151,15 @@ template<typename T> inline void weakClear(Weak<T>& weak, T* cell)
 
 namespace WTF {
 
-template<typename T> struct VectorTraits<JSC::Weak<T> > : SimpleClassVectorTraits {
+template<typename T> struct VectorTraits<JSC::Weak<T>> : SimpleClassVectorTraits {
     static const bool canCompareWithMemcmp = false;
 };
 
-template<typename T> struct HashTraits<JSC::Weak<T> > : SimpleClassHashTraits<JSC::Weak<T> > {
+template<typename T> struct HashTraits<JSC::Weak<T>> : SimpleClassHashTraits<JSC::Weak<T>> {
     typedef JSC::Weak<T> StorageType;
 
     typedef std::nullptr_t EmptyValueType;
     static EmptyValueType emptyValue() { return nullptr; }
-
-    typedef JSC::PassWeak<T> PassInType;
-    static void store(PassInType value, StorageType& storage) { storage = value; }
-
-    typedef JSC::PassWeak<T> PassOutType;
-    static PassOutType passOut(StorageType& value) { return value.release(); }
-    static PassOutType passOut(EmptyValueType) { return PassOutType(); }
 
     typedef T* PeekType;
     static PeekType peek(const StorageType& value) { return value.get(); }

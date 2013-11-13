@@ -125,7 +125,6 @@ namespace JSC {
         double increment;
     };
 
-#if ENABLE(DFG_JIT)
     class ConservativeRoots;
 
 #if COMPILER(MSVC)
@@ -163,7 +162,6 @@ namespace JSC {
     };
 #if COMPILER(MSVC)
 #pragma warning(pop)
-#endif
 #endif
 
     class VM : public ThreadSafeRefCounted<VM> {
@@ -270,6 +268,8 @@ namespace JSC {
         Strong<Structure> unlinkedEvalCodeBlockStructure;
         Strong<Structure> unlinkedFunctionCodeBlockStructure;
         Strong<Structure> propertyTableStructure;
+        Strong<Structure> mapDataStructure;
+        Strong<Structure> weakMapDataStructure;
 
         IdentifierTable* identifierTable;
         CommonIdentifiers* propertyNames;
@@ -352,7 +352,6 @@ namespace JSC {
         ExecState* callFrameForThrow;
         void* targetMachinePCForThrow;
         Instruction* targetInterpreterPCForThrow;
-#if ENABLE(DFG_JIT)
         uint32_t osrExitIndex;
         void* osrExitJumpDestination;
         Vector<ScratchBuffer*> scratchBuffers;
@@ -379,7 +378,6 @@ namespace JSC {
         }
 
         void gatherConservativeRoots(ConservativeRoots&);
-#endif
 
         JSGlobalObject* dynamicGlobalObject;
 

@@ -63,7 +63,7 @@ typedef WebCore::DataObjectGtk* DragDataRef;
 #elif PLATFORM(HAIKU)
 class BMessage;
 typedef class BMessage* DragDataRef;
-#elif PLATFORM(EFL) || PLATFORM(BLACKBERRY)
+#elif PLATFORM(EFL) || PLATFORM(BLACKBERRY) || PLATFORM(NIX)
 typedef void* DragDataRef;
 #endif
 
@@ -72,7 +72,7 @@ namespace WebCore {
 
 class Frame;
 class DocumentFragment;
-class KURL;
+class URL;
 class Range;
 
 enum DragApplicationFlags {
@@ -121,10 +121,6 @@ public:
     int modifierKeyState() const;
 #if PLATFORM(MAC)
     const String& pasteboardName() const { return m_pasteboardName; }
-#endif
-
-#if ENABLE(FILE_SYSTEM)
-    String droppedFileSystemId() const;
 #endif
 
 #if PLATFORM(QT) || PLATFORM(GTK)

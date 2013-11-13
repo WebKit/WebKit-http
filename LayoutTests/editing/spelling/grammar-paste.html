@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<script src="../../fast/js/resources/js-test-pre.js"></script>
+<script src="../../resources/js-test-pre.js"></script>
 <script src="resources/js-test-selection-shared.js"></script>
 </head>
 <body>
@@ -75,15 +75,12 @@ function findFirstTextNode(node)
         return iterToFindFirstTextNode(node);
 }
 
-function verifyMarker(node, expectedMarked, needsFocus)
+function verifyMarker(node, expectedMarked)
 {
-    if (true) {
-        if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) {
-            node.focus();
-        } else {
-            sel.selectAllChildren(node);
-        }
-    }
+    if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement)
+        node.focus();
+    else
+        sel.selectAllChildren(node);
 
     var textNode = findFirstTextNode(node);
     var num = internals.markerCountForNode(textNode, "grammar");
@@ -95,9 +92,14 @@ function verifyMarker(node, expectedMarked, needsFocus)
             return false;
     }
 
+    var nodeContent = node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement ? node.value : node.innerHTML;
+    testPassed(node.tagName + " ungrammatical phrase '" + expectedMarked + "' on '" + nodeContent + "'");
+
     return true;
 }
 
+var destination = null;
+var expectedMarked = null;
 function pasteAndVerify(source, dest, expectedMarked)
 {
     sel.selectAllChildren(source);
@@ -111,27 +113,11 @@ function pasteAndVerify(source, dest, expectedMarked)
     }
     document.execCommand("Paste");
 
-    var nretry = 10;
-    var nsleep = 4;
-    function trial() { 
-        var verified = verifyMarker(dest, expectedMarked);
-        if (verified) {
-            testPassed(dest.tagName + " has a marker on '" + source.innerHTML + "'");
-            done();
-            return;
-        }
-
-        nretry--;
-        if (0 == nretry) {
-            testFailed(dest.tagName + " should have a marker on for '" + source.innerHTML + "'");
-            done();
-            return;
-        }
-        
-        nsleep *= 2;
-        window.setTimeout(trial, nsleep);
-    };
-    trial();
+    if (window.internals) {
+        destination = dest;
+        ungrammaticalPhrase = expectedMarked;
+        shouldBecomeEqual('verifyMarker(destination, ungrammaticalPhrase)', 'true', done);
+    }
 };
 
 if (window.internals)
@@ -153,6 +139,6 @@ done();
 
 var successfullyParsed = true;
 </script>
-<script src="../../fast/js/resources/js-test-post.js"></script>
+<script src="../../resources/js-test-post.js"></script>
 </body>
 </html>

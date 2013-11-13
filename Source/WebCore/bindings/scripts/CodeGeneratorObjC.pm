@@ -618,7 +618,7 @@ sub AddIncludesForType
     }
 
     if ($codeGenerator->IsStringType($type)) {
-        $implIncludes{"KURL.h"} = 1;
+        $implIncludes{"URL.h"} = 1;
         return;
     }
 
@@ -1232,6 +1232,12 @@ sub GenerateImplementation
             my $getterSig = "- ($attributeType)$attributeInterfaceName\n";
 
             my ($functionName, @arguments) = $codeGenerator->GetterExpression(\%implIncludes, $interfaceName, $attribute);
+
+            # To avoid bloating Obj-C bindings, we use getAttribute() instead of fastGetAttribute().
+            if ($functionName eq "fastGetAttribute") {
+                $functionName = "getAttribute";
+            }
+
             my $getterExpressionPrefix = "$functionName(" . join(", ", @arguments);
 
             # FIXME: Special case attribute ownerDocument to call document. This makes it return the
@@ -1289,7 +1295,7 @@ sub GenerateImplementation
                     unless ($interfaceName eq "HTMLImageElement") {
                         push(@customGetterContent, "    if (!IMPL->renderer() || !IMPL->renderer()->isImage())\n");
                         push(@customGetterContent, "        return nil;\n");
-                        $implIncludes{"RenderObject.h"} = 1;
+                        $implIncludes{"RenderElement.h"} = 1;
                     }
                 }
                 $implIncludes{"DOMPrivate.h"} = 1;

@@ -28,9 +28,9 @@
 
 #include "Frame.h"
 #include "FrameView.h"
-#include "RenderPart.h"
 #include "RenderScrollbarPart.h"
 #include "RenderScrollbarTheme.h"
+#include "RenderWidget.h"
 #include "StyleInheritedData.h"
 #include "StyleResolver.h"
 
@@ -82,7 +82,7 @@ RenderScrollbar::~RenderScrollbar()
 RenderBox* RenderScrollbar::owningRenderer() const
 {
     if (m_owningFrame) {
-        RenderBox* currentRenderer = m_owningFrame->ownerRenderer();
+        RenderWidget* currentRenderer = m_owningFrame->ownerRenderer();
         return currentRenderer;
     }
     return m_owner && m_owner->renderer() ? m_owner->renderer()->enclosingBox() : 0;
@@ -226,7 +226,7 @@ void RenderScrollbar::updateScrollbarPart(ScrollbarPart partType, bool destroy)
 
     RefPtr<RenderStyle> partStyle = !destroy ? getScrollbarPseudoStyle(partType,  pseudoForScrollbarPart(partType)) : PassRefPtr<RenderStyle>(0);
     
-    bool needRenderer = !destroy && partStyle && partStyle->display() != NONE && partStyle->visibility() == VISIBLE;
+    bool needRenderer = !destroy && partStyle && partStyle->display() != NONE;
     
     if (needRenderer && partStyle->display() != BLOCK) {
         // See if we are a button that should not be visible according to OS settings.
@@ -253,7 +253,7 @@ void RenderScrollbar::updateScrollbarPart(ScrollbarPart partType, bool destroy)
     
     RenderScrollbarPart* partRenderer = m_parts.get(partType);
     if (!partRenderer && needRenderer) {
-        partRenderer = RenderScrollbarPart::createAnonymous(&owningRenderer()->document(), this, partType);
+        partRenderer = RenderScrollbarPart::createAnonymous(owningRenderer()->document(), this, partType);
         m_parts.set(partType, partRenderer);
     } else if (partRenderer && !needRenderer) {
         m_parts.remove(partType);

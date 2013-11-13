@@ -63,14 +63,14 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGAElement)
     REGISTER_PARENT_ANIMATED_PROPERTIES(SVGGraphicsElement)
 END_REGISTER_ANIMATED_PROPERTIES
 
-inline SVGAElement::SVGAElement(const QualifiedName& tagName, Document* document)
+inline SVGAElement::SVGAElement(const QualifiedName& tagName, Document& document)
     : SVGGraphicsElement(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::aTag));
     registerAnimatedPropertiesForSVGAElement();
 }
 
-PassRefPtr<SVGAElement> SVGAElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<SVGAElement> SVGAElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new SVGAElement(tagName, document));
 }
@@ -139,12 +139,12 @@ void SVGAElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 }
 
-RenderObject* SVGAElement::createRenderer(RenderArena* arena, RenderStyle*)
+RenderElement* SVGAElement::createRenderer(RenderArena& arena, RenderStyle&)
 {
     if (parentNode() && parentNode()->isSVGElement() && toSVGElement(parentNode())->isTextContent())
-        return new (arena) RenderSVGInline(this);
+        return new (arena) RenderSVGInline(*this);
 
-    return new (arena) RenderSVGTransformableContainer(this);
+    return new (arena) RenderSVGTransformableContainer(*this);
 }
 
 void SVGAElement::defaultEventHandler(Event* event)

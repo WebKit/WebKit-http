@@ -36,7 +36,7 @@ using namespace JSC;
 namespace WebCore {
 
 #define TRY_TO_WRAP_WITH_INTERFACE(interfaceName) \
-    if (eventNames().interfaceFor##interfaceName == desiredInterface) \
+    case interfaceName##EventTargetInterfaceType: \
         return toJS(exec, globalObject, static_cast<interfaceName*>(target));
 
 JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, EventTarget* target)
@@ -44,19 +44,9 @@ JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, EventTarget* targ
     if (!target)
         return jsNull();
 
-    AtomicString desiredInterface = target->interfaceName();
-
-    // FIXME: Why can't we use toJS for these cases?
-#if ENABLE(WORKERS)
-    if (eventNames().interfaceForDedicatedWorkerGlobalScope == desiredInterface)
-        return toJSDOMGlobalObject(static_cast<DedicatedWorkerGlobalScope*>(target), exec);
-#endif
-#if ENABLE(SHARED_WORKERS)
-    if (eventNames().interfaceForSharedWorkerGlobalScope == desiredInterface)
-        return toJSDOMGlobalObject(static_cast<SharedWorkerGlobalScope*>(target), exec);
-#endif
-
+    switch (target->eventTargetInterface()) {
     DOM_EVENT_TARGET_INTERFACES_FOR_EACH(TRY_TO_WRAP_WITH_INTERFACE)
+    }
 
     ASSERT_NOT_REACHED();
     return jsNull();
@@ -66,7 +56,7 @@ JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, EventTarget* targ
 
 #define TRY_TO_UNWRAP_WITH_INTERFACE(interfaceName) \
     if (value.inherits(JS##interfaceName::info()))                      \
-        return static_cast<interfaceName*>(jsCast<JS##interfaceName*>(asObject(value))->impl());
+        return jsCast<JS##interfaceName*>(asObject(value))->impl();
 
 EventTarget* toEventTarget(JSC::JSValue value)
 {

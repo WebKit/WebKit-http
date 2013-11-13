@@ -40,7 +40,7 @@
 #include "Event.h"
 #include "EventException.h"
 #include "InspectorConsoleInstrumentation.h"
-#include "KURL.h"
+#include "URL.h"
 #include "MessagePort.h"
 #include "NotImplemented.h"
 #include "ScheduledAction.h"
@@ -84,7 +84,7 @@ public:
     virtual bool isCleanupTask() const { return true; }
 };
 
-WorkerGlobalScope::WorkerGlobalScope(const KURL& url, const String& userAgent, PassOwnPtr<GroupSettings> settings, WorkerThread* thread, PassRefPtr<SecurityOrigin> topOrigin)
+WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, PassOwnPtr<GroupSettings> settings, WorkerThread* thread, PassRefPtr<SecurityOrigin> topOrigin)
     : m_url(url)
     , m_userAgent(userAgent)
     , m_groupSettings(settings)
@@ -94,7 +94,7 @@ WorkerGlobalScope::WorkerGlobalScope(const KURL& url, const String& userAgent, P
     , m_workerInspectorController(adoptPtr(new WorkerInspectorController(this)))
 #endif
     , m_closing(false)
-    , m_eventQueue(WorkerEventQueue::create(this))
+    , m_eventQueue(*this)
     , m_topOrigin(topOrigin)
 {
     setSecurityOrigin(SecurityOrigin::create(url));
@@ -117,32 +117,17 @@ void WorkerGlobalScope::applyContentSecurityPolicyFromString(const String& polic
     contentSecurityPolicy()->didReceiveHeader(policy, contentSecurityPolicyType);
 }
 
-ScriptExecutionContext* WorkerGlobalScope::scriptExecutionContext() const
-{
-    return const_cast<WorkerGlobalScope*>(this);
-}
-
-const KURL& WorkerGlobalScope::virtualURL() const
-{
-    return m_url;
-}
-
-KURL WorkerGlobalScope::virtualCompleteURL(const String& url) const
-{
-    return completeURL(url);
-}
-
-KURL WorkerGlobalScope::completeURL(const String& url) const
+URL WorkerGlobalScope::completeURL(const String& url) const
 {
     // Always return a null URL when passed a null string.
-    // FIXME: Should we change the KURL constructor to have this behavior?
+    // FIXME: Should we change the URL constructor to have this behavior?
     if (url.isNull())
-        return KURL();
+        return URL();
     // Always use UTF-8 in Workers.
-    return KURL(m_url, url);
+    return URL(m_url, url);
 }
 
-String WorkerGlobalScope::userAgent(const KURL&) const
+String WorkerGlobalScope::userAgent(const URL&) const
 {
     return m_userAgent;
 }
@@ -232,18 +217,18 @@ void WorkerGlobalScope::importScripts(const Vector<String>& urls, ExceptionCode&
     ASSERT(contentSecurityPolicy());
     ec = 0;
     Vector<String>::const_iterator urlsEnd = urls.end();
-    Vector<KURL> completedURLs;
+    Vector<URL> completedURLs;
     for (Vector<String>::const_iterator it = urls.begin(); it != urlsEnd; ++it) {
-        const KURL& url = scriptExecutionContext()->completeURL(*it);
+        const URL& url = scriptExecutionContext()->completeURL(*it);
         if (!url.isValid()) {
             ec = SYNTAX_ERR;
             return;
         }
         completedURLs.append(url);
     }
-    Vector<KURL>::const_iterator end = completedURLs.end();
+    Vector<URL>::const_iterator end = completedURLs.end();
 
-    for (Vector<KURL>::const_iterator it = completedURLs.begin(); it != end; ++it) {
+    for (Vector<URL>::const_iterator it = completedURLs.begin(); it != end; ++it) {
         RefPtr<WorkerScriptLoader> scriptLoader(WorkerScriptLoader::create());
 #if PLATFORM(BLACKBERRY)
         scriptLoader->setTargetType(ResourceRequest::TargetIsScript);
@@ -288,7 +273,7 @@ void WorkerGlobalScope::addConsoleMessage(MessageSource source, MessageLevel lev
     addMessageToWorkerConsole(source, level, message, String(), 0, 0, 0, 0, requestIdentifier);
 }
 
-void WorkerGlobalScope::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack> callStack, ScriptState* state, unsigned long requestIdentifier)
+void WorkerGlobalScope::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack> callStack, JSC::ExecState* state, unsigned long requestIdentifier)
 {
     if (!isContextThread()) {
         postTask(AddConsoleMessageTask::create(source, level, message));
@@ -299,7 +284,7 @@ void WorkerGlobalScope::addMessage(MessageSource source, MessageLevel level, con
     addMessageToWorkerConsole(source, level, message, sourceURL, lineNumber, columnNumber, callStack, state, requestIdentifier);
 }
 
-void WorkerGlobalScope::addMessageToWorkerConsole(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack> callStack, ScriptState* state, unsigned long requestIdentifier)
+void WorkerGlobalScope::addMessageToWorkerConsole(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack> callStack, JSC::ExecState* state, unsigned long requestIdentifier)
 {
     ASSERT(isContextThread());
     if (callStack)
@@ -316,16 +301,6 @@ bool WorkerGlobalScope::isContextThread() const
 bool WorkerGlobalScope::isJSExecutionForbidden() const
 {
     return m_script->isExecutionForbidden();
-}
-
-EventTargetData* WorkerGlobalScope::eventTargetData()
-{
-    return &m_eventTargetData;
-}
-
-EventTargetData& WorkerGlobalScope::ensureEventTargetData()
-{
-    return m_eventTargetData;
 }
 
 WorkerGlobalScope::Observer::Observer(WorkerGlobalScope* context)
@@ -375,9 +350,9 @@ void WorkerGlobalScope::notifyObserversOfStop()
     }
 }
 
-WorkerEventQueue* WorkerGlobalScope::eventQueue() const
+WorkerEventQueue& WorkerGlobalScope::eventQueue() const
 {
-    return m_eventQueue.get();
+    return m_eventQueue;
 }
 
 } // namespace WebCore

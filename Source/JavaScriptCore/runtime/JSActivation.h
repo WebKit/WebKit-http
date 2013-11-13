@@ -95,7 +95,6 @@ namespace JSC {
         bool symbolTablePutWithAttributes(VM&, PropertyName, JSValue, unsigned attributes);
 
         static JSValue argumentsGetter(ExecState*, JSValue, PropertyName);
-        NEVER_INLINE PropertySlot::GetValueFunc getArgumentsGetter();
 
         static size_t allocationSize(SharedSymbolTable*);
         static size_t storageOffset();
@@ -136,7 +135,7 @@ namespace JSC {
 
     inline int JSActivation::registersOffset(SharedSymbolTable* symbolTable)
     {
-        return storageOffset() - (symbolTable->captureStart() * sizeof(WriteBarrier<Unknown>));
+        return storageOffset() + ((symbolTable->captureCount() - symbolTable->captureStart()  - 1) * sizeof(WriteBarrier<Unknown>));
     }
 
     inline void JSActivation::tearOff(VM& vm)
@@ -148,7 +147,7 @@ namespace JSC {
         WriteBarrierBase<Unknown>* src = m_registers;
 
         int captureEnd = symbolTable()->captureEnd();
-        for (int i = symbolTable()->captureStart(); i < captureEnd; ++i)
+        for (int i = symbolTable()->captureStart(); i > captureEnd; --i)
             dst[i].set(vm, this, src[i].get());
 
         m_registers = dst;
@@ -181,9 +180,9 @@ namespace JSC {
 
     inline bool JSActivation::isValidIndex(int index) const
     {
-        if (index < symbolTable()->captureStart())
+        if (index > symbolTable()->captureStart())
             return false;
-        if (index >= symbolTable()->captureEnd())
+        if (index <= symbolTable()->captureEnd())
             return false;
         return true;
     }

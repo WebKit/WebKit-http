@@ -74,7 +74,7 @@ PassRefPtr<InjectedBundleNodeHandle> InjectedBundleNodeHandle::getOrCreate(Node*
     if (!node)
         return 0;
 
-    DOMHandleCache::AddResult result = domHandleCache().add(node, 0);
+    DOMHandleCache::AddResult result = domHandleCache().add(node, nullptr);
     if (!result.isNewEntry)
         return PassRefPtr<InjectedBundleNodeHandle>(result.iterator->value);
 
@@ -134,7 +134,7 @@ static PassRefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& re
     if (!snapshot->bitmap())
         return 0;
 
-    OwnPtr<GraphicsContext> graphicsContext = snapshot->bitmap()->createGraphicsContext();
+    auto graphicsContext = snapshot->bitmap()->createGraphicsContext();
     graphicsContext->clearRect(IntRect(IntPoint(), bitmapSize));
     graphicsContext->applyDeviceScaleFactor(scaleFactor);
     graphicsContext->translate(-rect.x(), -rect.y());

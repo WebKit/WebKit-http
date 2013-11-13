@@ -47,8 +47,8 @@ public:
     void connect();
     void terminate();
 
-    template<typename T> bool send(const T& message, uint64_t destinationID, unsigned messageSendFlags = 0);
-    template<typename U> bool sendSync(const U& message, const typename U::Reply&, uint64_t destinationID, double timeout = 1);
+    template<typename T> bool send(T&& message, uint64_t destinationID, unsigned messageSendFlags = 0);
+    template<typename T> bool sendSync(T&& message, typename T::Reply&&, uint64_t destinationID, double timeout = 1);
     
     CoreIPC::Connection* connection() const
     {
@@ -74,41 +74,41 @@ protected:
     virtual void didFinishLaunching(ProcessLauncher*, CoreIPC::Connection::Identifier) OVERRIDE;
 
     bool dispatchMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
-    bool dispatchSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    bool dispatchSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&);
 
 private:
     virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&) = 0;
     virtual void connectionWillOpen(CoreIPC::Connection*);
     virtual void connectionWillClose(CoreIPC::Connection*);
 
-    bool sendMessage(PassOwnPtr<CoreIPC::MessageEncoder>, unsigned messageSendFlags);
+    bool sendMessage(std::unique_ptr<CoreIPC::MessageEncoder>, unsigned messageSendFlags);
 
-    Vector<std::pair<OwnPtr<CoreIPC::MessageEncoder>, unsigned>> m_pendingMessages;
+    Vector<std::pair<std::unique_ptr<CoreIPC::MessageEncoder>, unsigned>> m_pendingMessages;
     RefPtr<ProcessLauncher> m_processLauncher;
     RefPtr<CoreIPC::Connection> m_connection;
     CoreIPC::MessageReceiverMap m_messageReceiverMap;
 };
 
 template<typename T>
-bool ChildProcessProxy::send(const T& message, uint64_t destinationID, unsigned messageSendFlags)
+bool ChildProcessProxy::send(T&& message, uint64_t destinationID, unsigned messageSendFlags)
 {
     COMPILE_ASSERT(!T::isSync, AsyncMessageExpected);
 
-    OwnPtr<CoreIPC::MessageEncoder> encoder = CoreIPC::MessageEncoder::create(T::receiverName(), T::name(), destinationID);
-    encoder->encode(message);
+    auto encoder = std::make_unique<CoreIPC::MessageEncoder>(T::receiverName(), T::name(), destinationID);
+    encoder->encode(message.arguments());
 
-    return sendMessage(encoder.release(), messageSendFlags);
+    return sendMessage(std::move(encoder), messageSendFlags);
 }
 
 template<typename U> 
-bool ChildProcessProxy::sendSync(const U& message, const typename U::Reply& reply, uint64_t destinationID, double timeout)
+bool ChildProcessProxy::sendSync(U&& message, typename U::Reply&& reply, uint64_t destinationID, double timeout)
 {
     COMPILE_ASSERT(U::isSync, SyncMessageExpected);
 
     if (!m_connection)
         return false;
 
-    return connection()->sendSync(message, reply, destinationID, timeout);
+    return connection()->sendSync(std::forward<U>(message), std::move(reply), destinationID, timeout);
 }
 
 } // namespace WebKit

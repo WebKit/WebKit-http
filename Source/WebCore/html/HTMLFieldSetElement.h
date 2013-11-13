@@ -33,7 +33,7 @@ class HTMLCollection;
 
 class HTMLFieldSetElement FINAL : public HTMLFormControlElement {
 public:
-    static PassRefPtr<HTMLFieldSetElement> create(const QualifiedName&, Document*, HTMLFormElement*);
+    static PassRefPtr<HTMLFieldSetElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
     const HTMLLegendElement* legend() const;
     PassRefPtr<HTMLCollection> elements();
@@ -45,11 +45,11 @@ protected:
     virtual void disabledAttributeChanged() OVERRIDE;
 
 private:
-    HTMLFieldSetElement(const QualifiedName&, Document*, HTMLFormElement*);
+    HTMLFieldSetElement(const QualifiedName&, Document&, HTMLFormElement*);
 
     virtual bool isEnumeratable() const { return true; }
     virtual bool supportsFocus() const OVERRIDE;
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     virtual const AtomicString& formControlType() const;
     virtual bool recalcWillValidate() const { return false; }
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
@@ -62,6 +62,8 @@ private:
     // When dom tree is modified, we have to refresh the m_associatedElements array.
     mutable uint64_t m_documentVersion;
 };
+
+ELEMENT_TYPE_CASTS(HTMLFieldSetElement)
 
 } // namespace
 

@@ -1,5 +1,6 @@
 /*
     Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
+    Copyright (C) 2013 Apple Inc. All rights reserved.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -35,7 +36,7 @@
 #endif
 #include "InitWebCoreQt.h"
 #include "IntSize.h"
-#include "KURL.h"
+#include "URL.h"
 #include "MemoryCache.h"
 #include "NetworkStateNotifier.h"
 #include "Page.h"
@@ -173,10 +174,10 @@ void QWebSettingsPrivate::apply()
 
         value = attributes.value(QWebSettings::CSSRegionsEnabled,
                                  global->attributes.value(QWebSettings::CSSRegionsEnabled));
-        WebCore::RuntimeEnabledFeatures::setCSSRegionsEnabled(value);
+        WebCore::RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(value);
         value = attributes.value(QWebSettings::CSSCompositingEnabled,
                                  global->attributes.value(QWebSettings::CSSCompositingEnabled));
-        WebCore::RuntimeEnabledFeatures::setCSSCompositingEnabled(value);
+        WebCore::RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(value);
         value = attributes.value(QWebSettings::CSSGridLayoutEnabled,
                                  global->attributes.value(QWebSettings::CSSGridLayoutEnabled));
         settings->setCSSGridLayoutEnabled(value);
@@ -224,7 +225,7 @@ void QWebSettingsPrivate::apply()
         settings->setFrameFlatteningEnabled(value);
 
         QUrl location = !userStyleSheetLocation.isEmpty() ? userStyleSheetLocation : global->userStyleSheetLocation;
-        settings->setUserStyleSheetLocation(WebCore::KURL(location));
+        settings->setUserStyleSheetLocation(WebCore::URL(location));
 
         QString encoding = !defaultTextEncoding.isEmpty() ? defaultTextEncoding: global->defaultTextEncoding;
         settings->setDefaultTextEncodingName(encoding);
@@ -748,7 +749,7 @@ void QWebSettings::clearIconDatabase()
 QIcon QWebSettings::iconForUrl(const QUrl& url)
 {
     WebCore::initializeWebCoreQt();
-    QPixmap* icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(WebCore::KURL(url).string(),
+    QPixmap* icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(WebCore::URL(url).string(),
                                 WebCore::IntSize(16, 16));
     if (!icon)
         return QIcon();

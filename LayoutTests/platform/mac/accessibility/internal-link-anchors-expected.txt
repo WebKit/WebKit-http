@@ -22,7 +22,9 @@ AXSelected: 0
 AXBlockQuoteLevel: 0
 AXTopLevelUIElement: <AXStaticText>
 AXLanguage: 
-AXARIABusy: 0
+AXDOMIdentifier: 
+AXDOMClassList: <array of size 0>
+AXElementBusy: 0
 
 ------------
 

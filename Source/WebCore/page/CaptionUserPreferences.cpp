@@ -34,7 +34,6 @@
 #include "Settings.h"
 #include "TextTrackList.h"
 #include "UserStyleSheetTypes.h"
-#include <wtf/NonCopyingSort.h>
 
 namespace WebCore {
 
@@ -179,16 +178,17 @@ static bool textTrackCompare(const RefPtr<TextTrack>& a, const RefPtr<TextTrack>
     return codePointCompare(trackDisplayName(a.get()), trackDisplayName(b.get())) < 0;
 }
 
-Vector<RefPtr<TextTrack> > CaptionUserPreferences::sortedTrackListForMenu(TextTrackList* trackList)
+Vector<RefPtr<TextTrack>> CaptionUserPreferences::sortedTrackListForMenu(TextTrackList* trackList)
 {
     ASSERT(trackList);
 
-    Vector<RefPtr<TextTrack> > tracksForMenu;
+    Vector<RefPtr<TextTrack>> tracksForMenu;
 
     for (unsigned i = 0, length = trackList->length(); i < length; ++i)
         tracksForMenu.append(trackList->item(i));
 
-    nonCopyingSort(tracksForMenu.begin(), tracksForMenu.end(), textTrackCompare);
+    std::sort(tracksForMenu.begin(), tracksForMenu.end(), textTrackCompare);
+
     tracksForMenu.insert(0, TextTrack::captionMenuOffItem());
     tracksForMenu.insert(1, TextTrack::captionMenuAutomaticItem());
 
@@ -236,7 +236,7 @@ void CaptionUserPreferences::setCaptionsStyleSheetOverride(const String& overrid
 void CaptionUserPreferences::updateCaptionStyleSheetOveride()
 {
     // Identify our override style sheet with a unique URL - a new scheme and a UUID.
-    DEFINE_STATIC_LOCAL(KURL, captionsStyleSheetURL, (ParsedURLString, "user-captions-override:01F6AF12-C3B0-4F70-AF5E-A3E00234DC23"));
+    DEFINE_STATIC_LOCAL(URL, captionsStyleSheetURL, (ParsedURLString, "user-captions-override:01F6AF12-C3B0-4F70-AF5E-A3E00234DC23"));
 
     pageGroup()->removeUserStyleSheetFromWorld(mainThreadNormalWorld(), captionsStyleSheetURL);
 

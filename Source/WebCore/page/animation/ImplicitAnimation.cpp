@@ -38,9 +38,9 @@
 
 namespace WebCore {
 
-ImplicitAnimation::ImplicitAnimation(const Animation* transition, CSSPropertyID animatingProperty, RenderObject* renderer, CompositeAnimation* compAnim, RenderStyle* fromStyle)
+ImplicitAnimation::ImplicitAnimation(const Animation& transition, CSSPropertyID animatingProperty, RenderElement* renderer, CompositeAnimation* compAnim, RenderStyle* fromStyle)
     : AnimationBase(transition, renderer, compAnim)
-    , m_transitionProperty(transition->property())
+    , m_transitionProperty(transition.property())
     , m_animatingProperty(animatingProperty)
     , m_overridden(false)
     , m_active(true)
@@ -61,7 +61,7 @@ bool ImplicitAnimation::shouldSendEventForListener(Document::ListenerType inList
     return m_object->document().hasListenerType(inListenerType);
 }
 
-void ImplicitAnimation::animate(CompositeAnimation*, RenderObject*, const RenderStyle*, RenderStyle* targetStyle, RefPtr<RenderStyle>& animatedStyle)
+void ImplicitAnimation::animate(CompositeAnimation*, RenderElement*, const RenderStyle*, RenderStyle* targetStyle, RefPtr<RenderStyle>& animatedStyle)
 {
     // If we get this far and the animation is done, it means we are cleaning up a just finished animation.
     // So just return. Everything is already all cleaned up.
@@ -77,10 +77,10 @@ void ImplicitAnimation::animate(CompositeAnimation*, RenderObject*, const Render
     if (!animatedStyle)
         animatedStyle = RenderStyle::clone(targetStyle);
 
-#if USE(ACCELERATED_COMPOSITING)
     bool needsAnim = CSSPropertyAnimation::blendProperties(this, m_animatingProperty, animatedStyle.get(), m_fromStyle.get(), m_toStyle.get(), progress(1, 0, 0));
     // FIXME: we also need to detect cases where we have to software animate for other reasons,
     // such as a child using inheriting the transform. https://bugs.webkit.org/show_bug.cgi?id=23902
+#if USE(ACCELERATED_COMPOSITING)
     if (!needsAnim)
         // If we are running an accelerated animation, set a flag in the style which causes the style
         // to compare as different to any other style. This ensures that changes to the property
@@ -125,7 +125,7 @@ void ImplicitAnimation::pauseAnimation(double timeOffset)
 #endif
     // Restore the original (unanimated) style
     if (!paused())
-        setNeedsStyleRecalc(m_object->node());
+        setNeedsStyleRecalc(m_object->element());
 }
 
 void ImplicitAnimation::endAnimation()
@@ -160,9 +160,7 @@ bool ImplicitAnimation::sendTransitionEvent(const AtomicString& eventType, doubl
             String propertyName = getPropertyNameString(m_animatingProperty);
                 
             // Dispatch the event
-            RefPtr<Element> element = 0;
-            if (m_object->node() && m_object->node()->isElementNode())
-                element = toElement(m_object->node());
+            RefPtr<Element> element = m_object->element();
 
             ASSERT(!element || !element->document().inPageCache());
             if (!element)

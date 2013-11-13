@@ -23,11 +23,11 @@
 #ifndef webkitwebbackforwardlistprivate_h
 #define webkitwebbackforwardlistprivate_h
 
-#include "BackForwardListImpl.h"
+#include "BackForwardList.h"
 
 namespace WebKit {
 
-WebCore::BackForwardListImpl* core(WebKitWebBackForwardList*);
+WebCore::BackForwardList* core(WebKitWebBackForwardList*);
 
 }
 

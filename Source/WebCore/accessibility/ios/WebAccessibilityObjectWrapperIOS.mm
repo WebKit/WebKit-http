@@ -276,6 +276,8 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case ListBoxOptionRole:
     case MenuButtonRole:
     case MenuItemRole:
+    case MenuItemCheckboxRole:
+    case MenuItemRadioRole:
     case PopUpButtonRole:
     case RadioButtonRole:
     case ScrollBarRole:
@@ -548,6 +550,8 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
             break;
         case MenuButtonRole:
         case MenuItemRole:
+        case MenuItemCheckboxRole:
+        case MenuItemRadioRole:
             traits |= [self _axMenuItemTrait];
             break;
         default:
@@ -975,7 +979,7 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
     if (![self _prepareAccessibilityCall])
         return nil;
     
-    KURL url = m_object->url();
+    URL url = m_object->url();
     if (url.isNull())
         return nil;
     return (NSURL*)url;

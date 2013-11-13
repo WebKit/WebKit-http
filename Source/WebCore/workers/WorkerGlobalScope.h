@@ -54,22 +54,22 @@ namespace WebCore {
     class WorkerNavigator;
     class WorkerThread;
 
-    class WorkerGlobalScope : public RefCounted<WorkerGlobalScope>, public ScriptExecutionContext, public EventTarget {
+    class WorkerGlobalScope : public RefCounted<WorkerGlobalScope>, public ScriptExecutionContext, public EventTargetWithInlineData {
     public:
         virtual ~WorkerGlobalScope();
 
         virtual bool isWorkerGlobalScope() const OVERRIDE { return true; }
 
-        virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE;
+        virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE FINAL { return const_cast<WorkerGlobalScope*>(this); }
 
         virtual bool isSharedWorkerGlobalScope() const { return false; }
         virtual bool isDedicatedWorkerGlobalScope() const { return false; }
 
-        const KURL& url() const { return m_url; }
-        KURL completeURL(const String&) const;
+        virtual const URL& url() const OVERRIDE FINAL { return m_url; }
+        virtual URL completeURL(const String&) const OVERRIDE FINAL;
 
         const GroupSettings* groupSettings() { return m_groupSettings.get(); }
-        virtual String userAgent(const KURL&) const;
+        virtual String userAgent(const URL&) const;
 
         virtual void disableEval(const String& errorMessage) OVERRIDE;
 
@@ -103,9 +103,6 @@ namespace WebCore {
         void clearTimeout(int timeoutId);
         int setInterval(PassOwnPtr<ScheduledAction>, int timeout);
         void clearInterval(int timeoutId);
-
-        // ScriptExecutionContext
-        virtual WorkerEventQueue* eventQueue() const OVERRIDE;
 
         virtual bool isContextThread() const OVERRIDE;
         virtual bool isJSExecutionForbidden() const OVERRIDE;
@@ -142,30 +139,27 @@ namespace WebCore {
         virtual SecurityOrigin* topOrigin() const OVERRIDE { return m_topOrigin.get(); }
 
     protected:
-        WorkerGlobalScope(const KURL&, const String& userAgent, PassOwnPtr<GroupSettings>, WorkerThread*, PassRefPtr<SecurityOrigin> topOrigin);
+        WorkerGlobalScope(const URL&, const String& userAgent, PassOwnPtr<GroupSettings>, WorkerThread*, PassRefPtr<SecurityOrigin> topOrigin);
         void applyContentSecurityPolicyFromString(const String& contentSecurityPolicy, ContentSecurityPolicy::HeaderType);
 
         virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, PassRefPtr<ScriptCallStack>) OVERRIDE;
-        void addMessageToWorkerConsole(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, ScriptState* = 0, unsigned long requestIdentifier = 0);
+        void addMessageToWorkerConsole(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0);
 
     private:
         virtual void refScriptExecutionContext() OVERRIDE { ref(); }
         virtual void derefScriptExecutionContext() OVERRIDE { deref(); }
 
-        virtual void refEventTarget() OVERRIDE { ref(); }
-        virtual void derefEventTarget() OVERRIDE { deref(); }
-        virtual EventTargetData* eventTargetData() OVERRIDE;
-        virtual EventTargetData& ensureEventTargetData() OVERRIDE;
+        virtual void refEventTarget() OVERRIDE FINAL { ref(); }
+        virtual void derefEventTarget() OVERRIDE FINAL { deref(); }
 
-        virtual const KURL& virtualURL() const OVERRIDE;
-        virtual KURL virtualCompleteURL(const String&) const;
-
-        virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, ScriptState* = 0, unsigned long requestIdentifier = 0) OVERRIDE;
+        virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, PassRefPtr<ScriptCallStack>, JSC::ExecState* = 0, unsigned long requestIdentifier = 0) OVERRIDE;
         virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) OVERRIDE;
 
         virtual EventTarget* errorEventTarget() OVERRIDE;
 
-        KURL m_url;
+        virtual WorkerEventQueue& eventQueue() const OVERRIDE FINAL;
+
+        URL m_url;
         String m_userAgent;
         OwnPtr<GroupSettings> m_groupSettings;
 
@@ -179,11 +173,10 @@ namespace WebCore {
         OwnPtr<WorkerInspectorController> m_workerInspectorController;
 #endif
         bool m_closing;
-        EventTargetData m_eventTargetData;
 
         HashSet<Observer*> m_workerObservers;
 
-        OwnPtr<WorkerEventQueue> m_eventQueue;
+        mutable WorkerEventQueue m_eventQueue;
 
         RefPtr<SecurityOrigin> m_topOrigin;
     };

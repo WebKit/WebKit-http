@@ -23,19 +23,22 @@
 #ifndef RenderEmbeddedObject_h
 #define RenderEmbeddedObject_h
 
-#include "RenderPart.h"
+#include "RenderWidget.h"
 
 namespace WebCore {
 
+class HTMLAppletElement;
 class MouseEvent;
 class TextRun;
 
 // Renderer for embeds and objects, often, but not always, rendered via plug-ins.
 // For example, <embed src="foo.html"> does not invoke a plug-in.
-class RenderEmbeddedObject : public RenderPart {
+class RenderEmbeddedObject : public RenderWidget {
 public:
-    RenderEmbeddedObject(Element*);
+    explicit RenderEmbeddedObject(HTMLFrameOwnerElement&);
     virtual ~RenderEmbeddedObject();
+
+    static RenderEmbeddedObject* createForApplet(HTMLAppletElement&);
 
     enum PluginUnavailabilityReason {
         PluginMissing,
@@ -69,14 +72,11 @@ protected:
 
     virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const OVERRIDE;
 
-    const RenderObjectChildList* children() const { return &m_children; }
-    RenderObjectChildList* children() { return &m_children; }
-
 protected:
     virtual void layout() OVERRIDE;
 
 private:
-    virtual const char* renderName() const { return "RenderEmbeddedObject"; }
+    virtual const char* renderName() const OVERRIDE { return "RenderEmbeddedObject"; }
     virtual bool isEmbeddedObject() const OVERRIDE FINAL { return true; }
 
     void paintSnapshotImage(PaintInfo&, const LayoutPoint&, Image*);
@@ -90,8 +90,8 @@ private:
 
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE FINAL;
 
-    virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier, Node** stopNode) OVERRIDE FINAL;
-    virtual bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier, Node** stopNode) OVERRIDE FINAL;
+    virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier, Element** stopElement) OVERRIDE FINAL;
+    virtual bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier, Element** stopElement) OVERRIDE FINAL;
 
     void setUnavailablePluginIndicatorIsPressed(bool);
     bool isInUnavailablePluginIndicator(MouseEvent*) const;
@@ -100,9 +100,6 @@ private:
     LayoutRect unavailablePluginIndicatorBounds(const LayoutPoint&) const;
 
     virtual bool canHaveChildren() const OVERRIDE FINAL;
-    virtual RenderObjectChildList* virtualChildren() OVERRIDE FINAL { return children(); }
-    virtual const RenderObjectChildList* virtualChildren() const OVERRIDE FINAL { return children(); }
-    
     virtual bool canHaveWidget() const { return true; }
 
     bool m_hasFallbackContent; // FIXME: This belongs on HTMLObjectElement.
@@ -113,7 +110,6 @@ private:
     String m_unavailablePluginReplacementText;
     bool m_unavailablePluginIndicatorIsPressed;
     bool m_mouseDownWasInUnavailablePluginIndicator;
-    RenderObjectChildList m_children;
     String m_unavailabilityDescription;
 };
 

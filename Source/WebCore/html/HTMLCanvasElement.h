@@ -64,8 +64,8 @@ public:
 
 class HTMLCanvasElement FINAL : public HTMLElement {
 public:
-    static PassRefPtr<HTMLCanvasElement> create(Document*);
-    static PassRefPtr<HTMLCanvasElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<HTMLCanvasElement> create(Document&);
+    static PassRefPtr<HTMLCanvasElement> create(const QualifiedName&, Document&);
     virtual ~HTMLCanvasElement();
 
     void addObserver(CanvasObserver*);
@@ -143,10 +143,10 @@ public:
     float deviceScaleFactor() const { return m_deviceScaleFactor; }
 
 private:
-    HTMLCanvasElement(const QualifiedName&, Document*);
+    HTMLCanvasElement(const QualifiedName&, Document&);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     virtual void willAttachRenderers() OVERRIDE;
     virtual bool areAuthorShadowsAllowed() const OVERRIDE;
 
@@ -188,8 +188,7 @@ private:
     mutable RefPtr<Image> m_copiedImage; // FIXME: This is temporary for platforms that have to copy the image buffer to render (and for CSSCanvasValue).
 };
 
-// This will catch anyone doing an unnecessary cast.
-void toHTMLCanvasElement(const HTMLCanvasElement*);
+ELEMENT_TYPE_CASTS(HTMLCanvasElement)
 
 } //namespace
 

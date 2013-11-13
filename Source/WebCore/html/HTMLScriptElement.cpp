@@ -28,7 +28,6 @@
 #include "Event.h"
 #include "EventNames.h"
 #include "HTMLNames.h"
-#include "ScriptEventListener.h"
 #include "Text.h"
 #include <wtf/Ref.h>
 
@@ -36,14 +35,14 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-inline HTMLScriptElement::HTMLScriptElement(const QualifiedName& tagName, Document* document, bool wasInsertedByParser, bool alreadyStarted)
+inline HTMLScriptElement::HTMLScriptElement(const QualifiedName& tagName, Document& document, bool wasInsertedByParser, bool alreadyStarted)
     : HTMLElement(tagName, document)
     , ScriptElement(this, wasInsertedByParser, alreadyStarted)
 {
     ASSERT(hasTagName(scriptTag));
 }
 
-PassRefPtr<HTMLScriptElement> HTMLScriptElement::create(const QualifiedName& tagName, Document* document, bool wasInsertedByParser, bool alreadyStarted)
+PassRefPtr<HTMLScriptElement> HTMLScriptElement::create(const QualifiedName& tagName, Document& document, bool wasInsertedByParser, bool alreadyStarted)
 {
     return adoptRef(new HTMLScriptElement(tagName, document, wasInsertedByParser, alreadyStarted));
 }
@@ -66,7 +65,7 @@ void HTMLScriptElement::parseAttribute(const QualifiedName& name, const AtomicSt
     else if (name == asyncAttr)
         handleAsyncAttribute();
     else if (name == onbeforeloadAttr)
-        setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, name, value));
+        setAttributeEventListener(eventNames().beforeloadEvent, name, value);
     else
         HTMLElement::parseAttribute(name, value);
 }
@@ -106,12 +105,12 @@ bool HTMLScriptElement::async() const
     return fastHasAttribute(asyncAttr) || forceAsync();
 }
 
-KURL HTMLScriptElement::src() const
+URL HTMLScriptElement::src() const
 {
     return document().completeURL(sourceAttributeValue());
 }
 
-void HTMLScriptElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) const
+void HTMLScriptElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     HTMLElement::addSubresourceAttributeURLs(urls);
 
@@ -173,7 +172,7 @@ void HTMLScriptElement::dispatchLoadEvent()
 
 PassRefPtr<Element> HTMLScriptElement::cloneElementWithoutAttributesAndChildren()
 {
-    return adoptRef(new HTMLScriptElement(tagQName(), &document(), false, alreadyStarted()));
+    return adoptRef(new HTMLScriptElement(tagQName(), document(), false, alreadyStarted()));
 }
 
 }

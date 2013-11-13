@@ -122,8 +122,8 @@ public:
         bool changed = false;
         
         // Record which arguments are known to escape no matter what.
-        for (unsigned i = codeBlock()->inlineCallFrames().size(); i--;)
-            pruneObviousArgumentCreations(&codeBlock()->inlineCallFrames()[i]);
+        for (unsigned i = m_graph.m_inlineCallFrames->size(); i--;)
+            pruneObviousArgumentCreations(m_graph.m_inlineCallFrames->at(i));
         pruneObviousArgumentCreations(0); // the machine call frame.
         
         // Create data for variable access datas that we will want to analyze.
@@ -188,7 +188,7 @@ public:
                 case SetLocal: {
                     Node* source = node->child1().node();
                     VariableAccessData* variableAccessData = node->variableAccessData();
-                    int argumentsRegister =
+                    VirtualRegister argumentsRegister =
                         m_graph.uncheckedArgumentsRegisterFor(node->codeOrigin);
                     if (source->op() != CreateArguments && source->op() != PhantomArguments) {
                         // Make sure that the source of the SetLocal knows that if it's
@@ -216,7 +216,7 @@ public:
                         if (!m_isLive.contains(variableAccessData))
                             break;
                         
-                        if (argumentsRegister != InvalidVirtualRegister
+                        if (argumentsRegister.isValid()
                             && (variableAccessData->local() == argumentsRegister
                                 || variableAccessData->local() == unmodifiedArgumentsRegister(argumentsRegister))) {
                             m_createsArguments.add(node->codeOrigin.inlineCallFrame);
@@ -234,7 +234,7 @@ public:
                         data.mergeCallContext(node->codeOrigin.inlineCallFrame);
                         break;
                     }
-                    if (argumentsRegister != InvalidVirtualRegister
+                    if (argumentsRegister.isValid()
                         && (variableAccessData->local() == argumentsRegister
                             || variableAccessData->local() == unmodifiedArgumentsRegister(argumentsRegister))) {
                         if (node->codeOrigin.inlineCallFrame == source->codeOrigin.inlineCallFrame)
@@ -619,7 +619,7 @@ public:
                     AdjacencyList children = node->children;
                     
                     node->convertToGetLocalUnlinked(
-                        static_cast<VirtualRegister>(
+                        VirtualRegister(
                             node->codeOrigin.inlineCallFrame->stackOffset +
                             m_graph.baselineCodeBlockFor(node->codeOrigin)->argumentIndexAfterCapture(index)));
 
@@ -711,8 +711,8 @@ private:
         }
             
         case GetLocal: {
-            int argumentsRegister = m_graph.uncheckedArgumentsRegisterFor(node->codeOrigin);
-            if (argumentsRegister != InvalidVirtualRegister
+            VirtualRegister argumentsRegister = m_graph.uncheckedArgumentsRegisterFor(node->codeOrigin);
+            if (argumentsRegister.isValid()
                 && (node->local() == argumentsRegister
                     || node->local() == unmodifiedArgumentsRegister(argumentsRegister))) {
                 m_createsArguments.add(node->codeOrigin.inlineCallFrame);
@@ -783,8 +783,8 @@ private:
         switch (source->op()) {
         case GetLocal: {
             VariableAccessData* variableAccessData = source->variableAccessData();
-            int argumentsRegister = m_graph.uncheckedArgumentsRegisterFor(source->codeOrigin);
-            if (argumentsRegister == InvalidVirtualRegister)
+            VirtualRegister argumentsRegister = m_graph.uncheckedArgumentsRegisterFor(source->codeOrigin);
+            if (!argumentsRegister.isValid())
                 break;
             if (argumentsRegister == variableAccessData->local())
                 return true;

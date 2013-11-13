@@ -901,6 +901,16 @@
             "grzegorz"
          ]
       },
+      "Gwang Yoon Hwang" : {
+         "emails" : [
+            "ryumiel@company100.net",
+            "ryumiel@company100.com"
+         ],
+         "expertise" : "Accelerated Compositing",
+         "nicks" : [
+            "ryumiel"
+         ]
+      },
       "Hans Muller" : {
          "emails" : [
             "giles_joplin@yahoo.com",
@@ -1020,6 +1030,14 @@
          "expertise" : "The EFLWebKit port",
          "nicks" : [
             "jaehun"
+         ]
+      },
+      "Jae Hyun Park" : {
+         "emails" : [
+            "jae.park@company100.net"
+         ],
+         "nicks" : [
+            "jaepark"
          ]
       },
       "Jakob Petsovits" : {
@@ -1550,6 +1568,16 @@
             "maheshk"
          ]
       },
+      "Manuel Rego Casasnovas" : {
+         "emails" : [
+            "rego@igalia.com"
+         ],
+         "expertise" : "WebKitGTK+ port, WebKit2",
+         "nicks" : [
+            "rego",
+            "mrego"
+         ]
+      },
       "Marcelo Lira" : {
          "emails" : [
             "marcelo.lira@openbossa.org",
@@ -1667,6 +1695,14 @@
          ],
          "nicks" : [
             "mpruett"
+         ]
+      },
+      "Micha\u0142 Paku\u0142a vel Rutka" : {
+         "emails" : [
+            "m.pakula@samsung.com"
+         ],
+         "nicks" : [
+            "mpakula"
          ]
       },
       "Michelangelo De Simone" : {
@@ -1842,6 +1878,15 @@
             "beverloo"
          ]
       },
+      "Peter Gal" : {
+         "emails" : [
+            "galpeter@inf.u-szeged.hu"
+         ],
+         "expertise": "Python, CURL HTTP backend",
+         "nicks" : [
+            "elecro"
+         ]
+      },
       "Peter Kasting" : {
          "emails" : [
             "pkasting@google.com",
@@ -1911,6 +1956,15 @@
          ],
          "nicks" : [
             "qi"
+         ]
+      },
+      "Radu Stavila" : {
+         "emails" : [
+            "stavila@adobe.com"
+         ],
+         "nicks" : [
+            "radustavila",
+            "stavila"
          ]
       },
       "Rafael Antognolli" : {
@@ -2262,6 +2316,15 @@
          "expertise" : "HTML5 <Track>",
          "nicks" : [
             "vcarbune"
+         ]
+      },
+      "Victor Jaquez" : {
+         "emails" : [
+            "vjaquez@igalia.com"
+         ],
+         "nicks" : [
+            "vjaquez",
+            "ceyusa"
          ]
       },
       "Victor Wang" : {
@@ -2712,15 +2775,6 @@
             "gregsimon"
          ]
       },
-      "Gwang Yoon Hwang" : {
-         "emails" : [
-            "ryumiel@company100.net",
-            "ryumiel@company100.com"
-         ],
-         "nicks" : [
-            "ryumiel"
-         ]
-      },
       "Hao Zheng" : {
          "emails" : [
             "zhenghao@chromium.org"
@@ -2740,14 +2794,6 @@
          ],
          "nicks" : [
             "hixie"
-         ]
-      },
-      "Jae Hyun Park" : {
-         "emails" : [
-            "jae.park@company100.net"
-         ],
-         "nicks" : [
-            "jaepark"
          ]
       },
       "James Craig" : {
@@ -2887,14 +2933,6 @@
             "TwistO"
          ]
       },
-      "Peter Gal" : {
-         "emails" : [
-            "galpeter@inf.u-szeged.hu"
-         ],
-         "nicks" : [
-            "elecro"
-         ]
-      },
       "Peter Linss" : {
          "emails" : [
             "peter.linss@hp.com"
@@ -2906,14 +2944,6 @@
       "Radar WebKit Bug Importer" : {
          "emails" : [
             "webkit-bug-importer@group.apple.com"
-         ]
-      },
-      "Radu Stavila" : {
-         "emails" : [
-            "stavila@adobe.com"
-         ],
-         "nicks" : [
-            "radustavila"
          ]
       },
       "Raul Hudea" : {

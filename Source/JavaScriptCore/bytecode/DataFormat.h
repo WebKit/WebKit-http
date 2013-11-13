@@ -38,13 +38,15 @@ namespace JSC {
 // (May also need bool, array, object, string types!)
 enum DataFormat {
     DataFormatNone = 0,
-    DataFormatInteger = 1,
-    DataFormatDouble = 2,
-    DataFormatBoolean = 3,
-    DataFormatCell = 4,
-    DataFormatStorage = 5,
+    DataFormatInt32 = 1,
+    DataFormatInt52 = 2, // Int52's are left-shifted by 16 by default.
+    DataFormatStrictInt52 = 3, // "Strict" Int52 means it's not shifted.
+    DataFormatDouble = 4,
+    DataFormatBoolean = 5,
+    DataFormatCell = 6,
+    DataFormatStorage = 7,
     DataFormatJS = 8,
-    DataFormatJSInteger = DataFormatJS | DataFormatInteger,
+    DataFormatJSInt32 = DataFormatJS | DataFormatInt32,
     DataFormatJSDouble = DataFormatJS | DataFormatDouble,
     DataFormatJSCell = DataFormatJS | DataFormatCell,
     DataFormatJSBoolean = DataFormatJS | DataFormatBoolean,
@@ -62,8 +64,12 @@ inline const char* dataFormatToString(DataFormat dataFormat)
     switch (dataFormat) {
     case DataFormatNone:
         return "None";
-    case DataFormatInteger:
-        return "Integer";
+    case DataFormatInt32:
+        return "Int32";
+    case DataFormatInt52:
+        return "Int52";
+    case DataFormatStrictInt52:
+        return "StrictInt52";
     case DataFormatDouble:
         return "Double";
     case DataFormatCell:
@@ -74,8 +80,8 @@ inline const char* dataFormatToString(DataFormat dataFormat)
         return "Storage";
     case DataFormatJS:
         return "JS";
-    case DataFormatJSInteger:
-        return "JSInteger";
+    case DataFormatJSInt32:
+        return "JSInt32";
     case DataFormatJSDouble:
         return "JSDouble";
     case DataFormatJSCell:
@@ -92,83 +98,15 @@ inline const char* dataFormatToString(DataFormat dataFormat)
     }
 }
 
-#if USE(JSVALUE64)
-inline bool needDataFormatConversion(DataFormat from, DataFormat to)
-{
-    ASSERT(from != DataFormatNone);
-    ASSERT(to != DataFormatNone);
-    switch (from) {
-    case DataFormatInteger:
-    case DataFormatDouble:
-        return to != from;
-    case DataFormatCell:
-    case DataFormatJS:
-    case DataFormatJSInteger:
-    case DataFormatJSDouble:
-    case DataFormatJSCell:
-    case DataFormatJSBoolean:
-        switch (to) {
-        case DataFormatInteger:
-        case DataFormatDouble:
-            return true;
-        case DataFormatCell:
-        case DataFormatJS:
-        case DataFormatJSInteger:
-        case DataFormatJSDouble:
-        case DataFormatJSCell:
-        case DataFormatJSBoolean:
-            return false;
-        default:
-            // This captures DataFormatBoolean, which is currently unused.
-            RELEASE_ASSERT_NOT_REACHED();
-        }
-    case DataFormatStorage:
-        ASSERT(to == DataFormatStorage);
-        return false;
-    default:
-        // This captures DataFormatBoolean, which is currently unused.
-        RELEASE_ASSERT_NOT_REACHED();
-    }
-    return true;
-}
-
-#elif USE(JSVALUE32_64)
-inline bool needDataFormatConversion(DataFormat from, DataFormat to)
-{
-    ASSERT(from != DataFormatNone);
-    ASSERT(to != DataFormatNone);
-    switch (from) {
-    case DataFormatInteger:
-    case DataFormatCell:
-    case DataFormatBoolean:
-        return ((to & DataFormatJS) || to == DataFormatDouble);
-    case DataFormatDouble:
-    case DataFormatJSDouble:
-        return (to != DataFormatDouble && to != DataFormatJSDouble);
-    case DataFormatJS:
-    case DataFormatJSInteger:
-    case DataFormatJSCell:
-    case DataFormatJSBoolean:
-        return (!(to & DataFormatJS) || to == DataFormatJSDouble);
-    case DataFormatStorage:
-        ASSERT(to == DataFormatStorage);
-        return false;
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-    }
-    return true;
-}
-#endif
-
 inline bool isJSFormat(DataFormat format, DataFormat expectedFormat)
 {
     ASSERT(expectedFormat & DataFormatJS);
     return (format | DataFormatJS) == expectedFormat;
 }
 
-inline bool isJSInteger(DataFormat format)
+inline bool isJSInt32(DataFormat format)
 {
-    return isJSFormat(format, DataFormatJSInteger);
+    return isJSFormat(format, DataFormatJSInt32);
 }
 
 inline bool isJSDouble(DataFormat format)

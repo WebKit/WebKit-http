@@ -59,7 +59,7 @@ static String coreAttributeToAtkAttribute(JSStringRef attribute)
         return "placeholder-text";
     
     if (attributeString == "AXSortDirection")
-        return "aria-sort";
+        return "sort";
 
     return String();
 }
@@ -112,7 +112,7 @@ static JSStringRef indexRangeInTable(PlatformUIElement element, bool isRowRange)
 {
     GOwnPtr<gchar> rangeString(g_strdup("{0, 0}"));
 
-    if (!element || !ATK_IS_OBJECT(element.get()))
+    if (!ATK_IS_OBJECT(element.get()))
         return JSStringCreateWithUTF8CString(rangeString.get());
 
     AtkObject* axTable = atk_object_get_parent(ATK_OBJECT(element.get()));
@@ -148,7 +148,7 @@ static JSStringRef indexRangeInTable(PlatformUIElement element, bool isRowRange)
 
 static void alterCurrentValue(PlatformUIElement element, int factor)
 {
-    if (!element || !ATK_IS_VALUE(element.get()))
+    if (!ATK_IS_VALUE(element.get()))
         return;
 
     GValue currentValue = G_VALUE_INIT;
@@ -158,7 +158,7 @@ static void alterCurrentValue(PlatformUIElement element, int factor)
     atk_value_get_minimum_increment(ATK_VALUE(element.get()), &increment);
 
     GValue newValue = G_VALUE_INIT;
-    g_value_init(&newValue, G_TYPE_DOUBLE);
+    g_value_init(&newValue, G_TYPE_FLOAT);
 
     g_value_set_float(&newValue, g_value_get_float(&currentValue) + factor * g_value_get_float(&increment));
     atk_value_set_current_value(ATK_VALUE(element.get()), &newValue);
@@ -241,10 +241,14 @@ static const gchar* roleToString(AtkRole role)
         return "AXParagraph";
     case ATK_ROLE_PASSWORD_TEXT:
         return "AXPasswordField";
+    case ATK_ROLE_PROGRESS_BAR:
+        return "AXProgressIndicator";
     case ATK_ROLE_PUSH_BUTTON:
         return "AXButton";
     case ATK_ROLE_RADIO_BUTTON:
         return "AXRadioButton";
+    case ATK_ROLE_RADIO_MENU_ITEM:
+        return "AXRadioMenuItem";
     case ATK_ROLE_ROW_HEADER:
         return "AXRowHeader";
     case ATK_ROLE_RULER:
@@ -368,7 +372,7 @@ bool AccessibilityUIElement::isEqual(AccessibilityUIElement* otherElement)
 
 void AccessibilityUIElement::getChildren(Vector<RefPtr<AccessibilityUIElement> >& children)
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return;
 
     int count = childrenCount();
@@ -380,7 +384,7 @@ void AccessibilityUIElement::getChildren(Vector<RefPtr<AccessibilityUIElement> >
 
 void AccessibilityUIElement::getChildrenWithRange(Vector<RefPtr<AccessibilityUIElement> >& children, unsigned location, unsigned length)
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return;
     unsigned end = location + length;
     for (unsigned i = location; i < end; i++) {
@@ -391,7 +395,7 @@ void AccessibilityUIElement::getChildrenWithRange(Vector<RefPtr<AccessibilityUIE
 
 int AccessibilityUIElement::childrenCount()
 {
-    if (!m_element)
+    if (!ATK_IS_OBJECT(m_element.get()))
         return 0;
 
     return atk_object_get_n_accessible_children(ATK_OBJECT(m_element.get()));
@@ -399,7 +403,7 @@ int AccessibilityUIElement::childrenCount()
 
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::elementAtPoint(int x, int y)
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_COMPONENT(m_element.get()))
         return 0;
 
     GRefPtr<AtkObject> objectAtPoint = adoptGRef(atk_component_ref_accessible_at_point(ATK_COMPONENT(m_element.get()), x, y, ATK_XY_WINDOW));
@@ -408,7 +412,7 @@ PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::elementAtPoint(int x,
 
 unsigned AccessibilityUIElement::indexOfChild(AccessibilityUIElement* element)
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return 0;
 
     Vector<RefPtr<AccessibilityUIElement> > children;
@@ -424,6 +428,9 @@ unsigned AccessibilityUIElement::indexOfChild(AccessibilityUIElement* element)
 
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::childAtIndex(unsigned index)
 {
+    if (!ATK_IS_OBJECT(m_element.get()))
+        return 0;
+
     Vector<RefPtr<AccessibilityUIElement> > children;
     getChildrenWithRange(children, index, 1);
 
@@ -483,7 +490,7 @@ PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::selectedRowAtIndex(un
 
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::titleUIElement()
 {
-    if (!m_element)
+    if (!ATK_IS_OBJECT(m_element.get()))
         return 0;
 
     AtkRelationSet* set = atk_object_ref_relation_set(ATK_OBJECT(m_element.get()));
@@ -507,7 +514,7 @@ PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::titleUIElement()
 
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::parentElement()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return 0;
 
     AtkObject* parent = atk_object_get_parent(ATK_OBJECT(m_element.get()));
@@ -534,6 +541,9 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::attributesOfDocumentLinks()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::attributesOfChildren()
 {
+    if (!ATK_IS_OBJECT(m_element.get()))
+        return JSStringCreateWithCharacters(0, 0);
+
     Vector<RefPtr<AccessibilityUIElement> > children;
     getChildren(children);
 
@@ -548,7 +558,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::attributesOfChildren()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::allAttributes()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return JSStringCreateWithCharacters(0, 0);
 
     return JSStringCreateWithUTF8CString(attributesOfElement(this).utf8().data());
@@ -556,7 +566,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::allAttributes()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::stringAttributeValue(JSStringRef attribute)
 {
-    if (!m_element)
+    if (!ATK_IS_OBJECT(m_element.get()))
         return JSStringCreateWithCharacters(0, 0);
 
     String atkAttributeName = coreAttributeToAtkAttribute(attribute);
@@ -564,13 +574,31 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::stringAttributeValue(JSStringRe
         return JSStringCreateWithCharacters(0, 0);
 
     String attributeValue = getAttributeSetValueForId(ATK_OBJECT(m_element.get()), atkAttributeName.utf8().data());
+
+    // In case of 'aria-invalid' when the attribute empty or has "false" for ATK
+    // according to http://www.w3.org/WAI/PF/aria-implementation/#mapping attribute
+    // is not mapped but layout tests will expect 'false'.
+    if (attributeValue.isEmpty() && atkAttributeName == "aria-invalid")
+        return JSStringCreateWithUTF8CString("false");
+
+    // We need to translate ATK values exposed for 'aria-sort' (e.g. 'ascending')
+    // into those expected by the layout tests (e.g. 'AXAscendingSortDirection').
+    if (atkAttributeName == "sort") {
+        if (attributeValue == "ascending")
+            return JSStringCreateWithUTF8CString("AXAscendingSortDirection");
+        if (attributeValue == "descending")
+            return JSStringCreateWithUTF8CString("AXDescendingSortDirection");
+
+        return JSStringCreateWithUTF8CString("AXUnknownSortDirection");
+    }
+
     return JSStringCreateWithUTF8CString(attributeValue.utf8().data());
 }
 
 double AccessibilityUIElement::numberAttributeValue(JSStringRef attribute)
 {
     // FIXME: implement
-    return 0.0f;
+    return 0;
 }
 
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::uiElementAttributeValue(JSStringRef attribute) const
@@ -593,8 +621,15 @@ bool AccessibilityUIElement::isAttributeSettable(JSStringRef attribute)
 
 bool AccessibilityUIElement::isAttributeSupported(JSStringRef attribute)
 {
-    // FIXME: implement
-    return false;
+    if (!ATK_IS_OBJECT(m_element.get()))
+        return false;
+
+    String atkAttributeName = coreAttributeToAtkAttribute(attribute);
+    if (atkAttributeName.isEmpty())
+        return false;
+
+    String attributeValue = getAttributeSetValueForId(ATK_OBJECT(m_element.get()), atkAttributeName.utf8().data());
+    return !attributeValue.isEmpty();
 }
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::parameterizedAttributeNames()
@@ -605,7 +640,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::parameterizedAttributeNames()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::role()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return JSStringCreateWithCharacters(0, 0);
 
     AtkRole role = atk_object_get_role(ATK_OBJECT(m_element.get()));
@@ -630,7 +665,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::roleDescription()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::title()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return JSStringCreateWithCharacters(0, 0);
 
     const gchar* name = atk_object_get_name(ATK_OBJECT(m_element.get()));
@@ -641,7 +676,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::title()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::description()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return JSStringCreateWithCharacters(0, 0);
 
     const gchar* description = atk_object_get_description(ATK_OBJECT(m_element.get()));
@@ -655,7 +690,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::description()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::orientation() const
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return JSStringCreateWithCharacters(0, 0);
 
     const gchar* axOrientation = 0;
@@ -672,7 +707,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::orientation() const
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::stringValue()
 {
-    if (!m_element || !ATK_IS_TEXT(m_element.get()))
+    if (!ATK_IS_TEXT(m_element.get()))
         return JSStringCreateWithCharacters(0, 0);
 
     GOwnPtr<gchar> text(atk_text_get_text(ATK_TEXT(m_element.get()), 0, -1));
@@ -684,7 +719,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::stringValue()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::language()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return JSStringCreateWithCharacters(0, 0);
 
     const gchar* locale = atk_object_get_object_locale(ATK_OBJECT(m_element.get()));
@@ -697,18 +732,16 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::language()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::helpText() const
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
-        return JSStringCreateWithCharacters(0, 0);
-
-    String attributeValue = getAttributeSetValueForId(ATK_OBJECT(m_element.get()), "aria-help");
-    GOwnPtr<char> axValue(g_strdup_printf("AXHelp: %s", attributeValue.utf8().data()));
-    return JSStringCreateWithUTF8CString(axValue.get());
+    // FIXME: We need to provide a proper implementation for this that does
+    // not depend on Mac specific concepts such as ATK_RELATION_DESCRIBED_BY,
+    // once it's implemented (see http://webkit.org/b/121684).
+    return JSStringCreateWithCharacters(0, 0);
 }
 
 double AccessibilityUIElement::x()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
-        return 0.0f;
+    if (!ATK_IS_COMPONENT(m_element.get()))
+        return 0;
 
     int x, y;
     atk_component_get_position(ATK_COMPONENT(m_element.get()), &x, &y, ATK_XY_SCREEN);
@@ -717,8 +750,8 @@ double AccessibilityUIElement::x()
 
 double AccessibilityUIElement::y()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
-        return 0.0f;
+    if (!ATK_IS_COMPONENT(m_element.get()))
+        return 0;
 
     int x, y;
     atk_component_get_position(ATK_COMPONENT(m_element.get()), &x, &y, ATK_XY_SCREEN);
@@ -727,8 +760,8 @@ double AccessibilityUIElement::y()
 
 double AccessibilityUIElement::width()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
-        return 0.0f;
+    if (!ATK_IS_COMPONENT(m_element.get()))
+        return 0;
 
     int width, height;
     atk_component_get_size(ATK_COMPONENT(m_element.get()), &width, &height);
@@ -737,8 +770,8 @@ double AccessibilityUIElement::width()
 
 double AccessibilityUIElement::height()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
-        return 0.0f;
+    if (!ATK_IS_COMPONENT(m_element.get()))
+        return 0;
 
     int width, height;
     atk_component_get_size(ATK_COMPONENT(m_element.get()), &width, &height);
@@ -748,50 +781,64 @@ double AccessibilityUIElement::height()
 double AccessibilityUIElement::clickPointX()
 {
     // FIXME: implement
-    return 0.0f;
+    return 0;
 }
 
 double AccessibilityUIElement::clickPointY()
 {
     // FIXME: implement
-    return 0.0f;
+    return 0;
 }
 
 double AccessibilityUIElement::intValue() const
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
-        return 0.0f;
+    if (!ATK_IS_OBJECT(m_element.get()))
+        return 0;
 
-    GValue value = G_VALUE_INIT;
-    atk_value_get_current_value(ATK_VALUE(m_element.get()), &value);
-    if (!G_VALUE_HOLDS_FLOAT(&value))
-        return 0.0f;
+    if (ATK_IS_VALUE(m_element.get())) {
+        GValue value = G_VALUE_INIT;
+        atk_value_get_current_value(ATK_VALUE(m_element.get()), &value);
+        if (!G_VALUE_HOLDS_FLOAT(&value))
+            return 0;
+        return g_value_get_float(&value);
+    }
 
-    return g_value_get_float(&value);
+    // Consider headings as an special case when returning the "int value" of
+    // an AccessibilityUIElement, so we can reuse some tests to check the level
+    // both for HTML headings and objects with the aria-level attribute.
+    if (atk_object_get_role(ATK_OBJECT(m_element.get())) == ATK_ROLE_HEADING) {
+        String headingLevel = getAttributeSetValueForId(ATK_OBJECT(m_element.get()), "level");
+        bool ok;
+        double headingLevelValue = headingLevel.toDouble(&ok);
+        if (ok)
+            return headingLevelValue;
+    }
+
+    return 0;
 }
 
 double AccessibilityUIElement::minValue()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
-        return 0.0f;
+    if (!ATK_IS_VALUE(m_element.get()))
+        return 0;
 
     GValue value = G_VALUE_INIT;
     atk_value_get_minimum_value(ATK_VALUE(m_element.get()), &value);
     if (!G_VALUE_HOLDS_FLOAT(&value))
-        return 0.0f;
+        return 0;
 
     return g_value_get_float(&value);
 }
 
 double AccessibilityUIElement::maxValue()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
-        return 0.0f;
+    if (!ATK_IS_VALUE(m_element.get()))
+        return 0;
 
     GValue value = G_VALUE_INIT;
     atk_value_get_maximum_value(ATK_VALUE(m_element.get()), &value);
     if (!G_VALUE_HOLDS_FLOAT(&value))
-        return 0.0f;
+        return 0;
 
     return g_value_get_float(&value);
 }
@@ -967,7 +1014,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::attributesOfHeader()
 
 int AccessibilityUIElement::rowCount()
 {
-    if (!m_element || !ATK_IS_TABLE(m_element.get()))
+    if (!ATK_IS_TABLE(m_element.get()))
         return 0;
 
     return atk_table_get_n_rows(ATK_TABLE(m_element.get()));
@@ -975,7 +1022,7 @@ int AccessibilityUIElement::rowCount()
 
 int AccessibilityUIElement::columnCount()
 {
-    if (!m_element || !ATK_IS_TABLE(m_element.get()))
+    if (!ATK_IS_TABLE(m_element.get()))
         return 0;
 
     return atk_table_get_n_columns(ATK_TABLE(m_element.get()));
@@ -1001,7 +1048,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::columnIndexRange()
 
 PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::cellForColumnAndRow(unsigned col, unsigned row)
 {
-    if (!m_element || !ATK_IS_TABLE(m_element.get()))
+    if (!ATK_IS_TABLE(m_element.get()))
         return 0;
 
     // Adopt the AtkObject representing the cell because
@@ -1050,9 +1097,6 @@ void AccessibilityUIElement::showMenu()
 
 void AccessibilityUIElement::press()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
-        return;
-
     if (!ATK_IS_ACTION(m_element.get()))
         return;
 
@@ -1073,7 +1117,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::accessibilityValue() const
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::documentEncoding()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_DOCUMENT(m_element.get()))
         return JSStringCreateWithCharacters(0, 0);
 
     AtkRole role = atk_object_get_role(ATK_OBJECT(m_element.get()));
@@ -1085,7 +1129,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::documentEncoding()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::documentURI()
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_DOCUMENT(m_element.get()))
         return JSStringCreateWithCharacters(0, 0);
 
     AtkRole role = atk_object_get_role(ATK_OBJECT(m_element.get()));
@@ -1103,13 +1147,26 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::url()
 
 bool AccessibilityUIElement::addNotificationListener(JSValueRef functionCallback)
 {
-    // FIXME: implement
+    if (!functionCallback)
+        return false;
+
+    // Only one notification listener per element.
+    if (m_notificationHandler)
+        return false;
+
+    m_notificationHandler = AccessibilityNotificationHandler::create();
+    m_notificationHandler->setPlatformElement(platformUIElement());
+    m_notificationHandler->setNotificationFunctionCallback(functionCallback);
+
     return true;
 }
 
 bool AccessibilityUIElement::removeNotificationListener()
 {
-    // FIXME: implement
+    // Programmers should not be trying to remove a listener that's already removed.
+    ASSERT(m_notificationHandler);
+    m_notificationHandler = 0;
+
     return true;
 }
 
@@ -1153,10 +1210,10 @@ bool AccessibilityUIElement::isIgnored() const
 
 bool AccessibilityUIElement::hasPopup() const
 {
-    if (!m_element || !ATK_IS_OBJECT(m_element.get()))
+    if (!ATK_IS_OBJECT(m_element.get()))
         return false;
 
-    return equalIgnoringCase(getAttributeSetValueForId(ATK_OBJECT(m_element.get()), "aria-haspopup"), "true");
+    return equalIgnoringCase(getAttributeSetValueForId(ATK_OBJECT(m_element.get()), "haspopup"), "true");
 }
 
 void AccessibilityUIElement::takeFocus()
@@ -1288,6 +1345,12 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::mathPostscriptsDescription() co
 }
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::mathPrescriptsDescription() const
+{
+    notImplemented();
+    return 0;
+}
+
+JSRetainPtr<JSStringRef> AccessibilityUIElement::classList() const
 {
     notImplemented();
     return 0;

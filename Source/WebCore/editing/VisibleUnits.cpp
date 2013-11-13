@@ -124,8 +124,8 @@ class CachedLogicallyOrderedLeafBoxes {
 public:
     CachedLogicallyOrderedLeafBoxes();
 
-    const InlineTextBox* previousTextBox(const RootInlineBox*, const InlineTextBox*);
-    const InlineTextBox* nextTextBox(const RootInlineBox*, const InlineTextBox*);
+    const InlineBox* previousTextOrLineBreakBox(const RootInlineBox*, const InlineTextBox*);
+    const InlineBox* nextTextOrLineBreakBox(const RootInlineBox*, const InlineTextBox*);
 
     size_t size() const { return m_leafBoxes.size(); }
     const InlineBox* firstBox() const { return m_leafBoxes[0]; }
@@ -140,7 +140,7 @@ private:
 
 CachedLogicallyOrderedLeafBoxes::CachedLogicallyOrderedLeafBoxes() : m_rootInlineBox(0) { };
 
-const InlineTextBox* CachedLogicallyOrderedLeafBoxes::previousTextBox(const RootInlineBox* root, const InlineTextBox* box)
+const InlineBox* CachedLogicallyOrderedLeafBoxes::previousTextOrLineBreakBox(const RootInlineBox* root, const InlineTextBox* box)
 {
     if (!root)
         return 0;
@@ -153,14 +153,15 @@ const InlineTextBox* CachedLogicallyOrderedLeafBoxes::previousTextBox(const Root
         boxIndex = boxIndexInLeaves(box) - 1;
 
     for (int i = boxIndex; i >= 0; --i) {
-        if (m_leafBoxes[i]->isInlineTextBox())
-            return toInlineTextBox(m_leafBoxes[i]);
+        InlineBox* box = m_leafBoxes[i];
+        if (box->isInlineTextBox() || box->renderer().isBR())
+            return box;
     }
 
     return 0;
 }
 
-const InlineTextBox* CachedLogicallyOrderedLeafBoxes::nextTextBox(const RootInlineBox* root, const InlineTextBox* box)
+const InlineBox* CachedLogicallyOrderedLeafBoxes::nextTextOrLineBreakBox(const RootInlineBox* root, const InlineTextBox* box)
 {
     if (!root)
         return 0;
@@ -174,8 +175,9 @@ const InlineTextBox* CachedLogicallyOrderedLeafBoxes::nextTextBox(const RootInli
         nextBoxIndex = boxIndexInLeaves(box) + 1;
 
     for (size_t i = nextBoxIndex; i < m_leafBoxes.size(); ++i) {
-        if (m_leafBoxes[i]->isInlineTextBox())
-            return toInlineTextBox(m_leafBoxes[i]);
+        InlineBox* box = m_leafBoxes[i];
+        if (box->isInlineTextBox() || box->renderer().isBR())
+            return box;
     }
 
     return 0;
@@ -200,16 +202,16 @@ int CachedLogicallyOrderedLeafBoxes::boxIndexInLeaves(const InlineTextBox* box) 
     return 0;
 }
 
-static const InlineTextBox* logicallyPreviousBox(const VisiblePosition& visiblePosition, const InlineTextBox* textBox,
+static const InlineBox* logicallyPreviousBox(const VisiblePosition& visiblePosition, const InlineTextBox* textBox,
     bool& previousBoxInDifferentBlock, CachedLogicallyOrderedLeafBoxes& leafBoxes)
 {
     const InlineBox* startBox = textBox;
 
-    const InlineTextBox* previousBox = leafBoxes.previousTextBox(startBox->root(), textBox);
+    const InlineBox* previousBox = leafBoxes.previousTextOrLineBreakBox(&startBox->root(), textBox);
     if (previousBox)
         return previousBox;
 
-    previousBox = leafBoxes.previousTextBox(startBox->root()->prevRootBox(), 0);
+    previousBox = leafBoxes.previousTextOrLineBreakBox(startBox->root().prevRootBox(), 0);
     if (previousBox)
         return previousBox;
 
@@ -227,7 +229,7 @@ static const InlineTextBox* logicallyPreviousBox(const VisiblePosition& visibleP
         if (!previousRoot)
             break;
 
-        previousBox = leafBoxes.previousTextBox(previousRoot, 0);
+        previousBox = leafBoxes.previousTextOrLineBreakBox(previousRoot, 0);
         if (previousBox) {
             previousBoxInDifferentBlock = true;
             return previousBox;
@@ -241,16 +243,16 @@ static const InlineTextBox* logicallyPreviousBox(const VisiblePosition& visibleP
 }
 
 
-static const InlineTextBox* logicallyNextBox(const VisiblePosition& visiblePosition, const InlineTextBox* textBox,
+static const InlineBox* logicallyNextBox(const VisiblePosition& visiblePosition, const InlineTextBox* textBox,
     bool& nextBoxInDifferentBlock, CachedLogicallyOrderedLeafBoxes& leafBoxes)
 {
     const InlineBox* startBox = textBox;
 
-    const InlineTextBox* nextBox = leafBoxes.nextTextBox(startBox->root(), textBox);
+    const InlineBox* nextBox = leafBoxes.nextTextOrLineBreakBox(&startBox->root(), textBox);
     if (nextBox)
         return nextBox;
 
-    nextBox = leafBoxes.nextTextBox(startBox->root()->nextRootBox(), 0);
+    nextBox = leafBoxes.nextTextOrLineBreakBox(startBox->root().nextRootBox(), 0);
     if (nextBox)
         return nextBox;
 
@@ -268,7 +270,7 @@ static const InlineTextBox* logicallyNextBox(const VisiblePosition& visiblePosit
         if (!nextRoot)
             break;
 
-        nextBox = leafBoxes.nextTextBox(nextRoot, 0);
+        nextBox = leafBoxes.nextTextOrLineBreakBox(nextRoot, 0);
         if (nextBox) {
             nextBoxInDifferentBlock = true;
             return nextBox;
@@ -287,16 +289,17 @@ static TextBreakIterator* wordBreakIteratorForMinOffsetBoundary(const VisiblePos
     previousBoxInDifferentBlock = false;
 
     // FIXME: Handle the case when we don't have an inline text box.
-    const InlineTextBox* previousBox = logicallyPreviousBox(visiblePosition, textBox, previousBoxInDifferentBlock, leafBoxes);
+    const InlineBox* previousBox = logicallyPreviousBox(visiblePosition, textBox, previousBoxInDifferentBlock, leafBoxes);
 
     int len = 0;
     string.clear();
-    if (previousBox) {
-        previousBoxLength = previousBox->len();
-        string.append(previousBox->textRenderer().text()->characters() + previousBox->start(), previousBoxLength);
+    if (previousBox && previousBox->isInlineTextBox()) {
+        const InlineTextBox* previousTextBox = toInlineTextBox(previousBox);
+        previousBoxLength = previousTextBox->len();
+        string.append(previousTextBox->renderer().text()->characters() + previousTextBox->start(), previousBoxLength);
         len += previousBoxLength;
     }
-    string.append(textBox->textRenderer().text()->characters() + textBox->start(), textBox->len());
+    string.append(textBox->renderer().text()->characters() + textBox->start(), textBox->len());
     len += textBox->len();
 
     return wordBreakIterator(string.data(), len);
@@ -308,15 +311,16 @@ static TextBreakIterator* wordBreakIteratorForMaxOffsetBoundary(const VisiblePos
     nextBoxInDifferentBlock = false;
 
     // FIXME: Handle the case when we don't have an inline text box.
-    const InlineTextBox* nextBox = logicallyNextBox(visiblePosition, textBox, nextBoxInDifferentBlock, leafBoxes);
+    const InlineBox* nextBox = logicallyNextBox(visiblePosition, textBox, nextBoxInDifferentBlock, leafBoxes);
 
     int len = 0;
     string.clear();
-    string.append(textBox->textRenderer().text()->characters() + textBox->start(), textBox->len());
+    string.append(textBox->renderer().text()->characters() + textBox->start(), textBox->len());
     len += textBox->len();
-    if (nextBox) {
-        string.append(nextBox->textRenderer().text()->characters() + nextBox->start(), nextBox->len());
-        len += nextBox->len();
+    if (nextBox && nextBox->isInlineTextBox()) {
+        const InlineTextBox* nextTextBox = toInlineTextBox(nextBox);
+        string.append(nextTextBox->renderer().text()->characters() + nextTextBox->start(), nextTextBox->len());
+        len += nextTextBox->len();
     }
 
     return wordBreakIterator(string.data(), len);
@@ -382,7 +386,7 @@ static VisiblePosition visualWordPosition(const VisiblePosition& visiblePosition
         else if (offsetInBox == box->caretMaxOffset())
             iter = wordBreakIteratorForMaxOffsetBoundary(visiblePosition, textBox, nextBoxInDifferentBlock, string, leafBoxes);
         else if (movingIntoNewBox) {
-            iter = wordBreakIterator(textBox->textRenderer().text()->characters() + textBox->start(), textBox->len());
+            iter = wordBreakIterator(textBox->renderer().text()->characters() + textBox->start(), textBox->len());
             previouslyVisitedBox = box;
         }
 
@@ -931,7 +935,7 @@ VisiblePosition previousLinePosition(const VisiblePosition &visiblePosition, int
     int ignoredCaretOffset;
     visiblePosition.getInlineBoxAndOffset(box, ignoredCaretOffset);
     if (box) {
-        root = box->root()->prevRootBox();
+        root = box->root().prevRootBox();
         // We want to skip zero height boxes.
         // This could happen in case it is a TrailingFloatsRootInlineBox.
         if (!root || !root->logicalHeight() || !root->firstLeafChild())
@@ -986,7 +990,7 @@ VisiblePosition nextLinePosition(const VisiblePosition &visiblePosition, int lin
     int ignoredCaretOffset;
     visiblePosition.getInlineBoxAndOffset(box, ignoredCaretOffset);
     if (box) {
-        root = box->root()->nextRootBox();
+        root = box->root().nextRootBox();
         // We want to skip zero height boxes.
         // This could happen in case it is a TrailingFloatsRootInlineBox.
         if (!root || !root->logicalHeight() || !root->firstLeafChild())

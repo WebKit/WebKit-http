@@ -35,13 +35,13 @@
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FocusController.h"
-#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
 #include "HistoryController.h"
 #include "HistoryItem.h"
 #include "Logging.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "PageTransitionEvent.h"
 #include "ScriptController.h"
@@ -125,22 +125,19 @@ void CachedFrameBase::restore()
 
     frame.loader().client().didRestoreFromPageCache();
 
-    // Reconstruct the FrameTree
-    for (unsigned i = 0; i < m_childFrames.size(); ++i)
+    // Reconstruct the FrameTree. And open the child CachedFrames in their respective FrameLoaders.
+    for (unsigned i = 0; i < m_childFrames.size(); ++i) {
         frame.tree().appendChild(&m_childFrames[i]->view()->frame());
-
-    // Open the child CachedFrames in their respective FrameLoaders.
-    for (unsigned i = 0; i < m_childFrames.size(); ++i)
         m_childFrames[i]->open();
+    }
 
     // FIXME: update Page Visibility state here.
     // https://bugs.webkit.org/show_bug.cgi?id=116770
-
     m_document->enqueuePageshowEvent(PageshowEventPersisted);
-    
+
     HistoryItem* historyItem = frame.loader().history().currentItem();
     m_document->enqueuePopstateEvent(historyItem && historyItem->stateObject() ? historyItem->stateObject() : SerializedScriptValue::nullValue());
-    
+
 #if ENABLE(TOUCH_EVENTS)
     if (m_document->hasTouchEventHandlers())
         m_document->page()->chrome().client().needTouchEvents(true);
@@ -160,7 +157,7 @@ CachedFrame::CachedFrame(Frame& frame)
     ASSERT(m_view);
 
     if (frame.page()->focusController().focusedFrame() == &frame)
-        frame.page()->focusController().setFocusedFrame(&frame.page()->mainFrame());
+        frame.page()->focusController().setFocusedFrame(&frame.mainFrame());
 
     // Custom scrollbar renderers will get reattached when the document comes out of the page cache
     m_view->detachCustomScrollbars();
@@ -217,10 +214,10 @@ CachedFrame::CachedFrame(Frame& frame)
 void CachedFrame::open()
 {
     ASSERT(m_view);
-    m_view->frame().loader().open(*this);
-
     if (!m_isMainFrame)
         m_view->frame().page()->incrementSubframeCount();
+
+    m_view->frame().loader().open(*this);
 }
 
 void CachedFrame::clear()
@@ -242,7 +239,7 @@ void CachedFrame::clear()
     m_document = 0;
     m_view = 0;
     m_mousePressNode = 0;
-    m_url = KURL();
+    m_url = URL();
 
     m_cachedFramePlatformData.clear();
     m_cachedFrameScriptData.clear();
@@ -278,8 +275,7 @@ void CachedFrame::destroy()
     m_document->removeAllEventListeners();
 
     m_document->setInPageCache(false);
-    // FIXME: We don't call willRemove here. Why is that OK?
-    m_document->detach();
+    m_document->prepareForDestruction();
 
     clear();
 }

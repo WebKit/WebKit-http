@@ -20,9 +20,15 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#if ENABLE(NETWORK_PROCESS)
+
 messages -> NetworkResourceLoader LegacyReceiver {
 
     ContinueWillSendRequest(WebCore::ResourceRequest request)
     ContinueDidReceiveResponse()
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     ContinueCanAuthenticateAgainstProtectionSpace(bool canAuthenticate)
+#endif
 }
+
+#endif // ENABLE(NETWORK_PROCESS)

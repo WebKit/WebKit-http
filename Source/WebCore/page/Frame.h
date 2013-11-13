@@ -64,11 +64,12 @@ namespace WebCore {
     class HTMLFrameOwnerElement;
     class HTMLTableCellElement;
     class IntRect;
+    class MainFrame;
     class Node;
     class Range;
     class RegularExpression;
-    class RenderPart;
     class RenderView;
+    class RenderWidget;
     class ScriptController;
     class Settings;
     class TiledBackingStore;
@@ -100,7 +101,7 @@ namespace WebCore {
             bool useFixedLayout = false, ScrollbarMode = ScrollbarAuto, bool horizontalLock = false,
             ScrollbarMode = ScrollbarAuto, bool verticalLock = false);
 
-        ~Frame();
+        virtual ~Frame();
 
         void addDestructionObserver(FrameDestructionObserver*);
         void removeDestructionObserver(FrameDestructionObserver*);
@@ -108,6 +109,9 @@ namespace WebCore {
         void willDetachPage();
         void detachFromPage();
         void disconnectOwnerElement();
+
+        MainFrame& mainFrame() const;
+        bool isMainFrame() const;
 
         Page* page() const;
         HTMLFrameOwnerElement* ownerElement() const;
@@ -125,7 +129,7 @@ namespace WebCore {
         ScriptController& script();
         
         RenderView* contentRenderer() const; // Root of the render tree for the document contained in this frame.
-        RenderPart* ownerRenderer() const; // Renderer for the element that contains this frame.
+        RenderWidget* ownerRenderer() const; // Renderer for the element that contains this frame.
 
     // ======== All public functions below this point are candidates to move out of Frame into another class. ========
 
@@ -184,21 +188,28 @@ namespace WebCore {
         String searchForLabelsBeforeElement(const Vector<String>& labels, Element*, size_t* resultDistance, bool* resultIsInCellAbove);
         String matchLabelsAgainstElement(const Vector<String>& labels, Element*);
 
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+        void setTextAutosizingWidth(float);
+        float textAutosizingWidth() const;
+#endif
+
         void suspendActiveDOMObjectsAndAnimations();
         void resumeActiveDOMObjectsAndAnimations();
         bool activeDOMObjectsAndAnimationsSuspended() const { return m_activeDOMObjectsAndAnimationsSuspendedCount > 0; }
 
-        bool isURLAllowed(const KURL&) const;
+        bool isURLAllowed(const URL&) const;
 
     // ========
 
-    private:
-        Frame(Page*, HTMLFrameOwnerElement*, FrameLoaderClient*);
+    protected:
+        Frame(Page&, HTMLFrameOwnerElement*, FrameLoaderClient&);
 
+    private:
         void injectUserScriptsForWorld(DOMWrapperWorld*, const UserScriptVector&, UserScriptInjectionTime);
 
         HashSet<FrameDestructionObserver*> m_destructionObservers;
 
+        MainFrame& m_mainFrame;
         Page* m_page;
         const RefPtr<Settings> m_settings;
         mutable FrameTree m_treeNode;
@@ -214,6 +225,10 @@ namespace WebCore {
         const OwnPtr<FrameSelection> m_selection;
         const OwnPtr<EventHandler> m_eventHandler;
         const OwnPtr<AnimationController> m_animationController;
+
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+        float m_textAutosizingWidth;
+#endif
 
         float m_pageZoomFactor;
         float m_textZoomFactor;
@@ -233,12 +248,12 @@ namespace WebCore {
 
     private:
         // TiledBackingStoreClient interface
-        virtual void tiledBackingStorePaintBegin();
-        virtual void tiledBackingStorePaint(GraphicsContext*, const IntRect&);
-        virtual void tiledBackingStorePaintEnd(const Vector<IntRect>& paintedArea);
-        virtual IntRect tiledBackingStoreContentsRect();
-        virtual IntRect tiledBackingStoreVisibleRect();
-        virtual Color tiledBackingStoreBackgroundColor() const;
+        virtual void tiledBackingStorePaintBegin() OVERRIDE FINAL;
+        virtual void tiledBackingStorePaint(GraphicsContext*, const IntRect&) OVERRIDE FINAL;
+        virtual void tiledBackingStorePaintEnd(const Vector<IntRect>& paintedArea) OVERRIDE FINAL;
+        virtual IntRect tiledBackingStoreContentsRect() OVERRIDE FINAL;
+        virtual IntRect tiledBackingStoreVisibleRect() OVERRIDE FINAL;
+        virtual Color tiledBackingStoreBackgroundColor() const OVERRIDE FINAL;
 
         OwnPtr<TiledBackingStore> m_tiledBackingStore;
 #endif
@@ -324,6 +339,11 @@ namespace WebCore {
     inline EventHandler& Frame::eventHandler() const
     {
         return *m_eventHandler;
+    }
+
+    inline MainFrame& Frame::mainFrame() const
+    {
+        return m_mainFrame;
     }
 
 } // namespace WebCore

@@ -78,6 +78,7 @@
 #include <WebCore/PlatformContextCairo.h>
 #include <WebKit2/WKImageCairo.h>
 #include <wtf/MathExtras.h>
+#include <wtf/StdLibExtras.h>
 
 #if ENABLE(VIBRATION)
 #include "VibrationClientEfl.h"
@@ -752,7 +753,7 @@ static WKEventModifiers toWKEventModifiers(const Evas_Modifier* modifiers)
 void EwkView::feedTouchEvent(Ewk_Touch_Event_Type type, const Eina_List* points, const Evas_Modifier* modifiers)
 {
     unsigned length = eina_list_count(points);
-    OwnArrayPtr<WKTypeRef> touchPoints = adoptArrayPtr(new WKTypeRef[length]);
+    auto touchPoints = std::make_unique<WKTypeRef[]>(length);
     for (unsigned i = 0; i < length; ++i) {
         Ewk_Touch_Point* point = static_cast<Ewk_Touch_Point*>(eina_list_nth(points, i));
         ASSERT(point);
@@ -1321,7 +1322,7 @@ void EwkView::feedTouchEvents(Ewk_Touch_Event_Type type)
     if (!length)
         return;
 
-    OwnArrayPtr<WKTypeRef> touchPoints = adoptArrayPtr(new WKTypeRef[length]);
+    auto touchPoints = std::make_unique<WKTypeRef[]>(length);
     for (unsigned i = 0; i < length; ++i) {
         int x, y;
         evas_touch_point_list_nth_xy_get(sd->base.evas, i, &x, &y);
@@ -1392,6 +1393,25 @@ void EwkView::didFindZoomableArea(const WKPoint& point, const WKRect& area)
     notImplemented();
     UNUSED_PARAM(point);
     UNUSED_PARAM(area);
+}
+
+bool EwkView::scrollBy(const IntSize& offset)
+{
+    WKPoint oldPosition = WKViewGetContentPosition(wkView());
+    FloatPoint newPosition(oldPosition.x + offset.width(), oldPosition.y + offset.height());
+
+    // Update new position to the PageViewportController.
+    float contentScale = WKViewGetContentScaleFactor(wkView());
+    newPosition.scale(1 / contentScale, 1 / contentScale);
+    newPosition = m_pageViewportController->boundContentsPositionAtScale(newPosition, contentScale);
+    m_pageViewportController->didChangeContentsVisibility(newPosition, contentScale);
+
+    // Update new position to the WKView.
+    WKPoint position = WKPointMake(newPosition.x() * contentScale, newPosition.y() * contentScale);
+    WKViewSetContentPosition(wkView(), position);
+
+    // If the page position has not changed, notify the caller using the return value.
+    return !(oldPosition == position);
 }
 
 Evas_Smart_Class EwkView::parentSmartClass = EVAS_SMART_CLASS_INIT_NULL;

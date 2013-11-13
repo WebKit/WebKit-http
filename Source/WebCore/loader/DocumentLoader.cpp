@@ -41,7 +41,6 @@
 #include "DocumentWriter.h"
 #include "Event.h"
 #include "FormState.h"
-#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameTree.h"
@@ -51,6 +50,7 @@
 #include "IconController.h"
 #include "InspectorInstrumentation.h"
 #include "Logging.h"
+#include "MainFrame.h"
 #include "MemoryCache.h"
 #include "Page.h"
 #include "PolicyChecker.h"
@@ -183,12 +183,12 @@ ResourceRequest& DocumentLoader::request()
     return m_request;
 }
 
-const KURL& DocumentLoader::url() const
+const URL& DocumentLoader::url() const
 {
     return request().url();
 }
 
-void DocumentLoader::replaceRequestURLForSameDocumentNavigation(const KURL& url)
+void DocumentLoader::replaceRequestURLForSameDocumentNavigation(const URL& url)
 {
     m_originalRequestCopy.setURL(url);
     m_request.setURL(url);
@@ -436,7 +436,7 @@ bool DocumentLoader::isPostOrRedirectAfterPost(const ResourceRequest& newRequest
 
 void DocumentLoader::handleSubstituteDataLoadNow(DocumentLoaderTimer*)
 {
-    KURL url = m_substituteData.responseURL();
+    URL url = m_substituteData.responseURL();
     if (url.isEmpty())
         url = m_request.url();
     ResourceResponse response(url, m_substituteData.mimeType(), m_substituteData.content()->size(), m_substituteData.textEncoding(), "");
@@ -495,7 +495,7 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
 
     // Update cookie policy base URL as URL changes, except for subframes, which use the
     // URL of the main frame which doesn't change when we redirect.
-    if (frameLoader()->isLoadingMainFrame())
+    if (frameLoader()->frame().isMainFrame())
         newRequest.setFirstPartyForCookies(newRequest.url());
 
     // If we're fielding a redirect in response to a POST, force a load from origin, since
@@ -505,9 +505,9 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
     if (newRequest.cachePolicy() == UseProtocolCachePolicy && isPostOrRedirectAfterPost(newRequest, redirectResponse))
         newRequest.setCachePolicy(ReloadIgnoringCacheData);
 
-    Frame* top = m_frame->tree().top();
-    if (top != m_frame) {
-        if (!frameLoader()->mixedContentChecker()->canDisplayInsecureContent(top->document()->securityOrigin(), newRequest.url())) {
+    Frame& topFrame = m_frame->tree().top();
+    if (&topFrame != m_frame) {
+        if (!frameLoader()->mixedContentChecker().canDisplayInsecureContent(topFrame.document()->securityOrigin(), newRequest.url())) {
             cancelMainResourceLoad(frameLoader()->cancelledError(newRequest));
             return;
         }
@@ -528,7 +528,7 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
     // listener tells us to. In practice that means the navigation policy needs to be decided
     // synchronously for these redirect cases.
     if (!redirectResponse.isNull())
-        frameLoader()->policyChecker()->checkNavigationPolicy(newRequest, callContinueAfterNavigationPolicy, this);
+        frameLoader()->policyChecker().checkNavigationPolicy(newRequest, callContinueAfterNavigationPolicy, this);
 }
 
 void DocumentLoader::callContinueAfterNavigationPolicy(void* argument, const ResourceRequest& request, PassRefPtr<FormState>, bool shouldContinue)
@@ -638,7 +638,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
         m_contentFilter = ContentFilter::create(response);
 #endif
 
-    frameLoader()->policyChecker()->checkContentPolicy(m_response, callContinueAfterContentPolicy, this);
+    frameLoader()->policyChecker().checkContentPolicy(m_response, callContinueAfterContentPolicy, this);
 }
 
 void DocumentLoader::callContinueAfterContentPolicy(void* argument, PolicyAction policy)
@@ -653,7 +653,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
     if (isStopping())
         return;
 
-    KURL url = m_request.url();
+    URL url = m_request.url();
     const String& mimeType = m_response.mimeType();
     
     switch (policy) {
@@ -667,7 +667,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
             || equalIgnoringCase("multipart/related", mimeType))
             && !m_substituteData.isValid() && !SchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol());
         if (!frameLoader()->client().canShowMIMEType(mimeType) || isRemoteWebArchive) {
-            frameLoader()->policyChecker()->cannotShowMIMEType(m_response);
+            frameLoader()->policyChecker().cannotShowMIMEType(m_response);
             // Check reachedTerminalState since the load may have already been canceled inside of _handleUnimplementablePolicyWithErrorCode::.
             stopLoadingForPolicyChange();
             return;
@@ -825,7 +825,7 @@ void DocumentLoader::dataReceived(CachedResource* resource, const char* data, in
 #if USE(CFNETWORK) || PLATFORM(MAC)
     // Workaround for <rdar://problem/6060782>
     if (m_response.isNull())
-        m_response = ResourceResponse(KURL(), "text/html", 0, String(), String());
+        m_response = ResourceResponse(URL(), "text/html", 0, String(), String());
 #endif
 
     // There is a bug in CFNetwork where callbacks can be dispatched even when loads are deferred.
@@ -1012,7 +1012,7 @@ void DocumentLoader::addArchiveResource(PassRefPtr<ArchiveResource> resource)
     m_archiveResourceCollection->addResource(resource);
 }
 
-PassRefPtr<Archive> DocumentLoader::popArchiveForSubframe(const String& frameName, const KURL& url)
+PassRefPtr<Archive> DocumentLoader::popArchiveForSubframe(const String& frameName, const URL& url)
 {
     return m_archiveResourceCollection ? m_archiveResourceCollection->popSubframeArchive(frameName, url) : PassRefPtr<Archive>(0);
 }
@@ -1029,7 +1029,7 @@ SharedBuffer* DocumentLoader::parsedArchiveData() const
 }
 #endif // ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
 
-ArchiveResource* DocumentLoader::archiveResourceForURL(const KURL& url) const
+ArchiveResource* DocumentLoader::archiveResourceForURL(const URL& url) const
 {
     if (!m_archiveResourceCollection)
         return 0;
@@ -1051,7 +1051,7 @@ PassRefPtr<ArchiveResource> DocumentLoader::mainResource() const
     return ArchiveResource::create(data, r.url(), r.mimeType(), r.textEncodingName(), frame()->tree().uniqueName());
 }
 
-PassRefPtr<ArchiveResource> DocumentLoader::subresource(const KURL& url) const
+PassRefPtr<ArchiveResource> DocumentLoader::subresource(const URL& url) const
 {
     if (!isCommitted())
         return 0;
@@ -1083,7 +1083,7 @@ void DocumentLoader::getSubresources(Vector<PassRefPtr<ArchiveResource> >& subre
     const CachedResourceLoader::DocumentResourceMap& allResources = m_cachedResourceLoader->allCachedResources();
     CachedResourceLoader::DocumentResourceMap::const_iterator end = allResources.end();
     for (CachedResourceLoader::DocumentResourceMap::const_iterator it = allResources.begin(); it != end; ++it) {
-        RefPtr<ArchiveResource> subresource = this->subresource(KURL(ParsedURLString, it->value->url()));
+        RefPtr<ArchiveResource> subresource = this->subresource(URL(ParsedURLString, it->value->url()));
         if (subresource)
             subresources.append(subresource.release());
     }
@@ -1210,7 +1210,7 @@ void DocumentLoader::setTitle(const StringWithDirection& title)
     frameLoader()->didChangeTitle(this);
 }
 
-KURL DocumentLoader::urlForHistory() const
+URL DocumentLoader::urlForHistory() const
 {
     // Return the URL to be used for history and B/F list.
     // Returns nil for WebDataProtocol URLs that aren't alternates
@@ -1226,24 +1226,24 @@ bool DocumentLoader::urlForHistoryReflectsFailure() const
     return m_substituteData.isValid() || m_response.httpStatusCode() >= 400;
 }
 
-const KURL& DocumentLoader::originalURL() const
+const URL& DocumentLoader::originalURL() const
 {
     return m_originalRequestCopy.url();
 }
 
-const KURL& DocumentLoader::requestURL() const
+const URL& DocumentLoader::requestURL() const
 {
     return request().url();
 }
 
-const KURL& DocumentLoader::responseURL() const
+const URL& DocumentLoader::responseURL() const
 {
     return m_response.url();
 }
 
-KURL DocumentLoader::documentURL() const
+URL DocumentLoader::documentURL() const
 {
-    KURL url = substituteData().responseURL();
+    URL url = substituteData().responseURL();
 #if ENABLE(WEB_ARCHIVE)
     if (url.isEmpty() && m_archive && m_archive->type() == Archive::WebArchive)
         url = m_archive->mainResource()->url();
@@ -1260,7 +1260,7 @@ const String& DocumentLoader::responseMIMEType() const
     return m_response.mimeType();
 }
 
-const KURL& DocumentLoader::unreachableURL() const
+const URL& DocumentLoader::unreachableURL() const
 {
     return m_substituteData.failingURL();
 }
@@ -1423,7 +1423,7 @@ void DocumentLoader::cancelMainResourceLoad(const ResourceError& resourceError)
 
     m_dataLoadTimer.stop();
     if (m_waitingForContentPolicy) {
-        frameLoader()->policyChecker()->cancelCheck();
+        frameLoader()->policyChecker().cancelCheck();
         ASSERT(m_waitingForContentPolicy);
         m_waitingForContentPolicy = false;
     }
@@ -1467,7 +1467,7 @@ void DocumentLoader::maybeFinishLoadingMultipartContent()
 void DocumentLoader::iconLoadDecisionAvailable()
 {
     if (m_frame)
-        m_frame->loader().icon()->loadDecisionReceived(iconDatabase().synchronousLoadDecisionForIconURL(frameLoader()->icon()->url(), this));
+        m_frame->loader().icon().loadDecisionReceived(iconDatabase().synchronousLoadDecisionForIconURL(frameLoader()->icon().url(), this));
 }
 
 static void iconLoadDecisionCallback(IconLoadDecision decision, void* context)
@@ -1488,7 +1488,7 @@ void DocumentLoader::continueIconLoadWithDecision(IconLoadDecision decision)
     ASSERT(m_iconLoadDecisionCallback);
     m_iconLoadDecisionCallback = 0;
     if (m_frame)
-        m_frame->loader().icon()->continueLoadWithDecision(decision);
+        m_frame->loader().icon().continueLoadWithDecision(decision);
 }
 
 static void iconDataCallback(SharedBuffer*, void*)

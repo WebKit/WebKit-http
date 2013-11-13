@@ -66,7 +66,7 @@ IdentifierRep* IdentifierRep::get(int intID)
         return identifier;
     }
     
-    IntIdentifierMap::AddResult result = intIdentifierMap().add(intID, 0);
+    IntIdentifierMap::AddResult result = intIdentifierMap().add(intID, nullptr);
     if (result.isNewEntry) {
         ASSERT(!result.iterator->value);
         result.iterator->value = new IdentifierRep(intID);
@@ -92,7 +92,7 @@ IdentifierRep* IdentifierRep::get(const char* name)
         return 0;
   
     String string = String::fromUTF8WithLatin1Fallback(name, strlen(name));
-    StringIdentifierMap::AddResult result = stringIdentifierMap().add(string.impl(), 0);
+    StringIdentifierMap::AddResult result = stringIdentifierMap().add(string.impl(), nullptr);
     if (result.isNewEntry) {
         ASSERT(!result.iterator->value);
         result.iterator->value = new IdentifierRep(name);

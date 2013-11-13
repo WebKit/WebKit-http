@@ -58,7 +58,7 @@
 #import <WebCore/NodeTraversal.h>
 #import <WebCore/Range.h>
 #import <WebCore/RegularExpression.h>
-#import <WebCore/RenderObject.h>
+#import <WebCore/RenderElement.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebKit/DOMHTMLInputElement.h>
 #import <wtf/Assertions.h>
@@ -237,9 +237,7 @@ static NSMutableArray *newArrayByConcatenatingArrays(NSArray *first, NSArray *se
 {
     if ([self _isDisplayingWebArchive]) {            
         SharedBuffer *parsedArchiveData = [_private->dataSource _documentLoader]->parsedArchiveData();
-        NSData *nsData = parsedArchiveData ? parsedArchiveData->createNSData() : nil;
-        NSString *result = [[NSString alloc] initWithData:nsData encoding:NSUTF8StringEncoding];
-        [nsData release];
+        NSString *result = [[NSString alloc] initWithData:parsedArchiveData ? parsedArchiveData->createNSData().get() : nil encoding:NSUTF8StringEncoding];
         return [result autorelease];
     }
 

@@ -57,7 +57,7 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
         m_paintOffset = prev->m_paintOffset + offset;
 
     if (renderer->isOutOfFlowPositioned() && !fixed) {
-        if (RenderObject* container = renderer->container()) {
+        if (RenderElement* container = renderer->container()) {
             if (container->isInFlowPositioned() && container->isRenderInline())
                 m_paintOffset += toRenderInline(container)->offsetForInFlowPositionedInline(renderer);
         }
@@ -131,8 +131,8 @@ LayoutState::LayoutState(LayoutState* prev, RenderBox* renderer, const LayoutSiz
         computeLineGridPaginationOrigin(renderer);
 
     // If we have a new grid to track, then add it to our set.
-    if (renderer->style()->lineGrid() != RenderStyle::initialLineGrid() && renderer->isBlockFlowFlexBoxOrGrid())
-        establishLineGrid(toRenderBlock(renderer));
+    if (renderer->style()->lineGrid() != RenderStyle::initialLineGrid() && renderer->isRenderBlockFlow())
+        establishLineGrid(toRenderBlockFlow(renderer));
 
     // FIXME: <http://bugs.webkit.org/show_bug.cgi?id=13443> Apply control clip if present.
 }
@@ -156,7 +156,7 @@ LayoutState::LayoutState(RenderObject* root)
     , m_renderer(root)
 #endif
 {
-    RenderObject* container = root->container();
+    RenderElement* container = root->container();
     FloatPoint absContentPoint = container->localToAbsolute(FloatPoint(), UseTransforms);
     m_paintOffset = LayoutSize(absContentPoint.x(), absContentPoint.y());
 
@@ -172,7 +172,7 @@ LayoutState::LayoutState(RenderObject* root)
 static bool inLayoutStateDestroy;
 #endif
 
-void LayoutState::destroy(RenderArena* renderArena)
+void LayoutState::destroy(RenderArena& renderArena)
 {
 #ifndef NDEBUG
     inLayoutStateDestroy = true;
@@ -181,12 +181,12 @@ void LayoutState::destroy(RenderArena* renderArena)
 #ifndef NDEBUG
     inLayoutStateDestroy = false;
 #endif
-    renderArena->free(*(size_t*)this, this);
+    renderArena.free(*(size_t*)this, this);
 }
 
-void* LayoutState::operator new(size_t sz, RenderArena* renderArena)
+void* LayoutState::operator new(size_t sz, RenderArena& renderArena)
 {
-    return renderArena->allocate(sz);
+    return renderArena.allocate(sz);
 }
 
 void LayoutState::operator delete(void* ptr, size_t sz)
@@ -228,13 +228,13 @@ void LayoutState::propagateLineGridInfo(RenderBox* renderer)
     m_lineGridPaginationOrigin = m_next->m_lineGridPaginationOrigin;
 }
 
-void LayoutState::establishLineGrid(RenderBlock* block)
+void LayoutState::establishLineGrid(RenderBlockFlow* block)
 {
     // First check to see if this grid has been established already.
     if (m_lineGrid) {
         if (m_lineGrid->style()->lineGrid() == block->style()->lineGrid())
             return;
-        RenderBlock* currentGrid = m_lineGrid;
+        RenderBlockFlow* currentGrid = m_lineGrid;
         for (LayoutState* currentState = m_next; currentState; currentState = currentState->m_next) {
             if (currentState->m_lineGrid == currentGrid)
                 continue;

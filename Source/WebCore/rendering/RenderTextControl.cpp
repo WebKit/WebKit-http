@@ -36,24 +36,23 @@ using namespace std;
 
 namespace WebCore {
 
-RenderTextControl::RenderTextControl(Element* element)
-    : RenderBlockFlow(element)
+RenderTextControl::RenderTextControl(HTMLTextFormControlElement& element)
+    : RenderBlockFlow(&element)
 {
-    ASSERT(isHTMLTextFormControlElement(element));
 }
 
 RenderTextControl::~RenderTextControl()
 {
 }
 
-HTMLTextFormControlElement* RenderTextControl::textFormControlElement() const
+HTMLTextFormControlElement& RenderTextControl::textFormControlElement() const
 {
-    return toHTMLTextFormControlElement(node());
+    return toHTMLTextFormControlElement(nodeForNonAnonymous());
 }
 
 HTMLElement* RenderTextControl::innerTextElement() const
 {
-    return textFormControlElement()->innerTextElement();
+    return textFormControlElement().innerTextElement();
 }
 
 void RenderTextControl::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
@@ -71,19 +70,13 @@ void RenderTextControl::styleDidChange(StyleDifference diff, const RenderStyle* 
         innerTextRenderer->setStyle(createInnerTextStyle(style()));
         innerText->setNeedsStyleRecalc();
     }
-    textFormControlElement()->updatePlaceholderVisibility(false);
+    textFormControlElement().updatePlaceholderVisibility(false);
 }
 
-static inline bool updateUserModifyProperty(Node* node, RenderStyle* style)
+static inline bool updateUserModifyProperty(const HTMLTextFormControlElement& element, RenderStyle* style)
 {
-    bool isDisabled = false;
-    bool isReadOnlyControl = false;
-
-    if (node->isElementNode()) {
-        Element* element = toElement(node);
-        isDisabled = element->isDisabledFormControl();
-        isReadOnlyControl = element->isTextFormControl() && toHTMLTextFormControlElement(element)->isReadOnly();
-    }
+    bool isDisabled = element.isDisabledFormControl();
+    bool isReadOnlyControl = element.isReadOnly();
 
     style->setUserModify((isReadOnlyControl || isDisabled) ? READ_ONLY : READ_WRITE_PLAINTEXT_ONLY);
     return isDisabled;
@@ -96,7 +89,7 @@ void RenderTextControl::adjustInnerTextStyle(const RenderStyle* startStyle, Rend
     textBlockStyle->setDirection(style()->direction());
     textBlockStyle->setUnicodeBidi(style()->unicodeBidi());
 
-    bool disabled = updateUserModifyProperty(node(), textBlockStyle);
+    bool disabled = updateUserModifyProperty(textFormControlElement(), textBlockStyle);
     if (disabled)
         textBlockStyle->setColor(theme()->disabledTextColor(textBlockStyle->visitedDependentColor(CSSPropertyColor), startStyle->visitedDependentColor(CSSPropertyBackgroundColor)));
 }
@@ -122,7 +115,7 @@ void RenderTextControl::updateFromElement()
 {
     Element* innerText = innerTextElement();
     if (innerText && innerText->renderer())
-        updateUserModifyProperty(node(), innerText->renderer()->style());
+        updateUserModifyProperty(textFormControlElement(), innerText->renderer()->style());
 }
 
 int RenderTextControl::scrollbarThickness() const
@@ -236,7 +229,7 @@ float RenderTextControl::getAvgCharWidth(AtomicString family)
     const UChar ch = '0';
     const String str = String(&ch, 1);
     const Font& font = style()->font();
-    TextRun textRun = constructTextRun(this, font, str, style(), TextRun::AllowTrailingExpansion);
+    TextRun textRun = constructTextRun(this, font, str, *style(), TextRun::AllowTrailingExpansion);
     textRun.disableRoundingHacks();
     return font.width(textRun);
 }
@@ -297,7 +290,7 @@ void RenderTextControl::addFocusRingRects(Vector<IntRect>& rects, const LayoutPo
 
 RenderObject* RenderTextControl::layoutSpecialExcludedChild(bool relayoutChildren)
 {
-    HTMLElement* placeholder = toHTMLTextFormControlElement(node())->placeholderElement();
+    HTMLElement* placeholder = textFormControlElement().placeholderElement();
     RenderObject* placeholderRenderer = placeholder ? placeholder->renderer() : 0;
     if (!placeholderRenderer)
         return 0;

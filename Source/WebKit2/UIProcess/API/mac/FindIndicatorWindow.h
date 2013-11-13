@@ -29,7 +29,6 @@
 #import "WebKitSystemInterface.h"
 #import <WebCore/RunLoop.h>
 #import <wtf/Noncopyable.h>
-#import <wtf/PassOwnPtr.h>
 #import <wtf/RefPtr.h>
 #import <wtf/RetainPtr.h>
 
@@ -44,13 +43,12 @@ class FindIndicatorWindow {
     WTF_MAKE_NONCOPYABLE(FindIndicatorWindow);
 
 public:
-    static PassOwnPtr<FindIndicatorWindow> create(WKView *);
+    explicit FindIndicatorWindow(WKView *);
     ~FindIndicatorWindow();
 
     void setFindIndicator(PassRefPtr<FindIndicator>, bool fadeOut, bool animate);
 
 private:
-    explicit FindIndicatorWindow(WKView *);
     void closeWindow();
 
     void startFadeOutTimerFired();

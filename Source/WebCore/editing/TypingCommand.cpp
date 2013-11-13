@@ -37,7 +37,7 @@
 #include "InsertLineBreakCommand.h"
 #include "InsertParagraphSeparatorCommand.h"
 #include "InsertTextCommand.h"
-#include "RenderObject.h"
+#include "RenderElement.h"
 #include "TextIterator.h"
 #include "VisiblePosition.h"
 #include "VisibleUnits.h"
@@ -404,7 +404,7 @@ bool TypingCommand::makeEditableRootEmpty()
 
     if (root->firstChild() == root->lastChild() && root->firstElementChild() && root->firstElementChild()->hasTagName(brTag)) {
         // If there is a single child and it could be a placeholder, leave it alone.
-        if (root->renderer() && root->renderer()->isBlockFlowFlexBoxOrGrid())
+        if (root->renderer() && root->renderer()->isRenderBlockFlow())
             return false;
     }
 

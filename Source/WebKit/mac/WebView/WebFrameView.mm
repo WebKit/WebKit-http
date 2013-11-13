@@ -54,15 +54,15 @@
 #import "WebViewInternal.h"
 #import "WebViewPrivate.h"
 #import <Foundation/NSURLRequest.h>
-#import <WebCore/BackForwardListImpl.h>
+#import <WebCore/BackForwardList.h>
 #import <WebCore/DragController.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/HistoryItem.h>
 #import <WebCore/Page.h>
-#import <WebCore/RenderPart.h>
 #import <WebCore/RenderView.h>
+#import <WebCore/RenderWidget.h>
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/WebCoreFrameView.h>
 #import <WebCore/WebCoreView.h>
@@ -282,16 +282,16 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 
     // If this isn't the main frame, it must have an owner element set, or it
     // won't ever get installed in the view hierarchy.
-    ASSERT(frame->page()->frameIsMainFrame(frame) || frame->ownerElement());
+    ASSERT(frame->isMainFrame() || frame->ownerElement());
 
     FrameView* view = frame->view();
 
     view->setPlatformWidget(_private->frameScrollView);
 
     // FIXME: Frame tries to do this too. Is this code needed?
-    if (RenderPart* owner = frame->ownerRenderer()) {
+    if (RenderWidget* owner = frame->ownerRenderer()) {
         owner->setWidget(view);
-        // Now the render part owns the view, so we don't any more.
+        // Now the RenderWidget owns the view, so we don't any more.
     }
 
     view->updateCanHaveScrollbars();
@@ -811,7 +811,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     int index, count;
     BOOL callSuper = YES;
     Frame* coreFrame = [self _web_frame];
-    BOOL maintainsBackForwardList = coreFrame && static_cast<BackForwardListImpl*>(coreFrame->page()->backForwardList())->enabled() ? YES : NO;
+    BOOL maintainsBackForwardList = coreFrame && static_cast<BackForwardList*>(coreFrame->page()->backForwardClient())->enabled() ? YES : NO;
     
     count = [characters length];
     for (index = 0; index < count; ++index) {

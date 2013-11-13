@@ -38,7 +38,7 @@ class Document;
 class DocumentFragment;
 class Element;
 class HTMLElement;
-class KURL;
+class URL;
 class Node;
 class QualifiedName;
 class Range;
@@ -61,8 +61,8 @@ bool isPlainTextMarkup(Node*);
 
 // These methods are used by HTMLElement & ShadowRoot to replace the
 // children with respected fragment/text.
-void replaceChildrenWithFragment(ContainerNode*, PassRefPtr<DocumentFragment>, ExceptionCode&);
-void replaceChildrenWithText(ContainerNode*, const String&, ExceptionCode&);
+void replaceChildrenWithFragment(ContainerNode&, PassRefPtr<DocumentFragment>, ExceptionCode&);
+void replaceChildrenWithText(ContainerNode&, const String&, ExceptionCode&);
 
 String createMarkup(const Range*, Vector<Node*>* = 0, EAnnotateForInterchange = DoNotAnnotateForInterchange, bool convertBlocksToInlines = false, EAbsoluteURLs = DoNotResolveURLs);
 String createMarkup(const Node*, EChildrenOnly = IncludeNode, Vector<Node*>* = 0, EAbsoluteURLs = DoNotResolveURLs, Vector<QualifiedName>* tagNamesToSkip = 0, EFragmentSerialization = HTMLFragmentSerialization);
@@ -70,7 +70,7 @@ String createMarkup(const Node*, EChildrenOnly = IncludeNode, Vector<Node*>* = 0
 String createFullMarkup(const Node*);
 String createFullMarkup(const Range*);
 
-String urlToMarkup(const KURL&, const String& title);
+String urlToMarkup(const URL&, const String& title);
 
 String documentTypeString(const Document&);
 

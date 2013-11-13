@@ -35,7 +35,6 @@
 #include "InspectorController.h"
 
 #include "DOMWrapperWorld.h"
-#include "Frame.h"
 #include "GraphicsContext.h"
 #include "IdentifiersFactory.h"
 #include "InjectedScriptHost.h"
@@ -52,7 +51,6 @@
 #include "InspectorDOMStorageAgent.h"
 #include "InspectorDatabaseAgent.h"
 #include "InspectorDebuggerAgent.h"
-#include "InspectorFileSystemAgent.h"
 #include "InspectorFrontend.h"
 #include "InspectorFrontendClient.h"
 #include "InspectorHeapProfilerAgent.h"
@@ -69,6 +67,7 @@
 #include "InspectorTimelineAgent.h"
 #include "InspectorWorkerAgent.h"
 #include "InstrumentingAgents.h"
+#include "MainFrame.h"
 #include "PageConsoleAgent.h"
 #include "PageDebuggerAgent.h"
 #include "PageRuntimeAgent.h"
@@ -112,9 +111,6 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     m_agents.append(InspectorIndexedDBAgent::create(m_instrumentingAgents.get(), m_state.get(), m_injectedScriptManager.get(), pageAgent));
 #endif
 
-#if ENABLE(FILE_SYSTEM)
-    m_agents.append(InspectorFileSystemAgent::create(m_instrumentingAgents.get(), pageAgent, m_state.get()));
-#endif
     OwnPtr<InspectorDOMStorageAgent> domStorageAgentPtr(InspectorDOMStorageAgent::create(m_instrumentingAgents.get(), m_pageAgent, m_state.get()));
     InspectorDOMStorageAgent* domStorageAgent = domStorageAgentPtr.get();
     m_agents.append(domStorageAgentPtr.release());
@@ -222,7 +218,7 @@ void InspectorController::didClearWindowObjectInWorld(Frame* frame, DOMWrapperWo
 
     // If the page is supposed to serve as InspectorFrontend notify inspector frontend
     // client that it's cleared so that the client can expose inspector bindings.
-    if (m_inspectorFrontendClient && m_page->frameIsMainFrame(frame))
+    if (m_inspectorFrontendClient && frame->isMainFrame())
         m_inspectorFrontendClient->windowObjectCleared();
 }
 
@@ -327,6 +323,11 @@ void InspectorController::getHighlight(Highlight* highlight) const
     m_overlay->getHighlight(highlight);
 }
 
+PassRefPtr<InspectorObject> InspectorController::buildObjectForHighlightedNode() const
+{
+    return m_overlay->buildObjectForHighlightedNode();
+}
+
 void InspectorController::inspect(Node* node)
 {
     if (!enabled())
@@ -396,25 +397,6 @@ void InspectorController::resume()
 void InspectorController::setResourcesDataSizeLimitsFromInternals(int maximumResourcesContentSize, int maximumSingleResourceContentSize)
 {
     m_resourceAgent->setResourcesDataSizeLimitsFromInternals(maximumResourcesContentSize, maximumSingleResourceContentSize);
-}
-
-void InspectorController::willProcessTask()
-{
-    if (InspectorTimelineAgent* timelineAgent = m_instrumentingAgents->inspectorTimelineAgent())
-        timelineAgent->willProcessTask();
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    m_profilerAgent->willProcessTask();
-#endif
-}
-
-void InspectorController::didProcessTask()
-{
-    if (InspectorTimelineAgent* timelineAgent = m_instrumentingAgents->inspectorTimelineAgent())
-        timelineAgent->didProcessTask();
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    m_profilerAgent->didProcessTask();
-    m_domDebuggerAgent->didProcessTask();
-#endif
 }
 
 void InspectorController::didBeginFrame()

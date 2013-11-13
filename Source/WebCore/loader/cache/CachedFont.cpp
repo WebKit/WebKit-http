@@ -117,7 +117,7 @@ FontPlatformData CachedFont::platformDataFromCustomData(float size, bool bold, b
 bool CachedFont::ensureSVGFontData()
 {
     if (!m_externalSVGDocument && !errorOccurred() && !isLoading() && m_data) {
-        m_externalSVGDocument = SVGDocument::create(0, KURL());
+        m_externalSVGDocument = SVGDocument::create(0, URL());
 
         RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create("application/xml");
         String svgSource = decoder->decode(m_data->data(), m_data->size());
@@ -150,10 +150,10 @@ SVGFontElement* CachedFont::getSVGFontById(const String& fontName) const
 #endif
 
     if (fontName.isEmpty())
-        return static_cast<SVGFontElement*>(list->item(0));
+        return toSVGFontElement(list->item(0));
 
     for (unsigned i = 0; i < listLength; ++i) {
-        SVGFontElement* element = static_cast<SVGFontElement*>(list->item(i));
+        SVGFontElement* element = toSVGFontElement(list->item(i));
         if (element->getIdAttribute() == fontName)
             return element;
     }

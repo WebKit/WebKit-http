@@ -127,7 +127,7 @@ void RenderRubyRun::addChild(RenderObject* child, RenderObject* beforeChild)
             // In this case the new text takes the place of the old one, and
             // the old text goes into a new run that is inserted as next sibling.
             ASSERT(beforeChild->parent() == this);
-            RenderObject* ruby = parent();
+            RenderElement* ruby = parent();
             ASSERT(ruby->isRuby());
             RenderBlock* newRun = staticCreateRubyRun(ruby);
             ruby->addChild(newRun, nextSibling());
@@ -141,7 +141,7 @@ void RenderRubyRun::addChild(RenderObject* child, RenderObject* beforeChild)
         } else if (hasRubyBase()) {
             // Insertion before a ruby base object.
             // In this case we need insert a new run before the current one and split the base.
-            RenderObject* ruby = parent();
+            RenderElement* ruby = parent();
             RenderRubyRun* newRun = staticCreateRubyRun(ruby);
             ruby->addChild(newRun, this);
             newRun->addChild(child);
@@ -200,7 +200,7 @@ void RenderRubyRun::removeChild(RenderObject* child)
 
 RenderRubyBase* RenderRubyRun::createRubyBase() const
 {
-    RenderRubyBase* renderer = RenderRubyBase::createAnonymous(&document());
+    RenderRubyBase* renderer = RenderRubyBase::createAnonymous(document());
     RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK);
     newStyle->setTextAlign(CENTER); // FIXME: use WEBKIT_CENTER?
     renderer->setStyle(newStyle.release());
@@ -211,7 +211,7 @@ RenderRubyRun* RenderRubyRun::staticCreateRubyRun(const RenderObject* parentRuby
 {
     ASSERT(parentRuby && parentRuby->isRuby());
     RenderRubyRun* rr = new (parentRuby->renderArena()) RenderRubyRun();
-    rr->setDocumentForAnonymous(&parentRuby->document());
+    rr->setDocumentForAnonymous(parentRuby->document());
     RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(parentRuby->style(), INLINE_BLOCK);
     rr->setStyle(newStyle.release());
     return rr;
@@ -276,6 +276,15 @@ void RenderRubyRun::layout()
     computeOverflow(clientLogicalBottom());
 }
 
+static bool shouldOverhang(bool firstLine, const RenderObject* renderer, const RenderRubyBase& rubyBase)
+{
+    if (!renderer || !renderer->isText())
+        return false;
+    const RenderStyle& rubyBaseStyle = firstLine ? *rubyBase.firstLineStyle() : *rubyBase.style();
+    const RenderStyle& style = firstLine ? *renderer->firstLineStyle() : *renderer->style();
+    return style.fontSize() <= rubyBaseStyle.fontSize();
+}
+
 void RenderRubyRun::getOverhang(bool firstLine, RenderObject* startRenderer, RenderObject* endRenderer, int& startOverhang, int& endOverhang) const
 {
     ASSERT(!needsLayout());
@@ -303,16 +312,16 @@ void RenderRubyRun::getOverhang(bool firstLine, RenderObject* startRenderer, Ren
     startOverhang = style()->isLeftToRightDirection() ? logicalLeftOverhang : logicalRightOverhang;
     endOverhang = style()->isLeftToRightDirection() ? logicalRightOverhang : logicalLeftOverhang;
 
-    if (!startRenderer || !startRenderer->isText() || startRenderer->style(firstLine)->fontSize() > rubyBase->style(firstLine)->fontSize())
+    if (!shouldOverhang(firstLine, startRenderer, *rubyBase))
         startOverhang = 0;
-
-    if (!endRenderer || !endRenderer->isText() || endRenderer->style(firstLine)->fontSize() > rubyBase->style(firstLine)->fontSize())
+    if (!shouldOverhang(firstLine, endRenderer, *rubyBase))
         endOverhang = 0;
 
     // We overhang a ruby only if the neighboring render object is a text.
     // We can overhang the ruby by no more than half the width of the neighboring text
     // and no more than half the font size.
-    int halfWidthOfFontSize = rubyText->style(firstLine)->fontSize() / 2;
+    const RenderStyle& rubyTextStyle = firstLine ? *rubyText->firstLineStyle() : *rubyText->style();
+    int halfWidthOfFontSize = rubyTextStyle.fontSize() / 2;
     if (startOverhang)
         startOverhang = min<int>(startOverhang, min<int>(toRenderText(startRenderer)->minLogicalWidth(), halfWidthOfFontSize));
     if (endOverhang)

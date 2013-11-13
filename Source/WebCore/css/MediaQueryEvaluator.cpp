@@ -37,10 +37,10 @@
 #include "ChromeClient.h"
 #include "DOMWindow.h"
 #include "FloatRect.h"
-#include "Frame.h"
 #include "FrameView.h"
 #include "InspectorInstrumentation.h"
 #include "IntRect.h"
+#include "MainFrame.h"
 #include "MediaFeatureNames.h"
 #include "MediaList.h"
 #include "MediaQuery.h"
@@ -684,12 +684,14 @@ static bool pointerMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* frame,
         || (pointer == MousePointer && id == CSSValueFine);
 }
 
+// FIXME: Remove unnecessary '&' from the following 'ADD_TO_FUNCTIONMAP' definition
+// once we switch to a non-broken Visual Studio compiler.  https://bugs.webkit.org/show_bug.cgi?id=121235
 static void createFunctionMap()
 {
     // Create the table.
     gFunctionMap = new FunctionMap;
 #define ADD_TO_FUNCTIONMAP(name, str)  \
-    gFunctionMap->set(name##MediaFeature.impl(), name##MediaFeatureEval);
+    gFunctionMap->set(name##MediaFeature.impl(), &name##MediaFeatureEval);
     CSS_MEDIAQUERY_NAMES_FOR_EACH_MEDIAFEATURE(ADD_TO_FUNCTIONMAP);
 #undef ADD_TO_FUNCTIONMAP
 }

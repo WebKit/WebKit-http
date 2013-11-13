@@ -71,12 +71,14 @@ private:
     HashMap<AXID, CachedAXObjectAttributes> m_idMapping;
 };
 
+enum PostTarget { TargetElement, TargetObservableParent };
+
 enum PostType { PostSynchronously, PostAsynchronously };
 
 class AXObjectCache {
     WTF_MAKE_NONCOPYABLE(AXObjectCache); WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit AXObjectCache(const Document*);
+    explicit AXObjectCache(Document&);
     ~AXObjectCache();
 
     static AccessibilityObject* focusedUIElementForPage(const Page*);
@@ -176,12 +178,13 @@ public:
         AXRowExpanded,
         AXInvalidStatusChanged,
         AXTextChanged,
-        AXAriaAttributeChanged
+        AXAriaAttributeChanged,
+        AXElementBusyChanged
     };
 
-    void postNotification(RenderObject*, AXNotification, bool postToElement, PostType = PostAsynchronously);
-    void postNotification(Node*, AXNotification, bool postToElement, PostType = PostAsynchronously);
-    void postNotification(AccessibilityObject*, Document*, AXNotification, bool postToElement, PostType = PostAsynchronously);
+    void postNotification(RenderObject*, AXNotification, PostTarget = TargetElement, PostType = PostAsynchronously);
+    void postNotification(Node*, AXNotification, PostTarget = TargetElement, PostType = PostAsynchronously);
+    void postNotification(AccessibilityObject*, Document*, AXNotification, PostTarget = TargetElement, PostType = PostAsynchronously);
 
     enum AXTextChange {
         AXTextInserted,
@@ -220,7 +223,7 @@ protected:
     bool isNodeInUse(Node* n) { return m_textMarkerNodes.contains(n); }
 
 private:
-    Document* m_document;
+    Document& m_document;
     HashMap<AXID, RefPtr<AccessibilityObject> > m_objects;
     HashMap<RenderObject*, AXID> m_renderObjectMapping;
     HashMap<Widget*, AXID> m_widgetObjectMapping;
@@ -258,7 +261,7 @@ bool isNodeAriaVisible(Node*);
 #if !HAVE(ACCESSIBILITY)
 inline AccessibilityObjectInclusion AXComputedObjectAttributeCache::getIgnored(AXID) const { return DefaultBehavior; }
 inline void AXComputedObjectAttributeCache::setIgnored(AXID, AccessibilityObjectInclusion) { }
-inline AXObjectCache::AXObjectCache(const Document* doc) : m_document(const_cast<Document*>(doc)), m_notificationPostTimer(this, 0) { }
+inline AXObjectCache::AXObjectCache(Document& document) : m_document(document), m_notificationPostTimer(this, 0) { }
 inline AXObjectCache::~AXObjectCache() { }
 inline AccessibilityObject* AXObjectCache::focusedUIElementForPage(const Page*) { return 0; }
 inline AccessibilityObject* AXObjectCache::get(RenderObject*) { return 0; }
@@ -298,9 +301,9 @@ inline void AXObjectCache::recomputeIsIgnored(RenderObject*) { }
 inline void AXObjectCache::handleScrolledToAnchor(const Node*) { }
 inline void AXObjectCache::nodeTextChangeNotification(Node*, AXTextChange, unsigned, const String&) { }
 inline void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObject*, AXTextChange, unsigned, const String&) { }
-inline void AXObjectCache::postNotification(AccessibilityObject*, Document*, AXNotification, bool, PostType) { }
-inline void AXObjectCache::postNotification(RenderObject*, AXNotification, bool, PostType) { }
-inline void AXObjectCache::postNotification(Node*, AXNotification, bool, PostType) { }
+inline void AXObjectCache::postNotification(AccessibilityObject*, Document*, AXNotification, PostTarget, PostType) { }
+inline void AXObjectCache::postNotification(RenderObject*, AXNotification, PostTarget, PostType) { }
+inline void AXObjectCache::postNotification(Node*, AXNotification, PostTarget, PostType) { }
 inline void AXObjectCache::postPlatformNotification(AccessibilityObject*, AXNotification) { }
 inline void AXObjectCache::remove(AXID) { }
 inline void AXObjectCache::remove(RenderObject*) { }

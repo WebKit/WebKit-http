@@ -32,18 +32,17 @@
 
 namespace WebCore {
 
-class BackForwardList;
+class BackForwardClient;
 class HistoryItem;
 class Page;
 
 class BackForwardController {
     WTF_MAKE_NONCOPYABLE(BackForwardController); WTF_MAKE_FAST_ALLOCATED;
 public:
+    BackForwardController(Page&, PassRefPtr<BackForwardClient>);
     ~BackForwardController();
 
-    static PassOwnPtr<BackForwardController> create(Page*, PassRefPtr<BackForwardList>);
-
-    BackForwardList* client() const { return m_client.get(); }
+    BackForwardClient* client() const { return m_client.get(); }
 
     bool canGoBackOrForward(int distance) const;
     void goBackOrForward(int distance);
@@ -69,10 +68,8 @@ public:
     HistoryItem* forwardItem() { return itemAtIndex(1); }
 
 private:
-    BackForwardController(Page*, PassRefPtr<BackForwardList>);
-
-    Page* m_page;
-    RefPtr<BackForwardList> m_client;
+    Page& m_page;
+    RefPtr<BackForwardClient> m_client;
 };
 
 } // namespace WebCore

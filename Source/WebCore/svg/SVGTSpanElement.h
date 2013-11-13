@@ -28,12 +28,12 @@ namespace WebCore {
 
 class SVGTSpanElement FINAL : public SVGTextPositioningElement {
 public:
-    static PassRefPtr<SVGTSpanElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGTSpanElement> create(const QualifiedName&, Document&);
 
 private:
-    SVGTSpanElement(const QualifiedName&, Document*);
+    SVGTSpanElement(const QualifiedName&, Document&);
             
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
     virtual bool childShouldCreateRenderer(const Node*) const;
     virtual bool rendererIsNeeded(const RenderStyle&);
 };

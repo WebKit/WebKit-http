@@ -91,7 +91,6 @@
 // FIXME: check the proper way to reference an undefined thread ID
 const int UndefinedThreadIdentifier = 0xffffffff;
 
-const unsigned MaxNodesToDeletePerQuantum = 10;
 const unsigned MaxPeriodicWaveLength = 4096;
 
 namespace WebCore {
@@ -418,15 +417,15 @@ PassRefPtr<MediaStreamAudioSourceNode> AudioContext::createMediaStreamSource(Med
     AudioSourceProvider* provider = 0;
 
     MediaStreamTrackVector audioTracks = mediaStream->getAudioTracks();
-    if (mediaStream->isLocal() && audioTracks.size()) {
-        // Enable input for the specific local audio device specified in the MediaStreamSource.
-        RefPtr<MediaStreamTrack> localAudio = audioTracks[0];
-        MediaStreamSource* source = localAudio->component()->source();
-        destination()->enableInput(source->deviceId());
-        provider = destination()->localAudioInputProvider();
-    } else {
-        // FIXME: get a provider for non-local MediaStreams (like from a remote peer).
-        provider = 0;
+    // FIXME: get a provider for non-local MediaStreams (like from a remote peer).
+    for (size_t i = 0; i < audioTracks.size(); ++i) {
+        RefPtr<MediaStreamTrack> localAudio = audioTracks[i];
+        MediaStreamSource* source = localAudio->source();
+        if (!source->deviceId().isEmpty()) {
+            destination()->enableInput(source->deviceId());
+            provider = destination()->localAudioInputProvider();
+            break;
+        }
     }
 
     RefPtr<MediaStreamAudioSourceNode> node = MediaStreamAudioSourceNode::create(this, mediaStream, provider);
@@ -948,11 +947,6 @@ void AudioContext::processAutomaticPullNodes(size_t framesToProcess)
 
     for (unsigned i = 0; i < m_renderingAutomaticPullNodes.size(); ++i)
         m_renderingAutomaticPullNodes[i]->processIfNecessary(framesToProcess);
-}
-
-const AtomicString& AudioContext::interfaceName() const
-{
-    return eventNames().interfaceForAudioContext;
 }
 
 ScriptExecutionContext* AudioContext::scriptExecutionContext() const

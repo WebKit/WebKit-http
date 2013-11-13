@@ -32,17 +32,18 @@
 #include "JSCJSValueInlines.h"
 #include "SlotVisitorInlines.h"
 
+#include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/MathExtras.h>
 
 
 namespace JSC {
 
-const ClassInfo MapData::s_info = { "MapData", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(MapData) };
+const ClassInfo MapData::s_info = { "MapData", 0, 0, 0, CREATE_METHOD_TABLE(MapData) };
 
 static const int32_t minimumMapSize = 8;
 
-MapData::MapData(VM& vm, JSGlobalObject* globalObject)
-    : Base(vm, globalObject->mapDataStructure())
+MapData::MapData(VM& vm)
+    : Base(vm, vm.mapDataStructure.get())
     , m_capacity(0)
     , m_size(0)
     , m_deletedCount(0)
@@ -59,6 +60,13 @@ MapData::Entry* MapData::find(CallFrame* callFrame, KeyType key)
             return 0;
         return &m_entries[iter->value];
     }
+    if (key.value.isCell()) {
+        auto iter = m_cellKeyedTable.find(key.value.asCell());
+        if (iter == m_cellKeyedTable.end())
+            return 0;
+        return &m_entries[iter->value];
+    }
+
     auto iter = m_valueKeyedTable.find(JSValue::encode(key.value));
     if (iter == m_valueKeyedTable.end())
         return 0;
@@ -96,9 +104,11 @@ void MapData::set(CallFrame* callFrame, KeyType key, JSValue value)
     
 MapData::Entry* MapData::add(CallFrame* callFrame, KeyType key)
 {
-    if (!key.value.isString())
-        return add(callFrame, m_valueKeyedTable, JSValue::encode(key.value), key);
-    return add(callFrame, m_stringKeyedTable, asString(key.value)->value(callFrame).impl(), key);
+    if (key.value.isString())
+        return add(callFrame, m_stringKeyedTable, asString(key.value)->value(callFrame).impl(), key);
+    if (key.value.isCell())
+        return add(callFrame, m_cellKeyedTable, key.value.asCell(), key);
+    return add(callFrame, m_valueKeyedTable, JSValue::encode(key.value), key);
 }
 
 JSValue MapData::get(CallFrame* callFrame, KeyType key)
@@ -117,6 +127,12 @@ bool MapData::remove(CallFrame* callFrame, KeyType key)
             return false;
         location = iter->value;
         m_stringKeyedTable.remove(iter);
+    } else if (key.value.isCell()) {
+        auto iter = m_cellKeyedTable.find(key.value.asCell());
+        if (iter == m_cellKeyedTable.end())
+            return false;
+        location = iter->value;
+        m_cellKeyedTable.remove(iter);
     } else {
         auto iter = m_valueKeyedTable.find(JSValue::encode(key.value));
         if (iter == m_valueKeyedTable.end())
@@ -130,16 +146,16 @@ bool MapData::remove(CallFrame* callFrame, KeyType key)
     return true;
 }
 
-void MapData::replaceAndPackBackingStore(Entry* destination, int32_t newSize)
+void MapData::replaceAndPackBackingStore(Entry* destination, int32_t newCapacity)
 {
     ASSERT(shouldPack());
     int32_t newEnd = 0;
-    RELEASE_ASSERT(newSize > 0);
+    RELEASE_ASSERT(newCapacity > 0);
     for (int32_t i = 0; i < m_size; i++) {
         Entry& entry = m_entries[i];
         if (!entry.key)
             continue;
-        ASSERT(newEnd < newSize);
+        ASSERT(newEnd < newCapacity);
         destination[newEnd] = entry;
 
         // We overwrite the old entry with a forwarding index for the new entry,
@@ -158,22 +174,19 @@ void MapData::replaceAndPackBackingStore(Entry* destination, int32_t newSize)
     ASSERT((m_size - newEnd) == m_deletedCount);
     m_deletedCount = 0;
 
-    m_capacity = newSize;
+    m_capacity = newCapacity;
     m_size = newEnd;
     m_entries = destination;
 
 }
 
-void MapData::replaceBackingStore(Entry* destination, int32_t newSize)
+void MapData::replaceBackingStore(Entry* destination, int32_t newCapacity)
 {
     ASSERT(!shouldPack());
-    int32_t newEnd = 0;
-    RELEASE_ASSERT(newSize > 0);
-    ASSERT(newSize >= m_capacity);
+    RELEASE_ASSERT(newCapacity > 0);
+    ASSERT(newCapacity >= m_capacity);
     memcpy(destination, m_entries, sizeof(Entry) * m_size);
-    newEnd = m_size;
-    m_capacity = newSize;
-    m_size = newEnd;
+    m_capacity = newCapacity;
     m_entries = destination;
 }
 
@@ -215,21 +228,20 @@ void MapData::visitChildren(JSCell* cell, SlotVisitor& visitor)
     } else
         visitor.appendValues(&entries[0].key, size * (sizeof(Entry) / sizeof(WriteBarrier<Unknown>)));
 
-    visitor.copyLater(thisObject, MapBackingStoreCopyToken, entries, size);
+    visitor.copyLater(thisObject, MapBackingStoreCopyToken, entries, thisObject->capacityInBytes());
 }
 
 void MapData::copyBackingStore(JSCell* cell, CopyVisitor& visitor, CopyToken token)
 {
     MapData* thisObject = jsCast<MapData*>(cell);
     if (token == MapBackingStoreCopyToken && visitor.checkIfShouldCopy(thisObject->m_entries)) {
-        size_t requiredSize = thisObject->m_capacity * sizeof(Entry);
         Entry* oldEntries = thisObject->m_entries;
-        Entry* newEntries = static_cast<Entry*>(visitor.allocateNewSpace(thisObject->m_capacity * sizeof(Entry)));
+        Entry* newEntries = static_cast<Entry*>(visitor.allocateNewSpace(thisObject->capacityInBytes()));
         if (thisObject->shouldPack())
-            thisObject->replaceAndPackBackingStore(newEntries, requiredSize);
+            thisObject->replaceAndPackBackingStore(newEntries, thisObject->m_capacity);
         else
-            thisObject->replaceBackingStore(newEntries, requiredSize);
-        visitor.didCopy(oldEntries, thisObject->m_capacity * sizeof(Entry));
+            thisObject->replaceBackingStore(newEntries, thisObject->m_capacity);
+        visitor.didCopy(oldEntries, thisObject->capacityInBytes());
     }
     Base::copyBackingStore(cell, visitor, token);
 }

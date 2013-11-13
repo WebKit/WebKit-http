@@ -41,7 +41,7 @@ class QPixmap;
 QT_END_NAMESPACE
 #elif PLATFORM(WIN)
 typedef struct HBITMAP__* HBITMAP;
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(NIX)
 typedef struct _cairo_surface cairo_surface_t;
 #elif PLATFORM(HAIKU)
 class BBitmap;
@@ -53,7 +53,7 @@ class BBitmap;
 namespace WebCore {
 
     class Image;
-    class KURL;
+    class URL;
 
 #if PLATFORM(MAC)
     typedef RetainPtr<NSImage> DragImageRef;
@@ -61,7 +61,7 @@ namespace WebCore {
     typedef QPixmap* DragImageRef;
 #elif PLATFORM(WIN)
     typedef HBITMAP DragImageRef;
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(NIX)
     typedef cairo_surface_t* DragImageRef;
 #elif PLATFORM(HAIKU)
     typedef BBitmap* DragImageRef;
@@ -80,7 +80,7 @@ namespace WebCore {
     
     DragImageRef createDragImageFromImage(Image*, ImageOrientationDescription);
     DragImageRef createDragImageIconForCachedImageFilename(const String&);
-    DragImageRef createDragImageForLink(KURL&, const String& label, FontRenderingMode);
+    DragImageRef createDragImageForLink(URL&, const String& label, FontRenderingMode);
     void deleteDragImage(DragImageRef);
 }
 

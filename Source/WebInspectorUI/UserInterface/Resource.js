@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Resource = function(url, mimeType, type, loaderIdentifier, requestIdentifier, requestMethod, requestHeaders, requestData, requestSentTimestamp)
+WebInspector.Resource = function(url, mimeType, type, loaderIdentifier, requestIdentifier, requestMethod, requestHeaders, requestData, requestSentTimestamp, initiatorSourceCodeLocation)
 {
     WebInspector.SourceCode.call(this);
 
@@ -42,6 +42,7 @@ WebInspector.Resource = function(url, mimeType, type, loaderIdentifier, requestI
     this._requestHeaders = requestHeaders || {};
     this._responseHeaders = {};
     this._parentFrame = null;
+    this._initiatorSourceCodeLocation = initiatorSourceCodeLocation || null;
     this._requestSentTimestamp = requestSentTimestamp || NaN;
     this._responseReceivedTimestamp = NaN;
     this._lastRedirectReceivedTimestamp = NaN;
@@ -126,6 +127,8 @@ WebInspector.Resource.Type.fromMIMEType = function(mimeType)
     if (!mimeType)
         return WebInspector.Resource.Type.Other;
 
+    mimeType = parseMIMEType(mimeType).type;
+
     if (mimeType in WebInspector.Resource.Type._mimeTypeMap)
         return WebInspector.Resource.Type._mimeTypeMap[mimeType];
 
@@ -199,6 +202,11 @@ WebInspector.Resource.prototype = {
         return WebInspector.displayNameForURL(this._url, this.urlComponents);
     },
 
+    get initiatorSourceCodeLocation()
+    {
+        return this._initiatorSourceCodeLocation;
+    },
+
     get type()
     {
         return this._type;
@@ -207,6 +215,13 @@ WebInspector.Resource.prototype = {
     get mimeType()
     {
         return this._mimeType;
+    },
+
+    get mimeTypeComponents()
+    {
+        if (!this._mimeTypeComponents)
+            this._mimeTypeComponents = parseMIMEType(this._mimeType);
+        return this._mimeTypeComponents;
     },
 
     get syntheticMIMEType()
@@ -243,7 +258,7 @@ WebInspector.Resource.prototype = {
         if (content === null || content.length > maximumDataURLSize)
             return this._url;
 
-        return "data:" + this._mimeType + (this.contentIsBase64Encoded ? ";base64," + content : "," + encodeURIComponent(content));
+        return "data:" + this.mimeTypeComponents.type + (this.contentIsBase64Encoded ? ";base64," + content : "," + encodeURIComponent(content));
     },
 
     isMainResource: function()
@@ -498,8 +513,12 @@ WebInspector.Resource.prototype = {
             this.dispatchEventToListeners(WebInspector.Resource.Event.URLDidChange, {oldURL: oldURL});
         }
 
-        if (oldMIMEType !== mimeType)
+        if (oldMIMEType !== mimeType) {
+            // Delete the MIME-type components so the MIME-type is re-parsed the next time it is requested.
+            delete this._mimeTypeComponents;
+
             this.dispatchEventToListeners(WebInspector.Resource.Event.MIMETypeDidChange, {oldMIMEType: oldMIMEType});
+        }
 
         if (oldType !== type)
             this.dispatchEventToListeners(WebInspector.Resource.Event.TypeDidChange, {oldType: oldType});

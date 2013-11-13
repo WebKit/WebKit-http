@@ -42,7 +42,7 @@ enum TranslateAttributeMode {
 
 class HTMLElement : public StyledElement {
 public:
-    static PassRefPtr<HTMLElement> create(const QualifiedName& tagName, Document*);
+    static PassRefPtr<HTMLElement> create(const QualifiedName& tagName, Document&);
 
     PassRefPtr<HTMLCollection> children();
 
@@ -84,7 +84,7 @@ public:
     bool ieForbidsInsertHTML() const;
 
     virtual bool rendererIsNeeded(const RenderStyle&);
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 
     HTMLFormElement* form() const { return virtualForm(); }
 
@@ -97,7 +97,7 @@ public:
     virtual FormNamedItem* asFormNamedItem() { return 0; }
 
 protected:
-    HTMLElement(const QualifiedName& tagName, Document*, ConstructionType);
+    HTMLElement(const QualifiedName& tagName, Document&, ConstructionType);
 
     void addHTMLLengthToStyle(MutableStylePropertySet*, CSSPropertyID, const String& value);
     void addHTMLColorToStyle(MutableStylePropertySet*, CSSPropertyID, const String& color);
@@ -131,32 +131,18 @@ private:
     TextDirection directionality(Node** strongDirectionalityTextNode= 0) const;
 
     TranslateAttributeMode translateAttributeMode() const;
-
-    AtomicString eventNameForAttributeName(const QualifiedName& attrName) const;
 };
 
-inline HTMLElement* toHTMLElement(Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isHTMLElement());
-    return static_cast<HTMLElement*>(node);
-}
-
-inline const HTMLElement* toHTMLElement(const Node* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isHTMLElement());
-    return static_cast<const HTMLElement*>(node);
-}
-
-// This will catch anyone doing an unnecessary cast.
-void toHTMLElement(const HTMLElement*);
-
-inline HTMLElement::HTMLElement(const QualifiedName& tagName, Document* document, ConstructionType type = CreateHTMLElement)
+inline HTMLElement::HTMLElement(const QualifiedName& tagName, Document& document, ConstructionType type = CreateHTMLElement)
     : StyledElement(tagName, document, type)
 {
     ASSERT(tagName.localName().impl());
 }
 
+inline bool isHTMLElement(const Node& node) { return node.isHTMLElement(); }
 template <> inline bool isElementOfType<HTMLElement>(const Element* element) { return element->isHTMLElement(); }
+
+ELEMENT_TYPE_CASTS(HTMLElement)
 
 } // namespace WebCore
 

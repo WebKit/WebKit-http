@@ -35,10 +35,10 @@ class RenderObject;
 class SVGClipPathElement FINAL : public SVGGraphicsElement,
                                  public SVGExternalResourcesRequired {
 public:
-    static PassRefPtr<SVGClipPathElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGClipPathElement> create(const QualifiedName&, Document&);
 
 private:
-    SVGClipPathElement(const QualifiedName&, Document*);
+    SVGClipPathElement(const QualifiedName&, Document&);
 
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool needsPendingResourceHandling() const { return false; }
@@ -48,13 +48,15 @@ private:
     virtual void svgAttributeChanged(const QualifiedName&);
     virtual void childrenChanged(const ChildChange&) OVERRIDE;
 
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&);
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGClipPathElement)
         DECLARE_ANIMATED_ENUMERATION(ClipPathUnits, clipPathUnits, SVGUnitTypes::SVGUnitType)
         DECLARE_ANIMATED_BOOLEAN(ExternalResourcesRequired, externalResourcesRequired)
     END_DECLARE_ANIMATED_PROPERTIES
 };
+
+ELEMENT_TYPE_CASTS(SVGClipPathElement)
 
 }
 

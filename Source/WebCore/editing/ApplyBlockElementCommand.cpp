@@ -29,7 +29,7 @@
 
 #include "HTMLElement.h"
 #include "HTMLNames.h"
-#include "RenderObject.h"
+#include "RenderElement.h"
 #include "RenderStyle.h"
 #include "Text.h"
 #include "TextIterator.h"
@@ -108,7 +108,7 @@ void ApplyBlockElementCommand::formatSelection(const VisiblePosition& startOfSel
     if (isAtUnsplittableElement(start)) {
         RefPtr<Element> blockquote = createBlockElement();
         insertNodeAt(blockquote, start);
-        RefPtr<Element> placeholder = createBreakElement(&document());
+        RefPtr<Element> placeholder = createBreakElement(document());
         appendNode(placeholder, blockquote);
         setEndingSelection(VisibleSelection(positionBeforeNode(placeholder.get()), DOWNSTREAM, endingSelection().isDirectional()));
         return;
@@ -169,14 +169,20 @@ static bool isNewLineAtPosition(const Position& position)
     return textAtPosition[0] == '\n';
 }
 
-static RenderStyle* renderStyleOfEnclosingTextNode(const Position& position)
+RenderStyle* ApplyBlockElementCommand::renderStyleOfEnclosingTextNode(const Position& position)
 {
     if (position.anchorType() != Position::PositionIsOffsetInAnchor
         || !position.containerNode()
-        || !position.containerNode()->isTextNode()
-        || !position.containerNode()->renderer())
+        || !position.containerNode()->isTextNode())
         return 0;
-    return position.containerNode()->renderer()->style();
+
+    document().updateStyleIfNeeded();
+
+    RenderObject* renderer = position.containerNode()->renderer();
+    if (!renderer)
+        return 0;
+
+    return renderer->style();
 }
 
 void ApplyBlockElementCommand::rangeForParagraphSplittingTextNodesIfNeeded(const VisiblePosition& endOfCurrentParagraph, Position& start, Position& end)
@@ -278,7 +284,7 @@ VisiblePosition ApplyBlockElementCommand::endOfNextParagrahSplittingTextNodesIfN
 
 PassRefPtr<Element> ApplyBlockElementCommand::createBlockElement() const
 {
-    RefPtr<Element> element = createHTMLElement(&document(), m_tagName);
+    RefPtr<Element> element = createHTMLElement(document(), m_tagName);
     if (m_inlineStyle.length())
         element->setAttribute(styleAttr, m_inlineStyle);
     return element.release();

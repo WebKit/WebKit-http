@@ -29,15 +29,15 @@ namespace WebCore {
 
 class HTMLAppletElement FINAL : public HTMLPlugInImageElement {
 public:
-    static PassRefPtr<HTMLAppletElement> create(const QualifiedName&, Document*, bool createdByParser);
+    static PassRefPtr<HTMLAppletElement> create(const QualifiedName&, Document&, bool createdByParser);
 
 private:
-    HTMLAppletElement(const QualifiedName&, Document*, bool createdByParser);
+    HTMLAppletElement(const QualifiedName&, Document&, bool createdByParser);
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     
     virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE;
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
+    virtual RenderElement* createRenderer(RenderArena&, RenderStyle&) OVERRIDE;
 
     virtual RenderWidget* renderWidgetForJSBindings() const;
     virtual void updateWidget(PluginCreationOption) OVERRIDE;

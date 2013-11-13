@@ -26,19 +26,17 @@
 #ifndef MapData_h
 #define MapData_h
 
-#include "CallFrame.h"
-#include "JSCJSValue.h"
-#include "JSDestructibleObject.h"
-
+#include "JSCell.h"
+#include "Structure.h"
 #include <wtf/HashFunctions.h>
 #include <wtf/HashMap.h>
 #include <wtf/MathExtras.h>
 
 namespace JSC {
 
-class MapData : public JSDestructibleObject {
+class MapData : public JSCell {
 public:
-    typedef JSDestructibleObject Base;
+    typedef JSCell Base;
 
     struct const_iterator {
         const_iterator(const MapData*);
@@ -68,17 +66,20 @@ public:
         JSValue value;
     };
 
-    static MapData* create(VM& vm, JSGlobalObject* globalObject)
+    static MapData* create(VM& vm)
     {
-        MapData* mapData = new (NotNull, allocateCell<MapData>(vm.heap)) MapData(vm, globalObject);
+        MapData* mapData = new (NotNull, allocateCell<MapData>(vm.heap)) MapData(vm);
         mapData->finishCreation(vm);
         return mapData;
     }
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(CompoundType, StructureFlags), info());
     }
+
+    static const bool needsDestruction = true;
+    static const bool hasImmortalStructure = true;
 
     JS_EXPORT_PRIVATE void set(CallFrame*, KeyType, JSValue);
     JSValue get(CallFrame*, KeyType);
@@ -104,10 +105,13 @@ private:
         WriteBarrier<Unknown> value;
     };
 
+    typedef HashMap<JSCell*, int32_t, typename WTF::DefaultHash<JSCell*>::Hash, WTF::HashTraits<JSCell*>, IndexTraits> CellKeyedMap;
     typedef HashMap<EncodedJSValue, int32_t, EncodedJSValueHash, EncodedJSValueHashTraits, IndexTraits> ValueKeyedMap;
     typedef HashMap<StringImpl*, int32_t, typename WTF::DefaultHash<StringImpl*>::Hash, WTF::HashTraits<StringImpl*>, IndexTraits> StringKeyedMap;
 
-    MapData(VM&, JSGlobalObject*);
+    size_t capacityInBytes() { return m_capacity * sizeof(Entry); }
+
+    MapData(VM&);
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
     static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
@@ -123,6 +127,7 @@ private:
     ALWAYS_INLINE void replaceAndPackBackingStore(Entry* destination, int32_t newSize);
     ALWAYS_INLINE void replaceBackingStore(Entry* destination, int32_t newSize);
 
+    CellKeyedMap m_cellKeyedTable;
     ValueKeyedMap m_valueKeyedTable;
     StringKeyedMap m_stringKeyedTable;
     int32_t m_capacity;

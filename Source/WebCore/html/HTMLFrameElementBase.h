@@ -31,7 +31,7 @@ namespace WebCore {
 
 class HTMLFrameElementBase : public HTMLFrameOwnerElement {
 public:
-    KURL location() const;
+    URL location() const;
     void setLocation(const String&);
 
     virtual ScrollbarMode scrollingMode() const { return m_scrolling; }
@@ -45,7 +45,7 @@ public:
     virtual bool canContainRangeEndPoint() const { return false; }
 
 protected:
-    HTMLFrameElementBase(const QualifiedName&, Document*);
+    HTMLFrameElementBase(const QualifiedName&, Document&);
 
     bool isURLAllowed() const;
 
@@ -81,9 +81,19 @@ private:
     bool m_viewSource;
 };
 
+inline bool isHTMLFrameElementBase(const Node* node)
+{
+    return isHTMLFrameElement(node) || isHTMLIFrameElement(node);
+}
+
+inline bool isHTMLFrameElementBase(const Element* element)
+{
+    return isHTMLFrameElement(element) || isHTMLIFrameElement(element);
+}
+
 inline HTMLFrameElementBase* toHTMLFrameElementBase(Node* node)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(HTMLNames::frameTag) || node->hasTagName(HTMLNames::iframeTag));
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLFrameElementBase(node));
     return static_cast<HTMLFrameElementBase*>(node);
 }
 

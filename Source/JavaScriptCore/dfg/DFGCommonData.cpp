@@ -45,8 +45,19 @@ void CommonData::notifyCompilingStructureTransition(Plan& plan, CodeBlock* codeB
         node->structureTransitionData().newStructure);
 }
 
+unsigned CommonData::addCodeOrigin(CodeOrigin codeOrigin)
+{
+    if (codeOrigins.isEmpty()
+        || codeOrigins.last() != codeOrigin)
+        codeOrigins.append(codeOrigin);
+    unsigned index = codeOrigins.size() - 1;
+    ASSERT(codeOrigins[index] == codeOrigin);
+    return index;
+}
+
 void CommonData::shrinkToFit()
 {
+    codeOrigins.shrinkToFit();
     weakReferences.shrinkToFit();
     transitions.shrinkToFit();
 }

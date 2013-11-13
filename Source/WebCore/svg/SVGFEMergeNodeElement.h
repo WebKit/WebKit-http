@@ -29,10 +29,10 @@ namespace WebCore {
 
 class SVGFEMergeNodeElement FINAL : public SVGElement {
 public:
-    static PassRefPtr<SVGFEMergeNodeElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGFEMergeNodeElement> create(const QualifiedName&, Document&);
 
 private:
-    SVGFEMergeNodeElement(const QualifiedName&, Document*);
+    SVGFEMergeNodeElement(const QualifiedName&, Document&);
 
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
@@ -44,6 +44,8 @@ private:
         DECLARE_ANIMATED_STRING(In1, in1)
     END_DECLARE_ANIMATED_PROPERTIES
 };
+
+ELEMENT_TYPE_CASTS(SVGFEMergeNodeElement)
 
 } // namespace WebCore
 

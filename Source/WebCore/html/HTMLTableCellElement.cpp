@@ -42,12 +42,12 @@ static const int maxRowspan = 8190;
 
 using namespace HTMLNames;
 
-inline HTMLTableCellElement::HTMLTableCellElement(const QualifiedName& tagName, Document* document)
+inline HTMLTableCellElement::HTMLTableCellElement(const QualifiedName& tagName, Document& document)
     : HTMLTablePartElement(tagName, document)
 {
 }
 
-PassRefPtr<HTMLTableCellElement> HTMLTableCellElement::create(const QualifiedName& tagName, Document* document)
+PassRefPtr<HTMLTableCellElement> HTMLTableCellElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(new HTMLTableCellElement(tagName, document));
 }
@@ -159,7 +159,7 @@ String HTMLTableCellElement::scope() const
     return getAttribute(scopeAttr);
 }
 
-void HTMLTableCellElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) const
+void HTMLTableCellElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     HTMLTablePartElement::addSubresourceAttributeURLs(urls);
 
@@ -168,18 +168,16 @@ void HTMLTableCellElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) 
 
 HTMLTableCellElement* HTMLTableCellElement::cellAbove() const
 {
-    RenderObject* cellRenderer = renderer();
-    if (!cellRenderer)
-        return 0;
-    if (!cellRenderer->isTableCell())
-        return 0;
+    auto cellRenderer = renderer();
+    if (!cellRenderer || !cellRenderer->isTableCell())
+        return nullptr;
 
-    RenderTableCell* tableCellRenderer = toRenderTableCell(cellRenderer);
-    RenderTableCell* cellAboveRenderer = tableCellRenderer->table()->cellAbove(tableCellRenderer);
+    auto tableCellRenderer = toRenderTableCell(cellRenderer);
+    auto cellAboveRenderer = tableCellRenderer->table()->cellAbove(tableCellRenderer);
     if (!cellAboveRenderer)
-        return 0;
+        return nullptr;
 
-    return static_cast<HTMLTableCellElement*>(cellAboveRenderer->node());
+    return toHTMLTableCellElement(cellAboveRenderer->element());
 }
 
 #ifndef NDEBUG

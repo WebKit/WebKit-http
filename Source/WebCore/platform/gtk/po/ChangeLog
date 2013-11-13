@@ -1,3 +1,66 @@
+2013-09-16  Daniel Mustieles  <daniel.mustieles@gmail.com>
+
+        Updated spanish Translation
+        https://bugs.webkit.org/show_bug.cgi?id=100677
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * es.po: updated.
+
+2013-09-16  Fran Dieguez  <frandieguez@gnome.org>
+
+        Add new Galician translations
+        https://bugs.webkit.org/show_bug.cgi?id=105079
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * gl.po: updated
+
+2013-09-16  Chris Leonard  <cjlhomeaddress@gmail.com>
+
+        L10n - en_GB PO file for WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=100255
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * en_GB.po: updated.
+
+2013-09-16  Enrico Nicoletto  <liverig@gmail.com>
+
+        [l10n] [pt_BR] Updated Brazilian Portuguese translation of WebKitGTK+ - 12/09/2013
+        https://bugs.webkit.org/show_bug.cgi?id=121255
+
+        Reviewed by Gustavo Noronha.
+
+        * pt_BR.po: updated.
+
+2013-09-15  Piotr Drąg  <piotrdrag@gmail.com>
+
+        [l10n] Updated Polish translation of WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=121392
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * pl.po: updated.
+
+2013-09-10  Daniel Mustieles  <daniel.mustieles@gmail.com>
+
+        Updated Spanish translation for WebKitGtk+
+        https://bugs.webkit.org/show_bug.cgi?id=121032
+
+        Reviewed by Gustavo Noronha.
+
+        * es.po: updated.
+
+2013-09-10  Enrico Nicoletto  <liverig@gmail.com>
+
+        [l10n] [pt_BR] Updated Brazilian Portuguese translation of WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=120642
+
+        Reviewed by Gustavo Noronha.
+
+        * pt_BR.po: updated.
+
 2013-08-28  Christian Kirbach  <Christian.Kirbach@googlemail.com>
 
         [GTK] Please incorporate German translation update

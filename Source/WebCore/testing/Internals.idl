@@ -33,7 +33,6 @@
     boolean isPreloaded(DOMString url);
     boolean isLoadingFromMemoryCache(DOMString url);
 
-    [RaisesException] unsigned long numberOfScopedHTMLStyleChildren(Node scope);
     [RaisesException] CSSStyleDeclaration computedStyleIncludingVisitedInfo(Node node);
 
 #if defined(ENABLE_SHADOW_DOM) && ENABLE_SHADOW_DOM
@@ -49,8 +48,6 @@
     [RaisesException] Element includerFor(Node node);
     [RaisesException] DOMString shadowPseudoId(Element element);
     [RaisesException] void setShadowPseudoId(Element element, DOMString id);
-    [RaisesException] Element createContentElement();
-    [RaisesException] boolean isValidContentSelect(Element contentElement);
     [RaisesException] Node treeScopeRootNode(Node node);
     [RaisesException] Node parentTreeScope(Node node);
 
@@ -69,12 +66,6 @@
     [RaisesException] boolean pauseTransitionAtTimeOnElement(DOMString propertyName, double pauseTime, Element element);
     [RaisesException] boolean pauseTransitionAtTimeOnPseudoElement(DOMString property, double pauseTime, Element element, DOMString pseudoId);
 
-    [RaisesException] Node nextSiblingByWalker(Node node);
-    [RaisesException] Node firstChildByWalker(Node node);
-    [RaisesException] Node lastChildByWalker(Node node);
-    [RaisesException] Node nextNodeByWalker(Node node);
-    [RaisesException] Node previousNodeByWalker(Node node);
-
     [RaisesException] boolean attached(Node node);
 
     DOMString visiblePlaceholder(Element element);
@@ -89,6 +80,7 @@
     [RaisesException] ClientRect boundingBox(Element element);
 
     [RaisesException] ClientRectList inspectorHighlightRects(Document document);
+    [RaisesException] DOMString inspectorHighlightObject(Document document);
 
     [RaisesException] unsigned long markerCountForNode(Node node, DOMString markerType);
     [RaisesException] Range markerRangeForNode(Node node, DOMString markerType, unsigned long index);
@@ -188,8 +180,8 @@
 
     void allowRoundingHacks();
 
-    void insertAuthorCSS(Document document, DOMString css);
-    void insertUserCSS(Document document, DOMString css);
+    [RaisesException] void insertAuthorCSS(Document document, DOMString css);
+    [RaisesException] void insertUserCSS(Document document, DOMString css);
 
 #if defined(ENABLE_BATTERY_STATUS) && ENABLE_BATTERY_STATUS
     [RaisesException] void setBatteryStatus(Document document, DOMString eventType, boolean charging, double chargingTime, double dischargingTime, double level);

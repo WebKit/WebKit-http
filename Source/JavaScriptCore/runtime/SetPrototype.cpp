@@ -47,10 +47,8 @@ static EncodedJSValue JSC_HOST_CALL setProtoFuncHas(ExecState*);
 
 static EncodedJSValue JSC_HOST_CALL setProtoFuncSize(ExecState*);
 
-void SetPrototype::finishCreation(ExecState* exec, JSGlobalObject* globalObject)
+void SetPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
-    VM& vm = exec->vm();
-
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
     vm.prototypeMap.addPrototype(this);
@@ -61,10 +59,10 @@ void SetPrototype::finishCreation(ExecState* exec, JSGlobalObject* globalObject)
     JSC_NATIVE_FUNCTION(vm.propertyNames->forEach, setProtoFuncForEach, DontEnum, 1);
     JSC_NATIVE_FUNCTION(vm.propertyNames->has, setProtoFuncHas, DontEnum, 1);
 
-    GetterSetter* accessor = GetterSetter::create(exec);
-    JSFunction* function = JSFunction::create(exec, globalObject, 0, vm.propertyNames->size.string(), setProtoFuncSize);
-    accessor->setGetter(exec->vm(), function);
-    putDirectAccessor(exec, vm.propertyNames->size, accessor, DontEnum | Accessor);
+    GetterSetter* accessor = GetterSetter::create(vm);
+    JSFunction* function = JSFunction::create(vm, globalObject, 0, vm.propertyNames->size.string(), setProtoFuncSize);
+    accessor->setGetter(vm, function);
+    putDirectNonIndexAccessor(vm, vm.propertyNames->size, accessor, DontEnum | Accessor);
 }
 
 ALWAYS_INLINE static MapData* getMapData(CallFrame* callFrame, JSValue thisValue)

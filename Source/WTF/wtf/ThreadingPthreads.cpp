@@ -96,7 +96,7 @@ private:
     pthread_t m_pthreadHandle;
 };
 
-typedef HashMap<ThreadIdentifier, OwnPtr<PthreadState> > ThreadMap;
+typedef HashMap<ThreadIdentifier, std::unique_ptr<PthreadState>> ThreadMap;
 
 static Mutex* atomicallyInitializedStaticMutex;
 
@@ -179,7 +179,7 @@ static ThreadIdentifier establishIdentifierForPthreadHandle(const pthread_t& pth
     ASSERT(!identifierByPthreadHandle(pthreadHandle));
     MutexLocker locker(threadMapMutex());
     static ThreadIdentifier identifierCount = 1;
-    threadMap().add(identifierCount, adoptPtr(new PthreadState(pthreadHandle)));
+    threadMap().add(identifierCount, std::make_unique<PthreadState>(pthreadHandle));
     return identifierCount++;
 }
 
@@ -198,7 +198,7 @@ static void* wtfThreadEntryPoint(void* param)
 
 ThreadIdentifier createThreadInternal(ThreadFunction entryPoint, void* data, const char*)
 {
-    OwnPtr<ThreadFunctionInvocation> invocation = adoptPtr(new ThreadFunctionInvocation(entryPoint, data));
+    auto invocation = WTF::createOwned<ThreadFunctionInvocation>(entryPoint, data);
     pthread_t threadHandle;
     if (pthread_create(&threadHandle, 0, wtfThreadEntryPoint, invocation.get())) {
         LOG_ERROR("Failed to create pthread at entry point %p with data %p", wtfThreadEntryPoint, invocation.get());

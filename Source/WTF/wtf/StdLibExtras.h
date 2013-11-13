@@ -27,6 +27,7 @@
 #ifndef WTF_StdLibExtras_h
 #define WTF_StdLibExtras_h
 
+#include <memory>
 #include <wtf/Assertions.h>
 #include <wtf/CheckedArithmetic.h>
 
@@ -129,23 +130,23 @@ inline bool is8ByteAligned(void* p)
 /*
  * C++'s idea of a reinterpret_cast lacks sufficient cojones.
  */
-template<typename TO, typename FROM>
-inline TO bitwise_cast(FROM from)
+template<typename ToType, typename FromType>
+inline ToType bitwise_cast(FromType from)
 {
-    COMPILE_ASSERT(sizeof(TO) == sizeof(FROM), WTF_bitwise_cast_sizeof_casted_types_is_equal);
+    static_assert(sizeof(FromType) == sizeof(ToType), "bitwise_cast size of FromType and ToType must be equal!");
     union {
-        FROM from;
-        TO to;
+        FromType from;
+        ToType to;
     } u;
     u.from = from;
     return u.to;
 }
 
-template<typename To, typename From>
-inline To safeCast(From value)
+template<typename ToType, typename FromType>
+inline ToType safeCast(FromType value)
 {
-    ASSERT(isInBounds<To>(value));
-    return static_cast<To>(value);
+    ASSERT(isInBounds<ToType>(value));
+    return static_cast<ToType>(value);
 }
 
 // Returns a count of the number of bits set in 'bits'.
@@ -171,9 +172,10 @@ inline size_t roundUpToMultipleOf(size_t divisor, size_t x)
     size_t remainderMask = divisor - 1;
     return (x + remainderMask) & ~remainderMask;
 }
+
 template<size_t divisor> inline size_t roundUpToMultipleOf(size_t x)
 {
-    COMPILE_ASSERT(divisor && !(divisor & (divisor - 1)), divisor_is_a_power_of_two);
+    static_assert(divisor && !(divisor & (divisor - 1)), "divisor must be a power of two!");
     return roundUpToMultipleOf(divisor, x);
 }
 
@@ -263,7 +265,7 @@ inline ArrayElementType* approximateBinarySearch(const ArrayType& array, size_t 
 template<typename VectorType, typename ElementType>
 inline void insertIntoBoundedVector(VectorType& vector, size_t size, const ElementType& element, size_t index)
 {
-    for (unsigned i = size; i-- > index + 1;)
+    for (size_t i = size; i-- > index + 1;)
         vector[i] = vector[i - 1];
     vector[index] = element;
 }
@@ -301,6 +303,115 @@ inline void* operator new(size_t, NotNullTag, void* location)
 {
     ASSERT(location);
     return location;
+}
+
+#if (defined(_MSC_VER) && _MSC_VER < 1700) || (COMPILER(GCC) && !COMPILER(CLANG) && !GCC_VERSION_AT_LEAST(4, 8, 1))
+
+// Work-around for Pre-C++11 syntax in MSVC 2010, and prior as well as GCC < 4.8.1.
+namespace std {
+    template<class T> struct is_trivially_destructible {
+        static const bool value = std::has_trivial_destructor<T>::value;
+    };
+}
+#endif
+
+// This adds various C++14 features for versions of the STL that may not yet have them.
+namespace std {
+    template<class T> struct _Unique_if {
+        typedef unique_ptr<T> _Single_object;
+    };
+
+    template<class T> struct _Unique_if<T[]> {
+        typedef unique_ptr<T[]> _Unknown_bound;
+    };
+
+    template<class T, size_t N> struct _Unique_if<T[N]> {
+        typedef void _Known_bound;
+    };
+
+#if COMPILER_SUPPORTS(CXX_VARIADIC_TEMPLATES)
+    template<class T, class... Args> typename _Unique_if<T>::_Single_object
+    make_unique(Args&&... args)
+    {
+        return unique_ptr<T>(new T(std::forward<Args>(args)...));
+    }
+#else
+    template<class T> typename _Unique_if<T>::_Single_object
+    make_unique()
+    {
+        return unique_ptr<T>(new T);
+    }
+
+    template<class T, class A1> typename _Unique_if<T>::_Single_object
+    make_unique(A1&& a1)
+    {
+        return unique_ptr<T>(new T(std::forward<A1>(a1)));
+    }
+
+    template<class T, class A1, class A2> typename _Unique_if<T>::_Single_object
+    make_unique(A1&& a1, A2&& a2)
+    {
+        return unique_ptr<T>(new T(std::forward<A1>(a1), std::forward<A2>(a2)));
+    }
+
+    template<class T, class A1, class A2, class A3> typename _Unique_if<T>::_Single_object
+    make_unique(A1&& a1, A2&& a2, A3&& a3)
+    {
+        return unique_ptr<T>(new T(std::forward<A1>(a1), std::forward<A2>(a2), std::forward<A3>(a3)));
+    }
+
+    template<class T, class A1, class A2, class A3, class A4> typename _Unique_if<T>::_Single_object
+    make_unique(A1&& a1, A2&& a2, A3&& a3, A4&& a4)
+    {
+        return unique_ptr<T>(new T(std::forward<A1>(a1), std::forward<A2>(a2), std::forward<A3>(a3), std::forward<A4>(a4)));
+    }
+
+    template<class T, class A1, class A2, class A3, class A4, class A5> typename _Unique_if<T>::_Single_object
+    make_unique(A1&& a1, A2&& a2, A3&& a3, A4&& a4, A5&& a5)
+    {
+        return unique_ptr<T>(new T(std::forward<A1>(a1), std::forward<A2>(a2), std::forward<A3>(a3), std::forward<A4>(a4), std::forward<A5>(a5)));
+    }
+
+    template<class T, class A1, class A2, class A3, class A4, class A5, class A6> typename _Unique_if<T>::_Single_object
+    make_unique(A1&& a1, A2&& a2, A3&& a3, A4&& a4, A5&& a5, A6&& a6)
+    {
+        return unique_ptr<T>(new T(std::forward<A1>(a1), std::forward<A2>(a2), std::forward<A3>(a3), std::forward<A4>(a4), std::forward<A5>(a5), std::forward<A6>(a6)));
+    }
+
+#endif
+
+    template<class T> typename _Unique_if<T>::_Unknown_bound
+    make_unique(size_t n)
+    {
+        typedef typename remove_extent<T>::type U;
+        return unique_ptr<T>(new U[n]());
+    }
+    
+#if COMPILER_SUPPORTS(CXX_VARIADIC_TEMPLATES)
+    template<class T, class... Args> typename _Unique_if<T>::_Known_bound
+    make_unique(Args&&...) = delete;
+#endif
+
+#if COMPILER_SUPPORTS(CXX_VARIADIC_TEMPLATES)
+    // Compile-time integer sequences
+    // http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3658.html
+    // (Note that we only implement index_sequence, and not the more generic integer_sequence).
+    template<size_t... indexes> struct index_sequence {
+        static size_t size() { return sizeof...(indexes); }
+    };
+
+    template<size_t currentIndex, size_t...indexes> struct make_index_sequence_helper;
+
+    template<size_t...indexes> struct make_index_sequence_helper<0, indexes...> {
+        typedef std::index_sequence<indexes...> type;
+    };
+
+    template<size_t currentIndex, size_t...indexes> struct make_index_sequence_helper {
+        typedef typename make_index_sequence_helper<currentIndex - 1, currentIndex - 1, indexes...>::type type;
+    };
+
+    template<size_t length> struct make_index_sequence : public make_index_sequence_helper<length>::type { };
+#endif
 }
 
 using WTF::KB;

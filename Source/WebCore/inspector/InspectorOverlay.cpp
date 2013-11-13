@@ -35,17 +35,21 @@
 #include "DocumentLoader.h"
 #include "Element.h"
 #include "EmptyClients.h"
-#include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "InspectorClient.h"
 #include "InspectorOverlayPage.h"
 #include "InspectorValues.h"
+#include "MainFrame.h"
 #include "Node.h"
 #include "Page.h"
 #include "RenderBoxModelObject.h"
+#include "RenderElement.h"
+#include "RenderFlowThread.h"
 #include "RenderInline.h"
-#include "RenderObject.h"
+#include "RenderNamedFlowThread.h"
+#include "RenderRegion.h"
+#include "RenderView.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
@@ -353,6 +357,70 @@ static PassRefPtr<InspectorObject> buildObjectForHighlight(FrameView* mainView, 
     return object.release();
 }
 
+static PassRefPtr<InspectorObject> buildObjectForRegionHighlight(FrameView* mainView, RenderRegion* region)
+{
+    FrameView* containingView = region->frame().view();
+    if (!containingView)
+        return 0;
+
+    LayoutRect borderBox = region->borderBoxRect();
+    borderBox.setWidth(borderBox.width() + region->verticalScrollbarWidth());
+    borderBox.setHeight(borderBox.height() + region->horizontalScrollbarHeight());
+
+    // Create incoming and outgoing boxes that we use to chain the regions toghether.
+    const LayoutSize linkBoxSize(10, 10);
+    const LayoutSize linkBoxMidpoint(linkBoxSize.width() / 2, linkBoxSize.height() / 2);
+    
+    LayoutRect incomingRectBox = LayoutRect(borderBox.location() - linkBoxMidpoint, linkBoxSize);
+    LayoutRect outgoingRectBox = LayoutRect(borderBox.location() - linkBoxMidpoint + borderBox.size(), linkBoxSize);
+
+    // Move the link boxes slightly inside the region border box.
+    LayoutUnit maxUsableHeight = std::max(LayoutUnit(), borderBox.height() - linkBoxMidpoint.height());
+    LayoutUnit linkBoxVerticalOffset = std::min(LayoutUnit(15), maxUsableHeight);
+    incomingRectBox.move(0, linkBoxVerticalOffset);
+    outgoingRectBox.move(0, -linkBoxVerticalOffset);
+
+    FloatQuad borderRectQuad = region->localToAbsoluteQuad(FloatRect(borderBox));
+    FloatQuad incomingRectQuad = region->localToAbsoluteQuad(FloatRect(incomingRectBox));
+    FloatQuad outgoingRectQuad = region->localToAbsoluteQuad(FloatRect(outgoingRectBox));
+
+    contentsQuadToPage(mainView, containingView, borderRectQuad);
+    contentsQuadToPage(mainView, containingView, incomingRectQuad);
+    contentsQuadToPage(mainView, containingView, outgoingRectQuad);
+
+    RefPtr<InspectorObject> regionObject = InspectorObject::create();
+
+    regionObject->setArray("borderQuad", buildArrayForQuad(borderRectQuad));
+    regionObject->setArray("incomingQuad", buildArrayForQuad(incomingRectQuad));
+    regionObject->setArray("outgoingQuad", buildArrayForQuad(outgoingRectQuad));
+
+    return regionObject.release();
+}
+
+static PassRefPtr<InspectorArray> buildObjectForCSSRegionsHighlight(RenderRegion* region, RenderFlowThread* flowThread)
+{
+    FrameView* mainFrameView = region->document().page()->mainFrame().view();
+
+    RefPtr<InspectorArray> array = InspectorArray::create();
+
+    const RenderRegionList& regionList = flowThread->renderRegionList();
+    for (RenderRegionList::const_iterator iter = regionList.begin(); iter != regionList.end(); ++iter) {
+        RenderRegion* iterRegion = *iter;
+        if (!iterRegion->isValid())
+            continue;
+        RefPtr<InspectorObject> regionHighlightObject = buildObjectForRegionHighlight(mainFrameView, iterRegion);
+        if (!regionHighlightObject)
+            continue;
+        if (region == iterRegion) {
+            // Let the script know that this is the currently highlighted node.
+            regionHighlightObject->setBoolean("isHighlighted", true);
+        }
+        array->pushObject(regionHighlightObject.release());
+    }
+
+    return array.release();
+}
+
 static PassRefPtr<InspectorObject> buildObjectForSize(const IntSize& size)
 {
     RefPtr<InspectorObject> result = InspectorObject::create();
@@ -366,10 +434,10 @@ void InspectorOverlay::drawGutter()
     evaluateInOverlay("drawGutter", "");
 }
 
-void InspectorOverlay::drawNodeHighlight()
+PassRefPtr<InspectorObject> InspectorOverlay::buildObjectForHighlightedNode() const
 {
     if (!m_highlightNode)
-        return;
+        return 0;
 
     Highlight highlight;
     buildNodeHighlight(m_highlightNode.get(), m_nodeHighlightConfig, &highlight);
@@ -405,8 +473,29 @@ void InspectorOverlay::drawNodeHighlight()
         RenderBoxModelObject* modelObject = renderer->isBoxModelObject() ? toRenderBoxModelObject(renderer) : 0;
         elementInfo->setString("nodeWidth", String::number(modelObject ? adjustForAbsoluteZoom(modelObject->pixelSnappedOffsetWidth(), modelObject) : boundingBox.width()));
         elementInfo->setString("nodeHeight", String::number(modelObject ? adjustForAbsoluteZoom(modelObject->pixelSnappedOffsetHeight(), modelObject) : boundingBox.height()));
+        
+        if (renderer->isRenderRegion()) {
+            RenderRegion* region = toRenderRegion(renderer);
+            RenderFlowThread* flowThread = region->flowThread();
+            if (flowThread && flowThread->isRenderNamedFlowThread()) {
+                RefPtr<InspectorObject> flowInfo = InspectorObject::create();
+                flowInfo->setString("name", toRenderNamedFlowThread(flowThread)->flowThreadName());
+                flowInfo->setArray("regions", buildObjectForCSSRegionsHighlight(region, flowThread));
+                elementInfo->setObject("flowInfo", flowInfo.release());
+            }
+        }
+        
         highlightObject->setObject("elementInfo", elementInfo.release());
     }
+    
+    return highlightObject.release();
+}
+
+void InspectorOverlay::drawNodeHighlight()
+{
+    RefPtr<InspectorObject> highlightObject = buildObjectForHighlightedNode();
+    if (!highlightObject)
+        return;
     evaluateInOverlay("drawNodeHighlight", highlightObject);
 }
 

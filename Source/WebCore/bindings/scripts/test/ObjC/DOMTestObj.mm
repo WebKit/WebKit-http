@@ -49,7 +49,6 @@
 #import "ExceptionHandlers.h"
 #import "HTMLNames.h"
 #import "JSMainThreadExecState.h"
-#import "KURL.h"
 #import "Node.h"
 #import "ObjCEventListener.h"
 #import "SVGDocument.h"
@@ -64,6 +63,7 @@
 #import "TestObjectCConstructor.h"
 #import "TestSubObjConstructor.h"
 #import "ThreadCheck.h"
+#import "URL.h"
 #import "WebCoreObjCExtras.h"
 #import "WebScriptObjectPrivate.h"
 #import "any.h"
@@ -262,7 +262,7 @@
 - (NSString *)reflectedStringAttr
 {
     WebCore::JSMainThreadNullState state;
-    return IMPL->fastGetAttribute(WebCore::HTMLNames::reflectedstringattrAttr);
+    return IMPL->getAttribute(WebCore::HTMLNames::reflectedstringattrAttr);
 }
 
 - (void)setReflectedStringAttr:(NSString *)newReflectedStringAttr
@@ -322,7 +322,7 @@
 - (NSString *)reflectedStringAttr
 {
     WebCore::JSMainThreadNullState state;
-    return IMPL->fastGetAttribute(WebCore::HTMLNames::customContentStringAttrAttr);
+    return IMPL->getAttribute(WebCore::HTMLNames::customContentStringAttrAttr);
 }
 
 - (void)setReflectedStringAttr:(NSString *)newReflectedStringAttr

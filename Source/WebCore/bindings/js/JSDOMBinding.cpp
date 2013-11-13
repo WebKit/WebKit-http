@@ -75,19 +75,19 @@ JSValue jsStringOrUndefined(ExecState* exec, const String& s)
     return jsStringWithCache(exec, s);
 }
 
-JSValue jsString(ExecState* exec, const KURL& url)
+JSValue jsString(ExecState* exec, const URL& url)
 {
     return jsStringWithCache(exec, url.string());
 }
 
-JSValue jsStringOrNull(ExecState* exec, const KURL& url)
+JSValue jsStringOrNull(ExecState* exec, const URL& url)
 {
     if (url.isNull())
         return jsNull();
     return jsStringWithCache(exec, url.string());
 }
 
-JSValue jsStringOrUndefined(ExecState* exec, const KURL& url)
+JSValue jsStringOrUndefined(ExecState* exec, const URL& url)
 {
     if (url.isNull())
         return jsUndefined();
@@ -121,7 +121,7 @@ JSValue jsDateOrNull(ExecState* exec, double value)
 {
     if (!std::isfinite(value))
         return jsNull();
-    return DateInstance::create(exec, exec->lexicalGlobalObject()->dateStructure(), value);
+    return DateInstance::create(exec->vm(), exec->lexicalGlobalObject()->dateStructure(), value);
 }
 
 double valueToDate(ExecState* exec, JSValue value)
@@ -274,7 +274,7 @@ void printErrorMessageForFrame(Frame* frame, const String& message)
 
 JSValue objectToStringFunctionGetter(ExecState* exec, JSValue, PropertyName propertyName)
 {
-    return JSFunction::create(exec, exec->lexicalGlobalObject(), 0, propertyName.publicName(), objectProtoFuncToString);
+    return JSFunction::create(exec->vm(), exec->lexicalGlobalObject(), 0, propertyName.publicName(), objectProtoFuncToString);
 }
 
 Structure* getCachedDOMStructure(JSDOMGlobalObject* globalObject, const ClassInfo* classInfo)

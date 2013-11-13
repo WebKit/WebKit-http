@@ -28,10 +28,10 @@
 #include "ScrollingCoordinator.h"
 
 #include "Document.h"
-#include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsLayer.h"
 #include "IntRect.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "PlatformWheelEvent.h"
 #include "PluginViewBase.h"
@@ -102,7 +102,7 @@ bool ScrollingCoordinator::coordinatesScrollingForFrameView(FrameView* frameView
     ASSERT(m_page);
 
     // We currently only handle the main frame.
-    if (&frameView->frame() != &m_page->mainFrame())
+    if (!frameView->frame().isMainFrame())
         return false;
 
     // We currently only support composited mode.

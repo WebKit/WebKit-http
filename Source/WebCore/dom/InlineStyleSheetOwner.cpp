@@ -36,75 +36,69 @@
 
 namespace WebCore {
 
-InlineStyleSheetOwner::InlineStyleSheetOwner(Document* document, bool createdByParser)
+InlineStyleSheetOwner::InlineStyleSheetOwner(Document& document, bool createdByParser)
     : m_isParsingChildren(createdByParser)
     , m_loading(false)
     , m_startLineNumber(WTF::OrdinalNumber::beforeFirst())
 {
-    if (createdByParser && document && document->scriptableDocumentParser() && !document->isInDocumentWrite())
-        m_startLineNumber = document->scriptableDocumentParser()->lineNumber();
+    if (createdByParser && document.scriptableDocumentParser() && !document.isInDocumentWrite())
+        m_startLineNumber = document.scriptableDocumentParser()->lineNumber();
 }
 
 InlineStyleSheetOwner::~InlineStyleSheetOwner()
 {
 }
 
-void InlineStyleSheetOwner::insertedIntoDocument(Document* document, Element* element)
+void InlineStyleSheetOwner::insertedIntoDocument(Document& document, Element& element)
 {
-    ASSERT(document);
-    ASSERT(element);
-    document->styleSheetCollection()->addStyleSheetCandidateNode(element, m_isParsingChildren);
+    document.styleSheetCollection().addStyleSheetCandidateNode(element, m_isParsingChildren);
 
     if (m_isParsingChildren)
         return;
     createSheetFromTextContents(element);
 }
 
-void InlineStyleSheetOwner::removedFromDocument(Document* document, Element* element)
+void InlineStyleSheetOwner::removedFromDocument(Document& document, Element& element)
 {
-    ASSERT(document);
-    ASSERT(element);
-    document->styleSheetCollection()->removeStyleSheetCandidateNode(element);
+    document.styleSheetCollection().removeStyleSheetCandidateNode(element);
 
     if (m_sheet)
         clearSheet();
 
     // If we're in document teardown, then we don't need to do any notification of our sheet's removal.
-    if (document->renderer())
-        document->styleResolverChanged(DeferRecalcStyle);
+    if (document.hasLivingRenderTree())
+        document.styleResolverChanged(DeferRecalcStyle);
 }
 
-void InlineStyleSheetOwner::clearDocumentData(Document* document, Element* element)
+void InlineStyleSheetOwner::clearDocumentData(Document& document, Element& element)
 {
     if (m_sheet)
         m_sheet->clearOwnerNode();
 
-    if (!element->inDocument())
+    if (!element.inDocument())
         return;
-    document->styleSheetCollection()->removeStyleSheetCandidateNode(element);
+    document.styleSheetCollection().removeStyleSheetCandidateNode(element);
 }
 
-void InlineStyleSheetOwner::childrenChanged(Element* element)
+void InlineStyleSheetOwner::childrenChanged(Element& element)
 {
-    ASSERT(element);
     if (m_isParsingChildren)
         return;
-    if (!element->inDocument())
+    if (!element.inDocument())
         return;
     createSheetFromTextContents(element);
 }
 
-void InlineStyleSheetOwner::finishParsingChildren(Element* element)
+void InlineStyleSheetOwner::finishParsingChildren(Element& element)
 {
-    ASSERT(element);
-    if (element->inDocument())
+    if (element.inDocument())
         createSheetFromTextContents(element);
     m_isParsingChildren = false;
 }
 
-void InlineStyleSheetOwner::createSheetFromTextContents(Element* element)
+void InlineStyleSheetOwner::createSheetFromTextContents(Element& element)
 {
-    createSheet(element, TextNodeTraversal::contentsAsString(element));
+    createSheet(element, TextNodeTraversal::contentsAsString(&element));
 }
 
 void InlineStyleSheetOwner::clearSheet()
@@ -113,22 +107,21 @@ void InlineStyleSheetOwner::clearSheet()
     m_sheet.release()->clearOwnerNode();
 }
 
-inline bool isValidCSSContentType(Element* element, const AtomicString& type)
+inline bool isValidCSSContentType(Element& element, const AtomicString& type)
 {
     DEFINE_STATIC_LOCAL(const AtomicString, cssContentType, ("text/css", AtomicString::ConstructFromLiteral));
     if (type.isEmpty())
         return true;
-    return element->isHTMLElement() ? equalIgnoringCase(type, cssContentType) : type == cssContentType;
+    return element.isHTMLElement() ? equalIgnoringCase(type, cssContentType) : type == cssContentType;
 }
 
-void InlineStyleSheetOwner::createSheet(Element* element, const String& text)
+void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
 {
-    ASSERT(element);
-    ASSERT(element->inDocument());
-    Document& document = element->document();
+    ASSERT(element.inDocument());
+    Document& document = element.document();
     if (m_sheet) {
         if (m_sheet->isLoading())
-            document.styleSheetCollection()->removePendingSheet();
+            document.styleSheetCollection().removePendingSheet();
         clearSheet();
     }
 
@@ -138,7 +131,7 @@ void InlineStyleSheetOwner::createSheet(Element* element, const String& text)
         return;
 
     RefPtr<MediaQuerySet> mediaQueries;
-    if (element->isHTMLElement())
+    if (element.isHTMLElement())
         mediaQueries = MediaQuerySet::createAllowingDescriptionSyntax(m_media);
     else
         mediaQueries = MediaQuerySet::create(m_media);
@@ -148,13 +141,13 @@ void InlineStyleSheetOwner::createSheet(Element* element, const String& text)
     if (!screenEval.eval(mediaQueries.get()) && !printEval.eval(mediaQueries.get()))
         return;
 
-    document.styleSheetCollection()->addPendingSheet();
+    document.styleSheetCollection().addPendingSheet();
 
     m_loading = true;
 
-    m_sheet = CSSStyleSheet::createInline(element, KURL(), document.inputEncoding());
+    m_sheet = CSSStyleSheet::createInline(element, URL(), document.inputEncoding());
     m_sheet->setMediaQueries(mediaQueries.release());
-    m_sheet->setTitle(element->title());
+    m_sheet->setTitle(element.title());
     m_sheet->contents()->parseStringAtLine(text, m_startLineNumber.zeroBasedInt(), m_isParsingChildren);
 
     m_loading = false;
@@ -170,20 +163,18 @@ bool InlineStyleSheetOwner::isLoading() const
     return m_sheet && m_sheet->isLoading();
 }
 
-bool InlineStyleSheetOwner::sheetLoaded(Document* document)
+bool InlineStyleSheetOwner::sheetLoaded(Document& document)
 {
-    ASSERT(document);
     if (isLoading())
         return false;
 
-    document->styleSheetCollection()->removePendingSheet();
+    document.styleSheetCollection().removePendingSheet();
     return true;
 }
 
-void InlineStyleSheetOwner::startLoadingDynamicSheet(Document* document)
+void InlineStyleSheetOwner::startLoadingDynamicSheet(Document& document)
 {
-    ASSERT(document);
-    document->styleSheetCollection()->addPendingSheet();
+    document.styleSheetCollection().addPendingSheet();
 }
 
 }

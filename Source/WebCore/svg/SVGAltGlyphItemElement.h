@@ -28,15 +28,17 @@ namespace WebCore {
 
 class SVGAltGlyphItemElement FINAL : public SVGElement {
 public:
-    static PassRefPtr<SVGAltGlyphItemElement> create(const QualifiedName&, Document*);
+    static PassRefPtr<SVGAltGlyphItemElement> create(const QualifiedName&, Document&);
 
     bool hasValidGlyphElements(Vector<String>& glyphNames) const;
 
 private:
-    SVGAltGlyphItemElement(const QualifiedName&, Document*);
+    SVGAltGlyphItemElement(const QualifiedName&, Document&);
 
     virtual bool rendererIsNeeded(const RenderStyle&) OVERRIDE { return false; }
 };
+
+ELEMENT_TYPE_CASTS(SVGAltGlyphItemElement)
 
 }
 
