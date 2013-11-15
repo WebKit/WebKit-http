@@ -67,7 +67,6 @@ public:
 
 #if PLATFORM(HAIKU)
     virtual BUrlContext* context() = 0;
-    virtual void setContext(BUrlContext*) = 0;
 #endif
 
 #if PLATFORM(WIN)

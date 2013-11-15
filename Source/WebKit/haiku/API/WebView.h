@@ -32,6 +32,7 @@
 #include <String.h>
 #include <View.h>
 
+class BUrlContext;
 class BWebPage;
 
 
@@ -82,6 +83,8 @@ public:
 			BString				MainFrameRequestedURL() const;
 			BString				MainFrameURL() const;
 
+            void                SetContext(BUrlContext* context);
+            BUrlContext*        GetContext();
 			void				LoadURL(const char* urlString,
 									bool aquireFocus = true);
 			void				Reload();
@@ -136,6 +139,7 @@ private:
 			BView*				fOffscreenView;
 			bool				fOffscreenViewClean;
 
+            BUrlContext*        fContext;
 			BWebPage*			fWebPage;
 
 			UserData*			fUserData;

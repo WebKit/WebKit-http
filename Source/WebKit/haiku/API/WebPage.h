@@ -92,7 +92,6 @@ public:
 			BWebView*			WebView() const;
 				// NOTE: Using the BWebView requires locking it's looper!
 
-            void                SetContext(BUrlContext* context);
 			void				LoadURL(const char* urlString);
 			void				Reload();
 			void				GoBack();
@@ -156,6 +155,7 @@ private:
 		bool modalDialog = false, bool resizable = true,
 		bool activate = true);
 
+    BUrlContext** GetContext();
 	BRect windowFrame();
 	BRect windowBounds();
 	void setWindowBounds(const BRect& bounds);
@@ -229,7 +229,6 @@ private:
 			BWebFrame*			fMainFrame;
 			BWebSettings*		fSettings;
 			WebCore::Page*		fPage;
-            BUrlContext*        fContext;
 
 			float				fLoadingProgress;
 			BString				fStatusMessage;

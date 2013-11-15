@@ -35,19 +35,20 @@ namespace WebCore {
 
 class FrameNetworkingContextHaiku : public WebCore::FrameNetworkingContext {
 public:
-    static PassRefPtr<FrameNetworkingContextHaiku> create(Frame*);
+    static PassRefPtr<FrameNetworkingContextHaiku> create(Frame*, BUrlContext** context);
     virtual ~FrameNetworkingContextHaiku();
 
     WebCore::Frame* coreFrame() const { return frame(); }
     virtual uint64_t initiatingPageID() const;
 
     BUrlContext* context();
-    void setContext(BUrlContext*);
 
 private:
-    FrameNetworkingContextHaiku(Frame*);
+    FrameNetworkingContextHaiku(Frame*, BUrlContext** context);
 
-    BUrlContext* m_context;
+    BUrlContext** m_context;
+
+    static BUrlContext gDefaultContext;
 };
 
 }

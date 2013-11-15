@@ -1119,7 +1119,8 @@ void FrameLoaderClientHaiku::registerForIconNotification(bool listen)
 
 PassRefPtr<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingContext()
 {
-    return FrameNetworkingContextHaiku::create(m_webFrame->Frame());
+    return FrameNetworkingContextHaiku::create(m_webFrame->Frame(),
+        m_webPage->GetContext());
 }
 
 void FrameLoaderClientHaiku::didPerformFirstNavigation() const

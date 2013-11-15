@@ -190,7 +190,6 @@ BWebPage::BWebPage(BWebView* webView)
     , fMainFrame(NULL)
     , fSettings(NULL)
     , fPage(NULL)
-    , fContext(NULL)
     , fLoadingProgress(100)
     , fStatusMessage()
     , fDisplayedStatusMessage()
@@ -263,9 +262,9 @@ void BWebPage::SetDownloadListener(const BMessenger& listener)
     sDownloadListener = listener;
 }
 
-void BWebPage::SetContext(BUrlContext* context)
+BUrlContext** BWebPage::GetContext()
 {
-	fContext = context;
+    return &WebView()->fContext;
 }
 
 void BWebPage::LoadURL(const char* urlString)

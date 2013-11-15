@@ -56,6 +56,7 @@ BWebView::BWebView(const char* name)
     , fAutoHidePointer(false)
     , fOffscreenBitmap(0)
     , fOffscreenViewClean(false)
+    , fContext(NULL)
     , fWebPage(new BWebPage(this))
     , fUserData(0)
 {
@@ -268,6 +269,16 @@ BString BWebView::MainFrameRequestedURL() const
 BString BWebView::MainFrameURL() const
 {
     return fWebPage->MainFrameURL();
+}
+
+void BWebView::SetContext(BUrlContext* context)
+{
+	fContext = context;
+}
+
+BUrlContext* BWebView::GetContext()
+{
+	return fContext;
 }
 
 void BWebView::LoadURL(const char* urlString, bool aquireFocus)
