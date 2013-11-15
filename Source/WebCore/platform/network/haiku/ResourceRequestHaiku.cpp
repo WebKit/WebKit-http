@@ -33,10 +33,11 @@ namespace WebCore {
 BUrlRequest* ResourceRequest::toNetworkRequest(BUrlContext* context) const
 {
     BUrlRequest* request = BUrlProtocolRoster::MakeRequest(url());
-    request->SetContext(context);
 
     if(!request)
         return NULL;
+
+    request->SetContext(context);
 
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(request);
     if (httpRequest != NULL) {
