@@ -48,7 +48,6 @@ BFormDataIO::BFormDataIO(FormData& form)
 	, m_currentFile(NULL)
 	, m_currentOffset(0)
 {
-	printf("BFormDataIO::__construct() : Form size : %ld\n", m_formElements.size());
 }
 
 BFormDataIO::~BFormDataIO()
@@ -93,8 +92,6 @@ BFormDataIO::Read(void* buffer, size_t size)
         const FormDataElement& element = m_formElements[0];
         const ssize_t remaining = size - read;
         
-        printf("BFormDataIO::Read() : Element type %d\n", element.m_type);
-
 		switch (element.m_type) {
 			case FormDataElement::encodedFile:
 				{
@@ -172,7 +169,6 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context, ResourceHan
     , m_redirectionTries(gMaxRecursionLimit)
 {
     m_method = BString(m_resourceHandle->firstRequest().httpMethod());
-    printf("### CONTEXT INIT %p\n", context->context());
 
     start();
 }
@@ -210,7 +206,6 @@ static bool ignoreHttpError(BHttpRequest* reply, bool receivedData)
 
 void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
 {
-    printf("UPH[%p]::RequestCompleted()\n", this);
     sendResponseIfNeeded();
 
     if (!m_resourceHandle)
@@ -225,7 +220,6 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
     if (m_redirected) {
         BUrlContext* context = m_request->Context();
         delete m_request;
-        printf("### CONTEXT %p\n", context);
         m_request = m_nextRequest.toNetworkRequest(context);
         resetState();
         start();
@@ -306,8 +300,6 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
             // will set m_user and m_pass in ResourceHandleInternal
 
     if (d->m_user != "") {
-printf("We have a password, let's add it to the request! U:%s P:%s\n", d->m_user.utf8().data(), d->m_pass.utf8().data());
-
         // Handle this just like redirects.
         m_redirected = true;
 
@@ -317,7 +309,6 @@ printf("We have a password, let's add it to the request! U:%s P:%s\n", d->m_user
         m_nextRequest.setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
         client->willSendRequest(m_resourceHandle, m_nextRequest, response);
     } else {
-puts("No password... too bad!");
         client->didFinishLoading(m_resourceHandle, 0);
     }
 }
@@ -514,7 +505,6 @@ void BUrlProtocolHandler::start()
         m_request->SetListener(this);
     }
 
-    printf("UPH[%p]::start(%s)\n", this, m_request->Url().UrlString().String());
     if (m_request->Run() < B_OK) {
         ResourceHandleClient* client = m_resourceHandle->client();
         if (!client)

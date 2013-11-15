@@ -116,7 +116,6 @@ bool ResourceHandle::start()
     if (d->m_context && !d->m_context->isValid())
         return false;
 
-	printf("ResourceHandle::start()\n");
     if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
         // If credentials were specified for this request, add them to the url,
         // so that they will be passed to QNetworkRequest.
@@ -127,7 +126,6 @@ bool ResourceHandle::start()
     }
 
     ResourceHandleInternal *d = getInternal();
-	printf("ProtocolHandler::__construct()\n");
     d->m_urlrequest = new BUrlProtocolHandler(d->m_context.get(), this, false);
     return true;
 }
@@ -185,7 +183,6 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
 
 void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge, const Credential& credential)
 {
-    printf("### REC CREDS for %p\n", this);
     ASSERT(!challenge.isNull());
     ResourceHandleInternal* internal = getInternal();
     if (challenge != internal->m_currentWebChallenge)
@@ -199,7 +196,6 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge
 
 void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& challenge)
 {
-    puts("### REC NO CREDS");
     ASSERT(!challenge.isNull());
     ResourceHandleInternal* internal = getInternal();
     if (challenge != internal->m_currentWebChallenge)
@@ -213,7 +209,6 @@ void ResourceHandle::receivedRequestToContinueWithoutCredential(const Authentica
 
 void ResourceHandle::receivedCancellation(const AuthenticationChallenge&)
 {
-    puts("### REC NO CANCEL");
     // TODO
 }
 
