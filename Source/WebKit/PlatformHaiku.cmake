@@ -35,6 +35,7 @@ LIST(APPEND WebKit_SOURCES
     haiku/WebCoreSupport/ChromeClientHaiku.cpp
     haiku/WebCoreSupport/ContextMenuClientHaiku.cpp
     haiku/WebCoreSupport/DragClientHaiku.cpp
+    haiku/WebCoreSupport/DumpRenderTreeSupportHaiku.cpp
     haiku/WebCoreSupport/EditorClientHaiku.cpp
     haiku/WebCoreSupport/FrameLoaderClientHaiku.cpp
     haiku/WebCoreSupport/FrameNetworkingContextHaiku.cpp

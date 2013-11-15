@@ -29,15 +29,28 @@
 #include "config.h"
 #include "DumpRenderTree.h"
 
-#include "LauncherWindow.h"
-#include "LayoutTestController.h"
-#include "PlatformString.h"
+//#include "DumpHistoryItem.h"
+//#include "DumpRenderTreeChrome.h"
+//#include "DumpRenderTreeView.h"
+
+#include <wtf/text/AtomicString.h> // FIXME EventSender not standalone ?
+#include "EventSender.h"
+//#include "FontManagement.h"
+#include "NotImplemented.h"
+#include "PixelDumpSupport.h"
+#include "TestRunner.h"
+#include "WebCoreTestSupport.h"
 #include "WebFrame.h"
 #include "WebPage.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
+#include "WebWindow.h"
 #include "WorkQueue.h"
-#include "WorkQueueItem.h"
+
+#include <wtf/Assertions.h>
+#include <wtf/OwnPtr.h>
+#include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 
 #include <Application.h>
 #include <JavaScriptCore/JavaScript.h>
@@ -46,8 +59,10 @@
 #include <string.h>
 #include <vector>
 
-
+// From the top-level DumpRenderTree.h
+RefPtr<TestRunner> gTestRunner;
 volatile bool done = true;
+
 volatile bool notified = false;
 static bool printSeparators = true;
 static bool dumpPixels = false;
@@ -56,7 +71,6 @@ static thread_id stdinThread;
 
 using namespace std;
 
-RefPtr<LayoutTestController> gLayoutTestController = 0;
 static BWebView* webView;
 
 const unsigned maxViewHeight = 600;
@@ -71,7 +85,10 @@ void notifyDoneFired()
 
 static String dumpFramesAsText(BWebFrame* frame)
 {
-    if (gLayoutTestController->dumpChildFramesAsText()) {
+    if (!frame)
+        return String();
+    
+    if (gTestRunner->dumpChildFramesAsText()) {
         // FIXME:
         // not implemented.
     }
@@ -81,14 +98,14 @@ static String dumpFramesAsText(BWebFrame* frame)
 
 void dump()
 {
-    if (gLayoutTestController->waitToDump() && !notified)
+    if (gTestRunner->waitToDump() && !notified)
         return;
 
     if (dumpTree) {
         const char* result = 0;
 
         BString str;
-        if (gLayoutTestController->dumpAsText())
+        if (gTestRunner->dumpAsText())
             str = dumpFramesAsText(webView->WebPage()->MainFrame());
         else
             str = webView->WebPage()->MainFrame()->ExternalRepresentation();
@@ -96,7 +113,7 @@ void dump()
         result = str.String();
         if (!result) {
             const char* errorMessage;
-            if (gLayoutTestController->dumpAsText())
+            if (gTestRunner->dumpAsText())
                 errorMessage = "WebFrame::GetInnerText";
             else
                 errorMessage = "WebFrame::GetExternalRepresentation";
@@ -104,7 +121,7 @@ void dump()
         } else
             printf("%s\n", result);
 
-        if (gLayoutTestController->dumpBackForwardList()) {
+        if (gTestRunner->dumpBackForwardList()) {
             // FIXME:
             // not implemented.
         }
@@ -118,9 +135,9 @@ void dump()
     }
 
     if (dumpPixels
-        && !gLayoutTestController->dumpAsText()
-        && !gLayoutTestController->dumpDOMAsWebArchive()
-        && !gLayoutTestController->dumpSourceAsWebArchive()) {
+        && !gTestRunner->dumpAsText()
+        && !gTestRunner->dumpDOMAsWebArchive()
+        && !gTestRunner->dumpSourceAsWebArchive()) {
         // FIXME: Add support for dumping pixels
     }
 
@@ -148,8 +165,8 @@ static void runTest(const string& testPathOrURL)
     if (http == string::npos)
         pathOrURL.insert(0, "file://");
 
-    gLayoutTestController = LayoutTestController::create(pathOrURL, expectedPixelHash);
-    if (!gLayoutTestController)
+    gTestRunner = TestRunner::create(pathOrURL, expectedPixelHash);
+    if (!gTestRunner)
         be_app->PostMessage(B_QUIT_REQUESTED);
 
     WorkQueue::shared()->clear();
@@ -173,7 +190,7 @@ public:
     static status_t runTestFromStdin(void*);
 
 private:
-    LauncherWindow* m_webFrame;
+    BWebWindow* m_webFrame;
     int m_currentTest;
     vector<const char*> m_tests;
     bool m_fromStdin;
@@ -211,22 +228,32 @@ void DumpRenderTreeApp::ArgvReceived(int32 argc, char** argv)
 
 void DumpRenderTreeApp::ReadyToRun()
 {
+    BWebPage::InitializeOnce();
+    BWebPage::SetCacheModel(B_WEBKIT_CACHE_MODEL_WEB_BROWSER);
+
     // Create the main application window.
-    m_webFrame = new LauncherWindow(DoNotHaveToolbar);
-    webView = m_webFrame->CurrentWebView();
+    m_webFrame = new BWebWindow(BRect(10, 10, 640, 480), "DumpRenderTree",
+        B_NO_BORDER_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL, 0);
     m_webFrame->SetSizeLimits(0, maxViewWidth, 0, maxViewHeight);
-    webView->SetExplicitMaxSize(BSize(maxViewWidth, maxViewHeight));
     m_webFrame->ResizeTo(maxViewWidth, maxViewHeight);
 
-    m_webFrame->Show(); // The window needs to be displayed once to render then.
+
+    webView = new BWebView("DumpRenderTree");
+    webView->SetExplicitMaxSize(BSize(maxViewWidth, maxViewHeight));
+    m_webFrame->SetCurrentWebView(webView);
+
+    webView->WebPage()->MainFrame()->SetListener(this);
+
+    // Start the looper, but keep the window hidden
     m_webFrame->Hide();
+    m_webFrame->Show();
 
     if (m_tests.size() == 1 && !strcmp(m_tests[0], "-")) {
         printSeparators = true;
         m_fromStdin = true;
         stdinThread = spawn_thread(runTestFromStdin, 0, B_NORMAL_PRIORITY, 0);
         resume_thread(stdinThread);
-    } else {
+    } else if(m_tests.size() != 0) {
         printSeparators = (m_tests.size() > 1 || (dumpPixels && dumpTree));
         m_fromStdin = false;
         runTest(m_tests[0]);
@@ -238,10 +265,10 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case LOAD_FINISHED: {
-        if (!gLayoutTestController->waitToDump() || notified) {
+        if (!gTestRunner->waitToDump() || notified) {
             dump();
-            gLayoutTestController->deref();
-            gLayoutTestController = 0;
+            gTestRunner->deref();
+            gTestRunner = 0;
             done = true;
         }
 
@@ -294,5 +321,5 @@ int main()
     DumpRenderTreeApp app;
     app.Run();
 
-    gLayoutTestController.release();
+    gTestRunner.release();
 }

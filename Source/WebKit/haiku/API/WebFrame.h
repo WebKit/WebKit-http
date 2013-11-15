@@ -46,7 +46,7 @@ class URL;
 class WebFramePrivate;
 
 
-class BWebFrame {
+class __attribute__ ((visibility ("default"))) BWebFrame {
 public:
 			void				SetListener(const BMessenger& listener);
 

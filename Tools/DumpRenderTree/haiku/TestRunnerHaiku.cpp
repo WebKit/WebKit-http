@@ -1,0 +1,614 @@
+/*
+ * Copyright (C) 2013 Haiku, Inc.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1.  Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ * 2.  Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL APPLE OR ITS CONTRIBUTORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "config.h"
+#include "TestRunner.h"
+
+#include "DumpRenderTree.h"
+//#include "DumpRenderTreeChrome.h"
+#include "JSStringUtils.h"
+#include "NotImplemented.h"
+#include "URL.h"
+#include "WebCoreSupport/DumpRenderTreeSupportHaiku.h"
+#include "WorkQueue.h"
+#include "WorkQueueItem.h"
+#include <JavaScriptCore/JSRetainPtr.h>
+#include <JavaScriptCore/JSStringRef.h>
+#include <JavaScriptCore/OpaqueJSString.h>
+#include <editing/FindOptions.h>
+#include <stdio.h>
+#include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
+
+// Same as Mac cache model enum in Source/WebKit/mac/WebView/WebPreferences.h.
+enum {
+    WebCacheModelDocumentViewer = 0,
+    WebCacheModelDocumentBrowser = 1,
+    WebCacheModelPrimaryWebBrowser = 2
+};
+
+TestRunner::~TestRunner()
+{
+}
+
+void TestRunner::addDisallowedURL(JSStringRef)
+{
+    notImplemented();
+}
+
+void TestRunner::clearBackForwardList()
+{
+    notImplemented();
+}
+
+JSStringRef TestRunner::copyDecodedHostName(JSStringRef)
+{
+    notImplemented();
+    return 0;
+}
+
+JSStringRef TestRunner::copyEncodedHostName(JSStringRef)
+{
+    notImplemented();
+    return 0;
+}
+
+void TestRunner::dispatchPendingLoadRequests()
+{
+    // FIXME: Implement for testing fix for 6727495
+    notImplemented();
+}
+
+void TestRunner::display()
+{
+    notImplemented();
+    //displayWebView();
+}
+
+void TestRunner::keepWebHistory()
+{
+    DumpRenderTreeSupportHaiku::setShouldTrackVisitedLinks(true);
+}
+
+size_t TestRunner::webHistoryItemCount()
+{
+    notImplemented();
+    return -1;
+}
+
+void TestRunner::notifyDone()
+{
+    notImplemented();
+}
+
+JSStringRef TestRunner::pathToLocalResource(JSContextRef context, JSStringRef url)
+{
+    String requestedUrl(url->characters(), url->length());
+    String resourceRoot;
+    String requestedRoot;
+
+    if (requestedUrl.find("LayoutTests") != notFound) {
+        // If the URL contains LayoutTests we need to remap that to
+        // LOCAL_RESOURCE_ROOT which is the path of the LayoutTests directory
+        // within the WebKit source tree.
+        requestedRoot = "/tmp/LayoutTests";
+        resourceRoot = getenv("LOCAL_RESOURCE_ROOT");
+    } else if (requestedUrl.find("tmp") != notFound) {
+        // If the URL is a child of /tmp we need to convert it to be a child
+        // DUMPRENDERTREE_TEMP replace tmp with DUMPRENDERTREE_TEMP
+        requestedRoot = "/tmp";
+        resourceRoot = getenv("DUMPRENDERTREE_TEMP");
+    }
+
+    size_t indexOfRootStart = requestedUrl.reverseFind(requestedRoot);
+    size_t indexOfSeparatorAfterRoot = indexOfRootStart + requestedRoot.length();
+    String fullPathToUrl = "file://" + resourceRoot + requestedUrl.substring(indexOfSeparatorAfterRoot);
+
+    return JSStringCreateWithUTF8CString(fullPathToUrl.utf8().data());
+}
+
+void TestRunner::queueLoad(JSStringRef url, JSStringRef target)
+{
+    notImplemented();
+}
+
+void TestRunner::setAcceptsEditing(bool acceptsEditing)
+{
+    notImplemented();
+}
+
+void TestRunner::setAlwaysAcceptCookies(bool alwaysAcceptCookies)
+{
+    notImplemented();
+}
+
+void TestRunner::setCustomPolicyDelegate(bool enabled, bool permissive)
+{
+    notImplemented();
+}
+
+void TestRunner::waitForPolicyDelegate()
+{
+    notImplemented();
+}
+
+void TestRunner::setScrollbarPolicy(JSStringRef, JSStringRef)
+{
+    notImplemented();
+}
+
+void TestRunner::addOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStringRef protocol, JSStringRef host, bool includeSubdomains)
+{
+    notImplemented();
+}
+
+void TestRunner::removeOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStringRef protocol, JSStringRef host, bool includeSubdomains)
+{
+    notImplemented();
+}
+
+void TestRunner::setMainFrameIsFirstResponder(bool)
+{
+    notImplemented();
+}
+
+void TestRunner::setTabKeyCyclesThroughElements(bool)
+{
+    notImplemented();
+}
+
+void TestRunner::setUseDashboardCompatibilityMode(bool)
+{
+    notImplemented();
+}
+
+static CString gUserStyleSheet;
+static bool gUserStyleSheetEnabled = true;
+
+void TestRunner::setUserStyleSheetEnabled(bool flag)
+{
+    notImplemented();
+}
+
+void TestRunner::setUserStyleSheetLocation(JSStringRef path)
+{
+    gUserStyleSheet = path->string().utf8();
+
+    if (gUserStyleSheetEnabled)
+        setUserStyleSheetEnabled(true);
+}
+
+void TestRunner::setValueForUser(JSContextRef context, JSValueRef nodeObject, JSStringRef value)
+{
+    DumpRenderTreeSupportHaiku::setValueForUser(context, nodeObject, value->string());
+}
+
+void TestRunner::setViewModeMediaFeature(JSStringRef mode)
+{
+#if ENABLE(VIEW_MODE_CSS_MEDIA)
+    notImplemented();
+#else
+    UNUSED_PARAM(mode);
+#endif
+}
+
+void TestRunner::setWindowIsKey(bool)
+{
+    notImplemented();
+}
+
+void TestRunner::setWaitToDump(bool waitUntilDone)
+{
+    notImplemented();
+}
+
+int TestRunner::windowCount()
+{
+    notImplemented();
+}
+
+void TestRunner::setPrivateBrowsingEnabled(bool flag)
+{
+    notImplemented();
+}
+
+void TestRunner::setJavaScriptCanAccessClipboard(bool flag)
+{
+    notImplemented();
+}
+
+void TestRunner::setXSSAuditorEnabled(bool flag)
+{
+    notImplemented();
+}
+
+void TestRunner::setSpatialNavigationEnabled(bool flag)
+{
+    notImplemented();
+}
+
+void TestRunner::setAllowUniversalAccessFromFileURLs(bool flag)
+{
+    notImplemented();
+}
+ 
+void TestRunner::setAllowFileAccessFromFileURLs(bool flag)
+{
+    notImplemented();
+}
+ 
+void TestRunner::setAuthorAndUserStylesEnabled(bool flag)
+{
+    notImplemented();
+}
+
+void TestRunner::setMockDeviceOrientation(bool, double, bool, double, bool, double)
+{
+    // FIXME: Implement for DeviceOrientation layout tests.
+    // See https://bugs.webkit.org/show_bug.cgi?id=30335.
+    notImplemented();
+}
+
+void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool canProvideAltitude, double altitude, bool canProvideAltitudeAccuracy, double altitudeAccuracy, bool canProvideHeading, double heading, bool canProvideSpeed, double speed)
+{
+    notImplemented();
+}
+
+void TestRunner::setMockGeolocationPositionUnavailableError(JSStringRef message)
+{
+    notImplemented();
+}
+
+void TestRunner::setGeolocationPermission(bool allow)
+{
+    notImplemented();
+}
+
+int TestRunner::numberOfPendingGeolocationPermissionRequests()
+{
+    notImplemented();
+    return -1;
+}
+
+void TestRunner::addMockSpeechInputResult(JSStringRef, double, JSStringRef)
+{
+    // FIXME: Implement for speech input layout tests.
+    // See https://bugs.webkit.org/show_bug.cgi?id=39485.
+    notImplemented();
+}
+
+void TestRunner::setMockSpeechInputDumpRect(bool)
+{
+    // FIXME: Implement for speech input layout tests.
+    // See https://bugs.webkit.org/show_bug.cgi?id=39485.
+    notImplemented();
+}
+
+void TestRunner::startSpeechInput(JSContextRef inputElement)
+{
+    // FIXME: Implement for speech input layout tests.
+    // See https://bugs.webkit.org/show_bug.cgi?id=39485.
+    notImplemented();
+}
+
+void TestRunner::setIconDatabaseEnabled(bool enabled)
+{
+    notImplemented();
+}
+
+void TestRunner::setPopupBlockingEnabled(bool flag)
+{
+    notImplemented();
+}
+
+void TestRunner::setPluginsEnabled(bool flag)
+{
+    notImplemented();
+}
+
+void TestRunner::execCommand(JSStringRef name, JSStringRef value)
+{
+    notImplemented();
+}
+
+bool TestRunner::findString(JSContextRef context, JSStringRef target, JSObjectRef optionsArray)
+{
+    notImplemented();
+    return false;
+}
+
+bool TestRunner::isCommandEnabled(JSStringRef name)
+{
+    notImplemented();
+    return false;
+}
+
+void TestRunner::setCacheModel(int cacheModel)
+{
+    notImplemented();
+}
+
+void TestRunner::setPersistentUserStyleSheetLocation(JSStringRef)
+{
+    notImplemented();
+}
+
+void TestRunner::clearPersistentUserStyleSheet()
+{
+    notImplemented();
+}
+
+void TestRunner::clearAllApplicationCaches()
+{
+    notImplemented();
+}
+
+void TestRunner::clearApplicationCacheForOrigin(OpaqueJSString* url)
+{
+    notImplemented();
+}
+
+long long TestRunner::localStorageDiskUsageForOrigin(JSStringRef)
+{
+    // FIXME: Implement to support getting disk usage in bytes for an origin.
+    notImplemented();
+    return 0;
+}
+
+JSValueRef TestRunner::originsWithApplicationCache(JSContextRef context)
+{
+    // FIXME: Implement to get origins that contain application caches.
+    notImplemented();
+    return JSValueMakeUndefined(context);
+}
+
+long long TestRunner::applicationCacheDiskUsageForOrigin(JSStringRef)
+{
+    notImplemented();
+    return 0;
+}
+
+void TestRunner::clearAllDatabases()
+{
+    notImplemented();
+}
+
+void TestRunner::setDatabaseQuota(unsigned long long quota)
+{
+    notImplemented();
+}
+
+JSValueRef TestRunner::originsWithLocalStorage(JSContextRef context)
+{
+    notImplemented();
+    return JSValueMakeUndefined(context);
+}
+
+void TestRunner::deleteAllLocalStorage()
+{
+    notImplemented();
+}
+
+void TestRunner::deleteLocalStorageForOrigin(JSStringRef)
+{
+    notImplemented();
+}
+
+void TestRunner::observeStorageTrackerNotifications(unsigned)
+{
+    notImplemented();
+}
+
+void TestRunner::syncLocalStorage()
+{
+    notImplemented();
+}
+
+void TestRunner::setDomainRelaxationForbiddenForURLScheme(bool forbidden, JSStringRef scheme)
+{
+    DumpRenderTreeSupportHaiku::setDomainRelaxationForbiddenForURLScheme(forbidden, scheme->string());
+}
+
+void TestRunner::goBack()
+{
+    notImplemented();
+}
+
+void TestRunner::setDefersLoading(bool defers)
+{
+    notImplemented();
+}
+
+void TestRunner::setAppCacheMaximumSize(unsigned long long size)
+{
+    notImplemented();
+}
+
+static inline bool toBool(JSStringRef value)
+{
+    return equals(value, "true") || equals(value, "1");
+}
+
+static inline int toInt(JSStringRef value)
+{
+    return atoi(value->string().utf8().data());
+}
+
+void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
+{
+    notImplemented();
+    fprintf(stderr, "TestRunner::overridePreference tried to override unknown preference '%s'.\n", value->string().utf8().data());
+}
+
+void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)
+{
+    notImplemented();
+}
+
+void TestRunner::addUserStyleSheet(JSStringRef source, bool allFrames)
+{
+    notImplemented();
+}
+
+void TestRunner::setDeveloperExtrasEnabled(bool enabled)
+{
+    notImplemented();
+}
+
+void TestRunner::showWebInspector()
+{
+    notImplemented();
+}
+
+void TestRunner::closeWebInspector()
+{
+    notImplemented();
+}
+
+void TestRunner::evaluateInWebInspector(long callId, JSStringRef script)
+{
+    notImplemented();
+}
+
+void TestRunner::evaluateScriptInIsolatedWorldAndReturnValue(unsigned, JSObjectRef, JSStringRef)
+{
+    notImplemented();
+}
+
+void TestRunner::evaluateScriptInIsolatedWorld(unsigned worldID, JSObjectRef globalObject, JSStringRef script)
+{
+    notImplemented();
+}
+
+void TestRunner::removeAllVisitedLinks()
+{
+    notImplemented();
+}
+
+bool TestRunner::callShouldCloseOnWebView()
+{
+    notImplemented();
+}
+
+void TestRunner::apiTestNewWindowDataLoadBaseURL(JSStringRef, JSStringRef)
+{
+    notImplemented();
+}
+
+void TestRunner::apiTestGoToCurrentBackForwardItem()
+{
+    notImplemented();
+}
+
+void TestRunner::setWebViewEditable(bool)
+{
+    notImplemented();
+}
+
+void TestRunner::authenticateSession(JSStringRef, JSStringRef, JSStringRef)
+{
+    notImplemented();
+}
+
+void TestRunner::abortModal()
+{
+    notImplemented();
+}
+
+void TestRunner::setSerializeHTTPLoads(bool serialize)
+{
+    DumpRenderTreeSupportHaiku::setSerializeHTTPLoads(serialize);
+}
+
+void TestRunner::setTextDirection(JSStringRef direction)
+{
+    notImplemented();
+}
+
+void TestRunner::addChromeInputField()
+{
+    notImplemented();
+}
+
+void TestRunner::removeChromeInputField()
+{
+    notImplemented();
+}
+
+void TestRunner::focusWebView()
+{
+    notImplemented();
+}
+
+void TestRunner::setBackingScaleFactor(double)
+{
+    notImplemented();
+}
+
+void TestRunner::grantWebNotificationPermission(JSStringRef origin)
+{
+}
+
+void TestRunner::denyWebNotificationPermission(JSStringRef jsOrigin)
+{
+}
+
+void TestRunner::removeAllWebNotificationPermissions()
+{
+}
+
+void TestRunner::simulateWebNotificationClick(JSValueRef jsNotification)
+{
+}
+
+void TestRunner::simulateLegacyWebNotificationClick(JSStringRef title)
+{
+}
+
+void TestRunner::resetPageVisibility()
+{
+    notImplemented();
+}
+
+void TestRunner::setPageVisibility(const char* visibility)
+{
+    notImplemented();
+}
+
+void TestRunner::setAutomaticLinkDetectionEnabled(bool)
+{
+    notImplemented();
+}
+
+void TestRunner::setStorageDatabaseIdleInterval(double)
+{
+    notImplemented();
+}
+
+void TestRunner::closeIdleLocalStorageDatabases()
+{
+    notImplemented();
+}
+
