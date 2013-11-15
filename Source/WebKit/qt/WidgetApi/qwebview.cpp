@@ -722,10 +722,8 @@ bool QWebView::event(QEvent *e)
             || e->type() == QEvent::TouchEnd
             || e->type() == QEvent::TouchUpdate
             || e->type() == QEvent::TouchCancel) {
-            d->page->event(e);
-
-            // Always return true so that we'll receive also TouchUpdate and TouchEnd events
-            return true;
+            if (d->page->event(e))
+                return true;
         } else if (e->type() == QEvent::Leave)
             d->page->event(e);
     }
