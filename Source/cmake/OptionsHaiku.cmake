@@ -217,6 +217,7 @@ set(CPACK_PACKAGE_VENDOR "Haiku Project")
 set(CPACK_HAIKU_PACKAGE_COPYRIGHT "1998-2013 Apple Inc., Google Inc., Haiku Inc., et al")
 set(CPACK_HAIKU_PACKAGE_LICENSES "GNU LGPL v2" "GNU LGPL v2.1" "MIT")
     # TODO apple webkit (needs to be added inside package)
+set(CPACK_HAIKU_PACKAGE_REVISION "2")
 
 set(CPACK_HAIKU_PACKAGE_PROVIDES
     "lib:libWebKit${PACKAGE_SUFFIX} = 1.2.0"
