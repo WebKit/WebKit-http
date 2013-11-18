@@ -26,27 +26,17 @@
 #include "config.h"
 #include "Logging.h"
 
+#if !LOG_DISABLED
+
+#include <wtf/text/WTFString.h>
+
 namespace WebCore {
 
-void initializeLoggingChannelsIfNecessary()
+String logLevelString()
 {
-    // FIXME: Should read the logging channels from a file.
-    static bool haveInitializedLoggingChannels = false;
-    if (haveInitializedLoggingChannels)
-        return;
-
-    haveInitializedLoggingChannels = true;
-
-#ifndef NDEBUG
-    LogEvents.state = WTFLogChannelOn;
-    LogFrames.state = WTFLogChannelOn;
-    LogLoading.state = WTFLogChannelOn;
-    LogPlatformLeaks.state = WTFLogChannelOn;
-    LogNotYetImplemented.state = WTFLogChannelOn;
-#else
-//    LogNotYetImplemented.state = WTFLogChannelOn;
-#endif
+    return getenv("WEBKIT_DEBUG");
 }
 
 } // namespace WebCore
 
+#endif // !LOG_DISABLED
