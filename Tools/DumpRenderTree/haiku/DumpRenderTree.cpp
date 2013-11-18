@@ -267,8 +267,6 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
     case LOAD_FINISHED: {
         if (!gTestRunner->waitToDump() || notified) {
             dump();
-            gTestRunner->deref();
-            gTestRunner = 0;
             done = true;
         }
 
