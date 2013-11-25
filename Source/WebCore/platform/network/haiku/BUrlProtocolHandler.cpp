@@ -161,7 +161,8 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context, ResourceHan
     , m_responseSent(false)
     , m_responseDataSent(false)
     , m_postData(NULL)
-    , m_request(handle->firstRequest().toNetworkRequest(context->context()))
+    , m_request(handle->firstRequest().toNetworkRequest(
+        context ? context->context() : NULL))
     , m_shouldStart(true)
     , m_shouldFinish(false)
     , m_shouldSendResponse(false)
