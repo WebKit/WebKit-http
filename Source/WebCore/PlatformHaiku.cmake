@@ -13,7 +13,6 @@ LIST(APPEND WebCore_SOURCES
 
   page/haiku/DragControllerHaiku.cpp
   page/haiku/EventHandlerHaiku.cpp
-  page/haiku/FrameHaiku.cpp
 
   platform/haiku/ContextMenuHaiku.cpp
   platform/haiku/ContextMenuItemHaiku.cpp
@@ -202,11 +201,6 @@ if (WTF_USE_3D_GRAPHICS)
         )
     endif ()
 
-    list(APPEND WebCore_LIBRARIES
-        ${X11_X11_LIB}
-        ${X11_Xcomposite_LIB}
-        ${X11_Xrender_LIB}
-    )
     if (WTF_USE_EGL)
         list(APPEND WebCore_LIBRARIES
             ${EGL_LIBRARY}
