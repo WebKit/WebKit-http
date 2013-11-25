@@ -55,7 +55,7 @@ if (NOT DEFINED CPACK_SOURCE_IGNORE_FILES)
         "/GNUmakefile"
         # - XCode (Mac)
         "\\\\.xcodeproj"
-        "\\\\.xcconfig"
+        #"\\\\.xcconfig" # We extract the WebKit version from there.
         # - GYP
         "\\\\.gyp"
         # - QMake (Qt)

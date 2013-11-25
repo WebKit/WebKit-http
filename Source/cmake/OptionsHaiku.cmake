@@ -13,9 +13,10 @@ if (NOT DEFINED ENABLE_WEBKIT2)
     set(ENABLE_WEBKIT2 OFF)
 endif ()
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "debug" AND NOT SHARED_CORE)
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "debug" AND NOT SHARED_CORE)
     message(FATAL_ERROR "Turn on the SHARED_CORE flag to make a debug build - e.g.\n build-webkit --haiku --debug --cmakeargs=\"-DSHARED_CORE=ON\".\n")
 endif ()
+#ADD_DEFINITIONS(-UNDEBUG) # Uncomment this to get assertions in release mode.
 
 FIND_PACKAGE(Sqlite REQUIRED)
 FIND_PACKAGE(LibXml2 2.8.0 REQUIRED)
@@ -165,7 +166,7 @@ if(CMAKE_HAIKU_SECONDARY_ARCH)
     set(PACKAGE_SUFFIX _${CMAKE_HAIKU_SECONDARY_ARCH})
 endif()
 
-SET(CPACK_SOURCE_GENERATOR HPKG)
+SET(CPACK_SOURCE_GENERATOR TBZ2)
 set(CPACK_GENERATOR HPKG)
 
 # Optimize binary size for release builds by removing dead sections on unix/gcc
@@ -212,12 +213,15 @@ if (ENABLE_INDEXED_DATABASE)
     add_definitions(-DWTF_USE_LEVELDB=1)
 endif ()
 
+set(WEBKIT_CPACK_ALL_PORTS 1) # Until we can safely extract only the sources used by Haiku
+set(WEBKIT_CPACK_ADD_TOOLS 1) # Mainly for generate_webkit_info.sh
+
 set(CPACK_PACKAGE_NAME "haikuwebkit${PACKAGE_SUFFIX}")
 set(CPACK_PACKAGE_VENDOR "Haiku Project")
 set(CPACK_HAIKU_PACKAGE_COPYRIGHT "1998-2013 Apple Inc., Google Inc., Haiku Inc., et al")
 set(CPACK_HAIKU_PACKAGE_LICENSES "GNU LGPL v2" "GNU LGPL v2.1" "MIT")
     # TODO apple webkit (needs to be added inside package)
-set(CPACK_HAIKU_PACKAGE_REVISION "2")
+set(CPACK_HAIKU_PACKAGE_REVISION "3")
 
 set(CPACK_HAIKU_PACKAGE_PROVIDES
     "lib:libWebKit${PACKAGE_SUFFIX} = 1.2.0"
