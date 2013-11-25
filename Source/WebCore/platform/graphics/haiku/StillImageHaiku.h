@@ -52,7 +52,7 @@ public:
 
     virtual IntSize size() const;
     virtual NativeImagePtr nativeImageForCurrentFrame();
-    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode);
+    virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, ImageOrientationDescription);
 
 private:
     StillImage(const BBitmap& bitmap);
