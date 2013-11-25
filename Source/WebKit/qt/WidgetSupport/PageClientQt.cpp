@@ -251,9 +251,12 @@ QRect PageClientQGraphicsWidget::geometryRelativeToOwnerWidget() const
 
 QPoint PageClientQGraphicsWidget::mapToOwnerWindow(const QPoint& point) const
 {
-    if (const QGraphicsView* graphicsView = firstGraphicsView())
+    if (const QGraphicsView* graphicsView = firstGraphicsView()) {
         if (const QWidget *nativeParent = graphicsView->nativeParentWidget())
             return graphicsView->mapTo(nativeParent, graphicsView->mapFromScene(view->mapToScene(point)));
+        else
+            return graphicsView->mapFromScene(view->mapToScene(point));
+    }
     return point;
 }
 
