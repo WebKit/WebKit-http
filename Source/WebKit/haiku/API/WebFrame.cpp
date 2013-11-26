@@ -71,9 +71,6 @@ BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate*
         fData->frame = &webPage->page()->mainFrame();
         fData->loaderClient = static_cast<FrameLoaderClientHaiku*>(&fData->frame->loader().client());
     } else {
-        //frameLoaderClient = new FrameLoaderClientQt();
-        //frame = Frame::create(page, ownerElement, frameLoaderClient);
-        //
 	    fData->loaderClient = new WebCore::FrameLoaderClientHaiku(webPage);
         RefPtr<WebCore::Frame> frame = WebCore::Frame::create(fData->page, fData->ownerElement,
         fData->loaderClient);
@@ -86,6 +83,7 @@ BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate*
 
     fData->frame->tree().setName(fData->name);
     fData->frame->init();
+    fData->frame->loader().prepareForHistoryNavigation();
 }
 
 BWebFrame::~BWebFrame()
