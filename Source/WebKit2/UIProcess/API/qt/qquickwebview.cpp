@@ -433,7 +433,7 @@ void QQuickWebViewPrivate::didFailLoad(WKPageRef, WKFrameRef frame, WKErrorRef e
     }
 
     int errorCode = error.errorCode();
-    if (errorCode == kWKErrorCodeFrameLoadInterruptedByPolicyChange && errorCode == kWKErrorCodePlugInWillHandleLoad) {
+    if (errorCode == kWKErrorCodeFrameLoadInterruptedByPolicyChange || errorCode == kWKErrorCodePlugInWillHandleLoad) {
         QWebLoadRequest loadRequest(q->url(), QQuickWebView::LoadSucceededStatus);
         q->emitUrlChangeIfNeeded();
         emit q->loadingChanged(&loadRequest);
