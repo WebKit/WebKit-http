@@ -78,6 +78,8 @@ if (useNewRunWebKitTests()) {
 # We have to add back any --PORT arguments which may have been removed by isPort() checks above.
 if (isGtk()) {
     push(@ARGV, "--gtk");
+} elsif (isHaiku()) {
+    push(@ARGV, "--haiku");
 } elsif (isEfl()) {
     push(@ARGV, "--efl");
 } elsif (isWinCairo()) {

@@ -49,6 +49,8 @@ class PlatformInfo(object):
         self.os_name = self._determine_os_name(sys_module.platform)
         if self.os_name == 'linux':
             self.os_version = self._determine_linux_version()
+        if self.os_name == 'haiku':
+            self.os_version = platform_module.release()
         if self.os_name == 'freebsd':
             self.os_version = platform_module.release()
         if self.os_name.startswith('mac'):
@@ -65,6 +67,9 @@ class PlatformInfo(object):
 
     def is_cygwin(self):
         return self._is_cygwin
+
+    def is_haiku(self):
+        return self.os_name == 'haiku'
 
     def is_linux(self):
         return self.os_name == 'linux'
@@ -117,6 +122,8 @@ class PlatformInfo(object):
             return 'mac'
         if sys_platform.startswith('linux'):
             return 'linux'
+        if sys_platform.startswith('haiku'):
+            return 'haiku'
         if sys_platform in ('win32', 'cygwin'):
             return 'win'
         if sys_platform.startswith('freebsd'):

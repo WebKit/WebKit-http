@@ -74,6 +74,7 @@ class PortFactory(object):
     PORT_CLASSES = (
         'efl.EflPort',
         'gtk.GtkPort',
+        'haiku.HaikuPort',
         'mac.MacPort',
         'mock_drt.MockDRTPort',
         'test.TestPort',
@@ -91,6 +92,8 @@ class PortFactory(object):
             return 'mac'
         elif platform.is_win():
             return 'win'
+        elif platform.is_haiku():
+            return 'haiku'
         raise NotImplementedError('unknown platform: %s' % platform)
 
     def get(self, port_name=None, options=None, **kwargs):
