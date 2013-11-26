@@ -30,14 +30,17 @@
 
 namespace WebCore {
 
-BUrlRequest* ResourceRequest::toNetworkRequest(BUrlContext* context) const
+BUrlRequest* ResourceRequest::toNetworkRequest(BUrlContext* context)
 {
     BUrlRequest* request = BUrlProtocolRoster::MakeRequest(url());
 
-    if(!request)
+    if(!request) {
+        m_url = blankURL(); // This tells the ResourceLoader we failed.
         return NULL;
+    }
 
-    request->SetContext(context);
+    if(context)
+        request->SetContext(context);
 
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(request);
     if (httpRequest != NULL) {

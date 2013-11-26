@@ -59,7 +59,7 @@ namespace WebCore {
         {
         }
 
-        BUrlRequest* toNetworkRequest(BUrlContext*) const;
+        BUrlRequest* toNetworkRequest(BUrlContext*);
 
         void setCredentials(const char* username, const char* password);
 
