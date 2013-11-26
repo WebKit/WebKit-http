@@ -459,6 +459,11 @@ String AXDefinitionListDefinitionText()
     return String();
 }
 
+String AXSearchFieldCancelButtonText()
+{
+    return String::fromUTF8("cancel");
+}
+
 String validationMessageValueMissingText()
 {
     notImplemented();

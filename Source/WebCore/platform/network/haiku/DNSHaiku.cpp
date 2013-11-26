@@ -25,13 +25,28 @@
 
 #include "config.h"
 #include "DNS.h"
+#include "DNSResolveQueue.h"
 
 #include "NotImplemented.h"
 
 namespace WebCore {
 
+bool DNSResolveQueue::platformProxyIsEnabledInSystemPreferences()
+{
+    notImplemented();
+    return false;
+}
+
+void DNSResolveQueue::platformResolve(const String& hostname)
+{
+    notImplemented();
+}
+
 void prefetchDNS(const String& hostname)
 {
+    if (hostname.isEmpty())
+        return;
+
     notImplemented();
 }
 
