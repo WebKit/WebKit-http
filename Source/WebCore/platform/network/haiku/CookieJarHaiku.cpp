@@ -40,7 +40,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
 
-#define TRACE_COOKIE_JAR 1
+#define TRACE_COOKIE_JAR 0
 
 
 namespace WebCore {
