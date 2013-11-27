@@ -29,7 +29,8 @@
 #include "DumpRenderTree.h"
 #include "IntRect.h"
 #include "NotImplemented.h"
-#include "WebCoreSupport/DumpRenderTreeSupportHaiku.h"
+
+#include <DumpRenderTreeClient.h>
 
 #include <wtf/MD5.h>
 

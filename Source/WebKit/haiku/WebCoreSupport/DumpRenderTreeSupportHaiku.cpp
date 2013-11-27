@@ -23,30 +23,68 @@
 */
 
 #include "config.h"
-#include "DumpRenderTreeSupportHaiku.h"
+#include "DumpRenderTreeClient.h"
 
+#include "WebFrame.h"
+#include "WebPage.h"
+
+#include <DocumentLoader.h>
+#include <Frame.h>
+#include <FrameLoader.h>
+#include <FrameView.h>
 #include "NotImplemented.h"
 
+namespace WebCore {
+
+bool DumpRenderTreeClient::s_drtRun = false;
+
+void DumpRenderTreeClient::setDumpRenderTreeModeEnabled(bool enabled)
+{
+    s_drtRun = enabled;
+}
+
+bool DumpRenderTreeClient::dumpRenderTreeModeEnabled()
+{
+    return s_drtRun;
+}
+
+void DumpRenderTreeClient::Register(BWebPage* page)
+{
+    page->fDumpRenderTree = this;
+}
+
 void
-DumpRenderTreeSupportHaiku::setShouldTrackVisitedLinks(bool)
+DumpRenderTreeClient::setShouldTrackVisitedLinks(bool)
+{
+    notImplemented();
+}
+
+String DumpRenderTreeClient::responseMimeType(const BWebFrame* frame)
+{
+    WebCore::DocumentLoader *documentLoader = frame->Frame()->loader().documentLoader();
+
+    if (!documentLoader)
+        return String();
+
+    return documentLoader->responseMIMEType();
+}
+
+void
+DumpRenderTreeClient::setValueForUser(OpaqueJSContext const*, OpaqueJSValue const*, WTF::String const&)
 {
     notImplemented();
 }
 
 void
-DumpRenderTreeSupportHaiku::setValueForUser(OpaqueJSContext const*, OpaqueJSValue const*, WTF::String const&)
+DumpRenderTreeClient::setDomainRelaxationForbiddenForURLScheme(bool, WTF::String const&)
 {
     notImplemented();
 }
 
 void
-DumpRenderTreeSupportHaiku::setDomainRelaxationForbiddenForURLScheme(bool, WTF::String const&)
+DumpRenderTreeClient::setSerializeHTTPLoads(bool)
 {
     notImplemented();
 }
 
-void
-DumpRenderTreeSupportHaiku::setSerializeHTTPLoads(bool)
-{
-    notImplemented();
 }

@@ -38,6 +38,7 @@
 #include "Credential.h"
 #include "CachedFrame.h"
 #include "DocumentLoader.h"
+#include "DumpRenderTreeClient.h"
 #include "FormState.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -69,6 +70,8 @@
 #include "WebPage.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
+
+#include <JavaScriptCore/APICast.h>
 
 #include <Alert.h>
 #include <Bitmap.h>
@@ -128,7 +131,6 @@ bool FrameLoaderClientHaiku::hasWebView() const
 
 void FrameLoaderClientHaiku::makeRepresentation(DocumentLoader*)
 {
-    notImplemented();
 }
 
 void FrameLoaderClientHaiku::forceLayout()
@@ -146,7 +148,6 @@ void FrameLoaderClientHaiku::forceLayout()
 
 void FrameLoaderClientHaiku::forceLayoutForNonHTML()
 {
-    notImplemented();
 }
 
 void FrameLoaderClientHaiku::setCopiesOnScroll()
@@ -154,7 +155,6 @@ void FrameLoaderClientHaiku::setCopiesOnScroll()
     // Other ports mention "apparently mac specific", but I believe it may have to
     // do with achieving that WebCore does not repaint the parts that we can scroll
     // by blitting.
-    notImplemented();
 }
 
 void FrameLoaderClientHaiku::detachedFromParent2()
@@ -522,8 +522,6 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
     if (!function)
         return;
 
-    // Ignore null requests as the Gtk port does. The Qt port doesn't and I have
-    // one URL where Arora crashes the same as WebPositive if not checked here.
     if (request.isNull()) {
         callPolicyFunction(function, PolicyIgnore);
         return;
@@ -636,7 +634,6 @@ void FrameLoaderClientHaiku::postProgressFinishedNotification()
 
 void FrameLoaderClientHaiku::setMainFrameDocumentReady(bool)
 {
-    notImplemented();
     // this is only interesting once we provide an external API for the DOM
 }
 
@@ -831,7 +828,14 @@ bool FrameLoaderClientHaiku::shouldFallBack(const WebCore::ResourceError& error)
 
 bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) const
 {
+    notImplemented();
     return true;
+}
+
+bool FrameLoaderClientHaiku::canShowMIMETypeAsHTML(const String& MIMEType) const
+{
+    notImplemented();
+    return false;
 }
 
 bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
@@ -842,10 +846,7 @@ bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
     if (!mimeType.length())
         return true;
 
-    if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
-        return true;
-
-    if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
+    if (MIMETypeRegistry::canShowMIMEType(mimeType))
         return true;
 
 #if 0
@@ -858,15 +859,8 @@ bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
     return false;
 }
 
-bool FrameLoaderClientHaiku::canShowMIMETypeAsHTML(const String& MIMEType) const
-{
-    notImplemented();
-    return false;
-}
-
 bool FrameLoaderClientHaiku::representationExistsForURLScheme(const String& URLScheme) const
 {
-    notImplemented();
     return false;
 }
 
@@ -971,7 +965,7 @@ String FrameLoaderClientHaiku::userAgent(const URL&)
 
     // FIXME: Get the app name from the app. Hardcoded WebPositive for now.
     // We have to look as close to Safari as possible for some sites like gmail.com 
-    BString userAgent("Mozilla/5.0 (compatible; x86 Haiku R1; %language%) AppleWebKit/%webkit% (KHTML, like Gecko) WebPositive/1.2 Safari/%webkit%");
+    BString userAgent("Mozilla/5.0 (compatible; Haiku R1 x86; %language%) AppleWebKit/%webkit% (KHTML, like Gecko) WebPositive/1.2 Safari/%webkit%");
     userAgent.ReplaceAll("%webkit%", WebKitInfo::WebKitVersion().String());
     userAgent.ReplaceAll("%language%", languageTag.String());
     return userAgent;
@@ -1033,7 +1027,11 @@ ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, cons
             BMimeType type;
             if (BMimeType::GuessMimeType(&ref, &type) == B_OK)
                 mimeType = type.Type();
-        }
+        } else {
+            // For non-file URLs, try guessing from the extension (this happens
+            // before the request so our content sniffing is of no use)
+            mimeType = MIMETypeRegistry::getMIMETypeForExtension(url.path().substring(url.path().reverseFind('.') + 1));
+        } 
     }
 
     if (!mimeType.length())
@@ -1081,8 +1079,8 @@ PassRefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&
 
 String FrameLoaderClientHaiku::overrideMediaType() const
 {
-    notImplemented();
-    return String();
+    // This will do, until we support printing.
+    return "screen";
 }
 
 void FrameLoaderClientHaiku::didSaveToPageCache()
@@ -1105,7 +1103,20 @@ void FrameLoaderClientHaiku::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld
     if (m_webFrame) {
         BMessage message(JAVASCRIPT_WINDOW_OBJECT_CLEARED);
         dispatchMessage(message);
+
     }
+
+    if (m_webPage->fDumpRenderTree)
+    {
+        // DumpRenderTree registers the TestRunner JavaScript object using this
+        // callback. This can't be done using the asynchronous BMessage above:
+        // by the time the message is processed by the target, the JS test will
+        // already have run!
+        JSGlobalContextRef context = toGlobalRef(m_webFrame->Frame()->script().globalObject(mainThreadNormalWorld())->globalExec());
+        JSObjectRef windowObject = toRef(m_webFrame->Frame()->script().globalObject(mainThreadNormalWorld()));
+        m_webPage->fDumpRenderTree->didClearWindowObjectInWorld(world, context, windowObject);
+    }
+
 }
 
 void FrameLoaderClientHaiku::documentElementAvailable()

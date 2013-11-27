@@ -30,28 +30,34 @@
 #include "WorkQueueItem.h"
 
 #include "DumpRenderTree.h"
+#include "NotImplemented.h"
 
 bool LoadItem::invoke() const
 {
+    notImplemented();
     return false;
 }
 
 bool LoadHTMLStringItem::invoke() const
 {
+    notImplemented();
     return true;
 }
 
 bool ReloadItem::invoke() const
 {
+    notImplemented();
     return false;
 }
 
 bool ScriptItem::invoke() const
 {
+    notImplemented();
     return false;
 }
 
 bool BackForwardItem::invoke() const
 {
+    notImplemented();
     return false;
 }

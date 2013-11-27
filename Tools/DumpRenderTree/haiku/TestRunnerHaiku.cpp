@@ -31,7 +31,6 @@
 #include "JSStringUtils.h"
 #include "NotImplemented.h"
 #include "URL.h"
-#include "WebCoreSupport/DumpRenderTreeSupportHaiku.h"
 #include "WorkQueue.h"
 #include "WorkQueueItem.h"
 #include <JavaScriptCore/JSRetainPtr.h>
@@ -42,12 +41,18 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
+#include <DumpRenderTreeClient.h>
+#include <WebPage.h>
+#include <WebView.h>
+
 // Same as Mac cache model enum in Source/WebKit/mac/WebView/WebPreferences.h.
 enum {
     WebCacheModelDocumentViewer = 0,
     WebCacheModelDocumentBrowser = 1,
     WebCacheModelPrimaryWebBrowser = 2
 };
+
+extern BWebView* webView;
 
 TestRunner::~TestRunner()
 {
@@ -89,7 +94,7 @@ void TestRunner::display()
 
 void TestRunner::keepWebHistory()
 {
-    DumpRenderTreeSupportHaiku::setShouldTrackVisitedLinks(true);
+    WebCore::DumpRenderTreeClient::setShouldTrackVisitedLinks(true);
 }
 
 size_t TestRunner::webHistoryItemCount()
@@ -100,7 +105,10 @@ size_t TestRunner::webHistoryItemCount()
 
 void TestRunner::notifyDone()
 {
-    notImplemented();
+    if (m_waitToDump && /*!topLoadingFrame &&*/ !WorkQueue::shared()->count())
+        dump();
+    m_waitToDump = false;
+    //waitForPolicy = false;
 }
 
 JSStringRef TestRunner::pathToLocalResource(JSContextRef context, JSStringRef url)
@@ -202,7 +210,7 @@ void TestRunner::setUserStyleSheetLocation(JSStringRef path)
 
 void TestRunner::setValueForUser(JSContextRef context, JSValueRef nodeObject, JSStringRef value)
 {
-    DumpRenderTreeSupportHaiku::setValueForUser(context, nodeObject, value->string());
+    WebCore::DumpRenderTreeClient::setValueForUser(context, nodeObject, value->string());
 }
 
 void TestRunner::setViewModeMediaFeature(JSStringRef mode)
@@ -428,7 +436,7 @@ void TestRunner::syncLocalStorage()
 
 void TestRunner::setDomainRelaxationForbiddenForURLScheme(bool forbidden, JSStringRef scheme)
 {
-    DumpRenderTreeSupportHaiku::setDomainRelaxationForbiddenForURLScheme(forbidden, scheme->string());
+    WebCore::DumpRenderTreeClient::setDomainRelaxationForbiddenForURLScheme(forbidden, scheme->string());
 }
 
 void TestRunner::goBack()
@@ -474,7 +482,7 @@ void TestRunner::addUserStyleSheet(JSStringRef source, bool allFrames)
 
 void TestRunner::setDeveloperExtrasEnabled(bool enabled)
 {
-    notImplemented();
+    webView->WebPage()->SetDeveloperExtrasEnabled(enabled);
 }
 
 void TestRunner::showWebInspector()
@@ -539,7 +547,7 @@ void TestRunner::abortModal()
 
 void TestRunner::setSerializeHTTPLoads(bool serialize)
 {
-    DumpRenderTreeSupportHaiku::setSerializeHTTPLoads(serialize);
+    WebCore::DumpRenderTreeClient::setSerializeHTTPLoads(serialize);
 }
 
 void TestRunner::setTextDirection(JSStringRef direction)

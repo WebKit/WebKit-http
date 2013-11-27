@@ -38,6 +38,7 @@ class BWebPage;
 
 namespace WebCore {
 class ChromeClientHaiku;
+class DumpRenderTreeClient;
 class Frame;
 class FrameLoaderClientHaiku;
 class URL;
@@ -106,6 +107,7 @@ private:
 	friend class BWebPage;
 
 	friend class WebCore::ChromeClientHaiku;
+	friend class WebCore::DumpRenderTreeClient;
 	friend class WebCore::FrameLoaderClientHaiku;
 
 								BWebFrame(BWebPage* webPage,

@@ -39,6 +39,9 @@
 #include "ResourceHandleInternal.h"
 #include "SharedBuffer.h"
 
+// TODO move to SynchronousLoaderClientHaiku.cpp
+#include "SynchronousLoaderClient.h"
+
 namespace WebCore {
 
 class WebCoreSynchronousLoader : public ResourceHandleClient {
@@ -125,7 +128,6 @@ bool ResourceHandle::start()
         d->m_firstRequest.setURL(urlWithCredentials);
     }
 
-    ResourceHandleInternal *d = getInternal();
     d->m_urlrequest = new BUrlProtocolHandler(d->m_context.get(), this, false);
     return true;
 }
@@ -150,6 +152,7 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &syncLoader, true, false));
 
     ResourceHandleInternal* d = handle->getInternal();
+
     if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
         // If credentials were specified for this request, add them to the url,
         // so that they will be passed to QNetworkRequest.
@@ -219,6 +222,18 @@ void ResourceHandle::platformSetDefersLoading(bool defers)
 
     /*if (d->m_job)
         d->m_job->setLoadMode(QNetworkReplyHandler::LoadMode(defers));*/
+}
+
+// TODO move to SynchronousLoaderClientHaiku.cpp
+void SynchronousLoaderClient::didReceiveAuthenticationChallenge(ResourceHandle*, const AuthenticationChallenge&)
+{
+    notImplemented();
+}
+
+ResourceError SynchronousLoaderClient::platformBadResponseError()
+{
+    notImplemented();
+    return ResourceError();
 }
 
 } // namespace WebCore

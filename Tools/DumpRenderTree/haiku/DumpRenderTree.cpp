@@ -33,11 +33,16 @@
 //#include "DumpRenderTreeChrome.h"
 //#include "DumpRenderTreeView.h"
 
+#include "AccessibilityController.h"
 #include <wtf/text/AtomicString.h> // FIXME EventSender not standalone ?
+#include "DumpRenderTreeClient.h"
 #include "EventSender.h"
 //#include "FontManagement.h"
+#include "Frame.h"
+#include "GCController.h"
 #include "NotImplemented.h"
 #include "PixelDumpSupport.h"
+#include "ScriptController.h"
 #include "TestRunner.h"
 #include "WebCoreTestSupport.h"
 #include "WebFrame.h"
@@ -63,63 +68,62 @@
 RefPtr<TestRunner> gTestRunner;
 volatile bool done = true;
 
-volatile bool notified = false;
-static bool printSeparators = true;
-static bool dumpPixels = false;
+static bool dumpPixelsForCurrentTest;
+static int dumpPixelsForAllTests = false;
 static bool dumpTree = true;
-static thread_id stdinThread;
+static bool printSeparators = true;
 
 using namespace std;
 
-static BWebView* webView;
+BWebView* webView;
 
 const unsigned maxViewHeight = 600;
 const unsigned maxViewWidth = 800;
-
-void notifyDoneFired()
-{
-    notified = true;
-    if (done)
-        dump();
-}
 
 static String dumpFramesAsText(BWebFrame* frame)
 {
     if (!frame)
         return String();
-    
+
+    String result = frame->InnerText();
+    result.append("\n");
+
     if (gTestRunner->dumpChildFramesAsText()) {
         // FIXME:
         // not implemented.
     }
 
-    return frame->InnerText();
+    return result;
+}
+
+static void adjustOutputTypeByMimeType(BWebFrame* frame)
+{
+    const String responseMimeType(WebCore::DumpRenderTreeClient::responseMimeType(frame));
+    if (responseMimeType == "text/plain") {
+        gTestRunner->setDumpAsText(true);
+        gTestRunner->setGeneratePixelResults(false);
+    }
+}
+
+static void dumpFrameContentsAsText(BWebFrame* frame)
+{
+    String result;
+    if (gTestRunner->dumpAsText())
+        result = dumpFramesAsText(frame);
+    else
+        result = frame->ExternalRepresentation();
+//        result = DumpRenderTreeSupportEfl::renderTreeDump(frame);
+
+    printf("%s", result.utf8().data());
 }
 
 void dump()
 {
-    if (gTestRunner->waitToDump() && !notified)
-        return;
+    BWebFrame* frame = webView->WebPage()->MainFrame();
 
     if (dumpTree) {
-        const char* result = 0;
-
-        BString str;
-        if (gTestRunner->dumpAsText())
-            str = dumpFramesAsText(webView->WebPage()->MainFrame());
-        else
-            str = webView->WebPage()->MainFrame()->ExternalRepresentation();
-
-        result = str.String();
-        if (!result) {
-            const char* errorMessage;
-            if (gTestRunner->dumpAsText())
-                errorMessage = "WebFrame::GetInnerText";
-            else
-                errorMessage = "WebFrame::GetExternalRepresentation";
-            printf("ERROR: NULL result from %s\n", errorMessage);
-        } else
-            printf("%s\n", result);
+        adjustOutputTypeByMimeType(frame);
+        dumpFrameContentsAsText(frame);
 
         if (gTestRunner->dumpBackForwardList()) {
             // FIXME:
@@ -134,63 +138,125 @@ void dump()
         }
     }
 
-    if (dumpPixels
+    if (dumpPixelsForCurrentTest
         && !gTestRunner->dumpAsText()
         && !gTestRunner->dumpDOMAsWebArchive()
         && !gTestRunner->dumpSourceAsWebArchive()) {
         // FIXME: Add support for dumping pixels
     }
-
-    puts("#EOF");
-    fflush(stdout);
-    fflush(stderr);
 }
 
-static void runTest(const string& testPathOrURL)
+static bool shouldLogFrameLoadDelegates(const String& pathOrURL)
 {
-    ASSERT(!testPathOrURL.empty());
+    return pathOrURL.contains("loading/");
+}
 
-    done = false;
-    string pathOrURL(testPathOrURL);
-    string expectedPixelHash;
+static bool shouldDumpAsText(const String& pathOrURL)
+{
+    return pathOrURL.contains("dumpAsText/");
+}
 
-    size_t separatorPos = pathOrURL.find("'");
-    if (separatorPos != string::npos) {
-        pathOrURL = string(testPathOrURL, 0, separatorPos);
-        expectedPixelHash = string(testPathOrURL, separatorPos + 1);
+static bool shouldOpenWebInspector(const String& pathOrURL)
+{
+    return pathOrURL.contains("inspector/");
+}
+
+static String getFinalTestURL(const String& testURL)
+{
+    if (!testURL.startsWith("http://") && !testURL.startsWith("https://")) {
+        char* cFilePath = realpath(testURL.utf8().data(), NULL);
+        const String filePath = String::fromUTF8(cFilePath);
+        free(cFilePath);
+
+        //if (ecore_file_exists(filePath.utf8().data()))
+            return String("file://") + filePath;
     }
 
-    // CURL isn't happy if we don't have a protocol.
-    size_t http = pathOrURL.find("http://");
-    if (http == string::npos)
-        pathOrURL.insert(0, "file://");
+    return testURL;
+}
 
-    gTestRunner = TestRunner::create(pathOrURL, expectedPixelHash);
-    if (!gTestRunner)
+static inline bool isGlobalHistoryTest(const String& cTestPathOrURL)
+{
+    return cTestPathOrURL.contains("/globalhistory/");
+}
+
+static void createTestRunner(const String& testURL, const String& expectedPixelHash)
+{
+    gTestRunner =
+        TestRunner::create(std::string(testURL.utf8().data()),
+                                     std::string(expectedPixelHash.utf8().data()));
+
+    //topLoadingFrame = 0;
+    done = false;
+
+    gTestRunner->setIconDatabaseEnabled(false);
+
+    if (shouldLogFrameLoadDelegates(testURL))
+        gTestRunner->setDumpFrameLoadCallbacks(true);
+
+    gTestRunner->setDeveloperExtrasEnabled(true);
+    if (shouldOpenWebInspector(testURL))
+        gTestRunner->showWebInspector();
+
+    gTestRunner->setDumpHistoryDelegateCallbacks(isGlobalHistoryTest(testURL));
+
+    if (shouldDumpAsText(testURL)) {
+        gTestRunner->setDumpAsText(true);
+        gTestRunner->setGeneratePixelResults(false);
+    }
+}
+
+static void runTest(const string& inputLine)
+{
+    TestCommand command = parseInputLine(inputLine);
+    const String testPathOrURL(command.pathOrURL.c_str());
+    ASSERT(!testPathOrURL.isEmpty());
+    dumpPixelsForCurrentTest = command.shouldDumpPixels || dumpPixelsForAllTests;
+    const String expectedPixelHash(command.expectedPixelHash.c_str());
+
+    // Convert the path into a full file URL if it does not look
+    // like an HTTP/S URL (doesn't start with http:// or https://).
+    const String testURL = getFinalTestURL(testPathOrURL);
+
+    //browser->resetDefaultsToConsistentValues();
+    createTestRunner(testURL, expectedPixelHash);
+    if (!gTestRunner) {
         be_app->PostMessage(B_QUIT_REQUESTED);
+    }
 
     WorkQueue::shared()->clear();
     WorkQueue::shared()->setFrozen(false);
 
-    webView->WebPage()->MainFrame()->LoadURL(BString(pathOrURL.c_str()));
+    // TODO resize the viewport for SVG tests
+    // TODO efl does some history cleanup here
+    
+    webView->WebPage()->MainFrame()->LoadURL(BString(testURL));
 }
 
 #pragma mark -
 
-class DumpRenderTreeApp : public BApplication {
+class DumpRenderTreeApp : public BApplication, WebCore::DumpRenderTreeClient {
 public:
     DumpRenderTreeApp();
     ~DumpRenderTreeApp() { }
 
-    virtual void ArgvReceived(int32 argc, char** argv);
-    virtual void ReadyToRun();
-    virtual void MessageReceived(BMessage*);
-    virtual bool QuitRequested() { return true; }
+    // BApplication
+    void ArgvReceived(int32 argc, char** argv);
+    void ReadyToRun();
+    void MessageReceived(BMessage*);
+    bool QuitRequested() { return true; }
 
-    static status_t runTestFromStdin(void*);
+    // DumpRenderTreeClient
+    void didClearWindowObjectInWorld(WebCore::DOMWrapperWorld&,
+        JSGlobalContextRef context, JSObjectRef windowObject);
+
+    static status_t runTestFromStdin();
 
 private:
-    BWebWindow* m_webFrame;
+    GCController* m_gcController;
+    AccessibilityController* m_accessibilityController;
+    BWebWindow* m_webWindow;
+
     int m_currentTest;
     vector<const char*> m_tests;
     bool m_fromStdin;
@@ -211,7 +277,7 @@ void DumpRenderTreeApp::ArgvReceived(int32 argc, char** argv)
         }
 
         if (!strcmp(argv[i], "--pixel-tests")) {
-            dumpPixels = true;
+            dumpPixelsForAllTests = true;
             continue;
         }
 
@@ -226,75 +292,126 @@ void DumpRenderTreeApp::ArgvReceived(int32 argc, char** argv)
     }
 }
 
+class DumpRenderTreeChrome: public BWebWindow
+{
+    public:
+    DumpRenderTreeChrome()
+        : BWebWindow(BRect(0, 0, maxViewWidth, maxViewHeight), "DumpRenderTree",
+            B_NO_BORDER_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL, 0)
+    {
+    }
+};
+
 void DumpRenderTreeApp::ReadyToRun()
 {
     BWebPage::InitializeOnce();
     BWebPage::SetCacheModel(B_WEBKIT_CACHE_MODEL_WEB_BROWSER);
 
     // Create the main application window.
-    m_webFrame = new BWebWindow(BRect(10, 10, 640, 480), "DumpRenderTree",
-        B_NO_BORDER_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL, 0);
-    m_webFrame->SetSizeLimits(0, maxViewWidth, 0, maxViewHeight);
-    m_webFrame->ResizeTo(maxViewWidth, maxViewHeight);
+    m_webWindow = new DumpRenderTreeChrome();
+    m_webWindow->SetSizeLimits(0, maxViewWidth, 0, maxViewHeight);
+    m_webWindow->ResizeTo(maxViewWidth, maxViewHeight);
 
 
     webView = new BWebView("DumpRenderTree");
-    webView->SetExplicitMaxSize(BSize(maxViewWidth, maxViewHeight));
-    m_webFrame->SetCurrentWebView(webView);
+    webView->SetExplicitSize(BSize(maxViewWidth, maxViewHeight));
+    m_webWindow->SetCurrentWebView(webView);
 
     webView->WebPage()->MainFrame()->SetListener(this);
+    Register(webView->WebPage());
 
     // Start the looper, but keep the window hidden
-    m_webFrame->Hide();
-    m_webFrame->Show();
+    m_webWindow->Hide();
+    m_webWindow->Show();
 
     if (m_tests.size() == 1 && !strcmp(m_tests[0], "-")) {
         printSeparators = true;
         m_fromStdin = true;
-        stdinThread = spawn_thread(runTestFromStdin, 0, B_NORMAL_PRIORITY, 0);
-        resume_thread(stdinThread);
+        runTestFromStdin();
     } else if(m_tests.size() != 0) {
-        printSeparators = (m_tests.size() > 1 || (dumpPixels && dumpTree));
+        printSeparators = (m_tests.size() > 1 || (dumpPixelsForAllTests && dumpTree));
         m_fromStdin = false;
         runTest(m_tests[0]);
         m_currentTest = 1;
     }
 }
 
+static void sendPixelResultsEOF()
+{
+    puts("#EOF");
+    fflush(stdout);
+    fflush(stderr);
+}
+
 void DumpRenderTreeApp::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case LOAD_FINISHED: {
-        if (!gTestRunner->waitToDump() || notified) {
-            dump();
-            done = true;
-        }
+        dump();
+
+        gTestRunner->closeWebInspector();
+        gTestRunner->setDeveloperExtrasEnabled(false);
+
+        //browser->clearExtraViews();
+
+        // FIXME: Move to DRTChrome::resetDefaultsToConsistentValues() after bug 85209 lands.
+        //WebCoreTestSupport::resetInternalsObject(DumpRenderTreeSupportEfl::globalContextRefForFrame(browser->mainFrame()));
+
+        //ewk_view_uri_set(browser->mainView(), "about:blank");
+
+        //gTestRunner->clear();
+        sendPixelResultsEOF();
+        
+        gTestRunner->notifyDone();
 
         if (m_fromStdin) {
-            resume_thread(stdinThread);
+            // run the next test.
+            if(runTestFromStdin() != B_OK) {
+                be_app->PostMessage(B_QUIT_REQUESTED);
+            }
             break;
-        }
-
-        if (m_currentTest < m_tests.size()) {
-            runTest(m_tests[m_currentTest]);
-            m_currentTest++;
         } else {
-            if (!m_fromStdin)
+            if (m_currentTest < m_tests.size()) {
+                runTest(m_tests[m_currentTest]);
+                m_currentTest++;
+            } else
                 be_app->PostMessage(B_QUIT_REQUESTED);
         }
         break;
     }
+
     default:
         BApplication::MessageReceived(message);
         break;
     }
 }
 
-status_t DumpRenderTreeApp::runTestFromStdin(void*)
+void DumpRenderTreeApp::didClearWindowObjectInWorld(WebCore::DOMWrapperWorld&, JSGlobalContextRef context, JSObjectRef windowObject)
+{
+    JSValueRef exception = 0;
+
+    gTestRunner->makeWindowObject(context, windowObject, &exception);
+    ASSERT(!exception);
+
+    m_gcController->makeWindowObject(context, windowObject, &exception);
+    ASSERT(!exception);
+
+    //m_accessibilityController->makeWindowObject(context, windowObject, &exception);
+    //ASSERT(!exception);
+
+    JSStringRef eventSenderStr = JSStringCreateWithUTF8CString("eventSender");
+    JSValueRef eventSender = makeEventSender(context);
+    JSObjectSetProperty(context, windowObject, eventSenderStr, eventSender, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete, 0);
+    JSStringRelease(eventSenderStr);
+
+    WebCoreTestSupport::injectInternalsObject(context);
+}
+
+status_t DumpRenderTreeApp::runTestFromStdin()
 {
     char filenameBuffer[2048];
 
-    while (fgets(filenameBuffer, sizeof(filenameBuffer), stdin)) {
+    if(fgets(filenameBuffer, sizeof(filenameBuffer), stdin)) {
 
         char* newLineCharacter = strchr(filenameBuffer, '\n');
 
@@ -302,14 +419,14 @@ status_t DumpRenderTreeApp::runTestFromStdin(void*)
             *newLineCharacter = '\0';
 
         if (!strlen(filenameBuffer))
-            continue;
+            return B_ERROR;
 
         runTest(filenameBuffer);
-        suspend_thread(stdinThread);
+        return B_OK;
     }
 
-    be_app->PostMessage(B_QUIT_REQUESTED);
-    return B_OK;
+    return B_ERROR;
+
 }
 
 #pragma mark -

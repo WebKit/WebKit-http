@@ -1,5 +1,6 @@
 list(APPEND DumpRenderTree_SOURCES
     haiku/DumpRenderTree.cpp
+    haiku/EventSender.cpp
     haiku/GCControllerHaiku.cpp
     haiku/JSStringUtils.cpp
     haiku/PixelDumpSupportHaiku.cpp

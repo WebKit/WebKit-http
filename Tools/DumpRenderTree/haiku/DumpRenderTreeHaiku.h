@@ -30,6 +30,7 @@
 #ifndef DumpRenderTreeHaiku_h
 #define DumpRenderTreeHaiku_h
 
-extern void notifyDoneFired();
+class AccessibilityController;
+class GCController;
 
 #endif // DumpRenderTreeHaiku_h

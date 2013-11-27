@@ -47,6 +47,7 @@ namespace WebCore {
 class ChromeClientHaiku;
 class ContextMenuClientHaiku;
 class DragClientHaiku;
+class DumpRenderTreeClient;
 class EditorClientHaiku;
 class FrameLoaderClientHaiku;
 class InspectorClientHaiku;
@@ -110,6 +111,7 @@ public:
 									bool wrapSelection = true,
 									bool startInSelection = false);
 
+            void                SetDeveloperExtrasEnabled(bool enable);
 			void				SetStatusMessage(const BString& status);
 			void				ResendNotifications();
 
@@ -145,6 +147,7 @@ private:
 	friend class WebCore::ChromeClientHaiku;
 	friend class WebCore::ContextMenuClientHaiku;
 	friend class WebCore::DragClientHaiku;
+	friend class WebCore::DumpRenderTreeClient;
 	friend class WebCore::EditorClientHaiku;
 	friend class WebCore::FrameLoaderClientHaiku;
 	friend class WebCore::InspectorClientHaiku;
@@ -229,6 +232,7 @@ private:
 			BWebFrame*			fMainFrame;
 			BWebSettings*		fSettings;
 			WebCore::Page*		fPage;
+            WebCore::DumpRenderTreeClient* fDumpRenderTree;
 
 			float				fLoadingProgress;
 			BString				fStatusMessage;

@@ -44,6 +44,8 @@
 #include "DumpRenderTreeEfl.h"
 #elif PLATFORM(BLACKBERRY)
 #include "DumpRenderTreeBlackBerry.h"
+#elif PLATFORM(HAIKU)
+#include "DumpRenderTreeHaiku.h"
 #endif
 
 #include <string>

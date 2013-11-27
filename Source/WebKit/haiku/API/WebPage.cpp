@@ -190,6 +190,7 @@ BWebPage::BWebPage(BWebView* webView)
     , fMainFrame(NULL)
     , fSettings(NULL)
     , fPage(NULL)
+    , fDumpRenderTree(NULL)
     , fLoadingProgress(100)
     , fStatusMessage()
     , fDisplayedStatusMessage()
@@ -312,6 +313,11 @@ void BWebPage::FindString(const char* string, bool forward, bool caseSensitive,
 	message.AddBool("wrap selection", wrapSelection);
 	message.AddBool("start in selection", startInSelection);
     Looper()->PostMessage(&message, this);
+}
+
+void BWebPage::SetDeveloperExtrasEnabled(bool enable)
+{
+    page()->settings().setDeveloperExtrasEnabled(enable);
 }
 
 void BWebPage::SetStatusMessage(const BString& status)
