@@ -212,6 +212,16 @@ void BWebWindow::MessageReceived(BMessage* message)
             StatusChanged(text, _WebViewForMessage(message));
         break;
     }
+    case ADD_CONSOLE_MESSAGE: {
+        BString source = message->FindString("source");
+        int32 lineNumber = message->FindInt32("line");
+        int32 columnNumber = message->FindInt32("column");
+        BString text = message->FindString("string");
+        printf("MESSAGE %s:%i:%i: %s\n", source.String(), lineNumber,
+            columnNumber, text.String());
+
+        break;
+    }
     case UPDATE_NAVIGATION_INTERFACE: {
         bool canGoBackward = false;
         bool canGoForward = false;

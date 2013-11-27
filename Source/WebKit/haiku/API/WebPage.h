@@ -198,6 +198,8 @@ private:
 	void setLoadingProgress(float progress);
 	void setStatusMessage(const BString& message);
 	void setDisplayedStatusMessage(const BString& message, bool force = false);
+	void addMessageToConsole(const BString& source, int lineNumber,
+        int columnNumber, const BString& message);
 
 private:
 	virtual						~BWebPage();

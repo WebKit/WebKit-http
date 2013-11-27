@@ -239,7 +239,8 @@ void ChromeClientHaiku::setResizable(bool resizable)
 void ChromeClientHaiku::addMessageToConsole(MessageSource, MessageLevel, const String& message,
                                             unsigned int lineNumber, unsigned columnNumber, const String& sourceID)
 {
-    printf("MESSAGE %s:%i:%i: %s\n", BString(sourceID).String(), lineNumber, columnNumber, BString(message).String());
+    m_webPage->addMessageToConsole(BString(sourceID), lineNumber, columnNumber,
+        BString(message));
 }
 
 bool ChromeClientHaiku::canRunBeforeUnloadConfirmPanel()
@@ -277,7 +278,6 @@ bool ChromeClientHaiku::runJavaScriptConfirm(Frame*, const String& msg)
 
 bool ChromeClientHaiku::runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result)
 {
-printf("ChromeClientHaiku::runJavaScriptPrompt()\n");
     notImplemented();
     return false;
 }

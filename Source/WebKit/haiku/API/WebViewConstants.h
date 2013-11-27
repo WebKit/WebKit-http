@@ -66,7 +66,8 @@ enum {
     MENUBAR_VISIBILITY =                                403,
     SET_RESIZABLE =                                     405,
     SET_STATUS_TEXT =                                   406,
-    RESIZING_REQUESTED =                                407
+    RESIZING_REQUESTED =                                407,
+    ADD_CONSOLE_MESSAGE =                               408,
 };
 
 #endif // WebViewConstants_h

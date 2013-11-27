@@ -227,7 +227,11 @@ static void runTest(const string& inputLine)
     WorkQueue::shared()->clear();
     WorkQueue::shared()->setFrozen(false);
 
-    // TODO resize the viewport for SVG tests
+    const bool isSVGW3CTest = testURL.contains("svg/W3C-SVG-1.1");
+    const int width = isSVGW3CTest ? TestRunner::w3cSVGViewWidth : TestRunner::viewWidth;
+    const int height = isSVGW3CTest ? TestRunner::w3cSVGViewHeight : TestRunner::viewHeight;
+    webView->ResizeTo(width, height); 
+
     // TODO efl does some history cleanup here
     
     webView->WebPage()->MainFrame()->LoadURL(BString(testURL));
@@ -299,6 +303,26 @@ class DumpRenderTreeChrome: public BWebWindow
         : BWebWindow(BRect(0, 0, maxViewWidth, maxViewHeight), "DumpRenderTree",
             B_NO_BORDER_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL, 0)
     {
+    }
+
+    void MessageReceived(BMessage* message)
+    {
+        switch(message->what)
+        {
+            case ADD_CONSOLE_MESSAGE:
+            {
+                // Follow the format used by other DRTs here. Note this doesn't
+                // include the fille URL, making it possible to have consistent
+                // results even if the tests are moved around.
+                int32 lineNumber = message->FindInt32("line");
+                BString text = message->FindString("string");
+                printf("CONSOLE MESSAGE: line %i: %s\n", lineNumber,
+                    text.String());
+                return;
+            }
+        }
+
+        BWebWindow::MessageReceived(message);
     }
 };
 

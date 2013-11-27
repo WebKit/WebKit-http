@@ -789,6 +789,19 @@ void BWebPage::setDisplayedStatusMessage(const BString& statusMessage, bool forc
 }
 
 
+void BWebPage::addMessageToConsole(const BString& source, int lineNumber,
+    int columnNumber, const BString& text)
+{
+    BMessage message(ADD_CONSOLE_MESSAGE);
+    message.AddString("source", source);
+    message.AddInt32("line", lineNumber);
+    message.AddInt32("column", columnNumber);
+    message.AddString("string", text);
+	dispatchMessage(message);
+}
+
+
+
 // #pragma mark - private
 
 void BWebPage::MessageReceived(BMessage* message)
@@ -1011,6 +1024,8 @@ void BWebPage::handleFrameResized(const BMessage* message)
 
     WebCore::Frame* frame = fMainFrame->Frame();
     frame->view()->resize(width + 1, height + 1);
+    frame->view()->forceLayout();
+    frame->view()->adjustViewSize();
 }
 
 void BWebPage::handleFocused(const BMessage* message)
