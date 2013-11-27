@@ -64,8 +64,6 @@ static const ExtensionMap extensionMap[] = {
 
 String MIMETypeRegistry::getMIMETypeForExtension(const String& ext)
 {
-    ASSERT(isMainThread());
-
     String str = ext.lower();
 
     // Try WebCore built-in types.
