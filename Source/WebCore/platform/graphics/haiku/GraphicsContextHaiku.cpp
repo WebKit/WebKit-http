@@ -778,11 +778,29 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
     case CompositePlusLighter:
         mode = B_OP_ADD;
         break;
+    case CompositeDifference:
     case CompositePlusDarker:
         mode = B_OP_SUBTRACT;
         break;
+    case CompositeDestinationOut:
+        mode = B_OP_ERASE;
+        break;
+    case CompositeSourceAtop:
+        // Draw source only where destination isn't transparent
+    case CompositeSourceIn:
+        // Erase everything, draw source only where destination wasn't transparent
+    case CompositeSourceOut:
+        // Erase everything, draw source only where destination was transparent
+    case CompositeDestinationOver:
+        // Draw source only where destination is transparent
+    case CompositeDestinationAtop:
+        // Draw source only where destination is transparent, erase where source is transparent
+    case CompositeDestinationIn:
+        // Erase where source is transparent
+    case CompositeXOR:
+        // Draw source where destination is transparent, erase intersection of source and dest.
     default:
-        printf("GraphicsContext::setCompositeOperation: Unsupported composite operation %s\n",
+        fprintf(stderr, "GraphicsContext::setCompositeOperation: Unsupported composite operation %s\n",
                 compositeOperatorName(op, blend).utf8().data());
     }
     m_data->view()->SetDrawingMode(mode);
