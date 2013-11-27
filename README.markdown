@@ -69,7 +69,7 @@ using "cmake -Dvar=value WebKitBuild/Release".
 You can set the compiler while calling the configure script:
     $ CC="distcc gcc-x86" CXX="distcc g++-x86" build-webkit ...
 
-It is a good idea to set the NUMBER_OF_PROCESSORS environment variable as well
+It is a good idea to set the NUMBER\_OF\_PROCESSORS environment variable as well
 (this will be given to cmake through the -j option). If you don't set it, only
 the local CPUs will be counted, leading to a sub-optimal distcc distribution.
 
@@ -79,6 +79,39 @@ is already visible under this name on the local machine and haiku slaves).
 CMake usually tries to resolve the compiler to an absolute path on the first
 time it is called, but this doesn't work when the compiler is called through
 distcc.
+
+## Testing ##
+
+### Testing the test framework ###
+    $ ruby Tools/Scripts/test-webkitruby
+    $ perl Tools/Scripts/test-webkitperl
+    $ python Tools/Scripts/test-webkitpy
+
+The ruby tests pass (all 2 of them!)
+The perl test almost pass: Failed 2/25 test programs. 1/412 subtests failed.
+The python testsuite prints a lot of "sem\_init: No space left on device" then crashes.
+But before it does, there already are some test failures.
+
+### JSC ###
+    $ perl Tools/Scripts/run-javascriptcore-tests --no-build --haiku
+
+Current results:
+- 7500 tests are run (some are excluded because of missing features in our Ruby port)
+- 4 failure related to parsing dates (ecmascript 3, Date, 15.9.5.6)
+
+### WebKit ###
+    $ perl Tools/Scripts/run-webkit-tests --platform=haiku --no-build --no-http
+
+The options will prevent the script to try updating DumpRenderTree (it doesn't
+know how to do that on Haiku, yet) and to run the HTTP tests (requires apache).
+
+A lot of tests are currently failing. The problems are either in the WebKit
+code itself, or in the various parts of the test harness, none of which are
+actually complete: DumpRenderTree, webkitpy, etc.
+
+### Others ###
+
+There are more tests, but the build-\* scripts must be working before we can run them.
 
 ## Notes ##
 
@@ -92,6 +125,6 @@ You can copy a WebPositive binary from your Haiku installation into the
 WebKitBuild/Release folder. Launching it will then use the freshly built
 libraries instead of the system ones.
 
-This document was last updated October 11, 2013
+This document was last updated November 26, 2013
 
 Authors: Maxime Simon, Alexandre Deckner, Adrien Destugues
