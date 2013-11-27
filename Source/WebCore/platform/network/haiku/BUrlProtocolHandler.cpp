@@ -317,15 +317,27 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
 
 void BUrlProtocolHandler::sendResponseIfNeeded()
 {
-    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
-    if(!httpRequest)
-        return;
-    // TODO maybe other types of requests need a response ?
+    WTF::String contentType;
+    int contentLength = 0;
 
-    if (m_request->Status() != B_PROT_SUCCESS
-            && m_request->Status() != B_PROT_RUNNING
-            && !ignoreHttpError(httpRequest, m_responseDataSent))
-        return;
+    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
+    if(httpRequest)
+    {
+        if (m_request->Status() != B_PROT_SUCCESS
+                && m_request->Status() != B_PROT_RUNNING
+                && !ignoreHttpError(httpRequest, m_responseDataSent))
+            return;
+
+        contentType = httpRequest->Result().Headers()["Content-Type"];
+
+        const char* contentLengthString
+            = httpRequest->Result().Headers()["Content-Length"];
+        if (contentLengthString != NULL)
+            contentLength = atoi(contentLengthString);
+    } else {
+        // contentType = m_request->Result().MimeType();
+        // TODO add the length to UrlResult as well.
+    }
 
     if (m_responseSent || !m_resourceHandle)
         return;
@@ -335,7 +347,6 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     if (!client)
         return;
 
-    WTF::String contentType = httpRequest->Result().Headers()["Content-Type"];
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
@@ -343,29 +354,22 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
         // let's try to guess from the extension
         BString extension = m_request->Url().Path();
         int index = extension.FindLast('.');
+        extension.Remove(0, index + 1);
 
-        if (index >= 0) {
-            extension.Remove(0, index + 1);
+        if (index >= 0 && extension.Length() > 0)
             mimeType = MIMETypeRegistry::getMIMETypeForExtension(extension);
-        }
     }
-
 
     URL url(m_request->Url());
 
-    int contentLength = 0;
-    const char* contentLengthString
-        = httpRequest->Result().Headers()["Content-Length"];
-    if (contentLengthString != NULL)
-        contentLength = atoi(contentLengthString);
-
     ResourceResponse response(url, mimeType, contentLength, encoding, String());
 
-    if (url.isLocalFile()) {
+    if (!httpRequest) {
+        // For protocols other than http, we don't have more information to add.
+        // (this includes file: and data: for now).
         client->didReceiveResponse(m_resourceHandle, response);
         return;
     }
-
 
     int statusCode = httpRequest->Result().StatusCode();
     if (url.protocolIsInHTTPFamily()) {
@@ -474,10 +478,7 @@ void BUrlProtocolHandler::start()
         if (!client)
             return;
 
-        ResourceError error("BUrlProtocol", 41,
-            BUrl(m_resourceHandle->firstRequest().url()).UrlString().String(),
-            "The request protocol is not handled by Services Kit.");
-        client->didFail(m_resourceHandle, error);
+        client->cannotShowURL(m_resourceHandle);
         return;
     }
 
