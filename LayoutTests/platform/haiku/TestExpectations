@@ -1,0 +1,6 @@
+# These are the layout test expectations for Haiku port of WebKit.
+#
+# See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
+
+# http://dev.haiku-os.org/ticket/10258 - app_server crash
+Bug(Haiku) fast/canvas/canvas-largedraws.html [ Skip ]
