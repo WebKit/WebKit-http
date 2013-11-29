@@ -496,8 +496,6 @@ void FrameLoaderClientHaiku::dispatchShow()
 void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest& request, FramePolicyFunction function)
 {
     if (request.isNull()) {
-printf("FrameLoaderClientHaiku::dispatchDecidePolicyForResponse %s -> ignore (isNull)\n",
-BString(response.mimeType()).String());
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
@@ -505,12 +503,8 @@ BString(response.mimeType()).String());
     if (canShowMIMEType(response.mimeType())) {
         callPolicyFunction(function, PolicyUse);
     } else if (!request.url().isLocalFile() && response.mimeType() != "application/x-shockwave-flash") {
-printf("FrameLoaderClientHaiku::dispatchDecidePolicyForResponse %s -> download\n",
-BString(response.mimeType()).String());
         callPolicyFunction(function, PolicyDownload);
     } else {
-printf("FrameLoaderClientHaiku::dispatchDecidePolicyForResponse %s -> ignore (local URL or Flash)\n",
-BString(response.mimeType()).String());
         callPolicyFunction(function, PolicyIgnore);
     }
 }
