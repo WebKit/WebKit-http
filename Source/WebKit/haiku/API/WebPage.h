@@ -200,6 +200,8 @@ private:
 	void setDisplayedStatusMessage(const BString& message, bool force = false);
 	void addMessageToConsole(const BString& source, int lineNumber,
         int columnNumber, const BString& message);
+    void runJavaScriptAlert(const BString& message);
+    bool runJavaScriptConfirm(const BString& message);
 
 private:
 	virtual						~BWebPage();
@@ -225,7 +227,7 @@ private:
 	void handleSendEditingCapabilities(BMessage* message);
 	void handleSendPageSource(BMessage* message);
 
-    status_t dispatchMessage(BMessage& message) const;
+    status_t dispatchMessage(BMessage& message, BMessage* reply = NULL) const;
 
 private:
     		BMessenger			fListener;

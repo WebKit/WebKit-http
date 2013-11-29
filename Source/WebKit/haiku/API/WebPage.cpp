@@ -789,6 +789,25 @@ void BWebPage::setDisplayedStatusMessage(const BString& statusMessage, bool forc
 }
 
 
+void BWebPage::runJavaScriptAlert(const BString& text)
+{
+    BMessage message(SHOW_JS_ALERT);
+	message.AddString("text", text);
+	dispatchMessage(message);
+}
+
+
+bool BWebPage::runJavaScriptConfirm(const BString& text)
+{
+    BMessage message(SHOW_JS_CONFIRM);
+	message.AddString("text", text);
+    BMessage reply;
+	dispatchMessage(message, &reply);
+
+    return reply.FindBool("result");
+}
+
+
 void BWebPage::addMessageToConsole(const BString& source, int lineNumber,
     int columnNumber, const BString& text)
 {
@@ -1258,9 +1277,9 @@ void BWebPage::handleSendPageSource(BMessage*)
 
 // #pragma mark -
 
-status_t BWebPage::dispatchMessage(BMessage& message) const
+status_t BWebPage::dispatchMessage(BMessage& message, BMessage* reply) const
 {
 	message.AddPointer("view", fWebView);
-	return fListener.SendMessage(&message);
+	return fListener.SendMessage(&message, reply);
 }
 

@@ -68,6 +68,8 @@ enum {
     SET_STATUS_TEXT =                                   406,
     RESIZING_REQUESTED =                                407,
     ADD_CONSOLE_MESSAGE =                               408,
+    SHOW_JS_ALERT =                                     409,
+    SHOW_JS_CONFIRM =                                   410,
 };
 
 #endif // WebViewConstants_h

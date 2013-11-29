@@ -222,6 +222,18 @@ void BWebWindow::MessageReceived(BMessage* message)
 
         break;
     }
+    case SHOW_JS_ALERT: {
+        BString text = message->FindString("text");
+        BAlert* alert = new BAlert("JavaScript", text, "OK");
+        alert->Go();
+    }
+    case SHOW_JS_CONFIRM: {
+        BString text = message->FindString("text");
+        BAlert* alert = new BAlert("JavaScript", text, "Yes", "No");
+        BMessage reply;
+        reply.AddBool("result", !alert->Go());
+        message->SendReply(&reply);
+    }
     case UPDATE_NAVIGATION_INTERFACE: {
         bool canGoBackward = false;
         bool canGoForward = false;

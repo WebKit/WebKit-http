@@ -266,12 +266,12 @@ void ChromeClientHaiku::closeWindowSoon()
 
 void ChromeClientHaiku::runJavaScriptAlert(Frame*, const String& msg)
 {
-    BAlert* alert = new BAlert("JavaScript", BString(msg).String(), "OK");
-    alert->Go();
+    m_webPage->runJavaScriptAlert(BString(msg));
 }
 
 bool ChromeClientHaiku::runJavaScriptConfirm(Frame*, const String& msg)
 {
+    return m_webPage->runJavaScriptConfirm(BString(msg));
     BAlert* alert = new BAlert("JavaScript", BString(msg).String(), "Yes", "No");
     return !alert->Go();
 }
