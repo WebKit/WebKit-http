@@ -29,23 +29,33 @@
 #include "DumpRenderTree.h"
 #include "IntRect.h"
 #include "NotImplemented.h"
+#include "WebView.h"
 
 #include <DumpRenderTreeClient.h>
 
 #include <wtf/MD5.h>
 
+#include <Bitmap.h>
+#include <Rect.h>
+
+extern BWebView* webView;
+
 PassRefPtr<BitmapContext> createBitmapContextFromWebView(bool, bool, bool, bool drawSelectionRect)
 {
-    notImplemented();
-    return 0;
+        /*
+        BBitmapStream stream(webView->OffscreenBitmap());
+        BTranslatorRoster::Default()->Translate(&stream, NULL, NULL, dest, B_PNG_FORMAT);
+        */
+    return BitmapContext::createByAdoptingData(WebCore::DumpRenderTreeClient::getOffscreen(webView));
 }
 
 void computeMD5HashStringForBitmapContext(BitmapContext* context, char hashString[33])
 {
-    int pixelsWide = context->m_width;
-    int pixelsHigh = context->m_height;
-    int bytesPerRow = context->m_width * 4;
-    unsigned char* pixelData = context->m_data;
+    BRect bounds = context->m_bitmap->Bounds();
+    int pixelsWide = bounds.Width();
+    int pixelsHigh = bounds.Height();
+    int bytesPerRow = pixelsWide * 4;
+    unsigned char* pixelData = (unsigned char*)context->m_bitmap->Bits();
 
     MD5 md5;
     for (int i = 0; i < pixelsHigh; ++i) {

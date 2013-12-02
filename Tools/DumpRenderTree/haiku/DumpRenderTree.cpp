@@ -47,6 +47,7 @@
 #include "WebCoreTestSupport.h"
 #include "WebFrame.h"
 #include "WebPage.h"
+#include "WebSettings.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 #include "WebWindow.h"
@@ -117,6 +118,11 @@ static void dumpFrameContentsAsText(BWebFrame* frame)
     printf("%s", result.utf8().data());
 }
 
+static bool shouldDumpPixelsAndCompareWithExpected()
+{
+    return dumpPixelsForCurrentTest && gTestRunner->generatePixelResults() && !gTestRunner->dumpDOMAsWebArchive() && !gTestRunner->dumpSourceAsWebArchive();
+}
+
 void dump()
 {
     BWebFrame* frame = webView->WebPage()->MainFrame();
@@ -138,11 +144,8 @@ void dump()
         }
     }
 
-    if (dumpPixelsForCurrentTest
-        && !gTestRunner->dumpAsText()
-        && !gTestRunner->dumpDOMAsWebArchive()
-        && !gTestRunner->dumpSourceAsWebArchive()) {
-        // FIXME: Add support for dumping pixels
+    if(shouldDumpPixelsAndCompareWithExpected()) {
+        dumpWebViewAsPixelsAndCompareWithExpected(gTestRunner->expectedPixelHash());
     }
 }
 
@@ -304,26 +307,6 @@ class DumpRenderTreeChrome: public BWebWindow
             B_NO_BORDER_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL, 0)
     {
     }
-
-    void MessageReceived(BMessage* message)
-    {
-        switch(message->what)
-        {
-            case ADD_CONSOLE_MESSAGE:
-            {
-                // Follow the format used by other DRTs here. Note this doesn't
-                // include the fille URL, making it possible to have consistent
-                // results even if the tests are moved around.
-                int32 lineNumber = message->FindInt32("line");
-                BString text = message->FindString("string");
-                printf("CONSOLE MESSAGE: line %i: %s\n", lineNumber,
-                    text.String());
-                return;
-            }
-        }
-
-        BWebWindow::MessageReceived(message);
-    }
 };
 
 void DumpRenderTreeApp::ReadyToRun()
@@ -341,8 +324,12 @@ void DumpRenderTreeApp::ReadyToRun()
     webView->SetExplicitSize(BSize(maxViewWidth, maxViewHeight));
     m_webWindow->SetCurrentWebView(webView);
 
-    webView->WebPage()->MainFrame()->SetListener(this);
+    webView->WebPage()->SetListener(this);
     Register(webView->WebPage());
+    webView->WebPage()->Settings()->SetDefaultStandardFontSize(16);
+    webView->WebPage()->Settings()->SetDefaultFixedFontSize(16);
+        // Make sure we use the same metrics are others for the tests.
+    webView->WebPage()->Settings()->Apply();
 
     // Start the looper, but keep the window hidden
     m_webWindow->Hide();
@@ -404,8 +391,42 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         break;
     }
 
+    case ADD_CONSOLE_MESSAGE:
+    {
+        // Follow the format used by other DRTs here. Note this doesn't
+        // include the fille URL, making it possible to have consistent
+        // results even if the tests are moved around.
+        int32 lineNumber = message->FindInt32("line");
+        BString text = message->FindString("string");
+        printf("CONSOLE MESSAGE: ");
+        if (lineNumber)
+            printf("line %u: ", lineNumber);
+        printf("%s\n", text.String());
+        fflush(stdout);
+        return;
+    }
+
+    case SHOW_JS_ALERT:
+    {
+        BString text = message->FindString("text");
+        printf("ALERT: %s\n", text.String());
+        fflush(stdout);
+        return;
+    }
+    case SHOW_JS_CONFIRM:
+    {
+        BString text = message->FindString("text");
+        printf("CONFIRM: %s\n", text.String());
+        fflush(stdout);
+
+        BMessage reply;
+        reply.AddBool("result", true);
+        message->SendReply(&reply);
+        return;
+    }
+
     default:
-        BApplication::MessageReceived(message);
+    BApplication::MessageReceived(message);
         break;
     }
 }

@@ -1280,6 +1280,9 @@ void BWebPage::handleSendPageSource(BMessage*)
 status_t BWebPage::dispatchMessage(BMessage& message, BMessage* reply) const
 {
 	message.AddPointer("view", fWebView);
-	return fListener.SendMessage(&message, reply);
+    if (reply)
+	    return fListener.SendMessage(&message, reply);
+    else
+	    return fListener.SendMessage(&message);
 }
 

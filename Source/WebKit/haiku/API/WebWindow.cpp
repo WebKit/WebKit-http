@@ -226,6 +226,7 @@ void BWebWindow::MessageReceived(BMessage* message)
         BString text = message->FindString("text");
         BAlert* alert = new BAlert("JavaScript", text, "OK");
         alert->Go();
+        break;
     }
     case SHOW_JS_CONFIRM: {
         BString text = message->FindString("text");
@@ -233,6 +234,7 @@ void BWebWindow::MessageReceived(BMessage* message)
         BMessage reply;
         reply.AddBool("result", !alert->Go());
         message->SendReply(&reply);
+        break;
     }
     case UPDATE_NAVIGATION_INTERFACE: {
         bool canGoBackward = false;

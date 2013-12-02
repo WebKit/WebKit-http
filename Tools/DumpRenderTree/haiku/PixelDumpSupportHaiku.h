@@ -26,32 +26,32 @@
 #ifndef PixelDumpSupportHaiku_h
 #define PixelDumpSupportHaiku_h
 
+#include <Bitmap.h>
+
 #include <stdio.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
+
 class BitmapContext : public RefCounted<BitmapContext> {
 public:
 
-    static PassRefPtr<BitmapContext> createByAdoptingData(unsigned char* data, int width, int height)
+    static PassRefPtr<BitmapContext> createByAdoptingData(BBitmap* bitmap)
     {
-        return adoptRef(new BitmapContext(data, width, height));
+        return adoptRef(new BitmapContext(bitmap));
     }
 
     ~BitmapContext()
     {
-        delete m_data;
+        delete m_bitmap;
     }
 
-    unsigned char* m_data;
-    int m_width, m_height;
+    BBitmap* m_bitmap;
 
 private:
 
-    BitmapContext(unsigned char* data, int width, int height)
-        : m_data(data)
-        , m_width(width)
-        , m_height(height)
+    BitmapContext(BBitmap* bitmap)
+        : m_bitmap(bitmap)
     {
     }
 };

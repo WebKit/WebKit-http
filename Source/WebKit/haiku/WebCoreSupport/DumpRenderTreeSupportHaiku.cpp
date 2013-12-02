@@ -27,7 +27,9 @@
 
 #include "WebFrame.h"
 #include "WebPage.h"
+#include "WebView.h"
 
+#include <Bitmap.h>
 #include <DocumentLoader.h>
 #include <Frame.h>
 #include <FrameLoader.h>
@@ -67,6 +69,11 @@ String DumpRenderTreeClient::responseMimeType(const BWebFrame* frame)
         return String();
 
     return documentLoader->responseMIMEType();
+}
+
+BBitmap* DumpRenderTreeClient::getOffscreen(BWebView* view)
+{
+    return new BBitmap(view->OffscreenBitmap());
 }
 
 void

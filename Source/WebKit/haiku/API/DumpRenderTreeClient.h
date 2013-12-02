@@ -39,8 +39,10 @@ class MessagePortChannel;
 typedef Vector<OwnPtr<MessagePortChannel>, 1> MessagePortChannelArray;
 }
 
+class BBitmap;
 class BWebFrame;
 class BWebPage;
+class BWebView;
 class DumpRenderTreeApp;
 
 
@@ -58,6 +60,7 @@ public:
 
     static String responseMimeType(const BWebFrame* frame);
     static void setValueForUser(JSContextRef, JSValueRef nodeObject, const String& value);
+    static BBitmap* getOffscreen(BWebView* view);
 
     static void setSeamlessIFramesEnabled(bool);
 

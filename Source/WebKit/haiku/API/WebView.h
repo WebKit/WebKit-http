@@ -35,6 +35,10 @@
 class BUrlContext;
 class BWebPage;
 
+namespace WebCore {
+    class DumpRenderTreeClient;
+}
+
 
 class __attribute__ ((visibility ("default"))) BWebView : public BView {
 public:
@@ -112,6 +116,7 @@ public:
 
 private:
 	friend class BWebPage;
+    friend class WebCore::DumpRenderTreeClient;
 	virtual						~BWebView();
 
 	inline	BBitmap*			OffscreenBitmap() const
