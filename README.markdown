@@ -100,14 +100,20 @@ Current results:
 - 4 failure related to parsing dates (ecmascript 3, Date, 15.9.5.6)
 
 ### WebKit ###
-    $ perl Tools/Scripts/run-webkit-tests --platform=haiku --no-build --no-http
+    $ perl Tools/Scripts/run-webkit-tests --platform=haiku --no-build --no-http --no-retry-failures
 
 The options will prevent the script to try updating DumpRenderTree (it doesn't
 know how to do that on Haiku, yet) and to run the HTTP tests (requires apache).
 
+You will have to install the Ahem font for layout tests to work properly. This
+is a font with known-size glyphs that render the same on all platforms. Most of
+the characters look like black squares, this is expected and not a bug!
+http://www.w3.org/Style/CSS/Test/Fonts/Ahem/
+
 A lot of tests are currently failing. The problems are either in the WebKit
 code itself, or in the various parts of the test harness, none of which are
-actually complete: DumpRenderTree, webkitpy, etc.
+actually complete: DumpRenderTree, webkitpy, etc. Some of them are triggering
+asserts in WebKit code.
 
 ### Others ###
 
