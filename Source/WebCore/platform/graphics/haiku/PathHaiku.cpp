@@ -421,8 +421,8 @@ void Path::addArc(const FloatPoint& center, float radius,
 void Path::addRect(const FloatRect& r)
 {
     m_path->MoveTo(BPoint(r.x(), r.y()));
-    m_path->LineTo(BPoint(r.maxY(), r.y()));
-    m_path->LineTo(BPoint(r.maxY(), r.maxY()));
+    m_path->LineTo(BPoint(r.maxX(), r.y()));
+    m_path->LineTo(BPoint(r.maxX(), r.maxY()));
     m_path->LineTo(BPoint(r.x(), r.maxY()));
     m_path->Close();
 }
