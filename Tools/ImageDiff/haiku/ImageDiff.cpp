@@ -121,7 +121,7 @@ static float calculateDifference(BBitmap* baselineImage, BBitmap* actualImage, B
         return 100; // Completely different.
     }
 
-    auto diffBuffer = std::make_unique<unsigned char[]>((bounds.Width() + 1) * (bounds.Height() + 1));
+    unsigned char* diffBuffer = new unsigned char[(int)((bounds.Width() + 1) * (bounds.Height() + 1))];
     if (!diffBuffer)
         abortWithErrorMessage("could not create difference buffer");
 
@@ -132,7 +132,7 @@ static float calculateDifference(BBitmap* baselineImage, BBitmap* actualImage, B
     float maxDistance = 0;
     unsigned char* actualPixels = static_cast<unsigned char*>(actualImage->Bits());
     unsigned char* basePixels = static_cast<unsigned char*>(baselineImage->Bits());
-    unsigned char* currentDiffPixel = diffBuffer.get();
+    unsigned char* currentDiffPixel = diffBuffer;
 
     for (int y = 0; y <= bounds.Height(); y++) {
         for (int x = 0; x <= bounds.Width(); x++) {
@@ -162,9 +162,10 @@ static float calculateDifference(BBitmap* baselineImage, BBitmap* actualImage, B
         difference = roundf(difference * 100.0f) / 100.0f;
         difference = std::max(difference, 0.01f); // round to 2 decimal places
 
-        differenceImage = differenceImageFromDifferenceBuffer(diffBuffer.get(), bounds.Width() + 1, bounds.Height() + 1);
+        differenceImage = differenceImageFromDifferenceBuffer(diffBuffer, bounds.Width() + 1, bounds.Height() + 1);
     }
 
+    delete[] diffBuffer;
     return difference;
 }
 
@@ -172,6 +173,7 @@ static void printImage(BBitmap* image)
 {
     BMallocIO imageData;
     BBitmapStream input(image);
+        // Will delete the image!
     if (BTranslatorRoster::Default()->Translate(&input, NULL, NULL,
         &imageData, B_PNG_FORMAT) == B_OK) {
         printf("Content-Length: %ld\n", imageData.BufferLength());
@@ -179,7 +181,6 @@ static void printImage(BBitmap* image)
 
         write(1, imageData.Buffer(), imageData.BufferLength());
     }
-    input.DetachBitmap(&image);
 }
 
 static void printImageDifferences(BBitmap* baselineImage, BBitmap* actualImage)
@@ -194,23 +195,24 @@ static void printImageDifferences(BBitmap* baselineImage, BBitmap* actualImage)
         printf("diff: %01.2f%% failed\n", difference);
     } else
         printf("diff: %01.2f%% passed\n", difference);
-
-    delete differenceImage;
 }
 
 static BBitmap* readImageFromStdin(long imageSize)
 {
-    auto imageBuffer = std::make_unique<unsigned char[]>(imageSize);
+    auto imageBuffer = new unsigned char[imageSize];
     if (!imageBuffer)
         abortWithErrorMessage("cannot allocate image");
 
-    const size_t bytesRead = fread(imageBuffer.get(), 1, imageSize, stdin);
-    if (!bytesRead)
+    const size_t bytesRead = fread(imageBuffer, 1, imageSize, stdin);
+    if (bytesRead <= 0) {
+        delete[] imageBuffer;
         return NULL;
+    }
 
-    BMemoryIO imageData(imageBuffer.get(), imageSize);
+    BMemoryIO imageData(imageBuffer, imageSize);
     BBitmap* image = BTranslationUtils::GetBitmap(&imageData);
 
+    delete[] imageBuffer;
     return image;
 }
 
@@ -242,13 +244,8 @@ static void abortWithErrorMessage(const char* errorMessage)
     exit(EXIT_FAILURE);
 }
 
-int main(int argc, char* argv[])
+int32 worker(void*)
 {
-    BApplication app("application/x-vnd.webkit-imagediff");
-        // We need an app_server link for the BBitmaps.
-    if (!parseCommandLineOptions(argc, argv))
-        return EXIT_FAILURE;
-
     BBitmap* actualImage = NULL;
     BBitmap* baselineImage = NULL;
 
@@ -278,6 +275,20 @@ int main(int argc, char* argv[])
 
         fflush(stdout);
     }
+
+    be_app->PostMessage(B_QUIT_REQUESTED);
+    return B_OK;
+}
+
+int main(int argc, char* argv[])
+{
+    BApplication app("application/x-vnd.webkit-imagediff");
+        // We need an app_server link for the BBitmaps.
+    if (!parseCommandLineOptions(argc, argv))
+        return EXIT_FAILURE;
+
+    resume_thread(spawn_thread(worker, "worker", B_NORMAL_PRIORITY, NULL));
+    app.Run();
 
     return EXIT_SUCCESS;
 }
