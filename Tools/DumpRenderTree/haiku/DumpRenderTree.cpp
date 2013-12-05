@@ -233,7 +233,9 @@ static void runTest(const string& inputLine)
     const bool isSVGW3CTest = testURL.contains("svg/W3C-SVG-1.1");
     const int width = isSVGW3CTest ? TestRunner::w3cSVGViewWidth : TestRunner::viewWidth;
     const int height = isSVGW3CTest ? TestRunner::w3cSVGViewHeight : TestRunner::viewHeight;
-    webView->ResizeTo(width, height); 
+    webView->LockLooper();
+    webView->ResizeTo(width - 1, height - 1);
+    webView->UnlockLooper();
 
     // TODO efl does some history cleanup here
     
@@ -316,13 +318,14 @@ void DumpRenderTreeApp::ReadyToRun()
 
     // Create the main application window.
     m_webWindow = new DumpRenderTreeChrome();
-    m_webWindow->SetSizeLimits(0, maxViewWidth, 0, maxViewHeight);
-    m_webWindow->ResizeTo(maxViewWidth, maxViewHeight);
+    m_webWindow->SetSizeLimits(0, maxViewWidth - 1, 0, maxViewHeight - 1);
+    m_webWindow->ResizeTo(maxViewWidth - 1, maxViewHeight - 1);
 
 
     webView = new BWebView("DumpRenderTree");
-    webView->SetExplicitSize(BSize(maxViewWidth, maxViewHeight));
+    m_webWindow->AddChild(webView);
     m_webWindow->SetCurrentWebView(webView);
+    webView->SetExplicitSize(BSize(maxViewWidth - 1, maxViewHeight - 1));
 
     webView->WebPage()->SetListener(this);
     Register(webView->WebPage());

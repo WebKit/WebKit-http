@@ -1,0 +1,10 @@
+set(IMAGE_DIFF_SOURCES
+    ${IMAGE_DIFF_DIR}/haiku/ImageDiff.cpp
+)
+
+list(APPEND IMAGE_DIFF_INCLUDE_DIRECTORIES
+)
+
+list(APPEND IMAGE_DIFF_LIBRARIES
+    be translation
+)

@@ -29,6 +29,7 @@
 #include "DumpRenderTree.h"
 #include "IntRect.h"
 #include "NotImplemented.h"
+#include "PixelDumpSupport.h"
 #include "WebView.h"
 
 #include <DumpRenderTreeClient.h>
@@ -36,16 +37,15 @@
 #include <wtf/MD5.h>
 
 #include <Bitmap.h>
+#include <BitmapStream.h>
+#include <DataIO.h>
 #include <Rect.h>
+#include <TranslatorRoster.h>
 
 extern BWebView* webView;
 
 PassRefPtr<BitmapContext> createBitmapContextFromWebView(bool, bool, bool, bool drawSelectionRect)
 {
-        /*
-        BBitmapStream stream(webView->OffscreenBitmap());
-        BTranslatorRoster::Default()->Translate(&stream, NULL, NULL, dest, B_PNG_FORMAT);
-        */
     return BitmapContext::createByAdoptingData(WebCore::DumpRenderTreeClient::getOffscreen(webView));
 }
 
@@ -73,5 +73,11 @@ void computeMD5HashStringForBitmapContext(BitmapContext* context, char hashStrin
 
 void dumpBitmap(BitmapContext* context, const char* checksum)
 {
-    notImplemented();
+    BBitmapStream stream(context->m_bitmap);
+    BMallocIO mio;
+    BTranslatorRoster::Default()->Translate(&stream, NULL, NULL, &mio, B_PNG_FORMAT);
+
+    printf("T %p %d\n", mio.Buffer(), mio.BufferLength());
+
+    printPNG((const unsigned char*)mio.Buffer(), mio.BufferLength(), checksum);
 }
