@@ -46,6 +46,9 @@ def platform_options(use_globs=False):
         optparse.make_option('--gtk', action='store_const', dest='platform',
             const=('gtk*' if use_globs else 'gtk'),
             help=('Alias for --platform=gtk*' if use_globs else 'Alias for --platform=gtk')),
+        optparse.make_option('--haiku', action='store_const', dest='platform',
+            const=('haiku*' if use_globs else 'haiku'),
+            help=('Alias for --platform=haiku*' if use_globs else 'Alias for --platform=haiku')),
         ]
 
 

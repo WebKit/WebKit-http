@@ -61,8 +61,10 @@
 #include <Application.h>
 #include <JavaScriptCore/JavaScript.h>
 #include <OS.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <vector>
 
 // From the top-level DumpRenderTree.h
@@ -223,9 +225,6 @@ static void runTest(const string& inputLine)
 
     //browser->resetDefaultsToConsistentValues();
     createTestRunner(testURL, expectedPixelHash);
-    if (!gTestRunner) {
-        be_app->PostMessage(B_QUIT_REQUESTED);
-    }
 
     WorkQueue::shared()->clear();
     WorkQueue::shared()->setFrozen(false);
@@ -466,8 +465,10 @@ status_t DumpRenderTreeApp::runTestFromStdin()
         if (newLineCharacter)
             *newLineCharacter = '\0';
 
-        if (!strlen(filenameBuffer))
-            return B_ERROR;
+        if (!strlen(filenameBuffer)) {
+            // Got an empty line, try again...
+            return runTestFromStdin();
+        }
 
         runTest(filenameBuffer);
         return B_OK;
@@ -479,10 +480,42 @@ status_t DumpRenderTreeApp::runTestFromStdin()
 
 #pragma mark -
 
+void crashReport(int signum)
+{
+    static bool crashed = false;
+        // Just in case trying to spawn debugger crashes again...
+
+    if(!crashed) {
+        crashed = true;
+
+        thread_id id = find_thread(NULL);
+        team_info info;
+        get_team_info(B_CURRENT_TEAM, &info);
+
+        // Tell Debugger to save a crash report
+        char command[64];
+        sprintf(command, "Debugger --save-report=debugReport-%d --thread %d",
+            info.team, id);
+        system(command);
+            // This is a destructive operation and will kill this team. We
+            // never get back.
+    }
+
+    exit(signum);
+}
+
 int main()
 {
+    disable_debugger(true);
+    signal(SIGSEGV, crashReport);
+    signal(SIGABRT, crashReport);
+        // We want to crash instead of entering debugger. We then catch the
+        // signal and save a debug report there. This avoids the debug_server
+        // crash dialog.
+    
     DumpRenderTreeApp app;
     app.Run();
 
     gTestRunner.release();
 }
+

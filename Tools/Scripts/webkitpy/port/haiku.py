@@ -33,7 +33,7 @@ from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.base import Port
 from webkitpy.port.pulseaudio_sanitizer import PulseAudioSanitizer
 from webkitpy.port.haikudriver import HaikuDriver
-from webkitpy.port.linux_get_crash_log import GDBCrashLogGenerator
+from webkitpy.port.haiku_get_crash_log import HaikuCrashLogGenerator
 
 
 class HaikuPort(Port):
@@ -55,17 +55,6 @@ class HaikuPort(Port):
 
     def setup_environ_for_server(self, server_name=None):
         env = super(HaikuPort, self).setup_environ_for_server(server_name)
-
-        # If DISPLAY environment variable is unset in the system
-        # e.g. on build bot, remove DISPLAY variable from the dictionary
-        if not 'DISPLAY' in os.environ:
-            del env['DISPLAY']
-
-        env['TEST_RUNNER_INJECTED_BUNDLE_FILENAME'] = self._build_path('lib', 'libTestRunnerInjectedBundle.so')
-        env['TEST_RUNNER_PLUGIN_PATH'] = self._build_path('lib')
-
-        # Silence GIO warnings about using the "memory" GSettings backend.
-        env['GSETTINGS_BACKEND'] = 'memory'
 
         if self.webprocess_cmd_prefix:
             env['WEB_PROCESS_CMD_PREFIX'] = self.webprocess_cmd_prefix
@@ -144,4 +133,4 @@ class HaikuPort(Port):
         return command
 
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than):
-        return GDBCrashLogGenerator(name, pid, newer_than, self._filesystem, self._path_to_driver).generate_crash_log(stdout, stderr)
+        return HaikuCrashLogGenerator(name, pid, newer_than, self._filesystem, self._path_to_driver).generate_crash_log(stdout, stderr)

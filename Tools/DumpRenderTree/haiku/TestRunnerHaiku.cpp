@@ -467,7 +467,7 @@ static inline int toInt(JSStringRef value)
 void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
 {
     notImplemented();
-    fprintf(stderr, "TestRunner::overridePreference tried to override unknown preference '%s'.\n", value->string().utf8().data());
+    fprintf(stderr, "TestRunner::overridePreference tried to override unknown preference '%s'.\n", key->string().utf8().data());
 }
 
 void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)

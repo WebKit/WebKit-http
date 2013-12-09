@@ -400,7 +400,7 @@ my @features = (
       define => "ENABLE_RESOURCE_TIMING", default => isGtk(), value => \$resourceTimingSupport },
 
     { option => "request-animation-frame", desc => "Toggle Request Animation Frame support",
-      define => "ENABLE_REQUEST_ANIMATION_FRAME", default => (isAppleMacWebKit() || isGtk() || isEfl() || isBlackBerry()), value => \$requestAnimationFrameSupport },
+      define => "ENABLE_REQUEST_ANIMATION_FRAME", default => (isAppleMacWebKit() || isGtk() || isEfl() || isBlackBerry() || isHaiku()), value => \$requestAnimationFrameSupport },
 
     { option => "seccomp-filters", desc => "Toggle Seccomp Filter sandbox",
       define => "ENABLE_SECCOMP_FILTERS", default => 0, value => \$seccompFiltersSupport },
@@ -412,7 +412,7 @@ my @features = (
       define => "ENABLE_SHADOW_DOM", default => 0, value => \$shadowDOMSupport },
 
     { option => "shared-workers", desc => "Toggle Shared Workers support",
-      define => "ENABLE_SHARED_WORKERS", default => (isAppleWebKit() || isGtk() || isBlackBerry() || isEfl()), value => \$sharedWorkersSupport },
+      define => "ENABLE_SHARED_WORKERS", default => (isAppleWebKit() || isGtk() || isBlackBerry() || isEfl() || isHaiku()), value => \$sharedWorkersSupport },
 
     { option => "sql-database", desc => "Toggle SQL Database support",
       define => "ENABLE_SQL_DATABASE", default => 1, value => \$sqlDatabaseSupport },
@@ -478,7 +478,7 @@ my @features = (
       define => "ENABLE_WEB_TIMING", default => (isBlackBerry() || isGtk() || isEfl()), value => \$webTimingSupport },
 
     { option => "workers", desc => "Toggle Workers support",
-      define => "ENABLE_WORKERS", default => (isAppleWebKit() || isGtk() || isBlackBerry() || isEfl()), value => \$workersSupport },
+      define => "ENABLE_WORKERS", default => (isAppleWebKit() || isGtk() || isBlackBerry() || isEfl() || isHaiku()), value => \$workersSupport },
 
     { option => "xhr-timeout", desc => "Toggle XHR Timeout support",
       define => "ENABLE_XHR_TIMEOUT", default => (isEfl() || isGtk() || isAppleMacWebKit()), value => \$xhrTimeoutSupport },

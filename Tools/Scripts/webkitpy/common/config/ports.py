@@ -208,6 +208,18 @@ class QtWK2Port(DeprecatedPort):
         return command
 
 
+class HaikuPort(DeprecatedPort):
+    port_flag_name = "haiku"
+
+    def build_webkit_command(self, build_style=None):
+        command = super(HaikuPort, self).build_webkit_command(build_style=build_style)
+        command.append("--haiku")
+        command.append("--update-haiku")
+        command.append("--no-webkit2")
+        command.append(super(HaikuPort, self).makeArgs())
+        return command
+
+
 class EflPort(DeprecatedPort):
     port_flag_name = "efl"
 
