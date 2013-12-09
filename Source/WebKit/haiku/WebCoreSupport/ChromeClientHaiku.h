@@ -123,6 +123,7 @@ namespace WebCore {
         virtual void scrollbarsModeDidChange() const { }
         virtual void setCursor(const Cursor&);
         virtual void setCursorHiddenUntilMouseMoves(bool) { }
+        virtual void scheduleAnimation();
 
         virtual void mouseDidMoveOverElement(const HitTestResult&, unsigned modifierFlags);
 

@@ -474,6 +474,11 @@ void ChromeClientHaiku::setCursor(const Cursor& cursor)
     m_webView->UnlockLooper();
 }
 
+void ChromeClientHaiku::scheduleAnimation()
+{
+    notImplemented();
+}
+
 void ChromeClientHaiku::formStateDidChange(const Node*)
 {
     notImplemented();
