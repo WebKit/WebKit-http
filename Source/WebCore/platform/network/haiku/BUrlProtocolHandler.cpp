@@ -194,7 +194,7 @@ static bool ignoreHttpError(BHttpRequest* reply, bool receivedData)
     if(reply == NULL)
         return true;
 
-    int httpStatusCode = reply->Result().StatusCode();
+    int httpStatusCode = static_cast<const BHttpResult&>(reply->Result()).StatusCode();
 
     if (httpStatusCode == 401 || httpStatusCode == 407)
         return false;
@@ -235,7 +235,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
     }
     
     if(httpRequest) {
-        const BHttpResult& result = httpRequest->Result();
+        const BHttpResult& result = static_cast<const BHttpResult&>(httpRequest->Result());
         int httpStatusCode = result.StatusCode();
 
         if (httpStatusCode) {
@@ -262,7 +262,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
     if (url.protocolIs("https"))
         serverType = ProtectionSpaceServerHTTPS;
     
-    String challenge = request->Result().Headers()["WWW-Authenticate"];
+    String challenge = static_cast<const BHttpResult&>(request->Result()).Headers()["WWW-Authenticate"];
     ProtectionSpaceAuthenticationScheme scheme = ProtectionSpaceAuthenticationSchemeDefault;
     if (challenge.startsWith("Digest", false))
         scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
@@ -327,17 +327,10 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
                 && m_request->Status() != B_PROT_RUNNING
                 && !ignoreHttpError(httpRequest, m_responseDataSent))
             return;
-
-        contentType = httpRequest->Result().Headers()["Content-Type"];
-
-        const char* contentLengthString
-            = httpRequest->Result().Headers()["Content-Length"];
-        if (contentLengthString != NULL)
-            contentLength = atoi(contentLengthString);
-    } else {
-        // contentType = m_request->Result().MimeType();
-        // TODO add the length to UrlResult as well.
     }
+
+    contentType = m_request->Result().ContentType();
+    contentLength = m_request->Result().Length();
 
     if (m_responseSent || !m_resourceHandle)
         return;
@@ -371,10 +364,12 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
         return;
     }
 
-    int statusCode = httpRequest->Result().StatusCode();
+    const BHttpResult& result = static_cast<const BHttpResult&>(
+        httpRequest->Result());
+    int statusCode = result.StatusCode();
     if (url.protocolIsInHTTPFamily()) {
         String suggestedFilename = filenameFromHTTPContentDisposition(
-            httpRequest->Result().Headers()["Content-Disposition"]);
+            result.Headers()["Content-Disposition"]);
 
         if (!suggestedFilename.isEmpty())
             response.setSuggestedFilename(suggestedFilename);
@@ -382,10 +377,10 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
             response.setSuggestedFilename(url.lastPathComponent());
 
         response.setHTTPStatusCode(statusCode);
-        response.setHTTPStatusText(httpRequest->Result().StatusText());
+        response.setHTTPStatusText(result.StatusText());
 
         // Add remaining headers.
-        const BHttpHeaders& resultHeaders = httpRequest->Result().Headers();
+        const BHttpHeaders& resultHeaders = result.Headers();
         for (int i = 0; i < resultHeaders.CountHeaders(); i++) {
             BHttpHeader& headerPair = resultHeaders.HeaderAt(i);
             response.setHTTPHeaderField(headerPair.Name(), headerPair.Value());
@@ -398,7 +393,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     }
 
 
-    BString locationString(httpRequest->Result().Headers()["Location"]);
+    BString locationString(result.Headers()["Location"]);
     if (locationString.Length()) {
         BUrl location = BUrl(m_request->Url());
         location = BUrl(location, locationString);
