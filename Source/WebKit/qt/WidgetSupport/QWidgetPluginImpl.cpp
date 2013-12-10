@@ -54,7 +54,9 @@ void QWidgetPluginImpl::setVisible(bool visible)
 
 void QWidgetPluginImpl::setStyleSheet(const QString &stylesheet)
 {
+#ifndef QT_NO_STYLE_STYLESHEET
     m_widget->setStyleSheet(stylesheet);
+#endif
 }
 
 void QWidgetPluginImpl::setWidgetParent(QObject *parent)
