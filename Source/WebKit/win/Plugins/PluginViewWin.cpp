@@ -330,11 +330,10 @@ static inline IntPoint contentsToNativeWindow(FrameView* view, const IntPoint& p
 #if PLATFORM(QT)
     // Our web view's QWidget isn't necessarily a native window itself. Map the position
     // all the way up to the QWidget associated with the HWND returned as NPNVnetscapeWindow.
-    PlatformPageClient client = view->hostWindow()->platformPageClient();
-    return client->mapToOwnerWindow(view->contentsToWindow(point));
-#else
-    return view->contentsToWindow(point);
+    if (PlatformPageClient client = view->hostWindow()->platformPageClient())
+        return client->mapToOwnerWindow(view->contentsToWindow(point));
 #endif
+    return view->contentsToWindow(point);
 }
 
 static inline IntRect contentsToNativeWindow(FrameView* view, const IntRect& rect)
