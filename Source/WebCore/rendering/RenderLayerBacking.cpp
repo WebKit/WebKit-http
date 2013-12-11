@@ -1710,6 +1710,14 @@ static bool canCreateTiledImage(const RenderStyle& style)
     if (!image->isBitmapImage())
         return false;
 
+#if USE(COORDINATED_GRAPHICS)
+    // Direct compositing becomes slow when the images are too
+    // large and the UIProcess asserts if one of the dimensions
+    // is larger than 2000.
+    if (2000 < std::max(image->width(), image->height()))
+        return false;
+#endif
+
     return true;
 }
 
