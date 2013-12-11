@@ -29,12 +29,16 @@
 #include "WebPage.h"
 #include "WebView.h"
 
+#include <bindings/js/DOMWrapperWorld.h>
 #include <Bitmap.h>
 #include <DocumentLoader.h>
 #include <Frame.h>
 #include <FrameLoader.h>
 #include <FrameView.h>
 #include "NotImplemented.h"
+#include <Page.h>
+#include <PageGroup.h>
+#include <UserContentTypes.h>
 
 namespace WebCore {
 
@@ -54,6 +58,23 @@ void DumpRenderTreeClient::Register(BWebPage* page)
 {
     page->fDumpRenderTree = this;
 }
+
+void DumpRenderTreeClient::addUserScript(const BWebView* view,
+    const String& sourceCode, bool runAtStart, bool allFrames)
+{
+    view->WebPage()->page()->group().addUserScriptToWorld(
+        WebCore::mainThreadNormalWorld(), sourceCode, WebCore::URL(),
+        Vector<String>(), Vector<String>(),
+        runAtStart ? WebCore::InjectAtDocumentStart : WebCore::InjectAtDocumentEnd,
+        allFrames ? WebCore::InjectInAllFrames : WebCore::InjectInTopFrameOnly);
+}
+
+void DumpRenderTreeClient::clearUserScripts(const BWebView* view)
+{
+    view->WebPage()->page()->group().removeUserScriptsFromWorld(
+        WebCore::mainThreadNormalWorld());
+}
+
 
 void
 DumpRenderTreeClient::setShouldTrackVisitedLinks(bool)

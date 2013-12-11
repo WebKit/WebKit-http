@@ -78,6 +78,9 @@ public:
     static void setSerializeHTTPLoads(bool);
     static void setShouldTrackVisitedLinks(bool);
     
+    static void addUserScript(const BWebView* view, const String& sourceCode,
+                    bool runAtStart, bool allFrames);
+    static void clearUserScripts(const BWebView* view);
 
 private:
     static bool s_drtRun;

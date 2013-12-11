@@ -113,6 +113,8 @@ static float calculatePixelDifference(unsigned char* basePixel, unsigned char* a
 
 static float calculateDifference(BBitmap* baselineImage, BBitmap* actualImage, BBitmap*& differenceImage)
 {
+    if (!baselineImage || !actualImage)
+        abortWithErrorMessage("One of the images is missing.");
     BRect bounds = actualImage->Bounds();
     BRect baselineBounds = baselineImage->Bounds();
 
@@ -206,7 +208,7 @@ static BBitmap* readImageFromStdin(long imageSize)
     const size_t bytesRead = fread(imageBuffer, 1, imageSize, stdin);
     if (bytesRead <= 0) {
         delete[] imageBuffer;
-        return NULL;
+        abortWithErrorMessage("cannot read image");
     }
 
     BMemoryIO imageData(imageBuffer, imageSize);

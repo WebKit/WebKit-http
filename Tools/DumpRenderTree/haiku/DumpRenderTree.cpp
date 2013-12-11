@@ -115,7 +115,6 @@ static void dumpFrameContentsAsText(BWebFrame* frame)
         result = dumpFramesAsText(frame);
     else
         result = frame->ExternalRepresentation();
-//        result = DumpRenderTreeSupportEfl::renderTreeDump(frame);
 
     printf("%s", result.utf8().data());
 }
@@ -149,6 +148,9 @@ void dump()
     if(shouldDumpPixelsAndCompareWithExpected()) {
         dumpWebViewAsPixelsAndCompareWithExpected(gTestRunner->expectedPixelHash());
     }
+
+    // Notify the BApplication it's ok to move on to the next test.
+    be_app->PostMessage('dump');
 }
 
 static bool shouldLogFrameLoadDelegates(const String& pathOrURL)
@@ -211,6 +213,101 @@ static void createTestRunner(const String& testURL, const String& expectedPixelH
     }
 }
 
+static void resetDefaultsToConsistentValues()
+{
+#if 0
+    ewk_settings_icon_database_clear();
+    ewk_settings_icon_database_path_set(0);
+
+    ewk_web_database_remove_all();
+    ewk_settings_web_database_default_quota_set(5 * 1024 * 1024);
+
+    ewk_settings_memory_cache_clear();
+    ewk_settings_application_cache_clear();
+    ewk_settings_shadow_dom_enable_set(EINA_TRUE);
+
+    ewk_view_setting_private_browsing_set(mainView(), EINA_FALSE);
+    ewk_view_setting_spatial_navigation_set(mainView(), EINA_FALSE);
+    ewk_view_setting_enable_frame_flattening_set(mainView(), EINA_FALSE);
+    ewk_view_setting_application_cache_set(mainView(), EINA_TRUE);
+    ewk_view_setting_enable_scripts_set(mainView(), EINA_TRUE);
+    ewk_view_font_family_name_set(mainView(), EWK_FONT_FAMILY_STANDARD, "Times");
+    ewk_view_font_family_name_set(mainView(), EWK_FONT_FAMILY_MONOSPACE, "Courier");
+    ewk_view_font_family_name_set(mainView(), EWK_FONT_FAMILY_SERIF, "Times");
+    ewk_view_font_family_name_set(mainView(), EWK_FONT_FAMILY_SANS_SERIF, "Helvetica");
+    ewk_view_font_family_name_set(mainView(), EWK_FONT_FAMILY_CURSIVE, "cursive");
+    ewk_view_font_family_name_set(mainView(), EWK_FONT_FAMILY_FANTASY, "fantasy");
+    ewk_view_setting_font_default_size_set(mainView(), 16);
+    ewk_view_setting_font_monospace_size_set(mainView(), 13);
+    ewk_view_setting_font_minimum_size_set(mainView(), 0);
+    ewk_view_setting_caret_browsing_set(mainView(), EINA_FALSE);
+    ewk_view_setting_page_cache_set(mainView(), EINA_FALSE);
+    ewk_view_setting_enable_auto_resize_window_set(mainView(), EINA_TRUE);
+    ewk_view_setting_enable_plugins_set(mainView(), EINA_TRUE);
+    ewk_view_setting_scripts_can_open_windows_set(mainView(), EINA_TRUE);
+    ewk_view_setting_scripts_can_close_windows_set(mainView(), EINA_TRUE);
+    ewk_view_setting_auto_load_images_set(mainView(), EINA_TRUE);
+    ewk_view_setting_user_stylesheet_set(mainView(), 0);
+    ewk_view_setting_enable_xss_auditor_set(browser->mainView(), EINA_TRUE);
+    ewk_view_setting_enable_webgl_set(mainView(), EINA_TRUE);
+    ewk_view_setting_enable_hyperlink_auditing_set(mainView(), EINA_FALSE);
+    ewk_view_setting_include_links_in_focus_chain_set(mainView(), EINA_FALSE);
+    ewk_view_setting_scripts_can_access_clipboard_set(mainView(), EINA_TRUE);
+    ewk_view_setting_allow_universal_access_from_file_urls_set(mainView(), EINA_TRUE);
+    ewk_view_setting_allow_file_access_from_file_urls_set(mainView(), EINA_TRUE);
+    ewk_view_setting_resizable_textareas_set(mainView(), EINA_TRUE);
+
+    ewk_view_zoom_set(mainView(), 1.0, 0, 0);
+    ewk_view_scale_set(mainView(), 1.0, 0, 0);
+    ewk_view_text_zoom_set(mainView(), 1.0);
+    ewk_view_visibility_state_set(mainView(), EWK_PAGE_VISIBILITY_STATE_VISIBLE, true);
+    ewk_view_text_direction_set(mainView(), EWK_TEXT_DIRECTION_DEFAULT);
+
+    ewk_history_clear(ewk_view_history_get(mainView()));
+
+    ewk_frame_feed_focus_in(mainFrame());
+
+    ewk_cookies_clear();
+    ewk_cookies_policy_set(EWK_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY);
+
+    ewk_security_policy_whitelist_origin_reset();
+
+#if HAVE(ACCESSIBILITY)
+    browser->accessibilityController()->resetToConsistentState();
+#endif
+
+    DumpRenderTreeSupportEfl::clearFrameName(mainFrame());
+    DumpRenderTreeSupportEfl::clearOpener(mainFrame());
+#endif
+    WebCore::DumpRenderTreeClient::clearUserScripts(webView);
+#if 0
+    DumpRenderTreeSupportEfl::clearUserStyleSheets(mainView());
+    DumpRenderTreeSupportEfl::resetGeolocationClientMock(mainView());
+    DumpRenderTreeSupportEfl::setInteractiveFormValidationEnabled(mainView(), true);
+    DumpRenderTreeSupportEfl::setValidationMessageTimerMagnification(mainView(), -1);
+    DumpRenderTreeSupportEfl::setAuthorAndUserStylesEnabled(mainView(), true);
+    DumpRenderTreeSupportEfl::setCSSGridLayoutEnabled(mainView(), false);
+    DumpRenderTreeSupportEfl::setDefersLoading(mainView(), false);
+    DumpRenderTreeSupportEfl::setLoadsSiteIconsIgnoringImageLoadingSetting(mainView(), false);
+    DumpRenderTreeSupportEfl::setSerializeHTTPLoads(false);
+    DumpRenderTreeSupportEfl::setMinimumLogicalFontSize(mainView(), 9);
+    DumpRenderTreeSupportEfl::setCSSRegionsEnabled(mainView(), true);
+    DumpRenderTreeSupportEfl::setShouldTrackVisitedLinks(false);
+    DumpRenderTreeSupportEfl::setTracksRepaints(mainFrame(), false);
+    DumpRenderTreeSupportEfl::setSeamlessIFramesEnabled(true);
+    DumpRenderTreeSupportEfl::setWebAudioEnabled(mainView(), false);
+
+    // Reset capacities for the memory cache for dead objects.
+    static const unsigned cacheTotalCapacity =  8192 * 1024;
+    ewk_settings_object_cache_capacity_set(0, cacheTotalCapacity, cacheTotalCapacity);
+    DumpRenderTreeSupportEfl::setDeadDecodedDataDeletionInterval(0);
+    ewk_settings_page_cache_capacity_set(3);
+
+    policyDelegateEnabled = false;
+    policyDelegatePermissive = false;
+#endif
+}
+
 static void runTest(const string& inputLine)
 {
     TestCommand command = parseInputLine(inputLine);
@@ -223,7 +320,7 @@ static void runTest(const string& inputLine)
     // like an HTTP/S URL (doesn't start with http:// or https://).
     const String testURL = getFinalTestURL(testPathOrURL);
 
-    //browser->resetDefaultsToConsistentValues();
+    resetDefaultsToConsistentValues();
     createTestRunner(testURL, expectedPixelHash);
 
     WorkQueue::shared()->clear();
@@ -260,6 +357,8 @@ public:
 
     static status_t runTestFromStdin();
 
+private:
+    void topLoadingFrameLoadFinished();
 private:
     GCController* m_gcController;
     AccessibilityController* m_accessibilityController;
@@ -356,40 +455,39 @@ static void sendPixelResultsEOF()
     fflush(stderr);
 }
 
+void DumpRenderTreeApp::topLoadingFrameLoadFinished()
+{
+    //TODO topLoadingFrame = 0;
+
+    WorkQueue::shared()->setFrozen(true);
+    if (gTestRunner->waitToDump())
+        return;
+
+    if (WorkQueue::shared()->count()) {
+        // ecore_idler_add(processWork, 0 /*frame*/);
+    } else
+        dump();
+}
+
 void DumpRenderTreeApp::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case LOAD_FINISHED: {
-        dump();
+        // efl: DumpRenderTreeChrome::onFrameLoadFinished
+        if (!done && gTestRunner->dumpProgressFinishedCallback())
+            printf("postProgressFinishedNotification\n");
 
-        gTestRunner->closeWebInspector();
-        gTestRunner->setDeveloperExtrasEnabled(false);
-
-        //browser->clearExtraViews();
-
-        // FIXME: Move to DRTChrome::resetDefaultsToConsistentValues() after bug 85209 lands.
-        //WebCoreTestSupport::resetInternalsObject(DumpRenderTreeSupportEfl::globalContextRefForFrame(browser->mainFrame()));
-
-        //ewk_view_uri_set(browser->mainView(), "about:blank");
-
-        //gTestRunner->clear();
-        sendPixelResultsEOF();
-        
-        gTestRunner->notifyDone();
-
-        if (m_fromStdin) {
-            // run the next test.
-            if(runTestFromStdin() != B_OK) {
-                be_app->PostMessage(B_QUIT_REQUESTED);
-            }
-            break;
-        } else {
-            if (m_currentTest < m_tests.size()) {
-                runTest(m_tests[m_currentTest]);
-                m_currentTest++;
-            } else
-                be_app->PostMessage(B_QUIT_REQUESTED);
+        if (!done && gTestRunner->dumpFrameLoadCallbacks()) {
+            //EFL: const String frameName(DumpRenderTreeClient::suitableDRTFrameName(frame));
+            BString location = message->FindString("url");
+            printf("%s - didFinishLoadForFrame\n", location.String());
         }
+
+        // FIXME can we access the BWebFrame that finished loading here?
+        //if (frame == topLoadingFrame)
+            topLoadingFrameLoadFinished();
+
+
         break;
     }
 
@@ -427,8 +525,44 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         return;
     }
 
+    case 'dump':
+    {
+        // Code from EFL runTest, after the test is done. We do this here as we're
+        // sure the test is done running.
+
+        gTestRunner->closeWebInspector();
+        gTestRunner->setDeveloperExtrasEnabled(false);
+
+        //browser->clearExtraViews();
+
+        // FIXME: Move to DRTChrome::resetDefaultsToConsistentValues() after bug 85209 lands.
+        //WebCoreTestSupport::resetInternalsObject(DumpRenderTreeSupportEfl::globalContextRefForFrame(browser->mainFrame()));
+
+        //ewk_view_uri_set(browser->mainView(), "about:blank");
+
+        //gTestRunner->clear();
+        sendPixelResultsEOF();
+
+        gTestRunner->notifyDone();
+
+        if (m_fromStdin) {
+            // run the next test.
+            if(runTestFromStdin() != B_OK) {
+                be_app->PostMessage(B_QUIT_REQUESTED);
+            }
+            break;
+        } else {
+            if (m_currentTest < m_tests.size()) {
+                runTest(m_tests[m_currentTest]);
+                m_currentTest++;
+            } else
+                be_app->PostMessage(B_QUIT_REQUESTED);
+        }
+        return;
+    }
+
     default:
-    BApplication::MessageReceived(message);
+        BApplication::MessageReceived(message);
         break;
     }
 }
@@ -489,30 +623,53 @@ void crashReport(int signum)
         crashed = true;
 
         thread_id id = find_thread(NULL);
+
         team_info info;
         get_team_info(B_CURRENT_TEAM, &info);
 
+        setenv("LD_PRELOAD", "", true);
+            // When LD_PRELOAD has x86/libroot_debug.so, we can't run a gcc2
+            // shell or Debugger. Clear the variable so the call to system()
+            // below manages to run them.
         // Tell Debugger to save a crash report
-        char command[64];
+        char command[128];
         sprintf(command, "Debugger --save-report=debugReport-%d --thread %d",
             info.team, id);
-        system(command);
+        if (system(command) != 0) {
             // This is a destructive operation and will kill this team. We
             // never get back.
+
+            fprintf(stderr, "Debugger didn't kill me!\n");
+            exit(signum);
+        }
     }
 
-    exit(signum);
+    thread_id id = find_thread(NULL);
+
+    // Already crashed? No problem: wait for Debugger to save the report and
+    // destroy the team.
+    suspend_thread(id);
+}
+
+extern "C" {
+    // Haiku assert() does not call abort(), but instead calls debugger().
+    // Fortunately, we can fix this up using symbol preemption, and catch the
+    // asserting thread with our signal handler above (abort raises SIGABRT).
+    void debugger(const char* message)
+    {
+        abort();
+    }
 }
 
 int main()
 {
-    disable_debugger(true);
     signal(SIGSEGV, crashReport);
     signal(SIGABRT, crashReport);
-        // We want to crash instead of entering debugger. We then catch the
-        // signal and save a debug report there. This avoids the debug_server
-        // crash dialog.
-    
+    signal(SIGILL, crashReport);
+        // Register handlers for all the "crashing" signals, and destroy
+        // ourselves using Debugger --save-report, instead of being killed
+        // without any trace of what happened.
+
     DumpRenderTreeApp app;
     app.Run();
 

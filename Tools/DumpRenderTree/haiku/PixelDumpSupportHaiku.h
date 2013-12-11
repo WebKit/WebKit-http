@@ -51,9 +51,9 @@ public:
 private:
 
     BitmapContext(BBitmap* bitmap)
-        : m_bitmap(bitmap)
+        : m_bitmap(new BBitmap(bitmap))
     {
     }
 };
 
-#endif // PixelDumpSupportBlackBerry_h
+#endif // PixelDumpSupportHaiku_h

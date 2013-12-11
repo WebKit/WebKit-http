@@ -51,14 +51,19 @@ PassRefPtr<BitmapContext> createBitmapContextFromWebView(bool, bool, bool, bool 
 
 void computeMD5HashStringForBitmapContext(BitmapContext* context, char hashString[33])
 {
+    hashString[0] = 0;
+
+    if (!context || !context->m_bitmap)
+        return;
+
     BRect bounds = context->m_bitmap->Bounds();
-    int pixelsWide = bounds.Width();
+    int pixelsWide = bounds.Width() + 1;
     int pixelsHigh = bounds.Height();
-    int bytesPerRow = pixelsWide * 4;
+    int bytesPerRow = context->m_bitmap->BytesPerRow();
     unsigned char* pixelData = (unsigned char*)context->m_bitmap->Bits();
 
     MD5 md5;
-    for (int i = 0; i < pixelsHigh; ++i) {
+    for (int i = 0; i <= pixelsHigh; ++i) {
         md5.addBytes(pixelData, 4 * pixelsWide);
         pixelData += bytesPerRow;
     }
@@ -67,17 +72,22 @@ void computeMD5HashStringForBitmapContext(BitmapContext* context, char hashStrin
     md5.checksum(hash);
 
     hashString[0] = '\0';
-    for (int i = 0; i < 16; ++i)
-        snprintf(hashString, 33, "%s%02x", hashString, hash[i]);
+    for (int i = 0; i < 16; ++i) {
+        snprintf(&hashString[i * 2], 3, "%02x", hash[i]);
+    }
 }
 
 void dumpBitmap(BitmapContext* context, const char* checksum)
 {
+    if (!context || !context->m_bitmap)
+        return;
+
     BBitmapStream stream(context->m_bitmap);
     BMallocIO mio;
     BTranslatorRoster::Default()->Translate(&stream, NULL, NULL, &mio, B_PNG_FORMAT);
-
-    printf("T %p %d\n", mio.Buffer(), mio.BufferLength());
+    BBitmap* out;
+    stream.DetachBitmap(&out);
+    ASSERT(out == context->m_bitmap);
 
     printPNG((const unsigned char*)mio.Buffer(), mio.BufferLength(), checksum);
 }
