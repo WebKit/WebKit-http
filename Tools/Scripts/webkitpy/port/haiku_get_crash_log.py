@@ -36,12 +36,14 @@ class HaikuCrashLogGenerator(object):
         self._path_to_driver = path_to_driver
 
     def _get_debugger_output(self, coredump_path):
+        result = None
         try:
             with open(coredump_path) as corefile:
-                return corefile.read().decode('utf8', 'ignore')
+                result = corefile.read().decode('utf8', 'ignore')
             os.unlink(coredump_path)
         except IOError:
-            return None
+            result = None
+        return result
 
     def generate_crash_log(self, stdout, stderr):
         pid_representation = str(self.pid or '<unknown>')
