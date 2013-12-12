@@ -39,6 +39,7 @@ namespace WebCore {
 void Gradient::platformDestroy()
 {
     delete m_gradient;
+    m_gradient = NULL;
 }
 
 PlatformGradient Gradient::platformGradient()
@@ -59,7 +60,11 @@ PlatformGradient Gradient::platformGradient()
         color.green = static_cast<uint8>(stop.green * 255);
         color.blue = static_cast<uint8>(stop.blue * 255);
         color.alpha = static_cast<uint8>(stop.alpha * 255);
-        m_gradient->AddColor(color, stop.stop);
+        m_gradient->AddColor(color, stop.stop * 255);
+        if (i == 0)
+            m_gradient->AddColor(color, 0);
+        else if (i == size - 1)
+            m_gradient->AddColor(color, 255);
     }
     return m_gradient;
 }
