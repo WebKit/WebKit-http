@@ -34,6 +34,8 @@
 #include "ScrollView.h"
 #include "Scrollbar.h"
 
+#include <QGuiApplication>
+
 namespace WebCore {
 
 ScrollbarThemeQStyle::ScrollbarThemeQStyle()
@@ -95,8 +97,10 @@ static QStyleFacadeOption initSliderStyleOption(Scrollbar& scrollbar, QObject* w
         opt.palette = widget->property("palette").value<QPalette>();
         opt.rect = widget->property("rect").value<QRect>();
         opt.direction = static_cast<Qt::LayoutDirection>(widget->property("layoutDirection").toInt());
-    } else
+    } else {
         opt.state |= QStyleFacade::State_Active;
+        opt.direction = QGuiApplication::layoutDirection();
+    }
 
     opt.state &= ~QStyleFacade::State_HasFocus;
 
@@ -118,6 +122,8 @@ static QStyleFacadeOption initSliderStyleOption(Scrollbar& scrollbar, QObject* w
     opt.slider.singleStep = scrollbar.lineStep();
     opt.slider.minimum = 0;
     opt.slider.maximum = qMax(0, scrollbar.maximum());
+    if (opt.slider.orientation == Qt::Horizontal && opt.direction == Qt::RightToLeft)
+        opt.slider.upsideDown = true;
     ScrollbarPart pressedPart = scrollbar.pressedPart();
     ScrollbarPart hoveredPart = scrollbar.hoveredPart();
     if (pressedPart != NoPart) {
