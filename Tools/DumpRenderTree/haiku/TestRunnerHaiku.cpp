@@ -466,8 +466,28 @@ static inline int toInt(JSStringRef value)
 
 void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
 {
-    notImplemented();
-    fprintf(stderr, "TestRunner::overridePreference tried to override unknown preference '%s'.\n", key->string().utf8().data());
+    if (equals(key, "WebKitCSSCustomFilterEnabled"))
+        notImplemented();
+    else if (equals(key, "WebKitCSSGridLayoutEnabled"))
+        notImplemented();
+    else if (equals(key, "WebKitCSSRegionsEnabled"))
+        notImplemented();
+    else if (equals(key, "WebKitJavaEnabled"))
+        notImplemented();
+    else if (equals(key, "WebKitPageCacheSupportsPluginsPreferenceKey"))
+        notImplemented();
+    else if (equals(key, "WebKitSupportsMultipleWindows"))
+        notImplemented();
+    else if (equals(key, "WebKitTabToLinkPreferenceKey"))
+        notImplemented();
+    else if (equals(key, "WebKitUsesPageCachePreferenceKey"))
+        notImplemented();
+    else if (equals(key, "WebKitWebAudioEnabled"))
+        notImplemented();
+    else if (equals(key, "WebKitWebGLEnabled"))
+        notImplemented();
+    else
+        fprintf(stderr, "TestRunner::overridePreference tried to override unknown preference '%s'.\n", key->string().utf8().data());
 }
 
 void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)
