@@ -140,7 +140,7 @@ String keyIdentifierForQtKeyCode(int keyCode)
     case Qt::Key_Zoom:
         return ASCIILiteral("Zoom");
     case Qt::Key_Comma:
-        return ASCIILiteral("Seperator");
+        return ASCIILiteral("Separator");
     case Qt::Key_Plus:
         return ASCIILiteral("Add");
     case Qt::Key_Minus:
