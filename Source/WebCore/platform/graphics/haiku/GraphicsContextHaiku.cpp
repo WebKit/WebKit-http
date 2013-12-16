@@ -35,6 +35,7 @@
 #include "FontData.h"
 #include "NotImplemented.h"
 #include "Path.h"
+#include "ShadowBlur.h"
 #include <wtf/text/CString.h>
 #include <Bitmap.h>
 #include <GraphicsDefs.h>
@@ -189,6 +190,11 @@ public:
         m_currentLayer->cippingSet = true;
     	m_currentLayer->clipping = region;
   	    m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
+    }
+
+    BRegion& clipping()
+    {
+        return m_currentLayer->clipping;
     }
 
     void resetClipping()
@@ -428,12 +434,23 @@ void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* poin
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace colorSpace)
+
 {
     if (paintingDisabled())
         return;
 
     rgb_color previousColor = m_data->view()->HighColor();
     drawing_mode previousMode = m_data->view()->DrawingMode();
+
+#if 0
+    // FIXME ShadowBlur requires an implementation of ImageBuffer::clip (masking
+    // all drawing on the context with the alpha channel of  a BBitmap).
+    // Either implement that or find another way to draw shadows.
+    if (hasShadow()) {
+        ShadowBlur contextShadow(m_state);
+        contextShadow.drawRectShadow(this, rect, RoundedRect::Radii());
+    }
+#endif
 
     m_data->view()->SetHighColor(color);
     // NOTE: having a clipShape means we're filling a rounded rect
@@ -459,6 +476,11 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     if (m_data->clipShape()) {
     	BRect bRect(rect);
     	BRect clipPathBounds(m_data->clipShape()->Bounds());
+
+        if (clipPathBounds.IsValid() && !bRect.Intersects(clipPathBounds)) {
+            // Nothing to draw.
+            return;
+        }
     	// NOTE: BShapes do not suffer the weird coordinate mixup
     	// of other drawing primitives, since the conversion would be
     	// too expensive in the app_server. Thus the right/bottom edge
@@ -523,6 +545,7 @@ void GraphicsContext::fillRoundedRect(const IntRect& rect, const IntSize& topLef
     m_data->view()->SetHighColor(color);
     m_data->view()->MovePenTo(B_ORIGIN);
     m_data->view()->FillShape(&shape);
+
     m_data->view()->SetHighColor(oldColor);
 }
 
@@ -569,6 +592,16 @@ void GraphicsContext::clip(const FloatRect& rect)
     m_data->setClipping(BRegion(rect));
 }
 
+IntRect GraphicsContext::clipBounds() const
+{
+    BRect r = m_data->clipping().Frame();
+    if(!r.IsValid()) {
+        // No clipping, return an invalid rect
+        return IntRect();
+    }
+    return IntRect(r);
+}
+
 void GraphicsContext::clip(const Path& path, WindRule)
 {
     if (paintingDisabled())
@@ -580,6 +613,7 @@ void GraphicsContext::clip(const Path& path, WindRule)
         m_data->setClipShape(0);
 
     // FIXME: Support actual clipping paths in the BView API...
+    // ClipToPicture/ClipInverseToPicture may be used?
     FloatRect rect(path.platformPath()->Bounds());
     clip(rect);
 }
@@ -602,8 +636,8 @@ void GraphicsContext::clipOut(const IntRect& rect)
     if (paintingDisabled())
         return;
 
-    BRegion region(m_data->view()->Bounds());
-    region.Include(rect);
+    BRegion& region = m_data->clipping();
+    region.Exclude(rect);
     m_data->setClipping(region);
 }
 
@@ -950,7 +984,8 @@ void GraphicsContext::clearPlatformShadow()
     notImplemented();
 }
 
-void GraphicsContext::setPlatformShadow(FloatSize const&, float, Color const&, ColorSpace)
+void GraphicsContext::setPlatformShadow(FloatSize const&, float blur,
+    Color const& color, ColorSpace)
 {
     notImplemented();
 }
