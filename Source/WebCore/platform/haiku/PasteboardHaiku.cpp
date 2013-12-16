@@ -104,13 +104,17 @@ bool Pasteboard::writeString(const String& type, const String& data)
         BMessage* bdata = be_clipboard->Data();
 
         if (bdata) {
-            bdata->RemoveName(BString(type).String());
+            bdata->RemoveName(type.utf8().data());
 
-            if (bdata->AddString(BString(type).String(), BString(data)) == B_OK)
+            if (bdata->AddData(type.utf8().data(), B_MIME_TYPE,
+                    data.utf8().data(), data.length()) == B_OK)
                 result = true;
         }
 
-        be_clipboard->Commit();
+        if (result)
+            be_clipboard->Commit();
+        else
+            be_clipboard->Revert();
         be_clipboard->Unlock();
     }
 
@@ -200,8 +204,9 @@ void Pasteboard::read(PasteboardPlainText& text)
 
     const char* buffer = 0;
     ssize_t bufferLength;
-    if (data->FindData("text/plain", B_MIME_TYPE, reinterpret_cast<const void**>(&buffer), &bufferLength) == B_OK)
-        text.text = buffer;
+    if (data->FindData("text/plain", B_MIME_TYPE, 
+            reinterpret_cast<const void**>(&buffer), &bufferLength) == B_OK)
+        text.text = String::fromUTF8(buffer, bufferLength);
 }
 
 PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& context,
@@ -284,8 +289,13 @@ String Pasteboard::readString(const String& type)
     if (be_clipboard->Lock()) {
         BMessage* data = be_clipboard->Data();
 
-        if (data)
-            data->FindString(BString(type).String(), &result);
+        const char* buffer;
+        ssize_t bufferLength;
+        if (data) {
+            data->FindData(type.utf8().data(), B_MIME_TYPE, 
+                reinterpret_cast<const void**>(&buffer), &bufferLength);
+        }
+        result = buffer;
 
         be_clipboard->Unlock();
     }
