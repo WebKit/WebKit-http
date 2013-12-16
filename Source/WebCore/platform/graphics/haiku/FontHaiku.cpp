@@ -89,26 +89,38 @@ bool Font::canExpandAroundIdeographsInComplexText()
     return false;
 }
 
+/* the "complex" text is used for text-rendering: optimizeLegibility, and other
+ * cases such as SVG text. Other platforms use HarfBuzz for layouting the text,
+ * but we should handle this all on BView size and make use of
+ * ICU LayoutEngine - once properly integrated in the BeAPI, that is.
+ *
+ * For now, we just call the usual DrawString method. It's better to at least
+ * try displaying something.
+ */
 void Font::drawComplexText(GraphicsContext* ctx, const TextRun& run, const FloatPoint& point,
                            int from, int to) const
 {
-    notImplemented();
+    BView* view = ctx->platformContext();
+    view->SetFont(primaryFont()->platformData().font());
+    view->DrawString(run.string().utf8().data() + from, to - from + 1, point);
 }
 
 
 float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
 {
-    notImplemented();
-    return 0;
+    const BFont* font = primaryFont()->platformData().font();
+    ASSERT(font);
+    float width = font->StringWidth(run.string().utf8().data());
+    return width;
 }
 
-FloatRect Font::selectionRectForComplexText(const TextRun&, const FloatPoint&, int, int, int) const
+FloatRect Font::selectionRectForComplexText(const TextRun& run, const FloatPoint&, int, int, int) const
 {
     notImplemented();
     return FloatRect();
 }
 
-int Font::offsetForPositionForComplexText(const TextRun&, float, bool) const
+int Font::offsetForPositionForComplexText(const TextRun& run, float, bool) const
 {
     notImplemented();
     return 0;
