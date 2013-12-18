@@ -538,7 +538,8 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         // FIXME: Move to DRTChrome::resetDefaultsToConsistentValues() after bug 85209 lands.
         //WebCoreTestSupport::resetInternalsObject(DumpRenderTreeSupportEfl::globalContextRefForFrame(browser->mainFrame()));
 
-        //ewk_view_uri_set(browser->mainView(), "about:blank");
+        // TODO efl goes to "about:blank" here. But this triggers an extra
+        // dump for us, confusing the test system.
 
         //gTestRunner->clear();
         sendPixelResultsEOF();
@@ -614,62 +615,9 @@ status_t DumpRenderTreeApp::runTestFromStdin()
 
 #pragma mark -
 
-void crashReport(int signum)
-{
-    static bool crashed = false;
-        // Just in case trying to spawn debugger crashes again...
-
-    if(!crashed) {
-        crashed = true;
-
-        thread_id id = find_thread(NULL);
-
-        team_info info;
-        get_team_info(B_CURRENT_TEAM, &info);
-
-        setenv("LD_PRELOAD", "", true);
-            // When LD_PRELOAD has x86/libroot_debug.so, we can't run a gcc2
-            // shell or Debugger. Clear the variable so the call to system()
-            // below manages to run them.
-        // Tell Debugger to save a crash report
-        char command[128];
-        sprintf(command, "Debugger --save-report=debugReport-%d --thread %d",
-            info.team, id);
-        if (system(command) != 0) {
-            // This is a destructive operation and will kill this team. We
-            // never get back.
-
-            fprintf(stderr, "Debugger didn't kill me!\n");
-            exit(signum);
-        }
-    }
-
-    thread_id id = find_thread(NULL);
-
-    // Already crashed? No problem: wait for Debugger to save the report and
-    // destroy the team.
-    suspend_thread(id);
-}
-
-extern "C" {
-    // Haiku assert() does not call abort(), but instead calls debugger().
-    // Fortunately, we can fix this up using symbol preemption, and catch the
-    // asserting thread with our signal handler above (abort raises SIGABRT).
-    void debugger(const char* message)
-    {
-        abort();
-    }
-}
 
 int main()
 {
-    signal(SIGSEGV, crashReport);
-    signal(SIGABRT, crashReport);
-    signal(SIGILL, crashReport);
-        // Register handlers for all the "crashing" signals, and destroy
-        // ourselves using Debugger --save-report, instead of being killed
-        // without any trace of what happened.
-
     DumpRenderTreeApp app;
     app.Run();
 

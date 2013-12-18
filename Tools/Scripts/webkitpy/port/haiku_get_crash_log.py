@@ -50,19 +50,31 @@ class HaikuCrashLogGenerator(object):
         log_directory = os.environ.get("WEBKIT_CORE_DUMPS_DIRECTORY")
         errors = []
         crash_log = ''
-        expected_crash_dump_filename = "debugReport-%s" % (pid_representation)
+        expected_crash_dump_filename = "DumpRenderTree-%s-debug" % (pid_representation)
         proc_name = "%s" % (self.name)
+
+        def match_filename(filesystem, directory, filename):
+            return filename.find(expected_crash_dump_filename) > -1
 
         if not log_directory:
             log_directory = "/boot/home/Desktop"
+
+        dumps = self._filesystem.files_under(log_directory, file_filter=match_filename)
+        if dumps:
+            # Get the most recent coredump matching the pid and/or process name.
+            coredump_path = list(reversed(sorted(dumps)))[0]
+            if not self.newer_than or self._filesystem.mtime(coredump_path) > self.newer_than:
+                crash_log = self._get_debugger_output(coredump_path)
         core_pattern = os.path.join(log_directory, expected_crash_dump_filename)
-        crash_log = self._get_debugger_output(core_pattern)
 
         if not crash_log:
             crash_log = """\
-Coredump %(expected_crash_dump_filename)s not found. To enable crash logs, set
-the WEBKIT_CORE_DUMPS_DIRECTORY environment variable:
-    export WEBKIT_CORE_DUMPS_DIRECTORY=%(log_directory)s
+Crash report %(expected_crash_dump_filename)s not found. To enable crash logs,
+create the file ~/config/settings/system/debug_server/settings with the following contents:
+
+executable_actions {
+    DumpRenderTree log
+}
 """ % locals()
 
         return (stderr, """\

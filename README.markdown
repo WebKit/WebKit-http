@@ -107,11 +107,23 @@ http://www.w3.org/Style/CSS/Test/Fonts/Ahem/
 
     $ cp LayoutTests/resources/Ahem.ttf /system/non-packaged/data/fonts/
 
+It is also a good idea to enable automated debug reports for DumpRenderTree.
+Create the file ~/config/settings/system/debug\_server/settings and add:
+
+    exectuable_actions {
+        DumpRenderTree log
+    }
+
+The crash reports will be moved from the Desktop to the test result directory
+and renamed to the name of the test that triggered the crash. If you don't do
+this, you have to manually click the "save report" button, and while the
+testsuite waits on that, it may mark one or several tests as "timed out".
+
 You can then run the testsuite:
 
-    $ WEBKIT_CORE_DUMPS_DIRECTORY=. perl Tools/Scripts/run-webkit-tests \
-        --platform=haiku --no-build --no-http --no-retry-failures \
-        --clobber-old-results --no-new-test-results
+    $ perl Tools/Scripts/run-webkit-tests --platform=haiku --no-build \
+        --no-http --no-retry-failures --clobber-old-results \
+        --no-new-test-results
 
 The options will prevent the script to try updating DumpRenderTree (it doesn't
 know how to do that on Haiku, yet) and to run the HTTP tests (requires apache).
