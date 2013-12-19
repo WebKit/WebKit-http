@@ -2,5 +2,273 @@
 #
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 
+###############################################################################
+# Missing features in WebKit port
+
+
+# Accessibility support. Missing "AX"/"ARIA" stuff and related support in DRT.
+Bug(Haiku) accessibility/ [ Failure ]
+accessibility/anchor-linked-anonymous-block-crash.html [ Pass ]
+accessibility/aria-activedescendant-crash.html [ Pass ]
+accessibility/aria-checkbox-sends-notification.html [ Pass ]
+accessibility/aria-help.html [ Pass ]
+accessibility/contenteditable-table-check-causes-crash.html [ Pass ]
+accessibility/crash-adopt-node-from-new-document.html [ Pass ]
+accessibility/crashing-a-tag-in-map.html [ Pass ]
+accessibility/crash-with-noelement-selectbox.html [ Pass ]
+accessibility/container-node-delete-causes-crash.html [ Pass ]
+accessibility/duplicate-child-nodes.html [ Pass ]
+accessibility/duplicate-axrenderobject-crash.html [ Pass ]
+accessibility/hang-in-isignored.html [ Pass ]
+accessibility/fieldset-element.html [ Pass ]
+accessibility/first-letter-text-transform-causes-crash.html [ Pass ]
+accessibility/insert-selected-option-into-select-causes-crash.html [ Pass ]
+accessibility/internal-link-anchors2.html [ Pass ]
+accessibility/img-fallsback-to-title.html [ Pass ]
+accessibility/image-link.html [ Pass ]
+accessibility/image-map2.html [ Pass ]
+accessibility/label-element-press.html [ Pass ]
+accessibility/lists.html [ Pass ]
+accessibility/media-element.html [ Pass ]
+accessibility/media-controls.html [ Pass ]
+accessibility/menu-list-sends-change-notification.html [ Pass ]
+accessibility/meter-element.html [ Pass ]
+accessibility/multiselect-list-reports-active-option.html [ Pass ]
+accessibility/negative-tabindex-does-not-expose-label.html [ Pass ]
+accessibility/non-native-image-crash.html [ Pass ]
+accessibility/platform-name.html [ Pass ]
+accessibility/plugin.html [ Pass ]
+accessibility/radio-button-group-members.html [ Pass ]
+accessibility/table-cells.html [ Pass ]
+accessibility/table-cell-spans.html [ Pass ]
+accessibility/table-attributes.html [ Pass ]
+accessibility/table-one-cell.html [ Pass ]
+accessibility/table-remove-cell-crash.html [ Pass ]
+accessibility/table-sections.html [ Pass ]
+accessibility/table-with-aria-role.html [ Pass ]
+accessibility/table-with-empty-thead-causes-crash.html [ Pass ]
+accessibility/table-with-rules.html [ Pass ]
+accessibility/table-destroyed-crash.html [ Pass ]
+accessibility/table-detection.html [ Pass ]
+
+
+# Animations support - Nothing stars moving :(
+Bug(Haiku) animations/ [ Failure ]
+Bug(Haiku) animations/cross-fade-background-image.html [ ImageOnlyFailure ]
+
+# Some flaky tests.
+animations/cross-fade-list-style-image.html [ Pass Failure ]
+animations/cross-fade-webkit-mask-image.html [ Pass Failure ]
+animations/cross-fade-border-image-source.html [ Pass Failure ]
+
+animations/3d/matrix-transform-type-animation.html [ Pass ]
+animations/3d/state-at-end-event-transform.html [ Pass ]
+animations/3d/change-transform-in-end-event.html [ Pass ]
+animations/additive-transform-animations.html [ Pass ]
+animations/animation-shorthand.html [ Pass ]
+animations/animation-css-rule-types.html [ Pass ]
+animations/animation-events-create.html [ Pass ]
+animations/animation-on-inline-crash.html [ Pass ]
+animations/animation-shorthand-overriding.html [ Pass ]
+animations/animation-start-event-destroy-renderer.html [ Pass ]
+animations/body-removal-crash.html [ Pass ]
+animations/computed-style.html [ Pass ]
+animations/cross-fade-webkit-mask-box-image.html [ Pass ]
+animations/empty-keyframes.html [ Pass ]
+animations/fill-unset-properties.html [ Pass ]
+animations/import-crash.html [ Pass ]
+animations/keyframe-autoclose-brace.html [ Pass ]
+animations/keyframes-rule.html [ Pass ]
+animations/keyframe-selector-negative-percentage.html [ Pass ]
+animations/missing-values-last-keyframe.html [ Pass ]
+animations/missing-values-first-keyframe.html [ Pass ]
+animations/opacity-transform-animation.html [ Pass ]
+animations/state-at-end-event.html [ Pass ]
+animations/suspend-transform-animation.html [ Pass ]
+
+
+# Transitions - Probably the same problem as with animations.
+Bug(Haiku) transitions/ [ Failure ]
+transitions/override-transition-crash.html [ Pass ]
+transitions/transition-duration-cleared-in-transitionend-crash.html [ Pass ]
+transitions/transitions-parsing.html [ Pass ]
+transitions/move-after-transition.html [ Pass ]
+transitions/svg-text-shadow-transition.html [ Pass ]
+transitions/bad-transition-shorthand-crash.html [ Pass ]
+transitions/zero-duration-without-units.html [ Pass ]
+transitions/transition-end-event-create.html [ Pass ]
+transitions/default-timing-function.html [ Pass ]
+transitions/transition-end-event-rendering.html [ Pass ]
+transitions/inherit-other-props.html [ Pass ]
+transitions/inherit.html [ Pass ]
+
+
+# Editing - Testsuite support missing!
+Bug(Haiku) editing/ [ Failure ]
+editing/caret/caret-color.html [ Pass ]
+editing/editability/ [ Pass ]
+editing/shadow/ [ Pass ]
+
+editing/deleting/ [ Pass ]
+editing/execCommand/ [ Pass ]
+editing/inserting/ [ Pass ]
+editing/pasteboard/ [ Pass ]
+editing/selection/ [ Pass ]
+editing/style/ [ Pass ]
+
+editing/input/caret-at-the-edge-of-contenteditable.html [ Pass ]
+editing/input/caret-at-the-edge-of-input.html [ Pass ]
+editing/input/div-first-child-rule-input.html [ Pass ]
+editing/input/div-first-child-rule-textarea.html [ Pass ]
+editing/input/emacs-ctrl-o.html [ Pass ]
+editing/input/insert-wrapping-space-in-textarea.html [ Pass ]
+editing/input/paste-linebreak-into-initially-hidden-textarea.html [ Pass ]
+editing/input/reveal-caret-of-multiline-contenteditable.html [ Pass ]
+editing/input/reveal-caret-of-multiline-input.html [ Pass ]
+editing/input/reveal-caret-of-transformed-input-scrollable-parent.html [ Pass ]
+editing/input/reveal-edit-on-paste-vertically.html [ Pass ]
+editing/input/scroll-to-edge-if-line-break-at-end-of-document-textarea.html [ Pass ]
+editing/input/search-field-crash-in-designmode.html [ Pass ]
+editing/input/set-value-on-input-and-delete.html [ Pass ]
+editing/input/set-value-on-input-and-forward-delete.html [ Pass ]
+editing/input/set-value-on-input-and-type-input.html [ Pass ]
+editing/input/set-value-on-input-and-type-textarea.html [ Pass ]
+
+editing/spelling/inline-spelling-markers.html [ Pass ]
+editing/spelling/inline-spelling-markers-hidpi.html [ Pass ]
+editing/spelling/spelling.html [ Pass ]
+editing/spelling/spellcheck-api-crash.html [ Pass ]
+editing/spelling/spellcheck-async-remove-frame.html [ Pass ]
+editing/spelling/spellcheck-sequencenum.html [ Pass ]
+
+editing/text-iterator/basic-iteration.html [ Pass ]
+editing/text-iterator/find-after-mutation.html [ Pass ]
+editing/text-iterator/first-letter-rtl-crash.html [ Pass ]
+editing/text-iterator/first-letter-word-boundary.html [ Pass ]
+editing/text-iterator/range-to-from-location-and-length.html [ Pass ]
+editing/text-iterator/rtl-selection-crash.html [ Pass ]
+
+editing/undo/4063751.html [ Pass ]
+editing/undo/orphaned-selection-crash-bug32823-4.html [ Pass ]
+editing/undo/undo-combined-delete.html [ Pass ]
+editing/undo/undo-combined-delete-boundary.html [ Pass ]
+editing/undo/undo-delete.html [ Pass ]
+editing/undo/undo-delete-boundary.html [ Pass ]
+editing/undo/undo-deleteWord.html [ Pass ]
+editing/undo/undo-forward-delete.html [ Pass ]
+editing/undo/undo-forward-delete-boundary.html [ Pass ]
+
+editing/unsupported-content/list-delete-001.html [ Pass ]
+editing/unsupported-content/list-delete-003.html [ Pass ]
+editing/unsupported-content/list-type-after.html [ Pass ]
+editing/unsupported-content/list-type-before.html [ Pass ]
+editing/unsupported-content/script-markup-enabled-setting.html [ Pass ]
+editing/unsupported-content/table-delete-002.html [ Pass ]
+editing/unsupported-content/table-type-before.html [ Pass ]
+editing/unsupported-content/table-type-after.html [ Pass ]
+
+
+# Web Audio - Part of it needs stream decoding, but there's also low-level stuff.
+Bug(Haiku) webaudio/ [ Failure ]
+webaudio/codec-tests [ Pass ]
+webaudio/gain.html [ Pass ]
+webaudio/test-basic.html [ Pass ]
+webaudio/audiobuffersource.html [ Pass ]
+webaudio/audiobuffersource-multi-channels.html [ Pass ]
+webaudio/audiobuffersource-loop-points.html [ Pass ]
+webaudio/audiobuffersource-playbackrate.html [ Pass ]
+webaudio/mixing.html [ Pass ]
+webaudio/oscillator-sawtooth.html [ Pass ]
+webaudio/oscillator-sine.html [ Pass ]
+webaudio/oscillator-triangle.html [ Pass ]
+webaudio/oscillator-custom.html [ Pass ]
+webaudio/oscillator-square.html [ Pass ]
+webaudio/up-mixing-stereo-51.html [ Pass ]
+webaudio/up-mixing-mono-stereo.html [ Pass ]
+webaudio/up-mixing-mono-51.html [ Pass ]
+
+
+# WebGL support - Should be possible by embedding a BGLView. May need OpenGLES?
+Bug(Haiku) compositing/backface-visibility/backface-visibility-webgl.html [ Failure ]
+Bug(Haiku) fast/canvas/webgl [ Failure ]
+Bug(Haiku) webgl/ [ Failure ]
+# ... some already passing tests - Can't hurt to keep those working
+webgl/conformance/more/glsl/uniformOutOfBounds.html [ Pass ]
+webgl/conformance/typedarrays [ Pass ]
+Bug(Haiku) webgl/conformance/typedarrays/typed-arrays-in-workers.html [ Failure ]
+
+webgl/1.0.1/conformance/more/conformance/constants.html      [ Pass ]
+webgl/1.0.1/conformance/more/conformance/methods.html        [ Pass ]
+webgl/1.0.1/conformance/more/glsl/arrayOutOfBounds.html      [ Pass ]
+webgl/1.0.1/conformance/more/glsl/uniformOutOfBounds.html    [ Pass ]
+webgl/1.0.1/conformance/typedarrays/array-buffer-crash.html  [ Pass ]
+webgl/1.0.1/conformance/typedarrays/array-buffer-view-crash.html [ Pass ]
+webgl/1.0.1/conformance/typedarrays/array-unit-tests.html    [ Pass ]
+
+webgl/1.0.2/conformance/more/glsl/uniformOutOfBounds.html    [ Pass ]
+webgl/1.0.2/conformance/typedarrays/data-view-crash.html     [ Pass ]
+webgl/1.0.2/conformance/typedarrays/array-buffer-crash.html  [ Pass ]
+webgl/1.0.2/conformance/typedarrays/array-buffer-view-crash.html [ Pass ]
+Bug(Haiku) webgl/1.0.2/conformance/typedarrays/typed-arrays-in-workers.html [ Crash ]
+
+
+# This should not crash, when we add web inspector support.
+Bug(Haiku) inspector-protocol [ Crash ]
+
+
+# Crypto - the webCrypto API is still a draft at W3C, and this is disabled in
+# all WebKit ports so far.
+crypto [ Failure ]
+crypto/crypto-random-values-limits.html [ Pass ]
+crypto/crypto-random-values.html [ Pass ]
+crypto/crypto-random-values-types.html [ Pass ]
+crypto/subtle/aes-cbc-invalid-length.html [ Pass ]
+
+
+# MathML
+mathml/presentation/row.xhtml [ Pass ]
+mathml/presentation/roots.xhtml [ Pass ]
+mathml/presentation/mo.xhtml [ Pass ]
+
+
+# Network information - Can be done, but is it useful?
+networkinformation [ Failure ]
+
+
+# Battery status - probably we'll never do it...
+batterystatus [ WontFix ]
+# Hardware Compositing - we don't have any hardware acceleration for this.
+compositing [ WontFix ]
+# Plugins - disabled for now, not sure we'll use the Netscape API anyway.
+plugins [ WontFix ]
+# Touch adjustement - No touchscreen for us!
+touchadjustment [ WontFix ]
+# Vibration API - Sorry, no hardware for this!
+vibration [ WontFix ]
+# Web Archives - Specific to Safari? Idon't know how to implement this anyway.
+webarchive [ WontFix ]
+http/tests/webarchive [ WontFix ]
+svg/webarchive [ WontFix ]
+svg/custom/image-with-prefix-in-webarchive.svg [ WontFix ]
+
+
+###############################################################################
+# Missing features and bugs in Haiku
+
+
 # http://dev.haiku-os.org/ticket/10258 - app_server crash
 Bug(Haiku) fast/canvas/canvas-largedraws.html [ Skip ]
+
+
+# http://dev.haiku-os.org/ticket/10273 - No transform support in BView
+Bug(Haiku) canvas/philip/tests/2d.clearRect.transform.html [ Failure ]
+
+
+# http://dev.haiku-os.org/ticket/10274 - Missing drawing modes
+Bug(Haiku) canvas/philip/tests/2d.composite.canvas.destination-atop.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.canvas.destination-in.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.canvas.destination-over.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.canvas.source-atop.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.canvas.source-in.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.canvas.source-out.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.canvas.xor.html [ Failure ]
