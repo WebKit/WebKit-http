@@ -215,6 +215,10 @@ static BBitmap* readImageFromStdin(long imageSize)
     BBitmap* image = BTranslationUtils::GetBitmap(&imageData);
 
     delete[] imageBuffer;
+
+    if (image == NULL)
+        abortWithErrorMessage("cannot decode image");
+
     return image;
 }
 

@@ -94,7 +94,10 @@ String DumpRenderTreeClient::responseMimeType(const BWebFrame* frame)
 
 BBitmap* DumpRenderTreeClient::getOffscreen(BWebView* view)
 {
-    return new BBitmap(view->OffscreenBitmap());
+    view->OffscreenView()->LockLooper();
+    view->OffscreenView()->Sync();
+    view->OffscreenView()->UnlockLooper();
+    return view->OffscreenBitmap();
 }
 
 BSize DumpRenderTreeClient::getOffscreenSize(BWebView* view)
