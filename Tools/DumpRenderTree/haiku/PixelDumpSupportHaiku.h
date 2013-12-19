@@ -27,6 +27,7 @@
 #define PixelDumpSupportHaiku_h
 
 #include <Bitmap.h>
+#include <Size.h>
 
 #include <stdio.h>
 #include <wtf/PassRefPtr.h>
@@ -36,9 +37,10 @@
 class BitmapContext : public RefCounted<BitmapContext> {
 public:
 
-    static PassRefPtr<BitmapContext> createByAdoptingData(BBitmap* bitmap)
+    static PassRefPtr<BitmapContext> createByAdoptingData(BSize size,
+        BBitmap* bitmap)
     {
-        return adoptRef(new BitmapContext(bitmap));
+        return adoptRef(new BitmapContext(size, bitmap));
     }
 
     ~BitmapContext()
@@ -50,9 +52,14 @@ public:
 
 private:
 
-    BitmapContext(BBitmap* bitmap)
-        : m_bitmap(new BBitmap(bitmap))
+    BitmapContext(BSize size, BBitmap* bitmap)
     {
+        // The size may be smaller than the bitmap, as we only want to keep the
+        // viewport.
+        m_bitmap = new BBitmap(BRect(0, 0, size.Width(), size.Height()), 0,
+            B_RGBA32);
+        m_bitmap->ImportBits(bitmap, BPoint(0, 0), BPoint(0, 0), size.Width(),
+            size.Height());
     }
 };
 

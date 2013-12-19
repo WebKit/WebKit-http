@@ -97,6 +97,14 @@ BBitmap* DumpRenderTreeClient::getOffscreen(BWebView* view)
     return new BBitmap(view->OffscreenBitmap());
 }
 
+BSize DumpRenderTreeClient::getOffscreenSize(BWebView* view)
+{
+    view->OffscreenView()->LockLooper();
+    BRect bounds = view->OffscreenView()->Bounds();
+    view->OffscreenView()->UnlockLooper();
+    return BSize(bounds.Width(), bounds.Height());
+}
+
 void
 DumpRenderTreeClient::setValueForUser(OpaqueJSContext const*, OpaqueJSValue const*, WTF::String const&)
 {

@@ -46,7 +46,9 @@ extern BWebView* webView;
 
 PassRefPtr<BitmapContext> createBitmapContextFromWebView(bool, bool, bool, bool drawSelectionRect)
 {
-    return BitmapContext::createByAdoptingData(WebCore::DumpRenderTreeClient::getOffscreen(webView));
+    BSize size = WebCore::DumpRenderTreeClient::getOffscreenSize(webView);
+    BBitmap* bitmap = WebCore::DumpRenderTreeClient::getOffscreen(webView);
+    return BitmapContext::createByAdoptingData(size, bitmap);
 }
 
 void computeMD5HashStringForBitmapContext(BitmapContext* context, char hashString[33])
@@ -84,10 +86,13 @@ void dumpBitmap(BitmapContext* context, const char* checksum)
 
     BBitmapStream stream(context->m_bitmap);
     BMallocIO mio;
-    BTranslatorRoster::Default()->Translate(&stream, NULL, NULL, &mio, B_PNG_FORMAT);
+    status_t err = BTranslatorRoster::Default()->Translate(&stream, NULL, NULL, &mio, B_PNG_FORMAT);
+    if (err == B_OK)
+        printPNG((const unsigned char*)mio.Buffer(), mio.BufferLength(), checksum);
+    else
+        fprintf(stderr, "Error translating bitmap: %s\n", strerror(err));
+
     BBitmap* out;
     stream.DetachBitmap(&out);
     ASSERT(out == context->m_bitmap);
-
-    printPNG((const unsigned char*)mio.Buffer(), mio.BufferLength(), checksum);
 }

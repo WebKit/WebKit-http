@@ -25,6 +25,8 @@
 #ifndef DumpRenderTreeClient_h
 #define DumpRenderTreeClient_h
 
+#include <Size.h>
+
 #include "URL.h"
 #include <FindOptions.h>
 #include <JavaScriptCore/APICast.h>
@@ -61,6 +63,7 @@ public:
     static String responseMimeType(const BWebFrame* frame);
     static void setValueForUser(JSContextRef, JSValueRef nodeObject, const String& value);
     static BBitmap* getOffscreen(BWebView* view);
+    static BSize    getOffscreenSize(BWebView* view);
 
     static void setSeamlessIFramesEnabled(bool);
 
