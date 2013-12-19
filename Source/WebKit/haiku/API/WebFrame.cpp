@@ -288,6 +288,10 @@ BString BWebFrame::InnerText() const
         view->layout();
 
     WebCore::Element *documentElement = fData->frame->document()->documentElement();
+
+    if (!documentElement)
+        return String();
+
     return documentElement->innerText();
 }
 
