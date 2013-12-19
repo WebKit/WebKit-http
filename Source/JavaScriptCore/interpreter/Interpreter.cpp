@@ -103,6 +103,7 @@ Interpreter::ErrorHandlingMode::~ErrorHandlingMode()
         m_interpreter.stack().disableErrorStackReserve();
 }
 
+__attribute__((force_align_arg_pointer))
 JSValue eval(CallFrame* callFrame)
 {
     if (!callFrame->argumentCount())

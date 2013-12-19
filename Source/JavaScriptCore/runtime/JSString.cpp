@@ -82,6 +82,7 @@ void JSRopeString::visitFibers(SlotVisitor& visitor)
         visitor.append(&m_fibers[i]);
 }
 
+__attribute__((force_align_arg_pointer))
 void JSRopeString::resolveRope(ExecState* exec) const
 {
     ASSERT(isRope());
