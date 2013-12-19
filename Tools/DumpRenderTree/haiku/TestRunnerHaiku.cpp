@@ -466,19 +466,33 @@ static inline int toInt(JSStringRef value)
 
 void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
 {
-    if (equals(key, "WebKitCSSCustomFilterEnabled"))
+    if (equals(key, "WebKitAcceleratedCompositingEnabled"))
+        notImplemented();
+    else if (equals(key, "WebKitCSSCustomFilterEnabled"))
         notImplemented();
     else if (equals(key, "WebKitCSSGridLayoutEnabled"))
         notImplemented();
     else if (equals(key, "WebKitCSSRegionsEnabled"))
         notImplemented();
+    else if (equals(key, "WebKitDefaultFontSize"))
+        notImplemented();
+    else if (equals(key, "WebKitDisplayImagesKey"))
+        notImplemented();
+    else if (equals(key, "WebKitEnableCaretBrowsing"))
+        notImplemented();
     else if (equals(key, "WebKitJavaEnabled"))
+        notImplemented();
+    else if (equals(key, "WebKitJavaScriptEnabled"))
         notImplemented();
     else if (equals(key, "WebKitPageCacheSupportsPluginsPreferenceKey"))
         notImplemented();
+    else if (equals(key, "WebKitShouldRespectImageOrientation"))
+        notImplemented();
     else if (equals(key, "WebKitSupportsMultipleWindows"))
         notImplemented();
-    else if (equals(key, "WebKitTabToLinkPreferenceKey"))
+    else if (equals(key, "WebKitTabToLinksPreferenceKey"))
+        notImplemented();
+    else if (equals(key, "WebKitUsePreHTML5ParserQuirks"))
         notImplemented();
     else if (equals(key, "WebKitUsesPageCachePreferenceKey"))
         notImplemented();
