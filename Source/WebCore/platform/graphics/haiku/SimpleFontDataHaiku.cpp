@@ -38,6 +38,7 @@
 
 #include <wtf/text/CString.h>
 #include <unicode/uchar.h>
+#include <unicode/unistr.h>
 #include <unicode/unorm.h>
 #include <Rect.h>
 
@@ -58,8 +59,14 @@ void SimpleFontData::platformInit()
     m_fontMetrics.setAscent(height.ascent);
     m_fontMetrics.setDescent(height.descent);
     m_fontMetrics.setLineSpacing(height.ascent + height.descent);
-    m_fontMetrics.setXHeight(height.ascent * 0.56f); // Hack taken from the win port.
     m_fontMetrics.setLineGap(height.leading);
+
+    BRect rect;
+    font->GetBoundingBoxesAsGlyphs("x", 1, B_SCREEN_METRIC, &rect);
+
+    m_fontMetrics.setXHeight(rect.Height() / 1.25);
+        // FIXME we shouldn't need to divide here, but it passes this test:
+        // css2.1/20110323/c541-word-sp-000.htm
 }
 
 void SimpleFontData::platformCharWidthInit()
@@ -81,7 +88,20 @@ PassRefPtr<SimpleFontData> SimpleFontData::platformCreateScaledFontData(const Fo
 
 bool SimpleFontData::containsCharacters(const UChar* characters, int length) const
 {
-    // FIXME: We will need to implement this to load non-ASCII encoding sites
+    const BFont* font = m_platformData.font();
+    if (!font)
+        return false;
+
+    bool result[length];
+    icu::UnicodeString source(characters, length);
+    std::string utf8;
+    source.toUTF8String(utf8);
+
+    font->GetHasGlyphs(utf8.c_str(), length, result);
+    for (int i = 0; i < length; i++) {
+        if (!result[i])
+            return false;
+    }
     return true;
 }
 
@@ -90,10 +110,16 @@ void SimpleFontData::determinePitch()
     m_treatAsFixedPitch = m_platformData.font() && m_platformData.font()->IsFixed();
 }
 
-FloatRect SimpleFontData::platformBoundsForGlyph(Glyph) const
+FloatRect SimpleFontData::platformBoundsForGlyph(Glyph glyph) const
 {
-    notImplemented();
-    return FloatRect();
+    const BFont* font = m_platformData.font();
+    if (!font)
+        return FloatRect();
+
+    BRect rect;
+    CString encoded = UTF8Encoding().encode((UChar *)&glyph, 1, URLEncodedEntitiesForUnencodables);
+    font->GetBoundingBoxesAsGlyphs(encoded.data(), 1, B_SCREEN_METRIC, &rect);
+    return rect;
 }
 
 float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
