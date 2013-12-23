@@ -103,6 +103,7 @@ public:
 			void				SetTitle(const BString& title);
 			const BString&		Title() const;
 
+            const char*         Name() const;
 private:
 	friend class BWebPage;
 

@@ -89,11 +89,28 @@ static String dumpFramesAsText(BWebFrame* frame)
         return String();
 
     String result = frame->InnerText();
+
+    if (webView->WebPage()->MainFrame() != frame) {
+        result.append("\n--------\nFrame: '");
+        result.append(frame->Name());
+        result.append("'\n--------\n");
+    }
+
     result.append("\n");
 
     if (gTestRunner->dumpChildFramesAsText()) {
-        // FIXME:
-        // not implemented.
+        BList children = WebCore::DumpRenderTreeClient::frameChildren(frame);
+
+        for(int i = 0; i < children.CountItems(); i++)
+        {
+            BWebFrame* currentFrame = static_cast<BWebFrame*>(children.ItemAt(i));
+            String tempText(dumpFramesAsText(currentFrame));
+
+            if (tempText.isEmpty())
+                continue;
+
+            result.append(tempText);
+        }
     }
 
     return result;
@@ -331,6 +348,7 @@ static void runTest(const string& inputLine)
     const int height = isSVGW3CTest ? TestRunner::w3cSVGViewHeight : TestRunner::viewHeight;
     webView->LockLooper();
     webView->ResizeTo(width - 1, height - 1);
+    webView->Window()->ResizeTo(width - 1, height - 1);
     webView->UnlockLooper();
 
     // TODO efl does some history cleanup here
@@ -423,7 +441,7 @@ void DumpRenderTreeApp::ReadyToRun()
     webView = new BWebView("DumpRenderTree");
     m_webWindow->AddChild(webView);
     m_webWindow->SetCurrentWebView(webView);
-    webView->SetExplicitSize(BSize(maxViewWidth - 1, maxViewHeight - 1));
+    webView->ResizeTo(maxViewWidth - 1, maxViewHeight - 1);
 
     webView->WebPage()->SetListener(this);
     Register(webView->WebPage());

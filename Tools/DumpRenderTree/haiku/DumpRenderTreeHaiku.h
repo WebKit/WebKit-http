@@ -30,7 +30,11 @@
 #ifndef DumpRenderTreeHaiku_h
 #define DumpRenderTreeHaiku_h
 
+class BWebFrame;
+
 class AccessibilityController;
 class GCController;
+
+extern BWebFrame* topLoadingFrame;
 
 #endif // DumpRenderTreeHaiku_h

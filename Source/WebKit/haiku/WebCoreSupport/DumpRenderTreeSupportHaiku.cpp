@@ -24,6 +24,7 @@
 
 #include "config.h"
 #include "DumpRenderTreeClient.h"
+#include "FrameLoaderClientHaiku.h"
 
 #include "WebFrame.h"
 #include "WebPage.h"
@@ -106,6 +107,22 @@ BSize DumpRenderTreeClient::getOffscreenSize(BWebView* view)
     BRect bounds = view->OffscreenView()->Bounds();
     view->OffscreenView()->UnlockLooper();
     return BSize(bounds.Width(), bounds.Height());
+}
+
+BList DumpRenderTreeClient::frameChildren(BWebFrame* webFrame)
+{
+    WebCore::Frame* frame = webFrame->Frame();
+
+    BList childFrames;
+
+    for (unsigned index = 0; index < frame->tree().childCount(); index++) {
+        WebCore::Frame *childFrame = frame->tree().child(index);
+        WebCore::FrameLoaderClientHaiku& client = static_cast<WebCore::FrameLoaderClientHaiku&>(childFrame->loader().client());
+
+        childFrames.AddItem(client.webFrame());
+    }
+
+    return childFrames;
 }
 
 void

@@ -50,8 +50,10 @@
 #include "markup.h"
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
+
 #include <Entry.h>
-#include <support/String.h>
+#include <String.h>
 
 static const float kMinimumZoomFactorMultiplier = 0.5;
 static const float kMaximumZoomFactorMultiplier = 3;
@@ -395,6 +397,13 @@ const BString& BWebFrame::Title() const
 }
 
 // #pragma mark - private
+
+
+const char* BWebFrame::Name() const
+{
+    const WTF::String frameName = Frame()->tree().uniqueName();
+    return frameName.utf8().data();
+}
 
 WebCore::Frame* BWebFrame::Frame() const
 {

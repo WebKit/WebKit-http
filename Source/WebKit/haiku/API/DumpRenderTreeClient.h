@@ -25,6 +25,7 @@
 #ifndef DumpRenderTreeClient_h
 #define DumpRenderTreeClient_h
 
+#include <List.h>
 #include <Size.h>
 
 #include "URL.h"
@@ -64,6 +65,7 @@ public:
     static void setValueForUser(JSContextRef, JSValueRef nodeObject, const String& value);
     static BBitmap* getOffscreen(BWebView* view);
     static BSize    getOffscreenSize(BWebView* view);
+    static BList    frameChildren(BWebFrame* frame);
 
     static void setSeamlessIFramesEnabled(bool);
 
