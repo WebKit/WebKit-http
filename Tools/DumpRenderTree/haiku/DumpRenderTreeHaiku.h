@@ -30,11 +30,17 @@
 #ifndef DumpRenderTreeHaiku_h
 #define DumpRenderTreeHaiku_h
 
+#include <MessageRunner.h>
+
 class BWebFrame;
 
 class AccessibilityController;
 class GCController;
 
 extern BWebFrame* topLoadingFrame;
+extern bool waitForPolicy;
+extern BMessageRunner* waitToDumpWatchdog;
+
+bool shouldSetWaitToDumpWatchdog();
 
 #endif // DumpRenderTreeHaiku_h

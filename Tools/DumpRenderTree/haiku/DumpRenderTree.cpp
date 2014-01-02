@@ -59,6 +59,7 @@
 #include <wtf/text/StringBuilder.h>
 
 #include <Application.h>
+#include <File.h>
 #include <JavaScriptCore/JavaScript.h>
 #include <OS.h>
 #include <signal.h>
@@ -66,6 +67,10 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <vector>
+
+BWebView* webView;
+bool waitForPolicy = false;
+BMessageRunner* waitToDumpWatchdog = NULL;
 
 // From the top-level DumpRenderTree.h
 RefPtr<TestRunner> gTestRunner;
@@ -75,10 +80,9 @@ static bool dumpPixelsForCurrentTest;
 static int dumpPixelsForAllTests = false;
 static bool dumpTree = true;
 static bool printSeparators = true;
+static int useTimeoutWatchdog = true;
 
 using namespace std;
-
-BWebView* webView;
 
 const unsigned maxViewHeight = 600;
 const unsigned maxViewWidth = 800;
@@ -192,7 +196,7 @@ static String getFinalTestURL(const String& testURL)
         const String filePath = String::fromUTF8(cFilePath);
         free(cFilePath);
 
-        //if (ecore_file_exists(filePath.utf8().data()))
+        if (BFile(filePath.utf8().data(), B_READ_ONLY).IsFile())
             return String("file://") + filePath;
     }
 
@@ -411,6 +415,11 @@ void DumpRenderTreeApp::ArgvReceived(int32 argc, char** argv)
             continue;
         }
 
+        if (!strcmp(argv[i], "--no-timeout")) {
+            useTimeoutWatchdog = true;
+            continue;
+        }
+
         char* str = new char[strlen(argv[i]) + 1];
         strcpy(str, argv[i]);
         m_tests.push_back(str);
@@ -466,6 +475,20 @@ void DumpRenderTreeApp::ReadyToRun()
     }
 }
 
+bool shouldSetWaitToDumpWatchdog()
+{
+    return !waitToDumpWatchdog && useTimeoutWatchdog;
+}
+
+static void invalidateAnyPreviousWaitToDumpWatchdog()
+{
+    if (waitToDumpWatchdog) {
+        delete waitToDumpWatchdog;
+        waitToDumpWatchdog = NULL;
+    }
+    waitForPolicy = false;
+}
+
 static void sendPixelResultsEOF()
 {
     puts("#EOF");
@@ -487,9 +510,15 @@ void DumpRenderTreeApp::topLoadingFrameLoadFinished()
         dump();
 }
 
+extern void watchdogFired();
+
 void DumpRenderTreeApp::MessageReceived(BMessage* message)
 {
     switch (message->what) {
+    case 'dwdg': {
+        watchdogFired();
+        break;
+    }
     case LOAD_FINISHED: {
         // efl: DumpRenderTreeChrome::onFrameLoadFinished
         if (!done && gTestRunner->dumpProgressFinishedCallback())

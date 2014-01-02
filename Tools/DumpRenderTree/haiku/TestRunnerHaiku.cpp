@@ -41,6 +41,7 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
+#include <Application.h>
 #include <DumpRenderTreeClient.h>
 #include <WebPage.h>
 #include <WebView.h>
@@ -108,7 +109,7 @@ void TestRunner::notifyDone()
     if (m_waitToDump && /*!topLoadingFrame &&*/ !WorkQueue::shared()->count())
         dump();
     m_waitToDump = false;
-    //waitForPolicy = false;
+    waitForPolicy = false;
 }
 
 JSStringRef TestRunner::pathToLocalResource(JSContextRef context, JSStringRef url)
@@ -159,7 +160,9 @@ void TestRunner::setCustomPolicyDelegate(bool enabled, bool permissive)
 
 void TestRunner::waitForPolicyDelegate()
 {
-    notImplemented();
+    setCustomPolicyDelegate(true, false);
+    waitForPolicy = true;
+    setWaitToDump(true);
 }
 
 void TestRunner::setScrollbarPolicy(JSStringRef, JSStringRef)
@@ -227,9 +230,21 @@ void TestRunner::setWindowIsKey(bool)
     notImplemented();
 }
 
+void watchdogFired()
+{
+    delete waitToDumpWatchdog;
+    waitToDumpWatchdog = NULL;
+    gTestRunner->waitToDumpWatchdogTimerFired();
+}
+
 void TestRunner::setWaitToDump(bool waitUntilDone)
 {
-    notImplemented();
+    m_waitToDump = waitUntilDone;
+
+    if (m_waitToDump && shouldSetWaitToDumpWatchdog()) {
+        BMessage message('dwdg');
+        waitToDumpWatchdog = new BMessageRunner(be_app, &message, 30000000, 1);
+    }
 }
 
 int TestRunner::windowCount()
