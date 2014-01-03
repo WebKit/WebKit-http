@@ -56,7 +56,7 @@ String defaultDetailsSummaryText()
 
 String searchableIndexIntroduction()
 {
-    return "Searchable Index";
+    return "This is a searchable index. Enter search keywords: ";
 }
 
 String fileButtonChooseFileLabel()
