@@ -310,6 +310,7 @@ void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const URL&, doubl
 void FrameLoaderClientHaiku::dispatchDidChangeLocationWithinPage()
 {
     BMessage message(LOAD_DOC_COMPLETED);
+    message.AddPointer("frame", m_webFrame);
     message.AddString("url", m_webFrame->Frame()->document()->url().string());
     dispatchMessage(message);
 }
@@ -433,6 +434,7 @@ void FrameLoaderClientHaiku::dispatchDidFailLoad(const ResourceError& error)
 void FrameLoaderClientHaiku::dispatchDidFinishDocumentLoad()
 {
     BMessage message(LOAD_DOC_COMPLETED);
+    message.AddPointer("frame", m_webFrame);
     message.AddString("url", m_webFrame->Frame()->document()->url().string());
     dispatchMessage(message);
 }
@@ -447,8 +449,9 @@ void FrameLoaderClientHaiku::dispatchDidFinishLoad()
     }
 
     BMessage message(LOAD_FINISHED);
+    message.AddPointer("frame", m_webFrame);
     message.AddString("url", m_webFrame->Frame()->document()->url().string());
-    dispatchMessage(message);
+    status_t err = dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFirstLayout()
@@ -601,6 +604,11 @@ void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loade
 
 void FrameLoaderClientHaiku::postProgressStartedNotification()
 {
+    BMessage message(LOAD_STARTED);
+    message.AddPointer("frame", m_webFrame);
+    message.AddString("url", m_webFrame->Frame()->document()->url().string());
+    dispatchMessage(message);
+
     if (m_webFrame && m_webFrame->Frame()->page()) {
         // A new load starts, so lets clear the previous error.
 //        m_loadError = ResourceError();

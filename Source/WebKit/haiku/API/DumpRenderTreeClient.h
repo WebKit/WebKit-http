@@ -62,6 +62,7 @@ public:
     static bool dumpRenderTreeModeEnabled();
 
     static String responseMimeType(const BWebFrame* frame);
+    static String suitableDRTFrameName(const BWebFrame* frame);
     static void setValueForUser(JSContextRef, JSValueRef nodeObject, const String& value);
     static BBitmap* getOffscreen(BWebView* view);
     static BSize    getOffscreenSize(BWebView* view);

@@ -93,6 +93,27 @@ String DumpRenderTreeClient::responseMimeType(const BWebFrame* frame)
     return documentLoader->responseMIMEType();
 }
 
+// Compare with "WebKit/Tools/DumpRenderTree/mac/FrameLoadDelegate.mm
+String DumpRenderTreeClient::suitableDRTFrameName(const BWebFrame* ewkFrame)
+{
+    Frame* frame = ewkFrame->Frame();
+    const String frameName(ewkFrame->Name());
+
+    /*
+    if (ewkFrame == ewk_view_frame_main_get(ewk_frame_view_get(ewkFrame))) {
+        if (!frameName.isEmpty())
+            return String("main frame \"") + frameName + String("\"");
+
+        return String("main frame");
+    }
+    */
+
+    if (!frameName.isEmpty())
+        return String("frame \"") + frameName + String("\"");
+
+    return String("frame (anonymous)");
+}
+
 BBitmap* DumpRenderTreeClient::getOffscreen(BWebView* view)
 {
     view->OffscreenView()->LockLooper();

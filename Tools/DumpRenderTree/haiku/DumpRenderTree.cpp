@@ -69,6 +69,7 @@
 #include <vector>
 
 BWebView* webView;
+BWebFrame* topLoadingFrame = 0;
 bool waitForPolicy = false;
 BMessageRunner* waitToDumpWatchdog = NULL;
 
@@ -214,7 +215,7 @@ static void createTestRunner(const String& testURL, const String& expectedPixelH
         TestRunner::create(std::string(testURL.utf8().data()),
                                      std::string(expectedPixelHash.utf8().data()));
 
-    //topLoadingFrame = 0;
+    topLoadingFrame = 0;
     done = false;
 
     gTestRunner->setIconDatabaseEnabled(false);
@@ -498,7 +499,7 @@ static void sendPixelResultsEOF()
 
 void DumpRenderTreeApp::topLoadingFrameLoadFinished()
 {
-    //TODO topLoadingFrame = 0;
+    topLoadingFrame = 0;
 
     WorkQueue::shared()->setFrozen(true);
     if (gTestRunner->waitToDump())
@@ -506,8 +507,9 @@ void DumpRenderTreeApp::topLoadingFrameLoadFinished()
 
     if (WorkQueue::shared()->count()) {
         // ecore_idler_add(processWork, 0 /*frame*/);
-    } else
+    } else {
         dump();
+    }
 }
 
 extern void watchdogFired();
@@ -519,21 +521,53 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         watchdogFired();
         break;
     }
+
+    case LOAD_STARTED: {
+        // efl: DumpRenderTreeChrome::onLoadStarted
+        BWebFrame* frame = NULL;
+        message->FindPointer("frame", (void**)&frame);
+
+        // Make sure we only set this once per test. If it gets cleared, and
+        // then set again, we might end up doing two dumps for one test.
+        if (!topLoadingFrame && !done)
+            topLoadingFrame = frame;
+        break;
+    }
+
     case LOAD_FINISHED: {
         // efl: DumpRenderTreeChrome::onFrameLoadFinished
         if (!done && gTestRunner->dumpProgressFinishedCallback())
             printf("postProgressFinishedNotification\n");
 
+        BWebFrame* frame = NULL;
+        message->FindPointer("frame", (void**)&frame);
         if (!done && gTestRunner->dumpFrameLoadCallbacks()) {
-            //EFL: const String frameName(DumpRenderTreeClient::suitableDRTFrameName(frame));
-            BString location = message->FindString("url");
-            printf("%s - didFinishLoadForFrame\n", location.String());
+            const String frameName(DumpRenderTreeClient::suitableDRTFrameName(frame));
+            printf("%s - didFinishLoadForFrame\n", frameName.utf8().data());
         }
 
-        // FIXME can we access the BWebFrame that finished loading here?
-        //if (frame == topLoadingFrame)
+        if (frame == topLoadingFrame)
             topLoadingFrameLoadFinished();
 
+        break;
+    }
+
+    case LOAD_DOC_COMPLETED: {
+        //efl: DumpRenderTreeChrome::onDocumentLoadFinished
+
+        BWebFrame* frame = NULL;
+        message->FindPointer("frame", (void**)&frame);
+        const String frameName(DumpRenderTreeClient::suitableDRTFrameName(frame));
+
+        if (!done && gTestRunner->dumpFrameLoadCallbacks())
+            printf("%s - didFinishDocumentLoadForFrame\n", frameName.utf8().data());
+        else if (!done) {
+#if 0
+            const unsigned pendingFrameUnloadEvents = DumpRenderTreeClient::pendingUnloadEventCount(frame);
+            if (pendingFrameUnloadEvents)
+                printf("%s - has %u onunload handler(s)\n", frameName.utf8().data(), pendingFrameUnloadEvents);
+#endif
+        }
 
         break;
     }
@@ -591,8 +625,6 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         //gTestRunner->clear();
         sendPixelResultsEOF();
 
-        gTestRunner->notifyDone();
-
         if (m_fromStdin) {
             // run the next test.
             if(runTestFromStdin() != B_OK) {
@@ -603,8 +635,9 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
             if (m_currentTest < m_tests.size()) {
                 runTest(m_tests[m_currentTest]);
                 m_currentTest++;
-            } else
+            } else {
                 be_app->PostMessage(B_QUIT_REQUESTED);
+            }
         }
         return;
     }

@@ -47,7 +47,8 @@ enum {
     AUTHENTICATION_CHALLENGE =                          315,
     ICON_RECEIVED =                                     316,
     CLOSE_WINDOW_REQUESTED =                            317,
-    MAIN_DOCUMENT_ERROR =                               318
+    MAIN_DOCUMENT_ERROR =                               318,
+    LOAD_STARTED =                                      319
 };
 
 enum {
