@@ -31,24 +31,26 @@
 #include "APIObject.h"
 #include "WebContextMenuItemData.h"
 
+namespace API {
+class Array;
+}
+
 namespace WebKit {
 
-class ImmutableArray;
-
-class WebContextMenuItem : public API::TypedObject<API::Object::TypeContextMenuItem> {
+class WebContextMenuItem : public API::TypedObject<API::Object::Type::ContextMenuItem> {
 public:
     static PassRefPtr<WebContextMenuItem> create(const WebContextMenuItemData& data)
     {
         return adoptRef(new WebContextMenuItem(data));
     }
-    static PassRefPtr<WebContextMenuItem> create(const String& title, bool enabled, ImmutableArray* submenuItems);
+    static PassRefPtr<WebContextMenuItem> create(const String& title, bool enabled, API::Array* submenuItems);
     static WebContextMenuItem* separatorItem();
-    
-    PassRefPtr<ImmutableArray> submenuItemsAsImmutableArray() const;
-    
+
+    PassRefPtr<API::Array> submenuItemsAsAPIArray() const;
+
     API::Object* userData() const;
     void setUserData(API::Object*);
-    
+
     WebContextMenuItemData* data() { return &m_webContextMenuItemData; }
 
 private:

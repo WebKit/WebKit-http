@@ -186,6 +186,10 @@ namespace JSC {
         
         bool isDeferred() const { return !!m_deferralDepth; }
 
+#if USE(CF)
+        template<typename T> void releaseSoon(RetainPtr<T>&&);
+#endif
+
     private:
         friend class CodeBlock;
         friend class CopiedBlock;
@@ -260,10 +264,6 @@ namespace JSC {
         CopiedSpace m_storageSpace;
         GCIncomingRefCountedSet<ArrayBuffer> m_arrayBuffers;
         size_t m_extraMemoryUsage;
-
-#if ENABLE(SIMPLE_HEAP_PROFILING)
-        VTableSpectrum m_destroyedTypeCounts;
-#endif
 
         ProtectCountSet m_protectedValues;
         Vector<Vector<ValueStringPair, 0, UnsafeVectorOverflow>* > m_tempSortingVectors;
@@ -467,6 +467,14 @@ namespace JSC {
     {
         return m_blockAllocator;
     }
+
+#if USE(CF)
+    template <typename T>
+    inline void Heap::releaseSoon(RetainPtr<T>&& object)
+    {
+        m_objectSpace.releaseSoon(std::move(object));
+    }
+#endif
 
 } // namespace JSC
 

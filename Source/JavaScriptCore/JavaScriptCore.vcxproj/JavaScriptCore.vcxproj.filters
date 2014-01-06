@@ -261,9 +261,6 @@
     <ClCompile Include="..\heap\SuperRegion.cpp">
       <Filter>heap</Filter>
     </ClCompile>
-    <ClCompile Include="..\heap\VTableSpectrum.cpp">
-      <Filter>heap</Filter>
-    </ClCompile>
     <ClCompile Include="..\heap\Weak.cpp">
       <Filter>heap</Filter>
     </ClCompile>
@@ -1029,6 +1026,9 @@
     <ClCompile Include="..\dfg\DFGInPlaceAbstractState.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
+    <ClCompile Include="..\dfg\DFGInvalidationPointInjectionPhase.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
     <ClCompile Include="..\dfg\DFGJITCode.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
@@ -1036,6 +1036,9 @@
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGJITFinalizer.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dfg\DFGJumpReplacement.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGLazyJSValue.cpp">
@@ -1165,6 +1168,9 @@
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGVirtualRegisterAllocationPhase.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dfg\DFGWatchpointCollectionPhase.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGWorklist.cpp">
@@ -1559,6 +1565,9 @@
     <ClInclude Include="..\heap\DeferGC.h">
       <Filter>heap</Filter>
     </ClInclude>
+    <ClInclude Include="..\heap\DelayedReleaseScpe.h">
+      <Filter>heap</Filter>
+    </ClInclude>
     <ClInclude Include="..\heap\GCAssertions.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -1662,9 +1671,6 @@
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\UnconditionalFinalizer.h">
-      <Filter>heap</Filter>
-    </ClInclude>
-    <ClInclude Include="..\heap\VTableSpectrum.h">
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\Weak.h">
@@ -2829,6 +2835,9 @@
     <ClInclude Include="..\dfg\DFGInPlaceAbstractState.h">
       <Filter>dfg</Filter>
     </ClInclude>
+    <ClInclude Include="..\dfg\DFGInvalidationPointInjectionPhase.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
     <ClInclude Include="..\dfg\DFGInsertionSet.h">
       <Filter>dfg</Filter>
     </ClInclude>
@@ -2839,6 +2848,9 @@
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGJITFinalizer.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dfg\DFGJumpReplacement.h">
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGLazyJSValue.h">
@@ -3007,6 +3019,9 @@
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGVirtualRegisterAllocationPhase.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dfg\DFGWatchpointCollectionPhase.h">
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGWorklist.h">

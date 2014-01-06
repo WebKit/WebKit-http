@@ -25,13 +25,65 @@
 
 EXTERN getHostCallReturnValueWithExecState : near
 
+PUBLIC callToJavaScript
+PUBLIC returnFromJavaScript
 PUBLIC getHostCallReturnValue
 
 _TEXT   SEGMENT
 
+callToJavaScript PROC
+    mov r10, qword ptr[rsp]
+    push rbp
+    mov rax, rbp ; Save previous frame pointer
+    mov rbp, rsp
+    push r12
+    push r13
+    push r14
+    push r15
+    push rbx
+    push rsi
+    push rdi
+
+    ; JIT operations can use up to 6 args (4 in registers and 2 on the stack).
+    ; In addition, X86_64 ABI specifies that the worse case stack alignment
+    ; requirement is 32 bytes. Based on these factors, we need to pad the stack
+    ; an additional 28h bytes.
+    sub rsp, 28h
+    mov rbp, rdx
+    mov r11, qword ptr[rbp] ; Put the previous frame pointer in the sentinel call frame above us
+    mov qword ptr[r11], rax
+    mov qword ptr[r11 + 8], r10
+    mov r14, 0FFFF000000000000h
+    mov r15, 0FFFF000000000002h
+    call rcx
+    add rsp, 28h
+    pop rdi
+    pop rsi
+    pop rbx
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbp
+    ret
+callToJavaScript ENDP
+
+returnFromJavaScript PROC
+    add rsp, 28h
+    pop rdi
+    pop rsi
+    pop rbx
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbp
+    ret
+returnFromJavaScript ENDP
+	
 getHostCallReturnValue PROC
-    sub r13, 40
-    mov r13, rdi
+    mov rbp, [rbp] ; CallFrame
+    mov rcx, rbp ; rcx is first argument register on Windows
     jmp getHostCallReturnValueWithExecState
 getHostCallReturnValue ENDP
 

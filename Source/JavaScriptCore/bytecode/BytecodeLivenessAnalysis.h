@@ -34,13 +34,16 @@
 namespace JSC {
 
 class CodeBlock;
+class FullBytecodeLiveness;
 
 class BytecodeLivenessAnalysis {
 public:
     BytecodeLivenessAnalysis(CodeBlock*);
-
+    
     bool operandIsLiveAtBytecodeOffset(int operand, unsigned bytecodeOffset);
     FastBitVector getLivenessInfoAtBytecodeOffset(unsigned bytecodeOffset);
+    
+    void computeFullLiveness(FullBytecodeLiveness& result);
 
 private:
     void compute();
@@ -52,6 +55,12 @@ private:
     CodeBlock* m_codeBlock;
     Vector<RefPtr<BytecodeBasicBlock> > m_basicBlocks;
 };
+
+inline bool operandIsAlwaysLive(CodeBlock*, int operand);
+inline bool operandThatIsNotAlwaysLiveIsLive(CodeBlock*, const FastBitVector& out, int operand);
+inline bool operandIsLive(CodeBlock*, const FastBitVector& out, int operand);
+
+FastBitVector getLivenessInfo(CodeBlock*, const FastBitVector& out);
 
 } // namespace JSC
 

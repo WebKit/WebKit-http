@@ -63,10 +63,6 @@ public:
 
     virtual void deleteDatabase(const String& name, PassRefPtr<IDBCallbacks>, PassRefPtr<SecurityOrigin>, ScriptExecutionContext*, const String& dataDir) OVERRIDE FINAL;
 
-    virtual PassRefPtr<IDBTransactionBackend> maybeCreateTransactionBackend(IDBDatabaseBackend*, int64_t transactionId, PassRefPtr<IDBDatabaseCallbacks>, const Vector<int64_t>&, IndexedDB::TransactionMode) OVERRIDE FINAL;
-
-    virtual PassRefPtr<IDBCursorBackend> createCursorBackend(IDBTransactionBackend&, IDBBackingStoreCursorInterface&, IndexedDB::CursorType, IDBDatabaseBackend::TaskType, int64_t objectStoreId);
-
 protected:
     virtual PassRefPtr<IDBBackingStoreLevelDB> openBackingStore(const SecurityOrigin&, const String& dataDir);
 

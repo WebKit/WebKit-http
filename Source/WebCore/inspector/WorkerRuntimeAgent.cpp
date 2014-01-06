@@ -57,6 +57,16 @@ WorkerRuntimeAgent::~WorkerRuntimeAgent()
     m_instrumentingAgents->setWorkerRuntimeAgent(0);
 }
 
+void WorkerRuntimeAgent::didCreateFrontendAndBackend(InspectorFrontendChannel*, InspectorBackendDispatcher* backendDispatcher)
+{
+    m_backendDispatcher = InspectorRuntimeBackendDispatcher::create(backendDispatcher, this);
+}
+
+void WorkerRuntimeAgent::willDestroyFrontendAndBackend()
+{
+    m_backendDispatcher.clear();
+}
+
 InjectedScript WorkerRuntimeAgent::injectedScriptForEval(ErrorString* error, const int* executionContextId)
 {
     if (executionContextId) {

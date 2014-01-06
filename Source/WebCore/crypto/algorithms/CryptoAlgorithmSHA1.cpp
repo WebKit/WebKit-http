@@ -28,6 +28,9 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
+#include "CryptoDigest.h"
+#include "JSDOMPromise.h"
+
 namespace WebCore {
 
 const char* const CryptoAlgorithmSHA1::s_name = "sha-1";
@@ -48,6 +51,19 @@ std::unique_ptr<CryptoAlgorithm> CryptoAlgorithmSHA1::create()
 CryptoAlgorithmIdentifier CryptoAlgorithmSHA1::identifier() const
 {
     return s_identifier;
+}
+
+void CryptoAlgorithmSHA1::digest(const CryptoAlgorithmParameters&, const CryptoOperationData& data, std::unique_ptr<PromiseWrapper> promise, ExceptionCode&)
+{
+    std::unique_ptr<CryptoDigest> digest = CryptoDigest::create(CryptoAlgorithmIdentifier::SHA_1);
+    if (!digest) {
+        promise->reject(nullptr);
+        return;
+    }
+
+    digest->addBytes(data.first, data.second);
+
+    promise->fulfill(digest->computeHash());
 }
 
 }

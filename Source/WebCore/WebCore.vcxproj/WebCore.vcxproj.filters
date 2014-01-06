@@ -717,6 +717,9 @@
     <ClCompile Include="..\page\FrameDestructionObserver.cpp">
       <Filter>page</Filter>
     </ClCompile>
+    <ClCompile Include="..\page\FrameSnapshotting.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
     <ClCompile Include="..\page\FrameTree.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -1894,6 +1897,12 @@
       <Filter>platform\network\win</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\curl\CredentialStorageCurl.cpp">
+      <Filter>platform\network\curl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\curl\CurlCacheEntry.cpp">
+      <Filter>platform\network\curl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\curl\CurlCacheManager.cpp">
       <Filter>platform\network\curl</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\curl\CurlDownload.cpp">
@@ -4473,7 +4482,13 @@
     <ClCompile Include="..\bindings\js\JSSQLTransactionSyncCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
+    <ClCompile Include="..\bindings\js\JSRTCIceCandidateCustom.cpp">
+      <Filter>bindings\js</Filter>
+    </ClCompile>
     <ClCompile Include="..\bindings\js\JSRTCPeerConnectionCustom.cpp">
+      <Filter>bindings\js</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bindings\js\JSRTCSessionDescriptionCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSRTCStatsResponseCustom.cpp">
@@ -4812,6 +4827,9 @@
     <ClCompile Include="..\inspector\InspectorApplicationCacheAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
+    <ClCompile Include="..\inspector\InspectorBackendDispatcher.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
     <ClCompile Include="..\inspector\InspectorCanvasAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -4843,6 +4861,9 @@
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\InspectorDOMDebuggerAgent.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\inspector\InspectorDOMNodeAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\InspectorDOMStorageAgent.cpp">
@@ -5248,7 +5269,7 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\HTMLNames.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorBackendDispatcher.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorBackendDispatchers.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorFrontend.cpp">
@@ -7603,6 +7624,9 @@
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\FrameDestructionObserver.h">
+      <Filter>page</Filter>
+    </ClInclude>
+    <ClInclude Include="..\page\FrameSnapshotting.h">
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\FrameTree.h">
@@ -12351,6 +12375,9 @@
     <ClInclude Include="..\inspector\InspectorApplicationCacheAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
+    <ClInclude Include="..\inspector\InspectorBackendDispatcher.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
     <ClInclude Include="..\inspector\InspectorBaseAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
@@ -12430,6 +12457,9 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorMemoryAgent.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inspector\InspectorNodeFinder.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorOverlay.h">
@@ -13004,7 +13034,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InjectedScriptSource.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorBackendDispatcher.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorBackendDispatchers.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorFrontend.h">
@@ -15036,6 +15066,12 @@
       <Filter>platform\network\cf</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\network\curl\AuthenticationChallenge.h">
+      <Filter>platform\network\curl</Filter>
+    </CustomBuildStep>
+    <CustomBuildStep Include="..\platform\network\curl\CurlCacheEntry.h">
+      <Filter>platform\network\curl</Filter>
+    </CustomBuildStep>
+    <CustomBuildStep Include="..\platform\network\curl\CurlCacheManager.h">
       <Filter>platform\network\curl</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\network\curl\FormDataStreamCurl.h">

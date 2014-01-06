@@ -659,7 +659,6 @@ webkit.org/b/114918 http/tests/xmlhttprequest/range-test.html [ Failure Pass ]
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # Regression from r133898
-Bug(EFL) fast/forms/basic-textareas-quirks.html [ Pass ]
 Bug(EFL) fast/forms/input-disabled-color.html [ Pass ]
 Bug(EFL) fast/forms/input-readonly-dimmed.html [ Pass ]
 
@@ -1022,7 +1021,7 @@ webkit.org/b/84773 ietestcenter/css3/multicolumn/column-width-applies-to-012.htm
 webkit.org/b/84777 ietestcenter/css3/multicolumn/column-width-applies-to-015.htm [ ImageOnlyFailure ]
 
 # Expando properties on attribute nodes disappear
-webkit.org/b/88045 fast/dom/gc-attribute-node.html [ Failure ]
+webkit.org/b/88045 fast/dom/gc-attribute-node.html [ Failure Pass ]
 
 # Requires WebP support.
 Bug(EFL) fast/canvas/canvas-toDataURL-webp.html
@@ -1260,8 +1259,6 @@ webkit.org/b/98564 fast/table/colspanMinWidth-vertical.html [ Missing Failure ]
 # Fails on the bots.
 webkit.org/b/97968 media/unsupported-rtsp.html [ Failure ]
 
-webkit.org/b/98587 fast/writing-mode/vertical-subst-font-vert-no-dflt.html [ ImageOnlyFailure ]
-
 webkit.org/b/99878 css3/flexbox/flexbox-baseline-margins.html [ Missing ImageOnlyFailure ]
 
 # css3-conditionals support is not yet enabled.
@@ -1321,7 +1318,7 @@ webkit.org/b/102068 webkit.org/b/102993 media/audio-repaint.html [ Failure ]
 webkit.org/b/102068 webkit.org/b/102993 media/media-document-audio-repaint.html [ Failure ]
 
 # It may even be the case that the tests themselves are wrong.
-webkit.org/b/100859 ietestcenter/css3/bordersbackgrounds/background-repeat-space-padding-box.htm [ Failure ]
+webkit.org/b/100859 ietestcenter/css3/bordersbackgrounds/background-repeat-space-padding-box.htm [ Missing ]
 webkit.org/b/100857 ietestcenter/css3/text/textshadow-005.htm [ Missing ]
 
 webkit.org/b/100846 inspector-protocol/debugger/pause-dedicated-worker.html [ Skip ]
@@ -1483,7 +1480,7 @@ webkit.org/b/111172 compositing/overlap-blending/children-opacity-no-overlap.htm
 webkit.org/b/114338 compositing/overlap-blending/nested-overlap-overflow.html [ ImageOnlyFailure ]
 
 # Select element popup is not shown.
-webkit.org/b/114154 fast/forms/select/popup-closes-on-blur.html [ Failure ]
+webkit.org/b/114154 fast/forms/select/popup-closes-on-blur.html [ Pass ]
 
 webkit.org/b/114159 fast/events/popup-blocking-timers3.html [ Failure ]
 
@@ -1653,77 +1650,31 @@ webkit.org/b/122511 fast/regions/selection/selecting-text-in-2-regions-vert-lr.h
 # Radical sign is overflowing red background
 webkit.org/b/124045 mathml/presentation/bug95404.html [ ImageOnlyFailure ]
 
-# Started failing after r158954. EFL port enables subpixel layout while disabling saturated layout arithmetic.
-webkit.org/b/119273 css1/box_properties/float_on_text_elements.html [ Failure ]
-webkit.org/b/119273 css1/formatting_model/floating_elements.html [ Failure ]
-webkit.org/b/119273 css2.1/20110323/floats-wrap-top-below-bfc-002l.htm [ ImageOnlyFailure ]
-webkit.org/b/119273 css2.1/20110323/floats-wrap-top-below-bfc-002r.htm [ ImageOnlyFailure ]
-webkit.org/b/119273 css2.1/20110323/floats-wrap-top-below-bfc-003l.htm [ ImageOnlyFailure ]
-webkit.org/b/119273 css2.1/20110323/floats-wrap-top-below-bfc-003r.htm [ ImageOnlyFailure ]
-webkit.org/b/119273 css2.1/20110323/floats-wrap-top-below-inline-002l.htm [ ImageOnlyFailure ]
-webkit.org/b/119273 css2.1/20110323/floats-wrap-top-below-inline-002r.htm [ ImageOnlyFailure ]
-webkit.org/b/119273 css2.1/20110323/floats-wrap-top-below-inline-003l.htm [ ImageOnlyFailure ]
-webkit.org/b/119273 css2.1/20110323/floats-wrap-top-below-inline-003r.htm [ ImageOnlyFailure ]
-webkit.org/b/119273 css2.1/20110323/inline-replaced-width-012.htm [ Failure ]
-webkit.org/b/119273 css2.1/20110323/inline-replaced-width-013.htm [ Failure ]
-webkit.org/b/119273 css2.1/20110323/inline-replaced-width-015.htm [ Failure ]
-webkit.org/b/119273 css2.1/t090204-display-change-01-b-ao.html [ Failure ]
-webkit.org/b/119273 css2.1/t0905-c414-flt-fit-01-d-g.html [ Failure ]
-webkit.org/b/119273 css2.1/t0905-c5525-fltmrgn-00-c-ag.html [ Failure ]
-webkit.org/b/119273 css2.1/t0905-c5525-fltwidth-01-c-g.html [ Failure ]
-webkit.org/b/119273 css2.1/t1204-order-01-d.html [ Failure ]
-webkit.org/b/119273 csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-002.html [ ImageOnlyFailure ]
-webkit.org/b/119273 csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-003.html [ ImageOnlyFailure ]
-webkit.org/b/119273 csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-clipped-004.html [ ImageOnlyFailure ]
-webkit.org/b/119273 csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-002.html [ ImageOnlyFailure ]
-webkit.org/b/119273 csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-002.html [ ImageOnlyFailure ]
-webkit.org/b/119273 csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-003.html [ ImageOnlyFailure ]
-webkit.org/b/119273 csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-004.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/block/basic/min-pref-width-nowrap-floats.html [ Failure ]
-webkit.org/b/119273 fast/block/float/010.html [ Failure ]
-webkit.org/b/119273 fast/block/float/018.html [ Failure ]
-webkit.org/b/119273 fast/block/float/019.html [ Failure ]
-webkit.org/b/119273 fast/block/float/021.html [ Failure ]
-webkit.org/b/119273 fast/block/float/035.html [ Failure ]
-webkit.org/b/119273 fast/block/float/avoidance-percent-width-compat.html [ Skip ]
-webkit.org/b/119273 fast/block/float/avoidance-percent-width-strict.html [ Skip ]
-webkit.org/b/119273 fast/block/float/clear-element-too-wide-for-containing-block.html [ Failure ]
-webkit.org/b/119273 fast/block/float/clear-to-fit.html [ Skip ]
-webkit.org/b/119273 fast/block/float/fit_line_below_floats.html [ Failure ]
-webkit.org/b/119273 fast/block/float/float-avoidance.html [ Failure ]
-webkit.org/b/119273 fast/block/float/intruding-float-add-in-sibling-block-on-static-position.html [ Failure ]
-webkit.org/b/119273 fast/block/float/intruding-float-add-in-sibling-block-on-static-position2.html [ Failure ]
-webkit.org/b/119273 fast/block/float/overhanging-float-add-in-static-position-block.html [ Failure ]
-webkit.org/b/119273 fast/block/float/overhanging-float-add-in-static-position-block2.html [ Failure ]
-webkit.org/b/119273 fast/block/margin-collapse/102.html [ Failure ]
-webkit.org/b/119273 fast/css-intrinsic-dimensions/width-avoid-floats.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/css-intrinsic-dimensions/width.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/dynamic/dirty-float-in-clean-line.html [ Failure ]
-webkit.org/b/119273 fast/multicol/float-paginate-complex.html [ Failure ]
-webkit.org/b/119273 fast/multicol/span/span-as-immediate-columns-child.html [ Failure ]
-webkit.org/b/119273 fast/multicol/vertical-lr/float-avoidance.html [ Skip ]
-webkit.org/b/119273 fast/multicol/vertical-lr/float-multicol.html [ Failure ]
-webkit.org/b/119273 fast/multicol/vertical-lr/float-paginate-complex.html [ Failure ]
-webkit.org/b/119273 fast/multicol/vertical-rl/float-avoidance.html [ Skip ]
-webkit.org/b/119273 fast/multicol/vertical-rl/float-multicol.html [ Failure ]
-webkit.org/b/119273 fast/overflow/trailing-float-linebox.html [ Failure ]
-webkit.org/b/119273 fast/regions/float-pushed-width-change.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/regions/shape-inside/shape-inside-on-second-region-block-content.html [ Skip ]
-webkit.org/b/119273 fast/regions/shape-inside/shape-inside-on-second-region-inline-content.html [ Skip ]
-webkit.org/b/119273 fast/replaced/002.html [ Failure ]
-webkit.org/b/119273 fast/replaced/003.html [ Failure ]
-webkit.org/b/119273 fast/shapes/shape-inside/floats/shape-inside-left-float-in-lower-right-triangle-block-content.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/shapes/shape-inside/shape-inside-regular-polygon16.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/shapes/shape-inside/shape-inside-regular-polygon8.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/shapes/shape-inside/shape-inside-simple-polygon-001.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/shapes/shape-inside/shape-inside-simple-polygon-002.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/shapes/shape-inside/shape-inside-simple-polygon-003.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/shapes/shape-inside/shape-inside-simple-polygon-004.html [ ImageOnlyFailure ]
-webkit.org/b/119273 fast/text/whitespace/nowrap-clear-float.html [ Failure ]
-webkit.org/b/119273 svg/wicd/rightsizing-grid.xhtml [ Failure ]
-webkit.org/b/119273 tables/mozilla/bugs/bug106158-1.html [ Failure ]
-webkit.org/b/119273 tables/mozilla/bugs/bug106158-2.html [ Failure ]
-webkit.org/b/119273 tables/mozilla/bugs/bug26553.html [ Failure ]
-webkit.org/b/119273 tables/mozilla/bugs/bug57828-2.html [ Failure ]
-webkit.org/b/119273 tables/mozilla/bugs/bug57828.html [ Failure ]
-webkit.org/b/119273 tables/mozilla/bugs/bug97383.html [ Failure ]
+# css3 reftests are failing after r154875
+webkit.org/b/120596 css3/background/background-repeat-space-border.html [ ImageOnlyFailure ]
+webkit.org/b/120596 css3/background/background-repeat-space-content.html [ ImageOnlyFailure ]
+webkit.org/b/120596 css3/background/background-repeat-space-padding.html [ ImageOnlyFailure ]
+webkit.org/b/120596 css3/masking/mask-repeat-space-border.html [ ImageOnlyFailure ]
+webkit.org/b/120596 css3/masking/mask-repeat-space-content.html [ ImageOnlyFailure ]
+webkit.org/b/120596 css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
+
+webkit.org/b/118595 fast/regions/auto-size/autoheight-correct-region-for-lines-2.html [ ImageOnlyFailure ]
+
+webkit.org/b/120105 http/tests/navigation/post-frames-goback1-uncached.html [ Failure ]
+
+webkit.org/b/120682 inspector-protocol/page/archive.html [ Failure ]
+
+webkit.org/b/124414 animations/cross-fade-background-image.html [ ImageOnlyFailure ]
+
+# ref test mismatch does not occur
+webkit.org/b/124417 fast/css/drop-shadow-viewport-height.html [ ImageOnlyFailure ]
+webkit.org/b/124417 fast/css/drop-shadow-viewport-vmax.html [ ImageOnlyFailure ]
+webkit.org/b/124417 fast/css/drop-shadow-viewport-vmin.html [ ImageOnlyFailure ]
+webkit.org/b/124417 fast/css/drop-shadow-viewport-width.html [ ImageOnlyFailure ]
+
+# CSS filters layout tests are failing
+webkit.org/b/124516 fast/filter-image/filter-image-animation.html [ Failure ]
+webkit.org/b/124517 fast/filter-image/filter-image-blur.html [ ImageOnlyFailure ]
+webkit.org/b/124518 fast/filter-image/filter-image-svg.html [ ImageOnlyFailure ]
+webkit.org/b/124519 fast/filter-image/filter-image.html [ ImageOnlyFailure ]
+webkit.org/b/124519 fast/filter-image/parse-filter-image.html [ Failure ]

@@ -159,7 +159,7 @@ public:
 
 // playback state
     virtual double currentTime() const OVERRIDE;
-    virtual void setCurrentTime(double, ExceptionCode&) OVERRIDE;
+    virtual void setCurrentTime(double) OVERRIDE;
     virtual double duration() const OVERRIDE;
     virtual bool paused() const OVERRIDE;
     virtual double defaultPlaybackRate() const OVERRIDE;
@@ -178,6 +178,7 @@ public:
     void setLoop(bool b);
     virtual void play() OVERRIDE;
     virtual void pause() OVERRIDE;
+    void fastSeek(double);
 
 // captions
     bool webkitHasClosedCaptions() const;
@@ -535,7 +536,8 @@ private:
     void startProgressEventTimer();
     void stopPeriodicTimers();
 
-    void seek(double time, ExceptionCode&);
+    void seek(double time);
+    void seekWithTolerance(double time, double negativeTolerance, double positiveTolerance);
     void finishSeek();
     void checkIfSeekNeeded();
     void addPlayedRange(double start, double end);

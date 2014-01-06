@@ -30,11 +30,12 @@
 
 #include "CryptoAlgorithmDescriptionBuilder.h"
 #include "CryptoAlgorithmRegistry.h"
+#include "CryptoKeyDataOctetSequence.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-CryptoKeyHMAC::CryptoKeyHMAC(const Vector<char>& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage usage)
+CryptoKeyHMAC::CryptoKeyHMAC(const Vector<uint8_t>& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage usage)
     : CryptoKey(CryptoAlgorithmIdentifier::HMAC, CryptoKeyType::Secret, extractable, usage)
     , m_hash(hash)
     , m_key(key)
@@ -75,6 +76,12 @@ void CryptoKeyHMAC::buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder&
     builder.add("hash", *hashDescriptionBuilder);
 
     builder.add("length", m_key.size());
+}
+
+std::unique_ptr<CryptoKeyData> CryptoKeyHMAC::exportData() const
+{
+    ASSERT(extractable());
+    return CryptoKeyDataOctetSequence::create(m_key);
 }
 
 } // namespace WebCore

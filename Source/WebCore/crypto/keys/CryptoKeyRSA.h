@@ -51,17 +51,21 @@ public:
     virtual ~CryptoKeyRSA();
 
     void restrictToHash(CryptoAlgorithmIdentifier);
+    bool isRestrictedToHash(CryptoAlgorithmIdentifier&) const;
 
-    static void generatePair(CryptoAlgorithmIdentifier, unsigned modulusLength, const Vector<char>& publicExponent, bool extractable, CryptoKeyUsage, std::unique_ptr<PromiseWrapper>);
+    size_t keySizeInBits() const;
 
-    virtual CryptoKeyClass keyClass() const OVERRIDE { return CryptoKeyClass::RSA; }
+    static void generatePair(CryptoAlgorithmIdentifier, unsigned modulusLength, const Vector<uint8_t>& publicExponent, bool extractable, CryptoKeyUsage, std::unique_ptr<PromiseWrapper>);
 
     PlatformRSAKey platformKey() const { return m_platformKey; }
 
-    virtual void buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder&) const OVERRIDE;
-
 private:
     CryptoKeyRSA(CryptoAlgorithmIdentifier, CryptoKeyType, PlatformRSAKey, bool extractable, CryptoKeyUsage);
+
+    virtual CryptoKeyClass keyClass() const OVERRIDE { return CryptoKeyClass::RSA; }
+
+    virtual void buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder&) const OVERRIDE;
+    virtual std::unique_ptr<CryptoKeyData> exportData() const OVERRIDE;
 
     PlatformRSAKey m_platformKey;
 
@@ -74,17 +78,7 @@ inline bool isCryptoKeyRSA(const CryptoKey& key)
     return key.keyClass() == CryptoKeyClass::RSA;
 }
 
-inline const CryptoKeyRSA& toCryptoKeyRSA(const CryptoKey& key)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(isCryptoKeyRSA(key));
-    return static_cast<const CryptoKeyRSA&>(key);
-}
-
-inline CryptoKeyRSA& asCryptoKeyRSA(CryptoKey& key)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(isCryptoKeyRSA(key));
-    return static_cast<CryptoKeyRSA&>(key);
-}
+CRYPTO_KEY_TYPE_CASTS(CryptoKeyRSA)
 
 } // namespace WebCore
 

@@ -249,6 +249,8 @@ MACRO_INSTRUCTIONS =
      "bnz",
      "leai",
      "leap",
+     "pushCalleeSaves",
+     "popCalleeSaves"
     ]
 
 X86_INSTRUCTIONS =
@@ -286,7 +288,8 @@ SH4_INSTRUCTIONS =
     "loaddReversedAndIncrementAddress",
     "storedReversedAndDecrementAddress",
     "ldspr",
-    "stspr"
+    "stspr",
+    "setargs"
     ]
 
 CXX_INSTRUCTIONS =

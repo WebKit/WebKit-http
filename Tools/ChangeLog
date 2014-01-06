@@ -1,3 +1,491 @@
+2013-11-18  Samuel White  <samuel_white@apple.com>
+
+        AX: Add ability to fetch only visible table rows.
+        https://bugs.webkit.org/show_bug.cgi?id=124430
+
+        Reviewed by Chris Fleizach.
+
+        Adding method to fetch array of AccessibilityUIElements to help with test brevity and test breakage. Specifically, we
+        have a good deal of churn any time we add or update an element attribute. This happens because the number of tests
+        that rely on a simple element description text dump to verify a single attribute is non trivial. So any time you
+        change add an attribute, you have to update all the tests that are now implicitly verifying this new attribute. But
+        as the test guidelines state, our tests should be more focused and specific about what they test.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (uiElementArrayAttributeValueCallback):
+        (AccessibilityUIElement::uiElementArrayAttributeValue):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::uiElementArrayAttributeValue):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::uiElementArrayAttributeValue):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::uiElementArrayAttributeValue):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::getUIElementsWithAttribute):
+        (WTR::AccessibilityUIElement::uiElementArrayAttributeValue):
+
+2013-11-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Simplify and reformat the output of performance tests inside test runners
+        https://bugs.webkit.org/show_bug.cgi?id=124496
+
+        Reviewed by Antti Koivisto.
+
+        As a preparation to support subtests for Dromaeo and DoYouEvenBench, simplify the output
+        performance tests generate. Instead of spitting out noise in PerfTestRunner (runner.js)
+        and ignoring it in PerfTest._filter_output (perftest.py), simply avoid generating it in
+        the first place.
+
+        Also modernize the output to adopt "metric" concept better and make it forward compatible
+        with subtests.
+
+        With this patch, performance tests written using runner.js only produces empty lines or
+        lines of the following format inside test runners (DumpRenderTree and WebKitTestRunner):
+        <subtest name> -> [<value 1>, <value 2>, ...]
+        :<metric name> -> [<value 1>, <value 2>, ...]
+
+        This greatly simplifies the parsing logic inside PerfTest._run_with_driver.
+
+        * Scripts/webkitpy/performance_tests/perftest.py:
+        (PerfTest): Removed a bunch of regular expressions that are no longer used.
+        (PerfTest._run_with_driver): Just parse the values and description and treat everything
+        else as errors.
+
+        * Scripts/webkitpy/performance_tests/perftest_unittest.py:
+        (TestPerfTest.test_parse_output): Removed the junk.
+        (TestPerfTest._assert_failed_on_line): Extracted from test_parse_output_with_failing_line,
+        which was removed in favor of the tests below.
+        (TestPerfTest.test_parse_output_with_running_five_times): Added.
+        (TestPerfTest.test_parse_output_with_detailed_info): Added.
+        (TestPerfTest.test_parse_output_with_statistics): Added.
+        (TestPerfTest.test_parse_output_with_description): Removed the junk.
+        (TestPerfTest.test_parse_output_with_subtests): Ditto.
+        (TestSingleProcessPerfTest.test_use_only_one_process): Ditto.
+
+        * Scripts/webkitpy/performance_tests/perftestsrunner_integrationtest.py:
+        (EventTargetWrapperTestData): Ditto.
+        (SomeParserTestData): Ditto.
+        (MemoryTestData): Ditto.
+
+2013-11-18  Tim Horton  <timothy_horton@apple.com>
+
+        Occasionally, hundreds of tests fail with small text diffs on Mavericks
+        https://bugs.webkit.org/show_bug.cgi?id=124312
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager._set_up_run):
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.reset_preferences):
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.reset_preferences):
+        Delete DumpRenderTree and WebKitTestRunner defaults domains before running tests,
+        returning some of the functionality of 158652 after 159364 removed it.
+
+2013-11-18  Tim Horton  <timothy_horton@apple.com>
+
+        Checkmarks are shifted down on iPhone at build.webkit.org/dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=122909
+
+        Reviewed by Alexey Proskuryakov.
+
+        Put the checkmark SVG in the CSS file as a data URI so it loads immediately.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/StatusLineView.css:
+        (.status-line .bubble):
+        (.status-line.good .bubble.pictogram):
+
+2013-11-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove _lines_to_ignore_in_stderr, which was only used in Chromium port
+        https://bugs.webkit.org/show_bug.cgi?id=124499
+
+        Reviewed by Csaba Osztrogonác.
+
+        Removed the code. I didn't like this hack back when it was added, and I don't like it today.
+
+        * Scripts/webkitpy/performance_tests/perftest.py:
+        (PerfTest._should_ignore_line):
+        * Scripts/webkitpy/performance_tests/perftest_unittest.py:
+        (TestPerfTest): Removed the unit test.
+
+2013-11-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix this script for older Rubies where Pathname doesn't coerce to String
+        quite as easily.
+        
+        With help from Andy Trick.
+
+        * Scripts/export-llvm-build:
+
+2013-11-15  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should have an explicit notion of bytecode liveness
+        https://bugs.webkit.org/show_bug.cgi?id=124181
+
+        Reviewed by Mark Hahnenberg.
+
+        * Scripts/run-jsc-stress-tests:
+
+2013-11-16  Dan Bernstein  <mitz@apple.com>
+
+        No way for policy client to determine if a the response’s MIME type can be shown
+        https://bugs.webkit.org/show_bug.cgi?id=124445
+
+        Reviewed by Sam Weinig.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (decidePolicyForResponse): Added canShowMIMEType parameter.
+        (-[WK2BrowserWindowController awakeFromNib]): Updated for changes in the policy client.
+
+        * TestWebKitAPI/Tests/WebKit2/PageLoadBasic.cpp:
+        (TestWebKitAPI::decidePolicyForResponse): Added canShowMIMEType parameter.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions): Updated for changes in the policy client.
+        (WTR::TestController::decidePolicyForResponse): Added canShowMIMEType parameter.
+        * WebKitTestRunner/TestController.h:
+
+2013-11-16  Tim Horton  <timothy_horton@apple.com>
+
+        Checkmarks are shifted down on iPhone at build.webkit.org/dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=122909
+
+        Reviewed by Timothy Hatcher.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/checkmark.svg: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/StatusLineView.js:
+        (StatusLineView.prototype.set repeatCount):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/StatusLineView.css:
+        (.status-line.good .bubble.pictogram):
+        Use an SVG image instead of an obscure font for the checkboxes so they
+        render identically on all platforms.
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        Occasionally, hundreds of tests fail with small text diffs on Mavericks
+        https://bugs.webkit.org/show_bug.cgi?id=124312
+
+        Reviewed by Alexey Proskuryakov.
+
+        Try reverting the part of r158652 that deleted all of the persistent
+        defaults, in the thought that there might be some sort of race between
+        processes causing some settings to be left in the wrong state.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting):
+        * WebKitTestRunner/mac/main.mm:
+        (setDefaultsToConsistentValuesForTesting):
+
+2013-11-15  Dan Bernstein  <mitz@apple.com>
+
+        Give the policy client the originating frame of a navigation action
+        https://bugs.webkit.org/show_bug.cgi?id=124431
+
+        Reviewed by Anders Carlsson.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (decidePolicyForNavigationAction): Added originatingFrame parameter.
+        (-[WK2BrowserWindowController awakeFromNib]): Updated for the new version of the policy
+        client.
+
+        * TestWebKitAPI/Tests/WebKit2/DownloadDecideDestinationCrash.cpp:
+        (TestWebKitAPI::decidePolicyForNavigationAction): Added originatingFrame parameter.
+        (TestWebKitAPI::setPagePolicyClient): Updated for the new version of the policy client.
+
+        * TestWebKitAPI/Tests/WebKit2/PageLoadBasic.cpp:
+        (TestWebKitAPI::decidePolicyForNavigationAction): Added originatingFrame parameter.
+        (TestWebKitAPI::TEST): Updated for the new version of the policy client.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions): Updated for the new version of the policy
+        client.
+        (WTR::TestController::decidePolicyForNavigationAction): Added originatingFrame parameter.
+        * WebKitTestRunner/TestController.h:
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        build.webkit.org/dashboard should provide a way to focus on a subset of bots
+        https://bugs.webkit.org/show_bug.cgi?id=122676
+
+        Reviewed by Timothy Hatcher.
+
+        Add a small 'hide' button next to every platform logo, and a 'show all'
+        button which only appears when at least one platform is hidden. Hidden
+        platforms persist using localStorage.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Initialization.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (updateHiddenPlatforms):
+        (documentReady.unhideButton):
+        (documentReady.hideButton):
+        (documentReady):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Settings.js: Added.
+        (Settings.prototype.setObject):
+        (Settings.prototype.getObject):
+        (Settings.prototype.addSettingListener):
+        (Settings.prototype.fireSettingListener):
+        (Settings.prototype.toggleHiddenPlatform):
+        (Settings.prototype.clearHiddenPlatforms):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (div.cellButton):
+        (div.cellButton.hide):
+        (.hidden):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/index.html:
+
+2013-11-15  Jer Noble  <jer.noble@apple.com>
+
+        MediaTime addition and subtraction operators have errors when the rhs is infinite.
+        https://bugs.webkit.org/show_bug.cgi?id=124413
+
+        Reviewed by Eric Carlson.
+
+        Add a test for operator+ and operator- where an infinite value appears
+        on the right-hand side:
+        * TestWebKitAPI/Tests/WTF/MediaTime.cpp:
+        (TestWebKitAPI::TEST):
+
+        Add a LLDB summary provider for MediaTime which displays the rational
+        time as well as the value in seconds:
+        * lldb/lldb_webkit.py:
+        (__lldb_init_module):
+        (WTFMediaTime_SummaryProvider):
+        (WTFHashTableProvider.has_children):
+        (WTFMediaTimeProvider):
+        (WTFMediaTimeProvider.__init__):
+        (WTFMediaTimeProvider.timeValue):
+        (WTFMediaTimeProvider.timeScale):
+        (WTFMediaTimeProvider.isInvalid):
+        (WTFMediaTimeProvider.isPositiveInfinity):
+        (WTFMediaTimeProvider.isNegativeInfinity):
+        (WTFMediaTimeProvider.isIndefinite):
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to select revision numbers on build.webkit.org/dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=124400
+
+        Reviewed by Timothy Hatcher.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype.revisionLinksForIteration):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (.selectable):
+        Add a child span to the trac link, which has '-webkit-user-select: all' on it.
+        This way, a Dashboard user can highlight revision numbers for easy copying,
+        and doesn't even have to be precise about the selection.
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        Adjust and add retina versions of EFL and GTK build.webkit.org/dashboard icons
+        https://bugs.webkit.org/show_bug.cgi?id=124399
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add new EFL and GTK icons (derived from Wikipedia's SVGs) to make new 1x and 2x icons,
+        with the icons adjusted to have solid backgrounds, to not be squished, and to not
+        intersect the ring, similar to the Mac icons.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/EFL.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/EFL@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/GTK.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/GTK@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (documentReady.hideButton):
+        (documentReady):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (table.queue-grid tr.platform.linux-gtk img.logo):
+        (table.queue-grid tr.platform.linux-efl img.logo):
+
+2013-11-15  Stephane Jadaud  <sjadaud@sii.fr>
+
+        [GStreamer] Add support for Media Source API
+        https://bugs.webkit.org/show_bug.cgi?id=99065
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2013-11-15  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK] Bumping GStreamer version to 1.2.1 for the dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=124360
+
+        Reviewed by Philippe Normand.
+
+        * gtk/jhbuild.modules: Bumped GStreamer version up to 1.2.1
+
+2013-11-14  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Improve support for command line builds of 64-bit JSC
+        https://bugs.webkit.org/show_bug.cgi?id=124380
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration): Recognize all flavors of Debug and Release (i.e., 'Debug',
+        'Debug|Win32', 'Debug|x64') when passing arguments to child processes.
+        (determinePassedConfiguration): Don't suffix configuration with "|Win32" or "|x64". That's
+        what the "$configurationForVisualStudio" value is for.
+
+2013-11-14  Oliver Hunt  <oliver@apple.com>
+
+        Make CLoop easier to build, and make it work
+        https://bugs.webkit.org/show_bug.cgi?id=124359
+
+        Reviewed by Geoffrey Garen.
+
+        Add --cloop support to forcibly enable to CLoop build
+
+        * Scripts/build-jsc:
+        * Scripts/build-webkit:
+
+2013-11-14  Lucas Forschler  <lforschler@apple.com>
+
+        Add webkit slave.
+
+        Unreviewed.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2013-11-14  Tim Horton  <timothy_horton@apple.com>
+
+        build.webkit.org/dashboard can’t open different results in two new tabs
+        https://bugs.webkit.org/show_bug.cgi?id=124383
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype.revisionLinksForIteration):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/StatusLineView.js:
+        (StatusLineView.prototype._clicked):
+        Use _blank (which is effectively open-in-new-tab, in Safari) instead of _new (which isn't a
+        real pseudo-target and instead acts as a named target and will end up causing all link clicks
+        to open in the same secondary tab).
+
+2013-11-14  Anders Carlsson  <andersca@apple.com>
+
+        Remove duplicate entry.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2013-11-14  Krzysztof Czech  <k.czech@samsung.com>
+
+        [ATK] Change WKTR/DRT AX methods to use nullptr 
+        https://bugs.webkit.org/show_bug.cgi?id=124352
+
+        Reviewed by Anders Carlsson.
+
+        Change WKTR/DRT accessibility related methods to use nullptr.
+
+        * DumpRenderTree/atk/AccessibilityControllerAtk.cpp:
+        (AccessibilityController::AccessibilityController):
+        (AccessibilityController::elementAtPoint):
+        (AccessibilityController::removeNotificationListener):
+        (AccessibilityController::childElementById):
+        * DumpRenderTree/atk/AccessibilityNotificationHandlerAtk.cpp:
+        (AccessibilityNotificationHandler::AccessibilityNotificationHandler):
+        * DumpRenderTree/atk/AccessibilityUIElementAtk.cpp:
+        (AccessibilityUIElement::elementAtPoint):
+        (AccessibilityUIElement::linkedUIElementAtIndex):
+        (AccessibilityUIElement::getChildAtIndex):
+        (AccessibilityUIElement::titleUIElement):
+        (AccessibilityUIElement::parentElement):
+        (AccessibilityUIElement::subrole):
+        (AccessibilityUIElement::roleDescription):
+        (AccessibilityUIElement::orientation):
+        (AccessibilityUIElement::ariaDropEffects):
+        (AccessibilityUIElement::uiElementForSearchPredicate):
+        (AccessibilityUIElement::cellForColumnAndRow):
+        (AccessibilityUIElement::disclosedRowAtIndex):
+        (AccessibilityUIElement::ariaOwnsElementAtIndex):
+        (AccessibilityUIElement::ariaFlowToElementAtIndex):
+        (AccessibilityUIElement::selectedRowAtIndex):
+        (AccessibilityUIElement::rowAtIndex):
+        (AccessibilityUIElement::disclosedByRow):
+        (AccessibilityUIElement::removeNotificationListener):
+        (AccessibilityUIElement::classList):
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityControllerAtk.cpp:
+        (WTR::AccessibilityController::logAccessibilityEvents):
+        (WTR::AccessibilityController::resetToConsistentState):
+        (WTR::childElementById):
+        (WTR::AccessibilityController::accessibleElementById):
+        (WTR::AccessibilityController::removeNotificationListener):
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+        (WTR::AccessibilityNotificationHandler::setNotificationFunctionCallback):
+        (WTR::AccessibilityNotificationHandler::removeAccessibilityNotificationHandler):
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::elementAtPoint):
+        (WTR::AccessibilityUIElement::childAtIndex):
+        (WTR::AccessibilityUIElement::linkedUIElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaOwnsElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaFlowToElementAtIndex):
+        (WTR::AccessibilityUIElement::disclosedRowAtIndex):
+        (WTR::AccessibilityUIElement::rowAtIndex):
+        (WTR::AccessibilityUIElement::selectedChildAtIndex):
+        (WTR::AccessibilityUIElement::selectedRowAtIndex):
+        (WTR::AccessibilityUIElement::titleUIElement):
+        (WTR::AccessibilityUIElement::parentElement):
+        (WTR::AccessibilityUIElement::disclosedByRow):
+        (WTR::AccessibilityUIElement::uiElementAttributeValue):
+        (WTR::AccessibilityUIElement::orientation):
+        (WTR::AccessibilityUIElement::uiElementForSearchPredicate):
+        (WTR::AccessibilityUIElement::cellForColumnAndRow):
+        (WTR::AccessibilityUIElement::horizontalScrollbar):
+        (WTR::AccessibilityUIElement::verticalScrollbar):
+        (WTR::AccessibilityUIElement::removeNotificationListener):
+        (WTR::AccessibilityUIElement::textMarkerRangeForElement):
+        (WTR::AccessibilityUIElement::previousTextMarker):
+        (WTR::AccessibilityUIElement::nextTextMarker):
+        (WTR::AccessibilityUIElement::textMarkerRangeForMarkers):
+        (WTR::AccessibilityUIElement::startTextMarkerForTextMarkerRange):
+        (WTR::AccessibilityUIElement::endTextMarkerForTextMarkerRange):
+        (WTR::AccessibilityUIElement::endTextMarkerForBounds):
+        (WTR::AccessibilityUIElement::startTextMarkerForBounds):
+        (WTR::AccessibilityUIElement::textMarkerForPoint):
+        (WTR::AccessibilityUIElement::accessibilityElementForTextMarker):
+        (WTR::AccessibilityUIElement::textMarkerForIndex):
+        (WTR::AccessibilityUIElement::supportedActions):
+        (WTR::AccessibilityUIElement::pathDescription):
+        (WTR::AccessibilityUIElement::mathPostscriptsDescription):
+        (WTR::AccessibilityUIElement::mathPrescriptsDescription):
+        (WTR::AccessibilityUIElement::classList):
+
+2013-11-14  Éva Balázsfalvi  <balazsfalvi.eva@stud.u-szeged.hu>
+
+        run-perf-tests should warn loudly if you're using a Debug build.
+        https://bugs.webkit.org/show_bug.cgi?id=105236
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (PerfTestsRunner.run):
+
+2013-11-14  Éva Balázsfalvi  <balazsfalvi.eva@stud.u-szeged.hu>
+
+        Fix Tools/Scripts/webkitpy/port/factory.py --help to display which configuration is default
+        https://bugs.webkit.org/show_bug.cgi?id=124143
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/port/factory.py:
+        (configuration_options):
+
+2013-11-13  Anders Carlsson  <andersca@apple.com>
+
+        Add a Vector constructor that takes an std::initializer_list
+        https://bugs.webkit.org/show_bug.cgi?id=124287
+
+        Reviewed by Antti Koivisto.
+
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        (TestWebKitAPI::TEST):
+
 2013-11-13  Mario Sanchez Prada  <mario.prada@samsung.com>
 
         Unreviewed GTK gardening. Updated rebaseline unit tests to include WK2 bot.

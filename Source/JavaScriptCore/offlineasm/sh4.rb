@@ -61,6 +61,10 @@ class RegisterID
             "r4"
         when "a1"
             "r5"
+        when "a2"
+            "r6"
+        when "a3"
+            "r7"
         when "t0"
             "r0"
         when "t1"
@@ -70,7 +74,9 @@ class RegisterID
         when "t3"
             "r10"
         when "t4"
-            "r6"
+            "r4"
+        when "t5"
+            "r5"
         when "cfr"
             "r14"
         when "sp"
@@ -467,6 +473,58 @@ end
 
 
 #
+# Lowering of misplaced special registers for SH4. For example:
+#
+# storep pr, foo
+#
+# becomes:
+#
+# stspr tmp
+# storep tmp, foo
+#
+
+def sh4LowerMisplacedSpecialRegisters(list)
+    newList = []
+    list.each {
+        | node |
+        if node.is_a? Instruction
+            case node.opcode
+            when "move"
+                if node.operands[0].is_a? RegisterID and node.operands[0].sh4Operand == "pr"
+                    newList << Instruction.new(codeOrigin, "stspr", [node.operands[1]])
+                elsif node.operands[1].is_a? RegisterID and node.operands[1].sh4Operand == "pr"
+                    newList << Instruction.new(codeOrigin, "ldspr", [node.operands[0]])
+                else
+                    newList << node
+                end
+            when "loadi", "loadis", "loadp"
+                if node.operands[1].is_a? RegisterID and node.operands[1].sh4Operand == "pr"
+                    tmp = Tmp.new(codeOrigin, :gpr)
+                    newList << Instruction.new(codeOrigin, node.opcode, [node.operands[0], tmp])
+                    newList << Instruction.new(codeOrigin, "ldspr", [tmp])
+                else
+                    newList << node
+                end
+            when "storei", "storep"
+                if node.operands[0].is_a? RegisterID and node.operands[0].sh4Operand == "pr"
+                    tmp = Tmp.new(codeOrigin, :gpr)
+                    newList << Instruction.new(codeOrigin, "stspr", [tmp])
+                    newList << Instruction.new(codeOrigin, node.opcode, [tmp, node.operands[1]])
+                else
+                    newList << node
+                end
+            else
+                newList << node
+            end
+        else
+            newList << node
+        end
+    }
+    newList
+end
+
+
+#
 # Group immediate values outside -128..127 range into constant pools for SH4.
 # These constant pools will be placed behind non-return opcodes jmp and ret, for example:
 #
@@ -557,6 +615,78 @@ def sh4LowerConstPool(list)
 end
 
 
+#
+# Lowering of argument setup for SH4.
+# This phase avoids argument register trampling. For example, if a0 == t4:
+#
+# setargs t1, t4
+#
+# becomes:
+#
+# move t4, a1
+# move t1, a0
+#
+
+def sh4LowerArgumentSetup(list)
+    a0 = RegisterID.forName(codeOrigin, "a0")
+    a1 = RegisterID.forName(codeOrigin, "a1")
+    a2 = RegisterID.forName(codeOrigin, "a2")
+    a3 = RegisterID.forName(codeOrigin, "a3")
+    newList = []
+    list.each {
+        | node |
+        if node.is_a? Instruction
+            case node.opcode
+            when "setargs"
+                if node.operands.size == 2
+                    if node.operands[1].sh4Operand != a0.sh4Operand
+                        newList << Instruction.new(codeOrigin, "move", [node.operands[0], a0])
+                        newList << Instruction.new(codeOrigin, "move", [node.operands[1], a1])
+                    elsif node.operands[0].sh4Operand != a1.sh4Operand
+                        newList << Instruction.new(codeOrigin, "move", [node.operands[1], a1])
+                        newList << Instruction.new(codeOrigin, "move", [node.operands[0], a0])
+                    else
+                        # As (operands[0] == a1) and (operands[1] == a0), we just need to swap a0 and a1.
+                        newList << Instruction.new(codeOrigin, "xori", [a0, a1])
+                        newList << Instruction.new(codeOrigin, "xori", [a1, a0])
+                        newList << Instruction.new(codeOrigin, "xori", [a0, a1])
+                    end
+                elsif node.operands.size == 4
+                    # FIXME: We just raise an error if something is likely to go wrong for now.
+                    # It would be better to implement a recovering algorithm.
+                    if (node.operands[0].sh4Operand == a1.sh4Operand) or
+                        (node.operands[0].sh4Operand == a2.sh4Operand) or
+                        (node.operands[0].sh4Operand == a3.sh4Operand) or
+                        (node.operands[1].sh4Operand == a0.sh4Operand) or
+                        (node.operands[1].sh4Operand == a2.sh4Operand) or
+                        (node.operands[1].sh4Operand == a3.sh4Operand) or
+                        (node.operands[2].sh4Operand == a0.sh4Operand) or
+                        (node.operands[2].sh4Operand == a1.sh4Operand) or
+                        (node.operands[2].sh4Operand == a3.sh4Operand) or
+                        (node.operands[3].sh4Operand == a0.sh4Operand) or
+                        (node.operands[3].sh4Operand == a1.sh4Operand) or
+                        (node.operands[3].sh4Operand == a2.sh4Operand)
+                        raise "Potential argument register trampling detected."
+                    end
+
+                    newList << Instruction.new(codeOrigin, "move", [node.operands[0], a0])
+                    newList << Instruction.new(codeOrigin, "move", [node.operands[1], a1])
+                    newList << Instruction.new(codeOrigin, "move", [node.operands[2], a2])
+                    newList << Instruction.new(codeOrigin, "move", [node.operands[3], a3])
+                else
+                    raise "Invalid operands number (#{node.operands.size}) for setargs"
+                end
+            else
+                newList << node
+            end
+        else
+            newList << node
+        end
+    }
+    newList
+end
+
+
 class Sequence
     def getModifiedListSH4
         result = @list
@@ -602,11 +732,13 @@ class Sequence
         result = riscLowerMalformedImmediates(result, -128..127)
         result = sh4LowerMisplacedLabels(result)
         result = riscLowerMisplacedAddresses(result)
+        result = sh4LowerMisplacedSpecialRegisters(result)
 
         result = assignRegistersToTemporaries(result, :gpr, SH4_TMP_GPRS)
         result = assignRegistersToTemporaries(result, :gpr, SH4_TMP_FPRS)
 
         result = sh4LowerConstPool(result)
+        result = sh4LowerArgumentSetup(result)
 
         return result
     end
@@ -877,7 +1009,7 @@ class Instruction
                 else
                     $asm.puts "mov.l #{operands[0].labelref.asmLabel}, #{operands[1].sh4Operand}"
                 end
-            else
+            elsif operands[0].sh4Operand != operands[1].sh4Operand
                 $asm.puts "mov #{sh4Operands(operands)}"
             end
         when "leap"
@@ -905,6 +1037,22 @@ class Instruction
             $asm.puts "lds #{sh4Operands(operands)}, pr"
         when "stspr"
             $asm.puts "sts pr, #{sh4Operands(operands)}"
+        when "popCalleeSaves"
+            $asm.puts "mov.l @r15+, r8"
+            $asm.puts "mov.l @r15+, r9"
+            $asm.puts "mov.l @r15+, r10"
+            $asm.puts "mov.l @r15+, r11"
+            $asm.puts "mov.l @r15+, r13"
+            $asm.puts "lds.l @r15+, pr"
+            $asm.puts "mov.l @r15+, r14"
+        when "pushCalleeSaves"
+            $asm.puts "mov.l r14, @-r15"
+            $asm.puts "sts.l pr, @-r15"
+            $asm.puts "mov.l r13, @-r15"
+            $asm.puts "mov.l r11, @-r15"
+            $asm.puts "mov.l r10, @-r15"
+            $asm.puts "mov.l r9, @-r15"
+            $asm.puts "mov.l r8, @-r15"
         when "break"
             # This special opcode always generates an illegal instruction exception.
             $asm.puts ".word 0xfffd"

@@ -74,13 +74,15 @@ static inline NSURLResponse *autoreleased(WKURLResponseRef urlResponse)
     return urlResponse ? CFBridgingRelease(WKURLResponseCopyNSURLResponse(adoptWK(urlResponse).get())) : nil;
 }
 
-NSString *WKActionIsMainFrameKey = @"WKActionIsMainFrameKey";
-NSString *WKActionNavigationTypeKey = @"WKActionNavigationTypeKey";
-NSString *WKActionMouseButtonKey = @"WKActionMouseButtonKey";
-NSString *WKActionModifierFlagsKey = @"WKActionModifierFlagsKey";
-NSString *WKActionURLRequestKey = @"WKActionURLRequestKey";
-NSString *WKActionURLResponseKey = @"WKActionURLResponseKey";
-NSString *WKActionFrameNameKey = @"WKActionFrameNameKey";
+NSString * const WKActionIsMainFrameKey = @"WKActionIsMainFrameKey";
+NSString * const WKActionNavigationTypeKey = @"WKActionNavigationTypeKey";
+NSString * const WKActionMouseButtonKey = @"WKActionMouseButtonKey";
+NSString * const WKActionModifierFlagsKey = @"WKActionModifierFlagsKey";
+NSString * const WKActionURLRequestKey = @"WKActionURLRequestKey";
+NSString * const WKActionURLResponseKey = @"WKActionURLResponseKey";
+NSString * const WKActionFrameNameKey = @"WKActionFrameNameKey";
+NSString * const WKActionOriginatingFrameURLKey = @"WKActionOriginatingFrameURLKey";
+NSString * const WKActionCanShowMIMETypeKey = @"WKActionCanShowMIMETypeKey";
 
 @interface WKBrowsingContextControllerData : NSObject {
 @public
@@ -622,7 +624,7 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
     policyClient.version = kWKPagePolicyClientCurrentVersion;
     policyClient.clientInfo = browsingContext;
 
-    policyClient.decidePolicyForNavigationAction = [](WKPageRef page, WKFrameRef frame, WKFrameNavigationType navigationType, WKEventModifiers modifiers, WKEventMouseButton mouseButton, WKURLRequestRef request, WKFramePolicyListenerRef listener, WKTypeRef userData, const void* clientInfo)
+    policyClient.decidePolicyForNavigationAction = [](WKPageRef page, WKFrameRef frame, WKFrameNavigationType navigationType, WKEventModifiers modifiers, WKEventMouseButton mouseButton, WKFrameRef originatingFrame, WKURLRequestRef request, WKFramePolicyListenerRef listener, WKTypeRef userData, const void* clientInfo)
     {
         WKBrowsingContextController *browsingContext = (WKBrowsingContextController *)clientInfo;
         if ([browsingContext.policyDelegate respondsToSelector:@selector(browsingContextController:decidePolicyForNavigationAction:decisionHandler:)]) {
@@ -631,8 +633,13 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
                 WKActionNavigationTypeKey: @(navigationType),
                 WKActionModifierFlagsKey: @(modifiers),
                 WKActionMouseButtonKey: @(mouseButton),
-                WKActionURLRequestKey: autoreleased(request)
+                WKActionURLRequestKey: adoptNS(WKURLRequestCopyNSURLRequest(request)).get()
             };
+
+            if (originatingFrame) {
+                actionDictionary = [[actionDictionary mutableCopy] autorelease];
+                [(NSMutableDictionary *)actionDictionary setObject:[NSURL _web_URLWithWTFString:toImpl(originatingFrame)->url() relativeToURL:nil] forKey:WKActionOriginatingFrameURLKey];
+            }
             
             [browsingContext.policyDelegate browsingContextController:browsingContext decidePolicyForNavigationAction:actionDictionary decisionHandler:makePolicyDecisionBlock(listener)];
         } else
@@ -648,7 +655,7 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
                 WKActionNavigationTypeKey: @(navigationType),
                 WKActionModifierFlagsKey: @(modifiers),
                 WKActionMouseButtonKey: @(mouseButton),
-                WKActionURLRequestKey: autoreleased(request),
+                WKActionURLRequestKey: adoptNS(WKURLRequestCopyNSURLRequest(request)).get(),
                 WKActionFrameNameKey: toImpl(frameName)->wrapper()
             };
             
@@ -657,14 +664,15 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
             WKFramePolicyListenerUse(listener);
     };
 
-    policyClient.decidePolicyForResponse = [](WKPageRef page, WKFrameRef frame, WKURLResponseRef response, WKURLRequestRef request, WKFramePolicyListenerRef listener, WKTypeRef userData, const void* clientInfo)
+    policyClient.decidePolicyForResponse = [](WKPageRef page, WKFrameRef frame, WKURLResponseRef response, WKURLRequestRef request, bool canShowMIMEType, WKFramePolicyListenerRef listener, WKTypeRef userData, const void* clientInfo)
     {
         WKBrowsingContextController *browsingContext = (WKBrowsingContextController *)clientInfo;
         if ([browsingContext.policyDelegate respondsToSelector:@selector(browsingContextController:decidePolicyForResponseAction:decisionHandler:)]) {
             NSDictionary *actionDictionary = @{
                 WKActionIsMainFrameKey: @(WKFrameIsMainFrame(frame)),
-                WKActionURLRequestKey: autoreleased(request),
-                WKActionURLResponseKey: autoreleased(response)
+                WKActionURLRequestKey: adoptNS(WKURLRequestCopyNSURLRequest(request)).get(),
+                WKActionURLResponseKey: adoptNS(WKURLResponseCopyNSURLResponse(response)).get(),
+                WKActionCanShowMIMETypeKey: @(canShowMIMEType),
             };
 
             [browsingContext.policyDelegate browsingContextController:browsingContext decidePolicyForResponseAction:actionDictionary decisionHandler:makePolicyDecisionBlock(listener)];

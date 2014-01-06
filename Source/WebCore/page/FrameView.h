@@ -109,7 +109,7 @@ public:
     void scheduleRelayoutOfSubtree(RenderElement&);
     void unscheduleRelayout();
     bool layoutPending() const;
-    bool isInLayout() const { return m_inLayout; }
+    bool isInLayout() const { return m_layoutPhase == InLayout; }
 
     RenderObject* layoutRoot(bool onlyDuringLayout = false) const;
     void clearLayoutRoot() { m_layoutRoot = nullptr; }
@@ -196,8 +196,8 @@ public:
     virtual void setFixedVisibleContentRect(const IntRect&) OVERRIDE;
     virtual void setScrollPosition(const IntPoint&) OVERRIDE;
     void scrollPositionChangedViaPlatformWidget();
-    virtual void repaintFixedElementsAfterScrolling() OVERRIDE;
-    virtual void updateFixedElementsAfterScrolling() OVERRIDE;
+    virtual void updateLayerPositionsAfterScrolling() OVERRIDE;
+    virtual void updateCompositingLayersAfterScrolling() OVERRIDE;
     virtual bool requestScrollPositionUpdate(const IntPoint&) OVERRIDE;
     virtual bool isRubberBandInProgress() const OVERRIDE;
     virtual IntPoint minimumScrollPosition() const OVERRIDE;
@@ -233,7 +233,7 @@ public:
     // and adjusting for page scale.
     IntSize scrollOffsetForFixedPosition() const;
     // Static function can be called from another thread.
-    static IntSize scrollOffsetForFixedPosition(const IntRect& visibleContentRect, const IntSize& totalContentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, int headerHeight, int footerHeight);
+    static IntSize scrollOffsetForFixedPosition(const IntRect& visibleContentRect, const IntSize& totalContentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements, int headerHeight, int footerHeight);
 
     bool fixedElementsLayoutRelativeToFrame() const;
 
@@ -425,6 +425,8 @@ public:
 
     void setScrollPinningBehavior(ScrollPinningBehavior);
 
+    ScrollBehaviorForFixedElements scrollBehaviorForFixedElements() const;
+
     void updateWidgetPositions();
     void didAddWidgetToRenderTree(Widget&);
     void willRemoveWidgetFromRenderTree(Widget&);
@@ -446,6 +448,18 @@ private:
     void reset();
     void init();
 
+    enum LayoutPhase {
+        OutsideLayout,
+        InPreLayout,
+        InPreLayoutStyleUpdate,
+        InLayout,
+        InViewSizeAdjust,
+        InPostLayout,
+    };
+    LayoutPhase layoutPhase() const { return m_layoutPhase; }
+
+    bool inPreLayoutStyleUpdate() const { return m_layoutPhase == InPreLayoutStyleUpdate; }
+
     virtual bool isFrameView() const OVERRIDE { return true; }
 
     friend class RenderWidget;
@@ -454,7 +468,7 @@ private:
     void updateCanBlitOnScrollRecursively();
     bool contentsInCompositedLayer() const;
 
-    bool shouldUpdateFixedElementsAfterScrolling();
+    bool shouldUpdateCompositingLayersAfterScrolling() const;
 
     void applyOverflowToViewport(RenderElement*, ScrollbarMode& hMode, ScrollbarMode& vMode);
     void applyPaginationToViewport();
@@ -527,7 +541,7 @@ private:
 
     FrameView* parentFrameView() const;
 
-    bool doLayoutWithFrameFlattening(bool allowSubtree);
+    void startLayoutAtMainFrameViewIfNeeded(bool allowSubtree);
     bool frameFlatteningEnabled() const;
     bool isFrameFlatteningValidForThisFrame() const;
 
@@ -563,10 +577,9 @@ private:
     Timer<FrameView> m_layoutTimer;
     bool m_delayedLayout;
     RenderElement* m_layoutRoot;
-    
+
+    LayoutPhase m_layoutPhase;
     bool m_layoutSchedulingEnabled;
-    bool m_inLayout;
-    bool m_doingPreLayoutStyleUpdate;
     bool m_inSynchronousPostLayout;
     int m_layoutCount;
     unsigned m_nestedLayoutCount;

@@ -39,9 +39,9 @@ public:
     explicit PagePolicyClientEfl(EwkView*);
 
 private:
-    static void decidePolicyForNavigationAction(WKPageRef, WKFrameRef, WKFrameNavigationType, WKEventModifiers, WKEventMouseButton, WKURLRequestRef, WKFramePolicyListenerRef, WKTypeRef, const void*);
+    static void decidePolicyForNavigationAction(WKPageRef, WKFrameRef, WKFrameNavigationType, WKEventModifiers, WKEventMouseButton, WKFrameRef, WKURLRequestRef, WKFramePolicyListenerRef, WKTypeRef, const void*);
     static void decidePolicyForNewWindowAction(WKPageRef, WKFrameRef, WKFrameNavigationType, WKEventModifiers, WKEventMouseButton, WKURLRequestRef, WKStringRef, WKFramePolicyListenerRef, WKTypeRef, const void*);
-    static void decidePolicyForResponseCallback(WKPageRef, WKFrameRef, WKURLResponseRef, WKURLRequestRef, WKFramePolicyListenerRef, WKTypeRef, const void*);
+    static void decidePolicyForResponseCallback(WKPageRef, WKFrameRef, WKURLResponseRef, WKURLRequestRef, bool canShowMIMEType, WKFramePolicyListenerRef, WKTypeRef, const void*);
 
     EwkView* m_view;
 };

@@ -1,3 +1,1012 @@
+2013-11-18  Sun-woo Nam  <sunny.nam@samsung.com>
+
+        [EFL] Layout tests need to be rebaselined.
+        https://bugs.webkit.org/show_bug.cgi?id=124477
+
+        Unreviewed, EFL rebaseline.
+
+        EFL tests are rebaselined after r126683 and r140149.
+
+        * platform/efl/fast/block/float/016-expected.txt:
+        * platform/efl/fast/forms/textAreaLineHeight-expected.txt:
+
+2013-11-18  Samuel White  <samuel_white@apple.com>
+
+        AX: Add ability to fetch only visible table rows.
+        https://bugs.webkit.org/show_bug.cgi?id=124430
+
+        Reviewed by Chris Fleizach.
+
+        Adding test to make sure AXVisibleRows behaves correctly.
+
+        * platform/mac/accessibility/table-visible-rows-expected.txt: Added.
+        * platform/mac/accessibility/table-visible-rows.html: Added.
+
+2013-11-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Simplify and reformat the output of performance tests inside test runners
+        https://bugs.webkit.org/show_bug.cgi?id=124496
+
+        Reviewed by Antti Koivisto.
+
+        Rebaseline the expected result now that the output has been simplified.
+
+        * fast/harness/perftests/runs-per-second-log-expected.txt:
+
+2013-11-18  David Hyatt  <hyatt@apple.com>
+
+        Add a quirk to not respect center text-align when positioning
+
+        <rdar://problem/15427571>
+        https://bugs.webkit.org/show_bug.cgi?id=124522
+
+        Reviewed by Simon Fraser.
+
+        Added fast/block/legacy-text-align-position-quirk.html
+
+        * fast/block/legacy-text-align-position-quirk-expected.html: Added.
+        * fast/block/legacy-text-align-position-quirk.html: Added.
+
+2013-11-18  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        * platform/efl/TestExpectations: Add failure expectations for CSS filters layout tests.
+
+2013-11-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Adding failure expectations for the current set
+        of untriaged failures on the 64-bit WK2 builder.
+
+2013-11-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening.
+        Cleaning up expectations for unexpectedly passing tests, either removing or updating them
+        to reflect the current status of the test.
+
+        * platform/gtk-wk1/TestExpectations:
+        * platform/gtk-wk2/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2013-11-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Addressing the current set of timing-out tests. Timeout expectations
+        are added where appropriate, with one js/regress/ test speculatively marked as slow.
+
+2013-11-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        Update the global constructors' attibutes baseline for the WK2 flavor of the GTK port.
+        Update baselines for tests under media/.
+
+        * platform/gtk-wk2/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/media/W3C/video/canPlayType/canPlayType_codecs_order_1-expected.txt:
+        * platform/gtk/media/W3C/video/canPlayType/canPlayType_supported_but_no_codecs_parameter_1-expected.txt:
+        * platform/gtk/media/W3C/video/canPlayType/canPlayType_two_implies_one_1-expected.txt:
+        * platform/gtk/media/W3C/video/canPlayType/canPlayType_two_implies_one_2-expected.txt:
+        * platform/gtk/media/media-can-play-ogg-expected.txt:
+        * platform/gtk/media/video-controls-captions-trackmenu-localized-expected.txt:
+        * platform/gtk/media/video-controls-captions-trackmenu-only-captions-descriptions-and-subtitles-expected.txt: Added.
+        * platform/gtk/media/video-controls-captions-trackmenu-sorted-expected.txt:
+        * platform/gtk/media/volume-bar-empty-when-muted-expected.txt: Added.
+
+2013-11-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening. Updating GTK-specific baselines for tests under editing/, scrollingcoordinator/ and tables/.
+
+        * platform/gtk/editing/deleting/smart-delete-003-expected.txt:
+        * platform/gtk/editing/deleting/smart-delete-004-expected.txt:
+        * platform/gtk/editing/spelling/centering-misspelling-dots-expected.png: Added.
+        * platform/gtk/editing/spelling/centering-misspelling-dots-expected.txt: Added.
+        * platform/gtk/editing/spelling/misspelling-dots-dont-extend-beyond-words-expected.png: Added.
+        * platform/gtk/editing/spelling/misspelling-dots-dont-extend-beyond-words-expected.txt: Added.
+        * platform/gtk/editing/unsupported-content/table-delete-001-expected.txt:
+        * platform/gtk/editing/unsupported-content/table-delete-003-expected.txt:
+        * platform/gtk/scrollingcoordinator: Added.
+        * platform/gtk/scrollingcoordinator/non-fast-scrollable-region-scaled-iframe-expected.png: Added.
+        * platform/gtk/scrollingcoordinator/non-fast-scrollable-region-scaled-iframe-expected.txt: Added.
+        * platform/gtk/scrollingcoordinator/non-fast-scrollable-region-transformed-iframe-expected.png: Added.
+        * platform/gtk/scrollingcoordinator/non-fast-scrollable-region-transformed-iframe-expected.txt: Added.
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug91057-expected.txt:
+
+2013-11-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening. Rebaselining various tests under fast/.
+
+        * platform/gtk/fast/backgrounds/size/contain-and-cover-zoomed-expected.png:
+        * platform/gtk/fast/backgrounds/size/contain-and-cover-zoomed-expected.txt: Added.
+        * platform/gtk/fast/block/float/016-expected.png:
+        * platform/gtk/fast/block/float/016-expected.txt:
+        * platform/gtk/fast/block/lineboxcontain/block-with-ideographs-expected.png: Added.
+        * platform/gtk/fast/block/lineboxcontain/block-with-ideographs-expected.txt:
+        * platform/gtk/fast/css/empty-pseudo-class-expected.txt:
+        * platform/gtk/fast/css/fieldset-display-row-expected.png:
+        * platform/gtk/fast/css/fieldset-display-row-expected.txt:
+        * platform/gtk/fast/css/first-child-pseudo-class-expected.txt:
+        * platform/gtk/fast/css/last-child-pseudo-class-expected.txt:
+        * platform/gtk/fast/css/only-child-pseudo-class-expected.txt:
+        * platform/gtk/fast/forms/basic-textareas-expected.png:
+        * platform/gtk/fast/forms/basic-textareas-expected.txt:
+        * platform/gtk/fast/forms/basic-textareas-quirks-expected.png:
+        * platform/gtk/fast/forms/basic-textareas-quirks-expected.txt:
+        * platform/gtk/fast/forms/textAreaLineHeight-expected.png:
+        * platform/gtk/fast/forms/textAreaLineHeight-expected.txt:
+        * platform/gtk/fast/parser/entity-comment-in-textarea-expected.png:
+        * platform/gtk/fast/parser/entity-comment-in-textarea-expected.txt:
+        * platform/gtk/fast/repaint/increasing-region-content-height-expected.txt: Added.
+
+2013-11-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Support exporting public RSASSA-PKCS1-v1_5 keys
+        https://bugs.webkit.org/show_bug.cgi?id=124475
+
+        Reviewed by Sam Weinig.
+
+        * crypto/subtle/rsa-export-key-expected.txt: Added.
+        * crypto/subtle/rsa-export-key.html: Added.
+
+2013-11-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening. Rebaselining CSS tests' expectations.
+
+        * platform/gtk/css1/box_properties/margin_right-expected.png:
+        * platform/gtk/css1/box_properties/margin_right-expected.txt:
+        * platform/gtk/css1/box_properties/padding-expected.png:
+        * platform/gtk/css1/box_properties/padding-expected.txt:
+        * platform/gtk/css1/box_properties/padding_left-expected.png:
+        * platform/gtk/css1/box_properties/padding_left-expected.txt:
+        * platform/gtk/css1/box_properties/padding_right-expected.png:
+        * platform/gtk/css1/box_properties/padding_right-expected.txt:
+        * platform/gtk/css1/box_properties/padding_top-expected.png:
+        * platform/gtk/css1/box_properties/padding_top-expected.txt:
+        * platform/gtk/css1/formatting_model/vertical_formatting-expected.png:
+        * platform/gtk/css1/formatting_model/vertical_formatting-expected.txt:
+        * platform/gtk/css2.1/t080301-c411-vt-mrgn-00-b-expected.txt:
+        * platform/gtk/css2.1/t0804-c5507-padn-r-00-c-ag-expected.png:
+        * platform/gtk/css2.1/t0804-c5507-padn-r-00-c-ag-expected.txt:
+        * platform/gtk/css2.1/t0804-c5509-padn-l-00-b-ag-expected.txt:
+        * platform/gtk/css2.1/t0804-c5510-padn-00-b-ag-expected.txt:
+        * platform/gtk/css2.1/t0905-c414-flt-wrap-00-e-expected.png:
+        * platform/gtk/css2.1/t0905-c414-flt-wrap-00-e-expected.txt:
+
+2013-11-17  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Add webgl crash tests because webgl is not supported
+        by EFL WK2 fully yet as well as not fully supported by Intel and AMD hardware.
+
+        * platform/efl-wk2/TestExpectations:
+
+2013-11-17  Tim Horton  <timothy_horton@apple.com>
+
+        Layout Test platform/mac-wk2/plugins/slow/asynchronous-plugin-initialization-multiple.html is extremely flaky on Mac WK2 bots, especially debug
+        https://bugs.webkit.org/show_bug.cgi?id=124476
+
+        * platform/mac-wk2/TestExpectations:
+        Mark test as flaky.
+
+2013-11-17  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should have an explicit notion of bytecode liveness
+        https://bugs.webkit.org/show_bug.cgi?id=124181
+
+        Reviewed by Mark Hahnenberg or Sam Weinig.
+        
+        I totally added this test after the rest of the patch was r+'d. Under the right tier-up
+        modes this triggers one of the bugs that the rest of the patch is trying to avoid.
+
+        * js/regress/script-tests/weird-inlining-const-prop.js: Added.
+        (foo):
+        (bar):
+        (fuzz):
+        (testImpl):
+        (test):
+        * js/regress/weird-inlining-const-prop-expected.txt: Added.
+        * js/regress/weird-inlining-const-prop.html: Added.
+
+2013-11-17  Alexey Proskuryakov  <ap@apple.com>
+
+        RSASSA-PKCS1-v1_5 JWK import doesn't check key size
+        https://bugs.webkit.org/show_bug.cgi?id=124472
+
+        Reviewed by Sam Weinig.
+
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-small-key-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-small-key.html: Added.
+
+2013-11-17  Alexey Proskuryakov  <ap@apple.com>
+
+        JWK crypto key export result is a DOM string instead of an array buffer
+        https://bugs.webkit.org/show_bug.cgi?id=124473
+
+        Reviewed by Sam Weinig.
+
+        * crypto/subtle/aes-export-key.html:
+        * crypto/subtle/hmac-export-key.html:
+
+        * crypto/subtle/resources/common.js: (bytesToASCIIString): Added a function that
+        converts an ArrayBuffer to a string, assuming it's all ASCII.
+
+2013-11-17  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r158774): Iteration over element children is broken
+        https://bugs.webkit.org/show_bug.cgi?id=124145
+
+        Reviewed by Anders Carlsson.
+
+        * fast/dom/htmlcollection-children-mutation-expected.txt: Added.
+        * fast/dom/htmlcollection-children-mutation.html: Added.
+
+2013-11-17  Antti Koivisto  <antti@apple.com>
+
+        Simple line path does not respect visibility:hidden
+        https://bugs.webkit.org/show_bug.cgi?id=124467
+
+        Reviewed by Anders Carlsson.
+
+        * fast/text/text-visibility-expected.html: Added.
+        * fast/text/text-visibility.html: Added.
+
+2013-11-16  Alexey Proskuryakov  <ap@apple.com>
+
+        WebCrypto no longer uses sequences of ArrayBuffers
+        https://bugs.webkit.org/show_bug.cgi?id=124451
+
+        Reviewed by Sam Weinig.
+
+        Updated tests accordingly.
+
+        * crypto/subtle/aes-cbc-192-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-256-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-expected.txt:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-with-padding.html:
+        * crypto/subtle/aes-cbc-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-import-jwk.html:
+        * crypto/subtle/aes-cbc-wrong-key-class-expected.txt:
+        * crypto/subtle/aes-cbc-wrong-key-class.html:
+        * crypto/subtle/argument-conversion-expected.txt:
+        * crypto/subtle/argument-conversion.html:
+        * crypto/subtle/hmac-import-jwk.html:
+        * crypto/subtle/hmac-sign-verify-empty-key.html:
+        * crypto/subtle/hmac-sign-verify.html:
+        * crypto/subtle/rsassa-pkcs1-v1_5-sign-verify.html:
+        * crypto/subtle/sha-1-expected.txt:
+        * crypto/subtle/sha-1.html:
+        * crypto/subtle/sha-224-expected.txt:
+        * crypto/subtle/sha-224.html:
+        * crypto/subtle/sha-256-expected.txt:
+        * crypto/subtle/sha-256.html:
+        * crypto/subtle/sha-384-expected.txt:
+        * crypto/subtle/sha-384.html:
+        * crypto/subtle/sha-512-expected.txt:
+        * crypto/subtle/sha-512.html:
+
+2013-11-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Support exporting symmetric keys as JWK
+        https://bugs.webkit.org/show_bug.cgi?id=124442
+
+        Reviewed by Sam Weinig.
+
+        * crypto/subtle/aes-export-key-expected.txt:
+        * crypto/subtle/aes-export-key.html:
+        * crypto/subtle/hmac-export-key-expected.txt:
+        * crypto/subtle/hmac-export-key.html:
+
+2013-11-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Make results.html more sane
+        https://bugs.webkit.org/show_bug.cgi?id=124446
+
+        Reviewed by Sam Weinig.
+        
+        Fix various issues with results.html:
+            * make it use page scrolling, not overflow scrolling
+            * remove -webkit-flex stuff that wasn't doing anything
+            * prettify the floating overlay for flagged tests
+            * pull some markup out of the JS and into the HTML
+            * remove the self-testing, which provides very little reward.
+
+        * fast/harness/resources/results-test.js: Removed.
+        * fast/harness/results-expected.txt:
+        * fast/harness/results.html:
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        results.html should have a link to historical results for a test/all failing tests
+        https://bugs.webkit.org/show_bug.cgi?id=124402
+
+        Reviewed by Simon Fraser.
+
+        * fast/harness/results.html:
+        * fast/harness/resources/results-test.js:
+        Add the link to timeout/crash results too.
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        http/tests/security/frameNavigation/xss-DENIED-plugin-navigation.html is slow, frequently > 30 second timeout
+        https://bugs.webkit.org/show_bug.cgi?id=124373
+
+        * platform/mac/TestExpectations:
+        Mark test as timeout as well, since that happens sometimes too.
+
+2013-11-15  Jer Noble  <jer.noble@apple.com>
+
+        HTMLMediaElement should not throw an exception from setCurrentTime or fastSeek.
+        https://bugs.webkit.org/show_bug.cgi?id=124294
+
+        Reviewed by Eric Carlson.
+
+        * media/video-seek-no-src-exception-expected.txt: Removed.
+        * media/video-seek-no-src-exception.html: Removed.
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        Layout Test editing/selection/5057506.html frequently times out on Mac WK2
+        https://bugs.webkit.org/show_bug.cgi?id=124437
+
+        * platform/mac-wk2/TestExpectations:
+        Mark aforementioned test as a flaky-timeout.
+
+2013-11-15  Alexandru Chiculita  <achicu@adobe.com>
+
+        Web Inspector: DOM.performSearch should accept a list of context nodes
+        https://bugs.webkit.org/show_bug.cgi?id=124390
+
+        Reviewed by Timothy Hatcher.
+
+        Added new inspector-protocol tests to check for the DOM.performSearch implementation.
+        Also, ported an existing test from the old "inspector" format.
+
+        * http/tests/inspector-protocol/resources/InspectorDOMListener.js: Added boilerplate code that
+        can be used to track node ids and class names.
+        (createDOMListener.createNodeAttributesMap):
+        (createDOMListener.collectNode):
+        (createDOMListener.onSetChildNodes):
+        (createDOMListener.onChildNodeRemoved):
+        (createDOMListener.onChildNodeInserted):
+        (createDOMListener.return.getNodeById):
+        (createDOMListener.return.getNodeIdentifier):
+        * http/tests/inspector-protocol/resources/InspectorTest.js:
+        (InspectorFrontendAPI.dispatchMessageAsync): Added a way to catch all the messages received in the inspector.
+        It is useful for debugging the test file.
+        (InspectorTest.addEventListener): Helper method to register multiple handlers for the same event.
+        * inspector-protocol/dom/dom-search-crash-expected.txt: Added.
+        * inspector-protocol/dom/dom-search-crash.html: Added.
+        * inspector-protocol/dom/dom-search-expected.txt: Added.
+        * inspector-protocol/dom/dom-search-with-context-expected.txt: Added.
+        * inspector-protocol/dom/dom-search-with-context.html: Added.
+        * inspector-protocol/dom/dom-search.html: Added.
+        * inspector-protocol/dom/resources/dom-search-crash-iframe.html: Cloned from inspector/dom/resources/dom-search-crash-iframe.html
+        * inspector-protocol/dom/resources/dom-search-iframe.html: Added.
+        * inspector-protocol/dom/resources/dom-search-queries.js: Added.
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        Make lint-test-expectations pass for platform/win
+
+        * platform/win/TestExpectations:
+        I always kept the stronger expectation in the case of duplicates.
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        Layout Test fast/dom/Geolocation/notimer-after-unload.html is flaky and crashy on Mac WK2
+        https://bugs.webkit.org/show_bug.cgi?id=124425
+
+        * platform/mac-wk2/TestExpectations:
+        Mark as crash/pass/fail, since it does all three :(
+
+2013-11-15  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        Modifying RTCIceCandidate object construction to match the spec
+        https://bugs.webkit.org/show_bug.cgi?id=124369
+
+        Reviewed by Eric Carlson.
+
+        According to the spec the RTCIceCandidateInit parameter in RTCSessionDescription constructor is optional,
+        which must not be nullable, and, if passed, must be a valid Dictionary. If the keys are not present, the string
+        object that stores them in the RTCIceCandidate class, must be null in those cases. Also, if a key is present
+        and its value is not valid an exception must be raised.
+
+        * fast/mediastream/RTCIceCandidate-expected.txt:
+        * fast/mediastream/RTCIceCandidate.html:
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        Layout Test webgl/1.0.2/conformance/ogles/GL/tan/tan_001_to_006.html fails on Intel
+        https://bugs.webkit.org/show_bug.cgi?id=124424
+
+        * platform/mac/TestExpectations:
+        Mark as flaky everywhere, since I have no way to mark it as failing on Intel
+        and passing elsewhere.
+
+2013-11-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r159337.
+        http://trac.webkit.org/changeset/159337
+        https://bugs.webkit.org/show_bug.cgi?id=124423
+
+        broke a bunch of fast/regions tests on EFL/GTK (Requested by
+        philn on #webkit).
+
+        * fast/regions/bottom-overflow-out-of-first-region-expected.html:
+        * fast/regions/bottom-overflow-out-of-first-region.html:
+        * fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-005-expected.html:
+        * fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-005.html:
+        * fast/regions/element-in-named-flow-absolute-from-fixed-expected.txt:
+        * fast/regions/element-in-named-flow-fixed-from-absolute-expected.txt:
+        * fast/regions/element-inflow-fixed-from-outflow-static-expected.txt:
+        * fast/regions/element-outflow-static-from-inflow-fixed-expected.txt:
+        * fast/regions/float-pushed-width-change-2-expected.html:
+        * fast/regions/float-pushed-width-change-2.html:
+        * fast/regions/float-pushed-width-change-expected.html:
+        * fast/regions/float-pushed-width-change.html:
+        * fast/regions/layers/dynamic-layer-added-with-no-layout-expected.txt: Removed.
+        * fast/regions/layers/dynamic-layer-removed-with-no-layout-expected.txt: Removed.
+        * fast/regions/layers/regions-promoted-to-layers-expected.txt: Removed.
+        * fast/regions/layers/regions-promoted-to-layers-horizontal-bt-expected.txt: Removed.
+        * fast/regions/layers/regions-promoted-to-layers-vertical-lr-expected.txt: Removed.
+        * fast/regions/layers/regions-promoted-to-layers-vertical-rl-expected.txt: Removed.
+        * fast/regions/outline-sides-in-region-expected.html:
+        * fast/regions/outline-sides-in-region.html:
+        * fast/regions/overflow-first-and-last-regions-expected.html: Removed.
+        * fast/regions/overflow-first-and-last-regions-in-container-hidden-expected.html: Removed.
+        * fast/regions/overflow-first-and-last-regions-in-container-hidden.html: Removed.
+        * fast/regions/overflow-first-and-last-regions.html: Removed.
+        * fast/regions/overflow-last-region-expected.html: Added.
+        * fast/regions/overflow-last-region.html: Added.
+        * fast/regions/overflow-nested-regions-expected.html: Removed.
+        * fast/regions/overflow-nested-regions.html: Removed.
+        * fast/regions/overflow-region-float-expected.html: Removed.
+        * fast/regions/overflow-region-float.html: Removed.
+        * fast/regions/overflow-region-inline-expected.html: Removed.
+        * fast/regions/overflow-region-inline.html: Removed.
+        * fast/regions/overflow-region-transform-expected.html: Removed.
+        * fast/regions/overflow-region-transform.html: Removed.
+        * fast/regions/overflow-scrollable-rotated-fragment-expected.html:
+        * fast/regions/overflow-scrollable-rotated-fragment.html:
+        * fast/regions/top-overflow-out-of-second-region-expected.html: Removed.
+        * fast/regions/top-overflow-out-of-second-region.html:
+        * fast/regions/webkit-flow-float-unable-to-push-expected.html:
+        * fast/regions/webkit-flow-float-unable-to-push.html:
+        * fast/repaint/increasing-region-content-height-expected.txt:
+        * fast/repaint/increasing-region-content-height.html:
+        * platform/gtk/fast/regions/text-region-split-vertical-rl-expected.txt: Added.
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/fast/regions/top-overflow-out-of-second-region-expected.png: Added.
+        * platform/mac/fast/regions/top-overflow-out-of-second-region-expected.txt: Added.
+
+2013-11-15  Antti Koivisto  <antti@apple.com>
+
+        Hovering over text using simple line path should not cause switch to line boxes
+        https://bugs.webkit.org/show_bug.cgi?id=124418
+
+        Reviewed by Anders Carlsson.
+
+        * fast/text/simple-lines-hover-expected.html: Added.
+        * fast/text/simple-lines-hover.html: Added.
+
+2013-11-15  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes][CSS Regions] Simplify shape-inside-on-multiple-regions-with-negative-shape-top.html
+        https://bugs.webkit.org/show_bug.cgi?id=123808
+
+        Reviewed by Mihnea Ovidenie.
+
+        Use a rectangle instead of a complex polygon in the test.
+
+        * fast/regions/shape-inside/shape-inside-on-multiple-regions-with-negative-shape-top-expected.html:
+        * fast/regions/shape-inside/shape-inside-on-multiple-regions-with-negative-shape-top.html:
+
+2013-11-15  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Add failure test expectations for failing tests.
+
+        * platform/efl/TestExpectations:
+
+2013-11-15  Tim Horton  <timothy_horton@apple.com>
+
+        results.html should have a link to historical results for a test/all failing tests
+        https://bugs.webkit.org/show_bug.cgi?id=124402
+
+        Reviewed by Simon Fraser.
+
+        * fast/harness/results.html:
+        Add a new rightmost column, 'history'.
+        Clicking on the column header will open the flakiness dashboard
+        for the entire set of failing tests; clicking on the link
+        in a particular test's row will open it just for that single test.
+
+        * fast/harness/resources/results-test.js:
+        Update the harness test to expect the new number of columns.
+
+2013-11-15  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Implement visual overflow for first & last regions
+        https://bugs.webkit.org/show_bug.cgi?id=118665
+
+        Rebased some tests due to regions layers changes.
+        Updated some tests to increase clarity. Some of them were only passing because two
+        regions were close together and the fact that an element was being painted
+        inside the wrong region was not visible. Floats are now also unsplittable.
+                - bottom-overflow-out-of-first-region
+                - float-pushed-width-change-2
+                - float-pushed-width-change
+                - webkit-flow-float-unable-to-push
+
+        Changed top-overflow-out-of-second-region to reftest.
+
+        Added new tests for testing the visual overflow in different situations 
+        (transformed, inline, opacity, floating).
+
+        Reviewed by David Hyatt.
+
+        * fast/regions/bottom-overflow-out-of-first-region-expected.html:
+        * fast/regions/bottom-overflow-out-of-first-region.html:
+        * fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-005-expected.html:
+        * fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-005.html:
+        * fast/regions/element-in-named-flow-absolute-from-fixed-expected.txt:
+        * fast/regions/element-in-named-flow-fixed-from-absolute-expected.txt:
+        * fast/regions/element-inflow-fixed-from-outflow-static-expected.txt:
+        * fast/regions/element-outflow-static-from-inflow-fixed-expected.txt:
+        * fast/regions/float-pushed-width-change-2-expected.html:
+        * fast/regions/float-pushed-width-change-2.html:
+        * fast/regions/float-pushed-width-change-expected.html:
+        * fast/regions/float-pushed-width-change.html:
+        * fast/regions/layers/dynamic-layer-added-with-no-layout-expected.txt: Added.
+        * fast/regions/layers/dynamic-layer-removed-with-no-layout-expected.txt: Added.
+        * fast/regions/layers/regions-promoted-to-layers-expected.txt: Added.
+        * fast/regions/layers/regions-promoted-to-layers-horizontal-bt-expected.txt: Added.
+        * fast/regions/layers/regions-promoted-to-layers-vertical-lr-expected.txt: Added.
+        * fast/regions/layers/regions-promoted-to-layers-vertical-rl-expected.txt: Added.
+        * fast/regions/outline-sides-in-region-expected.html:
+        * fast/regions/outline-sides-in-region.html:
+        * fast/regions/overflow-first-and-last-regions-expected.html: Added.
+        * fast/regions/overflow-first-and-last-regions-in-container-hidden-expected.html: Added.
+        * fast/regions/overflow-first-and-last-regions-in-container-hidden.html: Added.
+        * fast/regions/overflow-first-and-last-regions.html: Added.
+        * fast/regions/overflow-last-region-expected.html: Removed.
+        * fast/regions/overflow-last-region.html: Removed.
+        * fast/regions/overflow-nested-regions-expected.html: Added.
+        * fast/regions/overflow-nested-regions.html: Added.
+        * fast/regions/overflow-region-float-expected.html: Added.
+        * fast/regions/overflow-region-float.html: Added.
+        * fast/regions/overflow-region-inline-expected.html: Added.
+        * fast/regions/overflow-region-inline.html: Added.
+        * fast/regions/overflow-region-transform-expected.html: Added.
+        * fast/regions/overflow-region-transform.html: Added.
+        * fast/regions/overflow-scrollable-rotated-fragment-expected.html:
+        * fast/regions/overflow-scrollable-rotated-fragment.html:
+        * fast/regions/top-overflow-out-of-second-region-expected.html: Copied from LayoutTests/fast/regions/top-overflow-out-of-second-region.html.
+        * fast/regions/top-overflow-out-of-second-region.html:
+        * fast/regions/webkit-flow-float-unable-to-push-expected.html:
+        * fast/regions/webkit-flow-float-unable-to-push.html:
+        * platform/gtk/fast/regions/text-region-split-vertical-rl-expected.txt: Removed.
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/fast/regions/top-overflow-out-of-second-region-expected.png: Removed.
+        * platform/mac/fast/regions/top-overflow-out-of-second-region-expected.txt: Removed.
+
+2013-11-15  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Update TestExpectations files with failing tests.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/TestExpectations:
+
+2013-11-15  Stephane Jadaud  <sjadaud@sii.fr>
+
+        [GStreamer] Add support for Media Source API
+        https://bugs.webkit.org/show_bug.cgi?id=99065
+
+        Reviewed by Philippe Normand.
+
+        * platform/gtk/TestExpectations:
+
+2013-11-15  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Mark flaky and incorrectly passing tests.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/TestExpectations:
+        * platform/efl/ietestcenter/css3/bordersbackgrounds/background-repeat-space-padding-box-expected.txt: Removed wrong test expectation.
+
+2013-11-15  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK] Bumping GStreamer version to 1.2.1 for the dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=124360
+
+        Reviewed by Philippe Normand.
+
+        * platform/gtk/TestExpectations: Flagged
+        media/video-canvas-drawing-output.html
+
+2013-11-15  Sun-woo Nam  <sunny.nam@samsung.com>
+
+        [EFL] Layout tests with international text properties need to be rebaselined.
+        https://bugs.webkit.org/show_bug.cgi?id=124389
+
+        Unreviewed, EFL rabaseline.
+
+        EFL international text rebaselined after r147668.
+        Move some expectation files to efl common place because those files in wk1 are
+        in exact accordance with files in wk2, and then delete the files in wk1 and wk2.
+
+        * platform/efl-wk1/fast/text/international/003-expected.txt: Removed.
+        * platform/efl-wk1/fast/text/international/bidi-layout-across-linebreak-expected.txt: Removed.
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/fast/text/international/002-expected.txt:
+        * platform/efl/fast/text/international/003-expected.txt:
+        Renamed from LayoutTests/platform/efl-wk2/fast/text/international/003-expected.txt.
+        * platform/efl/fast/text/international/bidi-layout-across-linebreak-expected.txt:
+        Renamed from LayoutTests/platform/efl-wk2/fast/text/international/bidi-layout-across-linebreak-expected.txt.
+
+2013-11-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Update WebCrypto tests
+        https://bugs.webkit.org/show_bug.cgi?id=124388
+
+        Reviewed by Anders Carlsson.
+
+        Updated tests for newer common.js. Changed some tests from just dumping results
+        to comparing them to known expected ones. Fixed a syntax error in
+        aes-cbc-invalid-length.html, so it now actually runs.
+
+        * crypto/subtle/resources/common.js: Update to a new version from Blink, because
+        it's much nicer than the old one, and it's good to be compatible at test level.
+        Moved crypto.subtle definition from webkitSubtle here to avoid repeating it in all
+        tests. Added a quick and dirty Promise.all implementation.
+
+        * crypto/subtle/aes-cbc-192-encrypt-decrypt-expected.txt:
+        * crypto/subtle/aes-cbc-192-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-256-encrypt-decrypt-expected.txt:
+        * crypto/subtle/aes-cbc-256-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-expected.txt:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-with-padding-expected.txt:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-with-padding.html:
+        * crypto/subtle/aes-cbc-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-generate-key.html:
+        * crypto/subtle/aes-cbc-import-jwk-expected.txt:
+        * crypto/subtle/aes-cbc-import-jwk.html:
+        * crypto/subtle/aes-cbc-invalid-length-expected.txt:
+        * crypto/subtle/aes-cbc-invalid-length.html:
+        * crypto/subtle/aes-cbc-wrong-key-class.html:
+        * crypto/subtle/aes-export-key-expected.txt:
+        * crypto/subtle/aes-export-key.html:
+        * crypto/subtle/argument-conversion-expected.txt:
+        * crypto/subtle/argument-conversion.html:
+        * crypto/subtle/hmac-export-key-expected.txt:
+        * crypto/subtle/hmac-export-key.html:
+        * crypto/subtle/hmac-generate-key.html:
+        * crypto/subtle/hmac-import-jwk-expected.txt:
+        * crypto/subtle/hmac-import-jwk.html:
+        * crypto/subtle/hmac-sign-verify-empty-key-expected.txt:
+        * crypto/subtle/hmac-sign-verify-empty-key.html:
+        * crypto/subtle/hmac-sign-verify-expected.txt:
+        * crypto/subtle/hmac-sign-verify.html:
+        * crypto/subtle/import-jwk-expected.txt:
+        * crypto/subtle/import-jwk.html:
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-key-expected.txt:
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-key.html:
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-expected.txt:
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk.html:
+        * crypto/subtle/rsassa-pkcs1-v1_5-sign-verify-expected.txt:
+        * crypto/subtle/rsassa-pkcs1-v1_5-sign-verify.html:
+        * crypto/subtle/sha-1-expected.txt:
+        * crypto/subtle/sha-1.html:
+        * crypto/subtle/sha-224-expected.txt:
+        * crypto/subtle/sha-224.html:
+        * crypto/subtle/sha-256-expected.txt:
+        * crypto/subtle/sha-256.html:
+        * crypto/subtle/sha-384-expected.txt:
+        * crypto/subtle/sha-384.html:
+        * crypto/subtle/sha-512-expected.txt:
+        * crypto/subtle/sha-512.html:
+
+2013-11-14  Victor Costan  <costan@gmail.com>
+
+        XMLSerializer escapes < > & correctly inside <script> and <style> tags.
+        https://bugs.webkit.org/show_bug.cgi?id=123914
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/SelectorAPI/resig-SelectorsAPI-test-expected.txt: fix incorrect expectations.
+        * fast/dom/SelectorAPI/resig-SelectorsAPI-test.xhtml: use CDATA consistently.
+        * fast/dom/XMLSerializer-entities-expected.txt: Added.
+        * fast/dom/XMLSerializer-entities.html: Added.
+
+2013-11-14  Victor Costan  <costan@gmail.com>
+
+        Clean up sequence handling in Blob constructor
+        https://bugs.webkit.org/show_bug.cgi?id=124343
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/files/blob-constructor-expected.txt:
+        * fast/files/script-tests/blob-constructor.js:
+            Add test with sequence that throws an error on property access.
+        (get Object):
+
+2013-11-14  Tim Horton  <timothy_horton@apple.com>
+
+        Change Fail->Failure in some recent expectations.
+
+        Suddenly, everything is clear.
+
+        * platform/mac/TestExpectations:
+
+2013-11-14  Tim Horton  <timothy_horton@apple.com>
+
+        http/tests/security/frameNavigation/xss-DENIED-plugin-navigation.html is slow, frequently > 30 second timeout
+        https://bugs.webkit.org/show_bug.cgi?id=124373
+
+        * platform/mac/TestExpectations:
+        Mark test as flaky on Mountain Lion Release bot.
+        Marking as slow seems to have no effect on the notifyDone timeout, just the outer timeouts.
+
+2013-11-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Implement raw format for WebCrypto key export
+        https://bugs.webkit.org/show_bug.cgi?id=124376
+
+        Reviewed by Anders Carlsson.
+
+        * crypto/subtle/aes-export-key-expected.txt: Added.
+        * crypto/subtle/aes-export-key.html: Added.
+        * crypto/subtle/hmac-export-key-expected.txt: Added.
+        * crypto/subtle/hmac-export-key.html: Added.
+
+2013-11-14  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes] Accept the new <box> value for shape-outside
+        https://bugs.webkit.org/show_bug.cgi?id=124227
+
+        Reviewed by David Hyatt.
+
+        Test the different box values with different writing modes.
+
+        * fast/shapes/parsing/parsing-shape-inside-expected.html: Adding box values as invalid.
+        * fast/shapes/parsing/parsing-shape-inside.html: Ditto.
+        * fast/shapes/parsing/parsing-shape-outside-expected.html: Adding box values as valid.
+        * fast/shapes/parsing/parsing-shape-outside.html: Ditto.
+        * fast/shapes/shape-outside-floats/shape-outside-boxes-001-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-boxes-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-boxes-002-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-boxes-002.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-boxes-003-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-boxes-003.html: Added.
+
+2013-11-14  Jer Noble  <jer.noble@apple.com>
+
+        Flaky Test: media/video-fast-seek.html
+        https://bugs.webkit.org/show_bug.cgi?id=124298
+
+        Reviewed by Eric Carlson.
+
+        Don't check for the precise results of currentTime, as MediaTime -> double
+        rounding will occasionally result in errors.
+
+        * media/video-fast-seek-expected.txt:
+        * media/video-fast-seek.html:
+
+2013-11-14  Tim Horton  <timothy_horton@apple.com>
+
+        fullscreen/anonymous-block-merge-crash.html often times out in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=124318
+
+        * platform/mac/TestExpectations:
+        Used the wrong kind of failure for a notifyDone timeout.
+
+2013-11-14  Tim Horton  <timothy_horton@apple.com>
+
+        http/tests/security/frameNavigation/xss-DENIED-plugin-navigation.html is slow, frequently > 30 second timeout
+        https://bugs.webkit.org/show_bug.cgi?id=124373
+
+        * platform/mac/TestExpectations:
+        Mark test as slow on Mountain Lion Release bot.
+
+2013-11-14  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] HMAC sign/verify crashes when key is empty
+        https://bugs.webkit.org/show_bug.cgi?id=124372
+
+        Reviewed by Sam Weinig.
+
+        * crypto/subtle/hmac-sign-verify-empty-key-expected.txt: Added.
+        * crypto/subtle/hmac-sign-verify-empty-key.html: Added.
+
+2013-11-14  Samuel White  <samuel_white@apple.com>
+
+        AX: Calling NSAccessibilityColumnsAttribute and NSAccessibilityRowsAttribute simply to get column/row count can be very expensive.
+        https://bugs.webkit.org/show_bug.cgi?id=124293
+
+        Reviewed by Chris Fleizach.
+
+        Added test to ensure NSAccessibilityColumnsAttribute and NSAccessibilityRowsAttribute
+        behave as expected. Also updated existing table tests to reflect this additional API.
+
+        * platform/mac/accessibility/table-column-and-row-count-expected.txt: Added.
+        * platform/mac/accessibility/table-column-and-row-count.html: Added.
+        * platform/mac/accessibility/table-detection-expected.txt:
+        * platform/mac/accessibility/table-with-rules-expected.txt:
+
+2013-11-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Implement RSASSA-PKCS1-v1_5 sign/verify
+        https://bugs.webkit.org/show_bug.cgi?id=124335
+
+        Reviewed by Sam Weinig.
+
+        * crypto/subtle/rsassa-pkcs1-v1_5-sign-verify-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-sign-verify.html: Added.
+
+2013-11-14  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] Empty polygons with non-zero shape-padding cause an ASSERT crash
+        https://bugs.webkit.org/show_bug.cgi?id=124324
+
+        Reviewed by Andreas Kling.
+
+        * fast/shapes/shape-inside/shape-inside-empty-polygon-crash-expected.txt: Added.
+        * fast/shapes/shape-inside/shape-inside-empty-polygon-crash.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-empty-polygon-crash-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-empty-polygon-crash.html: Added.
+
+2013-11-14  Sun-woo Nam  <sunny.nam@samsung.com>
+
+        [EFL] Layout tests with text areas need to be rebaselined.
+        https://bugs.webkit.org/show_bug.cgi?id=124337
+
+        Unreviewed, EFL gatdening.
+
+        EFL text areas rebaselined after r129492.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/fast/forms/basic-textareas-expected.txt:
+        * platform/efl/fast/forms/basic-textareas-quirks-expected.txt:
+
+2013-11-13  Victor Costan  <costan@gmail.com>
+
+        Blob constructor accepts a sequence (array-like object) as first arg.
+        https://bugs.webkit.org/show_bug.cgi?id=124175
+
+        Reviewed by Christophe Dumez.
+
+
+        * crypto/subtle/argument-conversion-expected.txt: Updated sequence error expectations.
+        * fast/dom/Window/window-postmessage-args-expected.txt: Updated sequence error expectations.
+        * fast/events/constructors/message-event-constructor-expected.txt: Updated sequence error expectations.
+        * fast/events/message-port-multi-expected.txt: Updated sequence error expectations.
+        * fast/files/blob-constructor-expected.txt: Updated error text and added expectations.
+        * fast/files/script-tests/blob-constructor.js: Added sequence test cases.
+        * fast/workers/worker-context-multi-port-expected.txt: Updated sequence error expectations.
+        * fast/workers/worker-multi-port-expected.txt: Updated sequence error expectations.
+
+2013-11-13  Sun-woo Nam  <sunny.nam@samsung.com>
+
+        [EFL] Layout tests with css3 selectors3 properties need to be rebaselined.
+        https://bugs.webkit.org/show_bug.cgi?id=124266
+
+        Unreviewed, EFL gardening.
+
+        EFL css3 rebaselined after r111644.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/css3/selectors3/html/css3-modsel-1-expected.txt:
+        * platform/efl/css3/selectors3/xhtml/css3-modsel-1-expected.txt:
+        * platform/efl/css3/selectors3/xml/css3-modsel-1-expected.txt:
+
+2013-11-13  Tim Horton  <timothy_horton@apple.com>
+
+        Layout Test animations/resume-after-page-cache.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=124321
+
+        * platform/mac/TestExpectations:
+
+2013-11-13  Tim Horton  <timothy_horton@apple.com>
+
+        fullscreen/anonymous-block-merge-crash.html often times out in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=124318
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        Mark test as timing out on WebKit1 only.
+
+2013-11-13  Tim Horton  <timothy_horton@apple.com>
+
+        compositing/regions/transform-transparent-positioned-video-inside-region.html is flaky on all bots
+        https://bugs.webkit.org/show_bug.cgi?id=124311
+
+        * platform/mac/TestExpectations:
+        Mark as flaky image fail.
+
+2013-11-13  Tim Horton  <timothy_horton@apple.com>
+
+        Remove a crash expectation from a test that seems fixed by r159218.
+
+        * platform/mac/TestExpectations:
+
+2013-11-13  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        Modifying RTCSessionDescription object construction to match the spec
+        https://bugs.webkit.org/show_bug.cgi?id=124212
+
+        Reviewed by Eric Carlson.
+
+        According to the spec the RTCSessionDescriptionInit parameter in RTCSessionDescription constructor is optional,
+        which must not be nullable. If the 'type' and/or 'sdp' keys are not present, the string object that stores
+        them in the RTCSessionDescription class, must be null in those cases. Also, if an object that is not a
+        Dictionary is passed as argument to the constructor, an exception must be raised.
+
+        * fast/mediastream/RTCSessionDescription-expected.txt:
+        * fast/mediastream/RTCSessionDescription.html:
+
+2013-11-09  Martin Robinson  <mrobinson@igalia.com>
+
+        [MathML] The double bar vertical delimiter does not stretch properly
+        https://bugs.webkit.org/show_bug.cgi?id=123543
+
+        Reviewed by Chris Fleizach.
+
+        * mathml/presentation/mo-stretch.html: Add &DoubleVerticalBar; to this test,
+        which covers the other version of the vertical bar.
+        * platform/gtk/mathml/presentation/mo-stretch-expected.png:
+        * platform/gtk/mathml/presentation/mo-stretch-expected.txt:
+
+2013-11-13  Roger Fong  <roger_fong@apple.com>
+
+        [Windows] Unreviewed gardening of some canvas tests.
+
+        * platform/win/fast/canvas/canvas-draw-canvas-on-canvas-shadow-expected.txt:
+        * platform/win/fast/canvas/canvas-fillRect-gradient-shadow-expected.txt:
+        * platform/win/fast/canvas/canvas-render-layer-expected.txt:
+        * platform/win/fast/canvas/canvas-scale-shadowBlur-expected.txt:
+        * platform/win/fast/canvas/canvas-scale-strokePath-shadow-expected.txt:
+        * platform/win/fast/canvas/canvas-strokePath-gradient-shadow-expected.txt:
+        * platform/win/fast/canvas/canvas-strokeRect-alpha-shadow-expected.txt:
+        * platform/win/fast/canvas/canvas-strokeRect-gradient-shadow-expected.txt:
+        * platform/win/fast/forms/range/slider-mouse-events-expected.txt:
+
+2013-11-13  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Remove failure tests expectations after r159116.
+
+        * platform/efl/TestExpectations:
+
+2013-11-13  Alexey Proskuryakov  <ap@apple.com>
+
+        crypto/subtle/rsassa-pkcs1-v1_5-import-jwk.html is failing on Maverics release bot
+        https://bugs.webkit.org/show_bug.cgi?id=124280
+
+        Reviewed by Anders Carlsson.
+
+        * TestExpectations: Unskip.
+
+2013-11-12  Jer Noble  <jer.noble@apple.com>
+
+        Add support for HTMLMediaElement.fastSeek()
+        https://bugs.webkit.org/show_bug.cgi?id=124262
+
+        Reviewed by Eric Carlson.
+
+        * media/video-fast-seek-expected.txt: Added.
+        * media/video-fast-seek.html: Added.
+
+2013-11-13  Antti Koivisto  <antti@apple.com>
+
+        * TestExpectations: Skip crypto/subtle/rsassa-pkcs1-v1_5-import-jwk.html
+
 2013-11-12  Antti Koivisto  <antti@apple.com>
 
         Support overflow-wrap:break-word on simple line path

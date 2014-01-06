@@ -48,6 +48,9 @@ public:
     }
     virtual ~WorkerRuntimeAgent();
 
+    virtual void didCreateFrontendAndBackend(InspectorFrontendChannel*, InspectorBackendDispatcher*) OVERRIDE;
+    virtual void willDestroyFrontendAndBackend() OVERRIDE;
+
     // Protocol commands.
     virtual void run(ErrorString*);
 
@@ -61,6 +64,7 @@ private:
     virtual void muteConsole();
     virtual void unmuteConsole();
     WorkerGlobalScope* m_workerGlobalScope;
+    RefPtr<InspectorRuntimeBackendDispatcher> m_backendDispatcher;
     bool m_paused;
 };
 

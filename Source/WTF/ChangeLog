@@ -1,3 +1,137 @@
+2013-11-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Allow the FTL debug dumps to include the new size field
+        https://bugs.webkit.org/show_bug.cgi?id=124479
+
+        Reviewed by Mark Hahnenberg.
+
+        * wtf/PrintStream.cpp:
+        (WTF::printInternal):
+        * wtf/PrintStream.h:
+
+2013-11-17  Jer Noble  <jer.noble@apple.com>
+
+        [WTF] Media time should not have a constructor which accepts a single int or float.
+        https://bugs.webkit.org/show_bug.cgi?id=124470
+
+        Having a constructor taking a single number value, as it's very easy to accidentially mis-
+        initialize a MediaTime with a double (automatically casted to a int64_t).
+
+        Reviewed by Eric Carlson.
+
+        * wtf/MediaTime.h:
+
+2013-11-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r159432 to make WinCairo build happy.
+
+        * wtf/text/WTFString.h:
+
+2013-11-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix make distcheck.
+
+        * GNUmakefile.list.am: Add missing header file.
+
+2013-11-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Use uint8_t vectors for WebCrypto data
+        https://bugs.webkit.org/show_bug.cgi?id=124466
+
+        Reviewed by Sam Weinig.
+
+        Binary data can be UTF-8, in which case "char*" is idiomatic, or it can be arbitrary
+        binary data, in which case "uint8_t*" is more common.
+
+        Changed encode functions that took "const char *" to "const void*", and decode
+        functions that took "Vector<char>&" now take an adapter class.
+
+        The adapter relies on Vector<char> and Vector<uint8_t> classes having an identical layout.
+
+        * wtf/text/Base64.cpp:
+        (WTF::base64Encode):
+        (WTF::base64URLEncode):
+        (WTF::base64DecodeInternal):
+        (WTF::base64Decode):
+        (WTF::base64URLDecode):
+        * wtf/text/Base64.h:
+        (WTF::SignedOrUnsignedCharVectorAdapter):
+        (WTF::ConstSignedOrUnsignedCharVectorAdapter):
+        (WTF::base64Encode):
+        (WTF::base64URLEncode):
+
+2013-11-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Support exporting symmetric keys as JWK
+        https://bugs.webkit.org/show_bug.cgi?id=124442
+
+        Reviewed by Sam Weinig.
+
+        Base64URL encoding doesn't use '=' padding, and doesn't need any other options.
+        Added this mode for encode, and removed policy arguments from exposed functions.
+
+        * wtf/text/Base64.cpp:
+        (WTF::base64EncodeInternal):
+        (WTF::base64URLEncode):
+        (WTF::base64URLDecode):
+        * wtf/text/Base64.h:
+        (WTF::base64URLEncode):
+
+2013-11-15  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Remove VTableSpectrum
+        https://bugs.webkit.org/show_bug.cgi?id=124427
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Platform.h:
+
+2013-11-15  Jer Noble  <jer.noble@apple.com>
+
+        MediaTime addition and subtraction operators have errors when the rhs is infinite.
+        https://bugs.webkit.org/show_bug.cgi?id=124413
+
+        Reviewed by Eric Carlson.
+
+        Correctly account for infinities that can occur on the right-hand side of addition or
+        subtraction operators.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::operator+):
+        (WTF::MediaTime::operator-):
+
+2013-11-14  Oliver Hunt  <oliver@apple.com>
+
+        Make CLoop easier to build, and make it work
+        https://bugs.webkit.org/show_bug.cgi?id=124359
+
+        Reviewed by Geoffrey Garen.
+
+        Make building with the CLoop forcibly enabled manually
+        disable the JITs
+
+        * wtf/Platform.h:
+
+2013-11-14  Andreas Kling  <akling@apple.com>
+
+        FontDescription copies should share families list, not duplicate it.
+        <https://webkit.org/b/124338>
+
+        Add RefCountedArray::operator==.
+
+        Reviewed by Antti Koivisto.
+
+2013-11-13  Anders Carlsson  <andersca@apple.com>
+
+        Add a Vector constructor that takes an std::initializer_list
+        https://bugs.webkit.org/show_bug.cgi?id=124287
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/Compiler.h:
+        * wtf/Vector.h:
+        (WTF::Vector::Vector):
+
 2013-11-12  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Unreviewed gardening.

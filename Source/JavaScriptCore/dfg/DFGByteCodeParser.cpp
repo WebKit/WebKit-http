@@ -697,6 +697,15 @@ private:
     
     bool canFold(Node* node)
     {
+        if (Options::validateFTLOSRExitLiveness()) {
+            // The static folding that the bytecode parser does results in the DFG
+            // being able to do some DCE that the bytecode liveness analysis would
+            // miss. Hence, we disable the static folding if we're validating FTL OSR
+            // exit liveness. This may be brutish, but this validator is powerful
+            // enough that it's worth it.
+            return false;
+        }
+        
         return node->isStronglyProvedConstantIn(inlineCallFrame());
     }
 
@@ -3073,6 +3082,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                     break;
                 }
                 Node* base = cellConstantWithStructureCheck(globalObject, status.structureSet().singletonStructure());
+                addToGraph(Phantom, get(VirtualRegister(scope)));
                 if (JSValue specificValue = status.specificValue())
                     set(VirtualRegister(dst), cellConstant(specificValue.asCell()));
                 else
@@ -3081,6 +3091,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             }
             case GlobalVar:
             case GlobalVarWithVarInjectionChecks: {
+                addToGraph(Phantom, get(VirtualRegister(scope)));
                 SymbolTableEntry entry = globalObject->symbolTable()->get(uid);
                 if (!entry.couldBeWatched() || !m_graph.watchpoints().isStillValid(entry.watchpointSet())) {
                     set(VirtualRegister(dst), addToGraph(GetGlobalVar, OpInfo(operand), OpInfo(prediction)));
@@ -3116,7 +3127,10 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             uintptr_t operand;
             {
                 ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
-                structure = currentInstruction[5].u.structure.get();
+                if (resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks)
+                    structure = 0;
+                else
+                    structure = currentInstruction[5].u.structure.get();
                 operand = reinterpret_cast<uintptr_t>(currentInstruction[6].u.pointer);
             }
 
@@ -3131,6 +3145,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                     break;
                 }
                 Node* base = cellConstantWithStructureCheck(globalObject, status.oldStructure());
+                addToGraph(Phantom, get(VirtualRegister(scope)));
                 handlePutByOffset(base, identifierNumber, static_cast<PropertyOffset>(operand), get(VirtualRegister(value)));
                 // Keep scope alive until after put.
                 addToGraph(Phantom, get(VirtualRegister(scope)));
@@ -3138,6 +3153,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             }
             case GlobalVar:
             case GlobalVarWithVarInjectionChecks: {
+                addToGraph(Phantom, get(VirtualRegister(scope)));
                 SymbolTableEntry entry = globalObject->symbolTable()->get(uid);
                 ASSERT(!entry.couldBeWatched() || !m_graph.watchpoints().isStillValid(entry.watchpointSet()));
                 addToGraph(PutGlobalVar, OpInfo(operand), get(VirtualRegister(value)));

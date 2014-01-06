@@ -1,15 +1,9 @@
 <!DOCTYPE html>
 <style>
-html {
-    height: 100%;
-}
 body {
     margin: 0;
     font-family: Helvetica, sans-serif;
     font-size: 11pt;
-    display: -webkit-flex;
-    -webkit-flex-direction: column;
-    height: 100%;
 }
 
 body > * {
@@ -52,9 +46,7 @@ th {
 }
 
 .content-container {
-    -webkit-flex: 1;
     min-height: 0;
-    overflow: auto;
 }
 
 .note {
@@ -77,11 +69,14 @@ th {
 
 #toolbar {
     position: fixed;
-    padding: 4px;
     top: 2px;
     right: 2px;
     text-align: right;
-    background-color: rgba(255, 255, 255, 0.85);
+}
+
+.floating-panel {
+    padding: 4px;
+    background-color: rgba(255, 255, 255, 0.9);
     border: 1px solid silver;
     border-radius: 4px;
 }
@@ -208,14 +203,32 @@ tbody.flagged .flag {
     image-rendering: -webkit-optimize-contrast;
 }
 
+#flagged-test-container {
+    position: fixed;
+    bottom: 4px;
+    right: 4px;
+    width: 50%;
+    min-width: 400px;
+    background-color: rgba(255, 255, 255, 0.75);
+}
+
+#flagged-test-container > h2 {
+    margin: 0 0 4px 0;
+}
+
 #flagged-tests {
-    padding: 5px;
-    height: 100px;
+    padding: 0 5px;
+    margin: 0;
+    height: 7em;
+    overflow-y: scroll;
 }
 </style>
 <style id="unexpected-style"></style>
 
 <script>
+if (window.testRunner)
+    testRunner.dumpAsText();
+
 var g_state;
 function globalState()
 {
@@ -607,6 +620,19 @@ function imageResultsCell(testObject, testPrefix, actual) {
     return row;
 }
 
+function flakinessDashboardURLForTests(testObjects)
+{
+    var testList = "";
+    for (var i = 0; i < testObjects.length; ++i) {
+        testList += testObjects[i].name;
+
+        if (i != testObjects.length - 1)
+            testList += ",";
+    }
+
+    return 'http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=' + encodeURIComponent(testList);
+}
+
 function tableRow(testObject)
 {    
     var row = '<tbody'
@@ -651,6 +677,8 @@ function tableRow(testObject)
 
     if (globalState().results.uses_expectations_file)
         row += '<td>' + (actual.indexOf('MISSING') == -1 ? testObject.expected : '') + '</td>';
+
+    row += '<td><a href="' + flakinessDashboardURLForTests([testObject]) + '">history</a></td>';
 
     row += '</tr></tbody>';
     return row;
@@ -737,8 +765,10 @@ function testList(tests, header, tableId)
             // FIXME: only include timeout actual/diff results here if we actually spit out results for timeout tests.
             html += textResultLinks(stripExtension(test));
         }
-        
-        html += '</td></tr></tbody>';
+
+        html += '</td><td><a href="' + flakinessDashboardURLForTests([testObject]) + '">history</a></td>';
+
+        html += '</tr></tbody>';
     }
     html += '</table></div>';
     return html;
@@ -1096,6 +1126,7 @@ TestNavigator.updateFlaggedTests = function()
     if (!flaggedTestTextbox) {
         var flaggedTestContainer = document.createElement('div');
         flaggedTestContainer.id = 'flagged-test-container';
+        flaggedTestContainer.className = 'floating-panel';
         flaggedTestContainer.innerHTML = '<h2>Flagged Tests</h2><pre id="flagged-tests" contentEditable></pre>';
         document.body.appendChild(flaggedTestContainer);
 
@@ -1134,9 +1165,8 @@ TestNavigator._scrollToCurrentTest = function()
         return;
 
     var rowRect = targetLink.getBoundingClientRect();
-    var container = document.querySelector('.content-container');
     // rowRect is in client coords (i.e. relative to viewport), so we just want to add its top to the current scroll position.
-    container.scrollTop += rowRect.top - 20;
+    document.body.scrollTop += rowRect.top;
 }
 
 TestNavigator.onlyShowUnexpectedFailuresChanged = function()
@@ -1152,7 +1182,6 @@ TestNavigator.onlyShowUnexpectedFailuresChanged = function()
         // Recompute TestNavigator.currentTestIndex
         var links = visibleTests();
         TestNavigator.currentTestIndex = links.indexOf(currentTest);
-        window.console.log('TestNavigator.currentTestIndex is ', TestNavigator.currentTestIndex)
     }
 }
 
@@ -1314,11 +1343,12 @@ function failingTestsTable(tests, title, id)
     if (globalState().results.uses_expectations_file)
         header += '<th>actual failure</th><th>expected failure</th>';
 
+    header += '<th><a href="' + flakinessDashboardURLForTests(tests) + '">history</a></th>';
+
     if (id == 'flaky-tests-table')
         header += '<th>failures</th>';
 
     header += '</tr></thead>';
-
 
     return header + tableRowHtml + '</table></div>';
 }
@@ -1328,16 +1358,7 @@ function generatePage()
 {
     forEachTest(processGlobalStateFor);
 
-    var html = '<div class=content-container><div id=toolbar>' +
-        '<div class="note">Use the i, j, k and l keys to navigate, e, c to expand and collapse, and f to flag</div>' +
-        '<a href="javascript:void()" onclick="expandAllExpectations()">expand all</a> ' +
-        '<a href="javascript:void()" onclick="collapseAllExpectations()">collapse all</a> ' +
-        '<a href="javascript:void()" id=options-link onclick="toggleOptionsMenu()">options</a>' +
-        '<div id=options-menu class=hidden-menu>' +
-            '<label><input id="unexpected-results" type=checkbox checked onchange="handleUnexpectedResultsChange()">Only unexpected results</label>' +
-            '<label><input id="toggle-images" type=checkbox checked onchange="handleToggleImagesChange()">Toggle images</label>' +
-            '<label title="Use newlines instead of spaces to separate flagged tests"><input id="use-newlines" type=checkbox checked onchange="handleToggleUseNewlines()">Use newlines</input>' +
-        '</div></div>';
+    var html = "";
 
     if (globalState().results.interrupted)
         html += "<p class='stopped-running-early-message'>Testing exited early.</p>"
@@ -1368,7 +1389,7 @@ function generatePage()
             '<p>httpd error log: <a href="error_log.txt">error_log.txt</a></p>';
     }
 
-    document.body.innerHTML = html + '</div>';
+    document.getElementById('main-content').innerHTML = html + '</div>';
 
     if (document.getElementById('results-table')) {
         document.getElementById('results-table').addEventListener('click', TableSorter.handleClick, false);
@@ -1389,7 +1410,21 @@ function generatePage()
     OptionWriter.apply();
 }
 </script>
-<!-- HACK: when json_results_test.js is included, loading this page runs the tests.
-It is not copied to the layout-test-results output directory. -->
-<script src="resources/results-test.js"></script>
-<body onload="generatePage()"></body>
+<body onload="generatePage()">
+    
+    <div class="content-container">
+        <div id="toolbar" class="floating-panel">
+        <div class="note">Use the i, j, k and l keys to navigate, e, c to expand and collapse, and f to flag</div>
+        <a href="javascript:void()" onclick="expandAllExpectations()">expand all</a>
+        <a href="javascript:void()" onclick="collapseAllExpectations()">collapse all</a>
+        <a href="javascript:void()" id=options-link onclick="toggleOptionsMenu()">options</a>
+        <div id="options-menu" class="hidden-menu">
+            <label><input id="unexpected-results" type="checkbox" checked onchange="handleUnexpectedResultsChange()">Only unexpected results</label>
+            <label><input id="toggle-images" type="checkbox" checked onchange="handleToggleImagesChange()">Toggle images</label>
+            <label title="Use newlines instead of spaces to separate flagged tests"><input id="use-newlines" type="checkbox" checked onchange="handleToggleUseNewlines()">Use newlines in flagged list</input>
+        </div>
+    </div>
+
+<div id="main-content"></div>
+
+</body>

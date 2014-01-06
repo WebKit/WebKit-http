@@ -29,6 +29,7 @@
 #if ENABLE(SUBTLE_CRYPTO)
 
 #include "CryptoAlgorithm.h"
+#include "CryptoKey.h"
 #include "CryptoKeyDataOctetSequence.h"
 
 namespace WebCore {
@@ -59,6 +60,22 @@ std::unique_ptr<CryptoKeyData> CryptoKeySerializationRaw::keyData() const
 {
     return CryptoKeyDataOctetSequence::create(m_data);
 }
+
+bool CryptoKeySerializationRaw::serialize(const CryptoKey& key, Vector<uint8_t>& result)
+{
+    std::unique_ptr<CryptoKeyData> keyData = key.exportData();
+    if (!keyData) {
+        // This generally shouldn't happen as long as all key types implement exportData(), but as underlying libraries return errors, there may be some rare failure conditions.
+        return false;
+    }
+
+    if (!isCryptoKeyDataOctetSequence(*keyData))
+        return false;
+
+    result.appendVector(toCryptoKeyDataOctetSequence(*keyData).octetSequence());
+    return true;
+}
+
 
 } // namespace WebCore
 

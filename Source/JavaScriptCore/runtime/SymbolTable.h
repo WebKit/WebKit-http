@@ -230,12 +230,12 @@ struct SymbolTableEntry {
     // immediately after a call to attemptToWatch().
     void attemptToWatch();
     
-    bool* addressOfIsWatched();
-    
     void addWatchpoint(Watchpoint*);
     
     WatchpointSet* watchpointSet()
     {
+        if (!isFat())
+            return 0;
         return fatEntry()->m_watchpoints.get();
     }
     
@@ -469,13 +469,13 @@ public:
     bool usesNonStrictEval() { return m_usesNonStrictEval; }
     void setUsesNonStrictEval(bool usesNonStrictEval) { m_usesNonStrictEval = usesNonStrictEval; }
 
-    int captureStart() { return m_captureStart; }
+    int captureStart() const { return m_captureStart; }
     void setCaptureStart(int captureStart) { m_captureStart = captureStart; }
 
-    int captureEnd() { return m_captureEnd; }
+    int captureEnd() const { return m_captureEnd; }
     void setCaptureEnd(int captureEnd) { m_captureEnd = captureEnd; }
 
-    int captureCount() { return -(m_captureEnd - m_captureStart); }
+    int captureCount() const { return -(m_captureEnd - m_captureStart); }
 
     int parameterCount() { return m_parameterCountIncludingThis - 1; }
     int parameterCountIncludingThis() { return m_parameterCountIncludingThis; }

@@ -41,7 +41,6 @@
 #include "Timer.h"
 
 #include <wtf/Deque.h>
-#include <wtf/ListHashSet.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
@@ -58,7 +57,6 @@ class Document;
 class Element;
 class Event;
 class InspectorClient;
-class InspectorFrontend;
 class InspectorHistory;
 class InspectorOverlay;
 class InspectorPageAgent;
@@ -91,7 +89,7 @@ struct EventListenerInfo {
     const EventListenerVector eventListenerVector;
 };
 
-class InspectorDOMAgent : public InspectorBaseAgent<InspectorDOMAgent>, public InspectorBackendDispatcher::DOMCommandHandler {
+class InspectorDOMAgent : public InspectorBaseAgent, public InspectorDOMBackendDispatcherHandler {
     WTF_MAKE_NONCOPYABLE(InspectorDOMAgent);
 public:
     struct DOMListener {
@@ -112,8 +110,8 @@ public:
 
     ~InspectorDOMAgent();
 
-    virtual void setFrontend(InspectorFrontend*);
-    virtual void clearFrontend();
+    virtual void didCreateFrontendAndBackend(InspectorFrontendChannel*, InspectorBackendDispatcher*) OVERRIDE;
+    virtual void willDestroyFrontendAndBackend() OVERRIDE;
 
     Vector<Document*> documents();
     void reset();
@@ -132,7 +130,7 @@ public:
     virtual void setOuterHTML(ErrorString*, int nodeId, const String& outerHTML);
     virtual void setNodeValue(ErrorString*, int nodeId, const String& value);
     virtual void getEventListenersForNode(ErrorString*, int nodeId, const WTF::String* objectGroup, RefPtr<TypeBuilder::Array<TypeBuilder::DOM::EventListener>>& listenersArray);
-    virtual void performSearch(ErrorString*, const String& whitespaceTrimmedQuery, String* searchId, int* resultCount);
+    virtual void performSearch(ErrorString*, const String& whitespaceTrimmedQuery, const RefPtr<InspectorArray>* nodeIds, String* searchId, int* resultCount);
     virtual void getSearchResults(ErrorString*, const String& searchId, int fromIndex, int toIndex, RefPtr<TypeBuilder::Array<int>>&);
     virtual void discardSearchResults(ErrorString*, const String& searchId);
     virtual void resolveNode(ErrorString*, int nodeId, const String* objectGroup, RefPtr<TypeBuilder::Runtime::RemoteObject>& result);
@@ -245,7 +243,8 @@ private:
     InjectedScriptManager* m_injectedScriptManager;
     InspectorOverlay* m_overlay;
     InspectorClient* m_client;
-    InspectorFrontend::DOM* m_frontend;
+    std::unique_ptr<InspectorDOMFrontendDispatcher> m_frontendDispatcher;
+    RefPtr<InspectorDOMBackendDispatcher> m_backendDispatcher;
     DOMListener* m_domListener;
     NodeToIdMap m_documentNodeToIdMap;
     typedef HashMap<RefPtr<Node>, BackendNodeId> NodeToBackendIdMap;

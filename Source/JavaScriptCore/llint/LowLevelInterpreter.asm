@@ -71,6 +71,11 @@ const DeletedValueTag = -7
 const LowestTag = DeletedValueTag
 end
 
+# Watchpoint states
+const ClearWatchpoint = 0
+const IsWatched = 1
+const IsInvalidated = 2
+
 # Some register conventions.
 if JSVALUE64
     # - Use a pair of registers to represent the PC: one register for the
@@ -202,11 +207,9 @@ macro assert(assertion)
 end
 
 macro preserveReturnAddressAfterCall(destinationRegister)
-    if C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or ARM64 or MIPS
+    if C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or ARM64 or MIPS or SH4
         # In C_LOOP case, we're only preserving the bytecode vPC.
         move lr, destinationRegister
-    elsif SH4
-        stspr destinationRegister
     elsif X86 or X86_64
         pop destinationRegister
     else
@@ -215,11 +218,9 @@ macro preserveReturnAddressAfterCall(destinationRegister)
 end
 
 macro restoreReturnAddressBeforeReturn(sourceRegister)
-    if C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or ARM64 or MIPS
+    if C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or ARM64 or MIPS or SH4
         # In C_LOOP case, we're only restoring the bytecode vPC.
         move sourceRegister, lr
-    elsif SH4
-        ldspr sourceRegister
     elsif X86 or X86_64
         push sourceRegister
     else
@@ -421,6 +422,12 @@ macro doReturn()
     ret
 end
 
+# stub to call into JavaScript
+# EncodedJSValue callToJavaScript(void* code, Register* topOfStack)
+# Note, if this stub or one of it's related macros is changed, make the
+# equivalent changes in jit/JITStubsX86.h and/or jit/JITStubsMSVC64.asm
+_callToJavaScript:
+    doCallToJavaScript()
 
 # Indicate the beginning of LLInt.
 _llint_begin:

@@ -488,10 +488,12 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
     WKPagePolicyClient pagePolicyClient = {
         kWKPagePolicyClientCurrentVersion,
         this,
-        decidePolicyForNavigationAction,
+        0, // decidePolicyForNavigationAction_deprecatedForUseWithV0
         0, // decidePolicyForNewWindowAction
-        decidePolicyForResponse,
+        0, // decidePolicyForResponse_deprecatedForUseWithV0
         0, // unableToImplementPolicy
+        decidePolicyForNavigationAction,
+        decidePolicyForResponse,
     };
     WKPageSetPagePolicyClient(m_mainWebView->page(), &pagePolicyClient);
 
@@ -1216,7 +1218,7 @@ void TestController::unavailablePluginButtonClicked(WKPageRef, WKPluginUnavailab
     printf("MISSING PLUGIN BUTTON PRESSED\n");
 }
 
-void TestController::decidePolicyForNavigationAction(WKPageRef, WKFrameRef, WKFrameNavigationType, WKEventModifiers, WKEventMouseButton, WKURLRequestRef, WKFramePolicyListenerRef listener, WKTypeRef, const void* clientInfo)
+void TestController::decidePolicyForNavigationAction(WKPageRef, WKFrameRef, WKFrameNavigationType, WKEventModifiers, WKEventMouseButton, WKFrameRef, WKURLRequestRef, WKFramePolicyListenerRef listener, WKTypeRef, const void* clientInfo)
 {
     static_cast<TestController*>(const_cast<void*>(clientInfo))->decidePolicyForNavigationAction(listener);
 }
@@ -1231,7 +1233,7 @@ void TestController::decidePolicyForNavigationAction(WKFramePolicyListenerRef li
     WKFramePolicyListenerUse(listener);
 }
 
-void TestController::decidePolicyForResponse(WKPageRef, WKFrameRef frame, WKURLResponseRef response, WKURLRequestRef, WKFramePolicyListenerRef listener, WKTypeRef, const void* clientInfo)
+void TestController::decidePolicyForResponse(WKPageRef, WKFrameRef frame, WKURLResponseRef response, WKURLRequestRef, bool canShowMIMEType, WKFramePolicyListenerRef listener, WKTypeRef, const void* clientInfo)
 {
     static_cast<TestController*>(const_cast<void*>(clientInfo))->decidePolicyForResponse(frame, response, listener);
 }

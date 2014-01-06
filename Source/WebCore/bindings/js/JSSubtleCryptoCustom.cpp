@@ -155,8 +155,8 @@ JSValue JSSubtleCrypto::encrypt(ExecState* exec)
         return jsUndefined();
     }
 
-    Vector<CryptoOperationData> data;
-    if (!sequenceOfCryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(2), data)) {
+    CryptoOperationData data;
+    if (!cryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(2), data)) {
         ASSERT(exec->hadException());
         return jsUndefined();
     }
@@ -201,8 +201,8 @@ JSValue JSSubtleCrypto::decrypt(ExecState* exec)
         return jsUndefined();
     }
 
-    Vector<CryptoOperationData> data;
-    if (!sequenceOfCryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(2), data)) {
+    CryptoOperationData data;
+    if (!cryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(2), data)) {
         ASSERT(exec->hadException());
         return jsUndefined();
     }
@@ -247,8 +247,8 @@ JSValue JSSubtleCrypto::sign(ExecState* exec)
         return jsUndefined();
     }
 
-    Vector<CryptoOperationData> data;
-    if (!sequenceOfCryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(2), data)) {
+    CryptoOperationData data;
+    if (!cryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(2), data)) {
         ASSERT(exec->hadException());
         return jsUndefined();
     }
@@ -299,8 +299,8 @@ JSValue JSSubtleCrypto::verify(ExecState* exec)
         return jsUndefined();
     }
 
-    Vector<CryptoOperationData> data;
-    if (!sequenceOfCryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(3), data)) {
+    CryptoOperationData data;
+    if (!cryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(3), data)) {
         ASSERT(exec->hadException());
         return jsUndefined();
     }
@@ -335,8 +335,8 @@ JSValue JSSubtleCrypto::digest(ExecState* exec)
         return jsUndefined();
     }
 
-    Vector<CryptoOperationData> data;
-    if (!sequenceOfCryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(1), data)) {
+    CryptoOperationData data;
+    if (!cryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(1), data)) {
         ASSERT(exec->hadException());
         return jsUndefined();
     }
@@ -448,7 +448,7 @@ JSValue JSSubtleCrypto::importKey(JSC::ExecState* exec)
         break;
     }
     default:
-        throwTypeError(exec, "Unsupported key format");
+        throwTypeError(exec, "Unsupported key format for import");
         return jsUndefined();
     }
 
@@ -500,6 +500,59 @@ JSValue JSSubtleCrypto::importKey(JSC::ExecState* exec)
     algorithm->importKey(*parameters, *keyData, extractable, keyUsages, std::move(promiseWrapper), ec);
     if (ec) {
         setDOMException(exec, ec);
+        return jsUndefined();
+    }
+
+    return promise;
+}
+
+JSValue JSSubtleCrypto::exportKey(JSC::ExecState* exec)
+{
+    if (exec->argumentCount() < 2)
+        return exec->vm().throwException(exec, createNotEnoughArgumentsError(exec));
+
+    CryptoKeyFormat keyFormat;
+    if (!cryptoKeyFormatFromJSValue(exec, exec->argument(0), keyFormat)) {
+        ASSERT(exec->hadException());
+        return jsUndefined();
+    }
+
+    RefPtr<CryptoKey> key = toCryptoKey(exec->uncheckedArgument(1));
+    if (!key)
+        return throwTypeError(exec);
+
+    JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
+    auto promiseWrapper = PromiseWrapper::create(globalObject(), promise);
+
+    if (!key->extractable()) {
+        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key is not extractable");
+        promiseWrapper->reject(nullptr);
+        return promise;
+    }
+
+    switch (keyFormat) {
+    case CryptoKeyFormat::Raw: {
+        Vector<unsigned char> result;
+        if (CryptoKeySerializationRaw::serialize(*key, result))
+            promiseWrapper->fulfill(result);
+        else {
+            m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key cannot be exported to raw format");
+            promiseWrapper->reject(nullptr);
+        }
+        break;
+    }
+    case CryptoKeyFormat::JWK: {
+        String result = JSCryptoKeySerializationJWK::serialize(exec, *key);
+        if (exec->hadException())
+            return jsUndefined();
+        CString utf8String = result.utf8(StrictConversion);
+        Vector<unsigned char> resultBuffer;
+        resultBuffer.append(utf8String.data(), utf8String.length());
+        promiseWrapper->fulfill(resultBuffer);
+        break;
+    }
+    default:
+        throwTypeError(exec, "Unsupported key format for export");
         return jsUndefined();
     }
 

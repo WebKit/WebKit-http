@@ -177,6 +177,7 @@ set(WebKit2_SOURCES
     PluginProcess/PluginProcess.cpp
     PluginProcess/WebProcessConnection.cpp
 
+    Shared/APIArray.cpp
     Shared/APIClientTraits.cpp
     Shared/APIObject.cpp
     Shared/ActivityAssertion.cpp
@@ -187,7 +188,6 @@ set(WebKit2_SOURCES
     Shared/DictionaryPopupInfo.cpp
     Shared/EditorState.cpp
     Shared/FontInfo.cpp
-    Shared/ImmutableArray.cpp
     Shared/ImmutableDictionary.cpp
     Shared/MutableDictionary.cpp
     Shared/OriginAndDatabases.cpp
@@ -211,7 +211,6 @@ set(WebKit2_SOURCES
     Shared/WebEvent.cpp
     Shared/WebEventConversion.cpp
     Shared/WebGeolocationPosition.cpp
-    Shared/WebGraphicsContext.cpp
     Shared/WebHitTestResult.cpp
     Shared/WebImage.cpp
     Shared/WebKeyboardEvent.cpp
@@ -239,10 +238,10 @@ set(WebKit2_SOURCES
     Shared/API/c/WKConnectionRef.cpp
     Shared/API/c/WKContextMenuItem.cpp
     Shared/API/c/WKData.cpp
+    Shared/API/c/WKDeprecatedFunctions.cpp
     Shared/API/c/WKDictionary.cpp
     Shared/API/c/WKError.cpp
     Shared/API/c/WKGeometry.cpp
-    Shared/API/c/WKGraphicsContext.cpp
     Shared/API/c/WKImage.cpp
     Shared/API/c/WKMutableArray.cpp
     Shared/API/c/WKMutableDictionary.cpp
@@ -286,12 +285,14 @@ set(WebKit2_SOURCES
     Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp
     Shared/Plugins/Netscape/PluginInformation.cpp
 
+    UIProcess/APINavigationData.cpp
     UIProcess/BackingStore.cpp
     UIProcess/DrawingAreaProxy.cpp
     UIProcess/FindIndicator.cpp
     UIProcess/FrameLoadState.cpp
     UIProcess/GeolocationPermissionRequestManagerProxy.cpp
     UIProcess/GeolocationPermissionRequestProxy.cpp
+    UIProcess/PageLoadState.cpp
     UIProcess/ResponsivenessTimer.cpp
     UIProcess/StatisticsRequest.cpp
     UIProcess/TextCheckerCompletion.cpp
@@ -331,7 +332,6 @@ set(WebKit2_SOURCES
     UIProcess/WebKeyValueStorageManager.cpp
     UIProcess/WebLoaderClient.cpp
     UIProcess/WebMediaCacheManagerProxy.cpp
-    UIProcess/WebNavigationData.cpp
     UIProcess/WebNetworkInfoManagerProxy.cpp
     UIProcess/WebNetworkInfoProvider.cpp
     UIProcess/WebOpenPanelResultListenerProxy.cpp

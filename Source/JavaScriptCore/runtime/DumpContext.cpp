@@ -28,7 +28,11 @@
 
 namespace JSC {
 
-DumpContext::DumpContext() { }
+DumpContext::DumpContext()
+    : graph(0)
+{
+}
+
 DumpContext::~DumpContext() { }
 
 bool DumpContext::isEmpty() const

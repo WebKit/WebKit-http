@@ -76,11 +76,11 @@ using WebCore::TypeBuilder::IndexedDB::KeyRange;
 using WebCore::TypeBuilder::IndexedDB::ObjectStore;
 using WebCore::TypeBuilder::IndexedDB::ObjectStoreIndex;
 
-typedef WebCore::InspectorBackendDispatcher::IndexedDBCommandHandler::RequestDatabaseNamesCallback RequestDatabaseNamesCallback;
-typedef WebCore::InspectorBackendDispatcher::IndexedDBCommandHandler::RequestDatabaseCallback RequestDatabaseCallback;
-typedef WebCore::InspectorBackendDispatcher::IndexedDBCommandHandler::RequestDataCallback RequestDataCallback;
+typedef WebCore::InspectorIndexedDBBackendDispatcherHandler::RequestDatabaseNamesCallback RequestDatabaseNamesCallback;
+typedef WebCore::InspectorIndexedDBBackendDispatcherHandler::RequestDatabaseCallback RequestDatabaseCallback;
+typedef WebCore::InspectorIndexedDBBackendDispatcherHandler::RequestDataCallback RequestDataCallback;
 typedef WebCore::InspectorBackendDispatcher::CallbackBase RequestCallback;
-typedef WebCore::InspectorBackendDispatcher::IndexedDBCommandHandler::ClearObjectStoreCallback ClearObjectStoreCallback;
+typedef WebCore::InspectorIndexedDBBackendDispatcherHandler::ClearObjectStoreCallback ClearObjectStoreCallback;
 
 namespace WebCore {
 
@@ -557,7 +557,7 @@ public:
 } // namespace
 
 InspectorIndexedDBAgent::InspectorIndexedDBAgent(InstrumentingAgents* instrumentingAgents, InjectedScriptManager* injectedScriptManager, InspectorPageAgent* pageAgent)
-    : InspectorBaseAgent<InspectorIndexedDBAgent>("IndexedDB", instrumentingAgents)
+    : InspectorBaseAgent(ASCIILiteral("IndexedDB"), instrumentingAgents)
     , m_injectedScriptManager(injectedScriptManager)
     , m_pageAgent(pageAgent)
 {
@@ -567,9 +567,16 @@ InspectorIndexedDBAgent::~InspectorIndexedDBAgent()
 {
 }
 
-void InspectorIndexedDBAgent::clearFrontend()
+void InspectorIndexedDBAgent::didCreateFrontendAndBackend(InspectorFrontendChannel*, InspectorBackendDispatcher* backendDispatcher)
 {
-    disable(0);
+    m_backendDispatcher = InspectorIndexedDBBackendDispatcher::create(backendDispatcher, this);
+}
+
+void InspectorIndexedDBAgent::willDestroyFrontendAndBackend()
+{
+    m_backendDispatcher.clear();
+
+    disable(nullptr);
 }
 
 void InspectorIndexedDBAgent::enable(ErrorString*)

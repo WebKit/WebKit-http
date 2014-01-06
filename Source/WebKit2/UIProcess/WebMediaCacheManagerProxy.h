@@ -28,7 +28,6 @@
 
 #include "APIObject.h"
 #include "GenericCallback.h"
-#include "ImmutableArray.h"
 #include "MessageReceiver.h"
 #include "WebContextSupplement.h"
 #include <wtf/PassRefPtr.h>
@@ -42,7 +41,7 @@ class WebProcessProxy;
 
 typedef GenericCallback<WKArrayRef> ArrayCallback;
 
-class WebMediaCacheManagerProxy : public API::TypedObject<API::Object::TypeMediaCacheManager>, public WebContextSupplement, private CoreIPC::MessageReceiver {
+class WebMediaCacheManagerProxy : public API::TypedObject<API::Object::Type::MediaCacheManager>, public WebContextSupplement, private CoreIPC::MessageReceiver {
 public:
     static const char* supplementName();
 

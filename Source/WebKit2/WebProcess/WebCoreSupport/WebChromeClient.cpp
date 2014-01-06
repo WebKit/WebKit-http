@@ -91,7 +91,7 @@ static WebFrame* findLargestFrameInFrameSet(WebPage* page)
 
     WebFrame* largestSoFar = 0;
 
-    RefPtr<ImmutableArray> frameChildren = mainFrame->childFrames();
+    RefPtr<API::Array> frameChildren = mainFrame->childFrames();
     size_t count = frameChildren->size();
     for (size_t i = 0; i < count; ++i) {
         WebFrame* childFrame = frameChildren->at<WebFrame>(i);
@@ -193,6 +193,8 @@ Page* WebChromeClient::createWindow(Frame* frame, const FrameLoadRequest& reques
 #if ENABLE(FULLSCREEN_API)
     if (frame->document() && frame->document()->webkitCurrentFullScreenElement())
         frame->document()->webkitCancelFullScreen();
+#else
+    UNUSED_PARAM(frame);
 #endif
 
     uint64_t newPageID = 0;
@@ -652,15 +654,6 @@ bool WebChromeClient::shouldReplaceWithGeneratedFileForUpload(const String& path
 String WebChromeClient::generateReplacementFile(const String& path)
 {
     return m_page->injectedBundleUIClient().generateFileForUpload(m_page, path);
-}
-
-bool WebChromeClient::paintCustomOverhangArea(GraphicsContext* context, const IntRect& horizontalOverhangArea, const IntRect& verticalOverhangArea, const IntRect& dirtyRect)
-{
-    if (!m_page->injectedBundleUIClient().shouldPaintCustomOverhangArea())
-        return false;
-
-    m_page->injectedBundleUIClient().paintCustomOverhangArea(m_page, context, horizontalOverhangArea, verticalOverhangArea, dirtyRect);
-    return true;
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)

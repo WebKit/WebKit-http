@@ -33,7 +33,6 @@
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "InlineTextBox.h"
-#include "LineWidth.h"
 #include "PaintInfo.h"
 #include "RenderBlockFlow.h"
 #include "RenderStyle.h"
@@ -64,16 +63,19 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
 {
     if (paintInfo.phase != PaintPhaseForeground)
         return;
+
+    RenderStyle& style = flow.style();
+    if (style.visibility() != VISIBLE)
+        return;
+
     RenderText& textRenderer = toRenderText(*flow.firstChild());
     ASSERT(!textRenderer.firstTextBox());
 
     bool debugBordersEnabled = flow.frame().settings().simpleLineLayoutDebugBordersEnabled();
 
-    RenderStyle& style = flow.style();
-    const Font& font = style.font();
-
     GraphicsContext& context = *paintInfo.context;
 
+    const Font& font = style.font();
     TextPaintStyle textPaintStyle = computeTextPaintStyle(textRenderer, style, paintInfo);
     GraphicsContextStateSaver stateSaver(context, textPaintStyle.strokeWidth > 0);
 
@@ -153,6 +155,30 @@ IntRect computeTextBoundingBox(const RenderText& textRenderer, const Layout& lay
     float width = right - left;
     float height = bottom - y;
     return enclosingIntRect(FloatRect(x, y, width, height));
+}
+
+Vector<IntRect> collectTextAbsoluteRects(const RenderText& textRenderer, const Layout& layout, const LayoutPoint& accumulatedOffset)
+{
+    Vector<IntRect> rects;
+    auto resolver = runResolver(toRenderBlockFlow(*textRenderer.parent()), layout);
+    for (auto it = resolver.begin(), end = resolver.end(); it != end; ++it) {
+        auto run = *it;
+        auto rect = run.rect();
+        rects.append(enclosingIntRect(FloatRect(accumulatedOffset + rect.location(), rect.size())));
+    }
+    return rects;
+}
+
+Vector<FloatQuad> collectTextAbsoluteQuads(const RenderText& textRenderer, const Layout& layout, bool* wasFixed)
+{
+    Vector<FloatQuad> quads;
+    auto resolver = runResolver(toRenderBlockFlow(*textRenderer.parent()), layout);
+    for (auto it = resolver.begin(), end = resolver.end(); it != end; ++it) {
+        auto run = *it;
+        auto rect = run.rect();
+        quads.append(textRenderer.localToAbsoluteQuad(FloatQuad(rect), 0, wasFixed));
+    }
+    return quads;
 }
 
 }

@@ -710,7 +710,7 @@ public:
         bool oldFamilyUsedFixedDefaultSize = fontDescription.useFixedDefaultSize();
         fontDescription.setGenericFamily(FontDescription::NoFamily);
 
-        Vector<AtomicString, 1> families;
+        Vector<AtomicString> families;
         families.reserveInitialCapacity(valueList.length());
 
         for (unsigned i = 0; i < valueList.length(); ++i) {
@@ -764,7 +764,7 @@ public:
 
         if (families.isEmpty())
             return;
-        fontDescription.adoptFamilies(families);
+        fontDescription.setFamilies(families);
 
         if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize() != oldFamilyUsedFixedDefaultSize)
             styleResolver->setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueXxSmall + fontDescription.keywordSize() - 1, !oldFamilyUsedFixedDefaultSize, styleResolver->document()));
@@ -2071,7 +2071,11 @@ public:
             CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
             if (primitiveValue->getValueID() == CSSValueAuto)
                 setValue(styleResolver->style(), 0);
-            // FIXME Bug 102571: Layout for the value 'outside-shape' is not yet implemented
+            else if (primitiveValue->getValueID() == CSSValueContentBox
+                || primitiveValue->getValueID() == CSSValueBorderBox
+                || primitiveValue->getValueID() == CSSValuePaddingBox
+                || primitiveValue->getValueID() == CSSValueMarginBox)
+                setValue(styleResolver->style(), ShapeValue::createBoxValue(primitiveValue->getValueID()));
             else if (primitiveValue->getValueID() == CSSValueOutsideShape)
                 setValue(styleResolver->style(), ShapeValue::createOutsideValue());
             else if (primitiveValue->isShape()) {

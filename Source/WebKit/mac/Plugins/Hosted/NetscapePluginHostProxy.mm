@@ -326,44 +326,32 @@ bool NetscapePluginHostProxy::processRequests()
 
 void NetscapePluginHostProxy::makeCurrentProcessFrontProcess()
 {
-#if COMPILER(CLANG)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
     ProcessSerialNumber psn;
     GetCurrentProcess(&psn);
     SetFrontProcess(&psn);
-#if COMPILER(CLANG)
 #pragma clang diagnostic pop
-#endif
 }
 
 void NetscapePluginHostProxy::makePluginHostProcessFrontProcess() const
 {
-#if COMPILER(CLANG)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
     SetFrontProcess(&m_pluginHostPSN);
-#if COMPILER(CLANG)
 #pragma clang diagnostic pop
-#endif
 }
 
 bool NetscapePluginHostProxy::isPluginHostProcessFrontProcess() const
 {
-#if COMPILER(CLANG)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
     ProcessSerialNumber frontProcess;
     GetFrontProcess(&frontProcess);
 
     Boolean isSameProcess = 0;
     SameProcess(&frontProcess, &m_pluginHostPSN, &isSameProcess);
-#if COMPILER(CLANG)
 #pragma clang diagnostic pop
-#endif
 
     return isSameProcess;
 }
@@ -904,13 +892,13 @@ kern_return_t WKPCIdentifierInfo(mach_port_t clientPort, uint64_t serverIdentifi
     } else 
         info = [NSNumber numberWithInt:identifier->number()];
 
-    RetainPtr<NSData*> data = [NSPropertyListSerialization dataFromPropertyList:info format:NSPropertyListBinaryFormat_v1_0 errorDescription:0];
+    NSData *data = [NSPropertyListSerialization dataWithPropertyList:info format:NSPropertyListBinaryFormat_v1_0 options:0 error:nullptr];
     ASSERT(data);
     
-    *infoLength = [data.get() length];
+    *infoLength = data.length;
     mig_allocate(reinterpret_cast<vm_address_t*>(infoData), *infoLength);
     
-    memcpy(*infoData, [data.get() bytes], *infoLength);
+    memcpy(*infoData, data.bytes, *infoLength);
     
     return KERN_SUCCESS;
 }

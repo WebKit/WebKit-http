@@ -21,8 +21,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/HTMLNames.h \
 	DerivedSources/WebCore/InjectedScriptCanvasModuleSource.h \
 	DerivedSources/WebCore/InjectedScriptSource.h \
-	DerivedSources/WebCore/InspectorBackendDispatcher.cpp \
-	DerivedSources/WebCore/InspectorBackendDispatcher.h \
+	DerivedSources/WebCore/InspectorBackendDispatchers.cpp \
+	DerivedSources/WebCore/InspectorBackendDispatchers.h \
 	DerivedSources/WebCore/InspectorFrontend.cpp \
 	DerivedSources/WebCore/InspectorFrontend.h \
 	DerivedSources/WebCore/InspectorOverlayPage.h \
@@ -1796,13 +1796,17 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/indexeddb/leveldb/IDBBackingStoreLevelDB.h \
 	Source/WebCore/Modules/indexeddb/leveldb/IDBBackingStoreTransactionLevelDB.cpp \
 	Source/WebCore/Modules/indexeddb/leveldb/IDBBackingStoreTransactionLevelDB.h \
+	Source/WebCore/Modules/indexeddb/leveldb/IDBIndexWriterLevelDB.cpp \
+	Source/WebCore/Modules/indexeddb/leveldb/IDBIndexWriterLevelDB.h \
 	Source/WebCore/Modules/indexeddb/leveldb/IDBServerConnectionLevelDB.cpp \
 	Source/WebCore/Modules/indexeddb/leveldb/IDBServerConnectionLevelDB.h \
 	Source/WebCore/Modules/indexeddb/IDBCallbacks.h \
-	Source/WebCore/Modules/indexeddb/IDBCursorBackend.cpp \
-	Source/WebCore/Modules/indexeddb/IDBCursorBackend.h \
 	Source/WebCore/Modules/indexeddb/IDBCursor.cpp \
 	Source/WebCore/Modules/indexeddb/IDBCursor.h \
+	Source/WebCore/Modules/indexeddb/IDBCursorBackend.cpp \
+	Source/WebCore/Modules/indexeddb/IDBCursorBackend.h \
+	Source/WebCore/Modules/indexeddb/IDBCursorBackendOperations.cpp \
+	Source/WebCore/Modules/indexeddb/IDBCursorBackendOperations.h \
 	Source/WebCore/Modules/indexeddb/IDBCursorWithValue.cpp \
 	Source/WebCore/Modules/indexeddb/IDBCursorWithValue.h \
 	Source/WebCore/Modules/indexeddb/IDBDatabaseBackend.cpp \
@@ -1826,8 +1830,6 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/indexeddb/IDBHistograms.h \
 	Source/WebCore/Modules/indexeddb/IDBIndex.cpp \
 	Source/WebCore/Modules/indexeddb/IDBIndex.h \
-	Source/WebCore/Modules/indexeddb/IDBIndexWriter.cpp \
-	Source/WebCore/Modules/indexeddb/IDBIndexWriter.h \
 	Source/WebCore/Modules/indexeddb/IDBKey.cpp \
 	Source/WebCore/Modules/indexeddb/IDBKey.h \
 	Source/WebCore/Modules/indexeddb/IDBKeyPath.cpp \
@@ -2388,7 +2390,9 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSSQLResultSetRowListCustom.cpp \
 	Source/WebCore/bindings/js/JSSQLTransactionCustom.cpp \
 	Source/WebCore/bindings/js/JSSQLTransactionSyncCustom.cpp \
+	Source/WebCore/bindings/js/JSRTCIceCandidateCustom.cpp \
 	Source/WebCore/bindings/js/JSRTCPeerConnectionCustom.cpp \
+	Source/WebCore/bindings/js/JSRTCSessionDescriptionCustom.cpp \
 	Source/WebCore/bindings/js/JSRTCStatsResponseCustom.cpp \
 	Source/WebCore/bindings/js/JSSharedWorkerCustom.cpp \
 	Source/WebCore/bindings/js/JSStorageCustom.cpp \
@@ -3419,6 +3423,8 @@ webcore_sources += \
 	Source/WebCore/html/HTMLMapElement.h \
 	Source/WebCore/html/HTMLMarqueeElement.cpp \
 	Source/WebCore/html/HTMLMarqueeElement.h \
+	Source/WebCore/html/HTMLMediaSource.cpp \
+	Source/WebCore/html/HTMLMediaSource.h \
 	Source/WebCore/html/HTMLMediaElement.cpp \
 	Source/WebCore/html/HTMLMediaElement.h \
 	Source/WebCore/html/HTMLMenuElement.cpp \
@@ -3768,6 +3774,8 @@ webcore_sources += \
 	Source/WebCore/inspector/InspectorAgentRegistry.h \
 	Source/WebCore/inspector/InspectorApplicationCacheAgent.cpp \
 	Source/WebCore/inspector/InspectorApplicationCacheAgent.h \
+	Source/WebCore/inspector/InspectorBackendDispatcher.cpp \
+	Source/WebCore/inspector/InspectorBackendDispatcher.h \
 	Source/WebCore/inspector/InspectorBaseAgent.h \
 	Source/WebCore/inspector/InspectorCanvasAgent.cpp \
 	Source/WebCore/inspector/InspectorCanvasAgent.h \
@@ -3816,6 +3824,8 @@ webcore_sources += \
 	Source/WebCore/inspector/InspectorLayerTreeAgent.h \
 	Source/WebCore/inspector/InspectorMemoryAgent.cpp \
 	Source/WebCore/inspector/InspectorMemoryAgent.h \
+	Source/WebCore/inspector/InspectorNodeFinder.cpp \
+	Source/WebCore/inspector/InspectorNodeFinder.h \
 	Source/WebCore/inspector/InspectorOverlay.cpp \
 	Source/WebCore/inspector/InspectorOverlay.h \
 	Source/WebCore/inspector/InspectorPageAgent.cpp \
@@ -4108,6 +4118,8 @@ webcore_sources += \
 	Source/WebCore/page/Frame.h \
 	Source/WebCore/page/FrameDestructionObserver.cpp \
 	Source/WebCore/page/FrameDestructionObserver.h \
+	Source/WebCore/page/FrameSnapshotting.cpp \
+	Source/WebCore/page/FrameSnapshotting.h \
 	Source/WebCore/page/FrameTree.cpp \
 	Source/WebCore/page/FrameTree.h \
 	Source/WebCore/page/FrameView.cpp \
@@ -4295,8 +4307,6 @@ webcore_sources += \
 	Source/WebCore/rendering/LogicalSelectionOffsetCaches.h \
 	Source/WebCore/rendering/LayoutRepainter.h \
 	Source/WebCore/rendering/LayoutRepainter.cpp \
-	Source/WebCore/rendering/LineInfo.h \
-	Source/WebCore/rendering/LineLayoutState.h \
 	Source/WebCore/rendering/LineWidth.h \
 	Source/WebCore/rendering/LineWidth.cpp \
 	Source/WebCore/rendering/OverlapTestRequestClient.h \
@@ -4500,6 +4510,13 @@ webcore_sources += \
 	Source/WebCore/rendering/TextPainter.h \
 	Source/WebCore/rendering/TextPaintStyle.h \
 	Source/WebCore/rendering/VerticalPositionCache.h \
+	Source/WebCore/rendering/line/BreakingContextInlineHeaders.h \
+	Source/WebCore/rendering/line/LineInfo.h \
+	Source/WebCore/rendering/line/LineInfo.cpp \
+	Source/WebCore/rendering/line/LineBreaker.h \
+	Source/WebCore/rendering/line/LineBreaker.cpp \
+	Source/WebCore/rendering/line/LineInlineHeaders.h \
+	Source/WebCore/rendering/line/LineLayoutState.h \
 	Source/WebCore/rendering/mathml/RenderMathMLBlock.cpp \
 	Source/WebCore/rendering/mathml/RenderMathMLBlock.h \
 	Source/WebCore/rendering/mathml/RenderMathMLFenced.cpp \
@@ -5436,6 +5453,16 @@ webcore_platform_sources += \
 	Source/WebCore/platform/mock/RTCPeerConnectionHandlerMock.h \
 	Source/WebCore/platform/mock/ScrollbarThemeMock.cpp \
 	Source/WebCore/platform/mock/ScrollbarThemeMock.h \
+	Source/WebCore/platform/mock/mediasource/MockBox.cpp \
+	Source/WebCore/platform/mock/mediasource/MockBox.h \
+	Source/WebCore/platform/mock/mediasource/MockMediaPlayerMediaSource.cpp \
+	Source/WebCore/platform/mock/mediasource/MockMediaPlayerMediaSource.h \
+	Source/WebCore/platform/mock/mediasource/MockMediaSourcePrivate.cpp \
+	Source/WebCore/platform/mock/mediasource/MockMediaSourcePrivate.h \
+	Source/WebCore/platform/mock/mediasource/MockSourceBufferPrivate.cpp \
+	Source/WebCore/platform/mock/mediasource/MockSourceBufferPrivate.h \
+	Source/WebCore/platform/mock/mediasource/MockTracks.cpp \
+	Source/WebCore/platform/mock/mediasource/MockTracks.h \
 	Source/WebCore/platform/network/BlobData.cpp \
 	Source/WebCore/platform/network/BlobData.h \
 	Source/WebCore/platform/network/BlobRegistry.h \
@@ -5831,7 +5858,7 @@ platform_sources += \
 	Source/WebCore/platform/graphics/TextTrackRepresentation.cpp \
 	Source/WebCore/platform/graphics/TextTrackRepresentation.h \
 	Source/WebCore/platform/graphics/TiledBacking.h \
-	Source/WebCore/platform/graphics/TrackBasePrivate.h \
+	Source/WebCore/platform/graphics/TrackPrivateBase.h \
 	Source/WebCore/platform/graphics/TypesettingFeatures.h \
 	Source/WebCore/platform/graphics/UnitBezier.h \
 	Source/WebCore/platform/graphics/VideoTrackPrivate.h \
@@ -5979,9 +6006,9 @@ platform_sources += \
 	Source/WebCore/platform/DateTimeChooserClient.h \
 	Source/WebCore/platform/Decimal.cpp \
 	Source/WebCore/platform/Decimal.h \
-    Source/WebCore/platform/FileChooser.cpp \
-    Source/WebCore/platform/FileChooser.h \
-    Source/WebCore/platform/FileMetadata.h \
+	Source/WebCore/platform/FileChooser.cpp \
+	Source/WebCore/platform/FileChooser.h \
+	Source/WebCore/platform/FileMetadata.h \
 	Source/WebCore/platform/FileStreamClient.h \
 	Source/WebCore/platform/FileStream.cpp \
 	Source/WebCore/platform/FileStream.h \
@@ -5995,6 +6022,7 @@ platform_sources += \
 	Source/WebCore/platform/URL.cpp \
 	Source/WebCore/platform/URL.h \
 	Source/WebCore/platform/URLHash.h \
+	Source/WebCore/platform/KeyedCoding.h \
 	Source/WebCore/platform/KillRing.h \
 	Source/WebCore/platform/KillRingNone.cpp \
 	Source/WebCore/platform/Language.cpp \
@@ -6151,6 +6179,8 @@ platformgtk_sources += \
 	Source/WebCore/platform/graphics/gtk/ImageGtk.cpp \
 	Source/WebCore/platform/graphics/gtk/IntPointGtk.cpp \
 	Source/WebCore/platform/graphics/gtk/IntRectGtk.cpp \
+	Source/WebCore/platform/graphics/opentype/OpenTypeSanitizer.h \
+	Source/WebCore/platform/graphics/opentype/OpenTypeTypes.h \
 	Source/WebCore/platform/graphics/opentype/OpenTypeVerticalData.cpp \
 	Source/WebCore/platform/graphics/opentype/OpenTypeVerticalData.h \
 	Source/WebCore/platform/gtk/CompositionResults.h \
@@ -6305,6 +6335,13 @@ platform_sources += \
 	Source/WebCore/platform/graphics/gstreamer/TrackPrivateBaseGStreamer.h \
 	Source/WebCore/platform/graphics/gstreamer/VideoTrackPrivateGStreamer.cpp \
 	Source/WebCore/platform/graphics/gstreamer/VideoTrackPrivateGStreamer.h
+webcore_platform_sources += \
+	Source/WebCore/platform/graphics/gstreamer/SourceBufferPrivateGStreamer.cpp \
+	Source/WebCore/platform/graphics/gstreamer/SourceBufferPrivateGStreamer.h \
+	Source/WebCore/platform/graphics/gstreamer/MediaSourceGStreamer.cpp \
+	Source/WebCore/platform/graphics/gstreamer/MediaSourceGStreamer.h \
+	Source/WebCore/platform/graphics/gstreamer/WebKitMediaSourceGStreamer.cpp \
+	Source/WebCore/platform/graphics/gstreamer/WebKitMediaSourceGStreamer.h
 endif
 
 # ---

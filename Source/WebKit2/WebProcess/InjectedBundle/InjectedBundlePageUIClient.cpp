@@ -29,7 +29,6 @@
 #include "InjectedBundleHitTestResult.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
-#include "WebGraphicsContext.h"
 #include "WebSecurityOrigin.h"
 #include <wtf/text/WTFString.h>
 
@@ -85,19 +84,6 @@ void InjectedBundlePageUIClient::pageDidScroll(WebPage* page)
         return;
 
     m_client.pageDidScroll(toAPI(page), m_client.clientInfo);
-}
-
-bool InjectedBundlePageUIClient::shouldPaintCustomOverhangArea()
-{
-    return m_client.paintCustomOverhangArea;
-}
-
-void InjectedBundlePageUIClient::paintCustomOverhangArea(WebPage* page, GraphicsContext* graphicsContext, const IntRect& horizontalOverhangArea, const IntRect& verticalOverhangArea, const IntRect& dirtyRect)
-{
-    ASSERT(shouldPaintCustomOverhangArea());
-
-    RefPtr<WebGraphicsContext> context = WebGraphicsContext::create(graphicsContext);
-    m_client.paintCustomOverhangArea(toAPI(page), toAPI(context.get()), toAPI(horizontalOverhangArea), toAPI(verticalOverhangArea), toAPI(dirtyRect), m_client.clientInfo);
 }
 
 String InjectedBundlePageUIClient::shouldGenerateFileForUpload(WebPage* page, const String& originalFilePath)

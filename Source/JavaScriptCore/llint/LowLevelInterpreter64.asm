@@ -88,6 +88,73 @@ macro cCall4(function, arg1, arg2, arg3, arg4)
     end
 end
 
+macro functionPrologue(extraStackSpace)
+    if X86_64
+        push cfr
+        move sp, cfr
+    elsif ARM64
+        push lr
+    end
+    pushCalleeSaves
+    if X86_64
+        subp extraStackSpace, sp
+    elsif ARM64
+        push cfr
+    end
+end
+
+macro functionEpilogue(extraStackSpace)
+    if X86_64
+        addp extraStackSpace, sp
+    end
+    popCalleeSaves
+    if X86_64
+        pop cfr
+    elsif ARM64
+        pop lr
+    end
+end
+
+macro doCallToJavaScript()
+    if X86_64
+        const extraStackSpace = 8
+        const previousCFR = t0
+        const previousPC = t6
+        const entry = t5
+        const newCallFrame = t4
+    elsif ARM64
+        const extraStackSpace = 0
+        const previousCFR = t4
+        const previousPC = lr
+        const entry = a0
+        const newCallFrame = a1
+    elsif C_LOOP
+        const extraStackSpace = 0
+        const previousCFR = t4  
+        const previousPC = lr
+        const entry = a0
+        const newCallFrame = a1
+    end
+
+    if X86_64
+        loadp [sp], previousPC
+    end
+    move cfr, previousCFR
+    functionPrologue(extraStackSpace)
+
+    move newCallFrame, cfr
+    loadp [cfr], newCallFrame
+    storep previousCFR, [newCallFrame]
+    storep previousPC, 8[newCallFrame]
+    move 0xffff000000000000, csr1
+    addp 2, csr1, csr2
+    call entry
+
+_returnFromJavaScript:
+    functionEpilogue(extraStackSpace)
+    ret
+end
+
 macro prepareStateForCCall()
     leap [PB, PC, 8], PC
     move PB, t3
@@ -1733,7 +1800,7 @@ macro varInjectionCheck(slowPath)
     loadp CodeBlock[cfr], t0
     loadp CodeBlock::m_globalObject[t0], t0
     loadp JSGlobalObject::m_varInjectionWatchpoint[t0], t0
-    btbnz WatchpointSet::m_isInvalidated[t0], slowPath
+    bbeq WatchpointSet::m_state[t0], IsInvalidated, slowPath
 end
 
 macro resolveScope()

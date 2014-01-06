@@ -49,7 +49,7 @@ class ScriptProfile;
 
 typedef String ErrorString;
 
-class InspectorHeapProfilerAgent : public InspectorBaseAgent<InspectorHeapProfilerAgent>, public InspectorBackendDispatcher::HeapProfilerCommandHandler {
+class InspectorHeapProfilerAgent : public InspectorBaseAgent, public InspectorHeapProfilerBackendDispatcherHandler {
     WTF_MAKE_NONCOPYABLE(InspectorHeapProfilerAgent); WTF_MAKE_FAST_ALLOCATED;
 public:
     static PassOwnPtr<InspectorHeapProfilerAgent> create(InstrumentingAgents*, InjectedScriptManager*);
@@ -65,8 +65,8 @@ public:
     virtual void getHeapSnapshot(ErrorString*, int uid);
     virtual void removeProfile(ErrorString*, int uid);
 
-    virtual void setFrontend(InspectorFrontend*);
-    virtual void clearFrontend();
+    virtual void didCreateFrontendAndBackend(InspectorFrontendChannel*, InspectorBackendDispatcher*) OVERRIDE;
+    virtual void willDestroyFrontendAndBackend() OVERRIDE;
 
     virtual void takeHeapSnapshot(ErrorString*, const bool* reportProgress);
 
@@ -83,7 +83,8 @@ private:
     PassRefPtr<TypeBuilder::HeapProfiler::ProfileHeader> createSnapshotHeader(const ScriptHeapSnapshot&);
 
     InjectedScriptManager* m_injectedScriptManager;
-    InspectorFrontend::HeapProfiler* m_frontend;
+    std::unique_ptr<InspectorHeapProfilerFrontendDispatcher> m_frontendDispatcher;
+    RefPtr<InspectorHeapProfilerBackendDispatcher> m_backendDispatcher;
     unsigned m_nextUserInitiatedHeapSnapshotNumber;
     IdToHeapSnapshotMap m_snapshots;
     bool m_profileHeadersRequested;

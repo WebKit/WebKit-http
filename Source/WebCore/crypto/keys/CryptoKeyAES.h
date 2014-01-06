@@ -36,7 +36,7 @@ namespace WebCore {
 
 class CryptoKeyAES FINAL : public CryptoKey {
 public:
-    static PassRefPtr<CryptoKeyAES> create(CryptoAlgorithmIdentifier algorithm, const Vector<char>& key, bool extractable, CryptoKeyUsage usage)
+    static PassRefPtr<CryptoKeyAES> create(CryptoAlgorithmIdentifier algorithm, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsage usage)
     {
         return adoptRef(new CryptoKeyAES(algorithm, key, extractable, usage));
     }
@@ -46,14 +46,15 @@ public:
 
     virtual CryptoKeyClass keyClass() const OVERRIDE { return CryptoKeyClass::AES; }
 
-    const Vector<char>& key() const { return m_key; }
-
-    virtual void buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder&) const OVERRIDE;
+    const Vector<uint8_t>& key() const { return m_key; }
 
 private:
-    CryptoKeyAES(CryptoAlgorithmIdentifier, const Vector<char>& key, bool extractable, CryptoKeyUsage);
+    CryptoKeyAES(CryptoAlgorithmIdentifier, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsage);
 
-    Vector<char> m_key;
+    virtual void buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder&) const OVERRIDE;
+    virtual std::unique_ptr<CryptoKeyData> exportData() const OVERRIDE;
+
+    Vector<uint8_t> m_key;
 };
 
 inline bool isCryptoKeyAES(const CryptoKey& key)
@@ -61,17 +62,7 @@ inline bool isCryptoKeyAES(const CryptoKey& key)
     return key.keyClass() == CryptoKeyClass::AES;
 }
 
-inline const CryptoKeyAES& toCryptoKeyAES(const CryptoKey& key)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(isCryptoKeyAES(key));
-    return static_cast<const CryptoKeyAES&>(key);
-}
-
-inline CryptoKeyAES& toCryptoKeyAES(CryptoKey& key)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(isCryptoKeyAES(key));
-    return static_cast<CryptoKeyAES&>(key);
-}
+CRYPTO_KEY_TYPE_CASTS(CryptoKeyAES)
 
 } // namespace WebCore
 

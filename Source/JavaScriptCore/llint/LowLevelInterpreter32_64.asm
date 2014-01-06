@@ -97,17 +97,16 @@ macro dispatchAfterCall()
 end
 
 macro cCall2(function, arg1, arg2)
-    if ARM or ARMv7 or ARMv7_TRADITIONAL
-        move arg1, t0
-        move arg2, t1
+    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
+        move arg1, a0
+        move arg2, a1
         call function
     elsif X86
         poke arg1, 0
         poke arg2, 1
         call function
-    elsif MIPS or SH4
-        move arg1, a0
-        move arg2, a1
+    elsif SH4
+        setargs arg1, arg2
         call function
     elsif C_LOOP
         cloopCallSlowPath function, arg1, arg2
@@ -118,11 +117,11 @@ end
 
 # This barely works. arg3 and arg4 should probably be immediates.
 macro cCall4(function, arg1, arg2, arg3, arg4)
-    if ARM or ARMv7 or ARMv7_TRADITIONAL
-        move arg1, t0
-        move arg2, t1
-        move arg3, t2
-        move arg4, t3
+    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
+        move arg1, a0
+        move arg2, a1
+        move arg3, a2
+        move arg4, a3
         call function
     elsif X86
         poke arg1, 0
@@ -130,11 +129,8 @@ macro cCall4(function, arg1, arg2, arg3, arg4)
         poke arg3, 2
         poke arg4, 3
         call function
-    elsif MIPS or SH4
-        move arg1, a0
-        move arg2, a1
-        move arg3, a2
-        move arg4, a3
+    elsif SH4
+        setargs arg1, arg2, arg3, arg4
         call function
     elsif C_LOOP
         error
@@ -147,6 +143,87 @@ macro callSlowPath(slowPath)
     cCall2(slowPath, cfr, PC)
     move t0, PC
     move t1, cfr
+end
+
+macro functionPrologue(extraStackSpace)
+    if X86
+        push cfr
+        move sp, cfr
+    end
+    pushCalleeSaves
+    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
+        push cfr
+        push lr
+    end
+    subp extraStackSpace, sp
+end
+
+macro functionEpilogue(extraStackSpace)
+    addp extraStackSpace, sp
+    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
+        pop lr
+        pop cfr
+    end
+    popCalleeSaves
+    if X86
+        pop cfr
+    end
+end
+
+macro doCallToJavaScript()
+    if X86
+        const extraStackSpace = 28
+        const previousCFR = t0
+        const previousPC = t1
+        const entry = t5
+        const newCallFrame = t4
+    elsif ARM or ARMv7_TRADITIONAL
+        const extraStackSpace = 16
+        const previousCFR = t3  
+        const previousPC = lr
+        const entry = a0
+        const newCallFrame = a1
+    elsif ARMv7
+        const extraStackSpace = 28
+        const previousCFR = t3  
+        const previousPC = lr
+        const entry = a0
+        const newCallFrame = a1
+    elsif MIPS
+        const extraStackSpace = 20
+        const previousCFR = t2  
+        const previousPC = lr
+        const entry = a0
+        const newCallFrame = a1
+    elsif SH4
+        const extraStackSpace = 20
+        const previousCFR = t3  
+        const previousPC = lr
+        const entry = a0
+        const newCallFrame = a1
+    end
+
+    if X86
+        loadp [sp], previousPC
+        move cfr, previousCFR
+    end
+    functionPrologue(extraStackSpace)
+    if X86
+        loadp extraStackSpace+20[sp], entry
+        loadp extraStackSpace+24[sp], newCallFrame
+    else
+        move cfr, previousCFR
+    end
+
+    move newCallFrame, cfr
+    loadp [cfr], newCallFrame
+    storep previousCFR, [newCallFrame]
+    storep previousPC, 4[newCallFrame]
+    call entry
+
+_returnFromJavaScript:
+    functionEpilogue(extraStackSpace)
+    ret
 end
 
 # Debugging operation if you'd like to print an operand in the instruction stream. fromWhere
@@ -1833,7 +1910,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         loadp ScopeChain[cfr], t3
         andp MarkedBlockMask, t3
         loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL
+    elsif ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
         loadp ScopeChain[cfr], t3
         andp MarkedBlockMask, t3
         loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
@@ -1845,24 +1922,9 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         loadi Callee + PayloadOffset[cfr], t1
         loadp JSFunction::m_executable[t1], t1
         move t2, cfr
-        call executableOffsetToFunction[t1]
-        restoreReturnAddressBeforeReturn(t3)
-        loadp ScopeChain[cfr], t3
-        andp MarkedBlockMask, t3
-        loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
-    elsif MIPS or SH4
-        loadp ScopeChain[cfr], t3
-        andp MarkedBlockMask, t3
-        loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
-        storep cfr, VM::topCallFrame[t3]
-        move t0, t2
-        preserveReturnAddressAfterCall(t3)
-        storep t3, ReturnPC[cfr]
-        move cfr, t0
-        loadi Callee + PayloadOffset[cfr], t1
-        loadp JSFunction::m_executable[t1], t1
-        move t2, cfr
-        move t0, a0
+        if MIPS or SH4
+            move t0, a0
+        end
         call executableOffsetToFunction[t1]
         restoreReturnAddressBeforeReturn(t3)
         loadp ScopeChain[cfr], t3
@@ -1910,7 +1972,7 @@ macro varInjectionCheck(slowPath)
     loadp CodeBlock[cfr], t0
     loadp CodeBlock::m_globalObject[t0], t0
     loadp JSGlobalObject::m_varInjectionWatchpoint[t0], t0
-    btbnz WatchpointSet::m_isInvalidated[t0], slowPath
+    bbeq WatchpointSet::m_state[t0], IsInvalidated, slowPath
 end
 
 macro resolveScope()

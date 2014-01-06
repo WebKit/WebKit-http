@@ -712,6 +712,13 @@
 #endif
 #endif /* !defined(WTF_USE_JSVALUE64) && !defined(WTF_USE_JSVALUE32_64) */
 
+/* Disable the JITs if we're forcing the cloop to be enabled */
+#if defined(ENABLE_LLINT_C_LOOP) && ENABLE_LLINT_C_LOOP
+#define ENABLE_JIT 0
+#define ENABLE_DFG_JIT 0
+#define ENABLE_FTL_JIT 0
+#endif
+
 /* Disable the JIT on versions of GCC prior to 4.1 */
 #if !defined(ENABLE_JIT) && COMPILER(GCC) && !GCC_VERSION_AT_LEAST(4, 1, 0)
 #define ENABLE_JIT 0
@@ -821,10 +828,6 @@
 
 #if !defined(ENABLE_VERBOSE_VALUE_PROFILE) && ENABLE(VALUE_PROFILER)
 #define ENABLE_VERBOSE_VALUE_PROFILE 0
-#endif
-
-#if !defined(ENABLE_SIMPLE_HEAP_PROFILING)
-#define ENABLE_SIMPLE_HEAP_PROFILING 0
 #endif
 
 /* Counts uses of write barriers using sampling counters. Be sure to also

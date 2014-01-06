@@ -27,6 +27,7 @@
 #include "CopiedSpaceInlines.h"
 #include "CopyVisitorInlines.h"
 #include "DFGWorklist.h"
+#include "DelayedReleaseScope.h"
 #include "GCActivityCallback.h"
 #include "GCIncomingRefCountedSetInlines.h"
 #include "HeapIterationScope.h"
@@ -294,11 +295,6 @@ void Heap::lastChanceToFinalize()
     RELEASE_ASSERT(m_operationInProgress == NoOperation);
 
     m_objectSpace.lastChanceToFinalize();
-
-#if ENABLE(SIMPLE_HEAP_PROFILING)
-    m_slotVisitor.m_visitedTypeCounts.dump(WTF::dataFile(), "Visited Type Counts");
-    m_destroyedTypeCounts.dump(WTF::dataFile(), "Destroyed Type Counts");
-#endif
 }
 
 void Heap::reportExtraMemoryCostSlowCase(size_t cost)
@@ -729,6 +725,7 @@ void Heap::collectAllGarbage()
     if (!m_isSafeToCollect)
         return;
     
+    DelayedReleaseScope delayedReleaseScope(m_objectSpace);
     collect(DoSweep);
 }
 

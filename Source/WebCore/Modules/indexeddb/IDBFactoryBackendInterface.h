@@ -28,7 +28,7 @@
 #ifndef IDBFactoryBackendInterface_h
 #define IDBFactoryBackendInterface_h
 
-#include "IDBBackingStoreInterface.h"
+#include "IDBDatabaseBackend.h"
 #include "IndexedDB.h"
 
 #include <wtf/PassRefPtr.h>
@@ -65,9 +65,6 @@ public:
 
     virtual void removeIDBDatabaseBackend(const String& uniqueIdentifier) = 0;
 
-    virtual PassRefPtr<IDBTransactionBackend> maybeCreateTransactionBackend(IDBDatabaseBackend*, int64_t transactionId, PassRefPtr<IDBDatabaseCallbacks>, const Vector<int64_t>& objectStoreIds, IndexedDB::TransactionMode) = 0;
-
-    virtual PassRefPtr<IDBCursorBackend> createCursorBackend(IDBTransactionBackend&, IDBBackingStoreCursorInterface&, IndexedDB::CursorType, IDBDatabaseBackend::TaskType, int64_t objectStoreId) = 0;
 };
 
 } // namespace WebCore

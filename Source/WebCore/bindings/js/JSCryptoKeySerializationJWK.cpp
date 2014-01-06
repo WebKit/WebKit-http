@@ -32,12 +32,18 @@
 #include "CryptoAlgorithmHmacParams.h"
 #include "CryptoAlgorithmRegistry.h"
 #include "CryptoAlgorithmRsaSsaKeyParams.h"
+#include "CryptoKey.h"
+#include "CryptoKeyAES.h"
 #include "CryptoKeyDataOctetSequence.h"
 #include "CryptoKeyDataRSAComponents.h"
+#include "CryptoKeyHMAC.h"
+#include "CryptoKeyRSA.h"
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include <heap/StrongInlines.h>
 #include <runtime/JSONObject.h>
+#include <runtime/ObjectConstructor.h>
+#include <runtime/Operations.h>
 #include <wtf/text/Base64.h>
 
 using namespace JSC;
@@ -104,7 +110,7 @@ static bool getBooleanFromJSON(ExecState* exec, JSObject* json, const char* key,
     return true;
 }
 
-static bool getBigIntegerVectorFromJSON(ExecState* exec, JSObject* json, const char* key, Vector<char>& result)
+static bool getBigIntegerVectorFromJSON(ExecState* exec, JSObject* json, const char* key, Vector<uint8_t>& result)
 {
     String base64urlEncodedNumber;
     if (!getStringFromJSON(exec, json, key, base64urlEncodedNumber))
@@ -212,10 +218,10 @@ bool JSCryptoKeySerializationJWK::reconcileAlgorithm(std::unique_ptr<CryptoAlgor
         return false;
 
     if (algorithm->identifier() == CryptoAlgorithmIdentifier::HMAC)
-        return static_cast<CryptoAlgorithmHmacParams&>(*parameters).hash == static_cast<CryptoAlgorithmHmacParams&>(*suggestedParameters).hash;
+        return toCryptoAlgorithmHmacParams(*parameters).hash == toCryptoAlgorithmHmacParams(*suggestedParameters).hash;
     if (algorithm->identifier() == CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5) {
-        CryptoAlgorithmRsaSsaKeyParams& rsaSSAParameters = static_cast<CryptoAlgorithmRsaSsaKeyParams&>(*parameters);
-        CryptoAlgorithmRsaSsaKeyParams& suggestedRSASSAParameters = static_cast<CryptoAlgorithmRsaSsaKeyParams&>(*suggestedParameters);
+        CryptoAlgorithmRsaSsaKeyParams& rsaSSAParameters = toCryptoAlgorithmRsaSsaKeyParams(*parameters);
+        CryptoAlgorithmRsaSsaKeyParams& suggestedRSASSAParameters = toCryptoAlgorithmRsaSsaKeyParams(*suggestedParameters);
         ASSERT(rsaSSAParameters.hasHash);
         if (suggestedRSASSAParameters.hasHash)
             return suggestedRSASSAParameters.hash == rsaSSAParameters.hash;
@@ -236,7 +242,7 @@ void JSCryptoKeySerializationJWK::reconcileUsages(CryptoKeyUsage& suggestedUsage
     }
 
     // FIXME: CryptoKeyUsageDeriveKey, CryptoKeyUsageDeriveBits - should these be implicitly allowed by any JWK use value?
-    // FIXME: There is a mismatch between specs for wrap/unwrap usages, <http://lists.w3.org/Archives/Public/public-webcrypto/2013Nov/0016.html>.
+    // FIXME: "use" mapping is in flux, see <https://www.w3.org/Bugs/Public/show_bug.cgi?id=23796>.
     if (jwkUseString == "sig")
         suggestedUsage = suggestedUsage & (CryptoKeyUsageSign | CryptoKeyUsageVerify);
     else if (jwkUseString == "enc")
@@ -272,6 +278,12 @@ bool JSCryptoKeySerializationJWK::keySizeIsValid(size_t sizeInBits) const
         return sizeInBits == 192;
     if (m_jwkAlgorithmName == "A256CBC")
         return sizeInBits == 256;
+    if (m_jwkAlgorithmName == "RS256")
+        return sizeInBits >= 2048;
+    if (m_jwkAlgorithmName == "RS384")
+        return sizeInBits >= 2048;
+    if (m_jwkAlgorithmName == "RS512")
+        return sizeInBits >= 2048;
     return true;
 }
 
@@ -284,7 +296,7 @@ std::unique_ptr<CryptoKeyData> JSCryptoKeySerializationJWK::keyDataOctetSequence
         return nullptr;
     }
 
-    Vector<char> octetSequence;
+    Vector<uint8_t> octetSequence;
     if (!base64URLDecode(keyBase64URL, octetSequence)) {
         throwTypeError(m_exec, "Cannot decode base64url key data in JWK");
         return nullptr;
@@ -300,13 +312,18 @@ std::unique_ptr<CryptoKeyData> JSCryptoKeySerializationJWK::keyDataOctetSequence
 
 std::unique_ptr<CryptoKeyData> JSCryptoKeySerializationJWK::keyDataRSAComponents() const
 {
-    Vector<char> modulus;
-    Vector<char> exponent;
-    Vector<char> privateExponent;
+    Vector<uint8_t> modulus;
+    Vector<uint8_t> exponent;
+    Vector<uint8_t> privateExponent;
 
     if (!getBigIntegerVectorFromJSON(m_exec, m_json.get(), "n", modulus)) {
         if (!m_exec->hadException())
             throwTypeError(m_exec, "Required JWK \"n\" member is missing");
+        return nullptr;
+    }
+
+    if (!keySizeIsValid(modulus.size() * 8)) {
+        throwTypeError(m_exec, "Key size is not valid for " + m_jwkAlgorithmName);
         return nullptr;
     }
 
@@ -409,6 +426,181 @@ std::unique_ptr<CryptoKeyData> JSCryptoKeySerializationJWK::keyData() const
 
     throwTypeError(m_exec, "Unsupported JWK key type " + jwkKeyType);
     return nullptr;
+}
+
+void JSCryptoKeySerializationJWK::buildJSONForOctetSequence(ExecState* exec, const Vector<uint8_t>& keyData, JSObject* result)
+{
+    addToJSON(exec, result, "kty", "oct");
+    addToJSON(exec, result, "k", base64URLEncode(keyData));
+}
+
+void JSCryptoKeySerializationJWK::buildJSONForRSAComponents(JSC::ExecState* exec, const CryptoKeyDataRSAComponents& data, JSC::JSObject* result)
+{
+    addToJSON(exec, result, "kty", "RSA");
+    addToJSON(exec, result, "n", base64URLEncode(data.modulus()));
+    addToJSON(exec, result, "e", base64URLEncode(data.exponent()));
+
+    if (data.type() == CryptoKeyDataRSAComponents::Type::Public)
+        return;
+
+    addToJSON(exec, result, "d", base64URLEncode(data.privateExponent()));
+
+    if (!data.hasAdditionalPrivateKeyParameters())
+        return;
+
+    addToJSON(exec, result, "p", base64URLEncode(data.firstPrimeInfo().primeFactor));
+    addToJSON(exec, result, "q", base64URLEncode(data.secondPrimeInfo().primeFactor));
+    addToJSON(exec, result, "dp", base64URLEncode(data.firstPrimeInfo().factorCRTExponent));
+    addToJSON(exec, result, "dq", base64URLEncode(data.secondPrimeInfo().factorCRTExponent));
+    addToJSON(exec, result, "qi", base64URLEncode(data.secondPrimeInfo().factorCRTCoefficient));
+
+    if (data.otherPrimeInfos().isEmpty())
+        return;
+
+    JSArray* oth = constructEmptyArray(exec, 0, exec->lexicalGlobalObject(), data.otherPrimeInfos().size());
+    for (size_t i = 0, size = data.otherPrimeInfos().size(); i < size; ++i) {
+        JSObject* jsPrimeInfo = constructEmptyObject(exec);
+        addToJSON(exec, jsPrimeInfo, "r", base64URLEncode(data.otherPrimeInfos()[i].primeFactor));
+        addToJSON(exec, jsPrimeInfo, "d", base64URLEncode(data.otherPrimeInfos()[i].factorCRTExponent));
+        addToJSON(exec, jsPrimeInfo, "t", base64URLEncode(data.otherPrimeInfos()[i].factorCRTCoefficient));
+        oth->putDirectIndex(exec, i, jsPrimeInfo);
+    }
+    result->putDirect(exec->vm(), Identifier(exec, "oth"), oth);
+}
+
+void JSCryptoKeySerializationJWK::addToJSON(ExecState* exec, JSObject* json, const char* key, const String& value)
+{
+    VM& vm = exec->vm();
+    Identifier identifier(&vm, key);
+    json->putDirect(vm, identifier, jsString(exec, value));
+}
+
+void JSCryptoKeySerializationJWK::addBoolToJSON(ExecState* exec, JSObject* json, const char* key, bool value)
+{
+    VM& vm = exec->vm();
+    Identifier identifier(&vm, key);
+    json->putDirect(vm, identifier, jsBoolean(value));
+}
+
+void JSCryptoKeySerializationJWK::addJWKAlgorithmToJSON(ExecState* exec, JSObject* json, const CryptoKey& key)
+{
+    String jwkAlgorithm;
+    switch (key.algorithmIdentifier()) {
+    case CryptoAlgorithmIdentifier::HMAC:
+        switch (toCryptoKeyHMAC(key).hashAlgorithmIdentifier()) {
+        case CryptoAlgorithmIdentifier::SHA_256:
+            if (toCryptoKeyHMAC(key).key().size() * 8 >= 256)
+                jwkAlgorithm = "HS256";
+            break;
+        case CryptoAlgorithmIdentifier::SHA_384:
+            if (toCryptoKeyHMAC(key).key().size() * 8 >= 384)
+                jwkAlgorithm = "HS384";
+            break;
+        case CryptoAlgorithmIdentifier::SHA_512:
+            if (toCryptoKeyHMAC(key).key().size() * 8 >= 512)
+                jwkAlgorithm = "HS512";
+            break;
+        default:
+            break;
+        }
+        break;
+    case CryptoAlgorithmIdentifier::AES_CBC:
+        switch (toCryptoKeyAES(key).key().size() * 8) {
+        case 128:
+            jwkAlgorithm = "A128CBC";
+            break;
+        case 192:
+            jwkAlgorithm = "A192CBC";
+            break;
+        case 256:
+            jwkAlgorithm = "A256CBC";
+            break;
+        }
+        break;
+    case CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5: {
+        const CryptoKeyRSA& rsaKey = toCryptoKeyRSA(key);
+        CryptoAlgorithmIdentifier hash;
+        if (!rsaKey.isRestrictedToHash(hash))
+            break;
+        if (rsaKey.keySizeInBits() < 2048)
+            break;
+        switch (hash) {
+        case CryptoAlgorithmIdentifier::SHA_256:
+            jwkAlgorithm = "RS256";
+            break;
+        case CryptoAlgorithmIdentifier::SHA_384:
+            jwkAlgorithm = "RS384";
+            break;
+        case CryptoAlgorithmIdentifier::SHA_512:
+            jwkAlgorithm = "RS512";
+            break;
+        default:
+            break;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    if (jwkAlgorithm.isNull()) {
+        // The spec doesn't currently tell whether export should fail, or just skip "alg" (which is an optional key in JWK).
+        // Perhaps this should depend on whether the key is extractable?
+        throwTypeError(exec, "Key algorithm and size do not map to any JWK algorithm identifier");
+        return;
+    }
+
+    addToJSON(exec, json, "alg", jwkAlgorithm);
+}
+
+void JSCryptoKeySerializationJWK::addJWKUseToJSON(ExecState* exec, JSObject* json, CryptoKeyUsage usages)
+{
+    // FIXME: "use" mapping is in flux, see <https://www.w3.org/Bugs/Public/show_bug.cgi?id=23796>.
+    switch (usages) {
+    case CryptoKeyUsageEncrypt | CryptoKeyUsageDecrypt | CryptoKeyUsageWrapKey | CryptoKeyUsageUnwrapKey:
+        addToJSON(exec, json, "use", "enc");
+        break;
+    case CryptoKeyUsageSign | CryptoKeyUsageVerify:
+        addToJSON(exec, json, "use", "sig");
+        break;
+    default:
+        throwTypeError(exec, "Key usages cannot be represented in JWK. Only two variants are supported: sign+verify and encrypt+decrypt+wrapKey+unwrapKey");
+    }
+}
+
+String JSCryptoKeySerializationJWK::serialize(ExecState* exec, const CryptoKey& key)
+{
+    std::unique_ptr<CryptoKeyData> keyData = key.exportData();
+    if (!keyData) {
+        // This generally shouldn't happen as long as all key types implement exportData(), but as underlying libraries return errors, there may be some rare failure conditions.
+        throwTypeError(exec, "Couldn't export key material");
+        return String();
+    }
+
+    JSObject* result = constructEmptyObject(exec);
+
+    addJWKAlgorithmToJSON(exec, result, key);
+    if (exec->hadException())
+        return String();
+
+    addBoolToJSON(exec, result, "extractable", key.extractable());
+
+    addJWKUseToJSON(exec, result, key.usagesBitmap());
+    if (exec->hadException())
+        return String();
+
+    if (isCryptoKeyDataOctetSequence(*keyData))
+        buildJSONForOctetSequence(exec, toCryptoKeyDataOctetSequence(*keyData).octetSequence(), result);
+    else if (isCryptoKeyDataRSAComponents(*keyData))
+        buildJSONForRSAComponents(exec, toCryptoKeyDataRSAComponents(*keyData), result);
+    else {
+        throwTypeError(exec, "Key doesn't support exportKey");
+        return String();
+    }
+    if (exec->hadException())
+        return String();
+
+    return JSONStringify(exec, result, 4);
 }
 
 } // namespace WebCore

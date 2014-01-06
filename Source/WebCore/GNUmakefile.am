@@ -82,6 +82,7 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/platform/mediastream \
 	-I$(srcdir)/Source/WebCore/platform/mediastream/gstreamer \
 	-I$(srcdir)/Source/WebCore/platform/mock \
+	-I$(srcdir)/Source/WebCore/platform/mock/mediasource \
 	-I$(srcdir)/Source/WebCore/platform/network \
 	-I$(srcdir)/Source/WebCore/platform/network/gtk \
 	-I$(srcdir)/Source/WebCore/platform/sql \
@@ -90,6 +91,7 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/plugins \
 	-I$(srcdir)/Source/WebCore/plugins/win \
 	-I$(srcdir)/Source/WebCore/rendering \
+	-I$(srcdir)/Source/WebCore/rendering/line \
 	-I$(srcdir)/Source/WebCore/rendering/mathml \
 	-I$(srcdir)/Source/WebCore/rendering/shapes \
 	-I$(srcdir)/Source/WebCore/rendering/style \
@@ -328,15 +330,43 @@ DerivedSources/WebCore/SettingsMacros.h DerivedSources/WebCore/InternalSettingsG
 dom_binding_idls += \
   DerivedSources/WebCore/InternalSettingsGenerated.idl
 
+
+INSPECTOR_DOMAINS := \
+    $(WebCore)/inspector/protocol/ApplicationCache.json \
+    $(WebCore)/inspector/protocol/CSS.json \
+    $(WebCore)/inspector/protocol/Canvas.json \
+    $(WebCore)/inspector/protocol/Console.json \
+    $(WebCore)/inspector/protocol/DOM.json \
+    $(WebCore)/inspector/protocol/DOMDebugger.json \
+    $(WebCore)/inspector/protocol/DOMStorage.json \
+    $(WebCore)/inspector/protocol/Database.json \
+    $(WebCore)/inspector/protocol/Debugger.json \
+    $(WebCore)/inspector/protocol/FileSystem.json \
+    $(WebCore)/inspector/protocol/HeapProfiler.json \
+    $(WebCore)/inspector/protocol/IndexedDB.json \
+    $(WebCore)/inspector/protocol/Input.json \
+    $(WebCore)/inspector/protocol/InspectorDomain.json \
+    $(WebCore)/inspector/protocol/LayerTree.json \
+    $(WebCore)/inspector/protocol/Memory.json \
+    $(WebCore)/inspector/protocol/Network.json \
+    $(WebCore)/inspector/protocol/Page.json \
+    $(WebCore)/inspector/protocol/Profiler.json \
+    $(WebCore)/inspector/protocol/Runtime.json \
+    $(WebCore)/inspector/protocol/Timeline.json \
+    $(WebCore)/inspector/protocol/Worker.json
+
+DerivedSources/WebCore/Inspector.json: $(WebCore)/inspector/Scripts/generate-combined-inspector-json.py $(INSPECTOR_DOMAINS)
+	$(AM_V_GEN)$(PYTHON) $(WebCore)/inspector/Scripts/generate-combined-inspector-json.py $(WebCore)/inspector/protocol > $(GENSOURCES_WEBCORE)/Inspector.json
+
 # All Web Inspector generated files are created with this one call to CodeGeneratorInspector.py
-DerivedSources/WebCore/InspectorBackendDispatcher.cpp: $(WebCore)/inspector/Inspector.json $(WebCore)/inspector/CodeGeneratorInspector.py $(WebCore)/inspector/CodeGeneratorInspectorStrings.py
+DerivedSources/WebCore/InspectorBackendDispatchers.cpp: DerivedSources/WebCore/Inspector.json $(WebCore)/inspector/CodeGeneratorInspector.py $(WebCore)/inspector/CodeGeneratorInspectorStrings.py
 	$(AM_V_GEN)$(PYTHON) $(WebCore)/inspector/CodeGeneratorInspector.py $< --output_h_dir $(GENSOURCES_WEBCORE) --output_cpp_dir $(GENSOURCES_WEBCORE) --output_js_dir $(GENSOURCES_WEBCORE)
 DerivedSources/WebCore/InspectorTypeBuilder.h: DerivedSources/WebCore/InspectorTypeBuilder.cpp
 DerivedSources/WebCore/InspectorTypeBuilder.cpp: DerivedSources/WebCore/InspectorFrontend.h
 DerivedSources/WebCore/InspectorFrontend.h: DerivedSources/WebCore/InspectorFrontend.cpp
 DerivedSources/WebCore/InspectorFrontend.cpp: DerivedSources/WebCore/InspectorBackendCommands.js
-DerivedSources/WebCore/InspectorBackendCommands.js: DerivedSources/WebCore/InspectorBackendDispatcher.h
-DerivedSources/WebCore/InspectorBackendDispatcher.h: DerivedSources/WebCore/InspectorBackendDispatcher.cpp
+DerivedSources/WebCore/InspectorBackendCommands.js: DerivedSources/WebCore/InspectorBackendDispatchers.h
+DerivedSources/WebCore/InspectorBackendDispatchers.h: DerivedSources/WebCore/InspectorBackendDispatchers.cpp
 
 DerivedSources/WebCore/InspectorOverlayPage.h: $(WebCore)/inspector/InspectorOverlayPage.html $(WebCore)/inspector/InspectorOverlayPage.css $(WebCore)/inspector/InspectorOverlayPage.js
 	$(AM_V_GEN)$(PYTHON) $(WebCore)/inspector/Scripts/inline-and-minify-stylesheets-and-scripts.py $(WebCore)/inspector/InspectorOverlayPage.html $(GENSOURCES_WEBCORE)/InspectorOverlayPage.combined.html
@@ -631,6 +661,7 @@ EXTRA_DIST += \
 	$(wildcard $(srcdir)/Source/WebCore/testing/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/workers/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/xml/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/inspector/protocol/*.json) \
 	Source/ThirdParty/ANGLE/src/compiler/glslang.l \
 	Source/ThirdParty/ANGLE/src/compiler/glslang.y \
 	Source/WebCore/bindings/scripts/CodeGeneratorGObject.pm \
@@ -658,7 +689,6 @@ EXTRA_DIST += \
 	Source/WebCore/css/make-css-file-arrays.pl \
 	Source/WebCore/css/makegrammar.pl \
 	Source/WebCore/css/makeprop.pl \
-	Source/WebCore/css/maketokenizer \
 	Source/WebCore/css/makevalues.pl \
 	Source/WebCore/css/mathml.css \
 	Source/WebCore/css/mediaControls.css \
@@ -684,7 +714,6 @@ EXTRA_DIST += \
 	Source/WebCore/inspector/CodeGeneratorInspectorStrings.py \
 	Source/WebCore/inspector/InjectedScriptCanvasModuleSource.js \
 	Source/WebCore/inspector/InjectedScriptSource.js \
-	Source/WebCore/inspector/Inspector.json \
 	Source/WebCore/inspector/InspectorOverlayPage.html \
 	Source/WebCore/inspector/xxd.pl \
 	Source/WebCore/LICENSE-APPLE \

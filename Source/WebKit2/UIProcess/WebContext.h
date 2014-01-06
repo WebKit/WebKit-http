@@ -29,7 +29,6 @@
 #include "APIObject.h"
 #include "DownloadProxyMap.h"
 #include "GenericCallback.h"
-#include "ImmutableArray.h"
 #include "ImmutableDictionary.h"
 #include "MessageReceiver.h"
 #include "MessageReceiverMap.h"
@@ -91,7 +90,7 @@ extern NSString *SchemeForCustomProtocolRegisteredNotificationName;
 extern NSString *SchemeForCustomProtocolUnregisteredNotificationName;
 #endif
 
-class WebContext : public API::TypedObject<API::Object::TypeContext>, private CoreIPC::MessageReceiver
+class WebContext : public API::TypedObject<API::Object::Type::Context>, private CoreIPC::MessageReceiver
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , private PluginInfoStoreClient
 #endif
@@ -265,7 +264,7 @@ public:
 
     PassRefPtr<ImmutableDictionary> plugInAutoStartOriginHashes() const;
     void setPlugInAutoStartOriginHashes(ImmutableDictionary&);
-    void setPlugInAutoStartOrigins(ImmutableArray&);
+    void setPlugInAutoStartOrigins(API::Array&);
 
     // Network Process Management
 

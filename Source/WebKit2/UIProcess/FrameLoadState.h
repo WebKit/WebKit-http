@@ -35,15 +35,27 @@ public:
     FrameLoadState();
     ~FrameLoadState();
 
-    enum LoadState {
-        LoadStateProvisional,
-        LoadStateCommitted,
-        LoadStateFinished
+    enum class State {
+        Provisional,
+        Committed,
+        Finished
     };
+
+    void didStartProvisionalLoad(const String& url);
+    void didReceiveServerRedirectForProvisionalLoad(const String& url);
+    void didFailProvisionalLoad();
+
+    void didCommitLoad();
+    void didFinishLoad();
+    void didFailLoad();
+
+    void didSameDocumentNotification(const String&);
+
+    void setUnreachableURL(const String&);
 
     // FIXME: These should all be private, and FrameLoadState should
     // provide state transition member functions.
-    LoadState m_loadState;
+    State m_state;
     String m_url;
     String m_provisionalURL;
     String m_unreachableURL;

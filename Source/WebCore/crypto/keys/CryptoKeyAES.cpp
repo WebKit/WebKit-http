@@ -30,11 +30,12 @@
 
 #include "CryptoAlgorithmDescriptionBuilder.h"
 #include "CryptoAlgorithmRegistry.h"
+#include "CryptoKeyDataOctetSequence.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-CryptoKeyAES::CryptoKeyAES(CryptoAlgorithmIdentifier algorithm, const Vector<char>& key, bool extractable, CryptoKeyUsage usage)
+CryptoKeyAES::CryptoKeyAES(CryptoAlgorithmIdentifier algorithm, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsage usage)
     : CryptoKey(algorithm, CryptoKeyType::Secret, extractable, usage)
     , m_key(key)
 {
@@ -60,6 +61,12 @@ void CryptoKeyAES::buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder& 
 {
     CryptoKey::buildAlgorithmDescription(builder);
     builder.add("length", m_key.size() * 8);
+}
+
+std::unique_ptr<CryptoKeyData> CryptoKeyAES::exportData() const
+{
+    ASSERT(extractable());
+    return CryptoKeyDataOctetSequence::create(m_key);
 }
 
 } // namespace WebCore

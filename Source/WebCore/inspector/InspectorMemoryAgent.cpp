@@ -67,6 +67,16 @@ InspectorMemoryAgent::~InspectorMemoryAgent()
 {
 }
 
+void InspectorMemoryAgent::didCreateFrontendAndBackend(InspectorFrontendChannel*, InspectorBackendDispatcher* backendDispatcher)
+{
+    m_backendDispatcher = InspectorMemoryBackendDispatcher::create(backendDispatcher, this);
+}
+
+void InspectorMemoryAgent::willDestroyFrontendAndBackend()
+{
+    m_backendDispatcher.clear();
+}
+
 void InspectorMemoryAgent::getDOMCounters(ErrorString*, int* documents, int* nodes, int* jsEventListeners)
 {
     *documents = InspectorCounters::counterValue(InspectorCounters::DocumentCounter);
@@ -75,26 +85,13 @@ void InspectorMemoryAgent::getDOMCounters(ErrorString*, int* documents, int* nod
 }
 
 InspectorMemoryAgent::InspectorMemoryAgent(InstrumentingAgents* instrumentingAgents)
-    : InspectorBaseAgent<InspectorMemoryAgent>("Memory", instrumentingAgents)
-    , m_frontend(0)
+    : InspectorBaseAgent(ASCIILiteral("Memory"), instrumentingAgents)
 {
 }
 
 PassOwnPtr<InspectorMemoryAgent> InspectorMemoryAgent::create(InstrumentingAgents* instrumentingAgents)
 {
     return adoptPtr(new InspectorMemoryAgent(instrumentingAgents));
-}
-
-
-void InspectorMemoryAgent::setFrontend(InspectorFrontend* frontend)
-{
-    ASSERT(!m_frontend);
-    m_frontend = frontend->memory();
-}
-
-void InspectorMemoryAgent::clearFrontend()
-{
-    m_frontend = 0;
 }
 
 } // namespace WebCore

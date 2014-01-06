@@ -67,7 +67,7 @@ class TextResourceDecoder;
 
 typedef String ErrorString;
 
-class InspectorPageAgent : public InspectorBaseAgent<InspectorPageAgent>, public InspectorBackendDispatcher::PageCommandHandler {
+class InspectorPageAgent : public InspectorBaseAgent, public InspectorPageBackendDispatcherHandler {
     WTF_MAKE_NONCOPYABLE(InspectorPageAgent);
 public:
     enum ResourceType {
@@ -117,7 +117,7 @@ public:
     virtual void setShowFPSCounter(ErrorString*, bool show);
     virtual void canContinuouslyPaint(ErrorString*, bool*);
     virtual void setContinuousPaintingEnabled(ErrorString*, bool enabled);
-    virtual void getScriptExecutionStatus(ErrorString*, PageCommandHandler::Result::Enum*);
+    virtual void getScriptExecutionStatus(ErrorString*, InspectorPageBackendDispatcherHandler::Result::Enum*);
     virtual void setScriptExecutionDisabled(ErrorString*, bool);
     virtual void setGeolocationOverride(ErrorString*, const double*, const double*, const double*);
     virtual void clearGeolocationOverride(ErrorString*);
@@ -162,8 +162,8 @@ public:
     void scriptsEnabled(bool isEnabled);
 
     // Inspector Controller API
-    virtual void setFrontend(InspectorFrontend*);
-    virtual void clearFrontend();
+    virtual void didCreateFrontendAndBackend(InspectorFrontendChannel*, InspectorBackendDispatcher*) OVERRIDE;
+    virtual void willDestroyFrontendAndBackend() OVERRIDE;
 
     void webViewResized(const IntSize&);
 
@@ -197,7 +197,8 @@ private:
     InspectorAgent* m_inspectorAgent;
     InjectedScriptManager* m_injectedScriptManager;
     InspectorClient* m_client;
-    InspectorFrontend::Page* m_frontend;
+    std::unique_ptr<InspectorPageFrontendDispatcher> m_frontendDispatcher;
+    RefPtr<InspectorPageBackendDispatcher> m_backendDispatcher;
     InspectorOverlay* m_overlay;
     long m_lastScriptIdentifier;
     String m_pendingScriptToEvaluateOnLoadOnce;

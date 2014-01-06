@@ -40,7 +40,7 @@ namespace WebCore {
 
 class Scrollbar;
 
-class ScrollingStateScrollingNode : public ScrollingStateNode {
+class ScrollingStateScrollingNode FINAL : public ScrollingStateNode {
 public:
     static PassOwnPtr<ScrollingStateScrollingNode> create(ScrollingStateTree*, ScrollingNodeID);
 
@@ -68,10 +68,9 @@ public:
         FooterHeight,
         HeaderLayer,
         FooterLayer,
-        PainterForScrollbar
+        PainterForScrollbar,
+        BehaviorForFixedElements
     };
-
-    virtual bool isScrollingNode() OVERRIDE { return true; }
 
     const IntRect& viewportRect() const { return m_viewportRect; }
     void setViewportRect(const IntRect&);
@@ -108,6 +107,9 @@ public:
 
     ScrollbarMode verticalScrollbarMode() const { return m_verticalScrollbarMode; }
     void setVerticalScrollbarMode(ScrollbarMode);
+
+    ScrollBehaviorForFixedElements scrollBehaviorForFixedElements() const { return m_behaviorForFixed; }
+    void setScrollBehaviorForFixedElements(ScrollBehaviorForFixedElements);
 
     const IntPoint& requestedScrollPosition() const { return m_requestedScrollPosition; }
     void setRequestedScrollPosition(const IntPoint&, bool representsProgrammaticScroll);
@@ -150,6 +152,8 @@ private:
     ScrollingStateScrollingNode(ScrollingStateTree*, ScrollingNodeID);
     ScrollingStateScrollingNode(const ScrollingStateScrollingNode&);
 
+    virtual bool isScrollingNode() const OVERRIDE { return true; }
+
     GraphicsLayer* m_counterScrollingLayer;
     GraphicsLayer* m_headerLayer;
     GraphicsLayer* m_footerLayer;
@@ -182,6 +186,8 @@ private:
     ScrollbarMode m_horizontalScrollbarMode;
     ScrollbarMode m_verticalScrollbarMode;
 
+    ScrollBehaviorForFixedElements m_behaviorForFixed;
+
     IntPoint m_requestedScrollPosition;
     IntPoint m_scrollOrigin;
 
@@ -189,14 +195,7 @@ private:
     int m_footerHeight;
 };
 
-inline ScrollingStateScrollingNode* toScrollingStateScrollingNode(ScrollingStateNode* node)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isScrollingNode());
-    return static_cast<ScrollingStateScrollingNode*>(node);
-}
-    
-// This will catch anyone doing an unnecessary cast.
-void toScrollingStateScrollingNode(const ScrollingStateScrollingNode*);
+SCROLLING_STATE_NODE_TYPE_CASTS(ScrollingStateScrollingNode, isScrollingNode());
 
 } // namespace WebCore
 

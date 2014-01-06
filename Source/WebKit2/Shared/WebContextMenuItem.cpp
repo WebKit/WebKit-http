@@ -22,14 +22,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
+
 #include "config.h"
 
 #if ENABLE(CONTEXT_MENUS)
 
 #include "WebContextMenuItem.h"
 
-#include "ImmutableArray.h"
+#include "APIArray.h"
 #include <WebCore/ContextMenuItem.h>
 
 namespace WebKit {
@@ -39,19 +39,19 @@ WebContextMenuItem::WebContextMenuItem(const WebContextMenuItemData& data)
 {
 }
 
-PassRefPtr<WebContextMenuItem> WebContextMenuItem::create(const String& title, bool enabled, ImmutableArray* submenuItems)
+PassRefPtr<WebContextMenuItem> WebContextMenuItem::create(const String& title, bool enabled, API::Array* submenuItems)
 {
     size_t size = submenuItems->size();
-    
+
     Vector<WebContextMenuItemData> submenu;
     submenu.reserveCapacity(size);
-    
+
     for (size_t i = 0; i < size; ++i) {
         WebContextMenuItem* item = submenuItems->at<WebContextMenuItem>(i);
         if (item)
             submenu.append(*item->data());
     }
-    
+
     return adoptRef(new WebContextMenuItem(WebContextMenuItemData(WebCore::ContextMenuItemTagNoAction, title, enabled, submenu))).leakRef();
 }
 
@@ -61,10 +61,10 @@ WebContextMenuItem* WebContextMenuItem::separatorItem()
     return separatorItem;
 }
 
-PassRefPtr<ImmutableArray> WebContextMenuItem::submenuItemsAsImmutableArray() const
-{    
+PassRefPtr<API::Array> WebContextMenuItem::submenuItemsAsAPIArray() const
+{
     if (m_webContextMenuItemData.type() != WebCore::SubmenuType)
-        return ImmutableArray::create();
+        return API::Array::create();
 
     Vector<RefPtr<API::Object>> submenuItems;
     submenuItems.reserveInitialCapacity(m_webContextMenuItemData.submenu().size());
@@ -72,7 +72,7 @@ PassRefPtr<ImmutableArray> WebContextMenuItem::submenuItemsAsImmutableArray() co
     for (const auto& item : m_webContextMenuItemData.submenu())
         submenuItems.uncheckedAppend(WebContextMenuItem::create(item));
 
-    return ImmutableArray::create(std::move(submenuItems));
+    return API::Array::create(std::move(submenuItems));
 }
 
 API::Object* WebContextMenuItem::userData() const

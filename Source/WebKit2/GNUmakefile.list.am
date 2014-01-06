@@ -1,6 +1,5 @@
 webkit2_h_api += \
 	$(WebKit2)/Shared/API/c/gtk/WKBaseGtk.h \
-	$(WebKit2)/Shared/API/c/gtk/WKGraphicsContextGtk.h \
 	$(WebKit2)/Shared/API/c/soup/WKBaseSoup.h \
 	$(WebKit2)/Shared/API/c/WKArray.h \
 	$(WebKit2)/Shared/API/c/WKBase.h \
@@ -15,7 +14,6 @@ webkit2_h_api += \
 	$(WebKit2)/Shared/API/c/WKEvent.h \
 	$(WebKit2)/Shared/API/c/WKFindOptions.h \
 	$(WebKit2)/Shared/API/c/WKGeometry.h \
-	$(WebKit2)/Shared/API/c/WKGraphicsContext.h \
 	$(WebKit2)/Shared/API/c/WKImage.h \
 	$(WebKit2)/Shared/API/c/WKMutableArray.h \
 	$(WebKit2)/Shared/API/c/WKMutableDictionary.h \
@@ -324,14 +322,14 @@ webkit2_sources += \
 	Source/WebKit2/Shared/ResourceCachesToClear.h \
 	Source/WebKit2/Shared/ViewState.h \
 	Source/WebKit2/Shared/WebMemorySampler.h \
+	Source/WebKit2/Shared/APIArray.cpp \
+	Source/WebKit2/Shared/APIArray.h \
 	Source/WebKit2/Shared/APIClient.h \
 	Source/WebKit2/Shared/APIClientTraits.cpp \
 	Source/WebKit2/Shared/APIClientTraits.h \
 	Source/WebKit2/Shared/API/c/cairo/WKImageCairo.cpp \
 	Source/WebKit2/Shared/API/c/cairo/WKImageCairo.h \
 	Source/WebKit2/Shared/API/c/gtk/WKBaseGtk.h \
-	Source/WebKit2/Shared/API/c/gtk/WKGraphicsContextGtk.h \
-	Source/WebKit2/Shared/API/c/gtk/WKGraphicsContextGtk.cpp \
 	Source/WebKit2/Shared/API/c/soup/WKBaseSoup.h \
 	Source/WebKit2/Shared/API/c/WKArray.cpp \
 	Source/WebKit2/Shared/API/c/WKArray.h \
@@ -346,6 +344,7 @@ webkit2_sources += \
 	Source/WebKit2/Shared/API/c/WKData.cpp \
 	Source/WebKit2/Shared/API/c/WKData.h \
 	Source/WebKit2/Shared/API/c/WKDeclarationSpecifiers.h \
+	Source/WebKit2/Shared/API/c/WKDeprecatedFunctions.cpp \
 	Source/WebKit2/Shared/API/c/WKDictionary.cpp \
 	Source/WebKit2/Shared/API/c/WKDictionary.h \
 	Source/WebKit2/Shared/API/c/WKError.cpp \
@@ -354,8 +353,6 @@ webkit2_sources += \
 	Source/WebKit2/Shared/API/c/WKFindOptions.h \
 	Source/WebKit2/Shared/API/c/WKGeometry.h \
 	Source/WebKit2/Shared/API/c/WKGeometry.cpp \
-	Source/WebKit2/Shared/API/c/WKGraphicsContext.cpp \
-	Source/WebKit2/Shared/API/c/WKGraphicsContext.h \
 	Source/WebKit2/Shared/API/c/WKImage.cpp \
 	Source/WebKit2/Shared/API/c/WKImage.h \
 	Source/WebKit2/Shared/API/c/WKMutableArray.cpp \
@@ -439,8 +436,6 @@ webkit2_sources += \
 	Source/WebKit2/Shared/gtk/WebEventFactory.cpp \
 	Source/WebKit2/Shared/gtk/WebEventFactory.h \
 	Source/WebKit2/Shared/ImageOptions.h \
-	Source/WebKit2/Shared/ImmutableArray.cpp \
-	Source/WebKit2/Shared/ImmutableArray.h \
 	Source/WebKit2/Shared/ImmutableDictionary.cpp \
 	Source/WebKit2/Shared/ImmutableDictionary.h \
 	Source/WebKit2/Shared/LayerTreeContext.h \
@@ -522,8 +517,6 @@ webkit2_sources += \
 	Source/WebKit2/Shared/WebGeolocationPosition.cpp \
 	Source/WebKit2/Shared/WebGeolocationPosition.h \
 	Source/WebKit2/Shared/WebGeometry.h \
-	Source/WebKit2/Shared/WebGraphicsContext.cpp \
-	Source/WebKit2/Shared/WebGraphicsContext.h \
 	Source/WebKit2/Shared/WebHitTestResult.cpp \
 	Source/WebKit2/Shared/WebHitTestResult.h \
 	Source/WebKit2/Shared/WebImage.cpp \
@@ -826,6 +819,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/Authentication/WebCredential.h \
 	Source/WebKit2/UIProcess/Authentication/WebProtectionSpace.cpp \
 	Source/WebKit2/UIProcess/Authentication/WebProtectionSpace.h \
+	Source/WebKit2/UIProcess/APINavigationData.cpp \
+	Source/WebKit2/UIProcess/APINavigationData.h \
 	Source/WebKit2/UIProcess/BackingStore.cpp \
 	Source/WebKit2/UIProcess/BackingStore.h \
 	Source/WebKit2/UIProcess/DefaultUndoController.cpp \
@@ -847,6 +842,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/GeolocationPermissionRequestManagerProxy.h \
 	Source/WebKit2/UIProcess/GeolocationPermissionRequestProxy.cpp \
 	Source/WebKit2/UIProcess/GeolocationPermissionRequestProxy.h \
+	Source/WebKit2/UIProcess/PageLoadState.cpp \
+	Source/WebKit2/UIProcess/PageLoadState.h \
 	Source/WebKit2/UIProcess/cairo/BackingStoreCairo.cpp \
 	Source/WebKit2/UIProcess/gtk/ExperimentalFeatures.cpp \
 	Source/WebKit2/UIProcess/gtk/ExperimentalFeatures.h \
@@ -986,8 +983,6 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebMediaCacheManagerProxy.h \
 	Source/WebKit2/UIProcess/WebLoaderClient.cpp \
 	Source/WebKit2/UIProcess/WebLoaderClient.h \
-	Source/WebKit2/UIProcess/WebNavigationData.cpp \
-	Source/WebKit2/UIProcess/WebNavigationData.h \
 	Source/WebKit2/UIProcess/WebNetworkInfoManagerProxy.cpp \
 	Source/WebKit2/UIProcess/WebNetworkInfoManagerProxy.h \
 	Source/WebKit2/UIProcess/WebNetworkInfoProvider.cpp \

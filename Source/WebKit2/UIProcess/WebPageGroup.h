@@ -38,7 +38,7 @@ namespace WebKit {
 class WebPreferences;
 class WebPageProxy;
 
-class WebPageGroup : public API::TypedObject<API::Object::TypePageGroup> {
+class WebPageGroup : public API::TypedObject<API::Object::Type::PageGroup> {
 public:
     static PassRefPtr<WebPageGroup> create(const String& identifier = String(), bool visibleToInjectedBundle = true, bool visibleToHistoryClient = true);
     static WebPageGroup* get(uint64_t pageGroupID);
@@ -57,8 +57,8 @@ public:
     WebPreferences* preferences() const;
     void preferencesDidChange();
     
-    void addUserStyleSheet(const String& source, const String& baseURL, ImmutableArray* whitelist, ImmutableArray* blacklist, WebCore::UserContentInjectedFrames, WebCore::UserStyleLevel);
-    void addUserScript(const String& source, const String& baseURL, ImmutableArray* whitelist, ImmutableArray* blacklist, WebCore::UserContentInjectedFrames, WebCore::UserScriptInjectionTime);
+    void addUserStyleSheet(const String& source, const String& baseURL, API::Array* whitelist, API::Array* blacklist, WebCore::UserContentInjectedFrames, WebCore::UserStyleLevel);
+    void addUserScript(const String& source, const String& baseURL, API::Array* whitelist, API::Array* blacklist, WebCore::UserContentInjectedFrames, WebCore::UserScriptInjectionTime);
     void removeAllUserStyleSheets();
     void removeAllUserScripts();
     void removeAllUserContent();

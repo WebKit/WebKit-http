@@ -108,7 +108,7 @@ StatusLineView.prototype = {
                 break;
 
             case StatusLineView.Status.Good:
-                this._statusBubbleElement.textContent = "\u2713";
+                this._statusBubbleElement.textContent = "";
                 break;
 
             case StatusLineView.Status.Danger:
@@ -162,7 +162,7 @@ StatusLineView.prototype = {
 
         var anchor = document.createElement("a");
         anchor.href = this.url;
-        anchor.target = "_new";
+        anchor.target = "_blank";
 
         anchor.click();
     }

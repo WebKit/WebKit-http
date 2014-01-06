@@ -26,20 +26,14 @@
 #include "config.h"
 #include "WKMutableArray.h"
 
-#include "ImmutableArray.h"
+#include "APIArray.h"
 #include "WKAPICast.h"
 
 using namespace WebKit;
 
 WKMutableArrayRef WKMutableArrayCreate()
 {
-    return const_cast<WKMutableArrayRef>(toAPI(ImmutableArray::create().leakRef()));
-}
-
-bool WKArrayIsMutable(WKArrayRef arrayRef)
-{
-    // FIXME: This function should be removed.
-    return false;
+    return const_cast<WKMutableArrayRef>(toAPI(API::Array::create().leakRef()));
 }
 
 void WKArrayAppendItem(WKMutableArrayRef arrayRef, WKTypeRef itemRef)

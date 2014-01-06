@@ -47,7 +47,6 @@ class Event;
 class FloatQuad;
 class Frame;
 class InspectorClient;
-class InspectorFrontend;
 class InspectorMemoryAgent;
 class InspectorPageAgent;
 class InstrumentingAgents;
@@ -122,8 +121,8 @@ private:
 };
 
 class InspectorTimelineAgent
-    : public InspectorBaseAgent<InspectorTimelineAgent>
-    , public InspectorBackendDispatcher::TimelineCommandHandler {
+    : public InspectorBaseAgent
+    , public InspectorTimelineBackendDispatcherHandler {
     WTF_MAKE_NONCOPYABLE(InspectorTimelineAgent);
 public:
     enum InspectorType { PageInspector, WorkerInspector };
@@ -135,8 +134,8 @@ public:
 
     ~InspectorTimelineAgent();
 
-    virtual void setFrontend(InspectorFrontend*);
-    virtual void clearFrontend();
+    virtual void didCreateFrontendAndBackend(InspectorFrontendChannel*, InspectorBackendDispatcher*) OVERRIDE;
+    virtual void willDestroyFrontendAndBackend() OVERRIDE;
 
     virtual void start(ErrorString*, const int* maxCallStackDepth, const bool* includeDomCounters);
     virtual void stop(ErrorString*);
@@ -259,7 +258,8 @@ private:
     InspectorMemoryAgent* m_memoryAgent;
     TimelineTimeConverter m_timeConverter;
 
-    InspectorFrontend::Timeline* m_frontend;
+    std::unique_ptr<InspectorTimelineFrontendDispatcher> m_frontendDispatcher;
+    RefPtr<InspectorTimelineBackendDispatcher> m_backendDispatcher;
     double m_timestampOffset;
 
     Vector<TimelineRecordEntry> m_recordStack;

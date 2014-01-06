@@ -27,7 +27,7 @@
 #include "config.h"
 #include "WKOpenPanelParameters.h"
 
-#include "ImmutableArray.h"
+#include "APIArray.h"
 #include "WKAPICast.h"
 #include "WebOpenPanelParameters.h"
 
@@ -53,6 +53,7 @@ WKStringRef WKOpenPanelParametersCopyCapture(WKOpenPanelParametersRef parameters
 #if ENABLE(MEDIA_CAPTURE)
     return toCopiedAPI(toImpl(parametersRef)->capture());
 #else
+    UNUSED_PARAM(parametersRef);
     return 0;
 #endif
 }

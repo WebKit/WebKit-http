@@ -1,3 +1,55 @@
+2013-11-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r159430.
+        http://trac.webkit.org/changeset/159430
+        https://bugs.webkit.org/show_bug.cgi?id=124548
+
+        WebCore can know nothing about nor use files from WebKit/
+        (Requested by thorton on #webkit).
+
+        * WebView.cpp:
+        (webKitVersionString):
+
+2013-11-18  Brian J. Burg  <burg@cs.washington.edu>
+
+        Consolidate various frame snapshot capabilities.
+        https://bugs.webkit.org/show_bug.cgi?id=124325
+
+        Reviewed by Timothy Hatcher.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::renderedImage): use createDragImageForNode.
+
+2013-11-18  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Optimization, no need to erase background before paint.
+        https://bugs.webkit.org/show_bug.cgi?id=124453
+
+        Reviewed by Brent Fulgham.
+
+        As the paint will blit a bitmap onto the invalid area (no alpha),
+        there is no need to erase the background first, as this will be overwritten by the blit.
+
+        * WebView.cpp:
+        (WebView::WebViewWndProc): Avoid erasing background before paint.
+
+2013-11-18  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] WebKit version in user agent string is incorrect.
+        https://bugs.webkit.org/show_bug.cgi?id=124454
+
+        Reviewed by Brent Fulgham.
+
+        * WebView.cpp:
+        (webKitVersionString): Create WebKit version string from WebKitVersion.h.
+
+2013-11-15  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed Win build fix; setCurrentTime() no longer takes an exception parameter.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::setCurrentTime):
+
 2013-11-12  Alex Christensen  <achristensen@webkit.org>
 
         [WinCairo] Preparation for ENABLE(VIDEO).

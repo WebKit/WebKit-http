@@ -1309,6 +1309,8 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
         [tempArray addObject:(NSString *)kAXColumnHeaderUIElementsAttribute];
         [tempArray addObject:NSAccessibilityRowHeaderUIElementsAttribute];
         [tempArray addObject:NSAccessibilityHeaderAttribute];
+        [tempArray addObject:NSAccessibilityColumnCountAttribute];
+        [tempArray addObject:NSAccessibilityRowCountAttribute];
         tableAttrs = [[NSArray alloc] initWithArray:tempArray];
         [tempArray release];
     }
@@ -2351,11 +2353,15 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     }
     
     if (m_object->isAccessibilityTable()) {
-        // TODO: distinguish between visible and non-visible rows
-        if ([attributeName isEqualToString:NSAccessibilityRowsAttribute] ||
-            [attributeName isEqualToString:NSAccessibilityVisibleRowsAttribute]) {
+        if ([attributeName isEqualToString:NSAccessibilityRowsAttribute])
             return convertToNSArray(toAccessibilityTable(m_object)->rows());
+        
+        if ([attributeName isEqualToString:NSAccessibilityVisibleRowsAttribute]) {
+            AccessibilityObject::AccessibilityChildrenVector visibleRows;
+            toAccessibilityTable(m_object)->visibleRows(visibleRows);
+            return convertToNSArray(visibleRows);
         }
+        
         // TODO: distinguish between visible and non-visible columns
         if ([attributeName isEqualToString:NSAccessibilityColumnsAttribute] ||
             [attributeName isEqualToString:NSAccessibilityVisibleColumnsAttribute]) {
@@ -2397,6 +2403,12 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             toAccessibilityTable(m_object)->cells(cells);
             return convertToNSArray(cells);
         }
+        
+        if ([attributeName isEqualToString:NSAccessibilityColumnCountAttribute])
+            return @(toAccessibilityTable(m_object)->columnCount());
+        
+        if ([attributeName isEqualToString:NSAccessibilityRowCountAttribute])
+            return @(toAccessibilityTable(m_object)->rowCount());
     }
     
     if (m_object->isTableColumn()) {

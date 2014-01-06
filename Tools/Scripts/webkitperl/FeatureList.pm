@@ -156,6 +156,7 @@ my (
     $xhrTimeoutSupport,
     $xsltSupport,
     $ftlJITSupport,
+    $forceCLoop,
 );
 
 my @features = (
@@ -340,7 +341,7 @@ my @features = (
       define => "ENABLE_MEDIA_CAPTURE", default => isEfl(), value => \$mediaCaptureSupport },
 
     { option => "media-source", desc => "Toggle Media Source support",
-      define => "ENABLE_MEDIA_SOURCE", default => 0, value => \$mediaSourceSupport },
+      define => "ENABLE_MEDIA_SOURCE", default => isGtk(), value => \$mediaSourceSupport },
 
     { option => "media-statistics", desc => "Toggle Media Statistics support",
       define => "ENABLE_MEDIA_STATISTICS", default => 0, value => \$mediaStatisticsSupport },
@@ -488,6 +489,9 @@ my @features = (
 
     { option => "ftl-jit", desc => "Toggle FTLJIT support",
       define => "ENABLE_FTL_JIT", default => 0, value => \$ftlJITSupport },
+
+    { option => "cloop", desc => "Force use of the llint c loop",
+      define => "ENABLE_LLINT_C_LOOP", default => 0, value => \$forceCLoop },
 );
 
 sub getFeatureOptionList()

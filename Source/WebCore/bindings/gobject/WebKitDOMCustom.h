@@ -34,12 +34,69 @@ G_BEGIN_DECLS
 WEBKIT_API gboolean webkit_dom_html_text_area_element_is_edited(WebKitDOMHTMLTextAreaElement* input);
 
 /**
+ * webkit_dom_html_media_element_set_current_time:
+ * @self: A #WebKitDOMHTMLMediaElement
+ * @value: A #gdouble
+ * @error: #GError
+ *
+ */
+WEBKIT_API void webkit_dom_html_media_element_set_current_time(WebKitDOMHTMLMediaElement* self, gdouble value, GError** error);
+
+/**
  * webkit_dom_html_input_element_is_edited:
  * @input: A #WebKitDOMHTMLInputElement
  *
  * Returns: A #gboolean
  */
 WEBKIT_API gboolean webkit_dom_html_input_element_is_edited(WebKitDOMHTMLInputElement* input);
+
+/**
+ * webkit_dom_audio_track_get_kind:
+ * @self: A #WebKitDOMAudioTrack
+ *
+ * Returns: A #gchar
+ */
+WEBKIT_API gchar* webkit_dom_audio_track_get_kind(WebKitDOMAudioTrack* self);
+
+/**
+ * webkit_dom_audio_track_get_language:
+ * @self: A #WebKitDOMAudioTrack
+ *
+ * Returns: A #gchar
+ */
+WEBKIT_API gchar* webkit_dom_audio_track_get_language(WebKitDOMAudioTrack* self);
+
+/**
+ * webkit_dom_text_track_get_kind:
+ * @self: A #WebKitDOMTextTrack
+ *
+ * Returns: A #gchar
+ */
+WEBKIT_API gchar* webkit_dom_text_track_get_kind(WebKitDOMTextTrack* self);
+
+/**
+ * webkit_dom_text_track_get_language:
+ * @self: A #WebKitDOMTextTrack
+ *
+ * Returns: A #gchar
+ */
+WEBKIT_API gchar* webkit_dom_text_track_get_language(WebKitDOMTextTrack* self);
+
+/**
+ * webkit_dom_video_track_get_kind:
+ * @self: A #WebKitDOMVideoTrack
+ *
+ * Returns: A #gchar
+ */
+WEBKIT_API gchar* webkit_dom_video_track_get_kind(WebKitDOMVideoTrack* self);
+
+/**
+ * webkit_dom_video_track_get_language:
+ * @self: A #WebKitDOMVideoTrack
+ *
+ * Returns: A #gchar
+ */
+WEBKIT_API gchar* webkit_dom_video_track_get_language(WebKitDOMVideoTrack* self);
 
 /**
  * webkit_dom_blob_webkit_slice:

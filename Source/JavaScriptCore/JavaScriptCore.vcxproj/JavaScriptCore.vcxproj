@@ -338,6 +338,7 @@
     <ClCompile Include="..\dfg\DFGArgumentsSimplificationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGArrayMode.cpp" />
     <ClCompile Include="..\dfg\DFGAtTailAbstractState.cpp" />
+    <ClCompile Include="..\dfg\DFGAvailability.cpp" />
     <ClCompile Include="..\dfg\DFGBackwardsPropagationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGBasicBlock.cpp" />
     <ClCompile Include="..\dfg\DFGBinarySwitch.cpp" />
@@ -375,9 +376,11 @@
     <ClCompile Include="..\dfg\DFGFlushLivenessAnalysisPhase.cpp" />
     <ClCompile Include="..\dfg\DFGGraph.cpp" />
     <ClCompile Include="..\dfg\DFGInPlaceAbstractState.cpp" />
+    <ClCompile Include="..\dfg\DFGInvalidationPointInjectionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGJITCode.cpp" />
     <ClCompile Include="..\dfg\DFGJITCompiler.cpp" />
     <ClCompile Include="..\dfg\DFGJITFinalizer.cpp" />
+    <ClCompile Include="..\dfg\DFGJumpReplacement.cpp" />
     <ClCompile Include="..\dfg\DFGLazyJSValue.cpp" />
     <ClCompile Include="..\dfg\DFGLICMPhase.cpp" />
     <ClCompile Include="..\dfg\DFGLivenessAnalysisPhase.cpp" />
@@ -403,6 +406,7 @@
     <ClCompile Include="..\dfg\DFGPlan.cpp" />
     <ClCompile Include="..\dfg\DFGPredictionInjectionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGPredictionPropagationPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGResurrectionForValidationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT32_64.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT64.cpp" />
@@ -421,6 +425,7 @@
     <ClCompile Include="..\dfg\DFGVariableEvent.cpp" />
     <ClCompile Include="..\dfg\DFGVariableEventStream.cpp" />
     <ClCompile Include="..\dfg\DFGVirtualRegisterAllocationPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGWatchpointCollectionPhase.cpp" />
     <ClCompile Include="..\dfg\DFGWorklist.cpp" />
     <ClCompile Include="..\disassembler\Disassembler.cpp" />
     <ClCompile Include="..\heap\BlockAllocator.cpp" />
@@ -445,7 +450,6 @@
     <ClCompile Include="..\heap\MarkStack.cpp" />
     <ClCompile Include="..\heap\SlotVisitor.cpp" />
     <ClCompile Include="..\heap\SuperRegion.cpp" />
-    <ClCompile Include="..\heap\VTableSpectrum.cpp" />
     <ClCompile Include="..\heap\Weak.cpp" />
     <ClCompile Include="..\heap\WeakBlock.cpp" />
     <ClCompile Include="..\heap\WeakHandleOwner.cpp" />
@@ -745,6 +749,7 @@
     <ClInclude Include="..\bytecode\ByValInfo.h" />
     <ClInclude Include="..\bytecode\BytecodeBasicBlock.h" />
     <ClInclude Include="..\bytecode\BytecodeLivenessAnalysis.h" />
+    <ClInclude Include="..\bytecode\BytecodeLivenessAnalysisInline.h" />
     <ClInclude Include="..\bytecode\CallLinkInfo.h" />
     <ClInclude Include="..\bytecode\CallLinkStatus.h" />
     <ClInclude Include="..\bytecode\CallReturnOffsetToBytecodeOffset.h" />
@@ -762,6 +767,7 @@
     <ClInclude Include="..\bytecode\ExecutionCounter.h" />
     <ClInclude Include="..\bytecode\ExitKind.h" />
     <ClInclude Include="..\bytecode\ExpressionRangeInfo.h" />
+    <ClInclude Include="..\bytecode\FullBytecodeLivenss.h" />
     <ClInclude Include="..\bytecode\GetByIdStatus.h" />
     <ClInclude Include="..\bytecode\HandlerInfo.h" />
     <ClInclude Include="..\bytecode\InlineCallFrameSet.h" />
@@ -812,6 +818,7 @@
     <ClInclude Include="..\dfg\DFGArrayifySlowPathGenerator.h" />
     <ClInclude Include="..\dfg\DFGArrayMode.h" />
     <ClInclude Include="..\dfg\DFGAtTailAbstractState.h" />
+    <ClInclude Include="..\dfg\DFGAvailability.h" />
     <ClInclude Include="..\dfg\DFGBackwardsPropagationPhase.h" />
     <ClInclude Include="..\dfg\DFGBasicBlock.h" />
     <ClInclude Include="..\dfg\DFGBasicBlockInlines.h" />
@@ -861,9 +868,11 @@
     <ClInclude Include="..\dfg\DFGGraph.h" />
     <ClInclude Include="..\dfg\DFGInPlaceAbstractState.h" />
     <ClInclude Include="..\dfg\DFGInsertionSet.h" />
+    <ClInclude Include="..\dfg\DFGInvalidationPointInjectionPhase.h" />
     <ClInclude Include="..\dfg\DFGJITCode.h" />
     <ClInclude Include="..\dfg\DFGJITCompiler.h" />
     <ClInclude Include="..\dfg\DFGJITFinalizer.h" />
+    <ClInclude Include="..\dfg\DFGJumpReplacement.h" />
     <ClInclude Include="..\dfg\DFGLazyJSValue.h" />
     <ClInclude Include="..\dfg\DFGLICMPhase.h" />
     <ClInclude Include="..\dfg\DFGLivenessAnalysisPhase.h" />
@@ -895,6 +904,7 @@
     <ClInclude Include="..\dfg\DFGPredictionPropagationPhase.h" />
     <ClInclude Include="..\dfg\DFGRegisterBank.h" />
     <ClInclude Include="..\dfg\DFGRegisterSet.h" />
+    <ClInclude Include="..\dfg\DFGResurrectionForValidationPhase.h" />
     <ClInclude Include="..\dfg\DFGSafeToExecute.h" />
     <ClInclude Include="..\dfg\DFGSaneStringGetByValSlowPathGenerator.h" />
     <ClInclude Include="..\dfg\DFGScoreBoard.h" />
@@ -921,6 +931,7 @@
     <ClInclude Include="..\dfg\DFGVariableEventStream.h" />
     <ClInclude Include="..\dfg\DFGVariadicFunction.h" />
     <ClInclude Include="..\dfg\DFGVirtualRegisterAllocationPhase.h" />
+    <ClInclude Include="..\dfg\DFGWatchpointCollectionPhase.h" />
     <ClInclude Include="..\dfg\DFGWorklist.h" />
     <ClInclude Include="..\disassembler\Disassembler.h" />
     <ClInclude Include="..\heap\BlockAllocator.h" />
@@ -936,6 +947,7 @@
     <ClInclude Include="..\heap\CopyVisitorInlines.h" />
     <ClInclude Include="..\heap\CopyWorkList.h" />
     <ClInclude Include="..\heap\DeferGC.h" />
+    <ClInclude Include="..\heap\DelayedReleaseScope.h" />
     <ClInclude Include="..\heap\GCAssertions.h" />
     <ClInclude Include="..\heap\GCThread.h" />
     <ClInclude Include="..\heap\GCThreadSharedData.h" />
@@ -971,7 +983,6 @@
     <ClInclude Include="..\heap\SuperRegion.h" />
     <ClInclude Include="..\heap\TinyBloomFilter.h" />
     <ClInclude Include="..\heap\UnconditionalFinalizer.h" />
-    <ClInclude Include="..\heap\VTableSpectrum.h" />
     <ClInclude Include="..\heap\Weak.h" />
     <ClInclude Include="..\heap\WeakBlock.h" />
     <ClInclude Include="..\heap\WeakHandleOwner.h" />
@@ -1311,15 +1322,11 @@
   <ItemGroup>
     <MASM Include="..\jit\JITStubsMSVC64.asm">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
     </MASM>

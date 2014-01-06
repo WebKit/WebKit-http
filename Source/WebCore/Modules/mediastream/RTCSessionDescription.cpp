@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,16 +50,16 @@ PassRefPtr<RTCSessionDescription> RTCSessionDescription::create(const Dictionary
 {
     String type;
     bool ok = dictionary.get("type", type);
-    if (!ok || !verifyType(type)) {
+    if (ok && !verifyType(type)) {
         ec = TYPE_MISMATCH_ERR;
-        return 0;
+        return nullptr;
     }
 
     String sdp;
     ok = dictionary.get("sdp", sdp);
-    if (!ok || sdp.isEmpty()) {
+    if (ok && sdp.isEmpty()) {
         ec = TYPE_MISMATCH_ERR;
-        return 0;
+        return nullptr;
     }
 
     return adoptRef(new RTCSessionDescription(RTCSessionDescriptionDescriptor::create(type, sdp)));

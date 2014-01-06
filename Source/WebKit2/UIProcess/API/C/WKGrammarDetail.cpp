@@ -26,8 +26,8 @@
 #include "config.h"
 #include "WKGrammarDetail.h"
 
+#include "APIArray.h"
 #include "APIObject.h"
-#include "ImmutableArray.h"
 #include "WKAPICast.h"
 #include "WebGrammarDetail.h"
 
@@ -35,7 +35,7 @@ using namespace WebKit;
 
 WKTypeID WKGrammarDetailGetTypeID()
 {
-    return toAPI(API::Object::TypeGrammarDetail);
+    return toAPI(API::Object::Type::GrammarDetail);
 }
 
 WKGrammarDetailRef WKGrammarDetailCreate(int location, int length, WKArrayRef guesses, WKStringRef userDescription)

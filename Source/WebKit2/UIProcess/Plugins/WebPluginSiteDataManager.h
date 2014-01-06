@@ -41,7 +41,7 @@ class WebProcessProxy;
 
 typedef GenericCallback<WKArrayRef> ArrayCallback;
 
-class WebPluginSiteDataManager : public API::TypedObject<API::Object::TypePluginSiteDataManager> {
+class WebPluginSiteDataManager : public API::TypedObject<API::Object::Type::PluginSiteDataManager> {
 public:
     static PassRefPtr<WebPluginSiteDataManager> create(WebContext*);
     virtual ~WebPluginSiteDataManager();
@@ -52,7 +52,7 @@ public:
     void getSitesWithData(PassRefPtr<ArrayCallback>);
     void didGetSitesWithData(const Vector<String>& sites, uint64_t callbackID);
 
-    void clearSiteData(ImmutableArray* sites, uint64_t flags, uint64_t maxAgeInSeconds, PassRefPtr<VoidCallback>);
+    void clearSiteData(API::Array* sites, uint64_t flags, uint64_t maxAgeInSeconds, PassRefPtr<VoidCallback>);
     void didClearSiteData(uint64_t callbackID);
 
     void didGetSitesWithDataForSinglePlugin(const Vector<String>& sites, uint64_t callbackID);

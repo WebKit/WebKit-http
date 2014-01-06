@@ -28,7 +28,6 @@
 
 #include "APIObject.h"
 #include "FrameLoadState.h"
-#include "ImmutableArray.h"
 #include "GenericCallback.h"
 #include "WebFrameListenerProxy.h"
 #include <WebCore/FrameLoaderTypes.h>
@@ -43,7 +42,6 @@ namespace CoreIPC {
 
 namespace WebKit {
 
-class ImmutableArray;
 class PlatformCertificateInfo;
 class WebCertificateInfo;
 class WebFormSubmissionListenerProxy;
@@ -52,7 +50,7 @@ class WebPageProxy;
 
 typedef GenericCallback<WKDataRef> DataCallback;
 
-class WebFrameProxy : public API::TypedObject<API::Object::TypeFrame> {
+class WebFrameProxy : public API::TypedObject<API::Object::Type::Frame> {
 public:
     static PassRefPtr<WebFrameProxy> create(WebPageProxy* page, uint64_t frameID)
     {
@@ -73,8 +71,6 @@ public:
 
     FrameLoadState& frameLoadState() { return m_frameLoadState; }
 
-    FrameLoadState::LoadState loadState() const { return m_frameLoadState.m_loadState; }
-    
     void stopLoading() const;
 
     const String& url() const { return m_frameLoadState.m_url; }

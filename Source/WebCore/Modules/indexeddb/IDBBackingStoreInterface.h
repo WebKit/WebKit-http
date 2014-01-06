@@ -41,7 +41,7 @@
 
 namespace WebCore {
 
-class IDBIndexWriter;
+class IDBIndexWriterLevelDB;
 class IDBKey;
 class IDBKeyPath;
 class IDBKeyRange;
@@ -81,17 +81,17 @@ public:
     virtual bool createIndex(IDBBackingStoreTransactionInterface&, int64_t databaseId, int64_t objectStoreId, int64_t indexId, const String& name, const IDBKeyPath&, bool isUnique, bool isMultiEntry) = 0;
     virtual bool deleteIndex(IDBBackingStoreTransactionInterface&, int64_t databaseId, int64_t objectStoreId, int64_t indexId) = 0;
 
-    virtual PassRefPtr<IDBBackingStoreCursorInterface> openObjectStoreKeyCursor(IDBBackingStoreTransactionInterface&, int64_t databaseId, int64_t objectStoreId, const IDBKeyRange*, IndexedDB::CursorDirection) = 0;
-    virtual PassRefPtr<IDBBackingStoreCursorInterface> openObjectStoreCursor(IDBBackingStoreTransactionInterface&, int64_t databaseId, int64_t objectStoreId, const IDBKeyRange*, IndexedDB::CursorDirection) = 0;
-    virtual PassRefPtr<IDBBackingStoreCursorInterface> openIndexKeyCursor(IDBBackingStoreTransactionInterface&, int64_t databaseId, int64_t objectStoreId, int64_t indexId, const IDBKeyRange*, IndexedDB::CursorDirection) = 0;
-    virtual PassRefPtr<IDBBackingStoreCursorInterface> openIndexCursor(IDBBackingStoreTransactionInterface&, int64_t databaseId, int64_t objectStoreId, int64_t indexId, const IDBKeyRange*, IndexedDB::CursorDirection) = 0;
+    virtual PassRefPtr<IDBBackingStoreCursorInterface> openObjectStoreKeyCursor(int64_t cursorID, IDBBackingStoreTransactionInterface&, int64_t databaseID, int64_t objectStoreId, const IDBKeyRange*, IndexedDB::CursorDirection) = 0;
+    virtual PassRefPtr<IDBBackingStoreCursorInterface> openObjectStoreCursor(int64_t cursorID, IDBBackingStoreTransactionInterface&, int64_t databaseID, int64_t objectStoreId, const IDBKeyRange*, IndexedDB::CursorDirection) = 0;
+    virtual PassRefPtr<IDBBackingStoreCursorInterface> openIndexKeyCursor(int64_t cursorID, IDBBackingStoreTransactionInterface&, int64_t databaseID, int64_t objectStoreId, int64_t indexId, const IDBKeyRange*, IndexedDB::CursorDirection) = 0;
+    virtual PassRefPtr<IDBBackingStoreCursorInterface> openIndexCursor(int64_t cursorID, IDBBackingStoreTransactionInterface&, int64_t databaseID, int64_t objectStoreId, int64_t indexId, const IDBKeyRange*, IndexedDB::CursorDirection) = 0;
 
     virtual bool getPrimaryKeyViaIndex(IDBBackingStoreTransactionInterface&, int64_t databaseId, int64_t objectStoreId, int64_t indexId, const IDBKey&, RefPtr<IDBKey>& primaryKey) = 0;
 
     virtual bool getKeyGeneratorCurrentNumber(IDBBackingStoreTransactionInterface&, int64_t databaseId, int64_t objectStoreId, int64_t& keyGeneratorCurrentNumber) = 0;
     virtual bool maybeUpdateKeyGeneratorCurrentNumber(IDBBackingStoreTransactionInterface&, int64_t databaseId, int64_t objectStoreId, int64_t newState, bool checkCurrent) = 0;
 
-    virtual bool makeIndexWriters(IDBTransactionBackend&, int64_t databaseId, const IDBObjectStoreMetadata&, IDBKey& primaryKey, bool keyWasGenerated, const Vector<int64_t>& indexIds, const Vector<Vector<RefPtr<IDBKey>>>&, Vector<RefPtr<IDBIndexWriter>>& indexWriters, String* errorMessage, bool& completed) = 0;
+    virtual bool makeIndexWriters(int64_t transactionID, int64_t databaseId, const IDBObjectStoreMetadata&, IDBKey& primaryKey, bool keyWasGenerated, const Vector<int64_t>& indexIds, const Vector<Vector<RefPtr<IDBKey>>>&, Vector<RefPtr<IDBIndexWriterLevelDB>>& indexWriters, String* errorMessage, bool& completed) = 0;
 
     virtual PassRefPtr<IDBKey> generateKey(IDBTransactionBackend&, int64_t databaseId, int64_t objectStoreId) = 0;
     virtual bool updateKeyGenerator(IDBTransactionBackend&, int64_t databaseId, int64_t objectStoreId, const IDBKey&, bool checkCurrent) = 0;
