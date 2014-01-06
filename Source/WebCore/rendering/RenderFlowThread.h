@@ -71,7 +71,7 @@ public:
     // can easily avoid drawing the children directly.
     virtual bool requiresLayer() const OVERRIDE FINAL { return true; }
     
-    void removeFlowChildInfo(RenderObject*);
+    virtual void removeFlowChildInfo(RenderObject*);
 #ifndef NDEBUG
     bool hasChildInfo(RenderObject* child) const { return child && child->isBox() && m_regionRangeMap.contains(toRenderBox(child)); }
 #endif
@@ -83,14 +83,9 @@ public:
     virtual void updateLogicalWidth() OVERRIDE FINAL;
     virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const OVERRIDE;
 
-    void paintFlowThreadPortionInRegion(PaintInfo&, RenderRegion*, const LayoutRect& flowThreadPortionRect, const LayoutRect& flowThreadPortionOverflowRect, const LayoutPoint&) const;
-    bool hitTestFlowThreadPortionInRegion(RenderRegion*, const LayoutRect& flowThreadPortionRect, const LayoutRect& flowThreadPortionOverflowRect, const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset) const;
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
     bool hasRegions() const { return m_regionList.size(); }
-    // Check if the content is flown into at least a region with region styling rules.
-    bool hasRegionsWithStyling() const { return m_hasRegionsWithStyling; }
-    void checkRegionsWithStyling();
     virtual void regionChangedWritingMode(RenderRegion*) { }
 
     void validateRegions();
@@ -141,10 +136,11 @@ public:
     void setRegionRangeForBox(const RenderBox*, RenderRegion*, RenderRegion*);
     void getRegionRangeForBox(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
 
-    void clearRenderObjectCustomStyle(const RenderObject*);
-
     // Check if the object is in region and the region is part of this flow thread.
     bool objectInFlowRegion(const RenderObject*, const RenderRegion*) const;
+    
+    // Check if the object should be painted in this region and if the region is part of this flow thread.
+    bool objectShouldPaintInFlowRegion(const RenderObject*, const RenderRegion*) const;
 
     void markAutoLogicalHeightRegionsForLayout();
     void markRegionsForOverflowLayoutIfNeeded();
@@ -205,17 +201,24 @@ public:
     LayoutUnit offsetFromLogicalTopOfFirstRegion(const RenderBlock*) const;
     void clearRenderBoxRegionInfoAndCustomStyle(const RenderBox*, const RenderRegion*, const RenderRegion*, const RenderRegion*, const RenderRegion*);
 
-    LayoutRect mapFromFlowThreadToLocal(const RenderBox*, const LayoutRect&) const;
-    LayoutRect mapFromLocalToFlowThread(const RenderBox*, const LayoutRect&) const;
-
     void addRegionsVisualEffectOverflow(const RenderBox*);
     void addRegionsVisualOverflowFromTheme(const RenderBlock*);
     void addRegionsOverflowFromChild(const RenderBox*, const RenderBox*, const LayoutSize&);
     void addRegionsLayoutOverflow(const RenderBox*, const LayoutRect&);
+    void addRegionsVisualOverflow(const RenderBox*, const LayoutRect&);
     void clearRegionsOverflow(const RenderBox*);
+
+    LayoutRect mapFromFlowThreadToLocal(const RenderBox*, const LayoutRect&) const;
+    LayoutRect mapFromLocalToFlowThread(const RenderBox*, const LayoutRect&) const;
+    
+    LayoutRect decorationsClipRectForBoxInRegion(const RenderBox&, RenderRegion&) const;
+    
+    void flipForWritingModeLocalCoordinates(LayoutRect&) const;
 
     // Used to estimate the maximum height of the flow thread.
     static LayoutUnit maxLogicalHeight() { return LayoutUnit::max() / 2; }
+    
+    bool regionInRange(const RenderRegion* targetRegion, const RenderRegion* startRegion, const RenderRegion* endRegion) const;
 
 protected:
     virtual const char* renderName() const = 0;
@@ -228,7 +231,6 @@ protected:
 
     void updateRegionsFlowThreadPortionRect(const RenderRegion* = 0);
     bool shouldRepaint(const LayoutRect&) const;
-    bool regionInRange(const RenderRegion* targetRegion, const RenderRegion* startRegion, const RenderRegion* endRegion) const;
 
     LayoutRect computeRegionClippingRect(const LayoutPoint&, const LayoutRect&, const LayoutRect&) const;
 
@@ -348,7 +350,6 @@ protected:
     bool m_regionsInvalidated : 1;
     bool m_regionsHaveUniformLogicalWidth : 1;
     bool m_regionsHaveUniformLogicalHeight : 1;
-    bool m_hasRegionsWithStyling : 1;
     bool m_dispatchRegionLayoutUpdateEvent : 1;
     bool m_dispatchRegionOversetChangeEvent : 1;
     bool m_pageLogicalSizeChanged : 1;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,14 +41,15 @@ class Register;
     
 class JSActivation : public JSVariableObject {
 private:
-    JSActivation(VM&, CallFrame*, Register*, SharedSymbolTable*);
+    JSActivation(VM&, CallFrame*, Register*, SymbolTable*);
     
 public:
     typedef JSVariableObject Base;
 
     static JSActivation* create(VM& vm, CallFrame* callFrame, Register* registers, CodeBlock* codeBlock)
     {
-        SharedSymbolTable* symbolTable = codeBlock->symbolTable();
+        SymbolTable* symbolTable = codeBlock->symbolTable();
+        ASSERT(codeBlock->codeType() == FunctionCode);
         JSActivation* activation = new (
             NotNull,
             allocateCell<JSActivation>(
@@ -87,7 +88,7 @@ public:
     bool isValid(const SymbolTableEntry&) const;
     bool isTornOff();
     int registersOffset();
-    static int registersOffset(SharedSymbolTable*);
+    static int registersOffset(SymbolTable*);
 
 protected:
     static const unsigned StructureFlags = OverridesGetOwnPropertySlot | OverridesVisitChildren | OverridesGetPropertyNames | Base::StructureFlags;
@@ -99,9 +100,9 @@ private:
     bool symbolTablePut(ExecState*, PropertyName, JSValue, bool shouldThrow);
     bool symbolTablePutWithAttributes(VM&, PropertyName, JSValue, unsigned attributes);
 
-    static JSValue argumentsGetter(ExecState*, JSValue, PropertyName);
+    static EncodedJSValue argumentsGetter(ExecState*, EncodedJSValue, EncodedJSValue, PropertyName);
 
-    static size_t allocationSize(SharedSymbolTable*);
+    static size_t allocationSize(SymbolTable*);
     static size_t storageOffset();
 
     WriteBarrier<Unknown>* storage(); // captureCount() number of registers.
@@ -110,7 +111,7 @@ private:
 extern int activationCount;
 extern int allTheThingsCount;
 
-inline JSActivation::JSActivation(VM& vm, CallFrame* callFrame, Register* registers, SharedSymbolTable* symbolTable)
+inline JSActivation::JSActivation(VM& vm, CallFrame* callFrame, Register* registers, SymbolTable* symbolTable)
     : Base(
         vm,
         callFrame->lexicalGlobalObject()->activationStructure(),
@@ -121,7 +122,7 @@ inline JSActivation::JSActivation(VM& vm, CallFrame* callFrame, Register* regist
     WriteBarrier<Unknown>* storage = this->storage();
     size_t captureCount = symbolTable->captureCount();
     for (size_t i = 0; i < captureCount; ++i)
-        new(&storage[i]) WriteBarrier<Unknown>;
+        new (NotNull, &storage[i]) WriteBarrier<Unknown>;
 }
 
 JSActivation* asActivation(JSValue);
@@ -137,7 +138,7 @@ ALWAYS_INLINE JSActivation* Register::activation() const
     return asActivation(jsValue());
 }
 
-inline int JSActivation::registersOffset(SharedSymbolTable* symbolTable)
+inline int JSActivation::registersOffset(SymbolTable* symbolTable)
 {
     return storageOffset() + ((symbolTable->captureCount() - symbolTable->captureStart()  - 1) * sizeof(WriteBarrier<Unknown>));
 }
@@ -175,7 +176,7 @@ inline WriteBarrier<Unknown>* JSActivation::storage()
         reinterpret_cast<char*>(this) + storageOffset());
 }
 
-inline size_t JSActivation::allocationSize(SharedSymbolTable* symbolTable)
+inline size_t JSActivation::allocationSize(SymbolTable* symbolTable)
 {
     size_t objectSizeInBytes = WTF::roundUpToMultipleOf<sizeof(WriteBarrier<Unknown>)>(sizeof(JSActivation));
     size_t storageSizeInBytes = symbolTable->captureCount() * sizeof(WriteBarrier<Unknown>);

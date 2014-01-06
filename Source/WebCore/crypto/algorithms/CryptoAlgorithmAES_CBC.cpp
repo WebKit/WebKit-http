@@ -28,11 +28,11 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
+#include "CryptoAlgorithmAesCbcParams.h"
 #include "CryptoAlgorithmAesKeyGenParams.h"
 #include "CryptoKeyAES.h"
 #include "CryptoKeyDataOctetSequence.h"
 #include "ExceptionCode.h"
-#include "JSDOMPromise.h"
 
 namespace WebCore {
 
@@ -56,20 +56,53 @@ CryptoAlgorithmIdentifier CryptoAlgorithmAES_CBC::identifier() const
     return s_identifier;
 }
 
-void CryptoAlgorithmAES_CBC::generateKey(const CryptoAlgorithmParameters& parameters, bool extractable, CryptoKeyUsage usages, std::unique_ptr<PromiseWrapper> promise, ExceptionCode&)
+bool CryptoAlgorithmAES_CBC::keyAlgorithmMatches(const CryptoAlgorithmAesCbcParams&, const CryptoKey& key) const
+{
+    if (key.algorithmIdentifier() != s_identifier)
+        return false;
+    ASSERT(isCryptoKeyAES(key));
+
+    return true;
+}
+
+void CryptoAlgorithmAES_CBC::encrypt(const CryptoAlgorithmParameters& parameters, const CryptoKey& key, const CryptoOperationData& data, VectorCallback callback, VoidCallback failureCallback, ExceptionCode& ec)
+{
+    const CryptoAlgorithmAesCbcParams& aesCBCParameters = toCryptoAlgorithmAesCbcParams(parameters);
+
+    if (!keyAlgorithmMatches(aesCBCParameters, key)) {
+        ec = NOT_SUPPORTED_ERR;
+        return;
+    }
+
+    platformEncrypt(aesCBCParameters, toCryptoKeyAES(key), data, std::move(callback), std::move(failureCallback), ec);
+}
+
+void CryptoAlgorithmAES_CBC::decrypt(const CryptoAlgorithmParameters& parameters, const CryptoKey& key, const CryptoOperationData& data, VectorCallback callback, VoidCallback failureCallback, ExceptionCode& ec)
+{
+    const CryptoAlgorithmAesCbcParams& aesCBCParameters = toCryptoAlgorithmAesCbcParams(parameters);
+
+    if (!keyAlgorithmMatches(aesCBCParameters, key)) {
+        ec = NOT_SUPPORTED_ERR;
+        return;
+    }
+
+    platformDecrypt(aesCBCParameters, toCryptoKeyAES(key), data, std::move(callback), std::move(failureCallback), ec);
+}
+
+void CryptoAlgorithmAES_CBC::generateKey(const CryptoAlgorithmParameters& parameters, bool extractable, CryptoKeyUsage usages, KeyOrKeyPairCallback callback, VoidCallback failureCallback, ExceptionCode&)
 {
     const CryptoAlgorithmAesKeyGenParams& aesParameters = toCryptoAlgorithmAesKeyGenParams(parameters);
 
     RefPtr<CryptoKeyAES> result = CryptoKeyAES::generate(CryptoAlgorithmIdentifier::AES_CBC, aesParameters.length, extractable, usages);
     if (!result) {
-        promise->reject(nullptr);
+        failureCallback();
         return;
     }
 
-    promise->fulfill(result.release());
+    callback(result.get(), nullptr);
 }
 
-void CryptoAlgorithmAES_CBC::importKey(const CryptoAlgorithmParameters&, const CryptoKeyData& keyData, bool extractable, CryptoKeyUsage usage, std::unique_ptr<PromiseWrapper> promise, ExceptionCode& ec)
+void CryptoAlgorithmAES_CBC::importKey(const CryptoAlgorithmParameters&, const CryptoKeyData& keyData, bool extractable, CryptoKeyUsage usage, KeyCallback callback, VoidCallback, ExceptionCode& ec)
 {
     if (keyData.format() != CryptoKeyData::Format::OctetSequence) {
         ec = NOT_SUPPORTED_ERR;
@@ -77,7 +110,7 @@ void CryptoAlgorithmAES_CBC::importKey(const CryptoAlgorithmParameters&, const C
     }
     const CryptoKeyDataOctetSequence& keyDataOctetSequence = toCryptoKeyDataOctetSequence(keyData);
     RefPtr<CryptoKeyAES> result = CryptoKeyAES::create(CryptoAlgorithmIdentifier::AES_CBC, keyDataOctetSequence.octetSequence(), extractable, usage);
-    promise->fulfill(result.release());
+    callback(*result);
 }
 
 }

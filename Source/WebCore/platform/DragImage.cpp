@@ -70,26 +70,24 @@ DragImageRef fitDragImageToMaxSize(DragImageRef image, const IntSize& srcSize, c
     return scaleDragImage(image, FloatSize(scalex, scaley));
 }
 
-struct ScopedNodeDragState {
-    ScopedNodeDragState(Frame& frame, Node& node)
-    : frame(frame)
-    , node(node)
+struct ScopedNodeDragEnabler {
+    ScopedNodeDragEnabler(Frame& frame, Node& node)
+        : frame(frame)
+        , node(node)
     {
-        ASSERT(node.renderer());
-        node.renderer()->updateDragState(true);
+        if (node.renderer())
+            node.renderer()->updateDragState(true);
         frame.document()->updateLayout();
     }
 
-    ~ScopedNodeDragState()
+    ~ScopedNodeDragEnabler()
     {
-        if (node.renderer()) {
+        if (node.renderer())
             node.renderer()->updateDragState(false);
-            frame.document()->updateLayout();
-        }
     }
 
-    Frame& frame;
-    Node& node;
+    const Frame& frame;
+    const Node& node;
 };
 
 static DragImageRef createDragImageFromSnapshot(std::unique_ptr<ImageBuffer> snapshot, Node* node)
@@ -118,21 +116,19 @@ static DragImageRef createDragImageFromSnapshot(std::unique_ptr<ImageBuffer> sna
 
 DragImageRef createDragImageForNode(Frame& frame, Node& node)
 {
-    ScopedNodeDragState enableDrag(frame, node);
-    std::unique_ptr<ImageBuffer> snapshot = snapshotNode(frame, node);
-    return createDragImageFromSnapshot(std::move(snapshot), &node);
+    ScopedNodeDragEnabler enableDrag(frame, node);
+    return createDragImageFromSnapshot(snapshotNode(frame, node), &node);
 }
 
 DragImageRef createDragImageForSelection(Frame& frame, bool forceBlackText)
 {
     SnapshotOptions options = forceBlackText ? SnapshotOptionsForceBlackText : SnapshotOptionsNone;
-    std::unique_ptr<ImageBuffer> snapshot = snapshotSelection(frame, options);
-    return createDragImageFromSnapshot(std::move(snapshot), nullptr);
+    return createDragImageFromSnapshot(snapshotSelection(frame, options), nullptr);
 }
 
 struct ScopedFrameSelectionState {
     ScopedFrameSelectionState(Frame& frame)
-    : frame(frame)
+        : frame(frame)
     {
         if (RenderView* root = frame.contentRenderer())
             root->getSelection(startRenderer, startOffset, endRenderer, endOffset);
@@ -144,7 +140,7 @@ struct ScopedFrameSelectionState {
             root->setSelection(startRenderer, startOffset, endRenderer, endOffset, RenderView::RepaintNothing);
     }
 
-    Frame& frame;
+    const Frame& frame;
     RenderObject* startRenderer;
     RenderObject* endRenderer;
     int startOffset;
@@ -179,15 +175,16 @@ DragImageRef createDragImageForRange(Frame& frame, Range& range, bool forceBlack
     if (!startRenderer || !endRenderer)
         return nullptr;
 
-    SnapshotOptions options = forceBlackText ? SnapshotOptionsForceBlackText : SnapshotOptionsNone;
+    SnapshotOptions options = SnapshotOptionsPaintSelectionOnly | (forceBlackText ? SnapshotOptionsForceBlackText : SnapshotOptionsNone);
     view->setSelection(startRenderer, start.deprecatedEditingOffset(), endRenderer, end.deprecatedEditingOffset(), RenderView::RepaintNothing);
-    std::unique_ptr<ImageBuffer> snapshot = snapshotSelection(frame, options);
-    return createDragImageFromSnapshot(std::move(snapshot), nullptr);
+    // We capture using snapshotFrameRect() because we fake up the selection using
+    // FrameView but snapshotSelection() uses the selection from the Frame itself.
+    return createDragImageFromSnapshot(snapshotFrameRect(frame, view->selectionBounds(), options), nullptr);
 }
 
 DragImageRef createDragImageForImage(Frame& frame, Node& node, IntRect& imageRect, IntRect& elementRect)
 {
-    ScopedNodeDragState enableDrag(frame, node);
+    ScopedNodeDragEnabler enableDrag(frame, node);
 
     RenderObject* renderer = node.renderer();
     if (!renderer)
@@ -203,8 +200,7 @@ DragImageRef createDragImageForImage(Frame& frame, Node& node, IntRect& imageRec
     elementRect = pixelSnappedIntRect(topLevelRect);
     imageRect = paintingRect;
 
-    std::unique_ptr<ImageBuffer> snapshot = snapshotNode(frame, node);
-    return createDragImageFromSnapshot(std::move(snapshot), &node);
+    return createDragImageFromSnapshot(snapshotNode(frame, node), &node);
 }
 
 #if !PLATFORM(MAC) && (!PLATFORM(WIN) || OS(WINCE))

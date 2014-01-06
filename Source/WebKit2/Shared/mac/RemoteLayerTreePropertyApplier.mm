@@ -27,6 +27,7 @@
 #import "RemoteLayerTreePropertyApplier.h"
 
 #import "PlatformCALayerRemote.h"
+#import <QuartzCore/CALayer.h>
 #import <WebCore/PlatformCAFilters.h>
 
 using namespace WebCore;
@@ -116,10 +117,14 @@ void RemoteLayerTreePropertyApplier::applyPropertiesToLayer(CALayer *layer, Remo
         layer.opaque = properties.opaque;
 
     if (properties.changedProperties & RemoteLayerTreeTransaction::MaskLayerChanged) {
-        CALayer *maskLayer = relatedLayers.get(properties.maskLayer);
-        ASSERT(!maskLayer.superlayer);
-        if (!maskLayer.superlayer)
-            layer.mask = maskLayer;
+        if (!properties.maskLayerID)
+            layer.mask = nullptr;
+        else {
+            CALayer *maskLayer = relatedLayers.get(properties.maskLayerID);
+            ASSERT(!maskLayer.superlayer);
+            if (!maskLayer.superlayer)
+                layer.mask = maskLayer;
+        }
     }
 
     if (properties.changedProperties & RemoteLayerTreeTransaction::ContentsRectChanged)
@@ -141,10 +146,14 @@ void RemoteLayerTreePropertyApplier::applyPropertiesToLayer(CALayer *layer, Remo
         layer.timeOffset = properties.timeOffset;
 
     if (properties.changedProperties & RemoteLayerTreeTransaction::BackingStoreChanged) {
+#if USE(IOSURFACE)
         if (properties.backingStore.acceleratesDrawing())
             layer.contents = (id)properties.backingStore.surface().get();
         else
-            layer.contents = (id)properties.backingStore.image().get();
+#else
+            ASSERT(!properties.backingStore.acceleratesDrawing());
+#endif
+        layer.contents = (id)properties.backingStore.image().get();
     }
 
     if (properties.changedProperties & RemoteLayerTreeTransaction::FiltersChanged)

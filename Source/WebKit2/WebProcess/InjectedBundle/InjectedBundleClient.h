@@ -32,6 +32,10 @@
 
 namespace API {
 class Object;
+
+template<> struct ClientTraits<WKBundleClientBase> {
+    typedef std::tuple<WKBundleClientV0, WKBundleClientV1> Versions;
+};
 }
 
 namespace WebKit {
@@ -40,7 +44,7 @@ class InjectedBundle;
 class WebPage;
 class WebPageGroupProxy;
 
-class InjectedBundleClient : public APIClient<WKBundleClient, kWKBundleClientCurrentVersion> {
+class InjectedBundleClient : public API::Client<WKBundleClientBase> {
 public:
     void didCreatePage(InjectedBundle*, WebPage*);
     void willDestroyPage(InjectedBundle*, WebPage*);

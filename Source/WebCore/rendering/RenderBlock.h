@@ -41,7 +41,6 @@
 namespace WebCore {
 
 class BidiContext;
-class InlineIterator;
 class LayoutStateMaintainer;
 class LineLayoutState;
 class LineWidth;
@@ -59,11 +58,7 @@ class BasicShape;
 class TextLayout;
 class WordMeasurement;
 
-template <class Iterator, class Run> class BidiResolver;
 template <class Run> class BidiRunList;
-template <class Iterator> struct MidpointState;
-typedef BidiResolver<InlineIterator, BidiRun> InlineBidiResolver;
-typedef MidpointState<InlineIterator> LineMidpointState;
 typedef WTF::ListHashSet<RenderBox*, 16> TrackedRendererListHashSet;
 typedef WTF::HashMap<const RenderBlock*, OwnPtr<TrackedRendererListHashSet>> TrackedDescendantsMap;
 typedef WTF::HashMap<const RenderBox*, OwnPtr<HashSet<RenderBlock*>>> TrackedContainerMap;
@@ -386,9 +381,9 @@ public:
 #endif
 
 #if ENABLE(CSS_SHAPES)
-    ShapeInsideInfo* ensureShapeInsideInfo();
+    ShapeInsideInfo& ensureShapeInsideInfo();
     ShapeInsideInfo* shapeInsideInfo() const;
-    void setShapeInsideInfo(PassOwnPtr<ShapeInsideInfo> value);
+    void setShapeInsideInfo(std::unique_ptr<ShapeInsideInfo>);
     
     void markShapeInsideDescendantsForLayout();
     ShapeInsideInfo* layoutShapeInsideInfo() const;
@@ -408,6 +403,8 @@ protected:
 
     void layoutPositionedObjects(bool relayoutChildren, bool fixedPositionObjectsOnly = false);
     void markFixedPositionObjectForLayoutIfNeeded(RenderObject& child);
+
+    LayoutUnit marginIntrinsicLogicalWidthForChild(RenderBox&) const;
 
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
     virtual void paintObject(PaintInfo&, const LayoutPoint&) OVERRIDE;

@@ -45,10 +45,13 @@ public:
 
     static PassRefPtr<WebGeolocationManagerProxy> create(WebContext*);
 
-    void initializeProvider(const WKGeolocationProvider*);
+    void initializeProvider(const WKGeolocationProviderBase*);
 
     void providerDidChangePosition(WebGeolocationPosition*);
     void providerDidFailToDeterminePosition(const String& errorMessage = String());
+#if PLATFORM(IOS)
+    void resetPermissions();
+#endif
 
     using API::Object::ref;
     using API::Object::deref;

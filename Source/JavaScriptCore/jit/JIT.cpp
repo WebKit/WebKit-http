@@ -109,37 +109,12 @@ void JIT::emitEnterOptimizationCheck()
     m_bytecodeOffset += OPCODE_LENGTH(name); \
     break;
 
-#if USE(JSVALUE32_64)
-#define DEFINE_BINARY_OP(name) \
+#define DEFINE_SLOW_OP(name) \
     case op_##name: { \
         JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_##name); \
         slowPathCall.call(); \
         NEXT_OPCODE(op_##name); \
     }
-
-#define DEFINE_UNARY_OP(name) \
-    case op_##name: { \
-        JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_##name); \
-        slowPathCall.call(); \
-        NEXT_OPCODE(op_##name); \
-    }
-
-#else // USE(JSVALUE32_64)
-
-#define DEFINE_BINARY_OP(name) \
-    case op_##name: { \
-        JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_##name); \
-        slowPathCall.call(); \
-        NEXT_OPCODE(op_##name); \
-    }
-
-#define DEFINE_UNARY_OP(name) \
-    case op_##name: { \
-        JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_##name); \
-        slowPathCall.call(); \
-        NEXT_OPCODE(op_##name); \
-    }
-#endif // USE(JSVALUE32_64)
 
 #define DEFINE_OP(name) \
     case name: { \
@@ -187,16 +162,17 @@ void JIT::privateCompileMainPass()
         }
 
         switch (opcodeID) {
-        DEFINE_BINARY_OP(del_by_val)
-        DEFINE_BINARY_OP(in)
-        DEFINE_BINARY_OP(less)
-        DEFINE_BINARY_OP(lesseq)
-        DEFINE_BINARY_OP(greater)
-        DEFINE_BINARY_OP(greatereq)
-        DEFINE_UNARY_OP(is_function)
-        DEFINE_UNARY_OP(is_object)
-        DEFINE_UNARY_OP(typeof)
+        DEFINE_SLOW_OP(del_by_val)
+        DEFINE_SLOW_OP(in)
+        DEFINE_SLOW_OP(less)
+        DEFINE_SLOW_OP(lesseq)
+        DEFINE_SLOW_OP(greater)
+        DEFINE_SLOW_OP(greatereq)
+        DEFINE_SLOW_OP(is_function)
+        DEFINE_SLOW_OP(is_object)
+        DEFINE_SLOW_OP(typeof)
 
+        DEFINE_OP(op_touch_entry)
         DEFINE_OP(op_add)
         DEFINE_OP(op_bitand)
         DEFINE_OP(op_bitor)
@@ -250,6 +226,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_loop_hint)
         DEFINE_OP(op_lshift)
         DEFINE_OP(op_mod)
+        DEFINE_OP(op_captured_mov)
         DEFINE_OP(op_mov)
         DEFINE_OP(op_mul)
         DEFINE_OP(op_negate)
@@ -259,6 +236,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_new_array_with_size)
         DEFINE_OP(op_new_array_buffer)
         DEFINE_OP(op_new_func)
+        DEFINE_OP(op_new_captured_func)
         DEFINE_OP(op_new_func_exp)
         DEFINE_OP(op_new_object)
         DEFINE_OP(op_new_regexp)
@@ -391,6 +369,7 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_construct)
         DEFINE_SLOWCASE_OP(op_to_this)
         DEFINE_SLOWCASE_OP(op_create_this)
+        DEFINE_SLOWCASE_OP(op_captured_mov)
         DEFINE_SLOWCASE_OP(op_div)
         DEFINE_SLOWCASE_OP(op_eq)
         DEFINE_SLOWCASE_OP(op_get_callee)
@@ -540,13 +519,6 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
 
     Jump stackCheck;
     if (m_codeBlock->codeType() == FunctionCode) {
-#if ENABLE(DFG_JIT)
-#if DFG_ENABLE(SUCCESS_STATS)
-        static SamplingCounter counter("orignalJIT");
-        emitCount(counter);
-#endif
-#endif
-
 #if ENABLE(VALUE_PROFILER)
         ASSERT(m_bytecodeOffset == (unsigned)-1);
         if (shouldEmitProfiling()) {
@@ -567,8 +539,8 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
         }
 #endif
 
-        addPtr(TrustedImm32(virtualRegisterForLocal(m_codeBlock->m_numCalleeRegisters).offset() * sizeof(Register)), callFrameRegister, regT1);
-        stackCheck = branchPtr(Above, AbsoluteAddress(m_vm->interpreter->stack().addressOfEnd()), regT1);
+        addPtr(TrustedImm32(virtualRegisterForLocal(frameRegisterCountFor(m_codeBlock)).offset() * sizeof(Register)), callFrameRegister, regT1);
+        stackCheck = branchPtr(Above, AbsoluteAddress(m_vm->addressOfJSStackLimit()), regT1);
     }
 
     Label functionBody = label();

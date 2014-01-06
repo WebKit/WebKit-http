@@ -60,6 +60,8 @@ public:
     const GdkEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #elif PLATFORM(EFL)
     const void* nativeEvent() const { return m_nativeEvent; }
+#elif PLATFORM(IOS)
+    const void* nativeEvent() const { return 0; }
 #endif
 
 private:

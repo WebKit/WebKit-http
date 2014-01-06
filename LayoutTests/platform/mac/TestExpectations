@@ -338,17 +338,10 @@ fast/multicol/seamless-flowed-through-columns.html
 
 # ENABLE(SHADOW_DOM) is disabled.
 fast/dom/shadow
+fast/dom/HTMLTemplateElement/cycles-in-shadow.html
 editing/shadow
 accessibility/corresponding-control-deleted-crash.html
 editing/text-iterator/basic-iteration-shadowdom.html
-
-# ENABLE(TEMPLATE_ELEMENT) is disabled.
-fast/dom/HTMLTemplateElement
-html5lib/generated/run-template-data.html
-html5lib/generated/run-template-write.html
-fast/xsl/xslt-xhtml-template.xml
-fast/xpath/xpath-template-element.html
-fast/xsl/xslt-processor-template.html
 
 # JSC does not support setIsolatedWorldSecurityOrigin
 webkit.org/b/61540 http/tests/security/isolatedWorld/cross-origin-xhr.html
@@ -382,7 +375,6 @@ webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/onremovetrack.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/track-element/cloneNode.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/track-element/src-clear-cues.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/webvtt/parsing/001.html [ Skip ]
@@ -597,6 +589,9 @@ http/tests/media/video-play-stall-seek.html
 http/tests/media/video-play-stall.html
 media/media-fullscreen-not-in-document.html
 
+# Media playback control is passed to AVFoundation that doesn't like fancy PHP URLs like the one used in the test and, in addition, they won't care about HTTP servers not supporting "Range" requests
+http/tests/media/media-seeking-no-ranges-server.html
+
 # <rdar://problem/11358748> http/tests/multipart/multipart-wait-before-boundary.html fails on ML as of r115745
 http/tests/multipart/multipart-wait-before-boundary.html
 
@@ -796,9 +791,6 @@ webkit.org/b/76439 [ Debug ] fast/dom/shadow/content-element-outside-shadow.html
 
 # ENABLE(CUSTOM_ELEMENTS) is disabled.
 fast/dom/custom
-
-# CSS Variables are not yet enabled.
-webkit.org/b/85580 fast/css/variables
 
 # CSS image-resolution is not yet enabled.
 webkit.org/b/85262 fast/css/image-resolution
@@ -1313,3 +1305,7 @@ webkit.org/b/124321 [ Mavericks ] animations/resume-after-page-cache.html [ Pass
 webkit.org/b/124373 [ MountainLion Release ] http/tests/security/frameNavigation/xss-DENIED-plugin-navigation.html [ Pass Failure Timeout ]
 
 webkit.org/b/124424 webgl/1.0.2/conformance/ogles/GL/tan/tan_001_to_006.html [ Pass Failure ]
+
+webkit.org/b/124593 fast/forms/form-associated-element-crash.html [ Pass Timeout ]
+
+webkit.org/b/125195 platform/mac/accessibility/search-predicate-element-count.html [ Pass Failure ]

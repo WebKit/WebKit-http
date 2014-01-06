@@ -146,8 +146,6 @@ public:
 
     void visitAggregate(SlotVisitor&);
 
-    static void dumpStatistics();
-
     void dumpBytecode(PrintStream& = WTF::dataFile());
     void dumpBytecode(PrintStream&, unsigned bytecodeOffset);
     void printStructures(PrintStream&, const Instruction*);
@@ -706,6 +704,8 @@ public:
             m_livenessAnalysis = std::make_unique<BytecodeLivenessAnalysis>(this);
         return *m_livenessAnalysis;
     }
+    
+    void validate();
 
     // Jump Tables
 
@@ -724,7 +724,7 @@ public:
     StringJumpTable& stringSwitchJumpTable(int tableIndex) { RELEASE_ASSERT(m_rareData); return m_rareData->m_stringSwitchJumpTables[tableIndex]; }
 
 
-    SharedSymbolTable* symbolTable() const { return m_unlinkedCode->symbolTable(); }
+    SymbolTable* symbolTable() const { return m_symbolTable.get(); }
 
     EvalCodeCache& evalCodeCache() { createRareDataIfNecessary(); return m_rareData->m_evalCodeCache; }
 
@@ -899,6 +899,8 @@ public:
 #if ENABLE(VERBOSE_VALUE_PROFILE)
     void dumpValueProfiles();
 #endif
+    
+    unsigned frameRegisterCount();
 
     // FIXME: Make these remaining members private.
 
@@ -928,7 +930,12 @@ public:
     bool m_allTransitionsHaveBeenMarked; // Initialized and used on every GC.
     
     bool m_didFailFTLCompilation;
-    
+
+    // Internal methods for use by validation code. It would be private if it wasn't
+    // for the fact that we use it from anonymous namespaces.
+    void beginValidationDidFail();
+    NO_RETURN_DUE_TO_CRASH void endValidationDidFail();
+
 protected:
     virtual void visitWeakReferences(SlotVisitor&) OVERRIDE;
     virtual void finalizeUnconditionally() OVERRIDE;
@@ -1028,7 +1035,7 @@ private:
         if (!m_rareData)
             m_rareData = adoptPtr(new RareData);
     }
-
+    
 #if ENABLE(JIT)
     void resetStubInternal(RepatchBuffer&, StructureStubInfo&);
     void resetStubDuringGCInternal(RepatchBuffer&, StructureStubInfo&);
@@ -1039,6 +1046,7 @@ private:
     VM* m_vm;
 
     RefCountedArray<Instruction> m_instructions;
+    WriteBarrier<SymbolTable> m_symbolTable;
     VirtualRegister m_thisRegister;
     VirtualRegister m_argumentsRegister;
     VirtualRegister m_activationRegister;

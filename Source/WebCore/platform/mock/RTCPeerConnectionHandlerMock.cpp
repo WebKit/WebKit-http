@@ -29,6 +29,7 @@
 
 #include "RTCPeerConnectionHandlerMock.h"
 
+#include "MediaConstraintsMock.h"
 #include "NotImplemented.h"
 #include "RTCDTMFSenderHandler.h"
 #include "RTCDataChannelHandler.h"
@@ -40,9 +41,9 @@
 
 namespace WebCore {
 
-PassOwnPtr<RTCPeerConnectionHandler> RTCPeerConnectionHandlerMock::create(RTCPeerConnectionHandlerClient* client)
+std::unique_ptr<RTCPeerConnectionHandler> RTCPeerConnectionHandlerMock::create(RTCPeerConnectionHandlerClient* client)
 {
-    return adoptPtr(new RTCPeerConnectionHandlerMock(client));
+    return std::make_unique<RTCPeerConnectionHandlerMock>(client);
 }
 
 RTCPeerConnectionHandlerMock::RTCPeerConnectionHandlerMock(RTCPeerConnectionHandlerClient* client)
@@ -50,11 +51,12 @@ RTCPeerConnectionHandlerMock::RTCPeerConnectionHandlerMock(RTCPeerConnectionHand
 {
 }
 
-bool RTCPeerConnectionHandlerMock::initialize(PassRefPtr<RTCConfiguration>, PassRefPtr<MediaConstraints>)
+bool RTCPeerConnectionHandlerMock::initialize(PassRefPtr<RTCConfiguration>, PassRefPtr<MediaConstraints> constraints)
 {
-    // FIXME: once there is support in RTCPeerConnection + constraints, this should be taken into account here
-    // and a LayouTest for that must be added.
-    // https://bugs.webkit.org/show_bug.cgi?id=123093
+    String invalidQuery = MediaConstraintsMock::verifyConstraints(constraints);
+    if (!invalidQuery.isEmpty())
+        return false;
+
     RefPtr<IceConnectionNotifier> notifier = adoptRef(new IceConnectionNotifier(m_client, RTCPeerConnectionHandlerClient::IceConnectionStateCompleted, RTCPeerConnectionHandlerClient::IceGatheringStateComplete));
     m_timerEvents.append(adoptRef(new TimerEvent(this, notifier)));
     return true;
@@ -153,19 +155,19 @@ void RTCPeerConnectionHandlerMock::getStats(PassRefPtr<RTCStatsRequest>)
     notImplemented();
 }
 
-PassOwnPtr<RTCDataChannelHandler> RTCPeerConnectionHandlerMock::createDataChannel(const String& label, const RTCDataChannelInit& init)
+std::unique_ptr<RTCDataChannelHandler> RTCPeerConnectionHandlerMock::createDataChannel(const String& label, const RTCDataChannelInit& init)
 {
     RefPtr<RemoteDataChannelNotifier> notifier = adoptRef(new RemoteDataChannelNotifier(m_client));
     m_timerEvents.append(adoptRef(new TimerEvent(this, notifier)));
-    return adoptPtr(new RTCDataChannelHandlerMock(label, init));
+    return std::make_unique<RTCDataChannelHandlerMock>(label, init);
 }
 
-PassOwnPtr<RTCDTMFSenderHandler> RTCPeerConnectionHandlerMock::createDTMFSender(PassRefPtr<MediaStreamSource>)
+std::unique_ptr<RTCDTMFSenderHandler> RTCPeerConnectionHandlerMock::createDTMFSender(PassRefPtr<MediaStreamSource>)
 {
     // Requires a mock implementation of RTCDTMFSenderHandler.
     // This must be implemented once the mock implementation of RTCDataChannelHandler is ready.
     notImplemented();
-    return 0;
+    return nullptr;
 }
 
 void RTCPeerConnectionHandlerMock::stop()

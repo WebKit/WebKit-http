@@ -48,7 +48,7 @@ WebGeolocationManagerProxy::WebGeolocationManagerProxy(WebContext* context)
     WebContextSupplement::context()->addMessageReceiver(Messages::WebGeolocationManagerProxy::messageReceiverName(), this);
 }
 
-void WebGeolocationManagerProxy::initializeProvider(const WKGeolocationProvider* provider)
+void WebGeolocationManagerProxy::initializeProvider(const WKGeolocationProviderBase* provider)
 {
     m_provider.initialize(provider);
 }
@@ -91,6 +91,13 @@ void WebGeolocationManagerProxy::providerDidFailToDeterminePosition(const String
 
     context()->sendToAllProcesses(Messages::WebGeolocationManager::DidFailToDeterminePosition(errorMessage));
 }
+
+#if PLATFORM(IOS)
+void WebGeolocationManagerProxy::resetPermissions()
+{
+    context()->sendToAllProcesses(Messages::WebGeolocationManager::ResetPermissions());
+}
+#endif
 
 void WebGeolocationManagerProxy::startUpdating(CoreIPC::Connection* connection)
 {

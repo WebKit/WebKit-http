@@ -120,7 +120,7 @@ WKStringRef WKDatabaseManagerGetDatabaseDetailsCurrentUsageKey()
 #endif
 }
 
-void WKDatabaseManagerSetClient(WKDatabaseManagerRef databaseManagerRef, const WKDatabaseManagerClient* wkClient)
+void WKDatabaseManagerSetClient(WKDatabaseManagerRef databaseManagerRef, const WKDatabaseManagerClientBase* wkClient)
 {
 #if ENABLE(SQL_DATABASE)
     if (wkClient && wkClient->version)

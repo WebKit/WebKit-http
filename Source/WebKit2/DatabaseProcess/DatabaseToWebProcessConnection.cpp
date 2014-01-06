@@ -26,14 +26,12 @@
 #include "config.h"
 #include "DatabaseToWebProcessConnection.h"
 
-#include "DatabaseProcessIDBDatabaseBackend.h"
-#include "DatabaseProcessIDBDatabaseBackendMessages.h"
+#include "DatabaseProcessIDBConnection.h"
+#include "DatabaseProcessIDBConnectionMessages.h"
 #include "DatabaseToWebProcessConnectionMessages.h"
 #include <wtf/RunLoop.h>
 
 #if ENABLE(DATABASE_PROCESS)
-
-using namespace WebCore;
 
 namespace WebKit {
 
@@ -61,10 +59,10 @@ void DatabaseToWebProcessConnection::didReceiveMessage(CoreIPC::Connection* conn
         return;
     }
 
-    if (decoder.messageReceiverName() == Messages::DatabaseProcessIDBDatabaseBackend::messageReceiverName()) {
-        IDBDatabaseBackendMap::iterator backendIterator = m_idbDatabaseBackends.find(decoder.destinationID());
-        if (backendIterator != m_idbDatabaseBackends.end())
-            backendIterator->value->didReceiveDatabaseProcessIDBDatabaseBackendMessage(connection, decoder);
+    if (decoder.messageReceiverName() == Messages::DatabaseProcessIDBConnection::messageReceiverName()) {
+        IDBConnectionMap::iterator backendIterator = m_idbConnections.find(decoder.destinationID());
+        if (backendIterator != m_idbConnections.end())
+            backendIterator->value->didReceiveDatabaseProcessIDBConnectionMessage(connection, decoder);
         return;
     }
     
@@ -81,11 +79,20 @@ void DatabaseToWebProcessConnection::didReceiveInvalidMessage(CoreIPC::Connectio
 
 }
 
-void DatabaseToWebProcessConnection::establishIDBDatabaseBackend(uint64_t backendIdentifier)
+void DatabaseToWebProcessConnection::establishIDBConnection(uint64_t serverConnectionIdentifier)
 {
-    RefPtr<DatabaseProcessIDBDatabaseBackend> backend = DatabaseProcessIDBDatabaseBackend::create(backendIdentifier);
-    m_idbDatabaseBackends.set(backendIdentifier, backend.release());
+    RefPtr<DatabaseProcessIDBConnection> idbConnection = DatabaseProcessIDBConnection::create(*this, serverConnectionIdentifier);
+    m_idbConnections.set(serverConnectionIdentifier, idbConnection.release());
 }
+
+void DatabaseToWebProcessConnection::removeDatabaseProcessIDBConnection(uint64_t serverConnectionIdentifier)
+{
+    ASSERT(m_idbConnections.contains(serverConnectionIdentifier));
+
+    RefPtr<DatabaseProcessIDBConnection> idbConnection = m_idbConnections.take(serverConnectionIdentifier);
+    idbConnection->disconnectedFromWebProcess();
+}
+
 
 } // namespace WebKit
 

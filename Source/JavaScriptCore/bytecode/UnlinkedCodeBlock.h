@@ -55,7 +55,7 @@ struct ParserError;
 class ScriptExecutable;
 class SourceCode;
 class SourceProvider;
-class SharedSymbolTable;
+class SymbolTable;
 class UnlinkedCodeBlock;
 class UnlinkedFunctionCodeBlock;
 
@@ -83,9 +83,9 @@ class UnlinkedFunctionExecutable : public JSCell {
 public:
     friend class CodeCache;
     typedef JSCell Base;
-    static UnlinkedFunctionExecutable* create(VM* vm, const SourceCode& source, FunctionBodyNode* node)
+    static UnlinkedFunctionExecutable* create(VM* vm, const SourceCode& source, FunctionBodyNode* node, bool isFromGlobalCode = false)
     {
-        UnlinkedFunctionExecutable* instance = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(vm->heap)) UnlinkedFunctionExecutable(vm, vm->unlinkedFunctionExecutableStructure.get(), source, node);
+        UnlinkedFunctionExecutable* instance = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(vm->heap)) UnlinkedFunctionExecutable(vm, vm->unlinkedFunctionExecutableStructure.get(), source, node, isFromGlobalCode);
         instance->finishCreation(*vm);
         return instance;
     }
@@ -93,7 +93,7 @@ public:
     const Identifier& name() const { return m_name; }
     const Identifier& inferredName() const { return m_inferredName; }
     JSString* nameValue() const { return m_nameValue.get(); }
-    SharedSymbolTable* symbolTable(CodeSpecializationKind kind)
+    SymbolTable* symbolTable(CodeSpecializationKind kind)
     {
         return (kind == CodeForCall) ? m_symbolTableForCall.get() : m_symbolTableForConstruct.get();
     }
@@ -103,8 +103,9 @@ public:
 
     unsigned firstLineOffset() const { return m_firstLineOffset; }
     unsigned lineCount() const { return m_lineCount; }
-    unsigned functionStartOffset() const { return m_functionStartOffset; }
-    unsigned functionStartColumn() const { return m_functionStartColumn; }
+    unsigned unlinkedFunctionNameStart() const { return m_unlinkedFunctionNameStart; }
+    unsigned unlinkedBodyStartColumn() const { return m_unlinkedBodyStartColumn; }
+    unsigned unlinkedBodyEndColumn() const { return m_unlinkedBodyEndColumn; }
     unsigned startOffset() const { return m_startOffset; }
     unsigned sourceLength() { return m_sourceLength; }
 
@@ -126,11 +127,10 @@ public:
 
     FunctionParameters* parameters() { return m_parameters.get(); }
 
-    void recordParse(CodeFeatures features, bool hasCapturedVariables, int firstLine, int lastLine)
+    void recordParse(CodeFeatures features, bool hasCapturedVariables)
     {
         m_features = features;
         m_hasCapturedVariables = hasCapturedVariables;
-        m_lineCount = lastLine - firstLine;
     }
 
     bool forceUsesArguments() const { return m_forceUsesArguments; }
@@ -143,7 +143,7 @@ public:
     static void destroy(JSCell*);
 
 private:
-    UnlinkedFunctionExecutable(VM*, Structure*, const SourceCode&, FunctionBodyNode*);
+    UnlinkedFunctionExecutable(VM*, Structure*, const SourceCode&, FunctionBodyNode*, bool isFromGlobalCode);
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForCall;
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForConstruct;
 
@@ -151,17 +151,19 @@ private:
     bool m_forceUsesArguments : 1;
     bool m_isInStrictContext : 1;
     bool m_hasCapturedVariables : 1;
+    bool m_isFromGlobalCode : 1;
 
     Identifier m_name;
     Identifier m_inferredName;
     WriteBarrier<JSString> m_nameValue;
-    WriteBarrier<SharedSymbolTable> m_symbolTableForCall;
-    WriteBarrier<SharedSymbolTable> m_symbolTableForConstruct;
+    WriteBarrier<SymbolTable> m_symbolTableForCall;
+    WriteBarrier<SymbolTable> m_symbolTableForConstruct;
     RefPtr<FunctionParameters> m_parameters;
     unsigned m_firstLineOffset;
     unsigned m_lineCount;
-    unsigned m_functionStartOffset;
-    unsigned m_functionStartColumn;
+    unsigned m_unlinkedFunctionNameStart;
+    unsigned m_unlinkedBodyStartColumn;
+    unsigned m_unlinkedBodyEndColumn;
     unsigned m_startOffset;
     unsigned m_sourceLength;
 
@@ -186,7 +188,7 @@ public:
 
     static const unsigned StructureFlags = OverridesVisitChildren | JSCell::StructureFlags;
 
-    DECLARE_INFO;
+    DECLARE_EXPORT_INFO;
 };
 
 struct UnlinkedStringJumpTable {
@@ -227,9 +229,11 @@ struct UnlinkedInstruction {
     UnlinkedInstruction() { u.operand = 0; }
     UnlinkedInstruction(OpcodeID opcode) { u.opcode = opcode; }
     UnlinkedInstruction(int operand) { u.operand = operand; }
+    UnlinkedInstruction(StringImpl* uid) { u.uid = uid; }
     union {
         OpcodeID opcode;
         int32_t operand;
+        StringImpl* uid;
     } u;
 };
 
@@ -381,7 +385,7 @@ public:
     void addExceptionHandler(const UnlinkedHandlerInfo& hanler) { createRareDataIfNecessary(); return m_rareData->m_exceptionHandlers.append(hanler); }
     UnlinkedHandlerInfo& exceptionHandler(int index) { ASSERT(m_rareData); return m_rareData->m_exceptionHandlers[index]; }
 
-    SharedSymbolTable* symbolTable() const { return m_symbolTable.get(); }
+    SymbolTable* symbolTable() const { return m_symbolTable.get(); }
 
     VM* vm() const { return m_vm; }
 
@@ -441,18 +445,22 @@ public:
     void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot,
         int& startOffset, int& endOffset, unsigned& line, unsigned& column);
 
-    void recordParse(CodeFeatures features, bool hasCapturedVariables, unsigned firstLine, unsigned lineCount)
+    void recordParse(CodeFeatures features, bool hasCapturedVariables, unsigned firstLine, unsigned lineCount, unsigned endColumn)
     {
         m_features = features;
         m_hasCapturedVariables = hasCapturedVariables;
         m_firstLine = firstLine;
         m_lineCount = lineCount;
+        // For the UnlinkedCodeBlock, startColumn is always 0.
+        m_endColumn = endColumn;
     }
 
     CodeFeatures codeFeatures() const { return m_features; }
     bool hasCapturedVariables() const { return m_hasCapturedVariables; }
     unsigned firstLine() const { return m_firstLine; }
     unsigned lineCount() const { return m_lineCount; }
+    ALWAYS_INLINE unsigned startColumn() const { return 0; }
+    unsigned endColumn() const { return m_endColumn; }
 
 protected:
     UnlinkedCodeBlock(VM*, Structure*, CodeType, const ExecutableInfo&);
@@ -463,7 +471,7 @@ protected:
         Base::finishCreation(vm);
         if (codeType() == GlobalCode)
             return;
-        m_symbolTable.set(vm, this, SharedSymbolTable::create(vm));
+        m_symbolTable.set(vm, this, SymbolTable::create(vm));
     }
 
 private:
@@ -492,6 +500,7 @@ private:
     bool m_hasCapturedVariables : 1;
     unsigned m_firstLine;
     unsigned m_lineCount;
+    unsigned m_endColumn;
 
     CodeFeatures m_features;
     CodeType m_codeType;
@@ -505,7 +514,7 @@ private:
     FunctionExpressionVector m_functionDecls;
     FunctionExpressionVector m_functionExprs;
 
-    WriteBarrier<SharedSymbolTable> m_symbolTable;
+    WriteBarrier<SymbolTable> m_symbolTable;
 
     Vector<unsigned> m_propertyAccessInstructions;
 

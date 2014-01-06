@@ -23,6 +23,7 @@
 #define JSGlobalObject_h
 
 #include "ArrayAllocationProfile.h"
+#include "ConstantMode.h"
 #include "JSArray.h"
 #include "JSArrayBufferPrototype.h"
 #include "JSClassRef.h"
@@ -58,6 +59,7 @@ class FunctionExecutable;
 class FunctionPrototype;
 class GetterSetter;
 class GlobalCodeBlock;
+class JSGlobalObjectDebuggable;
 class JSPromisePrototype;
 class JSPromiseResolverPrototype;
 class JSStack;
@@ -229,7 +231,13 @@ protected:
         
     void* m_specialPointers[Special::TableSize]; // Special pointers used by the LLInt and JIT.
 
+    String m_name;
+
     Debugger* m_debugger;
+
+#if ENABLE(REMOTE_INSPECTOR)
+    std::unique_ptr<JSGlobalObjectDebuggable> m_inspectorDebuggable;
+#endif
 
     RefPtr<WatchpointSet> m_masqueradesAsUndefinedWatchpoint;
     RefPtr<WatchpointSet> m_havingABadTimeWatchpoint;
@@ -288,9 +296,11 @@ protected:
         init(thisValue);
     }
 
-    enum ConstantMode { IsConstant, IsVariable };
-    enum FunctionMode { IsFunctionToSpecialize, NotFunctionOrNotSpecializable };
-    int addGlobalVar(const Identifier&, ConstantMode, FunctionMode);
+    struct NewGlobalVar {
+        int registerNumber;
+        VariableWatchpointSet* set;
+    };
+    NewGlobalVar addGlobalVar(const Identifier&, ConstantMode);
 
 public:
     JS_EXPORT_PRIVATE ~JSGlobalObject();
@@ -315,19 +325,14 @@ public:
     void addVar(ExecState* exec, const Identifier& propertyName)
     {
         if (!hasProperty(exec, propertyName))
-            addGlobalVar(propertyName, IsVariable, NotFunctionOrNotSpecializable);
+            addGlobalVar(propertyName, IsVariable);
     }
     void addConst(ExecState* exec, const Identifier& propertyName)
     {
         if (!hasProperty(exec, propertyName))
-            addGlobalVar(propertyName, IsConstant, NotFunctionOrNotSpecializable);
+            addGlobalVar(propertyName, IsConstant);
     }
-    void addFunction(ExecState* exec, const Identifier& propertyName, JSValue value)
-    {
-        bool propertyDidExist = removeDirect(exec->vm(), propertyName); // Newly declared functions overwrite existing properties.
-        int index = addGlobalVar(propertyName, IsVariable, !propertyDidExist ? IsFunctionToSpecialize : NotFunctionOrNotSpecializable);
-        registerAt(index).set(exec->vm(), this, value);
-    }
+    void addFunction(ExecState*, const Identifier&, JSValue);
 
     // The following accessors return pristine values, even if a script 
     // replaces the global object's associated property.
@@ -421,6 +426,12 @@ public:
     Structure* promiseCallbackStructure() const { return m_promiseCallbackStructure.get(); }
     Structure* promiseWrapperCallbackStructure() const { return m_promiseWrapperCallbackStructure.get(); }
 #endif // ENABLE(PROMISES)
+
+    JS_EXPORT_PRIVATE void setRemoteDebuggingEnabled(bool);
+    JS_EXPORT_PRIVATE bool remoteDebuggingEnabled() const;
+
+    void setName(const String&);
+    const String& name() const { return m_name; }
 
     JSArrayBufferPrototype* arrayBufferPrototype() const { return m_arrayBufferPrototype.get(); }
 
@@ -586,17 +597,6 @@ inline bool JSGlobalObject::symbolTableHasProperty(PropertyName propertyName)
     return !entry.isNull();
 }
 
-inline JSGlobalObject* ExecState::dynamicGlobalObject()
-{
-    if (this == lexicalGlobalObject()->globalExec())
-        return lexicalGlobalObject();
-
-    // For any ExecState that's not a globalExec, the 
-    // dynamic global object must be set since code is running
-    ASSERT(vm().dynamicGlobalObject);
-    return vm().dynamicGlobalObject;
-}
-
 inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* profile, JSGlobalObject* globalObject, unsigned initialLength = 0)
 {
     return ArrayAllocationProfile::updateLastAllocationFor(profile, JSArray::create(exec->vm(), initialLength >= MIN_SPARSE_ARRAY_INDEX ? globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithArrayStorage) : globalObject->arrayStructureForProfileDuringAllocation(profile), initialLength));
@@ -636,21 +636,6 @@ inline JSArray* constructArrayNegativeIndexed(ExecState* exec, ArrayAllocationPr
 {
     return constructArrayNegativeIndexed(exec, profile, exec->lexicalGlobalObject(), values, length);
 }
-
-class DynamicGlobalObjectScope {
-    WTF_MAKE_NONCOPYABLE(DynamicGlobalObjectScope);
-public:
-    JS_EXPORT_PRIVATE DynamicGlobalObjectScope(VM&, JSGlobalObject*);
-
-    ~DynamicGlobalObjectScope()
-    {
-        m_dynamicGlobalObjectSlot = m_savedDynamicGlobalObject;
-    }
-
-private:
-    JSGlobalObject*& m_dynamicGlobalObjectSlot;
-    JSGlobalObject* m_savedDynamicGlobalObject;
-};
 
 inline JSObject* JSScope::globalThis()
 { 

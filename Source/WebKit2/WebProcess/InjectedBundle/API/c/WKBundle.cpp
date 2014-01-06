@@ -40,7 +40,7 @@ WKTypeID WKBundleGetTypeID()
     return toAPI(InjectedBundle::APIType);
 }
 
-void WKBundleSetClient(WKBundleRef bundleRef, WKBundleClient * wkClient)
+void WKBundleSetClient(WKBundleRef bundleRef, WKBundleClientBase *wkClient)
 {
     toImpl(bundleRef)->initializeClient(wkClient);
 }

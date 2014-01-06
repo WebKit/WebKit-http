@@ -66,20 +66,32 @@ WK_EXPORT WKStringRef WKDatabaseManagerGetDatabaseDetailsCurrentUsageKey();
 typedef void (*WKDatabaseManagerDidModifyOriginCallback)(WKDatabaseManagerRef databaseManager, WKSecurityOriginRef origin, const void *clientInfo);
 typedef void (*WKDatabaseManagerDidModifyDatabaseCallback)(WKDatabaseManagerRef databaseManager, WKSecurityOriginRef origin, WKStringRef databaseIdentifier, const void *clientInfo);
 
-struct WKDatabaseManagerClient {
+typedef struct WKDatabaseManagerClientBase {
     int                                                                 version;
     const void *                                                        clientInfo;
+} WKDatabaseManagerClientBase;
+
+typedef struct WKDatabaseManagerClientV0 {
+    WKDatabaseManagerClientBase                                         base;
+
+    // Version 0.
     WKDatabaseManagerDidModifyOriginCallback                            didModifyOrigin;
     WKDatabaseManagerDidModifyDatabaseCallback                          didModifyDatabase;
-};
-typedef struct WKDatabaseManagerClient WKDatabaseManagerClient;
+} WKDatabaseManagerClientV0;
 
-enum { kWKDatabaseManagerClientCurrentVersion = 0 };
+enum { kWKDatabaseManagerClientCurrentVersion WK_ENUM_DEPRECATED("Use an explicit version number instead") = 0 };
+typedef struct WKDatabaseManagerClient {
+    int                                                                 version;
+    const void *                                                        clientInfo;
 
+    // Version 0.
+    WKDatabaseManagerDidModifyOriginCallback                            didModifyOrigin;
+    WKDatabaseManagerDidModifyDatabaseCallback                          didModifyDatabase;
+} WKDatabaseManagerClient WK_DEPRECATED("Use an explicit versioned struct instead");
 
 WK_EXPORT WKTypeID WKDatabaseManagerGetTypeID();
 
-WK_EXPORT void WKDatabaseManagerSetClient(WKDatabaseManagerRef databaseManager, const WKDatabaseManagerClient* client);
+WK_EXPORT void WKDatabaseManagerSetClient(WKDatabaseManagerRef databaseManager, const WKDatabaseManagerClientBase* client);
 
 typedef void (*WKDatabaseManagerGetDatabasesByOriginFunction)(WKArrayRef, WKErrorRef, void*);
 WK_EXPORT void WKDatabaseManagerGetDatabasesByOrigin(WKDatabaseManagerRef databaseManager, void* context, WKDatabaseManagerGetDatabasesByOriginFunction function);

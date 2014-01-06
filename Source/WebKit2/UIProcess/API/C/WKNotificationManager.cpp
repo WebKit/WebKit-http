@@ -36,7 +36,7 @@ WKTypeID WKNotificationManagerGetTypeID()
     return toAPI(WebNotificationManagerProxy::APIType);
 }
 
-void WKNotificationManagerSetProvider(WKNotificationManagerRef managerRef, const WKNotificationProvider* wkProvider)
+void WKNotificationManagerSetProvider(WKNotificationManagerRef managerRef, const WKNotificationProviderBase* wkProvider)
 {
     toImpl(managerRef)->initializeProvider(wkProvider);
 }

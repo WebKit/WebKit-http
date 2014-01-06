@@ -63,6 +63,11 @@ BuildbotQueue.prototype = {
         return this.buildbot.baseURL + "json/builders/" + encodeURIComponent(this.id);
     },
 
+    get overviewURL()
+    {
+        return this.buildbot.baseURL + "builders/" + encodeURIComponent(this.id) + "?numbuilds=50";
+    },
+
     get pendingIterationsCount()
     {
         var firstFinishedIteration = this.mostRecentFinishedIteration;
@@ -126,6 +131,10 @@ BuildbotQueue.prototype = {
 
     update: function(iterationsToLoad)
     {
+        var hiddenPlatforms = settings.getObject("hiddenPlatforms");
+        if (hiddenPlatforms && hiddenPlatforms.contains(this.platform))
+            return;
+
         JSON.load(this.baseURL, function(data) {
             if (!(data.cachedBuilds instanceof Array))
                 return;

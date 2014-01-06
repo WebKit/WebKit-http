@@ -38,22 +38,22 @@
 namespace WebCore {
 
 LineSegmentRange::LineSegmentRange(const InlineIterator& start, const InlineIterator& end)
-    : start(start.root(), start.object(), start.offset())
-    , end(end.root(), end.object(), end.offset())
+    : start(start.root(), start.renderer(), start.offset())
+    , end(end.root(), end.renderer(), end.offset())
     {
     }
 
-bool ShapeInsideInfo::isEnabledFor(const RenderBlock* renderer)
+bool ShapeInsideInfo::isEnabledFor(const RenderBlock& renderer)
 {
-    ShapeValue* shapeValue = renderer->style().resolvedShapeInside();
+    ShapeValue* shapeValue = renderer.style().resolvedShapeInside();
     if (!shapeValue)
         return false;
 
     switch (shapeValue->type()) {
     case ShapeValue::Shape:
-        return shapeValue->shape() && shapeValue->shape()->type() != BasicShape::BasicShapeInsetRectangleType;
+        return shapeValue->shape() && shapeValue->shape()->type() != BasicShape::BasicShapeInsetRectangleType && shapeValue->shape()->type() != BasicShape::BasicShapeInsetType;
     case ShapeValue::Image:
-        return shapeValue->isImageValid() && checkShapeImageOrigin(renderer->document(), *(shapeValue->image()->cachedImage()));
+        return shapeValue->isImageValid() && checkShapeImageOrigin(renderer.document(), *(shapeValue->image()->cachedImage()));
     case ShapeValue::Box:
         return false;
     case ShapeValue::Outside:
@@ -91,12 +91,12 @@ bool ShapeInsideInfo::updateSegmentsForLine(LayoutUnit lineTop, LayoutUnit lineH
 
 bool ShapeInsideInfo::adjustLogicalLineTop(float minSegmentWidth)
 {
-    const Shape* shape = computedShape();
-    if (!shape || m_lineHeight <= 0 || logicalLineTop() > shapeLogicalBottom())
+    const Shape& shape = computedShape();
+    if (m_lineHeight <= 0 || logicalLineTop() > shapeLogicalBottom())
         return false;
 
     LayoutUnit newLineTop;
-    if (shape->firstIncludedIntervalLogicalTop(m_shapeLineTop, LayoutSize(minSegmentWidth, m_lineHeight), newLineTop)) {
+    if (shape.firstIncludedIntervalLogicalTop(m_shapeLineTop, LayoutSize(minSegmentWidth, m_lineHeight), newLineTop)) {
         if (newLineTop > m_shapeLineTop) {
             m_shapeLineTop = newLineTop;
             return true;
@@ -108,16 +108,16 @@ bool ShapeInsideInfo::adjustLogicalLineTop(float minSegmentWidth)
 
 ShapeValue* ShapeInsideInfo::shapeValue() const
 {
-    return m_renderer->style().resolvedShapeInside();
+    return m_renderer.style().resolvedShapeInside();
 }
 
 LayoutUnit ShapeInsideInfo::computeFirstFitPositionForFloat(const LayoutSize floatSize) const
 {
-    if (!computedShape() || !floatSize.width() || shapeLogicalBottom() < logicalLineTop())
+    if (!floatSize.width() || shapeLogicalBottom() < logicalLineTop())
         return 0;
 
     LayoutUnit firstFitPosition = 0;
-    if (computedShape()->firstIncludedIntervalLogicalTop(m_shapeLineTop, floatSize, firstFitPosition) && (m_shapeLineTop <= firstFitPosition))
+    if (computedShape().firstIncludedIntervalLogicalTop(m_shapeLineTop, floatSize, firstFitPosition) && (m_shapeLineTop <= firstFitPosition))
         return firstFitPosition;
 
     return 0;

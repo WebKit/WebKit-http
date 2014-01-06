@@ -44,7 +44,7 @@ void WebPageProxy::platformInitialize()
 
 GtkWidget* WebPageProxy::viewWidget()
 {
-    return static_cast<PageClientImpl*>(m_pageClient)->viewWidget();
+    return static_cast<PageClientImpl&>(m_pageClient).viewWidget();
 }
 
 String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
@@ -57,7 +57,7 @@ void WebPageProxy::getEditorCommandsForKeyEvent(const AtomicString& eventType, V
     // When the keyboard event is started in the WebProcess side (e.g. from the Inspector)
     // it will arrive without a GdkEvent associated, so the keyEventQueue will be empty.
     if (!m_keyEventQueue.isEmpty())
-        m_pageClient->getEditorCommandsForKeyEvent(m_keyEventQueue.first(), eventType, commandsList);
+        m_pageClient.getEditorCommandsForKeyEvent(m_keyEventQueue.first(), eventType, commandsList);
 }
 
 void WebPageProxy::bindAccessibilityTree(const String& plugID)
@@ -126,7 +126,7 @@ void WebPageProxy::setInputMethodState(bool enabled)
 #if USE(TEXTURE_MAPPER_GL)
 void WebPageProxy::setAcceleratedCompositingWindowId(uint64_t nativeWindowId)
 {
-    process()->send(Messages::WebPage::SetAcceleratedCompositingWindowId(nativeWindowId), m_pageID);
+    process().send(Messages::WebPage::SetAcceleratedCompositingWindowId(nativeWindowId), m_pageID);
 }
 #endif
 

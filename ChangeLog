@@ -1,3 +1,175 @@
+2013-12-04  László Langó  <lango@inf.u-szeged.hu>
+
+        Allow --cloop option to work correctly in case of EFL.
+        https://bugs.webkit.org/show_bug.cgi?id=125217
+
+        Reviewed by Zoltan Herczeg.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2013-12-03  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Disable RTTI for release build
+        https://bugs.webkit.org/show_bug.cgi?id=125138
+
+        Reviewed by Gyuyoung Kim.
+
+        Binary size will be reduced about 1M bytes without RTTI.
+        ewebkit.so : 43,449,275 -> 42,510,224
+        ewebkit2.so: 46,715,870 -> 45,653,989
+
+        * Source/cmake/OptionsEfl.cmake: Added -fno-rtti option to CMAKE_CXX_FLAGS_RELEASE.
+
+2013-12-02  Adrian Bunk  <bunk@stusta.de>
+
+        [GTK] Remove unneeded autoconf macros
+        https://bugs.webkit.org/show_bug.cgi?id=125044
+
+        Compilers that do not support const/inline/volatile and
+        systems with pre-C89-headers are anyway not supported.
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/autotools/CheckSystemAndBasicDependencies.m4:
+
+2013-11-29  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        [cmake] Fix cmake warning: Argument not separated from preceding token by whitespace
+        https://bugs.webkit.org/show_bug.cgi?id=124899
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/FindCairo.cmake:
+        * Source/cmake/FindGStreamer.cmake:
+
+2013-11-28  Antti Koivisto  <antti@apple.com>
+
+        Remove feature: CSS variables
+        https://bugs.webkit.org/show_bug.cgi?id=114119
+
+        Reviewed by Andreas Kling.
+
+        * Source/cmakeconfig.h.cmake:
+
+2013-11-27  László Langó  <lango@inf.u-szeged.hu>
+
+        [EFL] The remote inspector does not show the base page.
+        https://bugs.webkit.org/show_bug.cgi?id=124942
+
+        Reviewed by Gyuyoung Kim.
+
+        On EFL the remote inspector does not show the base page about
+        which pages are available for debug. This should be fixed for
+        further inspector development.
+
+        * Source/PlatformEfl.cmake:
+
+2013-11-26  Marcelo Lira  <marcelo.lira@openbossa.org>
+
+        Nix upstreaming - Adding build files and supporting scripts
+        https://bugs.webkit.org/show_bug.cgi?id=118367
+
+        Reviewed by Ryosuke Niwa.
+
+        * CMakeLists.txt:
+        * Source/CMakeLists.txt:
+        * Source/cmake/FindEGL.cmake:
+        * Source/cmake/FindOpenGLES2.cmake: Added.
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/OptionsNix.cmake: Added.
+
+2013-11-25  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] E_DBus should be an optional
+        https://bugs.webkit.org/show_bug.cgi?id=124881
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake:
+        Checked E_DBus when only ENABLE_BATTERY_STATUS is on.
+
+2013-11-25  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Use Config mode of find_package for EFL 1.8
+        https://bugs.webkit.org/show_bug.cgi?id=124555
+
+        Reviewed by Gyuyoung Kim.
+
+        EFL 1.8 changed VERSION macro so it's difficult to use tricky approach
+        which parses header files to know the version. Instead, EFL 1.8 supports
+        FooConfig.cmake such as EinaConfig.cmake.
+
+        This patch tries to use a config mode if it is available.
+        If config mode is not available with Eo, FindFoo.cmake will be used without
+        version requirement.
+
+        * Source/cmake/FindEo.cmake: Removed.
+        EoConfig.cmake is only preffered for EFL 1.8.
+        * Source/cmake/OptionsEfl.cmake:
+
+2013-11-23  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] Remove 0.10 codepath
+        https://bugs.webkit.org/show_bug.cgi?id=124534
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/OptionsEfl.cmake: Removed GST_API_VERSION_1
+        definition.
+
+2013-11-22  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK] Review enabled/disabled CSS features for release builds
+        https://bugs.webkit.org/show_bug.cgi?id=124791
+
+        Reviewed by Martin Robinson.
+
+        Enable and disable some CSS features according to what last versions of
+        Safari ship or not.
+
+        * Source/autotools/SetupWebKitFeatures.m4: Enable ENABLE_CSS_REGIONS and
+        ENABLE_CSS_STICKY_POSITION. Disable ENABLE_CSS_EXCLUSIONS and
+        ENABLE_CSS_SHAPES.
+
+2013-11-21  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        Remove ENABLE_WORKERS
+        https://bugs.webkit.org/show_bug.cgi?id=105784
+
+        Reviewed by Darin Adler.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2013-11-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r159496.
+        http://trac.webkit.org/changeset/159496
+        https://bugs.webkit.org/show_bug.cgi?id=124641
+
+        It caused warning and build break with cmake lower than 2.8.8
+        (Requested by ryuan on #webkit).
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2013-11-19  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Use Config mode of find_package for EFL 1.8
+        https://bugs.webkit.org/show_bug.cgi?id=124555
+
+        Reviewed by Gyuyoung Kim.
+
+        EFL 1.8 changed VERSION macro so it's difficult to use tricky approach
+        which parses header file to know the version. Instead, EFL 1.8 supports
+        Config mode of find_package using XXXConfig.cmake such as EinaConfig.cmake.
+
+        This patch tries to use Config mode if it is available after checking Eo.
+
+        * Source/cmake/OptionsEfl.cmake:
+
 2013-11-18  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Update NEWS and Versions.m4 for 2.3.2 release.

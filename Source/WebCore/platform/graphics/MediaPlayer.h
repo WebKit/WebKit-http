@@ -37,6 +37,7 @@
 #include "IntRect.h"
 #include "URL.h"
 #include "LayoutRect.h"
+#include "NativeImagePtr.h"
 #include "Timer.h"
 #include "VideoTrackPrivate.h"
 #include <runtime/Uint8Array.h>
@@ -376,6 +377,8 @@ public:
     // http://src.chromium.org/viewvc/chrome/trunk/src/gpu/command_buffer/service/gles2_cmd_copy_texture_chromium.cc via shaders.
     bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject texture, GC3Dint level, GC3Denum type, GC3Denum internalFormat, bool premultiplyAlpha, bool flipY);
 
+    PassNativeImagePtr nativeImageForCurrentTime();
+
     enum NetworkState { Empty, Idle, Loading, Loaded, FormatError, NetworkError, DecodeError };
     NetworkState networkState();
 
@@ -504,6 +507,8 @@ public:
     String languageOfPrimaryAudioTrack() const;
 
     size_t extraMemoryCost() const;
+
+    unsigned long long fileSize() const;
 
 private:
     MediaPlayer(MediaPlayerClient*);

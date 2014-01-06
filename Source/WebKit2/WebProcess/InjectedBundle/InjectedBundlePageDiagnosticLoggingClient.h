@@ -31,13 +31,19 @@
 #include <JavaScriptCore/JSBase.h>
 #include <wtf/Forward.h>
 
+namespace API {
+template<> struct ClientTraits<WKBundlePageDiagnosticLoggingClientBase> {
+    typedef std::tuple<WKBundlePageDiagnosticLoggingClientV0> Versions;
+};
+}
+
 namespace WebKit {
 
 class InjectedBundleHitTestResult;
 class WebContextMenuItemData;
 class WebPage;
 
-class InjectedBundlePageDiagnosticLoggingClient : public APIClient<WKBundlePageDiagnosticLoggingClient, kWKBundlePageDiagnosticLoggingClientCurrentVersion> {
+class InjectedBundlePageDiagnosticLoggingClient : public API::Client<WKBundlePageDiagnosticLoggingClientBase> {
 public:
     void logDiagnosticMessage(WebPage*, const String& message, const String& description, const String& success);
 };

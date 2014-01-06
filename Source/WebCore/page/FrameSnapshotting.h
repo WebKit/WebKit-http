@@ -1,5 +1,8 @@
 /*
- *  Copyright (C) 2013 University of Washington. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006 Alexey Proskuryakov (ap@nypop.com)
+ * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
+ * Copyright (C) 2013 University of Washington.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +30,7 @@
 #ifndef FrameSnapshotting_h
 #define FrameSnapshotting_h
 
-#include <wtf/Forward.h>
+#include <memory>
 
 namespace WebCore {
 
@@ -39,10 +42,11 @@ class Node;
 enum {
     SnapshotOptionsNone = 0,
     SnapshotOptionsExcludeSelectionHighlighting = 1 << 0,
-    SnapshotOptionsInViewCoordinates = 1 << 1,
-    SnapshotOptionsForceBlackText = 1 << 2,
+    SnapshotOptionsPaintSelectionOnly = 1 << 1,
+    SnapshotOptionsInViewCoordinates = 1 << 2,
+    SnapshotOptionsForceBlackText = 1 << 3,
 };
-typedef uint32_t SnapshotOptions;
+typedef unsigned SnapshotOptions;
 
 std::unique_ptr<ImageBuffer> snapshotFrameRect(Frame&, const IntRect&, SnapshotOptions = SnapshotOptionsNone);
 std::unique_ptr<ImageBuffer> snapshotNode(Frame&, Node&);

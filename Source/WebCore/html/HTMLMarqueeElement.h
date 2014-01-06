@@ -54,7 +54,7 @@ private:
     HTMLMarqueeElement(const QualifiedName&, Document&);
 
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet&) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) OVERRIDE;
 
     // ActiveDOMObject
     virtual bool canSuspend() const;
@@ -63,6 +63,8 @@ private:
 
     RenderMarquee* renderMarquee() const;
 };
+
+NODE_TYPE_CASTS(HTMLMarqueeElement)
 
 } // namespace WebCore
 

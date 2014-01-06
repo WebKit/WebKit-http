@@ -43,11 +43,6 @@
 #include "SamplingTool.h"
 #include <wtf/StringPrintStream.h>
 
-#ifndef NDEBUG
-#include <stdio.h>
-#endif
-
-using namespace std;
 
 namespace JSC {
 #if USE(JSVALUE64)
@@ -771,9 +766,40 @@ void JIT::emitPutGlobalProperty(uintptr_t* operandSlot, int value)
     storePtr(regT2, BaseIndex(regT0, regT1, TimesEight, (firstOutOfLineOffset - 2) * sizeof(EncodedJSValue)));
 }
 
-void JIT::emitPutGlobalVar(uintptr_t operand, int value)
+void JIT::emitNotifyWrite(RegisterID value, RegisterID scratch, VariableWatchpointSet* set)
+{
+    if (!set || set->state() == IsInvalidated)
+        return;
+    
+    load8(set->addressOfState(), scratch);
+    
+    JumpList ready;
+    
+    ready.append(branch32(Equal, scratch, TrustedImm32(IsInvalidated)));
+    
+    if (set->state() == ClearWatchpoint) {
+        Jump isWatched = branch32(NotEqual, scratch, TrustedImm32(ClearWatchpoint));
+        
+        store64(value, set->addressOfInferredValue());
+        store8(TrustedImm32(IsWatched), set->addressOfState());
+        ready.append(jump());
+        
+        isWatched.link(this);
+    }
+    
+    ready.append(branch64(Equal, AbsoluteAddress(set->addressOfInferredValue()), value));
+    addSlowCase(branchTest8(NonZero, AbsoluteAddress(set->addressOfSetIsNotEmpty())));
+    store8(TrustedImm32(IsInvalidated), set->addressOfState());
+    move(TrustedImm64(JSValue::encode(JSValue())), scratch);
+    store64(scratch, set->addressOfInferredValue());
+    
+    ready.link(this);
+}
+
+void JIT::emitPutGlobalVar(uintptr_t operand, int value, VariableWatchpointSet* set)
 {
     emitGetVirtualRegister(value, regT0);
+    emitNotifyWrite(regT0, regT1, set);
     storePtr(regT0, reinterpret_cast<void*>(operand));
 }
 
@@ -802,7 +828,7 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
     case GlobalVar:
     case GlobalVarWithVarInjectionChecks:
         emitVarInjectionCheck(needsVarInjectionChecks(resolveType));
-        emitPutGlobalVar(*operandSlot, value);
+        emitPutGlobalVar(*operandSlot, value, currentInstruction[5].u.watchpointSet);
         break;
     case ClosureVar:
     case ClosureVarWithVarInjectionChecks:
@@ -818,10 +844,16 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
 void JIT::emitSlow_op_put_to_scope(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     ResolveType resolveType = ResolveModeAndType(currentInstruction[4].u.operand).type();
-    if (resolveType == GlobalVar || resolveType == ClosureVar)
+    unsigned linkCount = 0;
+    if (resolveType != GlobalVar && resolveType != ClosureVar)
+        linkCount++;
+    if ((resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks)
+        && currentInstruction[5].u.watchpointSet->state() != IsInvalidated)
+        linkCount++;
+    if (!linkCount)
         return;
-
-    linkSlowCase(iter);
+    while (linkCount--)
+        linkSlowCase(iter);
     callOperation(operationPutToScope, currentInstruction);
 }
 

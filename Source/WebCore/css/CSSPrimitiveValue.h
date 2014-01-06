@@ -43,6 +43,7 @@ class RenderStyle;
 class CSSBasicShape;
 
 struct Length;
+struct LengthSize;
 
 // Dimension calculations are imprecise, often resulting in values of e.g.
 // 44.99998. We need to go ahead and round if we're really close to the next
@@ -134,9 +135,6 @@ public:
         CSS_CALC_PERCENTAGE_WITH_NUMBER = 114,
         CSS_CALC_PERCENTAGE_WITH_LENGTH = 115,
 
-#if ENABLE(CSS_VARIABLES)
-        CSS_VARIABLE_NAME = 116,
-#endif
         CSS_PROPERTY_ID = 117,
         CSS_VALUE_ID = 118
     };
@@ -200,9 +198,6 @@ public:
         return type >= CSS_DPPX && type <= CSS_DPCM;
     }
 
-#if ENABLE(CSS_VARIABLES)
-    bool isVariableName() const { return primitiveType() == CSS_VARIABLE_NAME; }
-#endif
     bool isViewportPercentageLength() const { return m_primitiveUnitType >= CSS_VW && m_primitiveUnitType <= CSS_VMAX; }
     bool isViewportPercentageWidth() const { return m_primitiveUnitType == CSS_VW; }
     bool isViewportPercentageHeight() const { return m_primitiveUnitType == CSS_VH; }
@@ -219,6 +214,7 @@ public:
     static PassRef<CSSPrimitiveValue> create(double value, UnitTypes type) { return adoptRef(*new CSSPrimitiveValue(value, type)); }
     static PassRef<CSSPrimitiveValue> create(const String& value, UnitTypes type) { return adoptRef(*new CSSPrimitiveValue(value, type)); }
     static PassRef<CSSPrimitiveValue> create(const Length& value, const RenderStyle* style) { return adoptRef(*new CSSPrimitiveValue(value, style)); }
+    static PassRef<CSSPrimitiveValue> create(const LengthSize& value) { return adoptRef(*new CSSPrimitiveValue(value)); }
 
     template<typename T> static PassRef<CSSPrimitiveValue> create(T value)
     {
@@ -327,10 +323,6 @@ public:
     template<typename T> inline operator T() const; // Defined in CSSPrimitiveValueMappings.h
 
     String customCSSText() const;
-#if ENABLE(CSS_VARIABLES)
-    String customSerializeResolvingVariables(const HashMap<AtomicString, String>&) const;
-    bool hasVariableReference() const;
-#endif
 
     bool isQuirkValue() { return m_isQuirkValue; }
 
@@ -354,6 +346,7 @@ private:
     CSSPrimitiveValue(unsigned color); // RGB value
     CSSPrimitiveValue(const Length&);
     CSSPrimitiveValue(const Length&, const RenderStyle*);
+    CSSPrimitiveValue(const LengthSize&);
     CSSPrimitiveValue(const String&, UnitTypes);
     CSSPrimitiveValue(double, UnitTypes);
 
@@ -375,6 +368,7 @@ private:
     template<typename T> operator T*(); // compile-time guard
 
     void init(const Length&);
+    void init(const LengthSize&);
     void init(PassRefPtr<Counter>);
     void init(PassRefPtr<Rect>);
     void init(PassRefPtr<Pair>);

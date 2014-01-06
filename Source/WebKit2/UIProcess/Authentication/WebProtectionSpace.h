@@ -48,6 +48,8 @@ public:
     bool receivesCredentialSecurely() const;
     WebCore::ProtectionSpaceAuthenticationScheme authenticationScheme() const;
 
+    const WebCore::ProtectionSpace& protectionSpace() const { return m_coreProtectionSpace; }
+
 private:
     explicit WebProtectionSpace(const WebCore::ProtectionSpace&);
 

@@ -1136,6 +1136,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case NewObject:
+        ASSERT(node->structure());
         forNode(node).set(m_graph, node->structure());
         m_state.setHaveStructures(true);
         break;
@@ -1144,6 +1145,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).set(
             m_graph, m_codeBlock->globalObjectFor(node->codeOrigin)->activationStructure());
         m_state.setHaveStructures(true);
+        break;
+        
+    case FunctionReentryWatchpoint:
         break;
     
     case CreateArguments:
@@ -1505,12 +1509,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).makeHeapTop();
         break;
         
-    case GlobalVarWatchpoint:
+    case VariableWatchpoint:
     case VarInjectionWatchpoint:
         node->setCanExit(true);
         break;
             
     case PutGlobalVar:
+    case NotifyWrite:
         break;
             
     case CheckHasInstance:

@@ -285,7 +285,7 @@ void WebInspectorProxy::createInspectorWindow()
     NSRect windowFrame = NSMakeRect(0, 0, initialWindowWidth, initialWindowHeight);
 
     // Restore the saved window frame, if there was one.
-    NSString *savedWindowFrameString = page()->pageGroup()->preferences()->inspectorWindowFrame();
+    NSString *savedWindowFrameString = page()->pageGroup().preferences()->inspectorWindowFrame();
     NSRect savedWindowFrame = NSRectFromString(savedWindowFrameString);
     if (!NSIsEmptyRect(savedWindowFrame))
         windowFrame = savedWindowFrame;
@@ -384,13 +384,13 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
     } else {
         initialRect = NSMakeRect(0, 0, initialWindowWidth, initialWindowHeight);
 
-        NSString *windowFrameString = page()->pageGroup()->preferences()->inspectorWindowFrame();
+        NSString *windowFrameString = page()->pageGroup().preferences()->inspectorWindowFrame();
         NSRect windowFrame = NSRectFromString(windowFrameString);
         if (!NSIsEmptyRect(windowFrame))
             initialRect = [NSWindow contentRectForFrameRect:windowFrame styleMask:windowStyleMask];
     }
 
-    m_inspectorView = adoptNS([[WKWebInspectorWKView alloc] initWithFrame:initialRect contextRef:toAPI(page()->process()->context()) pageGroupRef:toAPI(inspectorPageGroup()) relatedToPage:toAPI(m_page)]);
+    m_inspectorView = adoptNS([[WKWebInspectorWKView alloc] initWithFrame:initialRect contextRef:toAPI(&page()->process().context()) pageGroupRef:toAPI(inspectorPageGroup()) relatedToPage:toAPI(m_page)]);
     ASSERT(m_inspectorView);
 
     [m_inspectorView.get() setDrawsBackground:NO];
@@ -399,9 +399,8 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
 
     WebPageProxy* inspectorPage = toImpl(m_inspectorView.get().pageRef);
 
-    WKPageUIClient uiClient = {
-        kWKPageUIClientCurrentVersion,
-        this,   /* clientInfo */
+    WKPageUIClientV2 uiClient = {
+        { 2, this },
         0, // createNewPage_deprecatedForUseWithV0
         0, // showPage
         0, // closePage
@@ -450,7 +449,7 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
         0, // unavailablePluginButtonClicked
     };
 
-    inspectorPage->initializeUIClient(&uiClient);
+    inspectorPage->initializeUIClient(reinterpret_cast<const WKPageUIClientBase*>(&uiClient));
 
     return inspectorPage;
 }
@@ -560,7 +559,7 @@ void WebInspectorProxy::platformSave(const String& suggestedURL, const String& c
         } else
             [contentCopy writeToURL:actualURL atomically:YES encoding:NSUTF8StringEncoding error:NULL];
 
-        m_page->process()->send(Messages::WebInspector::DidSave([actualURL absoluteString]), m_page->pageID());
+        m_page->process().send(Messages::WebInspector::DidSave([actualURL absoluteString]), m_page->pageID());
     };
 
     if (!forceSaveDialog) {
@@ -594,7 +593,7 @@ void WebInspectorProxy::platformAppend(const String& suggestedURL, const String&
     [handle writeData:[content dataUsingEncoding:NSUTF8StringEncoding]];
     [handle closeFile];
 
-    m_page->process()->send(Messages::WebInspector::DidAppend([actualURL absoluteString]), m_page->pageID());
+    m_page->process().send(Messages::WebInspector::DidAppend([actualURL absoluteString]), m_page->pageID());
 }
 
 void WebInspectorProxy::windowFrameDidChange()
@@ -607,7 +606,7 @@ void WebInspectorProxy::windowFrameDidChange()
         return;
 
     NSString *frameString = NSStringFromRect([m_inspectorWindow frame]);
-    page()->pageGroup()->preferences()->setInspectorWindowFrame(frameString);
+    page()->pageGroup().preferences()->setInspectorWindowFrame(frameString);
 }
 
 void WebInspectorProxy::inspectedViewFrameDidChange(CGFloat currentDimension)

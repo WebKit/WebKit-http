@@ -32,6 +32,10 @@
 #include <WebCore/FloatRect.h>
 #include <WebCore/Region.h>
 
+#if USE(IOSURFACE)
+#include <IOSurface/IOSurface.h>
+#endif
+
 // FIXME: Make PlatformCALayerRemote.cpp Objective-C so we can include WebLayer.h here and share the typedef.
 namespace WebCore {
 typedef Vector<WebCore::FloatRect, 5> RepaintRectList;
@@ -53,7 +57,9 @@ public:
     bool display();
 
     RetainPtr<CGImageRef> image() const;
+#if USE(IOSURFACE)
     RetainPtr<IOSurfaceRef> surface() const { return m_frontSurface; }
+#endif
     WebCore::IntSize size() const { return m_size; }
     float scale() const { return m_scale; }
     bool acceleratesDrawing() const { return m_acceleratesDrawing; }
@@ -66,7 +72,14 @@ public:
     void enumerateRectsBeingDrawn(CGContextRef, void (^)(CGRect));
 
 private:
-    bool hasFrontBuffer() { return m_acceleratesDrawing ? !!m_frontSurface : !!m_frontBuffer; }
+    bool hasFrontBuffer()
+    {
+#if USE(IOSURFACE)
+        if (m_acceleratesDrawing)
+            return !!m_frontSurface;
+#endif
+        return !!m_frontBuffer;
+    }
 
     void drawInContext(WebCore::GraphicsContext&, CGImageRef frontImage);
 
@@ -78,7 +91,9 @@ private:
     WebCore::Region m_dirtyRegion;
 
     RefPtr<ShareableBitmap> m_frontBuffer;
+#if USE(IOSURFACE)
     RetainPtr<IOSurfaceRef> m_frontSurface;
+#endif
 
     bool m_acceleratesDrawing;
 

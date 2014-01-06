@@ -49,7 +49,6 @@ webkit.org/b/122963 fast/regions/multiple-directionality-changes-in-variable-wid
 webkit.org/b/122963 fast/regions/region-dynamic-after-before.html [ Missing ]
 webkit.org/b/122963 fast/regions/region-generated-content-before-after.html [ Missing ]
 webkit.org/b/122963 fast/regions/text-region-split-small-pagination.html [ Missing ]
-webkit.org/b/122963 fast/regions/top-overflow-out-of-second-region.html [ Missing ]
 
 webkit.org/b/122963 fast/repaint/japanese-rl-selection-repaint-in-regions.html [ Missing ]
 webkit.org/b/122963 fast/repaint/line-flow-with-floats-in-regions.html [ Missing ]
@@ -221,13 +220,14 @@ webkit.org/b/98940 fast/events/clipboard-dataTransferItemList.html [ Skip ]
 webkit.org/b/98940 fast/events/drag-dataTransferItemList.html [ Skip ]
 webkit.org/b/98940 fast/events/drag-dataTransferItemList-file-handling.html [ Skip ]
 
+# Custom MIME type support in DataTransfer is not yet implemented; this test was added
+# by Google while implementing a different pasteboard API that was only being used by
+# Chromium and Qt, might make sense to remove.
+webkit.org/b/99068 editing/pasteboard/clipboard-customData.html [ Failure ]
+
 # setAutomaticLinkDetectionEnabled is not yet implemented.
 webkit.org/b/99069 editing/inserting/typing-space-to-trigger-smart-link.html [ Failure ]
 webkit.org/b/85463 editing/inserting/smart-link-when-caret-is-moved-before-URL.html [ Failure ]
-
-# Custom MIME type support in DataTransfer is not yet implemented.
-webkit.org/b/99068 editing/pasteboard/clipboard-customData.html [ Failure ]
-webkit.org/b/99068 fast/events/drag-customData.html [ Failure ]
 
 # PasteBoard::plainText() does not support file names.
 webkit.org/b/99070 editing/pasteboard/drag-files-to-editable-element.html [ Failure ]
@@ -484,6 +484,17 @@ webkit.org/b/117975 fast/text/international/synthesized-italic-vertical-latin.ht
 # .webkitClosedCaptionsVisible doesn't work with "Automatic" caption mode
 webkit.org/b/118459 media/track/track-legacyapi-with-automatic-mode.html [ Skip ]
 
+# Some tests will fail after the visual overflow patch, they will be fixed shortly.
+webkit.org/b/118665 fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-005.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/floats-basic-in-variable-width-regions.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/overflow-nested-regions.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/overflow-not-moving-below-floats-in-variable-width-regions.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/overflow-region-transform.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/shape-inside/shape-inside-on-multiple-regions-with-negative-shape-top.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/top-overflow-out-of-second-region.html [ ImageOnlyFailure Pass Missing ]
+webkit.org/b/118665 fast/regions/webkit-flow-float-unable-to-push.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/auto-size/autoheight-correct-region-for-lines-2.html [ ImageOnlyFailure Crash Pass ]
+
 # The feature is enabled at build-time, but the whole test set is failing.
 webkit.org/b/120665 media/track/in-band [ Skip ]
 
@@ -500,6 +511,9 @@ webkit.org/b/107194 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
 
 # crypto.subtle is not yet enabled
 crypto/subtle [ Skip ]
+
+# QuickTime plug-in not relevant to this port
+plugins/quicktime-plugin-replacement.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
@@ -531,7 +545,6 @@ webkit.org/b/108927 http/tests/xmlhttprequest/workers/xmlhttprequest-file-not-fo
 webkit.org/b/110695 http/tests/security/cross-origin-local-storage-allowed.html [ Crash Pass ]
 webkit.org/b/110695 http/tests/security/cross-origin-local-storage.html [ Crash Pass ]
 webkit.org/b/110695 http/tests/security/cross-origin-plugin-allowed.html [ Crash Pass ]
-webkit.org/b/110695 http/tests/security/cross-origin-plugin-private-browsing-toggled-allowed.html [ Crash Pass ]
 
 webkit.org/b/110546 [ Debug ] fast/parser/document-write-fighting-eof.html [ Skip ]
 webkit.org/b/110546 [ Debug ] fast/parser/document-write-partial-entity-before-load.html [ Skip ]
@@ -1474,6 +1487,30 @@ webkit.org/b/124507 fast/css3-text/css3-text-decoration/text-decoration-skip/tex
 
 webkit.org/b/124509 media/video-controls-captions-trackmenu-hide-on-click-outside.html [ Failure ]
 webkit.org/b/124509 media/video-controls-captions-trackmenu-hide-on-click.html [ Failure ]
+
+webkit.org/b/124506 fast/block/float/float-with-fractional-height-vertical-lr.html [ ImageOnlyFailure ]
+webkit.org/b/124506 fast/block/float/float-with-fractional-height.html [ ImageOnlyFailure ]
+
+webkit.org/b/124565 fast/multicol/seamless-flowed-through-columns.html [ ImageOnlyFailure ]
+
+webkit.org/b/124566 fast/dom/SelectorAPI/resig-SelectorsAPI-test.xhtml [ Failure ]
+
+webkit.org/b/124567 inspector-protocol/model/highlight-shape-outside.html [ Failure ]
+
+webkit.org/b/124770 fast/dom/access-key-iframe.html [ Failure ]
+webkit.org/b/124770 fast/forms/ValidityState-valueMissing-002.html [ Failure ]
+webkit.org/b/124770 fast/forms/access-key-for-all-elements.html [ Failure ]
+webkit.org/b/124770 fast/forms/access-key.html [ Failure ]
+webkit.org/b/124770 fast/forms/focus-selection-input.html [ Failure ]
+webkit.org/b/124770 fast/forms/focus-selection-textarea.html [ Failure ]
+webkit.org/b/124770 fast/forms/legend-access-key.html [ Failure ]
+webkit.org/b/124770 fast/forms/select-accesskey.html [ Failure ]
+
+webkit.org/b/124834 fast/block/float/clear-negative-margin-top.html [ ImageOnlyFailure ]
+
+webkit.org/b/124835 fast/repaint/repaint-regions-overflow.html [ Failure ]
+
+webkit.org/b/125071 fast/shapes/shape-inside/shape-inside-subpixel-rectangle-top.html [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing

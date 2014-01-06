@@ -123,7 +123,7 @@ public:
     LayoutUnit m_pageLogicalOffset;
 
 #if ENABLE(CSS_SHAPES)
-    OwnPtr<ShapeInsideInfo> m_shapeInsideInfo;
+    std::unique_ptr<ShapeInsideInfo> m_shapeInsideInfo;
 #endif
 };
 
@@ -1400,8 +1400,8 @@ void RenderBlock::imageChanged(WrappedImagePtr image, const IntRect*)
 
     ShapeValue* shapeValue = style().shapeInside();
     if (shapeValue && shapeValue->image() && shapeValue->image()->data() == image) {
-        ShapeInsideInfo* shapeInsideInfo = ensureShapeInsideInfo();
-        shapeInsideInfo->dirtyShapeSize();
+        ShapeInsideInfo& shapeInsideInfo = ensureShapeInsideInfo();
+        shapeInsideInfo.dirtyShapeSize();
         markShapeInsideDescendantsForLayout();
     }
 
@@ -1417,32 +1417,32 @@ void RenderBlock::updateShapeInsideInfoAfterStyleChange(const ShapeValue* shapeI
         return;
 
     if (shapeInside) {
-        ShapeInsideInfo* shapeInsideInfo = ensureShapeInsideInfo();
-        shapeInsideInfo->dirtyShapeSize();
+        ShapeInsideInfo& shapeInsideInfo = ensureShapeInsideInfo();
+        shapeInsideInfo.dirtyShapeSize();
     } else
         setShapeInsideInfo(nullptr);
     markShapeInsideDescendantsForLayout();
 }
 
-ShapeInsideInfo* RenderBlock::ensureShapeInsideInfo()
+ShapeInsideInfo& RenderBlock::ensureShapeInsideInfo()
 {
     RenderBlockRareData& rareData = ensureRareData(this);
     if (!rareData.m_shapeInsideInfo)
-        setShapeInsideInfo(ShapeInsideInfo::createInfo(this));
-    return rareData.m_shapeInsideInfo.get();
+        setShapeInsideInfo(std::make_unique<ShapeInsideInfo>(*this));
+    return *rareData.m_shapeInsideInfo;
 }
 
 ShapeInsideInfo* RenderBlock::shapeInsideInfo() const
 {
     RenderBlockRareData* rareData = getRareData(this);
     if (!rareData || !rareData->m_shapeInsideInfo)
-        return 0;
-    return ShapeInsideInfo::isEnabledFor(this) ? rareData->m_shapeInsideInfo.get() : 0;
+        return nullptr;
+    return ShapeInsideInfo::isEnabledFor(*this) ? rareData->m_shapeInsideInfo.get() : nullptr;
 }
 
-void RenderBlock::setShapeInsideInfo(PassOwnPtr<ShapeInsideInfo> value)
+void RenderBlock::setShapeInsideInfo(std::unique_ptr<ShapeInsideInfo> value)
 {
-    ensureRareData(this).m_shapeInsideInfo = value;
+    ensureRareData(this).m_shapeInsideInfo = std::move(value);
 }
     
 void RenderBlock::markShapeInsideDescendantsForLayout()
@@ -1612,6 +1612,12 @@ void RenderBlock::addOverflowFromChildren()
             addOverflowFromInlineChildren();
         else
             addOverflowFromBlockChildren();
+        
+        // If this block is flowed inside a flow thread, make sure its overflow is propagated to the containing regions.
+        if (m_overflow) {
+            if (RenderFlowThread* containingFlowThread = flowThreadContainingBlock())
+                containingFlowThread->addRegionsVisualOverflow(this, m_overflow->visualOverflowRect());
+        }
     } else {
         ColumnInfo* colInfo = columnInfo();
         if (columnCount(colInfo)) {
@@ -2077,6 +2083,21 @@ void RenderBlock::markFixedPositionObjectForLayoutIfNeeded(RenderObject& child)
     }
 }
 
+LayoutUnit RenderBlock::marginIntrinsicLogicalWidthForChild(RenderBox& child) const
+{
+    // A margin has three types: fixed, percentage, and auto (variable).
+    // Auto and percentage margins become 0 when computing min/max width.
+    // Fixed margins can be added in as is.
+    Length marginLeft = child.style().marginStartUsing(&style());
+    Length marginRight = child.style().marginEndUsing(&style());
+    LayoutUnit margin = 0;
+    if (marginLeft.isFixed())
+        margin += marginLeft.value();
+    if (marginRight.isFixed())
+        margin += marginRight.value();
+    return margin;
+}
+
 void RenderBlock::layoutPositionedObjects(bool relayoutChildren, bool fixedPositionObjectsOnly)
 {
     TrackedRendererListHashSet* positionedDescendants = positionedObjects();
@@ -2177,11 +2198,15 @@ void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     
     PaintPhase phase = paintInfo.phase;
 
+    // Check our region range to make sure we need to be painting in this region.
+    if (paintInfo.renderRegion && !paintInfo.renderRegion->flowThread()->objectShouldPaintInFlowRegion(this, paintInfo.renderRegion))
+        return;
+
     // Check if we need to do anything at all.
     // FIXME: Could eliminate the isRoot() check if we fix background painting so that the RenderView
     // paints the root's background.
     if (!isRoot()) {
-        LayoutRect overflowBox = overflowRectForPaintRejection();
+        LayoutRect overflowBox = overflowRectForPaintRejection(paintInfo.renderRegion);
         flipForWritingMode(overflowBox);
         overflowBox.inflate(maximalOutlineSize(paintInfo.phase));
         overflowBox.moveBy(adjustedPaintOffset);
@@ -2470,8 +2495,26 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
 
     // 1. paint background, borders etc
     if ((paintPhase == PaintPhaseBlockBackground || paintPhase == PaintPhaseChildBlockBackground) && style().visibility() == VISIBLE) {
-        if (hasBoxDecorations())
+        if (hasBoxDecorations()) {
+            bool didClipToRegion = false;
+            
+            if (paintInfo.paintContainer && paintInfo.renderRegion && paintInfo.paintContainer->isRenderFlowThread()) {
+                // If this box goes beyond the current region, then make sure not to overflow the region.
+                // This (overflowing region X altough also fragmented to region X+1) could happen when one of this box's children
+                // overflows region X and is an unsplittable element (like an image).
+                // The same applies for a box overflowing the top of region X when that box is also fragmented in region X-1.
+
+                paintInfo.context->save();
+                didClipToRegion = true;
+
+                paintInfo.context->clip(toRenderFlowThread(paintInfo.paintContainer)->decorationsClipRectForBoxInRegion(*this, *paintInfo.renderRegion));
+            }
+
             paintBoxDecorations(paintInfo, paintOffset);
+            
+            if (didClipToRegion)
+                paintInfo.context->restore();
+        }
         if (hasColumns() && !paintInfo.paintRootBackgroundOnly())
             paintColumnRules(paintInfo, paintOffset);
     }
@@ -5178,7 +5221,6 @@ RenderBox* RenderBlock::createAnonymousBoxWithSameTypeAs(const RenderObject* par
     return createAnonymousWithParentRendererAndDisplay(parent, style().display());
 }
 
-
 ColumnInfo::PaginationUnit RenderBlock::paginationUnit() const
 {
     return ColumnInfo::Column;
@@ -5236,7 +5278,7 @@ void RenderBlock::computeRegionRangeForBoxChild(const RenderBox& box) const
 void RenderBlock::estimateRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!flowThread || !flowThread->hasRegions())
+    if (!flowThread || !flowThread->hasRegions() || !box.canHaveOutsideRegionRange())
         return;
 
     if (box.isUnsplittableForPagination()) {
@@ -5257,7 +5299,7 @@ void RenderBlock::estimateRegionRangeForBoxChild(const RenderBox& box) const
 bool RenderBlock::updateRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!flowThread || !flowThread->hasRegions())
+    if (!flowThread || !flowThread->hasRegions() || !box.canHaveOutsideRegionRange())
         return false;
 
     RenderRegion* startRegion = 0;

@@ -94,7 +94,7 @@ InjectedBundle::~InjectedBundle()
 {
 }
 
-void InjectedBundle::initializeClient(WKBundleClient* client)
+void InjectedBundle::initializeClient(const WKBundleClientBase* client)
 {
     m_client.initialize(client);
 }
@@ -485,11 +485,8 @@ static Vector<String> toStringVector(API::Array* patterns)
         return patternsVector;
 
     patternsVector.reserveInitialCapacity(size);
-    for (size_t i = 0; i < size; ++i) {
-        WebString* entry = patterns->at<WebString>(i);
-        if (entry)
-            patternsVector.uncheckedAppend(entry->string());
-    }
+    for (const auto& entry : patterns->elementsOfType<WebString>())
+        patternsVector.uncheckedAppend(entry->string());
     return patternsVector;
 }
 

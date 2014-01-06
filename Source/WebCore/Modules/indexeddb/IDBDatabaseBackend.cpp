@@ -105,7 +105,7 @@ void IDBDatabaseBackend::removeIndex(int64_t objectStoreId, int64_t indexId)
 void IDBDatabaseBackend::openInternalAsync()
 {
     RefPtr<IDBDatabaseBackend> self = this;
-    m_serverConnection->getOrEstablishIDBDatabaseMetadata(m_metadata.name, [self](const IDBDatabaseMetadata& metadata, bool success) {
+    m_serverConnection->getOrEstablishIDBDatabaseMetadata([self](const IDBDatabaseMetadata& metadata, bool success) {
         self->didOpenInternalAsync(metadata, success);
     });
 }
@@ -124,6 +124,7 @@ void IDBDatabaseBackend::didOpenInternalAsync(const IDBDatabaseMetadata& metadat
 
 IDBDatabaseBackend::~IDBDatabaseBackend()
 {
+    m_factory->removeIDBDatabaseBackend(m_identifier);
 }
 
 void IDBDatabaseBackend::createObjectStore(int64_t transactionId, int64_t objectStoreId, const String& name, const IDBKeyPath& keyPath, bool autoIncrement)
@@ -446,7 +447,6 @@ void IDBDatabaseBackend::openConnection(PassRefPtr<IDBCallbacks> prpCallbacks, P
 
     processPendingCalls();
 }
-
 
 void IDBDatabaseBackend::openConnectionInternal(PassRefPtr<IDBCallbacks> prpCallbacks, PassRefPtr<IDBDatabaseCallbacks> prpDatabaseCallbacks, int64_t transactionId, uint64_t version)
 {

@@ -81,13 +81,18 @@ const String attributesMap[][2] = {
     { "AXUnknownSortDirection", "unknown" }
 };
 
-String coreAttributeToAtkAttribute(JSStringRef attribute)
+String jsStringToWTFString(JSStringRef attribute)
 {
     size_t bufferSize = JSStringGetMaximumUTF8CStringSize(attribute);
     GOwnPtr<gchar> buffer(static_cast<gchar*>(g_malloc(bufferSize)));
     JSStringGetUTF8CString(attribute, buffer.get(), bufferSize);
 
-    String attributeString = String::fromUTF8(buffer.get());
+    return String::fromUTF8(buffer.get());
+}
+
+String coreAttributeToAtkAttribute(JSStringRef attribute)
+{
+    String attributeString = jsStringToWTFString(attribute);
     for (int i = 0; i < NumberOfAttributes; ++i) {
         if (attributesMap[i][CoreDomain] == attributeString)
             return attributesMap[i][AtkDomain];
@@ -1087,6 +1092,12 @@ bool AccessibilityUIElement::attributedStringRangeIsMisspelled(unsigned location
     return false;
 }
 
+unsigned AccessibilityUIElement::uiElementCountForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly)
+{
+    // FIXME: implement
+    return 0;
+}
+
 AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly)
 {
     // FIXME: implement
@@ -1169,7 +1180,13 @@ bool AccessibilityUIElement::boolAttributeValue(JSStringRef attribute)
 
 bool AccessibilityUIElement::isAttributeSettable(JSStringRef attribute)
 {
-    // FIXME: implement
+    if (!ATK_IS_OBJECT(m_element))
+        return false;
+
+    String attributeString = jsStringToWTFString(attribute);
+    if (attributeString == "AXValue")
+        return checkElementState(m_element, ATK_STATE_EDITABLE);
+
     return false;
 }
 
@@ -1335,8 +1352,7 @@ bool AccessibilityUIElement::isMultiSelectable() const
 
 bool AccessibilityUIElement::isSelectedOptionActive() const
 {
-    // FIXME: implement
-    return false;
+    return checkElementState(m_element, ATK_STATE_ACTIVE);
 }
 
 bool AccessibilityUIElement::isVisible() const

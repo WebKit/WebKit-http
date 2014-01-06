@@ -55,10 +55,11 @@
 
 namespace WebCore {
 
-IDBServerConnectionLevelDB::IDBServerConnectionLevelDB(IDBBackingStoreLevelDB* backingStore)
+IDBServerConnectionLevelDB::IDBServerConnectionLevelDB(const String& databaseName, IDBBackingStoreLevelDB* backingStore)
     : m_backingStore(backingStore)
     , m_nextCursorID(1)
     , m_closed(false)
+    , m_databaseName(databaseName)
 {
 }
 
@@ -71,10 +72,10 @@ bool IDBServerConnectionLevelDB::isClosed()
     return m_closed;
 }
 
-void IDBServerConnectionLevelDB::getOrEstablishIDBDatabaseMetadata(const String& name, GetIDBDatabaseMetadataFunction callback)
+void IDBServerConnectionLevelDB::getOrEstablishIDBDatabaseMetadata(GetIDBDatabaseMetadataFunction callback)
 {
     RefPtr<IDBServerConnection> self(this);
-    m_backingStore->getOrEstablishIDBDatabaseMetadata(name, [self, this, callback](const IDBDatabaseMetadata& metadata, bool success) {
+    m_backingStore->getOrEstablishIDBDatabaseMetadata(m_databaseName, [self, this, callback](const IDBDatabaseMetadata& metadata, bool success) {
         callback(metadata, success);
     });
 }
@@ -248,7 +249,7 @@ void IDBServerConnectionLevelDB::get(IDBTransactionBackend& transaction, const G
     if (operation.keyRange()->isOnlyKey())
         key = operation.keyRange()->lower();
     else {
-        RefPtr<IDBBackingStoreCursorInterface> backingStoreCursor;
+        RefPtr<IDBBackingStoreCursorLevelDB> backingStoreCursor;
         int64_t cursorID = m_nextCursorID++;
 
         if (operation.indexID() == IDBIndexMetadata::InvalidId) {
@@ -439,7 +440,7 @@ void IDBServerConnectionLevelDB::openCursor(IDBTransactionBackend& transaction, 
 
     int64_t cursorID = m_nextCursorID++;
 
-    RefPtr<IDBBackingStoreCursorInterface> backingStoreCursor;
+    RefPtr<IDBBackingStoreCursorLevelDB> backingStoreCursor;
     if (operation.indexID() == IDBIndexMetadata::InvalidId) {
         ASSERT(operation.cursorType() != IndexedDB::CursorKeyOnly);
         backingStoreCursor = m_backingStore->openObjectStoreCursor(cursorID, *backingStoreTransaction, transaction.database().id(), operation.objectStoreID(), operation.keyRange(), operation.direction());
@@ -474,7 +475,7 @@ void IDBServerConnectionLevelDB::count(IDBTransactionBackend& transaction, const
     ASSERT(backingStoreTransaction);
 
     uint32_t count = 0;
-    RefPtr<IDBBackingStoreCursorInterface> backingStoreCursor;
+    RefPtr<IDBBackingStoreCursorLevelDB> backingStoreCursor;
 
     int64_t cursorID = m_nextCursorID++;
 
@@ -505,7 +506,7 @@ void IDBServerConnectionLevelDB::deleteRange(IDBTransactionBackend& transaction,
 
     int64_t cursorID = m_nextCursorID++;
 
-    RefPtr<IDBBackingStoreCursorInterface> backingStoreCursor = m_backingStore->openObjectStoreCursor(cursorID, *backingStoreTransaction, transaction.database().id(), operation.objectStoreID(), operation.keyRange(), IndexedDB::CursorNext);
+    RefPtr<IDBBackingStoreCursorLevelDB> backingStoreCursor = m_backingStore->openObjectStoreCursor(cursorID, *backingStoreTransaction, transaction.database().id(), operation.objectStoreID(), operation.keyRange(), IndexedDB::CursorNext);
     if (backingStoreCursor) {
         do {
             if (!m_backingStore->deleteRecord(*backingStoreTransaction, transaction.database().id(), operation.objectStoreID(), backingStoreCursor->recordIdentifier())) {

@@ -287,9 +287,9 @@ id <DOMEventTarget> kit(WebCore::EventTarget* eventTarget)
     // FIXME: Could we move this function to WebCore::Node and autogenerate?
     WebCore::Node* node = core(self);
     WebCore::Frame* frame = node->document().frame();
-    if (!frame || !node)
+    if (!frame)
         return nil;
-    return [[createDragImageForNode(*frame, *node) retain] autorelease];
+    return [createDragImageForNode(*frame, *node).leakRef() autorelease];
 }
 
 - (NSArray *)textRects
@@ -332,10 +332,10 @@ id <DOMEventTarget> kit(WebCore::EventTarget* eventTarget)
 {
     WebCore::Range* range = core(self);
     WebCore::Frame* frame = range->ownerDocument().frame();
-    if (!frame || !range)
+    if (!frame)
         return nil;
 
-    return [[createDragImageForRange(*frame, *range, forceBlackText) retain] autorelease];
+    return [createDragImageForRange(*frame, *range, forceBlackText).leakRef() autorelease];
 }
 
 - (NSArray *)textRects

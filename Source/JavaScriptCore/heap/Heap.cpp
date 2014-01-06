@@ -291,7 +291,7 @@ bool Heap::isPagedOut(double deadline)
 // Run all pending finalizers now because we won't get another chance.
 void Heap::lastChanceToFinalize()
 {
-    RELEASE_ASSERT(!m_vm->dynamicGlobalObject);
+    RELEASE_ASSERT(!m_vm->entryScope);
     RELEASE_ASSERT(m_operationInProgress == NoOperation);
 
     m_objectSpace.lastChanceToFinalize();
@@ -463,6 +463,7 @@ void Heap::markRoots()
     {
         GCPHASE(GatherStackRoots);
         stack().gatherConservativeRoots(stackRoots, m_jitStubRoutines, m_codeBlocks);
+        stack().sanitizeStack();
     }
 
 #if ENABLE(DFG_JIT)
@@ -689,7 +690,7 @@ void Heap::deleteAllCompiledCode()
 {
     // If JavaScript is running, it's not safe to delete code, since we'll end
     // up deleting code that is live on the stack.
-    if (m_vm->dynamicGlobalObject)
+    if (m_vm->entryScope)
         return;
 
     for (ExecutableBase* current = m_compiledCode.head(); current; current = current->next()) {

@@ -55,7 +55,7 @@ private:
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet&) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) OVERRIDE;
 
     int m_start;
     unsigned m_itemCount;
@@ -65,6 +65,7 @@ private:
     bool m_shouldRecalculateItemCount : 1;
 };
 
+NODE_TYPE_CASTS(HTMLOListElement)
 
 } //namespace
 

@@ -40,11 +40,6 @@ import subprocess
 import sys
 import time
 
-# Import for auto-install
-if sys.platform not in ('cygwin', 'win32'):
-    # FIXME: webpagereplay doesn't work on win32. See https://bugs.webkit.org/show_bug.cgi?id=88279.
-    import webkitpy.thirdparty.autoinstalled.webpagereplay.replay
-
 from webkitpy.layout_tests.controllers.test_result_writer import TestResultWriter
 from webkitpy.port.driver import DriverInput
 from webkitpy.port.driver import DriverOutput
@@ -55,14 +50,22 @@ _log = logging.getLogger(__name__)
 
 
 class PerfTestMetric(object):
-    def __init__(self, metric, unit=None, iterations=None):
+    def __init__(self, path, test_file_name, metric, unit=None, iterations=None):
         # FIXME: Fix runner.js to report correct metric names
         self._iterations = iterations or []
         self._unit = unit or self.metric_to_unit(metric)
         self._metric = self.time_unit_to_metric(self._unit) if metric == 'Time' else metric
+        self._path = path
+        self._test_file_name = test_file_name
 
     def name(self):
         return self._metric
+
+    def path(self):
+        return self._path
+
+    def test_file_name(self):
+        return self._test_file_name
 
     def has_values(self):
         return bool(self._iterations)
@@ -97,8 +100,7 @@ class PerfTest(object):
         self._test_name = test_name
         self._test_path = test_path
         self._description = None
-        self._metrics = {}
-        self._ordered_metrics_name = []
+        self._metrics = []
         self._test_runner_count = test_runner_count
 
     def test_name(self):
@@ -132,14 +134,14 @@ class PerfTest(object):
         if should_log and self._description:
             _log.info('DESCRIPTION: %s' % self._description)
 
-        results = {}
-        for metric_name in self._ordered_metrics_name:
-            metric = self._metrics[metric_name]
-            results[metric.name()] = metric.grouped_iteration_values()
-            if should_log:
-                legacy_chromium_bot_compatible_name = self.test_name_without_file_extension().replace('/', ': ')
-                self.log_statistics(legacy_chromium_bot_compatible_name + ': ' + metric.name(),
-                    metric.flattened_iteration_values(), metric.unit())
+        results = []
+        for subtest in self._metrics:
+            for metric in subtest['metrics']:
+                results.append(metric)
+                if should_log and not subtest['name']:
+                    legacy_chromium_bot_compatible_name = self.test_name_without_file_extension().replace('/', ': ')
+                    self.log_statistics(legacy_chromium_bot_compatible_name + ': ' + metric.name(),
+                        metric.flattened_iteration_values(), metric.unit())
 
         return results
 
@@ -166,7 +168,7 @@ class PerfTest(object):
             (median, unit, stdev, unit, sorted_values[0], unit, sorted_values[-1], unit))
 
     _description_regex = re.compile(r'^Description: (?P<description>.*)$', re.IGNORECASE)
-    _metrics_regex = re.compile(r'^:(?P<metric>Time|Malloc|JSHeap) -> \[(?P<values>(\d+(\.\d+)?)(, \d+(\.\d+)?)+)\] (?P<unit>[a-z/]+)')
+    _metrics_regex = re.compile(r'^(?P<subtest>[A-Za-z0-9\(\[].+)?:(?P<metric>[A-Z][A-Za-z]+) -> \[(?P<values>(\d+(\.\d+)?)(, \d+(\.\d+)?)+)\] (?P<unit>[a-z/]+)?$')
 
     def _run_with_driver(self, driver, time_out_ms):
         output = self.run_single(driver, self.test_path(), time_out_ms)
@@ -186,16 +188,27 @@ class PerfTest(object):
                 _log.error('ERROR: ' + line)
                 return False
 
-            metric = self._ensure_metrics(metric_match.group('metric'), metric_match.group('unit'))
+            metric = self._ensure_metrics(metric_match.group('metric'), metric_match.group('subtest'), metric_match.group('unit'))
             metric.append_group(map(lambda value: float(value), metric_match.group('values').split(', ')))
 
         return True
 
-    def _ensure_metrics(self, metric_name, unit=None):
-        if metric_name not in self._metrics:
-            self._metrics[metric_name] = PerfTestMetric(metric_name, unit)
-            self._ordered_metrics_name.append(metric_name)
-        return self._metrics[metric_name]
+    def _ensure_metrics(self, metric_name, subtest_name='', unit=None):
+        try:
+            subtest = next(subtest for subtest in self._metrics if subtest['name'] == subtest_name)
+        except StopIteration:
+            subtest = {'name': subtest_name, 'metrics': []}
+            self._metrics.append(subtest)
+
+        try:
+            return next(metric for metric in subtest['metrics'] if metric.name() == metric_name)
+        except StopIteration:
+            path = self.test_name_without_file_extension().split('/')
+            if subtest_name:
+                path += [subtest_name]
+            metric = PerfTestMetric(path, self._test_name, metric_name, unit)
+            subtest['metrics'].append(metric)
+            return metric
 
     def run_single(self, driver, test_path, time_out_ms, should_run_pixel_test=False):
         return driver.run_test(DriverInput(test_path, time_out_ms, image_hash=None, should_run_pixel_test=should_run_pixel_test), stop_when_done=False)
@@ -233,9 +246,6 @@ class PerfTest(object):
         re.compile(re.escape("""Blocked access to external URL http://www.whatwg.org/specs/web-apps/current-work/""")),
         re.compile(r"CONSOLE MESSAGE: (line \d+: )?Blocked script execution in '[A-Za-z0-9\-\.:]+' because the document's frame is sandboxed and the 'allow-scripts' permission is not set."),
         re.compile(r"CONSOLE MESSAGE: (line \d+: )?Not allowed to load local resource"),
-        # Dromaeo reports values for subtests. Ignore them for now.
-        # FIXME: Remove once subtests are supported
-        re.compile(r'^[A-Za-z0-9\. =]+( -> )(\[?[0-9\., ]+\])( [a-z/]+)?$'),
     ]
 
     def _filter_output(self, output):
@@ -248,161 +258,10 @@ class SingleProcessPerfTest(PerfTest):
         super(SingleProcessPerfTest, self).__init__(port, test_name, test_path, test_runner_count)
 
 
-class ReplayServer(object):
-    def __init__(self, archive, record):
-        self._process = None
-
-        # FIXME: Should error if local proxy isn't set to forward requests to localhost:8080 and localhost:8443
-
-        replay_path = webkitpy.thirdparty.autoinstalled.webpagereplay.replay.__file__
-        args = ['python', replay_path, '--no-dns_forwarding', '--port', '8080', '--ssl_port', '8443', '--use_closest_match', '--log_level', 'warning']
-        if record:
-            args.append('--record')
-        args.append(archive)
-
-        self._process = subprocess.Popen(args)
-
-    def wait_until_ready(self):
-        for i in range(0, 3):
-            try:
-                connection = socket.create_connection(('localhost', '8080'), timeout=1)
-                connection.close()
-                return True
-            except socket.error:
-                time.sleep(1)
-                continue
-        return False
-
-    def stop(self):
-        if self._process:
-            self._process.send_signal(signal.SIGINT)
-            self._process.wait()
-        self._process = None
-
-    def __del__(self):
-        self.stop()
-
-
-class ReplayPerfTest(PerfTest):
-    _FORCE_GC_FILE = 'resources/force-gc.html'
-
-    def __init__(self, port, test_name, test_path, test_runner_count=DEFAULT_TEST_RUNNER_COUNT):
-        super(ReplayPerfTest, self).__init__(port, test_name, test_path, test_runner_count)
-        self.force_gc_test = self._port.host.filesystem.join(self._port.perf_tests_dir(), self._FORCE_GC_FILE)
-
-    def _start_replay_server(self, archive, record):
-        try:
-            return ReplayServer(archive, record)
-        except OSError as error:
-            if error.errno == errno.ENOENT:
-                _log.error("Replay tests require web-page-replay.")
-            else:
-                raise error
-
-    def prepare(self, time_out_ms):
-        filesystem = self._port.host.filesystem
-        path_without_ext = filesystem.splitext(self.test_path())[0]
-
-        self._archive_path = filesystem.join(path_without_ext + '.wpr')
-        self._expected_image_path = filesystem.join(path_without_ext + '-expected.png')
-        self._url = filesystem.read_text_file(self.test_path()).split('\n')[0]
-
-        if filesystem.isfile(self._archive_path) and filesystem.isfile(self._expected_image_path):
-            _log.info("Replay ready for %s" % self._archive_path)
-            return True
-
-        _log.info("Preparing replay for %s" % self.test_name())
-
-        driver = self._port.create_driver(worker_number=0, no_timeout=True)
-        try:
-            output = self.run_single(driver, self._archive_path, time_out_ms, record=True)
-        finally:
-            driver.stop()
-
-        if not output or not filesystem.isfile(self._archive_path):
-            _log.error("Failed to prepare a replay for %s" % self.test_name())
-            return False
-
-        _log.info("Prepared replay for %s" % self.test_name())
-
-        return True
-
-    def _run_with_driver(self, driver, time_out_ms):
-        times = []
-        malloc = []
-        js_heap = []
-
-        for i in range(0, 6):
-            output = self.run_single(driver, self.test_path(), time_out_ms)
-            if not output or self.run_failed(output):
-                return False
-            if i == 0:
-                continue
-
-            times.append(output.test_time * 1000)
-
-            if not output.measurements:
-                continue
-
-            for metric, result in output.measurements.items():
-                assert metric == 'Malloc' or metric == 'JSHeap'
-                if metric == 'Malloc':
-                    malloc.append(result)
-                else:
-                    js_heap.append(result)
-
-        if times:
-            self._ensure_metrics('Time').append_group(times)
-        if malloc:
-            self._ensure_metrics('Malloc').append_group(malloc)
-        if js_heap:
-            self._ensure_metrics('JSHeap').append_group(js_heap)
-
-        return True
-
-    def run_single(self, driver, url, time_out_ms, record=False):
-        server = self._start_replay_server(self._archive_path, record)
-        if not server:
-            _log.error("Web page replay didn't start.")
-            return None
-
-        try:
-            _log.debug("Waiting for Web page replay to start.")
-            if not server.wait_until_ready():
-                _log.error("Web page replay didn't start.")
-                return None
-
-            _log.debug("Web page replay started. Loading the page.")
-            # Force GC to prevent pageload noise. See https://bugs.webkit.org/show_bug.cgi?id=98203
-            super(ReplayPerfTest, self).run_single(driver, self.force_gc_test, time_out_ms, False)
-            output = super(ReplayPerfTest, self).run_single(driver, self._url, time_out_ms, should_run_pixel_test=True)
-            if self.run_failed(output):
-                return None
-
-            if not output.image:
-                _log.error("Loading the page did not generate image results")
-                _log.error(output.text)
-                return None
-
-            filesystem = self._port.host.filesystem
-            dirname = filesystem.dirname(self._archive_path)
-            filename = filesystem.split(self._archive_path)[1]
-            writer = TestResultWriter(filesystem, self._port, dirname, filename)
-            if record:
-                writer.write_image_files(actual_image=None, expected_image=output.image)
-            else:
-                writer.write_image_files(actual_image=output.image, expected_image=None)
-
-            return output
-        finally:
-            server.stop()
-
-
 class PerfTestFactory(object):
 
     _pattern_map = [
         (re.compile(r'^Dromaeo/'), SingleProcessPerfTest),
-        (re.compile(r'(.+)\.replay$'), ReplayPerfTest),
     ]
 
     @classmethod

@@ -92,16 +92,24 @@ public:
     void dispatchMessageFromFrontend(const String& message);
 
     bool hasFrontend() const { return !!m_inspectorFrontendChannel; }
+    bool hasLocalFrontend() const;
+    bool hasRemoteFrontend() const;
+
     void connectFrontend(InspectorFrontendChannel*);
     void disconnectFrontend();
     void setProcessId(long);
-    void webViewResized(const IntSize&);
+
+#if ENABLE(REMOTE_INSPECTOR)
+    void setHasRemoteFrontend(bool hasRemote) { m_hasRemoteFrontend = hasRemote; }
+#endif
 
     void inspect(Node*);
     void drawHighlight(GraphicsContext&) const;
     void getHighlight(Highlight*) const;
     void hideHighlight();
     Node* highlightedNode() const;
+
+    void setIndicating(bool);
 
     PassRefPtr<InspectorObject> buildObjectForHighlightedNode() const;
 
@@ -153,6 +161,10 @@ private:
     InspectorClient* m_inspectorClient;
     InspectorAgentRegistry m_agents;
     bool m_isUnderTest;
+
+#if ENABLE(REMOTE_INSPECTOR)
+    bool m_hasRemoteFrontend;
+#endif
 };
 
 }

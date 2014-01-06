@@ -1,3 +1,155 @@
+2013-12-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct WebKit.make copy command to land resources in proper directory.
+        https://bugs.webkit.org/show_bug.cgi?id=125249
+
+        Reviewed by Tim Horton.
+
+        * WebKit.vcxproj/WebKit.make: Correct the copy command.
+
+2013-12-04  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win][64-bit] Link error.
+        https://bugs.webkit.org/show_bug.cgi?id=125234
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Changed 64-bit version of symbol.
+
+2013-12-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Push Remote Inspector debugging connection management into JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=124613
+
+        Reviewed by Timothy Hatcher.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-12-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] WebKit.make Makefile doesn't copy resource bundle to DSTROOT
+        https://bugs.webkit.org/show_bug.cgi?id=125160
+
+        Reviewed by Tim Horton.
+
+        * WebKit.vcxproj/WebKit.make: Add copy command for resource bundle.
+
+2013-12-02  Beth Dakin  <bdakin@apple.com>
+
+        Attempted build fix. I think this is no longer needed.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-12-02  Beth Dakin  <bdakin@apple.com>
+
+        Add a setting to opt into a mode where the background extends and fixed elements 
+        don't move on rubber-band
+        https://bugs.webkit.org/show_bug.cgi?id=124745
+
+        Reviewed by Tim Horton.
+
+        Keep Windows happy.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-12-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] WebKit Project doesn't copy resource bundle
+        https://bugs.webkit.org/show_bug.cgi?id=125078
+
+        Reviewed by Jer Noble.
+
+        * WebKit.vcxproj/WebKit/WebKitPostBuild.cmd: Correct post-build step
+        to copy WebKit.resources to build target.
+
+2013-11-28  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        Building EFL Webkit again with mediastream enabled
+        https://bugs.webkit.org/show_bug.cgi?id=124930
+
+        Reviewed by Csaba Osztrogonác.
+
+        * CMakeLists.txt:
+
+2013-11-27  Sam Weinig  <sam@webkit.org>
+
+        Fix the iOS build.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-11-25  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] WebKit version in user agent string is incorrect.
+        https://bugs.webkit.org/show_bug.cgi?id=124454
+
+        Reviewed by Brent Fulgham.
+
+        Generate WebKitVersion.h file from mac's Version.xcconfig file.
+
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters:
+        * WebKit.vcxproj/WebKit/WebKitVersion.cmd: Added.
+
+2013-11-23  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] Remove 0.10 codepath
+        https://bugs.webkit.org/show_bug.cgi?id=124534
+
+        Reviewed by Philippe Normand.
+
+        * PlatformEfl.cmake: Removed FullscreenVideoControllerEfl.cpp.
+
+2013-11-21  Alex Christensen  <achristensen@webkit.org>
+
+        Remove ANGLEGenerated from Windows build.
+        https://bugs.webkit.org/show_bug.cgi?id=124759
+
+        Reviewed by Darin Adler.
+
+        * WebKit.vcxproj/WebKit.sln:
+        Remove references to ANGLEGenerated.vcxproj.
+
+2013-11-21  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        Remove ENABLE_WORKERS
+        https://bugs.webkit.org/show_bug.cgi?id=105784
+
+        Reviewed by Darin Adler.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-11-21  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Building ANGLE libraries fails.
+        https://bugs.webkit.org/show_bug.cgi?id=124679
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit/WebKitCFLite.props: Link with translator_hlsl.lib.
+
+2013-11-19  Mark Lam  <mark.lam@apple.com>
+
+        Add tracking of endColumn for Executables.
+        https://bugs.webkit.org/show_bug.cgi?id=124245.
+
+        Reviewed by Geoffrey Garen.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        - Added an exported symbol to make the Win32 build happy. The Win64 symbol
+          is currently a copy of the Win32 one. It'll need to be updated if the
+          mangled symbol is different for Win64.
+
+2013-11-18  Mark Rowe  <mrowe@apple.com>
+
+        Use hw.activecpu for determining how many processes to spawn.
+
+        It's documented as the preferred way to determine the number of threads
+        or processes to create in a SMP aware application.
+
+        Rubber-stamped by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
 2013-11-18  Ryuan Choi  <ryuan.choi@samsung.com>
 
         [EFL] Add EWebKitConfig.cmake and EWebKit2Config.cmake

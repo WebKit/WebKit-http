@@ -624,6 +624,13 @@ class FunctionDetectionTest(CppStyleTestBase):
             detection_line=2)
 
 
+class Cpp11StyleTest(CppStyleTestBase):
+    def test_rvaule_reference_at_end_of_line(self):
+        self.assert_lint('T&&', '')
+
+    def test_rvaule_reference_in_parameter_pack(self):
+        self.assert_lint('void requestCompleted(Arguments&&... arguments)', '')
+
 class CppStyleTest(CppStyleTestBase):
 
     def test_asm_lines_ignored(self):
@@ -743,15 +750,27 @@ class CppStyleTest(CppStyleTestBase):
             '')
 
     def test_runtime_selfinit(self):
-        self.assert_lint(
-            'Foo::Foo(Bar r, Bel l) : r_(r_), l_(l_) { }',
+        self.assert_multi_line_lint(
+            '''\
+            Foo::Foo(Bar r, Bel l)
+                : r_(r_)
+                , l_(l_) { }''',
+            ['You seem to be initializing a member variable with itself.'
+            '  [runtime/init] [4]',
             'You seem to be initializing a member variable with itself.'
-            '  [runtime/init] [4]')
-        self.assert_lint(
-            'Foo::Foo(Bar r, Bel l) : r_(r), l_(l) { }',
+            '  [runtime/init] [4]'])
+        self.assert_multi_line_lint(
+            '''\
+            Foo::Foo(Bar r, Bel l)
+                : r_(r)
+                , l_(l) { }''',
             '')
-        self.assert_lint(
-            'Foo::Foo(Bar r) : r_(r), l_(r_), ll_(l_) { }',
+        self.assert_multi_line_lint(
+            '''\
+            Foo::Foo(Bar r)
+                : r_(r)
+                , l_(r_)
+                , ll_(l_) { }''',
             '')
 
     def test_runtime_rtti(self):
@@ -813,8 +832,10 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_lint(
             'int a = int(); // Constructor, o.k.',
             '')
-        self.assert_lint(
-            'X::X() : a(int()) { } // default Constructor, o.k.',
+        self.assert_multi_line_lint(
+            '''\
+            X::X()
+                : a(int()) { } // default Constructor, o.k.''',
             '')
         self.assert_lint(
             'operator bool(); // Conversion operator, o.k.',
@@ -2631,6 +2652,22 @@ class OrderOfIncludesTest(CppStyleTestBase):
                                          '#include "foo.h"\n'
                                          '#include "bar.h"\n',
                                          'You should add a blank line after implementation file\'s own header.  [build/include_order] [4]')
+
+        self.assert_language_rules_check('foo.cpp',
+                                         '#include "config.h"\n'
+                                         '#include "foo.h"\n'
+                                         '\n'
+                                         '#include "bar.h"\n',
+                                         '')
+
+    def test_check_line_break_before_own_header(self):
+        self.assert_language_rules_check('foo.cpp',
+                                         '#include "config.h"\n'
+                                         '\n'
+                                         '#include "foo.h"\n'
+                                         '\n'
+                                         '#include "bar.h"\n',
+                                         'You should not add a blank line before implementation file\'s own header.  [build/include_order] [4]')
 
         self.assert_language_rules_check('foo.cpp',
                                          '#include "config.h"\n'
@@ -4875,6 +4912,81 @@ class WebKitStyleTest(CppStyleTestBase):
                 'foo() = 0;\n',
                 'test.h',
                 webkit_export_error_rules))
+
+    def test_member_initialization_list(self):
+        self.assert_lint('explicit MyClass(Document* doc) : MySuperClass() { }',
+        'Should be indented on a separate line, with the colon or comma first on that line.'
+        '  [whitespace/indent] [4]')
+        self.assert_lint('MyClass::MyClass(Document* doc) : MySuperClass() { }',
+        'Should be indented on a separate line, with the colon or comma first on that line.'
+        '  [whitespace/indent] [4]')
+        self.assert_multi_line_lint('''\
+        MyClass::MyClass(Document* doc) : MySuperClass()
+        { }''',
+        'Should be indented on a separate line, with the colon or comma first on that line.'
+        '  [whitespace/indent] [4]')
+        self.assert_multi_line_lint('''\
+        MyClass::MyClass(Document* doc)
+        : MySuperClass()
+        { }''',
+        'Wrong number of spaces before statement. (expected: 12)'
+        '  [whitespace/indent] [4]')
+        self.assert_multi_line_lint('''\
+        MyClass::MyClass(Document* doc) :
+            MySuperClass(),
+            m_doc(0)
+        { }''',
+        ['Should be indented on a separate line, with the colon or comma first on that line.'
+         '  [whitespace/indent] [4]',
+         'Comma should be at the beggining of the line in a member initialization list.'
+         '  [whitespace/init] [4]'])
+        self.assert_multi_line_lint('''\
+        MyClass::MyClass(Document* doc) :MySuperClass()
+        { }''',
+        ['Missing spaces around :  [whitespace/init] [4]',
+         'Should be indented on a separate line, with the colon or comma first on that line.'
+         '  [whitespace/indent] [4]'])
+        self.assert_multi_line_lint('''\
+        MyClass::MyClass(Document* doc):MySuperClass()
+        { }''',
+        ['Missing spaces around :  [whitespace/init] [4]',
+         'Should be indented on a separate line, with the colon or comma first on that line.'
+         '  [whitespace/indent] [4]'])
+        self.assert_multi_line_lint('''\
+        MyClass::MyClass(Document* doc) : MySuperClass()
+        ,MySuperClass()
+        , m_doc(0)
+            , m_myMember(0)
+        { }''',
+        ['Should be indented on a separate line, with the colon or comma first on that line.'
+         '  [whitespace/indent] [4]',
+         'Wrong number of spaces before statement. (expected: 12)'
+         '  [whitespace/indent] [4]',
+         'Wrong number of spaces before statement. (expected: 12)'
+         '  [whitespace/indent] [4]',
+         'Missing space after ,  [whitespace/comma] [3]'])
+        self.assert_multi_line_lint('''\
+        MyClass::MyClass(Document* doc)
+            :MySuperClass()
+        { }''',
+        'Missing spaces around :  [whitespace/init] [4]')
+        self.assert_multi_line_lint('''\
+        MyClass::MyClass(Document* doc)
+            : MySuperClass() , m_doc(0)
+        { }''',
+        'Comma should be at the beggining of the line in a member initialization list.'
+        '  [whitespace/init] [4]')
+        self.assert_multi_line_lint('''\
+        class MyClass : public Goo {
+        };''',
+        '')
+        self.assert_multi_line_lint('''\
+        class MyClass
+        : public Goo
+        , public foo {
+        };''',
+        '')
+        self.assert_lint('o = foo(b ? bar() : baz());', '')
 
     def test_other(self):
         # FIXME: Implement this.

@@ -52,12 +52,13 @@ class CSSSelectorList;
 class CSSValue;
 class CSSValueList;
 class CSSBasicShape;
+class CSSBasicShapeInset;
 class Document;
 class Element;
-class ImmutableStylePropertySet;
+class ImmutableStyleProperties;
 class MediaQueryExp;
 class MediaQuerySet;
-class MutableStylePropertySet;
+class MutableStyleProperties;
 class StyleKeyframe;
 class StylePropertyShorthand;
 class StyleRuleBase;
@@ -93,13 +94,13 @@ public:
 #if ENABLE(CSS3_CONDITIONAL_RULES)
     bool parseSupportsCondition(const String&);
 #endif
-    static bool parseValue(MutableStylePropertySet*, CSSPropertyID, const String&, bool important, CSSParserMode, StyleSheetContents*);
+    static bool parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, CSSParserMode, StyleSheetContents*);
     static bool parseColor(RGBA32& color, const String&, bool strict = false);
     static bool parseSystemColor(RGBA32& color, const String&, Document*);
     static PassRefPtr<CSSValueList> parseFontFaceValue(const AtomicString&);
     PassRefPtr<CSSPrimitiveValue> parseValidPrimitive(CSSValueID ident, CSSParserValue*);
-    bool parseDeclaration(MutableStylePropertySet*, const String&, PassRefPtr<CSSRuleSourceData>, StyleSheetContents* contextStyleSheet);
-    static PassRef<ImmutableStylePropertySet> parseInlineStyleDeclaration(const String&, Element*);
+    bool parseDeclaration(MutableStyleProperties*, const String&, PassRefPtr<CSSRuleSourceData>, StyleSheetContents* contextStyleSheet);
+    static PassRef<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
     PassOwnPtr<MediaQuery> parseMediaQuery(const String&);
 
     void addPropertyWithPrefixingVariant(CSSPropertyID, PassRefPtr<CSSValue>, bool important, bool implicit = false);
@@ -113,13 +114,8 @@ public:
     bool parse4Values(CSSPropertyID, const CSSPropertyID* properties, bool important);
     bool parseContent(CSSPropertyID, bool important);
     bool parseQuotes(CSSPropertyID, bool important);
-
-#if ENABLE(CSS_VARIABLES)
-    static bool parseValue(MutableStylePropertySet*, CSSPropertyID, const String&, bool important, Document&);
-    bool cssVariablesEnabled() const;
-    void storeVariableDeclaration(const CSSParserString&, PassOwnPtr<CSSParserValueList>, bool important);
-#endif
-
+    bool parseAlt(CSSPropertyID, bool important);
+    
     PassRefPtr<CSSValue> parseAttr(CSSParserValueList* args);
 
     PassRefPtr<CSSValue> parseBackgroundColor();
@@ -169,20 +165,30 @@ public:
     bool parseGridAreaShorthand(bool important);
     bool parseSingleGridAreaLonghand(RefPtr<CSSValue>&);
     bool parseGridTrackList(CSSPropertyID, bool important);
-    PassRefPtr<CSSPrimitiveValue> parseGridTrackSize();
+    bool parseGridTrackRepeatFunction(CSSValueList&);
+    PassRefPtr<CSSPrimitiveValue> parseGridTrackSize(CSSParserValueList& inputList);
     PassRefPtr<CSSPrimitiveValue> parseGridBreadth(CSSParserValue*);
     PassRefPtr<CSSValue> parseGridTemplate();
+    void parseGridTrackNames(CSSParserValueList& inputList, CSSValueList& values);
 
     bool parseDashboardRegions(CSSPropertyID, bool important);
 
     bool parseClipShape(CSSPropertyID, bool important);
 
-    bool parseBasicShape(CSSPropertyID, bool important);
+#if ENABLE(CSS_SHAPES)
+    PassRefPtr<CSSValue> parseShapeProperty(CSSPropertyID);
+#endif
+
+    PassRefPtr<CSSBasicShape> parseBasicShape();
+    PassRefPtr<CSSPrimitiveValue> parseShapeRadius(CSSParserValue*);
     PassRefPtr<CSSBasicShape> parseBasicShapeRectangle(CSSParserValueList*);
     PassRefPtr<CSSBasicShape> parseBasicShapeCircle(CSSParserValueList*);
+    PassRefPtr<CSSBasicShape> parseDeprecatedBasicShapeCircle(CSSParserValueList*);
     PassRefPtr<CSSBasicShape> parseBasicShapeEllipse(CSSParserValueList*);
+    PassRefPtr<CSSBasicShape> parseDeprecatedBasicShapeEllipse(CSSParserValueList*);
     PassRefPtr<CSSBasicShape> parseBasicShapePolygon(CSSParserValueList*);
     PassRefPtr<CSSBasicShape> parseBasicShapeInsetRectangle(CSSParserValueList*);
+    PassRefPtr<CSSBasicShape> parseBasicShapeInset(CSSParserValueList*);
 
     bool parseFont(bool important);
     PassRefPtr<CSSValueList> parseFontFamily();
@@ -350,7 +356,7 @@ public:
 
     void clearProperties();
 
-    PassRef<ImmutableStylePropertySet> createStylePropertySet();
+    PassRef<ImmutableStyleProperties> createStyleProperties();
 
     CSSParserContext m_context;
 
@@ -422,9 +428,6 @@ public:
 
     PassRefPtr<CSSPrimitiveValue> createPrimitiveNumericValue(CSSParserValue*);
     PassRefPtr<CSSPrimitiveValue> createPrimitiveStringValue(CSSParserValue*);
-#if ENABLE(CSS_VARIABLES)
-    PassRefPtr<CSSPrimitiveValue> createPrimitiveVariableNameValue(CSSParserValue*);
-#endif
 
     static URL completeURL(const CSSParserContext&, const String& url);
 
@@ -526,8 +529,10 @@ private:
     bool isGeneratedImageValue(CSSParserValue*) const;
     bool parseGeneratedImage(CSSParserValueList*, RefPtr<CSSValue>&);
 
-    bool parseValue(MutableStylePropertySet*, CSSPropertyID, const String&, bool important, StyleSheetContents* contextStyleSheet);
-    PassRef<ImmutableStylePropertySet> parseDeclaration(const String&, StyleSheetContents* contextStyleSheet);
+    bool parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, StyleSheetContents* contextStyleSheet);
+    PassRef<ImmutableStyleProperties> parseDeclaration(const String&, StyleSheetContents* contextStyleSheet);
+
+    PassRefPtr<CSSBasicShape> parseInsetRoundedCorners(PassRefPtr<CSSBasicShapeInset>, CSSParserValueList*);
 
     enum SizeParameterType {
         None,

@@ -30,12 +30,12 @@
 
 #include "config.h"
 
-#if ENABLE(WORKERS) && ENABLE(INSPECTOR)
+#if ENABLE(INSPECTOR)
 
 #include "InspectorWorkerAgent.h"
 
+#include "InspectorForwarding.h"
 #include "InspectorFrontend.h"
-#include "InspectorFrontendChannel.h"
 #include "InspectorValues.h"
 #include "InstrumentingAgents.h"
 #include "URL.h"
@@ -154,11 +154,7 @@ void InspectorWorkerAgent::disable(ErrorString*)
 
 void InspectorWorkerAgent::canInspectWorkers(ErrorString*, bool* result)
 {
-#if ENABLE(WORKERS)
     *result = true;
-#else
-    *result = false;
-#endif
 }
 
 void InspectorWorkerAgent::connectToWorker(ErrorString* error, int workerId)
@@ -246,4 +242,4 @@ void InspectorWorkerAgent::createWorkerFrontendChannel(WorkerGlobalScopeProxy* w
 
 } // namespace WebCore
 
-#endif // ENABLE(WORKERS) && ENABLE(INSPECTOR)
+#endif // ENABLE(INSPECTOR)

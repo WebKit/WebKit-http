@@ -62,7 +62,6 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_DEVICE_ADAPTATION ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_IMAGE_SET ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_REGIONS ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_STICKY_POSITION ON)
-WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_VARIABLES ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CUSTOM_SCHEME_HANDLER ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DATALIST_ELEMENT ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DOM4_EVENTS_CONSTRUCTOR ON)
@@ -102,6 +101,14 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEBGL ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_XHR_TIMEOUT ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(WTF_USE_TILED_BACKING_STORE ON)
 
+if (ENABLE_LLINT_C_LOOP)
+    message(STATUS "Force enabling LLINT C LOOP.")
+    WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_LLINT ON)
+    WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_JIT OFF)
+    WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DFG_JIT OFF)
+    WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FTL_JIT OFF)
+endif ()
+
 # FIXME: Perhaps we need a more generic way of defining dependencies between features.
 # VIDEO_TRACK depends on VIDEO.
 if (NOT ENABLE_VIDEO AND ENABLE_VIDEO_TRACK)
@@ -123,20 +130,31 @@ if (ENABLE_ECORE_X)
     add_definitions(-DMOZ_X11)
 endif ()
 
-find_package(Eina 1.7 REQUIRED)
-find_package(Evas 1.7 REQUIRED)
-find_package(Ecore 1.7 COMPONENTS Evas File Input Imf Imf_Evas ${ECORE_ADDITIONAL_COMPONENTS})
-find_package(Edje 1.7 REQUIRED)
-find_package(Eet 1.7 REQUIRED)
-find_package(Eeze 1.7 REQUIRED)
-find_package(Efreet 1.7 REQUIRED)
-find_package(E_DBus 1.7 COMPONENTS EUKit)
-
-# Add Eo dependency if EFL version is 1.8
-if (${EVAS_VERSION} VERSION_EQUAL 1.8 AND ${ECORE_VERSION} VERSION_EQUAL 1.8)
-    find_package(Eo)
+find_package(Eo QUIET)
+if (EO_FOUND)
     add_definitions(-DWTF_USE_EO=1)
+
+    # EFL 1.8 provides FooConfig.cmake and it is preferred because FindFoo.cmake's
+    # tricky check routine for version is not availiable on EFL 1.8.
+    # But FindFoo.cmake is still required to support EFL 1.7 and config mode of CMake
+    # is supported after CMake 2.8.8.
+    # So, just disabled version requirement if CMake version is lower than 2.8.8 to
+    # build with EFL 1.8. Eo probably guarantee their version.
+    if (NOT (CMAKE_VERSION VERSION_LESS 2.8.8))
+       set(EFL_CONFIG_MODE CONFIG)
+       set(EFL_REQUIRED_VERSION 1.8)
+    endif ()
+else ()
+    set(EFL_REQUIRED_VERSION 1.7)
 endif ()
+
+find_package(Eina ${EFL_REQUIRED_VERSION} REQUIRED ${EFL_CONFIG_MODE})
+find_package(Evas ${EFL_REQUIRED_VERSION} REQUIRED ${EFL_CONFIG_MODE})
+find_package(Ecore ${EFL_REQUIRED_VERSION} COMPONENTS Evas File Input Imf Imf_Evas ${ECORE_ADDITIONAL_COMPONENTS} ${EFL_CONFIG_MODE})
+find_package(Edje ${EFL_REQUIRED_VERSION} REQUIRED ${EFL_CONFIG_MODE})
+find_package(Eet ${EFL_REQUIRED_VERSION} REQUIRED ${EFL_CONFIG_MODE})
+find_package(Eeze ${EFL_REQUIRED_VERSION} REQUIRED ${EFL_CONFIG_MODE})
+find_package(Efreet ${EFL_REQUIRED_VERSION} REQUIRED ${EFL_CONFIG_MODE})
 
 find_package(Freetype 2.4.2 REQUIRED)
 find_package(HarfBuzz 0.9.2 REQUIRED)
@@ -153,12 +171,13 @@ endif ()
 
 if (ENABLE_BATTERY_STATUS)
     find_package(DBus REQUIRED)
+    find_package(E_DBus 1.7 COMPONENTS EUKit)
 endif ()
 
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     set(GSTREAMER_COMPONENTS app pbutils)
     set(WTF_USE_GSTREAMER 1)
-    add_definitions(-DWTF_USE_GSTREAMER=1 -DGST_API_VERSION_1=1)
+    add_definitions(-DWTF_USE_GSTREAMER=1)
 
     if (ENABLE_VIDEO)
         list(APPEND GSTREAMER_COMPONENTS video)
@@ -243,7 +262,7 @@ set(CPACK_SOURCE_GENERATOR TBZ2)
 # Optimize binary size for release builds by removing dead sections on unix/gcc
 if (CMAKE_COMPILER_IS_GNUCC AND UNIX AND NOT APPLE)
     set(CMAKE_C_FLAGS_RELEASE "-ffunction-sections -fdata-sections ${CMAKE_C_FLAGS_RELEASE}")
-    set(CMAKE_CXX_FLAGS_RELEASE "-ffunction-sections -fdata-sections ${CMAKE_CXX_FLAGS_RELEASE}")
+    set(CMAKE_CXX_FLAGS_RELEASE "-ffunction-sections -fdata-sections -fno-rtti ${CMAKE_CXX_FLAGS_RELEASE}")
     set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "-Wl,--gc-sections ${CMAKE_SHARED_LINKER_FLAGS_RELEASE}")
 endif ()
 

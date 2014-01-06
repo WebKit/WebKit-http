@@ -20,6 +20,8 @@
  */
 
 #include "config.h"
+#if ENABLE(JAVASCRIPT_DEBUGGER)
+
 #include "Debugger.h"
 
 #include "DebuggerCallFrame.h"
@@ -32,6 +34,7 @@
 #include "Operations.h"
 #include "Parser.h"
 #include "Protect.h"
+#include "VMEntryScope.h"
 
 namespace {
 
@@ -172,7 +175,7 @@ void Debugger::detach(JSGlobalObject* globalObject)
     // If we're detaching from the currently executing global object, manually tear down our
     // stack, since we won't get further debugger callbacks to do so. Also, resume execution,
     // since there's no point in staying paused once a window closes.
-    if (m_currentCallFrame && m_currentCallFrame->dynamicGlobalObject() == globalObject) {
+    if (m_currentCallFrame && m_currentCallFrame->vmEntryGlobalObject() == globalObject) {
         m_currentCallFrame = 0;
         m_pauseOnCallFrame = 0;
         continueProgram();
@@ -193,8 +196,8 @@ void Debugger::recompileAllJSFunctions(VM* vm)
 {
     // If JavaScript is running, it's not safe to recompile, since we'll end
     // up throwing away code that is live on the stack.
-    ASSERT(!vm->dynamicGlobalObject);
-    if (vm->dynamicGlobalObject)
+    ASSERT(!vm->entryScope);
+    if (vm->entryScope)
         return;
     
     vm->prepareToDiscardCode();
@@ -438,8 +441,8 @@ void Debugger::pauseIfNeeded(CallFrame* callFrame)
     if (m_isPaused)
         return;
 
-    JSGlobalObject* dynamicGlobalObject = callFrame->dynamicGlobalObject();
-    if (!needPauseHandling(dynamicGlobalObject))
+    JSGlobalObject* vmEntryGlobalObject = callFrame->vmEntryGlobalObject();
+    if (!needPauseHandling(vmEntryGlobalObject))
         return;
 
     Breakpoint breakpoint;
@@ -470,7 +473,7 @@ void Debugger::pauseIfNeeded(CallFrame* callFrame)
             return;
     }
 
-    handlePause(m_reasonForPause, dynamicGlobalObject);
+    handlePause(m_reasonForPause, vmEntryGlobalObject);
 
     if (!m_pauseOnNextStatement && !m_pauseOnCallFrame) {
         setShouldPause(false);
@@ -586,3 +589,5 @@ DebuggerCallFrame* Debugger::currentDebuggerCallFrame() const
 }
 
 } // namespace JSC
+
+#endif // ENABLE(JAVASCRIPT_DEBUGGER)

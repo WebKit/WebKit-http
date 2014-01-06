@@ -28,12 +28,13 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
+#import "CertificateInfo.h"
 #import "NetworkProcessCreationParameters.h"
 #import "NetworkResourceLoader.h"
-#import "PlatformCertificateInfo.h"
 #import "ResourceCachesToClear.h"
 #import "SandboxExtension.h"
 #import "SandboxInitializationParameters.h"
+#import "SecItemShim.h"
 #import "StringUtilities.h"
 #import <WebCore/FileSystem.h>
 #import <WebCore/LocalizedStrings.h>
@@ -44,11 +45,7 @@
 #import <sysexits.h>
 #import <wtf/text/WTFString.h>
 
-#if USE(SECURITY_FRAMEWORK)
-#import "SecItemShim.h"
-#endif
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 typedef struct _CFURLCache* CFURLCacheRef;
 extern "C" CFURLCacheRef CFURLCacheCopySharedURLCache();
 extern "C" void _CFURLCacheSetMinSizeForVMCachedResource(CFURLCacheRef, CFIndex);
@@ -70,10 +67,15 @@ void NetworkProcess::initializeProcess(const ChildProcessInitializationParameter
 
 void NetworkProcess::initializeProcessName(const ChildProcessInitializationParameters& parameters)
 {
+#if PLATFORM(IOS)
+    UNUSED_PARAM(parameters);
+#else
     NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Networking", "visible name of the network process. The argument is the application name."), (NSString *)parameters.uiProcessName];
     WKSetVisibleApplicationName((CFStringRef)applicationName);
+#endif
 }
 
+#if !PLATFORM(IOS)
 static void overrideSystemProxies(const String& httpProxy, const String& httpsProxy)
 {
     NSMutableDictionary *proxySettings = [NSMutableDictionary dictionary];
@@ -106,6 +108,7 @@ static void overrideSystemProxies(const String& httpProxy, const String& httpsPr
     if ([proxySettings count] > 0)
         WKCFNetworkSetOverrideSystemProxySettings((CFDictionaryRef)proxySettings);
 }
+#endif
 
 void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
 {
@@ -119,14 +122,16 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
             diskPath:parameters.diskCacheDirectory]).get()];
     }
 
-#if USE(SECURITY_FRAMEWORK)
+#if ENABLE(SEC_ITEM_SHIM)
     SecItemShim::shared().initialize(this);
 #endif
 
+#if !PLATFORM(IOS)
     if (!parameters.httpProxy.isNull() || !parameters.httpsProxy.isNull())
         overrideSystemProxies(parameters.httpProxy, parameters.httpsProxy);
+#endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     RetainPtr<CFURLCacheRef> cache = adoptCF(CFURLCacheCopySharedURLCache());
     if (!cache)
         return;
@@ -185,7 +190,7 @@ void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
     [nsurlCache setDiskCapacity:std::max<unsigned long>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
 }
 
-void NetworkProcess::allowSpecificHTTPSCertificateForHost(const PlatformCertificateInfo& certificateInfo, const String& host)
+void NetworkProcess::allowSpecificHTTPSCertificateForHost(const CertificateInfo& certificateInfo, const String& host)
 {
     [NSURLRequest setAllowsSpecificHTTPSCertificate:(NSArray *)certificateInfo.certificateChain() forHost:(NSString *)host];
 }

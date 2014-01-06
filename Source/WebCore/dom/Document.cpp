@@ -129,7 +129,7 @@
 #include "SelectorQuery.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "StylePropertySet.h"
+#include "StyleProperties.h"
 #include "StyleResolver.h"
 #include "StyleSheetContents.h"
 #include "StyleSheetList.h"
@@ -675,7 +675,7 @@ void Document::invalidateAccessKeyMap()
 
 void Document::addImageElementByLowercasedUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
 {
-    return m_imagesByUsemap.add(name, element);
+    return m_imagesByUsemap.add(name, element, *this);
 }
 
 void Document::removeImageElementByLowercasedUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
@@ -856,7 +856,7 @@ PassRefPtr<Text> Document::createEditingTextNode(const String& text)
 
 PassRefPtr<CSSStyleDeclaration> Document::createCSSStyleDeclaration()
 {
-    Ref<MutableStylePropertySet> propertySet(MutableStylePropertySet::create());
+    Ref<MutableStyleProperties> propertySet(MutableStyleProperties::create());
     return propertySet->ensureCSSStyleDeclaration();
 }
 

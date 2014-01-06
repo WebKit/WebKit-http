@@ -12,20 +12,11 @@
 #include <stdio.h>
 
 #include "compiler/InitializeParseContext.h"
-#include "compiler/ParseHelper.h"
-
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-static const int kTraceBufferLen = 1024;
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
+#include "compiler/ParseContext.h"
 
 #ifdef TRACE_ENABLED
+static const int kTraceBufferLen = 1024;
+
 extern "C" {
 void Trace(const char *format, ...) {
     if (!format) return;

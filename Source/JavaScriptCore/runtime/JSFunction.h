@@ -137,22 +137,9 @@ namespace JSC {
                 return createAllocationProfile(exec, inlineCapacity);
             return &m_allocationProfile;
         }
+        
+        Structure* allocationStructure() { return m_allocationProfile.structure(); }
 
-        ObjectAllocationProfile* tryGetAllocationProfile()
-        {
-            if (m_allocationProfile.isNull())
-                return 0;
-            if (m_allocationProfileWatchpoint.hasBeenInvalidated())
-                return 0;
-            return &m_allocationProfile;
-        }
-        
-        void addAllocationProfileWatchpoint(Watchpoint* watchpoint)
-        {
-            ASSERT(tryGetAllocationProfile());
-            m_allocationProfileWatchpoint.add(watchpoint);
-        }
-        
         InlineWatchpointSet& allocationProfileWatchpointSet()
         {
             return m_allocationProfileWatchpoint;
@@ -184,10 +171,10 @@ namespace JSC {
         
         JS_EXPORT_PRIVATE bool isHostFunctionNonInline() const;
 
-        static JSValue argumentsGetter(ExecState*, JSValue, PropertyName);
-        static JSValue callerGetter(ExecState*, JSValue, PropertyName);
-        static JSValue lengthGetter(ExecState*, JSValue, PropertyName);
-        static JSValue nameGetter(ExecState*, JSValue, PropertyName);
+        static EncodedJSValue argumentsGetter(ExecState*, EncodedJSValue, EncodedJSValue, PropertyName);
+        static EncodedJSValue callerGetter(ExecState*, EncodedJSValue, EncodedJSValue, PropertyName);
+        static EncodedJSValue lengthGetter(ExecState*, EncodedJSValue, EncodedJSValue, PropertyName);
+        static EncodedJSValue nameGetter(ExecState*, EncodedJSValue, EncodedJSValue, PropertyName);
 
         WriteBarrier<ExecutableBase> m_executable;
         WriteBarrier<JSScope> m_scope;

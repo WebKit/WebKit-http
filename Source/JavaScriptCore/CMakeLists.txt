@@ -11,6 +11,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/ftl"
     "${JAVASCRIPTCORE_DIR}/heap"
     "${JAVASCRIPTCORE_DIR}/debugger"
+    "${JAVASCRIPTCORE_DIR}/inspector"
     "${JAVASCRIPTCORE_DIR}/interpreter"
     "${JAVASCRIPTCORE_DIR}/jit"
     "${JAVASCRIPTCORE_DIR}/llint"
@@ -217,6 +218,7 @@ set(JavaScriptCore_SOURCES
     interpreter/CallFrame.cpp
     interpreter/Interpreter.cpp
     interpreter/JSStack.cpp
+    interpreter/ProtoCallFrame.cpp
     interpreter/StackVisitor.cpp
     interpreter/VMInspector.cpp
 
@@ -279,6 +281,7 @@ set(JavaScriptCore_SOURCES
     runtime/ArgumentsIteratorConstructor.cpp
     runtime/ArgumentsIteratorPrototype.cpp
     runtime/ArrayBuffer.cpp
+    runtime/ArrayBufferNeuteringWatchpoint.cpp
     runtime/ArrayBufferView.cpp
     runtime/ArrayConstructor.cpp
     runtime/ArrayIteratorConstructor.cpp
@@ -422,6 +425,7 @@ set(JavaScriptCore_SOURCES
     runtime/TypedArrayController.cpp
     runtime/TypedArrayType.cpp
     runtime/VM.cpp
+    runtime/VMEntryScope.cpp
     runtime/Watchdog.cpp
     runtime/WatchdogNone.cpp
     runtime/WeakMapConstructor.cpp
@@ -582,6 +586,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     collector/handles
     debugger
     heap
+    inspector
     interpreter
     jit
     llint

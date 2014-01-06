@@ -96,7 +96,7 @@ void HTMLVideoElement::didAttachRenderers()
 #endif
 }
 
-void HTMLVideoElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
+void HTMLVideoElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
 {
     if (name == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, value);
@@ -266,6 +266,14 @@ bool HTMLVideoElement::hasAvailableVideoFrame() const
         return false;
     
     return player()->hasVideo() && player()->hasAvailableVideoFrame();
+}
+
+PassNativeImagePtr HTMLVideoElement::nativeImageForCurrentTime()
+{
+    if (!player())
+        return 0;
+
+    return player()->nativeImageForCurrentTime();
 }
 
 void HTMLVideoElement::webkitEnterFullscreen(ExceptionCode& ec)

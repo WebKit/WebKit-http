@@ -94,6 +94,19 @@ private:
             
             if (m_node->arrayMode().type() == Array::String)
                 handleStringGetByVal();
+
+            if (JSArrayBufferView* view = m_graph.tryGetFoldableView(m_node->child1().node(), m_node->arrayMode()))
+                addLazily(view);
+            break;
+            
+        case PutByVal:
+            if (JSArrayBufferView* view = m_graph.tryGetFoldableView(m_graph.varArgChild(m_node, 0).node(), m_node->arrayMode()))
+                addLazily(view);
+            break;
+            
+        case GetArrayLength:
+            if (JSArrayBufferView* view = m_graph.tryGetFoldableView(m_node->child1().node(), m_node->arrayMode()))
+                addLazily(view);
             break;
             
         case StringCharAt:
@@ -118,14 +131,28 @@ private:
                 m_node->structure()->transitionWatchpointSet());
             break;
             
-        case GlobalVarWatchpoint:
-            addLazily(
-                globalObject()->symbolTable()->get(
-                    m_graph.identifiers()[m_node->identifierNumberForCheck()]).watchpointSet());
+        case VariableWatchpoint:
+            addLazily(m_node->variableWatchpointSet());
             break;
             
         case VarInjectionWatchpoint:
             addLazily(globalObject()->varInjectionWatchpoint());
+            break;
+            
+        case FunctionReentryWatchpoint:
+            addLazily(m_node->symbolTable()->m_functionEnteredOnce);
+            break;
+            
+        case GetIndexedPropertyStorage:
+            if (JSArrayBufferView* view = m_graph.tryGetFoldableView(m_node->child1().node(), m_node->arrayMode())) {
+                // FIXME: It would be awesome to be able to fold the property storage for
+                // these GC-allocated typed arrays. For now it doesn't matter because the
+                // most common use-cases for constant typed arrays involve large arrays with
+                // aliased buffer views.
+                if (view->mode() == FastTypedArray)
+                    break;
+                addLazily(view);
+            }
             break;
             
         default:
@@ -176,6 +203,10 @@ private:
     void addLazily(InlineWatchpointSet& set)
     {
         m_graph.watchpoints().addLazily(set);
+    }
+    void addLazily(JSArrayBufferView* view)
+    {
+        m_graph.watchpoints().addLazily(view);
     }
     
     JSGlobalObject* globalObject()

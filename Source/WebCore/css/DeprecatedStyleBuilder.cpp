@@ -515,6 +515,10 @@ class ApplyPropertyFillLayer {
 public:
     static void applyInheritValue(CSSPropertyID, StyleResolver* styleResolver)
     {
+        // Check for no-op before copying anything.
+        if (*(styleResolver->parentStyle()->*layersFunction)() == *(styleResolver->style()->*layersFunction)())
+            return;
+
         FillLayer* currChild = (styleResolver->style()->*accessLayersFunction)();
         FillLayer* prevChild = 0;
         const FillLayer* currParent = (styleResolver->parentStyle()->*layersFunction)();
@@ -539,6 +543,12 @@ public:
 
     static void applyInitialValue(CSSPropertyID, StyleResolver* styleResolver)
     {
+        // Check for (single-layer) no-op before clearing anything.
+        const FillLayer& layers = *(styleResolver->style()->*layersFunction)();
+        bool firstLayerHasValue = (layers.*testFunction)();
+        if (!layers.next() && (!firstLayerHasValue || (layers.*getFunction)() == (*initialFunction)(fillLayerType)))
+            return;
+
         FillLayer* currChild = (styleResolver->style()->*accessLayersFunction)();
         (currChild->*setFunction)((*initialFunction)(fillLayerType));
         for (currChild = currChild->next(); currChild; currChild = currChild->next())
@@ -2075,7 +2085,7 @@ public:
                 || primitiveValue->getValueID() == CSSValueBorderBox
                 || primitiveValue->getValueID() == CSSValuePaddingBox
                 || primitiveValue->getValueID() == CSSValueMarginBox)
-                setValue(styleResolver->style(), ShapeValue::createBoxValue(primitiveValue->getValueID()));
+                setValue(styleResolver->style(), ShapeValue::createBoxValue(boxForValue(primitiveValue)));
             else if (primitiveValue->getValueID() == CSSValueOutsideShape)
                 setValue(styleResolver->style(), ShapeValue::createOutsideValue());
             else if (primitiveValue->isShape()) {

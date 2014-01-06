@@ -32,7 +32,6 @@
 #import <crt_externs.h>
 #import <mach-o/dyld.h>
 #import <mach/machine.h>
-#import <runtime/InitializeThreading.h>
 #import <servers/bootstrap.h>
 #import <spawn.h>
 #import <sys/param.h>
@@ -108,16 +107,19 @@ static void addDYLDEnvironmentAdditions(const ProcessLauncher::LaunchOptions& la
         processShimPathNSString = [[processAppExecutablePath stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"PluginProcessShim.dylib"];
     } else
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
+#if ENABLE(NETWORK_PROCESS)
+    if (launchOptions.processType == ProcessLauncher::NetworkProcess) {
+        NSString *processPath = [webKit2Bundle pathForAuxiliaryExecutable:@"NetworkProcess.app"];
+        NSString *processAppExecutablePath = [[NSBundle bundleWithPath:processPath] executablePath];
+
+        processShimPathNSString = [[processAppExecutablePath stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"SecItemShim.dylib"];
+    } else
+#endif // ENABLE(NETWORK_PROCESS)
     if (launchOptions.processType == ProcessLauncher::WebProcess) {
         NSString *processPath = [webKit2Bundle pathForAuxiliaryExecutable:@"WebProcess.app"];
         NSString *processAppExecutablePath = [[NSBundle bundleWithPath:processPath] executablePath];
 
         processShimPathNSString = [[processAppExecutablePath stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"WebProcessShim.dylib"];
-    } else if (launchOptions.processType == ProcessLauncher::NetworkProcess) {
-        NSString *processPath = [webKit2Bundle pathForAuxiliaryExecutable:@"NetworkProcess.app"];
-        NSString *processAppExecutablePath = [[NSBundle bundleWithPath:processPath] executablePath];
-
-        processShimPathNSString = [[processAppExecutablePath stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"SecItemShim.dylib"];
     }
 
     // Make sure that the shim library file exists and insert it.
@@ -145,7 +147,7 @@ static const char* serviceName(const ProcessLauncher::LaunchOptions& launchOptio
             return "com.apple.WebKit.Networking.Development";
         return "com.apple.WebKit.Networking";
 #endif
-#if ENABLE(NETWORK_PROCESS)
+#if ENABLE(DATABASE_PROCESS)
     case ProcessLauncher::DatabaseProcess:
         if (forDevelopment)
             return "com.apple.WebKit.Databases.Development";

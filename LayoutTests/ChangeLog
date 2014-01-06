@@ -1,3 +1,2645 @@
+2013-12-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Fold constant typed arrays
+        https://bugs.webkit.org/show_bug.cgi?id=125205
+
+        Reviewed by Oliver Hunt and Mark Hahnenberg.
+
+        * js/regress/fixed-typed-array-storage-expected.txt: Added.
+        * js/regress/fixed-typed-array-storage-var-index-expected.txt: Added.
+        * js/regress/fixed-typed-array-storage-var-index.html: Added.
+        * js/regress/fixed-typed-array-storage.html: Added.
+        * js/regress/script-tests/fixed-typed-array-storage-var-index.js: Added.
+        (foo):
+        * js/regress/script-tests/fixed-typed-array-storage.js: Added.
+        (foo):
+
+2013-12-04  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Support inset for shape-outside
+        <https://webkit.org/b/125112>
+
+        Reviewed by David Hyatt.
+
+        * fast/shapes/resources/rounded-rectangle.js: Add support to generate partially rounded rectangles.
+        (scanConvertRoundedRectangleOutside):
+        (genLeftRoundedRectFloatShapeOutsideRefTest):
+        (genRightRoundedRectFloatShapeOutsideRefTest):
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-bottom-left-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-bottom-left.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-bottom-right-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-bottom-right.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-top-left-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-top-left.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-top-right-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-top-right.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset.html: Added.
+
+2013-12-04  Bear Travis  <betravis@adobe.com>
+
+        Web Inspector: [CSS Shapes] Support raster shape visualizations
+        https://bugs.webkit.org/show_bug.cgi?id=124080
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a test for data sent to the inspector for a raster shape.
+
+        * inspector-protocol/model/highlight-shape-outside-expected.txt:
+        * inspector-protocol/model/highlight-shape-outside.html:
+
+2013-12-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Allow ImageBuffer to use an IOSurface that is larger than necessary
+        https://bugs.webkit.org/show_bug.cgi?id=124626
+
+        Reviewed by Simon Fraser.
+
+        Update tests to be more robust with respect to accelerated vs
+        non-accelerated ImageBuffers. 
+
+        * fast/canvas/script-tests/canvas-fillPath-shadow.js: Don't sample a canvas at exactly
+        the corner of a drawn shape (because the corner might be antialiased). Instead, sample
+        a single pixel inside the shape
+        * fast/canvas/script-tests/canvas-scale-shadowBlur.js: Don't sample a canvas at exactly
+        the edge of the blur radius. Instead, sample a single pixel past the blur radius.
+        * fast/canvas/script-tests/canvas-scale-strokePath-shadow.js:
+        (shouldBeAround): Allow this test to be less strict when sampling inside a blurred region
+        * platform/mac/fast/canvas/canvas-scale-shadowBlur-expected.txt: Matching update w/r/t
+        canvas-scale-shadowBlur.js
+
+2013-12-03  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Support for texImage2D/texSubImage2D of type HALF_FLOAT_OES
+        https://bugs.webkit.org/show_bug.cgi?id=110936
+
+        Reviewed by Brent Fulgham.
+
+        New tests for half-float textures.
+
+        * fast/canvas/webgl/oes-texture-half-float-expected.txt:
+        * fast/canvas/webgl/oes-texture-half-float-not-supported-expected.txt: Removed.
+        * fast/canvas/webgl/oes-texture-half-float-not-supported.html: Removed.
+        * fast/canvas/webgl/oes-texture-half-float-with-canvas-expected.txt: Added.
+        * fast/canvas/webgl/oes-texture-half-float-with-canvas.html: Added.
+        * fast/canvas/webgl/oes-texture-half-float-with-image-expected.txt: Added.
+        * fast/canvas/webgl/oes-texture-half-float-with-image.html: Added.
+        * fast/canvas/webgl/oes-texture-half-float-with-video-expected.txt: Added.
+        * fast/canvas/webgl/oes-texture-half-float-with-video.html: Added.
+        * fast/canvas/webgl/oes-texture-half-float.html:
+
+2013-12-04  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Test dynamic change of position for out-of-flow transformed element
+        https://bugs.webkit.org/show_bug.cgi?id=124978
+
+        Reviewed by Alexandru Chiculita.
+
+        Test that a 3D transformed absolutely positioned element inside a named flow
+        whose position is dynamic changed is displayed in the right position in the associated region.
+
+        * compositing/regions/abs-transformed-dynamic-update-expected.html: Added.
+        * compositing/regions/abs-transformed-dynamic-update.html: Added.
+
+2013-12-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Infer constant closure variables
+        https://bugs.webkit.org/show_bug.cgi?id=124630
+
+        Reviewed by Geoffrey Garen.
+        
+        This adds both correctness and performance tests for constant closure variable
+        inference.
+
+        * js/regress/infer-closure-const-then-mov-expected.txt: Added.
+        * js/regress/infer-closure-const-then-mov-no-inline-expected.txt: Added.
+        * js/regress/infer-closure-const-then-mov-no-inline.html: Added.
+        * js/regress/infer-closure-const-then-mov.html: Added.
+        * js/regress/infer-closure-const-then-put-to-scope-expected.txt: Added.
+        * js/regress/infer-closure-const-then-put-to-scope-no-inline-expected.txt: Added.
+        * js/regress/infer-closure-const-then-put-to-scope-no-inline.html: Added.
+        * js/regress/infer-closure-const-then-put-to-scope.html: Added.
+        * js/regress/infer-closure-const-then-reenter-expected.txt: Added.
+        * js/regress/infer-closure-const-then-reenter-no-inline-expected.txt: Added.
+        * js/regress/infer-closure-const-then-reenter-no-inline.html: Added.
+        * js/regress/infer-closure-const-then-reenter.html: Added.
+        * js/regress/script-tests/infer-closure-const-then-mov-no-inline.js: Added.
+        * js/regress/script-tests/infer-closure-const-then-mov.js: Added.
+        * js/regress/script-tests/infer-closure-const-then-put-to-scope-no-inline.js: Added.
+        (thingy.):
+        (thingy):
+        * js/regress/script-tests/infer-closure-const-then-put-to-scope.js: Added.
+        (thingy.):
+        (thingy):
+        * js/regress/script-tests/infer-closure-const-then-reenter-no-inline.js: Added.
+        (.return.foo):
+        (foo):
+        * js/regress/script-tests/infer-closure-const-then-reenter.js: Added.
+        (.return.foo):
+        (foo):
+
+2013-12-04  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed GTK gardening. Updated expectations for GTK and share them with EFL.
+
+        * accessibility/multiselect-list-reports-active-option-expected.txt: Renamed from LayoutTests/platform/efl/multiselect-list-reports-active-option-expected.txt.
+        * platform/gtk/accessibility/multiselect-list-reports-active-option-expected.txt: Removed.
+
+2013-12-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Update WebCrypto JWK mapping to newer proposal
+        https://bugs.webkit.org/show_bug.cgi?id=124218
+
+        Reviewed by Anders Carlsson.
+
+        * crypto/subtle/jwk-export-use-values-expected.txt: Added.
+        * crypto/subtle/jwk-export-use-values.html: Added.
+        * crypto/subtle/jwk-import-use-values-expected.txt: Added.
+        * crypto/subtle/jwk-import-use-values.html: Added.
+        New tests for "use" mapping.
+
+        * crypto/subtle/aes-cbc-import-jwk.html:
+        * crypto/subtle/aes-cbc-unwrap-rsa.html:
+        * crypto/subtle/aes-cbc-wrap-rsa-non-extractable.html:
+        * crypto/subtle/aes-cbc-wrap-rsa.html:
+        * crypto/subtle/aes-export-key-expected.txt:
+        * crypto/subtle/aes-export-key.html:
+        * crypto/subtle/hmac-export-key-expected.txt:
+        * crypto/subtle/hmac-export-key.html:
+        * crypto/subtle/hmac-import-jwk.html:
+        * crypto/subtle/import-jwk-expected.txt:
+        * crypto/subtle/import-jwk.html:
+        * crypto/subtle/rsa-export-key-expected.txt:
+        * crypto/subtle/rsa-export-key.html:
+        * crypto/subtle/rsa-export-private-key-expected.txt:
+        * crypto/subtle/rsa-export-private-key.html:
+        * crypto/subtle/rsa-oaep-key-manipulation-expected.txt:
+        * crypto/subtle/rsa-oaep-key-manipulation.html:
+
+2013-12-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Layout Test platform/mac/accessibility/search-predicate-element-count.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=125195
+
+        * platform/mac/TestExpectations: Marking as such.
+
+2013-12-03  Samuel White  <samuel_white@apple.com>
+
+        AXPress event coordinates are always sent as (0, 0)
+        https://bugs.webkit.org/show_bug.cgi?id=76677
+
+        Reviewed by Simon Fraser.
+
+        Make sure a press targets an element's center point.
+
+        * accessibility/press-targets-center-point-expected.txt: Added.
+        * accessibility/press-targets-center-point.html: Added.
+
+2013-12-03  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Implement OES texture float linear
+        https://bugs.webkit.org/show_bug.cgi?id=124871
+
+        Reviewed by Brent Fulgham.
+
+        Add the Khronos test files for this extension.
+
+        Add the JS test file for OES_texture_float_linear and OES_texture_half_float_linear
+        even though it's only used for the former at the moment.
+
+        * fast/canvas/webgl/oes-texture-float-linear.html: Added.
+        * fast/canvas/webgl/resources/oes-texture-float-and-half-float-linear.js: Added.
+
+2013-12-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Support exporting private WebCrypto RSA keys
+        https://bugs.webkit.org/show_bug.cgi?id=124483
+
+        Reviewed by Anders Carlsson.
+
+        * crypto/subtle/rsa-export-private-key-expected.txt: Added.
+        * crypto/subtle/rsa-export-private-key.html: Added.
+
+2013-12-03  Alexey Proskuryakov  <ap@apple.com>
+
+        WebCrypto HMAC doesn't check key algorithm's hash
+        https://bugs.webkit.org/show_bug.cgi?id=125114
+
+        Update layout test result for a last minute change in test content.
+
+        * crypto/subtle/hmac-check-algorithm-expected.txt:
+
+2013-12-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        XML fragment parsing algorithm doesn't use the context element's default namespace URI
+        https://bugs.webkit.org/show_bug.cgi?id=125132
+
+        Reviewed by Darin Adler.
+
+        Added a test for parsing a markup fragment inside a XHTML document without xmlns.
+        The parsed fragment should use the context element's namespace as the default namespace.
+
+        * fast/parser/fragment-parsing-in-document-without-xmlns-expected.txt: Added.
+        * fast/parser/fragment-parsing-in-document-without-xmlns.html: Added.
+
+2013-12-03  Radu Stavila  <stavila@adobe.com>
+
+        The overflow border of a relatively positioned element inside a region is not painted
+        https://bugs.webkit.org/show_bug.cgi?id=124919
+
+        Added new tests for correct painting of the borders of a relatively positioned element inside a region.
+
+        Reviewed by Mihnea Ovidenie.
+
+        * fast/regions/relative-borders-overflow-expected.html: Added.
+        * fast/regions/relative-borders-overflow.html: Added.
+        * fast/regions/relative-in-absolute-borders-overflow-expected.html: Added.
+        * fast/regions/relative-in-absolute-borders-overflow.html: Added.
+
+2013-12-03  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: aria-hidden=false does not work as expected
+        https://bugs.webkit.org/show_bug.cgi?id=98787
+
+        Reviewed by Beth Dakin.
+
+        These tests were part of this patch added over a year ago, but the patch was rolled out, and when it was rolled back in
+        the tests were never added. So I'm adding them back again.
+
+        * accessibility/aria-hidden-negates-no-visibility.html: Added.
+        * platform/mac/accessibility/aria-hidden-negates-no-visibility-expected.txt: Added.
+
+2013-12-03  László Langó  <lango@inf.u-szeged.hu>
+
+        ASSERTION FAILED: !value || (value->isPrimitiveValue()) in WebCore::StyleProperties::getLayeredShorthandValue.
+        https://bugs.webkit.org/show_bug.cgi?id=125146
+
+        Reviewed by Darin Adler.
+
+        * fast/css/webkit-mask-crash-implicit-expected.txt: Added.
+        * fast/css/webkit-mask-crash-implicit.html: Added.
+
+2013-12-03  Rob Buis  <rob.buis@samsung.com>
+
+        [css shapes] layout for new ellipse syntax
+        https://bugs.webkit.org/show_bug.cgi?id=124621
+
+        Add a new test for the new ellipse syntax. Also update existing shape-inside, animation, and clip-path tests to
+        test the new ellipse syntax for clipping and shape-inside.
+
+        Reviewed by Dirk Schulze.
+
+        * animations/resources/animation-test-helpers.js:
+        (parseBasicShape):
+        * css3/masking/clip-path-animation-expected.txt:
+        * css3/masking/clip-path-animation.html:
+        * css3/masking/clip-path-ellipse.html:
+        * fast/shapes/shape-inside/shape-inside-animation-expected.txt:
+        * fast/shapes/shape-inside/shape-inside-animation.html:
+        * fast/shapes/shape-inside/shape-inside-ellipse-padding.html:
+        * fast/shapes/shape-inside/shape-inside-ellipse.html:
+        * fast/shapes/shape-inside/shape-inside-empty-expected.html:
+        * fast/shapes/shape-inside/shape-inside-empty.html:
+        * fast/shapes/shape-outside-floats/shape-outside-animation-expected.txt:
+        * fast/shapes/shape-outside-floats/shape-outside-animation.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-000-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-ellipse-000.html: Added.
+
+2013-12-03  Frédéric Wang  <fred.wang@free.fr>
+
+        Add an MathMLSelectElement class to implement <maction> and <semantics>.
+        <https://webkit.org/b/120058>
+
+        Reviewed by Chris Fleizach.
+
+        New tests for the selection of the visible child in the <maction> and <semantics> elements.
+
+        * mathml/presentation/maction-dynamic-expected.html: Added.
+        * mathml/presentation/maction-dynamic.html: Added.
+        * mathml/presentation/maction-expected.html: Added.
+        * mathml/presentation/maction.html: Added.
+        * mathml/presentation/semantics-expected.html: Added.
+        * mathml/presentation/semantics.html: Added.
+
+2013-12-02  Samuel White  <samuel_white@apple.com>
+
+        AX: Add AXUIElementCountForSearchPredicate parameterized attribute.
+        https://bugs.webkit.org/show_bug.cgi?id=124561
+
+        Reviewed by Chris Fleizach.
+
+        Added test to verify that NSAccessibilityUIElementCountForSearchPredicateParameterizedAttribute
+        works as it should and updated existing test that has exposes this new attribute.
+
+        * platform/mac/accessibility/bounds-for-range-expected.txt:
+        * platform/mac/accessibility/search-predicate-element-count-expected.txt: Added.
+        * platform/mac/accessibility/search-predicate-element-count.html: Added.
+
+2013-12-02  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [css shapes] Layout support for new circle shape syntax
+        https://bugs.webkit.org/show_bug.cgi?id=124619
+
+        Reviewed by Dirk Schulze.
+
+        Add a few tests for the new circle syntax. The old tests in
+        LayoutTests/csswg will be removed when the old syntax is removed.
+
+        Also update existing shape-inside, animation, and clip-path tests to
+        test the new syntax. 
+
+        * animations/resources/animation-test-helpers.js:
+        (parseBasicShape):
+        * LayoutTests/animations/resources/animation-test-helpers.js:
+        * LayoutTests/css3/masking/clip-path-animation-expected.txt:
+        * LayoutTests/css3/masking/clip-path-animation.html:
+        * LayoutTests/css3/masking/clip-path-circle-filter.html:
+        * LayoutTests/css3/masking/clip-path-circle-overflow-hidden.html:
+        * LayoutTests/css3/masking/clip-path-circle-overflow.html:
+        * LayoutTests/css3/masking/clip-path-circle-relative-overflow.html:
+        * LayoutTests/css3/masking/clip-path-circle.html:
+        * LayoutTests/css3/masking/clip-path-restore.html:
+        * LayoutTests/fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * LayoutTests/fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * LayoutTests/fast/shapes/parsing/parsing-test-utils.js:
+        * LayoutTests/fast/shapes/shape-inside/shape-inside-animation-expected.txt:
+        * LayoutTests/fast/shapes/shape-inside/shape-inside-animation.html:
+        * LayoutTests/fast/shapes/shape-inside/shape-inside-calc-crash-expected.txt:
+        * LayoutTests/fast/shapes/shape-inside/shape-inside-calc-crash.html:
+        * LayoutTests/fast/shapes/shape-inside/shape-inside-circle-padding.html:
+        * LayoutTests/fast/shapes/shape-inside/shape-inside-circle.html:
+        * LayoutTests/fast/shapes/shape-inside/shape-inside-dynamic-nested.html:
+        * LayoutTests/fast/shapes/shape-inside/shape-inside-empty-expected.html:
+        * LayoutTests/fast/shapes/shape-inside/shape-inside-empty.html:
+        * fast/shapes/shape-outside-floats/shape-outside-animation-expected.txt:
+        * fast/shapes/shape-outside-floats/shape-outside-animation.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-000-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-000.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-001-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-002-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-002.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-003-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-003.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-004-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-004.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-005-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-circle-005.html: Added.
+
+2013-12-02  Alexey Proskuryakov  <ap@apple.com>
+
+        WebCrypto HMAC doesn't check key algorithm's hash
+        https://bugs.webkit.org/show_bug.cgi?id=125114
+
+        Reviewed by Anders Carlsson.
+
+        * crypto/subtle/hmac-check-algorithm-expected.txt: Added.
+        * crypto/subtle/hmac-check-algorithm.html: Added.
+
+2013-12-02  Zoltan Horvath  <zoltan@webkit.org>
+
+        [CSS Shapes] Support inset parsing
+        https://bugs.webkit.org/show_bug.cgi?id=124903
+
+        Reviewed by David Hyatt.
+
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-lengths-expected.txt:
+        * fast/shapes/parsing/parsing-shape-lengths.html:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+
+2013-12-02  Alexey Proskuryakov  <ap@apple.com>
+
+        Support WebCrypto AES-KW
+        https://bugs.webkit.org/show_bug.cgi?id=125105
+
+        Reviewed by Sam Weinig.
+
+        * crypto/subtle/aes-kw-key-manipulation-expected.txt: Added.
+        * crypto/subtle/aes-kw-key-manipulation.html: Added.
+        * crypto/subtle/aes-kw-wrap-unwrap-aes-expected.txt: Added.
+        * crypto/subtle/aes-kw-wrap-unwrap-aes.html: Added.
+
+2013-12-02  Rob Buis  <rob.buis@samsung.com>
+
+        [css shapes] Parse new ellipse shape syntax
+        https://bugs.webkit.org/show_bug.cgi?id=124620
+
+        Reviewed by Dirk Schulze.
+
+        Test that the new ellipse syntax is properly parsed.
+
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+
+2013-12-02  Brendan Long  <b.long@cablelabs.com>
+
+        Use GenericEventQueue in TrackListBase and reduce code duplication with scheduleTrackEvent()
+        https://bugs.webkit.org/show_bug.cgi?id=124811
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/TestExpectations: Unskip onremovetrack test which was fixed a long time ago.
+
+2013-12-02  Alexey Proskuryakov  <ap@apple.com>
+
+        Add support for WebCrypto RSA-OAEP
+        https://bugs.webkit.org/show_bug.cgi?id=125084
+
+        Reviewed by Sam Weinig.
+
+        * crypto/subtle/rsa-oaep-key-manipulation-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-key-manipulation.html: Added.
+        * crypto/subtle/rsa-oaep-plaintext-length-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-plaintext-length.html: Added.
+        * crypto/subtle/rsa-oaep-wrap-unwrap-aes-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-wrap-unwrap-aes.html: Added.
+
+2013-12-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Stores to local captured variables should be intercepted
+        https://bugs.webkit.org/show_bug.cgi?id=124883
+
+        Reviewed by Mark Hahnenberg.
+
+        * js/regress/captured-assignments-expected.txt: Added.
+        * js/regress/captured-assignments.html: Added.
+        * js/regress/script-tests/captured-assignments.js: Added.
+
+2013-12-02  Lauro Neto  <lauro.neto@openbossa.org>
+
+        [MediaStream] Update layout tests to newer spec.
+        https://bugs.webkit.org/show_bug.cgi?id=124985
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+        * fast/mediastream/MediaStream-onended-expected.txt: Removed.
+        * fast/mediastream/MediaStreamTrack-onended-expected.txt: Added.
+        * fast/mediastream/MediaStreamTrack-onended.html: Renamed from LayoutTests/fast/mediastream/MediaStream-onended.html.
+        * fast/mediastream/RTCPeerConnection-ice-expected.txt:
+        * fast/mediastream/RTCPeerConnection-state-expected.txt:
+        * fast/mediastream/RTCSessionDescription-expected.txt:
+
+2013-12-02  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Crash at WebCore::commonTreeScope
+        https://bugs.webkit.org/show_bug.cgi?id=125042
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/mac/accessibility/ordered-textmarker-crash-expected.txt: Added.
+        * platform/mac/accessibility/ordered-textmarker-crash.html: Added.
+
+2013-12-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Adding failure expectations for the
+        fast/shapes/shape-inside/shape-inside-subpixel-rectangle-top.html reftest.
+
+2013-12-02  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL rebaseline since r159915.
+
+        Error messages are changed. So, test results need to be updated.
+
+        * platform/efl/fast/forms/validation-message-appearance-expected.txt:
+        * platform/efl/fast/forms/validationMessage-expected.txt:
+
+2013-12-02  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [ATK] Support active state for listbox elements.
+        https://bugs.webkit.org/show_bug.cgi?id=125009
+
+        Reviewed by Chris Fleizach.
+
+        Establish expectations for the test (all PASS).
+
+        * accessibility/multiselect-list-reports-active-option-expected.txt: Added.
+        * platform/efl-wk1/TestExpectations:
+        * platform/efl-wk2/TestExpectations:
+
+2013-11-29  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Accessibility rebaselines after r159848.
+
+        * platform/efl-wk1/accessibility/table-detection-expected.txt:
+        * platform/efl-wk2/accessibility/table-detection-expected.txt:
+
+2013-11-29  Krzysztof Czech  <k.czech@samsung.com>
+
+        [ATK] Added support for isAttributeSettable in AccessibilityUIElementAtk
+        https://bugs.webkit.org/show_bug.cgi?id=124923
+
+        Reviewed by Mario Sanchez Prada.
+
+        Test could be reused by EFL and GTK as well.
+
+        * accessibility/content-editable-expected.txt: Renamed from LayoutTests/platform/mac/accessibility/content-editable-expected.txt.
+        * accessibility/content-editable.html: Renamed from LayoutTests/platform/mac/accessibility/content-editable.html.
+
+2013-11-28  Antti Koivisto  <antti@apple.com>
+
+        Remove an oddly named css variables test
+        
+        Rubber-stamped by Andreas Kling.
+
+        * css3/filters/reference-filter-update-after-remove-expected.txt: Removed.
+        * css3/filters/reference-filter-update-after-remove.html: Removed.
+
+2013-11-28  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        RenderTableSection Blink merge asserting
+        https://bugs.webkit.org/show_bug.cgi?id=124857
+
+        Rebase EFL results (and the remaining Mac) after r159848.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * fast/table/anonymous-table-section-removed.html: Updated.
+        * platform/efl/accessibility/table-attributes-expected.txt: Added.
+        * platform/efl/accessibility/table-sections-expected.txt: Added.
+        * platform/efl/fast/forms/input-value-expected.png:
+        * platform/efl/fast/forms/input-value-expected.txt:
+        * platform/efl/fast/table/[...]:
+        * platform/efl/tables/[...]:
+        * platform/mac/editing/deleting/deletionUI-single-instance-expected.txt:
+        * platform/mac-mountainlion/fast/forms/input-value-expected.txt: 
+        * platform/mac-mountainlion/tables/mozilla/bugs/bug26178-expected.txt:
+
+2013-11-28  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        RenderTableSection Blink merge asserting
+        https://bugs.webkit.org/show_bug.cgi?id=124857
+
+        Rebase Mac results after r159848.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/mac/accessibility/table-detection-expected.txt:
+        * platform/mac/fast/forms/input-value-expected.txt:
+        * platform/mac/fast/table/[...]:
+        * platform/mac/tables/[...]:
+
+2013-11-28  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        RenderTableSection Blink merge asserting
+        https://bugs.webkit.org/show_bug.cgi?id=124857
+
+        Rebase GTK results after r159848.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/gtk/accessibility/table-detection-expected.txt:
+        * platform/gtk/fast/forms/input-value-expected.png:
+        * platform/gtk/fast/forms/input-value-expected.txt:
+        * platform/gtk/fast/table/[...]:
+        * platform/gtk/tables/[...]:
+
+2013-11-28  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        RenderTableSection Blink merge asserting
+        https://bugs.webkit.org/show_bug.cgi?id=124857
+
+        Reviewed by Csaba Osztrogonác.
+
+        Skipped tests enabled.
+
+        * TestExpectations:
+
+2013-11-28  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        * platform/efl/TestExpectations: Added test expectations for failing tests.
+        * platform/efl/fast/forms/search/search-size-with-decorations-expected.png: Added.
+        * platform/efl/fast/forms/search/search-size-with-decorations-expected.txt: Added.
+
+2013-11-28  Antti Koivisto  <antti@apple.com>
+
+        No need to skip css variables tests as they were removed.
+
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2013-11-28  Antti Koivisto  <antti@apple.com>
+
+        Remove feature: CSS variables
+        https://bugs.webkit.org/show_bug.cgi?id=114119
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/variables: Removed.
+        * fast/css/variables/border-width-expected.html: Removed.
+        * fast/css/variables/border-width.html: Removed.
+        * fast/css/variables/build-supports-variables-expected.txt: Removed.
+        * fast/css/variables/build-supports-variables.html: Removed.
+        * fast/css/variables/calc-expected.html: Removed.
+        * fast/css/variables/calc-inside-calc-expected.html: Removed.
+        * fast/css/variables/calc-inside-calc.html: Removed.
+        * fast/css/variables/calc-invalid-value-expected.html: Removed.
+        * fast/css/variables/calc-invalid-value.html: Removed.
+        * fast/css/variables/calc-invalid-variable-expected.html: Removed.
+        * fast/css/variables/calc-invalid-variable.html: Removed.
+        * fast/css/variables/calc-negated-variable-expected.html: Removed.
+        * fast/css/variables/calc-negated-variable.html: Removed.
+        * fast/css/variables/calc-vw-crash-expected.txt: Removed.
+        * fast/css/variables/calc-vw-crash.html: Removed.
+        * fast/css/variables/calc.html: Removed.
+        * fast/css/variables/case-sensitive-expected.html: Removed.
+        * fast/css/variables/case-sensitive.html: Removed.
+        * fast/css/variables/colors-test-expected.html: Removed.
+        * fast/css/variables/colors-test.html: Removed.
+        * fast/css/variables/complex-cycle-expected.html: Removed.
+        * fast/css/variables/complex-cycle.html: Removed.
+        * fast/css/variables/computed-style-expected.html: Removed.
+        * fast/css/variables/computed-style.html: Removed.
+        * fast/css/variables/deferred-image-load-from-variable-expected.txt: Removed.
+        * fast/css/variables/deferred-image-load-from-variable.html: Removed.
+        * fast/css/variables/inherited-values-expected.html: Removed.
+        * fast/css/variables/inherited-values.html: Removed.
+        * fast/css/variables/inline-styles-expected.html: Removed.
+        * fast/css/variables/inline-styles.html: Removed.
+        * fast/css/variables/invalid-font-reference-expected.txt: Removed.
+        * fast/css/variables/invalid-font-reference.html: Removed.
+        * fast/css/variables/invalid-shorthand-expected.html: Removed.
+        * fast/css/variables/invalid-shorthand.html: Removed.
+        * fast/css/variables/invalid-value-list-crash-expected.txt: Removed.
+        * fast/css/variables/invalid-value-list-crash.html: Removed.
+        * fast/css/variables/invalid-variable-value-expected.html: Removed.
+        * fast/css/variables/invalid-variable-value.html: Removed.
+        * fast/css/variables/multi-level-cycle-expected.html: Removed.
+        * fast/css/variables/multi-level-cycle.html: Removed.
+        * fast/css/variables/redefinition-expected.html: Removed.
+        * fast/css/variables/redefinition.html: Removed.
+        * fast/css/variables/root-background-size-expected.html: Removed.
+        * fast/css/variables/root-background-size.html: Removed.
+        * fast/css/variables/shorthand-expected.html: Removed.
+        * fast/css/variables/shorthand.html: Removed.
+        * fast/css/variables/simple-cycle-expected.html: Removed.
+        * fast/css/variables/simple-cycle.html: Removed.
+        * fast/css/variables/transform-test-expected.html: Removed.
+        * fast/css/variables/transform-test.html: Removed.
+        * fast/css/variables/undefined-expected.html: Removed.
+        * fast/css/variables/undefined.html: Removed.
+        * fast/css/variables/use-before-defined-expected.html: Removed.
+        * fast/css/variables/use-before-defined.html: Removed.
+        * fast/css/variables/var-filter-expected.txt: Removed.
+        * fast/css/variables/var-filter.html: Removed.
+        * fast/css/variables/var-inside-box-reflect-expected.html: Removed.
+        * fast/css/variables/var-inside-box-reflect.html: Removed.
+        * fast/css/variables/var-inside-pair-expected.html: Removed.
+        * fast/css/variables/var-inside-pair.html: Removed.
+        * fast/css/variables/var-inside-quad-expected.html: Removed.
+        * fast/css/variables/var-inside-quad.html: Removed.
+        * fast/css/variables/var-inside-shape-expected.html: Removed.
+        * fast/css/variables/var-inside-shape.html: Removed.
+        * fast/css/variables/var-inside-shorthand-expected.html: Removed.
+        * fast/css/variables/var-inside-shorthand.html: Removed.
+        * fast/css/variables/variable-chain-expected.html: Removed.
+        * fast/css/variables/variable-chain.html: Removed.
+        * fast/css/variables/variable-unparseable-value-crash-expected.txt: Removed.
+        * fast/css/variables/variable-unparseable-value-crash.html: Removed.
+
+2013-11-28  Jongwoo Choi  <jw0330.choi@samsung.com>
+
+        [EFL] Layout tests need to be rebaselined.
+        https://bugs.webkit.org/show_bug.cgi?id=124879
+
+        Unreviewed, EFL rebaseline.
+
+        EFL tests need to be rebaselined after r159747
+
+        * platform/efl/fast/table/011-expected.txt:
+        * platform/efl/fast/table/border-collapsing/004-expected.txt:
+        * platform/efl/fast/table/tableInsideCaption-expected.txt:
+
+2013-11-27  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        [GTK] Support custom types for drag and drop data
+        https://bugs.webkit.org/show_bug.cgi?id=124659
+
+        Reviewed by Martin Robinson.
+
+        * platform/gtk/TestExpectations: remove failure expectation for test that now passes.
+
+2013-11-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Infer one-time scopes
+        https://bugs.webkit.org/show_bug.cgi?id=124812
+
+        Reviewed by Oliver Hunt.
+
+        * js/regress/infer-one-time-closure-expected.txt: Added.
+        * js/regress/infer-one-time-closure-ten-vars-expected.txt: Added.
+        * js/regress/infer-one-time-closure-ten-vars.html: Added.
+        * js/regress/infer-one-time-closure-two-vars-expected.txt: Added.
+        * js/regress/infer-one-time-closure-two-vars.html: Added.
+        * js/regress/infer-one-time-closure.html: Added.
+        * js/regress/infer-one-time-deep-closure-expected.txt: Added.
+        * js/regress/infer-one-time-deep-closure.html: Added.
+        * js/regress/script-tests/infer-one-time-closure-ten-vars.js: Added.
+        * js/regress/script-tests/infer-one-time-closure-two-vars.js: Added.
+        * js/regress/script-tests/infer-one-time-closure.js: Added.
+        * js/regress/script-tests/infer-one-time-deep-closure.js: Added.
+
+2013-11-27  Eric Carlson  <eric.carlson@apple.com>
+
+        Allow the QuickTime plug-in to be replaced by script in an isolated word
+        https://bugs.webkit.org/show_bug.cgi?id=124900
+
+        Reviewed by Dean Jackson.
+
+        * platform/efl/TestExpectations: Skip the new test.
+        * platform/gtk/TestExpectations: Ditto.
+        * platform/wincairo/TestExpectations: Ditto.
+        * plugins/quicktime-plugin-replacement.html: Added.
+        * plugins/quicktime-plugin-replacement-expected.txt: Added.
+        * plugins/resources/orange.mov: Replace movie compressed with ancient (and deprecated) 
+            animated gif codec with one compressed with H.264 codec.
+
+2013-11-27  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        Adding MediaConstraintsMock class
+        https://bugs.webkit.org/show_bug.cgi?id=124902
+
+        Reviewed by Eric Carlson.
+
+        Validate constraints used in RTCPeerConnection LayoutTests
+
+        * fast/mediastream/RTCPeerConnection-expected.txt:
+
+2013-11-27  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes] Shape-Inside Should Default to 'auto'
+        https://bugs.webkit.org/show_bug.cgi?id=124851
+
+        Reviewed by Alexandru Chiculita.
+
+        Update tests to reflect a default shape-inside value of 'auto'.
+
+        * fast/shapes/css-shapes-disabled-expected.txt:
+        * fast/shapes/css-shapes-disabled.html:
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-inside.html:
+        * fast/shapes/parsing/parsing-shape-lengths-expected.txt:
+        * fast/shapes/parsing/parsing-shape-lengths.html:
+
+2013-11-27  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] shape-inside rectangle layout can fail
+        https://bugs.webkit.org/show_bug.cgi?id=124784
+
+        Reviewed by Andreas Kling.
+
+        Regression test.
+
+        * fast/shapes/shape-inside/shape-inside-subpixel-rectangle-top-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-subpixel-rectangle-top.html: Added.
+
+2013-11-27  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Add test expectations for flaky tests.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/TestExpectations:
+
+2013-11-27  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] Invalid command line error when visiting www.chessbase.com
+        https://bugs.webkit.org/show_bug.cgi?id=124715
+
+        Reviewed by Philippe Normand.
+
+        Copied and adapted for HTTP from
+        media/video-error-does-not-exist.html.
+
+        * http/tests/media/video-error-does-not-exist-expected.txt: Added.
+        * http/tests/media/video-error-does-not-exist.html: Added.
+
+2013-11-14  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Fix positioning of grid items with margins
+        https://bugs.webkit.org/show_bug.cgi?id=124345
+
+        Reviewed by David Hyatt.
+
+        From Blink r157925 and r158041 by <jchaffraix@chromium.org>
+
+        New test case for grid items margin resolution. Extended the
+        preferred logical widths checks with grid items with margins.
+
+        * fast/css-grid-layout/grid-item-margin-resolution-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-margin-resolution.html: Added.
+        * fast/css-grid-layout/grid-preferred-logical-widths-expected.txt:
+        * fast/css-grid-layout/grid-preferred-logical-widths.html:
+
+2013-11-26  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Support grid-definition-{rows|columns} repeat() syntax
+        https://bugs.webkit.org/show_bug.cgi?id=103312
+
+        Reviewed by Andreas Kling.
+
+        Based on Blink r153155 by <jchaffraix@chromium.org>. Some code was
+        refactored in a helper function to have a more compact test.
+
+        * fast/css-grid-layout/grid-element-repeat-get-set-expected.txt: Added.
+        * fast/css-grid-layout/grid-element-repeat-get-set.html: Added.
+
+2013-11-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows rebaselines after r158547.
+
+        * platform/win/editing/selection/collapse-selection-in-bidi-expected.txt: Added.
+        * platform/win/editing/selection/drag-text-delay-expected.txt: Added.
+        * platform/win/editing/selection/extend-selection-home-end-expected.txt:
+
+2013-11-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Record subtest values in Dromaeo tests
+        https://bugs.webkit.org/show_bug.cgi?id=124498
+
+        Reviewed by Andreas Kling.
+
+        Rebaselined the test.
+
+        * fast/harness/perftests/runs-per-second-log-expected.txt:
+
+2013-11-26  Nick Diego Yamane  <nick.yamane@openbossa.org>
+
+        [MediaStream API] HTMLMediaElement should be able to use MediaStream as source
+        https://bugs.webkit.org/show_bug.cgi?id=121943
+
+        Reviewed by Eric Carlson.
+
+        Add layout tests to MediaStream direct assignment to HTMLMediaElement
+        using brand new srcObject attribute.
+
+        * fast/mediastream/MediaStream-MediaElement-srcObject-expected.txt: Added.
+        * fast/mediastream/MediaStream-MediaElement-srcObject.html: Added.
+
+2013-11-26  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes] Layout using [<box> || <shape>] value
+        https://bugs.webkit.org/show_bug.cgi?id=124428
+
+        Reviewed by David Hyatt.
+
+        Adding tests to make sure that shapes properly size and position themselves across box values
+        and writing modes. Some shape-outside tests needed to be updated to explicitly size themselves
+        to content-box, as they were relying on that being the default value. Some shape-inside tests
+        needed to be adjusted as box-sizing no longer affects the shape size and position.
+
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-circle-001.html:
+        Explicitly size to content-box.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-001.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-002.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-003.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-004.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-010.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-011.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-012.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-014.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-015.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-016.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-017.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-018.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-margin-021.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-001.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-002.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-003.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-padding-004.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-000.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-001.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-polygon-002.html: Ditto.
+        * csswg/contributors/adobe/submitted/shapes/shape-outside/shape-outside-floats-square-border-000.html: Ditto.
+        * fast/shapes/shape-inside/shape-inside-box-sizing-expected.html: Small test cleanup.
+        * fast/shapes/shape-inside/shape-inside-box-sizing.html: Modify shapes to provide their sizing box.
+        * fast/shapes/shape-inside/shape-inside-empty-expected.html: Small test cleanup.
+        * fast/shapes/shape-inside/shape-inside-empty.html: Modify shapes to provide their sizing box.
+        * fast/shapes/shape-outside-floats/shape-outside-floats-different-writing-modes.html: Ditto.
+        * fast/shapes/shape-outside-floats/shape-outside-shape-boxes-001-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-shape-boxes-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-shape-boxes-002-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-shape-boxes-002.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-shape-boxes-003-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-shape-boxes-003.html: Added.
+        * inspector-protocol/model/highlight-shape-outside.html: Modify shapes to provide their sizing box.
+
+2013-11-26  Oliver Hunt  <oliver@apple.com>
+
+        Crash in JSC::ASTBuilder::Expression JSC::Parser<JSC::Lexer<unsigned char> >::parseUnaryExpression<JSC::ASTBuilder>(JSC::ASTBuilder&)
+        https://bugs.webkit.org/show_bug.cgi?id=124886
+
+        Reviewed by Sam Weinig.
+
+        Add tests
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+
+2013-11-26  Eric Carlson  <eric.carlson@apple.com>
+
+        video.currentSrc should return empty when no resource is loaded
+        https://bugs.webkit.org/show_bug.cgi?id=124898
+
+        Reviewed by Dan Bernstein.
+
+        * media/video-currentsrc-cleared-expected.txt: Added.
+        * media/video-currentsrc-cleared.html: Added.
+
+2013-11-26  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] Support for shape-margin in BoxShape
+        https://bugs.webkit.org/show_bug.cgi?id=124788
+
+        Verify that shape-margin has the expected effect on the four possible shape-outside box values
+        for left and right floats.
+
+        Reviewed by Andreas Kling.
+
+        * fast/shapes/shape-outside-floats/shape-outside-margin-boxes-001-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-margin-boxes-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-margin-boxes-002-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-margin-boxes-002.html: Added.
+
+2013-11-26  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Add test expectations for failing accessibility tests.
+
+        * platform/efl/TestExpectations:
+
+2013-11-26  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed ATK gardening
+
+        Rebaseline accessibility tests after r159747.
+
+        * platform/efl-wk1/accessibility/table-detection-expected.txt:
+        * platform/efl-wk2/accessibility/table-detection-expected.txt:
+        * platform/gtk/accessibility/table-detection-expected.txt:
+
+2013-11-25  Dean Jackson  <dino@apple.com>
+
+        RenderTableSection Blink merge asserting
+        https://bugs.webkit.org/show_bug.cgi?id=124857
+
+        Skipping these tests for now, since Ossy + Laszlo checked
+        in a lot of rebaselines and I didn't want to roll
+        everything out.
+
+        * TestExpectations:
+
+2013-11-25  Robert Hogan  <robert@webkit.org>
+
+        Add complex line layout path version of empty-clear-blocks.html
+        https://bugs.webkit.org/show_bug.cgi?id=124808
+
+        Reviewed by Sam Weinig.
+
+        * fast/block/margin-collapse/empty-clear-blocks-complex-expected.html: Added.
+        * fast/block/margin-collapse/empty-clear-blocks-complex.html: Added.
+
+2013-11-25  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        Vertical border spacing is doubled between table row groups
+        https://bugs.webkit.org/show_bug.cgi?id=20040
+
+        Reviewed by Csaba Osztrogonác.
+
+        Rebaseline the rest of EFL and GTK tests.
+
+        * platform/efl/tables/mozilla/bugs/bug10296-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug27038-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug278385-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug55789-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug106966-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug85016-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug91057-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/core/backgrounds-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/core/captions1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/dom/insertTbodyExpand1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/dom/insertTbodyRebuild1-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-column-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_layers-show-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/other/test4-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/thead_valign_bottom-expected.png:
+        * platform/gtk/tables/mozilla/marvin/thead_valign_bottom-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_valign_bottom-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_valign_bottom-expected.txt:
+
+2013-11-25  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        Vertical border spacing is doubled between table row groups
+        https://bugs.webkit.org/show_bug.cgi?id=20040
+
+        Reviewed by Csaba Osztrogonác.
+
+        Rebaseline efl tests (+mac corrections).
+
+        * platform/efl/fast/forms/input-align-expected.png:
+        * platform/efl/fast/forms/input-align-expected.txt:
+        * platform/efl/fast/forms/input-value-expected.png:
+        * platform/efl/fast/forms/input-value-expected.txt:
+        * platform/efl/fast/table/border-collapsing/004-vertical-expected.png:
+        * platform/efl/fast/table/border-collapsing/004-vertical-expected.txt:
+        * platform/efl/fast/table/floating-th-expected.png:
+        * platform/efl/fast/table/floating-th-expected.txt:
+        * platform/efl/fast/table/frame-and-rules-expected.png:
+        * platform/efl/fast/table/frame-and-rules-expected.txt:
+        * platform/efl/fast/table/multiple-captions-display-expected.png:
+        * platform/efl/fast/table/multiple-captions-display-expected.txt:
+        * platform/efl/fast/table/rowindex-expected.png:
+        * platform/efl/fast/table/rowindex-expected.txt:
+        * platform/efl/fast/table/table-display-types-expected.png:
+        * platform/efl/fast/table/table-display-types-expected.txt:
+        * platform/efl/fast/table/table-display-types-strict-expected.png:
+        * platform/efl/fast/table/table-display-types-strict-expected.txt:
+        * platform/efl/fast/table/table-display-types-vertical-expected.png:
+        * platform/efl/fast/table/table-display-types-vertical-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug119786-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug119786-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug13118-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug13118-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug19061-1-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug19061-1-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug19061-2-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug19061-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug220536-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug220536-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug27038-2-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug27038-2-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug27038-3-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug27038-3-expected.txt: Added.
+        * platform/efl/tables/mozilla/bugs/bug30418-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug30418-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug3263-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug3263-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug38916-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug38916-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug46268-3-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug46268-3-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug46268-5-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug46268-5-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug46268-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug46268-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug46924-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug46924-expected.txt:
+        * platform/efl/tables/mozilla/bugs/bug57378-expected.png:
+        * platform/efl/tables/mozilla/bugs/bug57378-expected.txt:
+        * platform/efl/tables/mozilla/dom/appendTbodyExpand1-expected.png:
+        * platform/efl/tables/mozilla/dom/appendTbodyExpand1-expected.txt:
+        * platform/efl/tables/mozilla/marvin/backgr_layers-opacity-expected.png:
+        * platform/efl/tables/mozilla/marvin/backgr_layers-opacity-expected.txt:
+        * platform/efl/tables/mozilla/marvin/backgr_position-table-expected.png:
+        * platform/efl/tables/mozilla/marvin/backgr_position-table-expected.txt:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-cell-expected.png:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-cell-expected.txt:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-column-expected.png:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-column-expected.txt:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-column-group-expected.png:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-column-group-expected.txt:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-expected.png:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-expected.txt:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-row-expected.png:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-row-expected.txt:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-row-group-expected.png:
+        * platform/efl/tables/mozilla/marvin/backgr_simple-table-row-group-expected.txt:
+        * platform/efl/tables/mozilla/marvin/body_tfoot-expected.png:
+        * platform/efl/tables/mozilla/marvin/body_tfoot-expected.txt:
+        * platform/efl/tables/mozilla/marvin/body_thead-expected.png:
+        * platform/efl/tables/mozilla/marvin/body_thead-expected.txt:
+        * platform/efl/tables/mozilla/marvin/table_rules_groups-expected.png:
+        * platform/efl/tables/mozilla/marvin/table_rules_groups-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_align_center-expected.png:
+        * platform/efl/tables/mozilla/marvin/tbody_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_align_char-expected.png:
+        * platform/efl/tables/mozilla/marvin/tbody_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_align_justify-expected.png:
+        * platform/efl/tables/mozilla/marvin/tbody_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_align_left-expected.png:
+        * platform/efl/tables/mozilla/marvin/tbody_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_align_right-expected.png:
+        * platform/efl/tables/mozilla/marvin/tbody_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_char-expected.png:
+        * platform/efl/tables/mozilla/marvin/tbody_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_valign_baseline-expected.png:
+        * platform/efl/tables/mozilla/marvin/tbody_valign_baseline-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_valign_bottom-expected.png:
+        * platform/efl/tables/mozilla/marvin/tbody_valign_bottom-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_valign_middle-expected.png:
+        * platform/efl/tables/mozilla/marvin/tbody_valign_middle-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tbody_valign_top-expected.png:
+        * platform/efl/tables/mozilla/marvin/tbody_valign_top-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_center-expected.png:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_char-expected.png:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_justify-expected.png:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_left-expected.png:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_right-expected.png:
+        * platform/efl/tables/mozilla/marvin/tfoot_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_char-expected.png:
+        * platform/efl/tables/mozilla/marvin/tfoot_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_valign_baseline-expected.png:
+        * platform/efl/tables/mozilla/marvin/tfoot_valign_baseline-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_valign_bottom-expected.png:
+        * platform/efl/tables/mozilla/marvin/tfoot_valign_bottom-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_valign_middle-expected.png:
+        * platform/efl/tables/mozilla/marvin/tfoot_valign_middle-expected.txt:
+        * platform/efl/tables/mozilla/marvin/tfoot_valign_top-expected.png:
+        * platform/efl/tables/mozilla/marvin/tfoot_valign_top-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_align_center-expected.png:
+        * platform/efl/tables/mozilla/marvin/thead_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_align_char-expected.png:
+        * platform/efl/tables/mozilla/marvin/thead_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_align_justify-expected.png:
+        * platform/efl/tables/mozilla/marvin/thead_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_align_left-expected.png:
+        * platform/efl/tables/mozilla/marvin/thead_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_align_right-expected.png:
+        * platform/efl/tables/mozilla/marvin/thead_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_char-expected.png:
+        * platform/efl/tables/mozilla/marvin/thead_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_valign_baseline-expected.png:
+        * platform/efl/tables/mozilla/marvin/thead_valign_baseline-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_valign_bottom-expected.png:
+        * platform/efl/tables/mozilla/marvin/thead_valign_bottom-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_valign_middle-expected.png:
+        * platform/efl/tables/mozilla/marvin/thead_valign_middle-expected.txt:
+        * platform/efl/tables/mozilla/marvin/thead_valign_top-expected.png:
+        * platform/efl/tables/mozilla/marvin/thead_valign_top-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_table-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_border-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_table_border-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_border_none-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_table_border_none-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_border_px-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_table_border_px-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_table_frame_void-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_table_frame_void-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_center-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_char-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_justify-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_left-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_right-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tbody_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_valign_baseline-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tbody_valign_baseline-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_valign_bottom-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tbody_valign_bottom-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_valign_middle-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tbody_valign_middle-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tbody_valign_top-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tbody_valign_top-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_center-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_char-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_justify-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_left-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_right-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_class-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_class-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_id-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_id-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_style-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_style-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_valign_baseline-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_valign_baseline-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_valign_bottom-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_valign_bottom-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_valign_middle-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_valign_middle-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_valign_top-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_tfoot_valign_top-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_center-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_center-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_char-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_char-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_justify-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_justify-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_left-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_left-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_right-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_align_right-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_class-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_class-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_id-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_id-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_style-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_style-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_valign_baseline-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_valign_baseline-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_valign_bottom-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_valign_bottom-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_valign_middle-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_valign_middle-expected.txt:
+        * platform/efl/tables/mozilla/marvin/x_thead_valign_top-expected.png:
+        * platform/efl/tables/mozilla/marvin/x_thead_valign_top-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug4294-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug4294-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug46268-4-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug46268-4-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug51000-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug51000-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug8499-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/bugs/bug8499-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-cell-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-cell-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-column-group-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-column-group-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-quirks-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-quirks-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-row-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-row-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-row-group-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_border-table-row-group-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_fixed-bg-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_fixed-bg-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_layers-hide-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_layers-hide-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_position-table-cell-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_position-table-cell-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_position-table-column-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_position-table-column-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_position-table-column-group-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_position-table-column-group-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_position-table-row-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_position-table-row-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_position-table-row-group-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/backgr_position-table-row-group-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_overflow_style_reflow_tbody_sibling-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/table_overflow_style_reflow_tbody_sibling-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_above-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_above-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_below-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_below-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_border-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_border-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_box-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_box-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_hsides-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_hsides-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_lhs-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_lhs-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_rhs-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_rhs-expected.txt:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_vsides-expected.png:
+        * platform/efl/tables/mozilla_expected_failures/marvin/x_table_frame_vsides-expected.txt:
+        * platform/mac-mountainlion/fast/forms/input-value-expected.txt:
+        * platform/mac-mountainlion/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/mac/fast/forms/input-value-expected.txt:
+
+2013-11-25  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        Vertical border spacing is doubled between table row groups
+        https://bugs.webkit.org/show_bug.cgi?id=20040
+
+        Reviewed by Csaba Osztrogonác.
+
+        Rebase GTK results after r159747.
+
+        * platform/gtk/fast/forms/input-value-expected.png:
+        * platform/gtk/fast/forms/input-value-expected.txt:
+        * platform/gtk/fast/table/011-expected.txt:
+        * platform/gtk/fast/table/border-collapsing/004-expected.txt:
+        * platform/gtk/fast/table/border-collapsing/004-vertical-expected.png:
+        * platform/gtk/fast/table/border-collapsing/004-vertical-expected.txt:
+        * platform/gtk/fast/table/floating-th-expected.png:
+        * platform/gtk/fast/table/floating-th-expected.txt:
+        * platform/gtk/fast/table/frame-and-rules-expected.png:
+        * platform/gtk/fast/table/frame-and-rules-expected.txt:
+        * platform/gtk/fast/table/rowindex-expected.png:
+        * platform/gtk/fast/table/rowindex-expected.txt:
+        * platform/gtk/fast/table/table-display-types-expected.png:
+        * platform/gtk/fast/table/table-display-types-expected.txt:
+        * platform/gtk/fast/table/table-display-types-strict-expected.png:
+        * platform/gtk/fast/table/table-display-types-strict-expected.txt:
+        * platform/gtk/fast/table/table-display-types-vertical-expected.png:
+        * platform/gtk/fast/table/table-display-types-vertical-expected.txt:
+        * platform/gtk/fast/table/tableInsideCaption-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug10296-1-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug119786-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug119786-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug13118-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug13118-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug19061-1-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug19061-1-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug19061-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug19061-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug220536-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug220536-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug26178-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug27038-1-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug27038-2-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug27038-2-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug27038-3-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug27038-3-expected.txt: Added.
+        * platform/gtk/tables/mozilla/bugs/bug278385-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug30418-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug30418-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug3263-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug3263-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug38916-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug38916-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46268-3-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug46268-3-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46268-5-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug46268-5-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46268-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug46268-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug46924-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug46924-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug55789-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug57378-expected.png:
+        * platform/gtk/tables/mozilla/bugs/bug57378-expected.txt:
+        * platform/gtk/tables/mozilla/dom/appendTbodyExpand1-expected.png:
+        * platform/gtk/tables/mozilla/dom/appendTbodyExpand1-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/backgr_layers-opacity-expected.png:
+        * platform/gtk/tables/mozilla/marvin/backgr_layers-opacity-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/backgr_position-table-expected.png:
+        * platform/gtk/tables/mozilla/marvin/backgr_position-table-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-cell-expected.png:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-cell-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-column-expected.png:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-column-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-column-group-expected.png:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-column-group-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-expected.png:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-row-expected.png:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-row-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-row-group-expected.png:
+        * platform/gtk/tables/mozilla/marvin/backgr_simple-table-row-group-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/body_tfoot-expected.png:
+        * platform/gtk/tables/mozilla/marvin/body_tfoot-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/body_thead-expected.png:
+        * platform/gtk/tables/mozilla/marvin/body_thead-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/table_rules_groups-expected.png:
+        * platform/gtk/tables/mozilla/marvin/table_rules_groups-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tbody_align_center-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tbody_align_center-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tbody_align_char-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tbody_align_char-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tbody_align_justify-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tbody_align_justify-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tbody_align_left-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tbody_align_left-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tbody_align_right-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tbody_align_right-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tbody_char-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tbody_char-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tbody_valign_baseline-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tbody_valign_baseline-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tbody_valign_bottom-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tbody_valign_bottom-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tbody_valign_middle-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tbody_valign_middle-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tbody_valign_top-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tbody_valign_top-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tfoot_align_center-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tfoot_align_center-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tfoot_align_char-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tfoot_align_char-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tfoot_align_justify-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tfoot_align_justify-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tfoot_align_left-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tfoot_align_left-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tfoot_align_right-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tfoot_align_right-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tfoot_char-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tfoot_char-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tfoot_valign_baseline-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tfoot_valign_baseline-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tfoot_valign_bottom-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tfoot_valign_bottom-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tfoot_valign_middle-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tfoot_valign_middle-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/tfoot_valign_top-expected.png:
+        * platform/gtk/tables/mozilla/marvin/tfoot_valign_top-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/thead_align_center-expected.png:
+        * platform/gtk/tables/mozilla/marvin/thead_align_center-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/thead_align_char-expected.png:
+        * platform/gtk/tables/mozilla/marvin/thead_align_char-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/thead_align_justify-expected.png:
+        * platform/gtk/tables/mozilla/marvin/thead_align_justify-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/thead_align_left-expected.png:
+        * platform/gtk/tables/mozilla/marvin/thead_align_left-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/thead_align_right-expected.png:
+        * platform/gtk/tables/mozilla/marvin/thead_align_right-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/thead_char-expected.png:
+        * platform/gtk/tables/mozilla/marvin/thead_char-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/thead_valign_baseline-expected.png:
+        * platform/gtk/tables/mozilla/marvin/thead_valign_baseline-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/thead_valign_middle-expected.png:
+        * platform/gtk/tables/mozilla/marvin/thead_valign_middle-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/thead_valign_top-expected.png:
+        * platform/gtk/tables/mozilla/marvin/thead_valign_top-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_table-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_table-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_table_border-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_table_border-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_table_border_none-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_table_border_none-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_table_border_px-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_table_border_px-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_table_frame_void-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_table_frame_void-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_center-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_center-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_char-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_char-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_justify-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_justify-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_left-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_left-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_right-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_align_right-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_valign_baseline-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_valign_baseline-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_valign_bottom-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_valign_bottom-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_valign_middle-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_valign_middle-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_valign_top-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tbody_valign_top-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_center-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_center-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_char-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_char-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_justify-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_justify-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_left-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_left-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_right-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_align_right-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_class-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_class-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_id-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_id-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_style-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_style-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_valign_baseline-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_valign_baseline-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_valign_bottom-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_valign_bottom-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_valign_middle-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_valign_middle-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_valign_top-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_tfoot_valign_top-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_center-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_center-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_char-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_char-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_justify-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_justify-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_left-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_left-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_right-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_align_right-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_class-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_class-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_id-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_id-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_style-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_style-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_valign_baseline-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_valign_baseline-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_valign_middle-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_valign_middle-expected.txt:
+        * platform/gtk/tables/mozilla/marvin/x_thead_valign_top-expected.png:
+        * platform/gtk/tables/mozilla/marvin/x_thead_valign_top-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug106966-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug4294-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug4294-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug46268-4-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug46268-4-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug51000-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/bugs/bug51000-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/core/backgrounds-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/core/captions1-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/dom/insertTbodyExpand1-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/dom/insertTbodyExpand1-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/dom/insertTbodyRebuild1-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/dom/insertTbodyRebuild1-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-cell-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-cell-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-column-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-column-group-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-column-group-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-quirks-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-quirks-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-row-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-row-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-row-group-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_border-table-row-group-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_fixed-bg-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_fixed-bg-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_layers-hide-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_layers-hide-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_layers-show-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_position-table-cell-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_position-table-cell-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_position-table-column-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_position-table-column-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_position-table-column-group-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_position-table-column-group-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_position-table-row-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_position-table-row-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_position-table-row-group-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/backgr_position-table-row-group-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/table_overflow_style_reflow_tbody_sibling-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/table_overflow_style_reflow_tbody_sibling-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_above-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_above-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_below-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_below-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_border-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_border-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_box-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_box-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_hsides-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_hsides-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_lhs-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_lhs-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_rhs-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_rhs-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_vsides-expected.png:
+        * platform/gtk/tables/mozilla_expected_failures/marvin/x_table_frame_vsides-expected.txt:
+        * platform/gtk/tables/mozilla_expected_failures/other/test4-expected.txt:
+
+2013-11-25  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        Vertical border spacing is doubled between table row groups
+        https://bugs.webkit.org/show_bug.cgi?id=20040
+
+        Reviewed by Csaba Osztrogonác.
+
+        Rebase Mac results after r159747.
+
+        * platform/mac/tables/mozilla/bugs/bug119786-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug19061-2-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug220536-expected.txt: Added.
+        * platform/mac/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug27038-1-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug27038-2-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug27038-3-expected.txt: Added.
+        * platform/mac/tables/mozilla/bugs/bug278385-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug30418-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug38916-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug46268-3-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug46268-5-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug46268-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug46924-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug55789-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug57378-expected.txt:
+        * platform/mac/tables/mozilla/marvin/table_rules_groups-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tbody_align_center-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tbody_align_char-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tbody_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tbody_align_left-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tbody_align_right-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tbody_char-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tbody_valign_baseline-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tbody_valign_bottom-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tbody_valign_middle-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tbody_valign_top-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tfoot_align_center-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tfoot_align_char-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tfoot_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tfoot_align_left-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tfoot_align_right-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tfoot_char-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tfoot_valign_baseline-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tfoot_valign_bottom-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tfoot_valign_middle-expected.txt:
+        * platform/mac/tables/mozilla/marvin/tfoot_valign_top-expected.txt:
+        * platform/mac/tables/mozilla/marvin/thead_align_center-expected.txt:
+        * platform/mac/tables/mozilla/marvin/thead_align_char-expected.txt:
+        * platform/mac/tables/mozilla/marvin/thead_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/thead_align_left-expected.txt:
+        * platform/mac/tables/mozilla/marvin/thead_align_right-expected.txt:
+        * platform/mac/tables/mozilla/marvin/thead_char-expected.txt:
+        * platform/mac/tables/mozilla/marvin/thead_valign_baseline-expected.txt:
+        * platform/mac/tables/mozilla/marvin/thead_valign_bottom-expected.txt:
+        * platform/mac/tables/mozilla/marvin/thead_valign_middle-expected.txt:
+        * platform/mac/tables/mozilla/marvin/thead_valign_top-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_table-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_table_border-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_table_border_none-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_table_border_px-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_table_frame_void-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tbody_align_center-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tbody_align_char-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tbody_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tbody_align_left-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tbody_align_right-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tbody_valign_baseline-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tbody_valign_bottom-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tbody_valign_middle-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tbody_valign_top-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_align_center-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_align_char-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_align_left-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_align_right-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_class-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_id-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_style-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_valign_baseline-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_valign_bottom-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_valign_middle-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_tfoot_valign_top-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_align_center-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_align_char-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_align_justify-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_align_left-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_align_right-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_class-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_id-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_style-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_valign_baseline-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_valign_bottom-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_valign_middle-expected.txt:
+        * platform/mac/tables/mozilla/marvin/x_thead_valign_top-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug106966-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug4294-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug46268-4-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug51000-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/core/backgrounds-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/core/captions1-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/dom/insertTbodyExpand1-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/dom/insertTbodyRebuild1-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_border-table-cell-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_border-table-column-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_border-table-column-group-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_border-table-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_border-table-quirks-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_border-table-row-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_border-table-row-group-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_fixed-bg-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_layers-hide-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_layers-show-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_position-table-cell-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_position-table-column-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_position-table-column-group-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_position-table-row-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/backgr_position-table-row-group-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/table_overflow_style_reflow_tbody_sibling-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/x_table_frame_above-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/x_table_frame_below-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/x_table_frame_border-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/x_table_frame_box-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/x_table_frame_hsides-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/x_table_frame_lhs-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/x_table_frame_rhs-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/marvin/x_table_frame_vsides-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/other/test4-expected.txt:
+
+2013-11-25  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        Vertical border spacing is doubled between table row groups
+        https://bugs.webkit.org/show_bug.cgi?id=20040
+
+        Reviewed by Csaba Osztrogonác.
+
+        First tuple of rebaselined tests for mac. Rebaseline needed for table related tests (100+).
+
+        * fast/table/anonymous-table-section-removed.html:
+        * platform/mac/accessibility/table-detection-expected.txt:
+        * platform/mac/editing/deleting/deletionUI-single-instance-expected.txt:
+        * platform/mac/fast/forms/input-value-expected.txt:
+        * platform/mac/fast/table/011-expected.txt:
+        * platform/mac/fast/table/border-collapsing/004-expected.txt:
+        * platform/mac/fast/table/border-collapsing/004-vertical-expected.txt:
+        * platform/mac/fast/table/floating-th-expected.txt:
+        * platform/mac/fast/table/frame-and-rules-expected.txt:
+        * platform/mac/fast/table/multiple-captions-display-expected.txt:
+        * platform/mac/fast/table/rowindex-expected.txt:
+        * platform/mac/fast/table/table-display-types-expected.txt:
+        * platform/mac/fast/table/table-display-types-strict-expected.txt:
+        * platform/mac/fast/table/table-display-types-vertical-expected.txt:
+        * platform/mac/fast/table/tableInsideCaption-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug10296-1-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug13118-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug19061-1-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug3263-expected.txt:
+        * platform/mac/tables/mozilla/dom/appendTbodyExpand1-expected.txt:
+        * platform/mac/tables/mozilla/marvin/backgr_layers-opacity-expected.txt:
+        * platform/mac/tables/mozilla/marvin/backgr_position-table-expected.txt:
+        * platform/mac/tables/mozilla/marvin/backgr_simple-table-cell-expected.txt:
+        * platform/mac/tables/mozilla/marvin/backgr_simple-table-column-expected.txt:
+        * platform/mac/tables/mozilla/marvin/backgr_simple-table-column-group-expected.txt:
+        * platform/mac/tables/mozilla/marvin/backgr_simple-table-expected.txt:
+        * platform/mac/tables/mozilla/marvin/backgr_simple-table-row-expected.txt:
+        * platform/mac/tables/mozilla/marvin/backgr_simple-table-row-group-expected.txt:
+        * platform/mac/tables/mozilla/marvin/body_tfoot-expected.txt:
+        * platform/mac/tables/mozilla/marvin/body_thead-expected.txt:
+
+2013-11-25  Andres Gomez  <agomez@igalia.com>
+
+        [GStreamer] Seeking fails on media content provided by servers not supporting Range requests
+        https://bugs.webkit.org/show_bug.cgi?id=85994
+
+        Reviewed by Philippe Normand.
+
+        Added test to check that seeking media files on http servers not
+        supporting "Range" requests doesn't trigger an error.
+
+        * http/tests/media/media-seeking-no-ranges-server-expected.txt: Added.
+        * http/tests/media/media-seeking-no-ranges-server.html: Added.
+        * http/tests/media/resources/load-video.php: Added support for new
+        "ranges" paramenter.
+        * http/tests/media/resources/serve-video.php: Added support for
+        new "ranges" paramenter. When "ranges" is "no" we always answer
+        the HTTP status "200 OK" and send the whole file.
+        * platform/mac/TestExpectations: New test skipped in Mac port as
+        media playback download control is passed to AVFoundation that
+        doesn't like fancy PHP URLs like the one used in the test and, in
+        addition, they won't care about HTTP servers not supporting
+        "Range" requests.
+
+2013-11-25  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        Unreviewed GTK gardening. Removed expectations for test that is no
+        longer failing for the GTK bots, according to the flakiness dashboard.
+
+        * platform/gtk-wk2/TestExpectations: Removed expectation.
+        * platform/gtk/TestExpectations: Ditto.
+
+2013-11-25  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening.
+        Managing current failures and removing redundant baselines.
+
+        * platform/gtk-wk2/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/dom/gc-attribute-node-expected.txt: Removed.
+        * platform/gtk/fast/repaint/increasing-region-content-height-expected.txt: Removed.
+
+2013-11-25  Jongwoo Choi  <jw0330.choi@samsung.com>
+
+        [EFL] Need to update EFL TestExpectations file
+        https://bugs.webkit.org/show_bug.cgi?id=124825
+
+        Unreviewed, EFL gardening.
+
+        webgl/1.0.2/conformance/extensions/webgl-compressed-texture-s3tc.html
+        webgl/conformance/extensions/webgl-compressed-texture-s3tc.html
+        Above two tests are passed in Webkit2 layout test after r158798.
+
+        * platform/efl-wk1/TestExpectations:
+        * platform/efl/TestExpectations:
+
+2013-11-24  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        Unreviewed EFL gardening. Rebaselining various tests under fast/
+
+        * platform/efl/fast/backgrounds/background-position-parsing-expected.png:
+        * platform/efl/fast/backgrounds/background-position-parsing-expected.txt:
+        * platform/efl/fast/backgrounds/size/contain-and-cover-zoomed-expected.png:
+        * platform/efl/fast/backgrounds/size/contain-and-cover-zoomed-expected.txt: Added.
+        * platform/efl/fast/css/empty-pseudo-class-expected.png:
+        * platform/efl/fast/css/empty-pseudo-class-expected.txt:
+        * platform/efl/fast/css/fieldset-display-row-expected.txt:
+        * platform/efl/fast/css/first-child-pseudo-class-expected.png:
+        * platform/efl/fast/css/first-child-pseudo-class-expected.txt:
+        * platform/efl/fast/css/last-child-pseudo-class-expected.png:
+        * platform/efl/fast/css/last-child-pseudo-class-expected.txt:
+        * platform/efl/fast/css/only-child-pseudo-class-expected.png:
+        * platform/efl/fast/css/only-child-pseudo-class-expected.txt:
+
+2013-11-24  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        Unreviewed EFL gardening. Rebaselining after r159579.
+
+        * platform/efl/css1/formatting_model/vertical_formatting-expected.txt:
+        * platform/efl/css2.1/t080301-c411-vt-mrgn-00-b-expected.txt:
+        * platform/efl/css2.1/t0905-c414-flt-wrap-00-e-expected.txt:
+
+2013-11-23  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix more fallout from failed attempts at div/mod DFG strength reductions
+        https://bugs.webkit.org/show_bug.cgi?id=124813
+
+        Reviewed by Geoffrey Garen.
+
+        * js/dfg-mod-1-int.html: Added.
+        * js/dfg-mod-1-int-expected.txt: Added.
+        * js/script-tests/dfg-mod-1-int.js: Added.
+        (foo):
+
+2013-11-23  Robert Hogan  <robert@webkit.org>
+
+        Remove lint from expected result.
+
+        Unreviewed.
+
+        * platform/gtk/fast/block/margin-collapse/empty-clear-blocks-expected.txt:
+
+2013-11-23  Robert Hogan  <robert@webkit.org>
+
+        Rebaseline empty-clear-blocks.html after r159575
+
+        Unreviewed, rebaselining.
+
+        * platform/gtk/fast/block/margin-collapse/empty-clear-blocks-expected.txt:
+
+2013-11-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Layout Test editing/deleting/password-delete-performance.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=124781
+
+        Reviewed by Alexey Proskuryakov.
+
+        Removed the test that has been timing out.
+
+        * TestExpectations:
+        * editing/deleting/password-delete-performance.html: Removed.
+
+2013-11-22  Brendan Long  <b.long@cablelabs.com>
+
+        Fire "change" event on TextTrackList when a TextTrack's mode changes
+        https://bugs.webkit.org/show_bug.cgi?id=124789
+
+        Reviewed by Eric Carlson.
+
+        * media/track/track-change-event-expected.txt: Added.
+        * media/track/track-change-event.html: Added.
+
+2013-11-22  Brendan Long  <b.long@cablelabs.com>
+
+        Add TextTrackList::getTrackById().
+        https://bugs.webkit.org/show_bug.cgi?id=124785
+
+        Reviewed by Eric Carlson.
+
+        Update this test to make it more interesting. It now checks that the "id"
+        changes when the <track> id changes, makes sure TextTrack::id is readonly,
+        and looks the track up by id with getTrackById().
+
+        * media/track/track-id-expected.txt:
+        * media/track/track-id.html:
+
+2013-11-22  Filip Pizlo  <fpizlo@apple.com>
+
+        BytecodeGenerator should align the stack according to native conventions
+        https://bugs.webkit.org/show_bug.cgi?id=124735
+
+        Reviewed by Mark Lam.
+
+        * platform/mac/fast/dom/gc-attribute-node-expected.txt: Removed.
+
+2013-11-22  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] When the <box> value is set, derive radii from border-radius
+        https://bugs.webkit.org/show_bug.cgi?id=124228
+
+        Reviewed by Dean Jackson.
+
+        * fast/shapes/shape-outside-floats/shape-outside-rounded-boxes-001-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-rounded-boxes-001.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-rounded-boxes-002-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-rounded-boxes-002.html: Added.
+
+2013-11-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Layout Test editing/deleting/password-delete-performance.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=124781
+
+        * TestExpectations: Skipped it, running a test that almost always times out makes little sense.
+
+2013-11-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Import more W3C tests for parsing template elements
+        https://bugs.webkit.org/show_bug.cgi?id=124763
+
+        Reviewed by Antti Koivisto.
+
+        Updated the testharness.js/css to bc4639ba51b62158d94bb4fc6884b23453f3f7a1.
+
+        * resources/testharness.css:
+        * resources/testharness.js:
+        * resources/testharnessreport.js: Use innerText instead of innerHTML to avoid interpreting markup inside
+        the status and message as HTML.
+
+2013-11-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening.
+        Rebaselining after r159575 and r159579.
+
+        * platform/gtk/css1/formatting_model/vertical_formatting-expected.txt:
+        * platform/gtk/css2.1/t0905-c414-flt-wrap-00-e-expected.txt:
+        * platform/gtk/editing/deleting/delete-by-word-001-expected.txt: Added.
+        * platform/gtk/editing/deleting/delete-by-word-002-expected.txt: Added.
+        * platform/gtk/editing/input/option-page-up-down-expected.txt: Added.
+        * platform/gtk/editing/input/scroll-viewport-page-up-down-expected.txt: Added.
+        * platform/gtk/editing/undo/undo-deleteWord-expected.txt: Added.
+        * platform/gtk/fast/block/float/024-expected.txt:
+        * platform/gtk/fast/block/margin-collapse/025-expected.txt:
+        * platform/gtk/fast/block/margin-collapse/block-inside-inline/025-expected.txt:
+
+2013-11-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening.
+        Adding failure expectations for tests that regressed with r159572.
+
+        * platform/gtk/TestExpectations:
+
+2013-11-18  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Improve content-sized track layout
+        https://bugs.webkit.org/show_bug.cgi?id=124408
+
+        Reviewed by Dean Jackson.
+
+        From Blink r157633 by <jchaffraix@chromium.org>
+
+        New test to verify that grid items with percentage logical
+        {min|max}-height resolve their sizes properly.
+
+        * fast/css-grid-layout/grid-item-with-percent-min-max-height-dynamic-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-with-percent-min-max-height-dynamic.html: Added.
+
+2013-11-08  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Run the content-sized tracks sizing algorithm only when required
+        https://bugs.webkit.org/show_bug.cgi?id=124039
+
+        Reviewed by Dean Jackson.
+
+        From Blink r156028 and r156168 by <jchaffraix@chromium.org>.
+
+        Subtle baseline change due to grids triggering less layouts, which
+        changes the frame rects between 2 subsequent layouts thus changing
+        the repaint rectangles.
+
+        * fast/css-grid-layout/grid-item-change-column-repaint-expected.txt:
+        * fast/css-grid-layout/grid-item-change-row-repaint-expected.txt:
+
+2013-11-21  Frédéric Wang  <fred.wang@free.fr>
+
+        Map the dir attribute to the CSS direction property.
+        https://bugs.webkit.org/show_bug.cgi?id=124572.
+
+        Reviewed by Darin Adler.
+
+        * mathml/presentation/direction-overall-expected.html: test that dir does not apply to msqrt
+        * mathml/presentation/direction-overall.html:
+        * mathml/presentation/mstyle-css-attributes-expected.html: Added.
+        * mathml/presentation/mstyle-css-attributes.html: Added.
+
+        Add more tests for presentation attributes on mstyle.
+
+2013-11-21  Bear Travis  <betravis@adobe.com>
+
+        Web Inspector: [CSS Shapes] Refactor highlighting code to decrease Shapes API surface
+        https://bugs.webkit.org/show_bug.cgi?id=124737
+
+        Reviewed by Timothy Hatcher.
+
+        The shapes paths are now drawn in shape-coordinate space before being translated to
+        renderer space. With different writing modes, shapes may have their coordinates
+        translated. For example, a rectangle specified as four points [top left, top right,
+        bottom right, bottom left] in vertical-lr space would appear as [top left, bottom left,
+        bottom right, top right] in horizontal-tb space. Adjusting the previous tests, and
+        adding a test for the new box value.
+
+        * inspector-protocol/model/highlight-shape-outside-expected.txt:
+        * inspector-protocol/model/highlight-shape-outside.html:
+
+2013-11-21  Sun-woo Nam  <sunny.nam@samsung.com>
+
+        [EFL] Layout tests with editing need to be rebaselined.
+        https://bugs.webkit.org/show_bug.cgi?id=124751
+
+        Unreviewed, EFL rebaseline.
+
+        editing/input/reveal-caret-of-multiline-contenteditable.html test is rebaselined after r137239.
+        editing/selection/5354455-2.html test is rebaselined after r133000.
+        Rebaseline the expected results to suit editing-related performance in EFL.
+
+        * platform/efl-wk1/editing/input/reveal-caret-of-multiline-contenteditable-expected.txt:
+        * platform/efl/editing/selection/5354455-2-expected.txt:
+
+2013-11-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Import some W3C tests for HTML template element
+        https://bugs.webkit.org/show_bug.cgi?id=124699
+
+        Reviewed by Antti Koivisto.
+
+        * imported/w3c/: Added.
+        * platform/win/TestExpectations: Skip the imported tests since the template element is disabled on Windows.
+
+2013-11-21  Alexey Proskuryakov  <ap@apple.com>
+
+        Implement WebCrypto wrapKey
+        https://bugs.webkit.org/show_bug.cgi?id=124738
+
+        Reviewed by Anders Carlsson.
+
+        * crypto/subtle/aes-cbc-wrap-rsa-expected.txt: Added.
+        * crypto/subtle/aes-cbc-wrap-rsa-non-extractable-expected.txt: Added.
+        * crypto/subtle/aes-cbc-wrap-rsa-non-extractable.html: Added.
+        * crypto/subtle/aes-cbc-wrap-rsa.html: Added.
+
+        * crypto/subtle/aes-export-key-expected.txt:
+        * crypto/subtle/hmac-export-key-expected.txt:
+        There is no longer a console message, the error is in an exception.
+
+2013-11-21  Radu Stavila  <stavila@adobe.com>
+
+        Added test for :hover and javascript events on the visual overflow of a region.
+
+        [CSS Regions] Content in a region's visible overflow does not trigger :hover state, nor JavaScript events
+        https://bugs.webkit.org/show_bug.cgi?id=112010
+
+        Reviewed by Antti Koivisto.
+
+        * fast/regions/hover-and-js-in-visual-overflow-expected.html: Added.
+        * fast/regions/hover-and-js-in-visual-overflow.html: Added.
+
+2013-11-21  Alexey Proskuryakov  <ap@apple.com>
+
+        Implement WebCrypto unwrapKey
+        https://bugs.webkit.org/show_bug.cgi?id=124725
+
+        Reviewed by Anders Carlsson.
+
+        * crypto/subtle/aes-cbc-unwrap-failure-expected.txt: Added.
+        * crypto/subtle/aes-cbc-unwrap-failure.html: Added.
+        * crypto/subtle/aes-cbc-unwrap-rsa-expected.txt: Added.
+        * crypto/subtle/aes-cbc-unwrap-rsa.html: Added.
+
+2013-11-21  Radu Stavila  <stavila@adobe.com>
+
+        Added test for the overflow of a region being painted across multiple tiles.
+        Added test for correct repainting of a region's overflow.
+
+        [CSS Regions] Overflow areas from regions do not redraw
+        https://bugs.webkit.org/show_bug.cgi?id=117329
+
+        Reviewed by Antti Koivisto.
+
+        * fast/regions/regions-overflow-tile-expected.html: Added.
+        * fast/regions/regions-overflow-tile.html: Added.
+        * fast/repaint/repaint-regions-overflow-expected.txt: Added.
+        * fast/repaint/repaint-regions-overflow.html: Added.
+
+2013-11-21  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Float get sliced if its container has forced break and is less tall than float
+        https://bugs.webkit.org/show_bug.cgi?id=124205
+
+        Added test for the case when a float is overflowing a region due to a forced break.
+
+        Reviewed by Antti Koivisto.
+
+        * fast/regions/float-slicing-on-forced-break-expected.html: Added.
+        * fast/regions/float-slicing-on-forced-break.html: Added.
+
+2013-11-21  Mihai Maerean  <mmaerean@adobe.com>
+
+        Fix hover area for divs with css transforms
+        https://bugs.webkit.org/show_bug.cgi?id=124647
+
+        Reviewed by Allan Sandfeld Jensen.
+
+        * transforms/3d/hit-testing/hover-rotated-negative-z.html: Added.
+        * transforms/3d/hit-testing/hover-rotated-negative-z-expected.txt: Added.
+
+2013-11-21  Radu Stavila  <stavila@adobe.com>
+
+        Created test for positioned fragmented content which overflows the regions.
+
+        [CSS Regions] Fragmented content that is relatively positioned get sliced (and overflows in the next region)
+        https://bugs.webkit.org/show_bug.cgi?id=117122
+
+        Reviewed by Antti Koivisto.
+
+        * fast/regions/positioned-fragmented-content-expected.html: Added.
+        * fast/regions/positioned-fragmented-content.html: Added.
+
+2013-11-21  Radu Stavila  <stavila@adobe.com>
+
+        Added test for visual overflow with transformed content in regions.
+
+        [CSS Regions] Transform applied to content node causes overflow to be hidden
+        https://bugs.webkit.org/show_bug.cgi?id=116242
+
+        Reviewed by Antti Koivisto.
+
+        * fast/regions/region-visual-overflow-transform-expected.html: Added.
+        * fast/regions/region-visual-overflow-transform.html: Added.
+
+2013-11-21  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] Fix accessibility media-element expectation
+        https://bugs.webkit.org/show_bug.cgi?id=124711
+
+        Unreviewed EFL gardening.
+
+        Changing main element AXRole AXUnknown -> AXEmbedded.
+
+        * platform/efl/accessibility/media-element-expected.txt:
+
+2013-11-21  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening.
+
+        Update baselines after r159575.
+
+        * platform/efl/fast/block/float/024-expected.txt:
+        * platform/efl/fast/block/margin-collapse/025-expected.txt:
+        * platform/efl/fast/block/margin-collapse/block-inside-inline/025-expected.txt:
+        * platform/efl/fast/block/margin-collapse/empty-clear-blocks-expected.txt:
+
+2013-11-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix Range.insertNode when the inserted node is in the same container as the Range
+        https://bugs.webkit.org/show_bug.cgi?id=123957
+
+        Reviewed by Antti Koivisto.
+
+        Merge https://chromium.googlesource.com/chromium/blink/+/fb6ca1f488703e8d4f20ce6449cc8ea210be6edb
+
+        Used better labels between divs, and added more evalAndLog and shouldBe so that
+        the expected result is self-explanatory.
+
+        * fast/dom/Range/range-insertNode-same-container-expected.txt: Added.
+        * fast/dom/Range/range-insertNode-same-container.html: Added.
+
+2013-11-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        nextBoundary and previousBoundary are very slow when there is a password field
+        https://bugs.webkit.org/show_bug.cgi?id=123973
+
+        Reviewed by Antti Koivisto.
+
+        * editing/deleting/password-delete-performance-expected.txt: Added.
+        * editing/deleting/password-delete-performance.html: Added.
+
+2013-11-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        HTML parser should not associate elements inside templates with forms
+        https://bugs.webkit.org/show_bug.cgi?id=117779
+
+        Reviewed by Antti Koivisto.
+
+        * fast/dom/HTMLTemplateElement/no-form-association-expected.txt: Added.
+        * fast/dom/HTMLTemplateElement/no-form-association.html: Added.
+
+2013-11-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Hoist <template> to head when found between </head> and <body> for consistency with <script>
+        https://bugs.webkit.org/show_bug.cgi?id=123949
+
+        Reviewed by Antti Koivisto.
+
+        Merge https://chromium.googlesource.com/chromium/blink/+/835fb468fd211054a920fb7612a6dc5043662495
+        and added two more test cases discussed in https://www.w3.org/Bugs/Public/show_bug.cgi?id=23002.
+
+        * html5lib/resources/template.dat:
+
+2013-11-20  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Implement visual overflow for first & last regions
+        https://bugs.webkit.org/show_bug.cgi?id=118665
+
+        Rebased some tests due to regions layers changes.
+        Updated some tests to increase clarity. Some of them were only passing because two
+        regions were close together and the fact that an element was being painted
+        inside the wrong region was not visible. Floats are now also unsplittable.
+                - bottom-overflow-out-of-first-region
+                - float-pushed-width-change-2
+                - float-pushed-width-change
+                - webkit-flow-float-unable-to-push
+
+        Changed top-overflow-out-of-second-region to reftest.
+
+        Added new tests for testing the visual overflow in different situations 
+        (transformed, inline, opacity, floating).
+
+        Reviewed by David Hyatt.
+
+        * fast/regions/bottom-overflow-out-of-first-region-expected.html:
+        * fast/regions/bottom-overflow-out-of-first-region.html:
+        * fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-005-expected.html:
+        * fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-005.html:
+        * fast/regions/element-in-named-flow-absolute-from-fixed-expected.txt:
+        * fast/regions/element-in-named-flow-fixed-from-absolute-expected.txt:
+        * fast/regions/element-inflow-fixed-from-outflow-static-expected.txt:
+        * fast/regions/element-outflow-static-from-inflow-fixed-expected.txt:
+        * fast/regions/float-pushed-width-change-2-expected.html:
+        * fast/regions/float-pushed-width-change-2.html:
+        * fast/regions/float-pushed-width-change-expected.html:
+        * fast/regions/float-pushed-width-change.html:
+        * fast/regions/layers/dynamic-layer-added-with-no-layout-expected.txt: Added.
+        * fast/regions/layers/dynamic-layer-removed-with-no-layout-expected.txt: Added.
+        * fast/regions/layers/regions-promoted-to-layers-expected.txt: Added.
+        * fast/regions/layers/regions-promoted-to-layers-horizontal-bt-expected.txt: Added.
+        * fast/regions/layers/regions-promoted-to-layers-vertical-lr-expected.txt: Added.
+        * fast/regions/layers/regions-promoted-to-layers-vertical-rl-expected.txt: Added.
+        * fast/regions/outline-sides-in-region-expected.html:
+        * fast/regions/outline-sides-in-region.html:
+        * fast/regions/overflow-first-and-last-regions-expected.html: Added.
+        * fast/regions/overflow-first-and-last-regions-in-container-hidden-expected.html: Added.
+        * fast/regions/overflow-first-and-last-regions-in-container-hidden.html: Added.
+        * fast/regions/overflow-first-and-last-regions.html: Added.
+        * fast/regions/overflow-last-region-expected.html: Removed.
+        * fast/regions/overflow-last-region.html: Removed.
+        * fast/regions/overflow-nested-regions-expected.html: Added.
+        * fast/regions/overflow-nested-regions.html: Added.
+        * fast/regions/overflow-region-float-expected.html: Added.
+        * fast/regions/overflow-region-float.html: Added.
+        * fast/regions/overflow-region-inline-expected.html: Added.
+        * fast/regions/overflow-region-inline.html: Added.
+        * fast/regions/overflow-region-transform-expected.html: Added.
+        * fast/regions/overflow-region-transform.html: Added.
+        * fast/regions/overflow-scrollable-rotated-fragment-expected.html:
+        * fast/regions/overflow-scrollable-rotated-fragment.html:
+        * fast/regions/top-overflow-out-of-second-region-expected.html: Copied from LayoutTests/fast/regions/top-overflow-out-of-second-region.html.
+        * fast/regions/top-overflow-out-of-second-region.html:
+        * fast/regions/webkit-flow-float-unable-to-push-expected.html:
+        * fast/regions/webkit-flow-float-unable-to-push.html:
+        * platform/gtk/fast/regions/text-region-split-vertical-rl-expected.txt: Removed.
+        * platform/gtk/TestExpectations: Add new test expectations for failing tests.
+        * platform/efl/TestExpectations: Add new test expectations for failing tests.
+        * platform/mac-wk2/TestExpectations: 
+        * platform/mac/fast/regions/top-overflow-out-of-second-region-expected.png: Removed.
+        * platform/mac/fast/regions/top-overflow-out-of-second-region-expected.txt: Removed.
+
+2013-11-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Test a template element appearing after a closing body tag in html5lib
+        https://bugs.webkit.org/show_bug.cgi?id=123864
+
+        Reviewed by Antti Koivisto.
+
+        Merge https://chromium.googlesource.com/chromium/blink/+/019d5daa14314972ac6b3e42e9446823ad9cffd2
+
+        * html5lib/resources/template.dat:
+
+2013-11-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [HTML parser] reset insertion mode appropriate must check for "in select in table" mode
+        https://bugs.webkit.org/show_bug.cgi?id=123850
+
+        Reviewed by Antti Koivisto.
+
+        * html5lib/resources/template.dat:
+
+2013-11-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Clear TemplateContentDocumentFragment::m_host when HTMLTemplateElement is destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=122806
+
+        Reviewed by Antti Koivisto.
+
+        * fast/dom/HTMLTemplateElement/content-outlives-template-crash-expected.txt: Added.
+        * fast/dom/HTMLTemplateElement/content-outlives-template-crash.html: Added.
+
+2013-11-20  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Implement CSS -webkit-alt property (text alternative for generated content pseudo-elements ::before and ::after)
+        https://bugs.webkit.org/show_bug.cgi?id=120188
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac/accessibility/webkit-alt-for-css-content-expected.txt: Added.
+        * platform/mac/accessibility/webkit-alt-for-css-content.html: Added.
+
+2013-11-20  Dean Jackson  <dino@apple.com>
+
+        Unreviewed. Updated expected result following
+        https://bugs.webkit.org/show_bug.cgi?id=124666
+
+        * platform/mac/fast/block/margin-collapse/empty-clear-blocks-expected.png:
+        * platform/mac/fast/block/margin-collapse/empty-clear-blocks-expected.txt:
+
+2013-11-20  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [css shapes] Parse new circle shape syntax
+        https://bugs.webkit.org/show_bug.cgi?id=124618
+
+        Reviewed by Antti Koivisto.
+
+        Test that the new circle shape syntax is properly parsed.
+
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+        * fast/masking/parsing-clip-path-shape-expected.txt:
+        * fast/masking/parsing-clip-path-shape.html:
+
+2013-11-20  Antti Koivisto  <antti@apple.com>
+
+        Simple line layout should support floats
+        https://bugs.webkit.org/show_bug.cgi?id=124666
+
+        Reviewed by Dave Hyatt.
+
+        * fast/text/simple-lines-float-compare-expected.html: Added.
+        * fast/text/simple-lines-float-compare.html: Added.
+        * fast/text/simple-lines-float-expected.html: Added.
+        * fast/text/simple-lines-float.html: Added.
+
+2013-11-20  Robert Hogan  <robert@webkit.org>
+
+        REGRESSION(r127163): Respect clearance set on ancestors when placing floats
+        https://bugs.webkit.org/show_bug.cgi?id=119979
+
+        Reviewed by David Hyatt.
+
+        * fast/block/float/clear-negative-margin-top-expected.html:
+        * fast/block/float/clear-negative-margin-top.html:
+        * fast/block/margin-collapse/self-collapsing-block-with-float-descendants-expected.html: Added.
+        * fast/block/margin-collapse/self-collapsing-block-with-float-descendants.html: Added.
+        * platform/mac/fast/block/float/024-expected.txt:
+        * platform/mac/fast/block/margin-collapse/025-expected.txt:
+        * platform/mac/fast/block/margin-collapse/block-inside-inline/025-expected.txt:
+        * platform/mac/fast/block/margin-collapse/empty-clear-blocks-expected.txt:
+
+2013-11-20  Dean Jackson  <dino@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=124637
+
+        Unreviewed. Adding HTMLTemplateElement to global constructor
+        test, but this time for more platforms. I'm not sure if
+        GTK and EFL need this too.
+
+        * platform/mac-mountainlion/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2013-11-20  Dean Jackson  <dino@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=124637
+
+        Unreviewed. Adding HTMLTemplateElement to global constructor
+        test after r159550.
+
+        * js/dom/global-constructors-attributes-expected.txt:
+
+2013-11-20  Dean Jackson  <dino@apple.com>
+
+        Unreviewed. Trying to fix tests added in r159545.
+
+        * js/regress/global-var-const-infer-fire-from-opt.html:
+        * js/regress/global-var-const-infer.html:
+
+2013-11-20  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        * platform/efl/TestExpectations: Add new test expectations for failing tests.
+
+2013-11-20  Andrzej Badowski  <a.badowski@samsung.com>
+
+        [EFL] <video> and <audio> should be accessible.
+        https://bugs.webkit.org/show_bug.cgi?id=124494
+
+        Reviewed by Gyuyoung Kim.
+
+        Added new accessibility baseline for accessibility/media-elemen.html.
+
+        * platform/efl-wk1/TestExpectations: test is no longer failing.
+        * platform/efl-wk2/TestExpectations: test is no longer failing.
+        * platform/efl/accessibility/media-element-expected.txt: Added.
+
+2013-11-20  Antoine Quint  <graouts@apple.com>
+
+        Cannot animate "points" attribute for <svg:polygon>
+        https://bugs.webkit.org/show_bug.cgi?id=21371
+
+        Reviewed by Antti Koivisto.
+
+        New tests covering the actual application of the animated value
+        for the "points" attribute of the SVG <polygon> and <polyline> elements.
+
+        * svg/animations/polygon-set-expected.svg: Added.
+        * svg/animations/polygon-set.svg: Added.
+        * svg/animations/polyline-set-expected.svg: Added.
+        * svg/animations/polyline-set.svg: Added.
+
+2013-11-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        Configurability test of prototype's properties in fast/dom/webidl-operations-on-node-prototype.html is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=124602
+
+        Reviewed by Darin Adler.
+
+        The test case landed in r159100 checks, among other tests, for configurability of properties on the Node's
+        interface prototype object. The test deletes the tested property from the prototype object and checks that
+        the property is undefined. This works for the Node's prototype object but is not technically correct since
+        there might be a property with the same identifier that's located upwards on the prototype chain.
+
+        Rather than testing that the property on the prototype object is undefined after it is deleted, a failure
+        should be reported if the value of the property remains the same even after it's deleted from the object.
+
+        * fast/dom/webidl-operations-on-node-prototype.html:
+
+2013-11-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable HTMLTemplateElement on Mac port
+        https://bugs.webkit.org/show_bug.cgi?id=124637
+
+        Reviewed by Tim Horton.
+
+        Unskip template element tests except fast/dom/HTMLTemplateElement/cycles-in-shadow.html
+        which depends on ENABLE(SHADOW_DOM).
+
+        * platform/mac/TestExpectations:
+
+2013-11-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Infer constant global variables
+        https://bugs.webkit.org/show_bug.cgi?id=124464
+
+        Reviewed by Sam Weinig.
+
+        * js/regress/global-var-const-infer-expected.txt: Added.
+        * js/regress/global-var-const-infer-fire-from-opt-expected.txt: Added.
+        * js/regress/global-var-const-infer-fire-from-opt.html: Added.
+        * js/regress/global-var-const-infer.html: Added.
+        * js/regress/script-tests/global-var-const-infer-fire-from-opt.js: Added.
+        (foo):
+        (setA):
+        (setB):
+        (check):
+        * js/regress/script-tests/global-var-const-infer.js: Added.
+        (foo):
+        (check):
+
+2013-11-19  Sun-woo Nam  <sunny.nam@samsung.com>
+
+        [EFL] Layout tests need to be rebaselined.
+        https://bugs.webkit.org/show_bug.cgi?id=124622
+
+        Unreviewed, EFL rebaseline.
+
+        EFL tests are rebaselined after r106181, r128728 and r133754.
+
+        * platform/efl-wk2/TestExpectations:
+        * platform/efl/fast/replaced/applet-disabled-positioned-expected.txt:
+        * platform/efl/fast/replaced/applet-rendering-java-disabled-expected.txt:
+        * platform/efl/fast/text/shaping/shaping-script-order-expected.txt:
+        * platform/efl/fast/writing-mode/japanese-ruby-horizontal-bt-expected.txt:
+
+2013-11-19  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes] Parse [<box> || <shape>] values
+        https://bugs.webkit.org/show_bug.cgi?id=124426
+
+        Reviewed by Dirk Schulze.
+
+        Test that <box> <shape> and <shape> <box> values are both supported and successfully parsed.
+        Currently, we order the parsed result as <shape> <box> when the value is output through
+        the CSSOM. Also test that other combinations with shapes and boxes are not parsed.
+
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-inside.html:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-outside.html:
+        * fast/shapes/parsing/parsing-test-utils.js:
+
+2013-11-19  Mark Lam  <mark.lam@apple.com>
+
+        Add tracking of endColumn for Executables.
+        https://bugs.webkit.org/show_bug.cgi?id=124245.
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/events/window-onerror2-expected.txt:
+        * inspector-protocol/debugger/setBreakpoint-actions-expected.txt:
+        * js/dom/script-start-end-locations-expected.txt: Added.
+        * js/dom/script-start-end-locations.html: Added.
+        * js/dom/script-tests/script-start-end-locations.js: Added.
+        * js/dom/stack-trace-expected.txt:
+        * js/dom/stack-trace.html:
+        - Changed tabs to spaces. The tabs were making it hard to visually confirm
+          the exected column values for 2 functions.
+
+2013-11-15  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Support fastSeek() in MediaSource.
+        https://bugs.webkit.org/show_bug.cgi?id=124422
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-fastseek-expected.txt: Added.
+        * media/media-source/media-source-fastseek.html: Added.
+        * media/media-source/mock-media-source.js:
+        (var):
+
+2013-11-19  Dean Jackson  <dino@apple.com>
+
+        fast/forms/form-associated-element-crash.html often times out on Mavericks WK1
+        https://bugs.webkit.org/show_bug.cgi?id=124593
+
+        Marked as occasionally timing out.
+
+        * platform/mac/TestExpectations:
+
+2013-11-19  Frédéric Wang  <fred.wang@free.fr>
+
+        Map the dir attribute to the CSS direction property.
+        https://bugs.webkit.org/show_bug.cgi?id=124572.
+
+        Reviewed by Darin Adler.
+
+        * mathml/presentation/direction-expected.html: add more tests.
+        * mathml/presentation/direction-overall-expected.html: Added.
+        * mathml/presentation/direction-overall.html: Added.
+        * mathml/presentation/direction-token-expected.html: Added.
+        * mathml/presentation/direction-token.html: Added.
+        * mathml/presentation/direction.html: add more tests.
+
+2013-11-19  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        * platform/efl/TestExpectations: Add new failure test expectations.
+
+2013-11-19  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL gardening. Adding a crash expectation.
+
+        * platform/efl/TestExpectations:
+
+2013-11-19  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL gardening. Adding a crash expectation for a test regarding
+        object-fit. 
+
+        * platform/efl/TestExpectations:
+
+2013-11-19  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL gardening. descent-clip-in-scaled-page.html is being passed
+        after enabling subpixel layout on EFL port.
+
+        * platform/efl/TestExpectations:
+
+2013-11-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK gardening. Adding failure expectations for the remaining layout test failures.
+
+        * platform/gtk/TestExpectations:
+
+2013-11-18  Samuel White  <samuel_white@apple.com>
+
+        AX: aria-labelledby should be used in preference to aria-labeledby
+        https://bugs.webkit.org/show_bug.cgi?id=62351
+
+        Reviewed by Chris Fleizach.
+
+        Added test to make sure aria-labelledby overrides aria-labeledby correctly.
+
+        * accessibility/aria-labelledby-overrides-aria-labeledby-expected.txt: Added.
+        * accessibility/aria-labelledby-overrides-aria-labeledby.html: Added.
+
+2013-11-18  Zalan Bujtas  <zalan@apple.com>
+
+        use after free in WebCore::DocumentOrderedMap::remove / WebCore::TreeScope::removeElementById
+        https://bugs.webkit.org/show_bug.cgi?id=121324
+
+        Reviewed by Ryosuke Niwa.
+
+        Update the document ordered map for an image element before dispatching load or error events
+        when it's inserted into a document.
+
+        * fast/dom/modify-node-and-while-in-the-callback-too-crash-expected.txt: Added.
+        * fast/dom/modify-node-and-while-in-the-callback-too-crash.html: Added.
+
 2013-11-18  Sun-woo Nam  <sunny.nam@samsung.com>
 
         [EFL] Layout tests need to be rebaselined.

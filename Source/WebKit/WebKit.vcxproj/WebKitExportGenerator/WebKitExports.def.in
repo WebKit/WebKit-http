@@ -116,6 +116,7 @@ EXPORTS
         symbolWithPointer(??1HitTestResult@WebCore@@QAE@XZ, ??1HitTestResult@WebCore@@QEAA@XZ)
         symbolWithPointer(??1Mutex@WTF@@QAE@XZ, ??1Mutex@WTF@@QEAA@XZ)
         symbolWithPointer(??1ThreadCondition@WTF@@QAE@XZ, ??1ThreadCondition@WTF@@QEAA@XZ)
+        ?workerThreadCount@WorkerThread@WebCore@@SAIXZ
 #if USE(CAIRO)
         symbolWithPointer(??$derefIfNotNull@U_cairo_surface@@@WTF@@YAXPAU_cairo_surface@@@Z, ??$derefIfNotNull@U_cairo_surface@@@WTF@@YAXPEAU_cairo_surface@@@Z)
         symbolWithPointer(??$refIfNotNull@U_cairo_surface@@@WTF@@YAXPAU_cairo_surface@@@Z, ??$refIfNotNull@U_cairo_surface@@@WTF@@YAXPEAU_cairo_surface@@@Z)
@@ -438,10 +439,6 @@ EXPORTS
         symbolWithPointer(?toUInt64@WebCore@@YA_KPAVExecState@JSC@@VJSValue@3@W4IntegerConversionConfiguration@1@@Z, ?toUInt64@WebCore@@YA_KPEAVExecState@JSC@@VJSValue@3@W4IntegerConversionConfiguration@1@@Z)
         symbolWithPointer(?commonVM@JSDOMWindowBase@WebCore@@SAPAVVM@JSC@@XZ, ?commonVM@JSDOMWindowBase@WebCore@@SAPEAVVM@JSC@@XZ)
 
-#if ENABLE(WORKERS)
-        ?workerThreadCount@WorkerThread@WebCore@@SAIXZ
-#endif
-
 #if ENABLE(VIDEO)
         symbolWithPointer(?toTimeRanges@WebCore@@YAPAVTimeRanges@1@VJSValue@JSC@@@Z, ?toTimeRanges@WebCore@@YAPEAVTimeRanges@1@VJSValue@JSC@@@Z)
         symbolWithPointer(?toJS@WebCore@@YA?AVJSValue@JSC@@PAVExecState@3@PAVJSDOMGlobalObject@1@PAVTimeRanges@1@@Z, ?toJS@WebCore@@YA?AVJSValue@JSC@@PEAVExecState@3@PEAVJSDOMGlobalObject@1@PEAVTimeRanges@1@@Z)
@@ -462,3 +459,4 @@ EXPORTS
         symbolWithPointer(?storeUpdatedQuotaForOrigin@ApplicationCacheStorage@WebCore@@QAE_NPBVSecurityOrigin@2@_J@Z, ?storeUpdatedQuotaForOrigin@ApplicationCacheStorage@WebCore@@QEAA_NPEBVSecurityOrigin@2@_J@Z)
         symbolWithPointer(?cacheStorage@WebCore@@YAAAVApplicationCacheStorage@1@XZ, ?cacheStorage@WebCore@@YAAEAVApplicationCacheStorage@1@XZ)
         symbolWithPointer(?setDefaultOriginQuota@ApplicationCacheStorage@WebCore@@QAEX_J@Z, ?setDefaultOriginQuota@ApplicationCacheStorage@WebCore@@QEAAX_J@Z)
+        symbolWithPointer(?vm@ScriptExecutionContext@WebCore@@QAEPAVVM@JSC@@XZ, ?vm@ScriptExecutionContext@WebCore@@QEAAPEAVVM@JSC@@XZ)

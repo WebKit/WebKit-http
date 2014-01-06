@@ -76,6 +76,7 @@ interface AccessibilityUIElement {
     readonly attribute boolean isFocusable;
     readonly attribute boolean isSelectable;
     readonly attribute boolean isSelected;
+    readonly attribute boolean isSelectedOptionActive;
     readonly attribute boolean isMultiSelectable;
     readonly attribute boolean isExpanded;
     readonly attribute boolean isChecked;
@@ -144,6 +145,7 @@ interface AccessibilityUIElement {
     DOMString stringForRange(unsigned long location, unsigned long length);
     DOMString attributedStringForRange(unsigned long location, unsigned long length);
     boolean attributedStringRangeIsMisspelled(unsigned long location, unsigned long length);
+    [PassContext] unsigned int uiElementCountForSearchPredicate(AccessibilityUIElement startElement, boolean isDirectionNext, object searchKey, DOMString searchText, boolean visibleOnly);
     [PassContext] AccessibilityUIElement uiElementForSearchPredicate(AccessibilityUIElement startElement, boolean isDirectionNext, object searchKey, DOMString searchText, boolean visibleOnly);
     void setSelectedTextRange(unsigned long location, unsigned long length);
 

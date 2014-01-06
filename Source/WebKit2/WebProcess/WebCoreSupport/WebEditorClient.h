@@ -58,7 +58,7 @@ private:
     virtual bool shouldInsertText(const String&, WebCore::Range*, WebCore::EditorInsertAction) OVERRIDE;
     virtual bool shouldChangeSelectedRange(WebCore::Range* fromRange, WebCore::Range* toRange, WebCore::EAffinity, bool stillSelecting) OVERRIDE;
     
-    virtual bool shouldApplyStyle(WebCore::StylePropertySet*, WebCore::Range*) OVERRIDE;
+    virtual bool shouldApplyStyle(WebCore::StyleProperties*, WebCore::Range*) OVERRIDE;
     virtual bool shouldMoveRangeAfterDelete(WebCore::Range*, WebCore::Range*) OVERRIDE;
 
     virtual void didBeginEditing() OVERRIDE;
@@ -151,6 +151,20 @@ private:
     virtual void requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>) OVERRIDE;
 #if PLATFORM(GTK)
     virtual bool shouldShowUnicodeMenu() OVERRIDE;
+#endif
+#if PLATFORM(IOS)
+    virtual void suppressSelectionNotifications() OVERRIDE;
+    virtual void restoreSelectionNotifications() OVERRIDE;
+    virtual void startDelayingAndCoalescingContentChangeNotifications() OVERRIDE;
+    virtual void stopDelayingAndCoalescingContentChangeNotifications() OVERRIDE;
+    virtual void writeDataToPasteboard(NSDictionary*) OVERRIDE;
+    virtual NSArray *supportedPasteboardTypesForCurrentSelection() OVERRIDE;
+    virtual NSArray *readDataFromPasteboard(NSString* type, int index) OVERRIDE;
+    virtual bool hasRichlyEditableSelection() OVERRIDE;
+    virtual int getPasteboardItemsCount() OVERRIDE;
+    virtual WebCore::DocumentFragment* documentFragmentFromDelegate(int index) OVERRIDE;
+    virtual bool performsTwoStepPaste(WebCore::DocumentFragment*) OVERRIDE;
+    virtual int pasteboardChangeCount() OVERRIDE;
 #endif
 
     virtual bool supportsGlobalSelection() OVERRIDE;

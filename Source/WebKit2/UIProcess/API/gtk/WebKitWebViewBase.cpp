@@ -924,14 +924,14 @@ void webkitWebViewBaseUpdatePreferences(WebKitWebViewBase* webkitWebViewBase)
         return;
 #endif
 
-    priv->pageProxy->pageGroup()->preferences()->setAcceleratedCompositingEnabled(false);
+    priv->pageProxy->pageGroup().preferences()->setAcceleratedCompositingEnabled(false);
 }
 
 void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebContext* context, WebPageGroup* pageGroup)
 {
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
 
-    priv->pageProxy = context->createWebPage(priv->pageClient.get(), pageGroup);
+    priv->pageProxy = context->createWebPage(*priv->pageClient, pageGroup);
     priv->pageProxy->initializeWebPage();
 
 #if ENABLE(FULLSCREEN_API)
@@ -1045,7 +1045,7 @@ void webkitWebViewBaseExitFullScreen(WebKitWebViewBase* webkitWebViewBase)
 #endif
 }
 
-void webkitWebViewBaseInitializeFullScreenClient(WebKitWebViewBase* webkitWebViewBase, const WKFullScreenClientGtk* wkClient)
+void webkitWebViewBaseInitializeFullScreenClient(WebKitWebViewBase* webkitWebViewBase, const WKFullScreenClientGtkBase* wkClient)
 {
     webkitWebViewBase->priv->fullScreenClient.initialize(wkClient);
 }

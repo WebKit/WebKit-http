@@ -78,12 +78,12 @@ void MathMLElement::parseAttribute(const QualifiedName& name, const AtomicString
 
 bool MathMLElement::isPresentationAttribute(const QualifiedName& name) const
 {
-    if (name == mathbackgroundAttr || name == mathsizeAttr || name == mathcolorAttr || name == fontsizeAttr || name == backgroundAttr || name == colorAttr || name == fontstyleAttr || name == fontweightAttr || name == fontfamilyAttr)
+    if (name == backgroundAttr || name == colorAttr || name == dirAttr || name == fontfamilyAttr || name == fontsizeAttr || name == fontstyleAttr || name == fontweightAttr || name == mathbackgroundAttr || name == mathcolorAttr || name == mathsizeAttr)
         return true;
     return StyledElement::isPresentationAttribute(name);
 }
 
-void MathMLElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
+void MathMLElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
 {
     if (name == mathbackgroundAttr)
         addPropertyToPresentationAttributeStyle(style, CSSPropertyBackgroundColor, value);
@@ -106,7 +106,10 @@ void MathMLElement::collectStyleForPresentationAttribute(const QualifiedName& na
         addPropertyToPresentationAttributeStyle(style, CSSPropertyFontWeight, value);
     else if (name == fontfamilyAttr)
         addPropertyToPresentationAttributeStyle(style, CSSPropertyFontFamily, value);
-    else {
+    else if (name == dirAttr) {
+        if (hasTagName(mathTag) || hasTagName(mrowTag) || hasTagName(mstyleTag) || isMathMLToken())
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyDirection, value);
+    }  else {
         ASSERT(!isPresentationAttribute(name));
         StyledElement::collectStyleForPresentationAttribute(name, value
         , style);
@@ -117,6 +120,11 @@ bool MathMLElement::childShouldCreateRenderer(const Node& child) const
 {
     // Only create renderers for MathML elements or text. MathML prohibits non-MathML markup inside a <math> element.
     return child.isTextNode() || child.isMathMLElement();
+}
+
+bool MathMLElement::isMathMLToken() const
+{
+    return hasTagName(miTag) || hasTagName(mnTag) || hasTagName(moTag) || hasTagName(msTag) || hasTagName(mtextTag);
 }
 
 }

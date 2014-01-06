@@ -29,8 +29,10 @@
 #if ENABLE(SUBTLE_CRYPTO)
 
 #include "CryptoAlgorithmAES_CBC.h"
+#include "CryptoAlgorithmAES_KW.h"
 #include "CryptoAlgorithmHMAC.h"
 #include "CryptoAlgorithmRSASSA_PKCS1_v1_5.h"
+#include "CryptoAlgorithmRSA_OAEP.h"
 #include "CryptoAlgorithmSHA1.h"
 #include "CryptoAlgorithmSHA224.h"
 #include "CryptoAlgorithmSHA256.h"
@@ -41,14 +43,16 @@ namespace WebCore {
 
 void CryptoAlgorithmRegistry::platformRegisterAlgorithms()
 {
-    registerAlgorithm(CryptoAlgorithmAES_CBC::s_name, CryptoAlgorithmAES_CBC::s_identifier, CryptoAlgorithmAES_CBC::create);
-    registerAlgorithm(CryptoAlgorithmHMAC::s_name, CryptoAlgorithmHMAC::s_identifier, CryptoAlgorithmHMAC::create);
-    registerAlgorithm(CryptoAlgorithmRSASSA_PKCS1_v1_5::s_name, CryptoAlgorithmRSASSA_PKCS1_v1_5::s_identifier, CryptoAlgorithmRSASSA_PKCS1_v1_5::create);
-    registerAlgorithm(CryptoAlgorithmSHA1::s_name, CryptoAlgorithmSHA1::s_identifier, CryptoAlgorithmSHA1::create);
-    registerAlgorithm(CryptoAlgorithmSHA224::s_name, CryptoAlgorithmSHA224::s_identifier, CryptoAlgorithmSHA224::create);
-    registerAlgorithm(CryptoAlgorithmSHA256::s_name, CryptoAlgorithmSHA256::s_identifier, CryptoAlgorithmSHA256::create);
-    registerAlgorithm(CryptoAlgorithmSHA384::s_name, CryptoAlgorithmSHA384::s_identifier, CryptoAlgorithmSHA384::create);
-    registerAlgorithm(CryptoAlgorithmSHA512::s_name, CryptoAlgorithmSHA512::s_identifier, CryptoAlgorithmSHA512::create);
+    registerAlgorithm<CryptoAlgorithmAES_CBC>();
+    registerAlgorithm<CryptoAlgorithmAES_KW>();
+    registerAlgorithm<CryptoAlgorithmHMAC>();
+    registerAlgorithm<CryptoAlgorithmRSASSA_PKCS1_v1_5>();
+    registerAlgorithm<CryptoAlgorithmRSA_OAEP>();
+    registerAlgorithm<CryptoAlgorithmSHA1>();
+    registerAlgorithm<CryptoAlgorithmSHA224>();
+    registerAlgorithm<CryptoAlgorithmSHA256>();
+    registerAlgorithm<CryptoAlgorithmSHA384>();
+    registerAlgorithm<CryptoAlgorithmSHA512>();
 }
 
 }

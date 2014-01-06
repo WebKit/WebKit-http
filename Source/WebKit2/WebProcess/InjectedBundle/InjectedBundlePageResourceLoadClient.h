@@ -32,6 +32,12 @@
 #include <JavaScriptCore/JSBase.h>
 #include <wtf/Forward.h>
 
+namespace API {
+template<> struct ClientTraits<WKBundlePageResourceLoadClientBase> {
+    typedef std::tuple<WKBundlePageResourceLoadClientV0, WKBundlePageResourceLoadClientV1> Versions;
+};
+}
+
 namespace WebCore {
 class ResourceError;
 class ResourceRequest;
@@ -43,7 +49,7 @@ namespace WebKit {
 class WebPage;
 class WebFrame;
 
-class InjectedBundlePageResourceLoadClient : public APIClient<WKBundlePageResourceLoadClient, kWKBundlePageResourceLoadClientCurrentVersion> {
+class InjectedBundlePageResourceLoadClient : public API::Client<WKBundlePageResourceLoadClientBase> {
 public:
     void didInitiateLoadForResource(WebPage*, WebFrame*, uint64_t identifier, const WebCore::ResourceRequest&, bool pageIsProvisionallyLoading);
     void willSendRequestForFrame(WebPage*, WebFrame*, uint64_t identifier, WebCore::ResourceRequest&, const WebCore::ResourceResponse&);

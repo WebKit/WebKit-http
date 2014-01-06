@@ -652,6 +652,12 @@ public:
         load8Signed(setupArmAddress(address), dest);
     }
 
+    void load8(const void* address, RegisterID dest)
+    {
+        move(TrustedImmPtr(address), dest);
+        load8(dest, dest);
+    }
+
     DataLabel32 load32WithAddressOffsetPatch(Address address, RegisterID dest)
     {
         DataLabel32 label = moveWithPatch(TrustedImm32(address.offset), dataTempRegister);
@@ -1231,6 +1237,11 @@ public:
         m_assembler.nop();
     }
     
+    void memoryFence()
+    {
+        m_assembler.dmbSY();
+    }
+    
     static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)
     {
         ARMv7Assembler::replaceWithJump(instructionStart.dataLocation(), destination.dataLocation());
@@ -1377,9 +1388,11 @@ public:
         return branch32(cond, addressTempRegister, right);
     }
     
-    Jump branch8(RelationalCondition cond, AbsoluteAddress left, TrustedImm32 right)
+    Jump branch8(RelationalCondition cond, AbsoluteAddress address, TrustedImm32 right)
     {
-        load8(left, addressTempRegister);
+        // Use addressTempRegister instead of dataTempRegister, since branch32 uses dataTempRegister.
+        move(TrustedImmPtr(address.m_ptr), addressTempRegister);
+        load8(Address(addressTempRegister), addressTempRegister);
         return branch32(cond, addressTempRegister, right);
     }
     

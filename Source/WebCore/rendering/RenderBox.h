@@ -189,7 +189,7 @@ public:
     LayoutUnit logicalLeftVisualOverflow() const { return style().isHorizontalWritingMode() ? visualOverflowRect().x() : visualOverflowRect().y(); }
     LayoutUnit logicalRightVisualOverflow() const { return style().isHorizontalWritingMode() ? visualOverflowRect().maxX() : visualOverflowRect().maxY(); }
 
-    LayoutRect overflowRectForPaintRejection() const;
+    LayoutRect overflowRectForPaintRejection(RenderRegion*) const;
     
     void addLayoutOverflow(const LayoutRect&);
     void addVisualOverflow(const LayoutRect&);
@@ -591,7 +591,7 @@ public:
 #if ENABLE(CSS_SHAPES)
     ShapeOutsideInfo* shapeOutsideInfo() const
     {
-        return ShapeOutsideInfo::isEnabledFor(this) ? ShapeOutsideInfo::info(this) : 0;
+        return ShapeOutsideInfo::isEnabledFor(*this) ? ShapeOutsideInfo::info(*this) : nullptr;
     }
 
     void markShapeOutsideDependentsForLayout()
@@ -600,6 +600,9 @@ public:
             removeFloatingOrPositionedChildFromBlockLists();
     }
 #endif
+
+    // True if this box can have a range in an outside fragmentation context.
+    bool canHaveOutsideRegionRange() const { return !isInFlowRenderFlowThread(); }
 
 protected:
     RenderBox(Element&, PassRef<RenderStyle>, unsigned baseTypeFlags);
@@ -706,7 +709,7 @@ protected:
     InlineElementBox* m_inlineBoxWrapper;
 
     // Our overflow information.
-    OwnPtr<RenderOverflow> m_overflow;
+    RefPtr<RenderOverflow> m_overflow;
 
 private:
     // Used to store state between styleWillChange and styleDidChange

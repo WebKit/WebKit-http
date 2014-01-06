@@ -41,11 +41,6 @@
 #include "SamplingTool.h"
 #include <wtf/StringPrintStream.h>
 
-#ifndef NDEBUG
-#include <stdio.h>
-#endif
-
-using namespace std;
 
 namespace JSC {
 
@@ -162,7 +157,7 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         addPtr(callFrameRegister, regT3);
         // regT3: newCallFrame
 
-        slowCase.append(branchPtr(Above, AbsoluteAddress(m_vm->interpreter->stack().addressOfEnd()), regT3));
+        slowCase.append(branchPtr(Above, AbsoluteAddress(m_vm->addressOfJSStackLimit()), regT3));
 
         // Initialize ArgumentCount.
         store32(regT2, payloadFor(JSStack::ArgumentCount, regT3));

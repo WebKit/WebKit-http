@@ -124,23 +124,6 @@
 #define WTF_CPU_SH4 1
 #endif
 
-/* CPU(SPARC32) - SPARC 32-bit */
-#if defined(__sparc) && !defined(__arch64__) || defined(__sparcv8)
-#define WTF_CPU_SPARC32 1
-#define WTF_CPU_BIG_ENDIAN 1
-#endif
-
-/* CPU(SPARC64) - SPARC 64-bit */
-#if defined(__sparc__) && defined(__arch64__) || defined (__sparcv9)
-#define WTF_CPU_SPARC64 1
-#define WTF_CPU_BIG_ENDIAN 1
-#endif
-
-/* CPU(SPARC) - any SPARC, true for CPU(SPARC32) and CPU(SPARC64) */
-#if CPU(SPARC32) || CPU(SPARC64)
-#define WTF_CPU_SPARC 1
-#endif
-
 /* CPU(S390X) - S390 64-bit */
 #if defined(__s390x__)
 #define WTF_CPU_S390X 1
@@ -330,7 +313,7 @@
 
 #endif /* ARM */
 
-#if CPU(ARM) || CPU(MIPS) || CPU(SH4) || CPU(SPARC)
+#if CPU(ARM) || CPU(MIPS) || CPU(SH4)
 #define WTF_CPU_NEEDS_ALIGNED_ACCESS 1
 #endif
 
@@ -461,6 +444,8 @@
 #define WTF_PLATFORM_HAIKU 1
 #elif defined(BUILDING_BLACKBERRY__)
 #define WTF_PLATFORM_BLACKBERRY 1
+#elif defined(BUILDING_NIX__)
+#include "nix/PlatformNix.h"
 #elif OS(DARWIN)
 #define WTF_PLATFORM_MAC 1
 #elif OS(WINDOWS)
@@ -503,7 +488,6 @@
 #define WTF_USE_SOUP 1
 #define WTF_USE_WEBP 1
 #define ENABLE_GLOBAL_FASTMALLOC_NEW 0
-#define GST_API_VERSION_1 1
 #endif
 
 /* On Windows, use QueryPerformanceCounter by default */
@@ -522,11 +506,12 @@
 #define WTF_USE_CF 1
 #define HAVE_READLINE 1
 #define HAVE_RUNLOOP_TIMER 1
+#define HAVE_SEC_IDENTITY 1
+#define HAVE_SEC_KEYCHAIN 1
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 #define HAVE_LAYER_HOSTING_IN_WINDOW_SERVER 1
 #endif
 #define WTF_USE_APPKIT 1
-#define WTF_USE_SECURITY_FRAMEWORK 1
 
 /* OS X defines a series of platform macros for debugging. */
 /* Some of them are really annoying because they use common names (e.g. check()). */
@@ -549,7 +534,6 @@
 #define WTF_USE_CF 1
 #define WTF_USE_CFNETWORK 1
 #define WTF_USE_NETWORK_CFDATA_ARRAY_CALLBACK 1
-#define WTF_USE_SECURITY_FRAMEWORK 0
 #define WTF_USE_WEB_THREAD 1
 
 #if CPU(ARM64)
@@ -703,7 +687,6 @@
     || (CPU(IA64) && !CPU(IA64_32)) \
     || CPU(ALPHA) \
     || CPU(ARM64) \
-    || CPU(SPARC64) \
     || CPU(S390X) \
     || CPU(PPC64)
 #define WTF_USE_JSVALUE64 1
@@ -897,6 +880,24 @@
 #endif
 #endif
 
+/* If the Disassembler is enabled, then the Assembler must be enabled as well: */
+#if ENABLE(DISASSEMBLER)
+#if defined(ENABLE_ASSEMBLER) && !ENABLE_ASSEMBLER
+#error "Cannot enable the Disassembler without enabling the Assembler"
+#else
+#undef ENABLE_ASSEMBLER
+#define ENABLE_ASSEMBLER 1
+#endif
+#endif
+
+/* FIXME: We currently unconditionally use spearate stacks. When we switch to using the
+   C stack for JS frames, we'll need to make the following conditional on ENABLE(LLINT_CLOOP)
+   only.
+*/
+#if ENABLE(LLINT_CLOOP) || 1
+#define WTF_USE_SEPARATE_C_AND_JS_STACK 1
+#endif
+
 /* Pick which allocator to use; we only need an executable allocator if the assembler is compiled in.
    On x86-64 we use a single fixed mmap, on other platforms we mmap on demand. */
 #if ENABLE(ASSEMBLER)
@@ -1069,6 +1070,10 @@
 
 #if PLATFORM(MAC) || PLATFORM(IOS)
 #define WTF_USE_AUDIO_SESSION 1
+#endif
+
+#if PLATFORM(MAC) && !PLATFORM(IOS_SIMULATOR)
+#define WTF_USE_IOSURFACE 1
 #endif
 
 #if PLATFORM(GTK) || PLATFORM(EFL)

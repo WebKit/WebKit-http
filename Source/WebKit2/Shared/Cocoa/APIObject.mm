@@ -30,12 +30,16 @@
 
 #import "WKBackForwardListInternal.h"
 #import "WKBackForwardListItemInternal.h"
+#import "WKBrowsingContextControllerInternal.h"
+#import "WKBrowsingContextGroupInternal.h"
 #import "WKNSArray.h"
 #import "WKNSDictionary.h"
 #import "WKNSError.h"
 #import "WKNSString.h"
 #import "WKNSURL.h"
+#import "WKNSURLProtectionSpace.h"
 #import "WKNavigationDataInternal.h"
+#import "WKProcessGroupInternal.h"
 
 namespace API {
 
@@ -70,6 +74,10 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [WKBackForwardListItem alloc];
         break;
 
+    case Type::Context:
+        wrapper = [WKProcessGroup alloc];
+        break;
+
     case Type::Dictionary:
         wrapper = [WKNSDictionary alloc];
         break;
@@ -80,6 +88,18 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::NavigationData:
         wrapper = [WKNavigationData alloc];
+        break;
+
+    case Type::Page:
+        wrapper = [WKBrowsingContextController alloc];
+        break;
+
+    case Type::PageGroup:
+        wrapper = [WKBrowsingContextGroup alloc];
+        break;
+
+    case Type::ProtectionSpace:
+        wrapper = NSAllocateObject([WKNSURLProtectionSpace class], size, nullptr);
         break;
 
     case Type::String:
@@ -95,11 +115,12 @@ void* Object::newObject(size_t size, Type type)
         break;
     }
 
-    Object* object = &wrapper._apiObject;
-    object->m_wrapper = wrapper;
-    return object;
+    Object& object = wrapper._apiObject;
+    object.m_wrapper = wrapper;
+
+    return &object;
 }
 
-} // namespace WebKit
+} // namespace API
 
 #endif // WK_API_ENABLED

@@ -69,15 +69,18 @@ my $extraTests;
 
 my $buildJSC = 1;
 
-my $runTestAPI = isAppleMacWebKit() || isAppleWinWebKit();
+my $runTestAPI = isAppleMacWebKit() || isAppleWinWebKit() || isWinCairo();
 
 my $runMozilla = 0;
 
 # FIXME: run-jsc-stress-tests should be ported to other platforms.
 # https://bugs.webkit.org/show_bug.cgi?id=120809
-my $runJSCStress = !isAppleWinWebKit() && !isWinCairo();
+my $runJSCStress = !isAppleWinWebKit();
 
 my $enableFTL = 0;
+
+my $createTarball = 0;
+my $remoteHost = 0;
 
 my $programName = basename($0);
 my $buildJSCDefault = $buildJSC ? "will check" : "will not check";
@@ -94,6 +97,8 @@ Usage: $programName [options] [options to pass to build system]
   --[no-]build                  Check (or don't check) to see if the jsc build is up-to-date (default: $buildJSCDefault)
   --[no-]testapi                Run (or don't run) testapi (default: $testapiDefault)
   --[no-]jsc-stress             Run (or don't run) the JSC stress tests (default: $jscStressDefault)
+  --tarball                     Create a tarball of the bundle produced by running the JSC stress tests.
+  --remote=                     Run the JSC stress tests on the specified remote host. Implies --tarball.
 EOF
 
 GetOptions(
@@ -104,6 +109,8 @@ GetOptions(
     'ftl-jit!' => \$enableFTL,
     'testapi!' => \$runTestAPI,
     'jsc-stress!' => \$runJSCStress,
+    'tarball!' => \$createTarball,
+    'remote=s' => \$remoteHost,
     'help' => \$showHelp
 );
 
@@ -238,6 +245,13 @@ if ($runJSCStress) {
     );
     if ($enableFTL) {
         push(@jscStressDriverCmd, "--ftl-jit");
+    }
+    if ($createTarball) {
+        push(@jscStressDriverCmd, "--tarball");
+    }
+    if ($remoteHost) {
+        push(@jscStressDriverCmd, "--remote");
+        push(@jscStressDriverCmd, $remoteHost);
     }
     if (defined($extraTests)) {
         push(@jscStressDriverCmd, $extraTests);

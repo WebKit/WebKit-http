@@ -35,19 +35,32 @@ extern "C" {
 typedef void (*WKConnectionDidReceiveMessageCallback)(WKConnectionRef connection, WKStringRef messageName, WKTypeRef messageBody, const void *clientInfo);
 typedef void (*WKConnectionDidCloseCallback)(WKConnectionRef connection, const void* clientInfo);
 
-struct WKConnectionClient {
+typedef struct WKConnectionClientBase {
     int                                                                 version;
     const void *                                                        clientInfo;
+} WKConnectionClientBase;
+
+typedef struct WKConnectionClientV0 {
+    WKConnectionClientBase                                              base;
+
+    // Version 0.
     WKConnectionDidReceiveMessageCallback                               didReceiveMessage;
     WKConnectionDidCloseCallback                                        didClose;
-};
-typedef struct WKConnectionClient WKConnectionClient;
+} WKConnectionClientV0;
 
-enum { WKConnectionClientCurrentVersion = 0 };
+enum { WKConnectionClientCurrentVersion WK_ENUM_DEPRECATED("Use an explicit version number instead") = 0 };
+typedef struct WKConnectionClient {
+    int                                                                 version;
+    const void *                                                        clientInfo;
+
+    // Version 0.
+    WKConnectionDidReceiveMessageCallback                               didReceiveMessage;
+    WKConnectionDidCloseCallback                                        didClose;
+} WKConnectionClient WK_DEPRECATED("Use an explicit versioned struct instead");
 
 WK_EXPORT WKTypeID WKConnectionGetTypeID();
 
-WK_EXPORT void WKConnectionSetConnectionClient(WKConnectionRef connection, const WKConnectionClient* client);
+WK_EXPORT void WKConnectionSetConnectionClient(WKConnectionRef connection, const WKConnectionClientBase* client);
 WK_EXPORT void WKConnectionPostMessage(WKConnectionRef connection, WKStringRef messageName, WKTypeRef messageBody);
 
 #ifdef __cplusplus

@@ -1842,7 +1842,9 @@ def check_spacing(file_extension, clean_lines, line_number, error):
         # regexp takes linear rather than quadratic time.
         if not search(r'<[^<]*,\s*$', line):  # template params spill
             matched = search(r'[^<>=!\s](<)[^<>=!\s]([^>]|->)*$', line)
-    if matched:
+    # It is necessary to check this, because rvaule references can be in
+    # parameter packs (c++11 feature)
+    if matched and not search(r'&&\.\.\.', line):
         error(line_number, 'whitespace/operators', 3,
               'Missing spaces around %s' % matched.group(1))
 
@@ -1963,6 +1965,57 @@ def check_spacing(file_extension, clean_lines, line_number, error):
         error(line_number, 'whitespace/semicolon', 5,
               'Semicolon defining empty statement for this loop. Use { } instead.')
 
+
+def check_member_initialization_list(clean_lines, line_number, error):
+    """ Look for style errors in member initialization list of classes.
+
+    Args:
+      clean_lines: A CleansedLines instance containing the file.
+      line_number: The number of the line to check.
+      error: The function to call with any errors found.
+    """
+
+    raw = clean_lines.raw_lines
+    line = raw[line_number]
+
+    if search(r'\b([A-Za-z0-9_]*_)\(\1\)', line):
+        error(line_number, 'runtime/init', 4,
+              'You seem to be initializing a member variable with itself.')
+
+    # Check the style of the initializer list.
+    # Each member (and superclass) should be indented on a separate line,
+    # with the colon or comma preceding the member on that line.
+    begin_line = line
+    if search(r'^(?P<indentation>\s*)((explicit\s+)?[^\s]+\(.*\)\s?\:|^\s*\:).*[^;]*$', line):
+        if search(r'[^:]\:[^\:\s]+', line):
+            error(line_number, 'whitespace/init', 4,
+                'Missing spaces around :')
+        if search(r'[^\s]\(.*\)\s?\:.*[^;]*$', line):
+            error(line_number, 'whitespace/indent', 4,
+                'Should be indented on a separate line, with the colon or comma first on that line.')
+        else:
+            begin_line, begin_line_number = get_previous_non_blank_line(clean_lines, line_number)
+
+        matched = search(r'(?P<indentation>\s*).*', begin_line)
+        indentation = matched.group('indentation')
+        inner_indentation = indentation + ' ' * 4
+
+        while(not search(r'{', line)):
+            # Don't check inheritance style
+            if search(r'\S\(.*\)', line):
+                if not line.startswith(inner_indentation) and begin_line != line:
+                    error(line_number, 'whitespace/indent', 4,
+                        'Wrong number of spaces before statement. (expected: %d)' % len(inner_indentation))
+                if search(r'\S\s*,', line):
+                    error(line_number, 'whitespace/init', 4,
+                        'Comma should be at the beggining of the line in a member initialization list.')
+
+            # To avoid infinite loop, if can't find the end of member initialization list
+            if line_number < len(raw) - 1:
+                line_number = line_number + 1
+                line = raw[line_number]
+            else:
+                break
 
 def get_previous_non_blank_line(clean_lines, line_number):
     """Return the most recent non-blank line and its line number.
@@ -2623,7 +2676,7 @@ def check_style(clean_lines, line_number, file_extension, class_state, file_stat
         error(line_number, 'whitespace/newline', 4,
               'More than one command on the same line')
 
-    if cleansed_line.strip().endswith('||') or cleansed_line.strip().endswith('&&'):
+    if cleansed_line.strip().endswith('||') or cleansed_line.strip().endswith(' &&'):
         error(line_number, 'whitespace/operators', 4,
               'Boolean expressions that span multiple lines should have their '
               'operators on the left side of the line instead of the right side.')
@@ -2639,6 +2692,7 @@ def check_style(clean_lines, line_number, file_extension, class_state, file_stat
     check_braces(clean_lines, line_number, error)
     check_exit_statement_simplifications(clean_lines, line_number, error)
     check_spacing(file_extension, clean_lines, line_number, error)
+    check_member_initialization_list(clean_lines, line_number, error)
     check_check(clean_lines, line_number, error)
     check_for_comparisons_to_zero(clean_lines, line_number, error)
     check_for_null(clean_lines, line_number, file_state, error)
@@ -2818,12 +2872,16 @@ def check_include_line(filename, file_extension, clean_lines, line_number, inclu
                                                            file_extension == "h",
                                                            primary_header_exists)
 
-    # Check to make sure we have a blank line after primary header.
+    # Check to make sure we have a blank line after and none before primary header.
     if not error_message and header_type == _PRIMARY_HEADER:
-         next_line = clean_lines.raw_lines[line_number + 1]
-         if not is_blank_line(next_line):
+        next_line = clean_lines.raw_lines[line_number + 1]
+        previous_line = clean_lines.raw_lines[line_number - 1]
+        if not is_blank_line(next_line):
             error(line_number, 'build/include_order', 4,
-                  'You should add a blank line after implementation file\'s own header.')
+                'You should add a blank line after implementation file\'s own header.')
+        if is_blank_line(previous_line):
+            error(line_number, 'build/include_order', 4,
+                'You should not add a blank line before implementation file\'s own header.')
 
     # Check to make sure all headers besides config.h and the primary header are
     # alphabetically sorted.
@@ -2942,10 +3000,6 @@ def check_language(filename, clean_lines, line_number, file_extension, include_s
               'Do not use dynamic_cast<>.  If you need to cast within a class '
               "hierarchy, use static_cast<> to upcast.  Google doesn't support "
               'RTTI.')
-
-    if search(r'\b([A-Za-z0-9_]*_)\(\1\)', line):
-        error(line_number, 'runtime/init', 4,
-              'You seem to be initializing a member variable with itself.')
 
     if file_extension == 'h':
         # FIXME: check that 1-arg constructors are explicit.
@@ -3657,6 +3711,7 @@ class CppChecker(object):
         'whitespace/end_of_line',
         'whitespace/ending_newline',
         'whitespace/indent',
+        'whitespace/init',
         'whitespace/line_length',
         'whitespace/newline',
         'whitespace/operators',

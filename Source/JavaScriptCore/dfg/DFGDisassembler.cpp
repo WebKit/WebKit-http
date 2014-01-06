@@ -26,7 +26,7 @@
 #include "config.h"
 #include "DFGDisassembler.h"
 
-#if ENABLE(DFG_JIT)
+#if ENABLE(DFG_JIT) && ENABLE(DISASSEMBLER)
 
 #include "CodeBlockWithJITType.h"
 #include "DFGGraph.h"
@@ -72,7 +72,7 @@ void Disassembler::dumpHeader(PrintStream& out, LinkBuffer& linkBuffer)
 {
     out.print("Generated DFG JIT code for ", CodeBlockWithJITType(m_graph.m_codeBlock, JITCode::DFGJIT), ", instruction count = ", m_graph.m_codeBlock->instructionCount(), ":\n");
     out.print("    Optimized with execution counter = ", m_graph.m_profiledBlock->jitExecuteCounter(), "\n");
-    out.print("    Code at [", RawPointer(linkBuffer.debugAddress()), ", ", RawPointer(static_cast<char*>(linkBuffer.debugAddress()) + linkBuffer.debugSize()), "):\n");
+    out.print("    Code at [", RawPointer(linkBuffer.debugAddress()), ", ", RawPointer(static_cast<char*>(linkBuffer.debugAddress()) + linkBuffer.size()), "):\n");
 }
 
 void Disassembler::append(Vector<Disassembler::DumpedOp>& result, StringPrintStream& out, CodeOrigin& previousOrigin)
@@ -172,4 +172,4 @@ void Disassembler::dumpDisassembly(PrintStream& out, const char* prefix, LinkBuf
 
 } } // namespace JSC::DFG
 
-#endif // ENABLE(DFG_JIT)
+#endif // ENABLE(DFG_JIT) && ENABLE(DISASSEMBLER)

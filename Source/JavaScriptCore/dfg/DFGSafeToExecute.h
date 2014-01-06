@@ -172,7 +172,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PutClosureVar:
     case GetGlobalVar:
     case PutGlobalVar:
-    case GlobalVarWatchpoint:
+    case VariableWatchpoint:
     case VarInjectionWatchpoint:
     case CheckFunction:
     case AllocationProfileWatchpoint:
@@ -242,6 +242,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case Int52ToDouble:
     case Int52ToValue:
     case InvalidationPoint:
+    case NotifyWrite:
+    case FunctionReentryWatchpoint:
         return true;
         
     case GetByVal:

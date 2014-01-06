@@ -46,6 +46,7 @@ class JSVariableObject : public JSSymbolTableObject {
 public:
     typedef JSSymbolTableObject Base;
 
+    WriteBarrierBase<Unknown>* registers() { return m_registers; }
     WriteBarrierBase<Unknown>& registerAt(int index) const { return m_registers[index]; }
 
     WriteBarrierBase<Unknown>* const * addressOfRegisters() const { return &m_registers; }
@@ -61,7 +62,7 @@ protected:
         Structure* structure,
         Register* registers,
         JSScope* scope,
-        SharedSymbolTable* symbolTable = 0)
+        SymbolTable* symbolTable = 0)
         : Base(vm, structure, scope, symbolTable)
         , m_registers(reinterpret_cast<WriteBarrierBase<Unknown>*>(registers))
     {

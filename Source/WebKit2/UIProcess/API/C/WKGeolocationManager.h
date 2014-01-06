@@ -37,7 +37,32 @@ typedef void (*WKGeolocationProviderStartUpdatingCallback)(WKGeolocationManagerR
 typedef void (*WKGeolocationProviderStopUpdatingCallback)(WKGeolocationManagerRef geolocationManager, const void* clientInfo);
 typedef void (*WKGeolocationProviderSetEnableHighAccuracyCallback)(WKGeolocationManagerRef geolocationManager, bool enabled, const void* clientInfo);
 
-struct WKGeolocationProvider {
+typedef struct WKGeolocationProviderBase {
+    int                                                                 version;
+    const void *                                                        clientInfo;
+} WKGeolocationProviderBase;
+
+typedef struct WKGeolocationProviderV0 {
+    WKGeolocationProviderBase                                           base;
+
+    // Version 0.
+    WKGeolocationProviderStartUpdatingCallback                          startUpdating;
+    WKGeolocationProviderStopUpdatingCallback                           stopUpdating;
+} WKGeolocationProviderV0;
+
+typedef struct WKGeolocationProviderV1 {
+    WKGeolocationProviderBase                                           base;
+
+    // Version 0.
+    WKGeolocationProviderStartUpdatingCallback                          startUpdating;
+    WKGeolocationProviderStopUpdatingCallback                           stopUpdating;
+
+    // Version 1.
+    WKGeolocationProviderSetEnableHighAccuracyCallback                  setEnableHighAccuracy;
+} WKGeolocationProviderV1;
+
+enum { kWKGeolocationProviderCurrentVersion WK_ENUM_DEPRECATED("Use an explicit version number instead") = 1 };
+typedef struct WKGeolocationProvider {
     int                                                                 version;
     const void *                                                        clientInfo;
     WKGeolocationProviderStartUpdatingCallback                          startUpdating;
@@ -45,15 +70,12 @@ struct WKGeolocationProvider {
 
     // Version 1.
     WKGeolocationProviderSetEnableHighAccuracyCallback                  setEnableHighAccuracy;
+} WKGeolocationProvider WK_DEPRECATED("Use an explicit versioned struct instead");
 
-};
-typedef struct WKGeolocationProvider WKGeolocationProvider;
-
-enum { kWKGeolocationProviderCurrentVersion = 1 };
 
 WK_EXPORT WKTypeID WKGeolocationManagerGetTypeID();
 
-WK_EXPORT void WKGeolocationManagerSetProvider(WKGeolocationManagerRef geolocationManager, const WKGeolocationProvider* provider);
+WK_EXPORT void WKGeolocationManagerSetProvider(WKGeolocationManagerRef geolocationManager, const WKGeolocationProviderBase* provider);
 
 WK_EXPORT void WKGeolocationManagerProviderDidChangePosition(WKGeolocationManagerRef geolocationManager, WKGeolocationPositionRef position);
 WK_EXPORT void WKGeolocationManagerProviderDidFailToDeterminePosition(WKGeolocationManagerRef geolocationManager);

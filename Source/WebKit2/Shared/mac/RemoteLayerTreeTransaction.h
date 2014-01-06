@@ -97,9 +97,14 @@ public:
         void encode(CoreIPC::ArgumentEncoder&) const;
         static bool decode(CoreIPC::ArgumentDecoder&, LayerProperties&);
 
-        void notePropertiesChanged(LayerChange layerChanges) { changedProperties = static_cast<LayerChange>(changedProperties | layerChanges); }
+        void notePropertiesChanged(LayerChange layerChanges)
+        {
+            changedProperties = static_cast<LayerChange>(changedProperties | layerChanges);
+            everChangedProperties = static_cast<LayerChange>(everChangedProperties | layerChanges);
+        }
 
         LayerChange changedProperties;
+        LayerChange everChangedProperties;
 
         String name;
         Vector<LayerID> children;
@@ -117,7 +122,7 @@ public:
         bool doubleSided;
         bool masksToBounds;
         bool opaque;
-        LayerID maskLayer;
+        LayerID maskLayerID;
         WebCore::FloatRect contentsRect;
         float contentsScale;
         WebCore::PlatformCALayer::FilterType minificationFilter;
@@ -141,7 +146,8 @@ public:
     void setCreatedLayers(Vector<LayerCreationProperties>);
     void setDestroyedLayerIDs(Vector<LayerID>);
 
-#if !defined(NDEBUG)
+#if !defined(NDEBUG) || !LOG_DISABLED
+    WTF::CString description() const;
     void dump() const;
 #endif
 

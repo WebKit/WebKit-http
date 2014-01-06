@@ -74,7 +74,7 @@ class NetworkProcessConnection;
 class WebResourceLoadScheduler;
 #else
 #if USE(SOUP)
-class PlatformCertificateInfo;
+class CertificateInfo;
 #endif
 #endif
 
@@ -174,8 +174,12 @@ public:
     void updateActivePages();
 
 #if !ENABLE(NETWORK_PROCESS) && USE(SOUP)
-    void allowSpecificHTTPSCertificateForHost(const PlatformCertificateInfo&, const String& host);
+    void allowSpecificHTTPSCertificateForHost(const CertificateInfo&, const String& host);
 #endif
+
+#if PLATFORM(IOS)
+    void resetAllGeolocationPermissions();
+#endif // PLATFORM(IOS)
 
 private:
     WebProcess();
@@ -245,7 +249,7 @@ private:
     virtual bool shouldTerminate() OVERRIDE;
     virtual void terminate() OVERRIDE;
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !PLATFORM(IOS)
     virtual void stopRunLoop() OVERRIDE;
 #endif
 

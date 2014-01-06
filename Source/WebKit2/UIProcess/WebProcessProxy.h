@@ -64,7 +64,7 @@ public:
     typedef HashMap<uint64_t, RefPtr<WebFrameProxy>> WebFrameProxyMap;
     typedef HashMap<uint64_t, WebPageProxy*> WebPageProxyMap;
 
-    static PassRefPtr<WebProcessProxy> create(PassRefPtr<WebContext>);
+    static PassRefPtr<WebProcessProxy> create(WebContext&);
     ~WebProcessProxy();
 
     static WebProcessProxy* fromConnection(CoreIPC::Connection* connection)
@@ -74,13 +74,16 @@ public:
 
     WebConnection* webConnection() const { return m_webConnection.get(); }
 
-    WebContext* context() const { return m_context.get(); }
+    WebContext& context() { return m_context.get(); }
 
     static WebPageProxy* webPage(uint64_t pageID);
-    PassRefPtr<WebPageProxy> createWebPage(PageClient*, WebContext*, WebPageGroup*);
+    PassRefPtr<WebPageProxy> createWebPage(PageClient&, WebPageGroup&);
     void addExistingWebPage(WebPageProxy*, uint64_t pageID);
     void removeWebPage(uint64_t pageID);
     Vector<WebPageProxy*> pages() const;
+
+    WebPageGroup* webPageGroup(uint64_t pageGroupID);
+    void addWebPageGroup(WebPageGroup&);
 
     WebBackForwardListItem* webBackForwardItem(uint64_t itemID) const;
 
@@ -124,7 +127,7 @@ public:
     void requestTermination();
 
 private:
-    explicit WebProcessProxy(PassRefPtr<WebContext>);
+    explicit WebProcessProxy(WebContext&);
 
     // From ChildProcessProxy
     virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&) OVERRIDE;
@@ -186,7 +189,7 @@ private:
     ResponsivenessTimer m_responsivenessTimer;
     
     RefPtr<WebConnectionToWebProcess> m_webConnection;
-    RefPtr<WebContext> m_context;
+    Ref<WebContext> m_context;
 
     bool m_mayHaveUniversalFileReadSandboxExtension; // True if a read extension for "/" was ever granted - we don't track whether WebProcess still has it.
     HashSet<String> m_localPathsWithAssumedReadAccess;
@@ -194,6 +197,7 @@ private:
     WebPageProxyMap m_pageMap;
     WebFrameProxyMap m_frameMap;
     WebBackForwardListItemMap m_backForwardListItemMap;
+    HashMap<uint64_t, WebPageGroup*> m_pageGroups;
 
     OwnPtr<DownloadProxyMap> m_downloadProxyMap;
 

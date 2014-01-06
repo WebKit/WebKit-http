@@ -33,6 +33,7 @@
 #include "MessageEncoder.h"
 #include "MessageReceiver.h"
 #include "WorkQueue.h"
+#include <atomic>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
@@ -205,7 +206,7 @@ private:
 
     Client* m_client;
     bool m_isServer;
-    uint64_t m_syncRequestID;
+    std::atomic<uint64_t> m_syncRequestID;
 
     bool m_onlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage;
     bool m_shouldExitOnSyncMessageSendFailure;

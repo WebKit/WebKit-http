@@ -459,6 +459,7 @@
     <ClCompile Include="..\interpreter\CallFrame.cpp" />
     <ClCompile Include="..\interpreter\Interpreter.cpp" />
     <ClCompile Include="..\interpreter\JSStack.cpp" />
+    <ClCompile Include="..\interpreter\ProtoCallFrame.cpp" />
     <ClCompile Include="..\interpreter\StackVisitor.cpp" />
     <ClCompile Include="..\interpreter\VMInspector.cpp" />
     <ClCompile Include="..\jit\AssemblyHelpers.cpp" />
@@ -478,6 +479,7 @@
     <ClCompile Include="..\jit\JITOpcodes.cpp" />
     <ClCompile Include="..\jit\JITOpcodes32_64.cpp" />
     <ClCompile Include="..\jit\JITOperations.cpp" />
+    <ClCompile Include="..\jit\JITOperationsMSVC64.cpp" />
     <ClCompile Include="..\jit\JITPropertyAccess.cpp" />
     <ClCompile Include="..\jit\JITPropertyAccess32_64.cpp" />
     <ClCompile Include="..\jit\JITStubRoutine.cpp" />
@@ -522,6 +524,7 @@
     <ClCompile Include="..\runtime\ArgumentsIteratorConstructor.cpp" />
     <ClCompile Include="..\runtime\ArgumentsIteratorPrototype.cpp" />
     <ClCompile Include="..\runtime\ArrayBuffer.cpp" />
+    <ClCompile Include="..\runtime\ArrayBufferNeuteringWatchpoint.cpp" />
     <ClCompile Include="..\runtime\ArrayBufferView.cpp" />
     <ClCompile Include="..\runtime\ArrayConstructor.cpp" />
     <ClCompile Include="..\runtime\ArrayIteratorConstructor.cpp" />
@@ -662,6 +665,7 @@
     <ClCompile Include="..\runtime\TypedArrayController.cpp" />
     <ClCompile Include="..\runtime\TypedArrayType.cpp" />
     <ClCompile Include="..\runtime\VM.cpp" />
+    <ClCompile Include="..\runtime\VMEntryScope.cpp" />
     <ClCompile Include="..\runtime\Watchdog.cpp" />
     <ClCompile Include="..\runtime\WatchdogNone.cpp" />
     <ClCompile Include="..\runtime\WeakMapConstructor.cpp" />
@@ -749,7 +753,7 @@
     <ClInclude Include="..\bytecode\ByValInfo.h" />
     <ClInclude Include="..\bytecode\BytecodeBasicBlock.h" />
     <ClInclude Include="..\bytecode\BytecodeLivenessAnalysis.h" />
-    <ClInclude Include="..\bytecode\BytecodeLivenessAnalysisInline.h" />
+    <ClInclude Include="..\bytecode\BytecodeUseDef.h" />
     <ClInclude Include="..\bytecode\CallLinkInfo.h" />
     <ClInclude Include="..\bytecode\CallLinkStatus.h" />
     <ClInclude Include="..\bytecode\CallReturnOffsetToBytecodeOffset.h" />
@@ -767,7 +771,6 @@
     <ClInclude Include="..\bytecode\ExecutionCounter.h" />
     <ClInclude Include="..\bytecode\ExitKind.h" />
     <ClInclude Include="..\bytecode\ExpressionRangeInfo.h" />
-    <ClInclude Include="..\bytecode\FullBytecodeLivenss.h" />
     <ClInclude Include="..\bytecode\GetByIdStatus.h" />
     <ClInclude Include="..\bytecode\HandlerInfo.h" />
     <ClInclude Include="..\bytecode\InlineCallFrameSet.h" />
@@ -794,6 +797,7 @@
     <ClInclude Include="..\bytecode\UnlinkedCodeBlock.h" />
     <ClInclude Include="..\bytecode\ValueProfile.h" />
     <ClInclude Include="..\bytecode\ValueRecovery.h" />
+    <ClInclude Include="..\bytecode\VariableWatchpointSet.h" />
     <ClInclude Include="..\bytecode\VirtualRegister.h" />
     <ClInclude Include="..\bytecode\Watchpoint.h" />
     <ClInclude Include="..\bytecompiler\BytecodeGenerator.h" />
@@ -991,6 +995,7 @@
     <ClInclude Include="..\heap\WeakSet.h" />
     <ClInclude Include="..\heap\WeakSetInlines.h" />
     <ClInclude Include="..\heap\WriteBarrierSupport.h" />
+    <ClInclude Include="..\inspector\InspectorFrontendChannel.h" />
     <ClInclude Include="..\interpreter\AbstractPC.h" />
     <ClInclude Include="..\interpreter\CachedCall.h" />
     <ClInclude Include="..\interpreter\CallFrame.h" />
@@ -999,6 +1004,7 @@
     <ClInclude Include="..\interpreter\Interpreter.h" />
     <ClInclude Include="..\interpreter\JSStack.h" />
     <ClInclude Include="..\interpreter\JSStackInlines.h" />
+    <ClInclude Include="..\interpreter\ProtoCallFrame.h" />
     <ClInclude Include="..\interpreter\Register.h" />
     <ClInclude Include="..\interpreter\StackVisitor.h" />
     <ClInclude Include="..\interpreter\VMInspector.h" />
@@ -1084,9 +1090,8 @@
     <ClInclude Include="..\profiler\ProfilerProfiledBytecodes.h" />
     <ClInclude Include="..\runtime\ArgList.h" />
     <ClInclude Include="..\runtime\Arguments.h" />
-    <ClInclude Include="..\runtime\ArgumentsConstructor.h" />
-    <ClInclude Include="..\runtime\ArgumentsPrototype.h" />
     <ClInclude Include="..\runtime\ArrayBuffer.h" />
+    <ClInclude Include="..\runtime\ArrayBufferNeuteringWatchpoint.h" />
     <ClInclude Include="..\runtime\ArrayBufferView.h" />
     <ClInclude Include="..\runtime\ArrayConstructor.h" />
     <ClInclude Include="..\runtime\ArrayConventions.h" />
@@ -1110,6 +1115,7 @@
     <ClInclude Include="..\runtime\CommonSlowPathsExceptions.h" />
     <ClInclude Include="..\runtime\CompilationResult.h" />
     <ClInclude Include="..\runtime\Completion.h" />
+    <ClInclude Include="..\runtime\ConstantMode.h" />
     <ClInclude Include="..\runtime\ConstructData.h" />
     <ClInclude Include="..\runtime\DataView.h" />
     <ClInclude Include="..\runtime\DateConstructor.h" />
@@ -1265,6 +1271,7 @@
     <ClInclude Include="..\runtime\SimpleTypedArrayController.h" />
     <ClInclude Include="..\runtime\SmallStrings.h" />
     <ClInclude Include="..\runtime\SparseArrayValueMap.h" />
+    <ClInclude Include="..\runtime\StackAlignment.h" />
     <ClInclude Include="..\runtime\StrictEvalActivation.h" />
     <ClInclude Include="..\runtime\StringConstructor.h" />
     <ClInclude Include="..\runtime\StringObject.h" />
@@ -1289,6 +1296,7 @@
     <ClInclude Include="..\runtime\Uint32Array.h" />
     <ClInclude Include="..\runtime\Uint8Array.h" />
     <ClInclude Include="..\runtime\VM.h" />
+    <ClInclude Include="..\runtime\VMEntryScope.h" />
     <ClInclude Include="..\runtime\Watchdog.h" />
     <ClInclude Include="..\runtime\WeakGCMap.h" />
     <ClInclude Include="..\runtime\WeakMapConstructor.h" />

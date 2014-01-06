@@ -263,6 +263,11 @@ static void testWebKitSettings(Test*, gconstpointer)
     webkit_settings_set_enable_media_stream(settings, TRUE);
     g_assert(webkit_settings_get_enable_media_stream(settings));
 
+    // By default, SpatialNavigation is disabled
+    g_assert(!webkit_settings_get_enable_spatial_navigation(settings));
+    webkit_settings_set_enable_spatial_navigation(settings, TRUE);
+    g_assert(webkit_settings_get_enable_spatial_navigation(settings));
+
     g_object_unref(G_OBJECT(settings));
 }
 
@@ -298,9 +303,8 @@ static void testWebKitSettingsUserAgent(WebViewTest* test, gconstpointer)
     CString defaultUserAgent = webkit_settings_get_user_agent(settings.get());
     webkit_web_view_set_settings(test->m_webView, settings.get());
 
+    g_assert(g_strstr_len(defaultUserAgent.data(), -1, "AppleWebKit"));
     g_assert(g_strstr_len(defaultUserAgent.data(), -1, "Safari"));
-    g_assert(g_strstr_len(defaultUserAgent.data(), -1, "Chromium"));
-    g_assert(g_strstr_len(defaultUserAgent.data(), -1, "Chrome"));
 
     webkit_settings_set_user_agent(settings.get(), 0);
     g_assert_cmpstr(defaultUserAgent.data(), ==, webkit_settings_get_user_agent(settings.get()));

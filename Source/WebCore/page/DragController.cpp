@@ -74,7 +74,7 @@
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "StylePropertySet.h"
+#include "StyleProperties.h"
 #include "Text.h"
 #include "TextEvent.h"
 #include "htmlediting.h"
@@ -455,7 +455,7 @@ bool DragController::concludeEditDrag(DragData& dragData)
         if (!color.isValid())
             return false;
         RefPtr<Range> innerRange = innerFrame->selection().toNormalizedRange();
-        RefPtr<MutableStylePropertySet> style = MutableStylePropertySet::create();
+        RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
         style->setProperty(CSSPropertyColor, color.serialized(), false);
         if (!innerFrame->editor().shouldApplyStyle(style.get(), innerRange.get()))
             return false;
@@ -553,8 +553,7 @@ bool DragController::canProcessDrag(DragData& dragData)
         return true;
 
     if (result.innerNonSharedNode()->isPluginElement()) {
-        HTMLPlugInElement* plugin = static_cast<HTMLPlugInElement*>(result.innerNonSharedNode());
-        if (!plugin->canProcessDrag() && !result.innerNonSharedNode()->rendererIsEditable())
+        if (!toHTMLPlugInElement(result.innerNonSharedNode())->canProcessDrag() && !result.innerNonSharedNode()->rendererIsEditable())
             return false;
     } else if (!result.innerNonSharedNode()->rendererIsEditable())
         return false;

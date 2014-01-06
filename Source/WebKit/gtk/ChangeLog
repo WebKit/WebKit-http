@@ -1,3 +1,34 @@
+2013-12-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Push Remote Inspector debugging connection management into JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=124613
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/InspectorClientGtk.h:
+
+2013-12-02  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        [GTK] GTK2 paint code path does not render AC layers
+        https://bugs.webkit.org/show_bug.cgi?id=124967
+
+        Reviewed by Carlos Garcia Campos.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_expose_event): also paint AC layers when painting the widget,
+        when AC is on.
+
+2013-11-28  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        REGRESSION(r154658): webkit_web_view_get_view_source_mode always returns false
+        https://bugs.webkit.org/show_bug.cgi?id=124954
+
+        Reviewed by Carlos Garcia Campos.
+
+        * tests/testwebview.c: new test to ensure setting and getting source mode work as intended.
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_get_view_source_mode): actually return the value we query from WebCore.
+
 2013-11-18  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Update NEWS and Versions.m4 for 2.3.2 release.

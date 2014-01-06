@@ -31,13 +31,17 @@
 
 namespace API {
 class Array;
+
+template<> struct ClientTraits<WKContextClientBase> {
+    typedef std::tuple<WKContextClientV0> Versions;
+};
 }
 
 namespace WebKit {
 
 class WebContext;
 
-class WebContextClient : public APIClient<WKContextClient, kWKContextClientCurrentVersion> {
+class WebContextClient : public API::Client<WKContextClientBase> {
 public:
     void plugInAutoStartOriginHashesChanged(WebContext*);
     void networkProcessDidCrash(WebContext*);

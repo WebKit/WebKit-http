@@ -55,9 +55,17 @@ void JIT::emit_op_mov(Instruction* currentInstruction)
     int dst = currentInstruction[1].u.operand;
     int src = currentInstruction[2].u.operand;
 
-    // Use simpler approach, since the DFG thinks that the last result register
-    // is always set to the destination on every operation.
     emitGetVirtualRegister(src, regT0);
+    emitPutVirtualRegister(dst);
+}
+
+void JIT::emit_op_captured_mov(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    int src = currentInstruction[2].u.operand;
+
+    emitGetVirtualRegister(src, regT0);
+    emitNotifyWrite(regT0, regT1, currentInstruction[3].u.watchpointSet);
     emitPutVirtualRegister(dst);
 }
 
@@ -323,7 +331,6 @@ void JIT::emit_op_strcat(Instruction* currentInstruction)
 {
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_strcat);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emit_op_not(Instruction* currentInstruction)
@@ -706,7 +713,7 @@ void JIT::emit_op_debug(Instruction* currentInstruction)
 #if ENABLE(DEBUG_WITH_BREAKPOINT)
     UNUSED_PARAM(currentInstruction);
     breakpoint();
-#else
+#elif ENABLE(JAVASCRIPT_DEBUGGER)
     JSGlobalObject* globalObject = codeBlock()->globalObject();
     Debugger* debugger = globalObject->debugger();
     char* debuggerAddress = reinterpret_cast<char*>(globalObject) + JSGlobalObject::debuggerOffset();
@@ -716,6 +723,8 @@ void JIT::emit_op_debug(Instruction* currentInstruction)
     callOperation(operationDebug, currentInstruction[1].u.operand);
     skipDebugHook.link(this);
     noDebugger.link(this);
+#else
+    UNUSED_PARAM(currentInstruction);
 #endif
 }
 
@@ -855,7 +864,6 @@ void JIT::emitSlow_op_get_callee(Instruction* currentInstruction, Vector<SlowCas
 
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_get_callee);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emit_op_create_this(Instruction* currentInstruction)
@@ -883,7 +891,6 @@ void JIT::emitSlow_op_create_this(Instruction* currentInstruction, Vector<SlowCa
 
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_create_this);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emit_op_profile_will_call(Instruction* currentInstruction)
@@ -909,7 +916,6 @@ void JIT::emitSlow_op_to_this(Instruction* currentInstruction, Vector<SlowCaseEn
 
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_to_this);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emitSlow_op_to_primitive(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -918,7 +924,6 @@ void JIT::emitSlow_op_to_primitive(Instruction* currentInstruction, Vector<SlowC
 
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_to_primitive);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emitSlow_op_not(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -927,7 +932,6 @@ void JIT::emitSlow_op_not(Instruction* currentInstruction, Vector<SlowCaseEntry>
     
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_not);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emitSlow_op_jfalse(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -949,7 +953,6 @@ void JIT::emitSlow_op_bitxor(Instruction* currentInstruction, Vector<SlowCaseEnt
     linkSlowCase(iter);
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_bitxor);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emitSlow_op_bitor(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -957,7 +960,6 @@ void JIT::emitSlow_op_bitor(Instruction* currentInstruction, Vector<SlowCaseEntr
     linkSlowCase(iter);
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_bitor);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emitSlow_op_eq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -984,7 +986,6 @@ void JIT::emitSlow_op_stricteq(Instruction* currentInstruction, Vector<SlowCaseE
     linkSlowCase(iter);
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_stricteq);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emitSlow_op_nstricteq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -994,7 +995,6 @@ void JIT::emitSlow_op_nstricteq(Instruction* currentInstruction, Vector<SlowCase
     linkSlowCase(iter);
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_nstricteq);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emitSlow_op_check_has_instance(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -1032,7 +1032,6 @@ void JIT::emitSlow_op_to_number(Instruction* currentInstruction, Vector<SlowCase
 
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_to_number);
     slowPathCall.call();
-    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emit_op_get_arguments_length(Instruction* currentInstruction)
@@ -1095,6 +1094,15 @@ void JIT::emitSlow_op_get_argument_by_val(Instruction* currentInstruction, Vecto
 }
 
 #endif // USE(JSVALUE64)
+
+void JIT::emit_op_touch_entry(Instruction* currentInstruction)
+{
+    if (m_codeBlock->symbolTable()->m_functionEnteredOnce.hasBeenInvalidated())
+        return;
+    
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_touch_entry);
+    slowPathCall.call();
+}
 
 void JIT::emit_op_loop_hint(Instruction*)
 {
@@ -1171,6 +1179,12 @@ void JIT::emit_op_new_func(Instruction* currentInstruction)
         lazyJump.link(this);
 }
 
+void JIT::emit_op_new_captured_func(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_new_captured_func);
+    slowPathCall.call();
+}
+
 void JIT::emit_op_new_func_exp(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
@@ -1210,6 +1224,16 @@ void JIT::emit_op_new_array_buffer(Instruction* currentInstruction)
     int size = currentInstruction[3].u.operand;
     const JSValue* values = codeBlock()->constantBuffer(valuesIndex);
     callOperation(operationNewArrayBufferWithProfile, dst, currentInstruction[4].u.arrayAllocationProfile, values, size);
+}
+
+void JIT::emitSlow_op_captured_mov(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+{
+    VariableWatchpointSet* set = currentInstruction[3].u.watchpointSet;
+    if (!set || set->state() == IsInvalidated)
+        return;
+    linkSlowCase(iter);
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_captured_mov);
+    slowPathCall.call();
 }
 
 } // namespace JSC

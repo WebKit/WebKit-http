@@ -58,7 +58,7 @@
 #include "RenderedPosition.h"
 #include "Settings.h"
 #include "SpatialNavigation.h"
-#include "StylePropertySet.h"
+#include "StyleProperties.h"
 #include "TypingCommand.h"
 #include "VisibleUnits.h"
 #include "htmlediting.h"
@@ -434,17 +434,10 @@ static void updatePositionAfterAdoptingTextReplacement(Position& position, Chara
     ASSERT(static_cast<unsigned>(position.offsetInContainerNode()) <= node->length());
 }
 
-static inline bool nodeIsDetachedFromDocument(Node* node)
-{
-    ASSERT(node);
-    Node* highest = highestAncestor(node);
-    return highest->nodeType() == Node::DOCUMENT_FRAGMENT_NODE && !highest->isShadowRoot();
-}
-
 void FrameSelection::textWasReplaced(CharacterData* node, unsigned offset, unsigned oldLength, unsigned newLength)
 {
     // The fragment check is a performance optimization. See http://trac.webkit.org/changeset/30062.
-    if (isNone() || !node || nodeIsDetachedFromDocument(node))
+    if (isNone() || !node || !node->inDocument())
         return;
 
     Position base = m_selection.base();
@@ -1687,11 +1680,14 @@ bool FrameSelection::isInPasswordField() const
 void FrameSelection::focusedOrActiveStateChanged()
 {
     bool activeAndFocused = isFocusedAndActive();
+    Ref<Document> document(*m_frame->document());
+
+    document->updateStyleIfNeeded();
 
     // Because RenderObject::selectionBackgroundColor() and
     // RenderObject::selectionForegroundColor() check if the frame is active,
     // we have to update places those colors were painted.
-    if (RenderView* view = m_frame->document()->renderView())
+    if (RenderView* view = document->renderView())
         view->repaintSelection();
 
     // Caret appears in the active frame.
@@ -1705,7 +1701,7 @@ void FrameSelection::focusedOrActiveStateChanged()
     // Because StyleResolver::checkOneSelector() and
     // RenderTheme::isFocused() check if the frame is active, we have to
     // update style and theme state that depended on those.
-    if (Element* element = m_frame->document()->focusedElement()) {
+    if (Element* element = document->focusedElement()) {
         element->setNeedsStyleRecalc();
         if (RenderObject* renderer = element->renderer())
             if (renderer && renderer->style().hasAppearance())
@@ -1906,7 +1902,7 @@ void DragCaretController::paintDragCaret(Frame* frame, GraphicsContext* p, const
 #endif
 }
 
-PassRefPtr<MutableStylePropertySet> FrameSelection::copyTypingStyle() const
+PassRefPtr<MutableStyleProperties> FrameSelection::copyTypingStyle() const
 {
     if (!m_typingStyle || !m_typingStyle->style())
         return 0;
@@ -1920,6 +1916,10 @@ bool FrameSelection::shouldDeleteSelection(const VisibleSelection& selection) co
 
 FloatRect FrameSelection::bounds(bool clipToVisibleContent) const
 {
+    if (!m_frame->document())
+        return LayoutRect();
+
+    m_frame->document()->updateStyleIfNeeded();
     RenderView* root = m_frame->contentRenderer();
     FrameView* view = m_frame->view();
     if (!root || !view)
@@ -2046,13 +2046,6 @@ bool FrameSelection::dispatchSelectStart()
         return true;
 
     return selectStartTarget->dispatchEvent(Event::create(eventNames().selectstartEvent, true, true));
-}
-
-inline bool FrameSelection::visualWordMovementEnabled() const
-{
-    if (!m_frame)
-        return false;
-    return m_frame->settings().visualWordMovementEnabled();
 }
 
 void FrameSelection::setShouldShowBlockCursor(bool shouldShowBlockCursor)

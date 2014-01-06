@@ -34,6 +34,10 @@
 
 namespace API {
 class Object;
+
+template<> struct ClientTraits<WKBundlePageFormClientBase> {
+    typedef std::tuple<WKBundlePageFormClientV0, WKBundlePageFormClientV1, WKBundlePageFormClientV2> Versions;
+};
 }
 
 namespace WebCore {
@@ -49,7 +53,7 @@ class ImmutableDictionary;
 class WebFrame;
 class WebPage;
 
-class InjectedBundlePageFormClient : public APIClient<WKBundlePageFormClient, kWKBundlePageFormClientCurrentVersion> {
+class InjectedBundlePageFormClient : public API::Client<WKBundlePageFormClientBase> {
 public:
     void didFocusTextField(WebPage*, WebCore::HTMLInputElement*, WebFrame*);
     void textFieldDidBeginEditing(WebPage*, WebCore::HTMLInputElement*, WebFrame*);

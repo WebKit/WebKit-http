@@ -1206,6 +1206,16 @@ bool WKPreferencesGetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef prefer
     return toImpl(preferencesRef)->simpleLineLayoutDebugBordersEnabled();
 }
 
+void WKPreferencesSetBackgroundShouldExtendBeyondPage(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setBackgroundShouldExtendBeyondPage(flag);
+}
+
+bool WKPreferencesGetBackgroundShouldExtendBeyondPage(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->backgroundShouldExtendBeyondPage();
+}
+
 void WKPreferencesSetMediaStreamEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
     toImpl(preferencesRef)->setMediaStreamEnabled(enabled);
@@ -1224,4 +1234,14 @@ void WKPreferencesSetVideoPluginProxyEnabled(WKPreferencesRef preferencesRef, bo
 bool WKPreferencesGetVideoPluginProxyEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->isVideoPluginProxyEnabled();
+}
+
+void WKPreferencesSetSpatialNavigationEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setSpatialNavigationEnabled(enabled);
+}
+
+bool WKPreferencesGetSpatialNavigationEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->spatialNavigationEnabled();
 }

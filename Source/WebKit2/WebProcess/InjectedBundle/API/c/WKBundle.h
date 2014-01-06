@@ -40,9 +40,25 @@ typedef void (*WKBundleDidInitializePageGroupCallback)(WKBundleRef bundle, WKBun
 typedef void (*WKBundleDidReceiveMessageCallback)(WKBundleRef bundle, WKStringRef name, WKTypeRef messageBody, const void* clientInfo);
 typedef void (*WKBundleDidReceiveMessageToPageCallback)(WKBundleRef bundle, WKBundlePageRef page, WKStringRef name, WKTypeRef messageBody, const void* clientInfo);
 
-struct WKBundleClient {
+typedef struct WKBundleClientBase {
     int                                                                 version;
     const void *                                                        clientInfo;
+} WKBundleClientBase;
+
+typedef struct WKBundleClientV0 {
+    WKBundleClientBase                                                  base;
+
+    // Version 0.
+    WKBundleDidCreatePageCallback                                       didCreatePage;
+    WKBundleWillDestroyPageCallback                                     willDestroyPage;
+    WKBundleDidInitializePageGroupCallback                              didInitializePageGroup;
+    WKBundleDidReceiveMessageCallback                                   didReceiveMessage;
+} WKBundleClientV0;
+
+typedef struct WKBundleClientV1 {
+    WKBundleClientBase                                                  base;
+
+    // Version 0.
     WKBundleDidCreatePageCallback                                       didCreatePage;
     WKBundleWillDestroyPageCallback                                     willDestroyPage;
     WKBundleDidInitializePageGroupCallback                              didInitializePageGroup;
@@ -50,14 +66,26 @@ struct WKBundleClient {
 
     // Version 1.
     WKBundleDidReceiveMessageToPageCallback                             didReceiveMessageToPage;
-};
-typedef struct WKBundleClient WKBundleClient;
+} WKBundleClientV1;
 
-enum { kWKBundleClientCurrentVersion = 1 };
+enum { kWKBundleClientCurrentVersion WK_ENUM_DEPRECATED("Use an explicit version number instead") = 1 };
+typedef struct WKBundleClient {
+    int                                                                 version;
+    const void *                                                        clientInfo;
+
+    // Version 0.
+    WKBundleDidCreatePageCallback                                       didCreatePage;
+    WKBundleWillDestroyPageCallback                                     willDestroyPage;
+    WKBundleDidInitializePageGroupCallback                              didInitializePageGroup;
+    WKBundleDidReceiveMessageCallback                                   didReceiveMessage;
+
+    // Version 1.
+    WKBundleDidReceiveMessageToPageCallback                             didReceiveMessageToPage;
+} WKBundleClient WK_DEPRECATED("Use an explicit versioned struct instead");
 
 WK_EXPORT WKTypeID WKBundleGetTypeID();
 
-WK_EXPORT void WKBundleSetClient(WKBundleRef bundle, WKBundleClient* client);
+WK_EXPORT void WKBundleSetClient(WKBundleRef bundle, WKBundleClientBase* client);
 
 WK_EXPORT void WKBundlePostMessage(WKBundleRef bundle, WKStringRef messageName, WKTypeRef messageBody);
 WK_EXPORT void WKBundlePostSynchronousMessage(WKBundleRef bundle, WKStringRef messageName, WKTypeRef messageBody, WKTypeRef* returnData);

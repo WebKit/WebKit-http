@@ -272,8 +272,6 @@ webkit2platform_sources += \
 	Source/WebKit2/Platform/CoreIPC/Attachment.h \
 	Source/WebKit2/Platform/CoreIPC/Connection.cpp \
 	Source/WebKit2/Platform/CoreIPC/Connection.h \
-	Source/WebKit2/Platform/CoreIPC/DataReference.cpp \
-	Source/WebKit2/Platform/CoreIPC/DataReference.h \
 	Source/WebKit2/Platform/CoreIPC/HandleMessage.h \
 	Source/WebKit2/Platform/CoreIPC/MessageDecoder.cpp \
 	Source/WebKit2/Platform/CoreIPC/MessageDecoder.h \
@@ -287,6 +285,8 @@ webkit2platform_sources += \
 	Source/WebKit2/Platform/CoreIPC/MessageSender.h \
 	Source/WebKit2/Platform/CoreIPC/unix/AttachmentUnix.cpp \
 	Source/WebKit2/Platform/CoreIPC/unix/ConnectionUnix.cpp \
+	Source/WebKit2/Platform/IPC/DataReference.cpp \
+	Source/WebKit2/Platform/IPC/DataReference.h \
 	Source/WebKit2/Platform/IPC/StringReference.cpp \
 	Source/WebKit2/Platform/IPC/StringReference.h \
 	Source/WebKit2/Platform/gtk/LoggingGtk.cpp \
@@ -325,8 +325,6 @@ webkit2_sources += \
 	Source/WebKit2/Shared/APIArray.cpp \
 	Source/WebKit2/Shared/APIArray.h \
 	Source/WebKit2/Shared/APIClient.h \
-	Source/WebKit2/Shared/APIClientTraits.cpp \
-	Source/WebKit2/Shared/APIClientTraits.h \
 	Source/WebKit2/Shared/API/c/cairo/WKImageCairo.cpp \
 	Source/WebKit2/Shared/API/c/cairo/WKImageCairo.h \
 	Source/WebKit2/Shared/API/c/gtk/WKBaseGtk.h \
@@ -422,6 +420,7 @@ webkit2_sources += \
 	Source/WebKit2/Shared/Downloads/soup/DownloadSoupErrors.h \
 	Source/WebKit2/Shared/EditorState.cpp \
 	Source/WebKit2/Shared/EditorState.h \
+	Source/WebKit2/Shared/FilterIterator.h \
 	Source/WebKit2/Shared/FontSmoothingLevel.h \
 	Source/WebKit2/Shared/ProcessExecutablePath.h \
 	Source/WebKit2/Shared/cairo/ShareableBitmapCairo.cpp \
@@ -438,6 +437,7 @@ webkit2_sources += \
 	Source/WebKit2/Shared/ImageOptions.h \
 	Source/WebKit2/Shared/ImmutableDictionary.cpp \
 	Source/WebKit2/Shared/ImmutableDictionary.h \
+	Source/WebKit2/Shared/IteratorPair.h \
 	Source/WebKit2/Shared/LayerTreeContext.h \
 	Source/WebKit2/Shared/MutableDictionary.cpp \
 	Source/WebKit2/Shared/MutableDictionary.h \
@@ -481,8 +481,8 @@ webkit2_sources += \
 	Source/WebKit2/Shared/SessionState.h \
 	Source/WebKit2/Shared/StatisticsData.cpp \
 	Source/WebKit2/Shared/StatisticsData.h \
-	Source/WebKit2/Shared/soup/PlatformCertificateInfo.cpp \
-	Source/WebKit2/Shared/soup/PlatformCertificateInfo.h \
+	Source/WebKit2/Shared/soup/CertificateInfo.cpp \
+	Source/WebKit2/Shared/soup/CertificateInfo.h \
 	Source/WebKit2/Shared/soup/SoupCookiePersistentStorageType.h \
 	Source/WebKit2/Shared/soup/WebCoreArgumentCodersSoup.cpp \
 	Source/WebKit2/Shared/TextCheckerState.h \
@@ -1365,8 +1365,8 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/Shared/gtk/ProcessExecutablePathGtk.cpp \
 	Source/WebKit2/Shared/gtk/WebEventFactory.cpp \
 	Source/WebKit2/Shared/cairo/ShareableBitmapCairo.cpp \
-	Source/WebKit2/Shared/soup/PlatformCertificateInfo.cpp \
-	Source/WebKit2/Shared/soup/PlatformCertificateInfo.h \
+	Source/WebKit2/Shared/soup/CertificateInfo.cpp \
+	Source/WebKit2/Shared/soup/CertificateInfo.h \
 	Source/WebKit2/Shared/soup/WebCoreArgumentCodersSoup.cpp \
 	Source/WebKit2/UIProcess/Launcher/ProcessLauncher.cpp \
 	Source/WebKit2/UIProcess/Launcher/ProcessLauncher.h \

@@ -55,7 +55,7 @@ void WebEditCommandProxy::unapply()
     if (!m_page || !m_page->isValid())
         return;
 
-    m_page->process()->send(Messages::WebPage::UnapplyEditCommand(m_commandID), m_page->pageID(), CoreIPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_page->process().send(Messages::WebPage::UnapplyEditCommand(m_commandID), m_page->pageID(), CoreIPC::DispatchMessageEvenWhenWaitingForSyncReply);
     m_page->registerEditCommand(this, WebPageProxy::Redo);
 }
 
@@ -64,7 +64,7 @@ void WebEditCommandProxy::reapply()
     if (!m_page || !m_page->isValid())
         return;
 
-    m_page->process()->send(Messages::WebPage::ReapplyEditCommand(m_commandID), m_page->pageID(), CoreIPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_page->process().send(Messages::WebPage::ReapplyEditCommand(m_commandID), m_page->pageID(), CoreIPC::DispatchMessageEvenWhenWaitingForSyncReply);
     m_page->registerEditCommand(this, WebPageProxy::Undo);
 }
 
@@ -129,6 +129,12 @@ String WebEditCommandProxy::nameForEditAction(EditAction editAction)
         return WEB_UI_STRING_KEY("Bold", "Bold (Undo action name)", "Undo action name");
     case EditActionItalics:
         return WEB_UI_STRING_KEY("Italics", "Italics (Undo action name)", "Undo action name");
+#if PLATFORM(IOS)
+    case EditActionDelete:
+        return WEB_UI_STRING_KEY("Delete", "Delete (Undo action name)", "Undo action name");
+    case EditActionDictation:
+        return WEB_UI_STRING_KEY("Dictation", "Dictation (Undo action name)", "Undo action name");
+#endif
     case EditActionPaste:
         return WEB_UI_STRING_KEY("Paste", "Paste (Undo action name)", "Undo action name");
     case EditActionPasteFont:

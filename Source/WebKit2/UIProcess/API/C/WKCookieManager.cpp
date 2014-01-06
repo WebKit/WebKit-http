@@ -36,7 +36,7 @@ WKTypeID WKCookieManagerGetTypeID()
     return toAPI(WebCookieManagerProxy::APIType);
 }
 
-void WKCookieManagerSetClient(WKCookieManagerRef cookieManagerRef, const WKCookieManagerClient* wkClient)
+void WKCookieManagerSetClient(WKCookieManagerRef cookieManagerRef, const WKCookieManagerClientBase* wkClient)
 {
     toImpl(cookieManagerRef)->initializeClient(wkClient);
 }

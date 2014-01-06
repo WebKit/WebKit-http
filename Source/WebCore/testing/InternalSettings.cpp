@@ -68,7 +68,6 @@ namespace WebCore {
 InternalSettings::Backup::Backup(Settings& settings)
     : m_originalCSSExclusionsEnabled(RuntimeEnabledFeatures::sharedFeatures().cssExclusionsEnabled())
     , m_originalCSSShapesEnabled(RuntimeEnabledFeatures::sharedFeatures().cssShapesEnabled())
-    , m_originalCSSVariablesEnabled(settings.cssVariablesEnabled())
 #if ENABLE(SHADOW_DOM)
     , m_originalShadowDOMEnabled(RuntimeEnabledFeatures::sharedFeatures().shadowDOMEnabled())
     , m_originalAuthorShadowDOMForAnyElementEnabled(RuntimeEnabledFeatures::sharedFeatures().authorShadowDOMForAnyElementEnabled())
@@ -94,6 +93,7 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_originalTimeWithoutMouseMovementBeforeHidingControls(settings.timeWithoutMouseMovementBeforeHidingControls())
     , m_useLegacyBackgroundSizeShorthandBehavior(settings.useLegacyBackgroundSizeShorthandBehavior())
     , m_autoscrollForDragAndDropEnabled(settings.autoscrollForDragAndDropEnabled())
+    , m_pluginReplacementEnabled(RuntimeEnabledFeatures::sharedFeatures().pluginReplacementEnabled())
 {
 }
 
@@ -101,7 +101,6 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 {
     RuntimeEnabledFeatures::sharedFeatures().setCSSExclusionsEnabled(m_originalCSSExclusionsEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setCSSShapesEnabled(m_originalCSSShapesEnabled);
-    settings.setCSSVariablesEnabled(m_originalCSSVariablesEnabled);
 #if ENABLE(SHADOW_DOM)
     RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(m_originalShadowDOMEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setAuthorShadowDOMForAnyElementEnabled(m_originalAuthorShadowDOMForAnyElementEnabled);
@@ -156,6 +155,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setTimeWithoutMouseMovementBeforeHidingControls(m_originalTimeWithoutMouseMovementBeforeHidingControls);
     settings.setUseLegacyBackgroundSizeShorthandBehavior(m_useLegacyBackgroundSizeShorthandBehavior);
     settings.setAutoscrollForDragAndDropEnabled(m_autoscrollForDragAndDropEnabled);
+    RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(m_pluginReplacementEnabled);
 }
 
 // We can't use RefCountedSupplement because that would try to make InternalSettings RefCounted
@@ -389,18 +389,6 @@ void InternalSettings::setCSSShapesEnabled(bool enabled, ExceptionCode& ec)
     RuntimeEnabledFeatures::sharedFeatures().setCSSShapesEnabled(enabled);
 }
 
-void InternalSettings::setCSSVariablesEnabled(bool enabled, ExceptionCode& ec)
-{
-    InternalSettingsGuardForSettings();
-    settings()->setCSSVariablesEnabled(enabled);
-}
-
-bool InternalSettings::cssVariablesEnabled(ExceptionCode& ec)
-{
-    InternalSettingsGuardForSettingsReturn(false);
-    return settings()->cssVariablesEnabled();
-}
-
 void InternalSettings::setCanStartMedia(bool enabled, ExceptionCode& ec)
 {
     InternalSettingsGuardForSettings();
@@ -526,6 +514,11 @@ void InternalSettings::setFontFallbackPrefersPictographs(bool preferPictographs,
 {
     InternalSettingsGuardForSettings();
     settings()->setFontFallbackPrefersPictographs(preferPictographs);
+}
+
+void InternalSettings::setPluginReplacementEnabled(bool enabled)
+{
+    RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(enabled);
 }
 
 }

@@ -27,6 +27,7 @@
 #include "RenderBlock.h"
 #include "RenderLineBoxList.h"
 #include "SimpleLineLayout.h"
+#include "TrailingObjects.h"
 
 namespace WebCore {
 
@@ -216,6 +217,7 @@ public:
         bool discardMargin() const { return m_discardMargin; }
         LayoutUnit margin() const { return m_positiveMargin - m_negativeMargin; }
     };
+    LayoutUnit marginOffsetForSelfCollapsingBlock();
 
     void layoutBlockChild(RenderBox& child, MarginInfo&, LayoutUnit& previousFloatLogicalBottom, LayoutUnit& maxFloatLogicalBottom);
     void adjustPositionedBlock(RenderBox& child, const MarginInfo&);
@@ -530,7 +532,6 @@ protected:
     RenderLineBoxList m_lineBoxes;
     std::unique_ptr<SimpleLineLayout::Layout> m_simpleLineLayout;
 
-    friend class BreakingContext;
     friend class LineBreaker;
     friend class LineWidth; // Needs to know FloatingObject
 };

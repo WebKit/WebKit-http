@@ -42,6 +42,7 @@ namespace JSC {
 #define FOR_EACH_CORE_OPCODE_ID_WITH_EXTENSION(macro, extension__) \
     macro(op_enter, 1) \
     macro(op_create_activation, 2) \
+    macro(op_touch_entry, 1) \
     macro(op_init_lazy_reg, 2) \
     macro(op_create_arguments, 2) \
     macro(op_create_this, 4) \
@@ -54,6 +55,7 @@ namespace JSC {
     macro(op_new_array_buffer, 5) \
     macro(op_new_regexp, 3) \
     macro(op_mov, 3) \
+    macro(op_captured_mov, 4) \
     \
     macro(op_not, 3) \
     macro(op_eq, 4) \
@@ -153,6 +155,7 @@ namespace JSC {
     macro(op_switch_string, 4) \
     \
     macro(op_new_func, 4) \
+    macro(op_new_captured_func, 4) \
     macro(op_new_func_exp, 3) \
     macro(op_call, 8) /* has value profiling */ \
     macro(op_call_eval, 8) /* has value profiling */ \
@@ -169,7 +172,7 @@ namespace JSC {
     macro(op_get_pnames, 6) \
     macro(op_next_pname, 7) \
     \
-    macro(op_resolve_scope, 5) \
+    macro(op_resolve_scope, 6) \
     macro(op_get_from_scope, 8) /* has value profiling */ \
     macro(op_put_to_scope, 7) \
     \

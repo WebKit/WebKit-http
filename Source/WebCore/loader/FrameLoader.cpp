@@ -986,7 +986,7 @@ void FrameLoader::handleFallbackContent()
     HTMLFrameOwnerElement* owner = m_frame.ownerElement();
     if (!owner || !owner->hasTagName(objectTag))
         return;
-    static_cast<HTMLObjectElement*>(owner)->renderFallbackContent();
+    toHTMLObjectElement(owner)->renderFallbackContent();
 }
 
 void FrameLoader::provisionalLoadStarted()
@@ -3319,6 +3319,11 @@ void FrameLoader::didChangeTitle(DocumentLoader* loader)
         m_client.setMainFrameDocumentReady(true); // update observers with new DOMDocument
         m_client.dispatchDidReceiveTitle(loader->title());
     }
+
+#if ENABLE(REMOTE_INSPECTOR)
+    if (m_frame.isMainFrame())
+        m_frame.page()->remoteInspectorInformationDidChange();
+#endif
 }
 
 void FrameLoader::didChangeIcons(IconType type)
@@ -3340,9 +3345,12 @@ void FrameLoader::dispatchDidCommitLoad()
 
     InspectorInstrumentation::didCommitLoad(&m_frame, m_documentLoader.get());
 
-    if (m_frame.isMainFrame())
+    if (m_frame.isMainFrame()) {
         m_frame.page()->featureObserver()->didCommitLoad();
-
+#if ENABLE(REMOTE_INSPECTOR)
+        m_frame.page()->remoteInspectorInformationDidChange();
+#endif
+    }
 }
 
 void FrameLoader::tellClientAboutPastMemoryCacheLoads()
@@ -3380,6 +3388,9 @@ NetworkingContext* FrameLoader::networkingContext() const
 void FrameLoader::loadProgressingStatusChanged()
 {
     FrameView* view = m_frame.mainFrame().view();
+    if (!view)
+        return;
+
     view->updateLayerFlushThrottlingInAllFrames();
     view->adjustTiledBackingCoverage();
 }

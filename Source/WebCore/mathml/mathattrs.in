@@ -3,6 +3,7 @@ namespaceURI="http://www.w3.org/1998/Math/MathML"
 guardFactoryWith="ENABLE(MATHML)"
 attrsNullNamespace
 
+actiontype
 alttext
 background
 close
@@ -11,6 +12,7 @@ columnspan
 definitionURL
 denomalign
 depth
+dir
 encoding
 fontfamily
 fontsize
@@ -25,6 +27,7 @@ mathvariant
 numalign
 open
 rowspan
+selection
 separators
 stretchy
 subscriptshift

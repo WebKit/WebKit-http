@@ -44,18 +44,34 @@ typedef bool (*WKBundlePageBannerMouseUpCallback)(WKBundlePageBannerRef pageBann
 typedef bool (*WKBundlePageBannerMouseMovedCallback)(WKBundlePageBannerRef pageBanner, WKPoint position, const void* clientInfo);
 typedef bool (*WKBundlePageBannerMouseDraggedCallback)(WKBundlePageBannerRef pageBanner, WKPoint position, WKEventMouseButton mouseButton, const void* clientInfo);
 
-struct WKBundlePageBannerClient {
+typedef struct WKBundlePageBannerClientBase {
     int                                                                 version;
     const void *                                                        clientInfo;
+} WKBundlePageBannerClientBase;
+
+typedef struct WKBundlePageBannerClientV0 {
+    WKBundlePageBannerClientBase                                        base;
+
+    // Version 0.
     WKBundlePageBannerMouseDownCallback                                 mouseDown;
     WKBundlePageBannerMouseUpCallback                                   mouseUp;
     WKBundlePageBannerMouseMovedCallback                                mouseMoved;
     WKBundlePageBannerMouseDraggedCallback                              mouseDragged;
-};
-typedef struct WKBundlePageBannerClient WKBundlePageBannerClient;
+} WKBundlePageBannerClientV0;
 
-enum { kWKBundlePageBannerClientCurrentVersion = 0 };
-    
+enum { kWKBundlePageBannerClientCurrentVersion WK_ENUM_DEPRECATED("Use an explicit version number instead") = 0 };
+typedef struct WKBundlePageBannerClient {
+    int                                                                 version;
+    const void *                                                        clientInfo;
+
+    // Version 0.
+    WKBundlePageBannerMouseDownCallback                                 mouseDown;
+    WKBundlePageBannerMouseUpCallback                                   mouseUp;
+    WKBundlePageBannerMouseMovedCallback                                mouseMoved;
+    WKBundlePageBannerMouseDraggedCallback                              mouseDragged;
+} WKBundlePageBannerClient WK_DEPRECATED("Use an explicit versioned struct instead");
+
+
 WK_EXPORT WKTypeID WKBundlePageBannerGetTypeID();
 
 #ifdef __cplusplus

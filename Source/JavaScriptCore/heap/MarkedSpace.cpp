@@ -120,9 +120,6 @@ void MarkedSpace::lastChanceToFinalize()
 
 void MarkedSpace::sweep()
 {
-#if USE(CF)
-    ASSERT(m_currentDelayedReleaseScope);
-#endif
     m_heap->sweeper()->willFinishSweeping();
     forEachBlock<Sweep>();
 }
@@ -201,6 +198,7 @@ struct ResumeAllocatingFunctor {
 void MarkedSpace::resumeAllocating()
 {
     ASSERT(isIterating());
+    DelayedReleaseScope scope(*this);
     forEachAllocator<ResumeAllocatingFunctor>();
 }
 

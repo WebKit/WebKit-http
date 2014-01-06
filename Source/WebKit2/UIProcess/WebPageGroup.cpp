@@ -51,11 +51,12 @@ static WebPageGroupMap& webPageGroupMap()
 
 PassRefPtr<WebPageGroup> WebPageGroup::create(const String& identifier, bool visibleToInjectedBundle, bool visibleToHistoryClient)
 {
-    RefPtr<WebPageGroup> pageGroup = adoptRef(new WebPageGroup(identifier, visibleToInjectedBundle, visibleToHistoryClient));
+    return adoptRef(new WebPageGroup(identifier, visibleToInjectedBundle, visibleToHistoryClient));
+}
 
-    webPageGroupMap().set(pageGroup->pageGroupID(), pageGroup.get());
-
-    return pageGroup.release();
+PassRef<WebPageGroup> WebPageGroup::createNonNull(const String& identifier, bool visibleToInjectedBundle, bool visibleToHistoryClient)
+{
+    return adoptRef(*new WebPageGroup(identifier, visibleToInjectedBundle, visibleToHistoryClient));
 }
 
 WebPageGroup* WebPageGroup::get(uint64_t pageGroupID)
@@ -74,6 +75,8 @@ WebPageGroup::WebPageGroup(const String& identifier, bool visibleToInjectedBundl
 
     m_data.visibleToInjectedBundle = visibleToInjectedBundle;
     m_data.visibleToHistoryClient = visibleToHistoryClient;
+    
+    webPageGroupMap().set(m_data.pageGroupID, this);
 }
 
 WebPageGroup::~WebPageGroup()
@@ -189,6 +192,16 @@ void WebPageGroup::removeAllUserContent()
     m_data.userStyleSheets.clear();
     m_data.userScripts.clear();
     sendToAllProcessesInGroup(Messages::WebPageGroupProxy::RemoveAllUserContent(), m_data.pageGroupID);
+}
+
+bool WebPageGroup::addProcess(WebProcessProxy& process)
+{
+    return m_processes.add(&process).isNewEntry;
+}
+
+void WebPageGroup::disconnectProcess(WebProcessProxy& process)
+{
+    m_processes.remove(&process);
 }
 
 } // namespace WebKit

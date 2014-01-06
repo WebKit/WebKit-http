@@ -44,6 +44,7 @@
 #include "JSGlobalObjectFunctions.h"
 #include "JSNameScope.h"
 #include "JSPropertyNameIterator.h"
+#include "JSStackInlines.h"
 #include "JSWithScope.h"
 #include "ObjectConstructor.h"
 #include "Operations.h"
@@ -75,11 +76,14 @@ void JIT_OPERATION operationStackCheck(ExecState* exec, CodeBlock* codeBlock)
     // We pass in our own code block, because the callframe hasn't been populated.
     VM* vm = codeBlock->vm();
     CallFrame* callerFrame = exec->callerFrameSkippingVMEntrySentinel();
+    if (!callerFrame)
+        callerFrame = exec;
+
     NativeCallFrameTracer tracer(vm, callerFrame);
 
     JSStack& stack = vm->interpreter->stack();
 
-    if (UNLIKELY(!stack.grow(&exec->registers()[virtualRegisterForLocal(codeBlock->m_numCalleeRegisters).offset()])))
+    if (UNLIKELY(!stack.grow(&exec->registers()[virtualRegisterForLocal(codeBlock->frameRegisterCount()).offset()])))
         vm->throwException(callerFrame, createStackOverflowError(callerFrame));
 }
 
@@ -218,7 +222,7 @@ EncodedJSValue JIT_OPERATION operationCallCustomGetter(ExecState* exec, JSCell* 
     
     Identifier ident(vm, uid);
     
-    return JSValue::encode(function(exec, asObject(base), ident));
+    return function(exec, JSValue::encode(base), JSValue::encode(base), ident);
 }
 
 EncodedJSValue JIT_OPERATION operationCallGetter(ExecState* exec, JSCell* base, JSCell* getterSetter)

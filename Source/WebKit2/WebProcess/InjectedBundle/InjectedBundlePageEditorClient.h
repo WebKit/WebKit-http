@@ -33,6 +33,12 @@
 #include <WebCore/TextAffinity.h>
 #include <wtf/Forward.h>
 
+namespace API {
+template<> struct ClientTraits<WKBundlePageEditorClientBase> {
+    typedef std::tuple<WKBundlePageEditorClientV0, WKBundlePageEditorClientV1> Versions;
+};
+}
+
 namespace WebCore {
     class CSSStyleDeclaration;
     class Node;
@@ -45,7 +51,7 @@ namespace WebKit {
 class WebFrame;
 class WebPage;
 
-class InjectedBundlePageEditorClient : public APIClient<WKBundlePageEditorClient, kWKBundlePageEditorClientCurrentVersion> {
+class InjectedBundlePageEditorClient : public API::Client<WKBundlePageEditorClientBase> {
 public:
     bool shouldBeginEditing(WebPage*, WebCore::Range*);
     bool shouldEndEditing(WebPage*, WebCore::Range*);

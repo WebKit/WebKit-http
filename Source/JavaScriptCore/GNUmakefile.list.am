@@ -102,10 +102,11 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/ByValInfo.h \
 	Source/JavaScriptCore/bytecode/BytecodeBasicBlock.cpp \
 	Source/JavaScriptCore/bytecode/BytecodeBasicBlock.h \
+	Source/JavaScriptCore/bytecode/BytecodeConventions.h \
 	Source/JavaScriptCore/bytecode/BytecodeLivenessAnalysis.cpp \
 	Source/JavaScriptCore/bytecode/BytecodeLivenessAnalysis.h \
 	Source/JavaScriptCore/bytecode/BytecodeLivenessAnalysisInlines.h \
-	Source/JavaScriptCore/bytecode/BytecodeConventions.h \
+	Source/JavaScriptCore/bytecode/BytecodeUseDef.h \
 	Source/JavaScriptCore/bytecode/CallLinkInfo.cpp \
 	Source/JavaScriptCore/bytecode/CallLinkInfo.h \
 	Source/JavaScriptCore/bytecode/CallLinkStatus.cpp \
@@ -181,6 +182,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/ValueProfile.h \
 	Source/JavaScriptCore/bytecode/ValueRecovery.cpp \
 	Source/JavaScriptCore/bytecode/ValueRecovery.h \
+	Source/JavaScriptCore/bytecode/VariableWatchpointSet.h \
 	Source/JavaScriptCore/bytecode/VirtualRegister.h \
 	Source/JavaScriptCore/bytecode/Watchpoint.cpp \
 	Source/JavaScriptCore/bytecode/Watchpoint.h \
@@ -608,6 +610,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/icu/unicode/utf_old.h \
 	Source/JavaScriptCore/icu/unicode/utypes.h \
 	Source/JavaScriptCore/icu/unicode/uversion.h \
+	Source/JavaScriptCore/inspector/InspectorFrontendChannel.h \
 	Source/JavaScriptCore/interpreter/AbstractPC.cpp \
 	Source/JavaScriptCore/interpreter/AbstractPC.h \
 	Source/JavaScriptCore/interpreter/CachedCall.h \
@@ -620,6 +623,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/interpreter/JSStack.cpp \
 	Source/JavaScriptCore/interpreter/JSStack.h \
 	Source/JavaScriptCore/interpreter/JSStackInlines.h \
+	Source/JavaScriptCore/interpreter/ProtoCallFrame.cpp \
+	Source/JavaScriptCore/interpreter/ProtoCallFrame.h \
 	Source/JavaScriptCore/interpreter/Register.h \
 	Source/JavaScriptCore/interpreter/StackVisitor.cpp \
 	Source/JavaScriptCore/interpreter/StackVisitor.h \
@@ -777,6 +782,8 @@ javascriptcore_sources += \
     Source/JavaScriptCore/runtime/ArgumentsIteratorPrototype.h \
 	Source/JavaScriptCore/runtime/ArrayBuffer.cpp \
 	Source/JavaScriptCore/runtime/ArrayBuffer.h \
+	Source/JavaScriptCore/runtime/ArrayBufferNeuteringWatchpoint.cpp \
+	Source/JavaScriptCore/runtime/ArrayBufferNeuteringWatchpoint.h \
 	Source/JavaScriptCore/runtime/ArrayBufferView.cpp \
 	Source/JavaScriptCore/runtime/ArrayBufferView.h \
 	Source/JavaScriptCore/runtime/ArrayConstructor.cpp \
@@ -817,6 +824,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/Completion.cpp \
 	Source/JavaScriptCore/runtime/Completion.h \
 	Source/JavaScriptCore/runtime/ConcurrentJITLock.h \
+	Source/JavaScriptCore/runtime/ConstantMode.h \
 	Source/JavaScriptCore/runtime/ConstructData.cpp \
 	Source/JavaScriptCore/runtime/ConstructData.h \
 	Source/JavaScriptCore/runtime/DataView.cpp \
@@ -913,6 +921,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/JSExportMacros.h \
 	Source/JavaScriptCore/runtime/VM.cpp \
 	Source/JavaScriptCore/runtime/VM.h \
+	Source/JavaScriptCore/runtime/VMEntryScope.cpp \
+	Source/JavaScriptCore/runtime/VMEntryScope.h \
 	Source/JavaScriptCore/runtime/JSFunctionInlines.h \
 	Source/JavaScriptCore/runtime/JSGenericTypedArrayView.h \
 	Source/JavaScriptCore/runtime/JSGenericTypedArrayViewConstructor.h \
@@ -1089,6 +1099,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/SmallStrings.h \
 	Source/JavaScriptCore/runtime/SparseArrayValueMap.cpp \
 	Source/JavaScriptCore/runtime/SparseArrayValueMap.h \
+	Source/JavaScriptCore/runtime/StackAlignment.h \
 	Source/JavaScriptCore/runtime/StrictEvalActivation.cpp \
 	Source/JavaScriptCore/runtime/StrictEvalActivation.h \
 	Source/JavaScriptCore/runtime/StringConstructor.cpp \
@@ -1127,7 +1138,6 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/Uint32Array.h \
 	Source/JavaScriptCore/runtime/Uint8Array.h \
 	Source/JavaScriptCore/runtime/Uint8ClampedArray.h \
-	Source/JavaScriptCore/runtime/VMStackBounds.h \
 	Source/JavaScriptCore/runtime/Watchdog.cpp \
 	Source/JavaScriptCore/runtime/Watchdog.h \
 	Source/JavaScriptCore/runtime/WatchdogNone.cpp \

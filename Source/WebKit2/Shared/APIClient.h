@@ -26,38 +26,60 @@
 #ifndef APIClient_h
 #define APIClient_h
 
-#include "APIClientTraits.h"
+#include <algorithm>
+#include <array>
 
-namespace WebKit {
+namespace API {
 
-template<typename ClientInterface, int currentVersion> class APIClient {
+template<typename ClientInterface> struct ClientTraits;
+
+template<typename ClientInterface> class Client {
+    typedef typename ClientTraits<ClientInterface>::Versions ClientVersions;
+    static const int latestClientVersion = std::tuple_size<ClientVersions>::value - 1;
+    typedef typename std::tuple_element<latestClientVersion, ClientVersions>::type LatestClientInterface;
+
+    // Helper class that can return an std::array of element sizes in a tuple.
+    template<typename> struct InterfaceSizes;
+    template<typename... Interfaces> struct InterfaceSizes<std::tuple<Interfaces...>> {
+        static std::array<size_t, sizeof...(Interfaces)> sizes()
+        {
+            return { { sizeof(Interfaces)... } };
+        }
+    };
+
 public:
-    APIClient()
+    Client()
     {
-        initialize(0);
+#if !ASSERT_DISABLED
+        auto interfaceSizes = InterfaceSizes<ClientVersions>::sizes();
+        ASSERT(std::is_sorted(interfaceSizes.begin(), interfaceSizes.end()));
+#endif
+
+        initialize(nullptr);
     }
-    
+
     void initialize(const ClientInterface* client)
     {
-        COMPILE_ASSERT(sizeof(APIClientTraits<ClientInterface>::interfaceSizesByVersion) / sizeof(size_t) == currentVersion + 1, size_of_some_interfaces_are_unknown);
-
-        if (client && client->version == currentVersion) {
-            m_client = *client;
+        if (client && client->version == latestClientVersion) {
+            m_client = *reinterpret_cast<const LatestClientInterface*>(client);
             return;
         }
 
         memset(&m_client, 0, sizeof(m_client));
 
-        if (client && client->version < currentVersion)
-            memcpy(&m_client, client, APIClientTraits<ClientInterface>::interfaceSizesByVersion[client->version]);
+        if (client && client->version < latestClientVersion) {
+            auto interfaceSizes = InterfaceSizes<ClientVersions>::sizes();
+
+            memcpy(&m_client, client, interfaceSizes[client->version]);
+        }
     }
 
-    const ClientInterface& client() const { return m_client; }
+    const LatestClientInterface& client() const { return m_client; }
 
 protected:
-    ClientInterface m_client;
+    LatestClientInterface m_client;
 };
 
-} // namespace WebKit
+} // namespace API
 
 #endif // APIClient_h

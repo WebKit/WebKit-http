@@ -85,7 +85,7 @@ bool HTMLImageElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLImageElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet& style)
+void HTMLImageElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
 {
     if (name == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, value);
@@ -218,6 +218,10 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode&
             m_form->registerImgElement(this);
     }
 
+    // Insert needs to complete first, before we start updating the loader. Loader dispatches events which could result
+    // in callbacks back to this node.
+    Node::InsertionNotificationRequest insertNotificationRequest = HTMLElement::insertedInto(insertionPoint);
+
     if (insertionPoint.inDocument() && !m_lowercasedUsemap.isNull())
         document().addImageElementByLowercasedUsemap(*m_lowercasedUsemap.impl(), *this);
 
@@ -226,7 +230,7 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode&
     if (insertionPoint.inDocument() && !m_imageLoader.image())
         m_imageLoader.updateFromElement();
 
-    return HTMLElement::insertedInto(insertionPoint);
+    return insertNotificationRequest;
 }
 
 void HTMLImageElement::removedFrom(ContainerNode& insertionPoint)

@@ -26,6 +26,7 @@
 #import "config.h"
 #import "RemoteLayerTreeHost.h"
 
+#import "Logging.h"
 #import "RemoteLayerTreeHostMessages.h"
 #import "RemoteLayerTreePropertyApplier.h"
 #import "RemoteLayerTreeTransaction.h"
@@ -45,19 +46,17 @@ RemoteLayerTreeHost::RemoteLayerTreeHost(WebPageProxy* webPageProxy)
     : m_webPageProxy(webPageProxy)
     , m_rootLayer(nullptr)
 {
-    m_webPageProxy->process()->addMessageReceiver(Messages::RemoteLayerTreeHost::messageReceiverName(), m_webPageProxy->pageID(), this);
+    m_webPageProxy->process().addMessageReceiver(Messages::RemoteLayerTreeHost::messageReceiverName(), m_webPageProxy->pageID(), this);
 }
 
 RemoteLayerTreeHost::~RemoteLayerTreeHost()
 {
-    m_webPageProxy->process()->removeMessageReceiver(Messages::RemoteLayerTreeHost::messageReceiverName(), m_webPageProxy->pageID());
+    m_webPageProxy->process().removeMessageReceiver(Messages::RemoteLayerTreeHost::messageReceiverName(), m_webPageProxy->pageID());
 }
 
 void RemoteLayerTreeHost::commit(const RemoteLayerTreeTransaction& transaction)
 {
-#if !defined(NDEBUG)
-    transaction.dump();
-#endif
+    LOG(RemoteLayerTree, "%s", transaction.description().data());
 
     for (auto createdLayer : transaction.createdLayers())
         createLayer(createdLayer);
@@ -81,8 +80,8 @@ void RemoteLayerTreeHost::commit(const RemoteLayerTreeTransaction& transaction)
                 relatedLayers.set(child, getLayer(child));
         }
 
-        if (properties.changedProperties & RemoteLayerTreeTransaction::MaskLayerChanged)
-            relatedLayers.set(properties.maskLayer, getLayer(properties.maskLayer));
+        if (properties.changedProperties & RemoteLayerTreeTransaction::MaskLayerChanged && properties.maskLayerID)
+            relatedLayers.set(properties.maskLayerID, getLayer(properties.maskLayerID));
 
         RemoteLayerTreePropertyApplier::applyPropertiesToLayer(layer, properties, relatedLayers);
     }

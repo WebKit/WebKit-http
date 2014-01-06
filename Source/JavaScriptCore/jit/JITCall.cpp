@@ -42,11 +42,6 @@
 #include "ThunkGenerators.h"
 #include <wtf/StringPrintStream.h>
 
-#ifndef NDEBUG
-#include <stdio.h>
-#endif
-
-using namespace std;
 
 namespace JSC {
 
@@ -84,7 +79,7 @@ void JIT::compileLoadVarargs(Instruction* instruction)
         addPtr(callFrameRegister, regT1);
         // regT1: newCallFrame
 
-        slowCase.append(branchPtr(Above, AbsoluteAddress(m_vm->interpreter->stack().addressOfEnd()), regT1));
+        slowCase.append(branchPtr(Above, AbsoluteAddress(m_vm->addressOfJSStackLimit()), regT1));
 
         // Initialize ArgumentCount.
         store32(regT0, Address(regT1, JSStack::ArgumentCount * static_cast<int>(sizeof(Register)) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload)));

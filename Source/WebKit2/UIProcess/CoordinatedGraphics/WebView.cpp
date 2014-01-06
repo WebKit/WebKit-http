@@ -52,15 +52,15 @@ WebView::WebView(WebContext* context, WebPageGroup* pageGroup)
     , m_opacity(1.0)
 {
     // Need to call createWebPage after other data members, specifically m_visible, are initialized.
-    m_page = context->createWebPage(this, pageGroup);
+    m_page = context->createWebPage(*this, pageGroup);
 
-    m_page->pageGroup()->preferences()->setAcceleratedCompositingEnabled(true);
-    m_page->pageGroup()->preferences()->setForceCompositingMode(true);
+    m_page->pageGroup().preferences()->setAcceleratedCompositingEnabled(true);
+    m_page->pageGroup().preferences()->setForceCompositingMode(true);
 
     char* debugVisualsEnvironment = getenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS");
     bool showDebugVisuals = debugVisualsEnvironment && !strcmp(debugVisualsEnvironment, "1");
-    m_page->pageGroup()->preferences()->setCompositingBordersVisible(showDebugVisuals);
-    m_page->pageGroup()->preferences()->setCompositingRepaintCountersVisible(showDebugVisuals);
+    m_page->pageGroup().preferences()->setCompositingBordersVisible(showDebugVisuals);
+    m_page->pageGroup().preferences()->setCompositingRepaintCountersVisible(showDebugVisuals);
 }
 
 WebView::~WebView()
@@ -206,12 +206,12 @@ bool WebView::exitFullScreen()
 }
 #endif
 
-void WebView::initializeClient(const WKViewClient* client)
+void WebView::initializeClient(const WKViewClientBase* client)
 {
     m_client.initialize(client);
 }
 
-void WebView::didChangeContentsSize(const WebCore::IntSize& size)
+void WebView::didChangeContentSize(const WebCore::IntSize& size)
 {
     if (m_contentsSize == size)
         return;
@@ -236,7 +236,7 @@ AffineTransform WebView::transformToScene() const
 {
     FloatPoint position = -m_contentPosition;
     float effectiveScale = m_contentScaleFactor * m_page->deviceScaleFactor();
-    position.scale(effectiveScale, effectiveScale);
+    position.scale(m_page->deviceScaleFactor(), m_page->deviceScaleFactor());
 
     TransformationMatrix transform = m_userViewportTransform;
     transform.translate(position.x(), position.y());
@@ -258,7 +258,9 @@ void WebView::updateViewportSize()
     if (CoordinatedDrawingAreaProxy* drawingArea = static_cast<CoordinatedDrawingAreaProxy*>(page()->drawingArea())) {
         // Web Process expects sizes in UI units, and not raw device units.
         drawingArea->setSize(roundedIntSize(dipSize()), IntSize(), IntSize());
-        FloatRect visibleContentsRect(contentPosition(), visibleContentsSize());
+        FloatPoint position = contentPosition();
+        position.scale(1 / m_contentScaleFactor, 1 / m_contentScaleFactor);
+        FloatRect visibleContentsRect(position, visibleContentsSize());
         visibleContentsRect.intersect(FloatRect(FloatPoint(), contentsSize()));
         drawingArea->setVisibleContentsRect(visibleContentsRect, FloatPoint());
     }
@@ -367,6 +369,11 @@ void WebView::preferencesDidChange()
 void WebView::toolTipChanged(const String&, const String& newToolTip)
 {
     m_client.didChangeTooltip(this, newToolTip);
+}
+
+void WebView::didCommitLoadForMainFrame()
+{
+    m_contentsSize = IntSize();
 }
 
 void WebView::setCursor(const WebCore::Cursor&)

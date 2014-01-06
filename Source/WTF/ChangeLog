@@ -1,3 +1,193 @@
+2013-12-04  Dan Bernstein  <mitz@apple.com>
+
+        Replace USE(SECURITY_FRAMEWORK) with finer-grained defines
+        https://bugs.webkit.org/show_bug.cgi?id=125242
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Platform.h: Removed definitions of WTF_USE_SECURITY_FRAMEWORK, and defined
+        HAVE_SEC_IDENTITY and HAVE_SEC_KEYCHAIN.
+
+2013-12-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Push Remote Inspector debugging connection management into JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=124613
+
+        Reviewed by Timothy Hatcher.
+
+        * wtf/ios/WebCoreThread.cpp:
+        * wtf/ios/WebCoreThread.h:
+        Expose WebThreadRun/WebThreadRunSync iOS methods defined in WebCore through
+        WTF so that JavaScriptCore can use it. Another such method already existed.
+
+2013-12-03  Mark Lam  <mark.lam@apple.com>
+
+        testapi test crashes on Windows in WTF::Vector<wchar_t,64,WTF::UnsafeVectorOverflow>::size().
+        https://bugs.webkit.org/show_bug.cgi?id=121972.
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/OSAllocatorWin.cpp:
+        (WTF::OSAllocator::decommit):
+        (WTF::OSAllocator::releaseDecommitted):
+        - Added a check to ensure that the bytes to decommit / release is not 0.
+          On Windows, a 0 length passed to VirtualFree() has a special meaning,
+          and it's not "decommit / release nothing" as one would expect. Adding
+          this check makes OSAllocatorWin consistent with OSAllocatorPosix for
+          these 2 functions.
+
+2013-12-02  Mark Lam  <mark.lam@apple.com>
+
+        Build failure when disabling JIT, YARR_JIT, and ASSEMBLER.
+        https://bugs.webkit.org/show_bug.cgi?id=123809.
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h:
+        - Ensure that the ASSEMBLER is enabled when the DISASSEMBLER is enabled.
+
+2013-11-30  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Some JavaScript date tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=124946
+
+        Reviewed by Brent Fulgham.
+
+        Use native Win32 api functions to compute Daylight saving time offset.
+
+        * wtf/DateMath.cpp:
+        (WTF::UnixTimeToFileTime): Added method to calculate Win32 specific struct FILETIME from time_t value.
+        (WTF::calculateDSTOffset): Use native Win32 api functions to compute Daylight saving time offset.
+
+2013-11-28  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        Nix Upstream: Updating Nix WTF files
+        https://bugs.webkit.org/show_bug.cgi?id=124980
+
+        Reviewed by Csaba Osztrogonác.
+
+        Just to sync our private repo files and the trunk, as part of the upstream process.
+
+        * wtf/DisallowCType.h:
+        * wtf/PlatformNix.cmake:
+        * wtf/nix/FeatureDefinesNix.h:
+        * wtf/nix/PlatformNix.h:
+        * wtf/nix/RunLoopNix.cpp: Added.
+
+2013-11-28  Antti Koivisto  <antti@apple.com>
+
+        Remove feature: CSS variables
+        https://bugs.webkit.org/show_bug.cgi?id=114119
+
+        Reviewed by Andreas Kling.
+
+        * wtf/FeatureDefines.h:
+
+2013-11-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Do bytecode validation as part of testing
+        https://bugs.webkit.org/show_bug.cgi?id=124913
+
+        Reviewed by Oliver Hunt.
+
+        * GNUmakefile.list.am:
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/FastBitVector.cpp: Added.
+        (WTF::FastBitVector::dump):
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVector::resize):
+        (WTF::FastBitVector::bitCount):
+        (WTF::FastBitVector::arrayLength):
+
+2013-11-27  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        Remove Sparc specific code.
+        https://bugs.webkit.org/show_bug.cgi?id=124941
+
+        Reviewed by Michael Saboff.
+
+        Sparc is not supported, remove leftover code.
+
+        * wtf/Platform.h:
+        * wtf/dtoa/utils.h:
+
+2013-11-26  Marcelo Lira  <marcelo.lira@openbossa.org>
+
+        Nix upstreaming - Adding build files and supporting scripts
+        https://bugs.webkit.org/show_bug.cgi?id=118367
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+        * wtf/PlatformNix.cmake: Added.
+
+2013-11-26  Drew Yao  <ayao@apple.com>
+
+        ASSERT_WITH_SECURITY_IMPLICATION should crash in a distinct way.
+        https://bugs.webkit.org/show_bug.cgi?id=124757
+
+        Change ASSERT_WITH_SECURITY_IMPLICATION to access a different address from CRASH()
+        in order to help screen fuzzing bugs.
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2013-11-24  Tim Horton  <timothy_horton@apple.com>
+
+        Upstream USE(IOSURFACE) from the iOS port
+        https://bugs.webkit.org/show_bug.cgi?id=124814
+
+        Reviewed by Sam Weinig.
+
+        Some code guarded by USE(IOSURFACE) was recently upstreamed,
+        but not the definition of WTF_USE_IOSURFACE itself.
+
+        * wtf/Platform.h:
+
+2013-11-23  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] Remove 0.10 codepath
+        https://bugs.webkit.org/show_bug.cgi?id=124534
+
+        Reviewed by Philippe Normand.
+
+        * wtf/Platform.h: Removed macro for GStreamer 1.0 as it is the
+        only codepath now.
+
+2013-11-21  Peter Molnar  <pmolnar.u-szeged@partner.samsung.com>
+
+        Remove ENABLE_WORKERS
+        https://bugs.webkit.org/show_bug.cgi?id=105784
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+        * wtf/nix/FeatureDefinesNix.h:
+
+2013-11-21  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/124701> Fix an error in a few Xcode configuration setting files.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+
+2013-11-20  Mark Lam  <mark.lam@apple.com>
+
+        Introducing VMEntryScope to update the VM stack limit.
+        https://bugs.webkit.org/show_bug.cgi?id=124634.
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h:
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::StackBounds):
+
 2013-11-18  Filip Pizlo  <fpizlo@apple.com>
 
         Allow the FTL debug dumps to include the new size field

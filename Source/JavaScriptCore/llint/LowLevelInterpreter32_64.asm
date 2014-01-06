@@ -170,37 +170,71 @@ macro functionEpilogue(extraStackSpace)
     end
 end
 
-macro doCallToJavaScript()
+macro doCallToJavaScript(makeCall, doReturn)
     if X86
+        const entry = t5
+        const vmTopCallFrame = t2
+        const protoCallFrame = t4
+
         const extraStackSpace = 28
         const previousCFR = t0
         const previousPC = t1
-        const entry = t5
-        const newCallFrame = t4
+        const temp1 = t0 # Same as previousCFR
+        const temp2 = t1 # Same as previousPC
+        const temp3 = t2 # same as vmTopCallFrame
+        const temp4 = t3
     elsif ARM or ARMv7_TRADITIONAL
+        const entry = a0
+        const vmTopCallFrame = a1
+        const protoCallFrame = a2
+        const topOfStack = a3
+
         const extraStackSpace = 16
-        const previousCFR = t3  
+        const previousCFR = t3
         const previousPC = lr
-        const entry = a0
-        const newCallFrame = a1
+        const temp1 = t3 # Same as previousCFR
+        const temp2 = a3 # Same as topOfStack
+        const temp3 = t4
+        const temp4 = t5
     elsif ARMv7
+        const entry = a0
+        const vmTopCallFrame = a1
+        const protoCallFrame = a2
+        const topOfStack = a3
+
         const extraStackSpace = 28
-        const previousCFR = t3  
+        const previousCFR = t3
         const previousPC = lr
-        const entry = a0
-        const newCallFrame = a1
+        const temp1 = t3 # Same as previousCFR
+        const temp2 = a3 # Same as topOfStack
+        const temp3 = t4
+        const temp4 = t5
     elsif MIPS
-        const extraStackSpace = 20
-        const previousCFR = t2  
-        const previousPC = lr
         const entry = a0
-        const newCallFrame = a1
+        const vmTopCallFrame = a1
+        const protoCallFrame = a2
+        const topOfStack = a3
+
+        const extraStackSpace = 36
+        const previousCFR = t2
+        const previousPC = lr
+        const temp1 = t3
+        const temp2 = t4
+        const temp3 = t5
+        const temp4 = t6
     elsif SH4
-        const extraStackSpace = 20
-        const previousCFR = t3  
-        const previousPC = lr
         const entry = a0
-        const newCallFrame = a1
+        const vmTopCallFrame = a1
+        const protoCallFrame = a2
+        const topOfStack = a3
+
+        const extraStackSpace = 20
+        const previousCFR = t3
+        const previousPC = lr
+        const temp1 = t3 # Same as previousCFR
+        const temp2 = a3 # Same as topOfStack
+        const temp3 = t8
+        const temp4 = t9
     end
 
     if X86
@@ -210,18 +244,112 @@ macro doCallToJavaScript()
     functionPrologue(extraStackSpace)
     if X86
         loadp extraStackSpace+20[sp], entry
-        loadp extraStackSpace+24[sp], newCallFrame
+        loadp extraStackSpace+24[sp], vmTopCallFrame
+        loadp extraStackSpace+28[sp], protoCallFrame
+        loadp extraStackSpace+32[sp], cfr
     else
         move cfr, previousCFR
+        move topOfStack, cfr
     end
 
-    move newCallFrame, cfr
-    loadp [cfr], newCallFrame
-    storep previousCFR, [newCallFrame]
-    storep previousPC, 4[newCallFrame]
-    call entry
+    subp (CallFrameHeaderSlots-1)*8, cfr
+    storep 0, ArgumentCount+4[cfr]
+    storep 0, ArgumentCount[cfr]
+    storep 0, Callee+4[cfr]
+    storep vmTopCallFrame, Callee[cfr]
+    loadp [vmTopCallFrame], temp4
+    storep 0, ScopeChain+4[cfr]
+    storep temp4, ScopeChain[cfr]
+    storep 0, CodeBlock+4[cfr]
+    storep 1, CodeBlock[cfr]
+    storep previousPC, ReturnPC[cfr]
+    storep previousCFR, CallerFrame[cfr]
+    move cfr, temp1
 
+    loadi ProtoCallFrame::paddedArgCount[protoCallFrame], temp2
+    addp CallFrameHeaderSlots, temp2, temp2
+    lshiftp 3, temp2
+    subp temp2, cfr
+    storep temp1, CallerFrame[cfr]
+
+    move 5, temp1
+
+.copyHeaderLoop:
+    subi 1, temp1
+    loadp [protoCallFrame, temp1, 8], temp3
+    storep temp3, CodeBlock[cfr, temp1, 8]
+    loadp 4[protoCallFrame, temp1, 8], temp3
+    storep temp3, CodeBlock+4[cfr, temp1, 8]
+    btinz temp1, .copyHeaderLoop
+
+    loadi ProtoCallFrame::argCountAndCodeOriginValue[protoCallFrame], temp2
+    subi 1, temp2
+    loadi ProtoCallFrame::paddedArgCount[protoCallFrame], temp3
+    subi 1, temp3
+
+    bieq temp2, temp3, .copyArgs
+    move 0, temp1
+    move UndefinedTag, temp4
+.fillExtraArgsLoop:
+    subi 1, temp3
+    storep temp1, ThisArgumentOffset+8+PayloadOffset[cfr, temp3, 8]
+    storep temp4, ThisArgumentOffset+8+TagOffset[cfr, temp3, 8]
+    bineq temp2, temp3, .fillExtraArgsLoop
+
+.copyArgs:
+    loadp ProtoCallFrame::args[protoCallFrame], temp1
+
+.copyArgsLoop:
+    btiz temp2, .copyArgsDone
+    subi 1, temp2
+    loadp PayloadOffset[temp1, temp2, 8], temp3
+    loadp TagOffset[temp1, temp2, 8], temp4
+    storep temp3, ThisArgumentOffset+8+PayloadOffset[cfr, temp2, 8]
+    storep temp4, ThisArgumentOffset+8+TagOffset[cfr, temp2, 8]
+    jmp .copyArgsLoop
+
+.copyArgsDone:
+    if X86
+        loadp extraStackSpace+24[sp], vmTopCallFrame
+    end
+    storep cfr, [vmTopCallFrame]
+
+    makeCall(entry, temp1)
+
+    bpeq CodeBlock[cfr], 1, .calleeFramePopped
+    loadp CallerFrame[cfr], cfr
+
+.calleeFramePopped:
+    loadp Callee[cfr], temp3 # VM.topCallFrame
+    loadp ScopeChain[cfr], temp4
+    storep temp4, [temp3]
+
+    doReturn(extraStackSpace)
+end
+
+macro makeJavaScriptCall(entry, temp)
+    call entry
+end
+
+macro makeHostFunctionCall(entry, temp)
+    move entry, temp
+    if X86
+        # Put cfr on stack as arg0, also put it in ecx for "fastcall" targets
+        poke cfr, 0
+        move cfr, t2
+    else
+        move cfr, a0
+    end
+    call temp
+end
+
+macro doReturnFromJavaScript(extraStackSpace)
 _returnFromJavaScript:
+    functionEpilogue(extraStackSpace)
+    ret
+end
+
+macro doReturnFromHostFunction(extraStackSpace)
     functionEpilogue(extraStackSpace)
     ret
 end
@@ -540,6 +668,45 @@ _llint_op_mov:
     storei t2, TagOffset[cfr, t0, 8]
     storei t3, PayloadOffset[cfr, t0, 8]
     dispatch(3)
+
+
+macro notifyWrite(set, valueTag, valuePayload, scratch, slow)
+    loadb VariableWatchpointSet::m_state[set], scratch
+    bieq scratch, IsInvalidated, .done
+    bineq scratch, ClearWatchpoint, .overwrite
+    storei valueTag, VariableWatchpointSet::m_inferredValue + TagOffset[set]
+    storei valuePayload, VariableWatchpointSet::m_inferredValue + PayloadOffset[set]
+    storeb IsWatched, VariableWatchpointSet::m_state[set]
+    jmp .done
+
+.overwrite:
+    bineq valuePayload, VariableWatchpointSet::m_inferredValue + PayloadOffset[set], .definitelyDifferent
+    bieq valueTag, VariableWatchpointSet::m_inferredValue + TagOffset[set], .done
+.definitelyDifferent:
+    btbnz VariableWatchpointSet::m_setIsNotEmpty[set], slow
+    storei EmptyValueTag, VariableWatchpointSet::m_inferredValue + TagOffset[set]
+    storei 0, VariableWatchpointSet::m_inferredValue + PayloadOffset[set]
+    storeb IsInvalidated, VariableWatchpointSet::m_state[set]
+
+.done:
+end
+
+_llint_op_captured_mov:
+    traceExecution()
+    loadi 8[PC], t1
+    loadConstantOrVariable(t1, t2, t3)
+    loadpFromInstruction(3, t0)
+    btpz t0, .opCapturedMovReady
+    notifyWrite(t0, t2, t3, t1, .opCapturedMovSlow)
+.opCapturedMovReady:
+    loadi 4[PC], t0
+    storei t2, TagOffset[cfr, t0, 8]
+    storei t3, PayloadOffset[cfr, t0, 8]
+    dispatch(4)
+
+.opCapturedMovSlow:
+    callSlowPath(_slow_path_captured_mov)
+    dispatch(4)
 
 
 _llint_op_not:
@@ -1662,6 +1829,12 @@ _llint_op_new_func:
     dispatch(4)
 
 
+_llint_op_new_captured_func:
+    traceExecution()
+    callSlowPath(_slow_path_new_captured_func)
+    dispatch(4)
+
+
 macro arrayProfileForCall()
     if VALUE_PROFILER
         loadi 16[PC], t3
@@ -2006,39 +2179,39 @@ _llint_op_resolve_scope:
 #rGlobalProperty:
     bineq t0, GlobalProperty, .rGlobalVar
     getGlobalObject(1)
-    dispatch(5)
+    dispatch(6)
 
 .rGlobalVar:
     bineq t0, GlobalVar, .rClosureVar
     getGlobalObject(1)
-    dispatch(5)
+    dispatch(6)
 
 .rClosureVar:
     bineq t0, ClosureVar, .rGlobalPropertyWithVarInjectionChecks
     resolveScope()
-    dispatch(5)
+    dispatch(6)
 
 .rGlobalPropertyWithVarInjectionChecks:
     bineq t0, GlobalPropertyWithVarInjectionChecks, .rGlobalVarWithVarInjectionChecks
     varInjectionCheck(.rDynamic)
     getGlobalObject(1)
-    dispatch(5)
+    dispatch(6)
 
 .rGlobalVarWithVarInjectionChecks:
     bineq t0, GlobalVarWithVarInjectionChecks, .rClosureVarWithVarInjectionChecks
     varInjectionCheck(.rDynamic)
     getGlobalObject(1)
-    dispatch(5)
+    dispatch(6)
 
 .rClosureVarWithVarInjectionChecks:
     bineq t0, ClosureVarWithVarInjectionChecks, .rDynamic
     varInjectionCheck(.rDynamic)
     resolveScope()
-    dispatch(5)
+    dispatch(6)
 
 .rDynamic:
     callSlowPath(_llint_slow_path_resolve_scope)
-    dispatch(5)
+    dispatch(6)
 
 
 macro loadWithStructureCheck(operand, slowPath)
@@ -2135,6 +2308,8 @@ end
 macro putGlobalVar()
     loadisFromInstruction(3, t0)
     loadConstantOrVariable(t0, t1, t2)
+    loadpFromInstruction(5, t3)
+    notifyWrite(t3, t1, t2, t0, .pDynamic)
     loadpFromInstruction(6, t0)
     storei t1, TagOffset[t0]
     storei t2, PayloadOffset[t0]

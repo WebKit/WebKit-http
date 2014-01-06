@@ -27,8 +27,8 @@
 #define IDBDatabaseBackend_h
 
 #include "IDBDatabaseCallbacks.h"
+#include "IDBDatabaseMetadata.h"
 #include "IDBKeyRange.h"
-#include "IDBMetadata.h"
 #include "IDBPendingDeleteCall.h"
 #include "IDBPendingOpenCall.h"
 

@@ -38,22 +38,21 @@ DEFINE_ANIMATED_PROPERTY(AnimatedLengthList, OwnerType, DOMAttribute, DOMAttribu
 
 class SVGAnimationElement;
 
-class SVGAnimatedLengthListAnimator : public SVGAnimatedTypeAnimator {
+class SVGAnimatedLengthListAnimator FINAL : public SVGAnimatedTypeAnimator {
 public:
     SVGAnimatedLengthListAnimator(SVGAnimationElement*, SVGElement*);
-    virtual ~SVGAnimatedLengthListAnimator() { }
-    
-    virtual PassOwnPtr<SVGAnimatedType> constructFromString(const String&);
-    virtual PassOwnPtr<SVGAnimatedType> startAnimValAnimation(const SVGElementAnimatedPropertyList&);
-    virtual void stopAnimValAnimation(const SVGElementAnimatedPropertyList&);
-    virtual void resetAnimValToBaseVal(const SVGElementAnimatedPropertyList&, SVGAnimatedType*);
-    virtual void animValWillChange(const SVGElementAnimatedPropertyList&);
-    virtual void animValDidChange(const SVGElementAnimatedPropertyList&);
 
-    virtual void addAnimatedTypes(SVGAnimatedType*, SVGAnimatedType*);
-    virtual void calculateAnimatedValue(float percentage, unsigned repeatCount, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*);
-    virtual float calculateDistance(const String& fromString, const String& toString);
-    
+    virtual std::unique_ptr<SVGAnimatedType> constructFromString(const String&) OVERRIDE;
+    virtual std::unique_ptr<SVGAnimatedType> startAnimValAnimation(const SVGElementAnimatedPropertyList&) OVERRIDE;
+    virtual void stopAnimValAnimation(const SVGElementAnimatedPropertyList&) OVERRIDE;
+    virtual void resetAnimValToBaseVal(const SVGElementAnimatedPropertyList&, SVGAnimatedType*) OVERRIDE;
+    virtual void animValWillChange(const SVGElementAnimatedPropertyList&) OVERRIDE;
+    virtual void animValDidChange(const SVGElementAnimatedPropertyList&) OVERRIDE;
+
+    virtual void addAnimatedTypes(SVGAnimatedType*, SVGAnimatedType*) OVERRIDE;
+    virtual void calculateAnimatedValue(float percentage, unsigned repeatCount, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*) OVERRIDE;
+    virtual float calculateDistance(const String& fromString, const String& toString) OVERRIDE;
+
 private:
     SVGLengthMode m_lengthMode;
 };

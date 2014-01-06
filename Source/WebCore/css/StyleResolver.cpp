@@ -108,7 +108,7 @@
 #include "StyleFontSizeFunctions.h"
 #include "StyleGeneratedImage.h"
 #include "StylePendingImage.h"
-#include "StylePropertySet.h"
+#include "StyleProperties.h"
 #include "StylePropertyShorthand.h"
 #include "StyleRule.h"
 #include "StyleRuleImport.h"
@@ -159,10 +159,6 @@
 
 #if ENABLE(CSS_SHAPES)
 #include "CachedResourceLoader.h"
-#endif
-
-#if ENABLE(CSS_VARIABLES)
-#include "CSSVariableValue.h"
 #endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -236,11 +232,11 @@ inline void StyleResolver::State::clear()
 #endif
 }
 
-void StyleResolver::MatchResult::addMatchedProperties(const StylePropertySet& properties, StyleRule* rule, unsigned linkMatchType, PropertyWhitelistType propertyWhitelistType)
+void StyleResolver::MatchResult::addMatchedProperties(const StyleProperties& properties, StyleRule* rule, unsigned linkMatchType, PropertyWhitelistType propertyWhitelistType)
 {
     matchedProperties.grow(matchedProperties.size() + 1);
     StyleResolver::MatchedProperties& newProperties = matchedProperties.last();
-    newProperties.properties = const_cast<StylePropertySet*>(&properties);
+    newProperties.properties = const_cast<StyleProperties*>(&properties);
     newProperties.linkMatchType = linkMatchType;
     newProperties.whitelistType = propertyWhitelistType;
     matchedRules.append(rule);
@@ -410,7 +406,7 @@ bool StyleResolver::classNamesAffectedByRules(const SpaceSplitString& classNames
 inline void StyleResolver::State::initElement(Element* e)
 {
     m_element = e;
-    m_styledElement = e && e->isStyledElement() ? static_cast<StyledElement*>(e) : 0;
+    m_styledElement = e && e->isStyledElement() ? toStyledElement(e) : nullptr;
     m_elementLinkState = e ? e->document().visitedLinkState().determineLinkState(e) : NotInsideLink;
 }
 
@@ -465,7 +461,7 @@ Node* StyleResolver::locateCousinList(Element* parent, unsigned& visitedNodeCoun
         return 0;
     if (!parent || !parent->isStyledElement())
         return 0;
-    StyledElement* p = static_cast<StyledElement*>(parent);
+    StyledElement* p = toStyledElement(parent);
     if (p->inlineStyle())
         return 0;
 #if ENABLE(SVG)
@@ -713,12 +709,12 @@ inline StyledElement* StyleResolver::findSiblingForStyleSharing(Node* node, unsi
     for (; node; node = node->previousSibling()) {
         if (!node->isStyledElement())
             continue;
-        if (canShareStyleWithElement(static_cast<StyledElement*>(node)))
+        if (canShareStyleWithElement(toStyledElement(node)))
             break;
         if (count++ == cStyleSearchThreshold)
             return 0;
     }
-    return static_cast<StyledElement*>(node);
+    return toStyledElement(node);
 }
 
 RenderStyle* StyleResolver::locateSharedStyle()
@@ -950,7 +946,7 @@ void StyleResolver::keyframeStylesForAnimation(Element* e, const RenderStyle* el
     if (initialListSize > 0 && list[0].key()) {
         static StyleKeyframe* zeroPercentKeyframe;
         if (!zeroPercentKeyframe) {
-            zeroPercentKeyframe = StyleKeyframe::create(MutableStylePropertySet::create()).leakRef();
+            zeroPercentKeyframe = StyleKeyframe::create(MutableStyleProperties::create()).leakRef();
             zeroPercentKeyframe->setKeyText("0%");
         }
         KeyframeValue keyframeValue(0, 0);
@@ -962,7 +958,7 @@ void StyleResolver::keyframeStylesForAnimation(Element* e, const RenderStyle* el
     if (initialListSize > 0 && (list[list.size() - 1].key() != 1)) {
         static StyleKeyframe* hundredPercentKeyframe;
         if (!hundredPercentKeyframe) {
-            hundredPercentKeyframe = StyleKeyframe::create(MutableStylePropertySet::create()).leakRef();
+            hundredPercentKeyframe = StyleKeyframe::create(MutableStyleProperties::create()).leakRef();
             hundredPercentKeyframe->setKeyText("100%");
         }
         KeyframeValue keyframeValue(1, 0);
@@ -1037,9 +1033,6 @@ PassRef<RenderStyle> StyleResolver::styleForPage(int pageIndex)
     bool inheritedOnly = false;
 
     MatchResult& result = collector.matchedResult();
-#if ENABLE(CSS_VARIABLES)
-    applyMatchedProperties<VariableDefinitions>(result, false, 0, result.matchedProperties.size() - 1, inheritedOnly);
-#endif
     applyMatchedProperties<HighPriorityProperties>(result, false, 0, result.matchedProperties.size() - 1, inheritedOnly);
 
     // If our font got dirtied, go ahead and update it now.
@@ -1528,14 +1521,14 @@ Length StyleResolver::convertToFloatLength(const CSSPrimitiveValue* primitiveVal
 }
 
 template <StyleResolver::StyleApplicationPass pass>
-void StyleResolver::applyProperties(const StylePropertySet* properties, StyleRule* rule, bool isImportant, bool inheritedOnly, PropertyWhitelistType propertyWhitelistType)
+void StyleResolver::applyProperties(const StyleProperties* properties, StyleRule* rule, bool isImportant, bool inheritedOnly, PropertyWhitelistType propertyWhitelistType)
 {
     ASSERT((propertyWhitelistType != PropertyWhitelistRegion) || m_state.regionForStyling());
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willProcessRule(&document(), rule, *this);
 
     unsigned propertyCount = properties->propertyCount();
     for (unsigned i = 0; i < propertyCount; ++i) {
-        StylePropertySet::PropertyReference current = properties->propertyAt(i);
+        StyleProperties::PropertyReference current = properties->propertyAt(i);
         if (isImportant != current.isImportant())
             continue;
         if (inheritedOnly && !current.isInherited()) {
@@ -1554,13 +1547,6 @@ void StyleResolver::applyProperties(const StylePropertySet* properties, StyleRul
             continue;
 #endif
         switch (pass) {
-#if ENABLE(CSS_VARIABLES)
-        case VariableDefinitions:
-            COMPILE_ASSERT(CSSPropertyVariable < firstCSSProperty, CSS_variable_is_before_first_property);
-            if (property == CSSPropertyVariable)
-                applyProperty(current.id(), current.value());
-            break;
-#endif
         case HighPriorityProperties:
             COMPILE_ASSERT(firstCSSProperty == CSSPropertyColor, CSS_color_is_first_property);
 #if ENABLE(IOS_TEXT_AUTOSIZING)
@@ -1569,10 +1555,6 @@ void StyleResolver::applyProperties(const StylePropertySet* properties, StyleRul
             COMPILE_ASSERT(CSSPropertyZoom == CSSPropertyColor + 17, CSS_zoom_is_end_of_first_prop_range);
 #endif
             COMPILE_ASSERT(CSSPropertyLineHeight == CSSPropertyZoom + 1, CSS_line_height_is_after_zoom);
-#if ENABLE(CSS_VARIABLES)
-            if (property == CSSPropertyVariable)
-                continue;
-#endif
             // give special priority to font-xxx, color properties, etc
             if (property < CSSPropertyLineHeight)
                 applyProperty(current.id(), current.value());
@@ -1735,14 +1717,6 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         }
         applyInheritedOnly = true; 
     }
-
-#if ENABLE(CSS_VARIABLES)
-    // First apply all variable definitions, as they may be used during application of later properties.
-    applyMatchedProperties<VariableDefinitions>(matchResult, false, 0, matchResult.matchedProperties.size() - 1, applyInheritedOnly);
-    applyMatchedProperties<VariableDefinitions>(matchResult, true, matchResult.ranges.firstAuthorRule, matchResult.ranges.lastAuthorRule, applyInheritedOnly);
-    applyMatchedProperties<VariableDefinitions>(matchResult, true, matchResult.ranges.firstUserRule, matchResult.ranges.lastUserRule, applyInheritedOnly);
-    applyMatchedProperties<VariableDefinitions>(matchResult, true, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly);
-#endif
 
     // Now we have all of the matched rules in the appropriate order. Walk the rules and apply
     // high-priority properties first, i.e., those properties that other properties depend on.
@@ -2051,71 +2025,18 @@ static bool createGridPosition(CSSValue* value, GridPosition& position)
     return true;
 }
 
-#if ENABLE(CSS_VARIABLES)
-static bool hasVariableReference(CSSValue* value)
-{
-    if (value->isPrimitiveValue()) {
-        CSSPrimitiveValue* primitiveValue = toCSSPrimitiveValue(value);
-        return primitiveValue->hasVariableReference();
-    }
-
-    if (value->isCalcValue())
-        return toCSSCalcValue(value)->hasVariableReference();
-
-    if (value->isReflectValue()) {
-        CSSReflectValue* reflectValue = toCSSReflectValue(value);
-        CSSPrimitiveValue* direction = reflectValue->direction();
-        CSSPrimitiveValue* offset = reflectValue->offset();
-        CSSValue* mask = reflectValue->mask();
-        return (direction && hasVariableReference(direction)) || (offset && hasVariableReference(offset)) || (mask && hasVariableReference(mask));
-    }
-
-    for (CSSValueListIterator i = value; i.hasMore(); i.advance()) {
-        if (hasVariableReference(i.value()))
-            return true;
-    }
-
-    return false;
-}
-
-void StyleResolver::resolveVariables(CSSPropertyID id, CSSValue* value, Vector<std::pair<CSSPropertyID, String>>& knownExpressions)
-{
-    std::pair<CSSPropertyID, String> expression(id, value->serializeResolvingVariables(*m_state.style()->variables()));
-
-    if (knownExpressions.contains(expression))
-        return; // cycle detected.
-
-    knownExpressions.append(expression);
-
-    // FIXME: It would be faster not to re-parse from strings, but for now CSS property validation lives inside the parser so we do it there.
-    RefPtr<MutableStylePropertySet> resultSet = MutableStylePropertySet::create();
-    if (!CSSParser::parseValue(resultSet.get(), id, expression.second, false, document()))
-        return; // expression failed to parse.
-
-    for (unsigned i = 0; i < resultSet->propertyCount(); i++) {
-        StylePropertySet::PropertyReference property = resultSet->propertyAt(i);
-        if (property.id() != CSSPropertyVariable && hasVariableReference(property.value()))
-            resolveVariables(property.id(), property.value(), knownExpressions);
-        else
-            applyProperty(property.id(), property.value());
-    }
-}
-#endif
-
 void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 {
-#if ENABLE(CSS_VARIABLES)
-    if (id != CSSPropertyVariable && hasVariableReference(value)) {
-        Vector<std::pair<CSSPropertyID, String>> knownExpressions;
-        resolveVariables(id, value, knownExpressions);
-        return;
-    }
-#endif
-
-    // CSS variables don't resolve shorthands at parsing time, so this should be *after* handling variables.
     ASSERT_WITH_MESSAGE(!isExpandedShorthand(id), "Shorthand property id = %d wasn't expanded at parsing time", id);
 
     State& state = m_state;
+
+    if (CSSProperty::isDirectionAwareProperty(id)) {
+        CSSPropertyID newId = CSSProperty::resolveDirectionAwareProperty(id, state.style()->direction(), state.style()->writingMode());
+        ASSERT(newId != id);
+        return applyProperty(newId, value);
+    }
+
     bool isInherit = state.parentNode() && value->isInheritedValue();
     bool isInitial = value->isInitialValue() || (!state.parentNode() && value->isInheritedValue());
 
@@ -2129,16 +2050,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 
     if (isInherit && !state.parentStyle()->hasExplicitlyInheritedProperties() && !CSSProperty::isInheritedProperty(id))
         state.parentStyle()->setHasExplicitlyInheritedProperties();
-
-#if ENABLE(CSS_VARIABLES)
-    if (id == CSSPropertyVariable) {
-        CSSVariableValue* variable = toCSSVariableValue(value);
-        ASSERT(!variable->name().isEmpty());
-        ASSERT(!variable->value().isEmpty());
-        state.style()->setVariable(variable->name(), variable->value());
-        return;
-    }
-#endif
 
     // Check lookup table for implementations and use when available.
     const PropertyHandler& handler = m_deprecatedStyleBuilder.propertyHandler(id);
@@ -2214,7 +2125,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
                     const AtomicString& value = state.element()->getAttribute(attr);
                     state.style()->setContent(value.isNull() ? emptyAtom : value.impl(), didSet);
                     didSet = true;
-                    // register the fact that the attribute value affects the style
+                    // Register the fact that the attribute value affects the style.
                     m_ruleSets.features().attrsInRules.add(attr.localName().impl());
                 } else if (contentValue->isCounter()) {
                     Counter* counterValue = contentValue->getCounterValue();
@@ -2252,6 +2163,28 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             if (!didSet)
                 state.style()->clearContent();
             return;
+        }
+    case CSSPropertyWebkitAlt:
+        {
+            bool didSet = false;
+            if (primitiveValue->isString()) {
+                state.style()->setContentAltText(primitiveValue->getStringValue().impl());
+                didSet = true;
+            } else if (primitiveValue->isAttr()) {
+                // FIXME: Can a namespace be specified for an attr(foo)?
+                if (state.style()->styleType() == NOPSEUDO)
+                    state.style()->setUnique();
+                else
+                    state.parentStyle()->setUnique();
+                QualifiedName attr(nullAtom, primitiveValue->getStringValue().impl(), nullAtom);
+                const AtomicString& value = state.element()->getAttribute(attr);
+                state.style()->setContentAltText(value.isNull() ? emptyAtom : value.impl());
+                didSet = true;
+                // Register the fact that the attribute value affects the style.
+                m_ruleSets.features().attrsInRules.add(attr.localName().impl());
+            }
+            if (!didSet)
+                state.style()->setContentAltText(emptyAtom);
         }
     case CSSPropertyQuotes:
         if (isInherit) {
@@ -2630,42 +2563,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 #endif
     case CSSPropertyInvalid:
         return;
-    // Directional properties are resolved by resolveDirectionAwareProperty() before the switch.
-    case CSSPropertyWebkitBorderEndColor:
-    case CSSPropertyWebkitBorderEndStyle:
-    case CSSPropertyWebkitBorderEndWidth:
-    case CSSPropertyWebkitBorderStartColor:
-    case CSSPropertyWebkitBorderStartStyle:
-    case CSSPropertyWebkitBorderStartWidth:
-    case CSSPropertyWebkitBorderBeforeColor:
-    case CSSPropertyWebkitBorderBeforeStyle:
-    case CSSPropertyWebkitBorderBeforeWidth:
-    case CSSPropertyWebkitBorderAfterColor:
-    case CSSPropertyWebkitBorderAfterStyle:
-    case CSSPropertyWebkitBorderAfterWidth:
-    case CSSPropertyWebkitMarginEnd:
-    case CSSPropertyWebkitMarginStart:
-    case CSSPropertyWebkitMarginBefore:
-    case CSSPropertyWebkitMarginAfter:
-    case CSSPropertyWebkitMarginBeforeCollapse:
-    case CSSPropertyWebkitMarginTopCollapse:
-    case CSSPropertyWebkitMarginAfterCollapse:
-    case CSSPropertyWebkitMarginBottomCollapse:
-    case CSSPropertyWebkitPaddingEnd:
-    case CSSPropertyWebkitPaddingStart:
-    case CSSPropertyWebkitPaddingBefore:
-    case CSSPropertyWebkitPaddingAfter:
-    case CSSPropertyWebkitLogicalWidth:
-    case CSSPropertyWebkitLogicalHeight:
-    case CSSPropertyWebkitMinLogicalWidth:
-    case CSSPropertyWebkitMinLogicalHeight:
-    case CSSPropertyWebkitMaxLogicalWidth:
-    case CSSPropertyWebkitMaxLogicalHeight:
-    {
-        CSSPropertyID newId = CSSProperty::resolveDirectionAwareProperty(id, state.style()->direction(), state.style()->writingMode());
-        ASSERT(newId != id);
-        return applyProperty(newId, value);
-    }
     case CSSPropertyFontStretch:
     case CSSPropertyPage:
     case CSSPropertyTextLineThrough:
@@ -2979,9 +2876,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyTextTransform:
     case CSSPropertyTop:
     case CSSPropertyUnicodeBidi:
-#if ENABLE(CSS_VARIABLES)
-    case CSSPropertyVariable:
-#endif
     case CSSPropertyVerticalAlign:
     case CSSPropertyVisibility:
     case CSSPropertyWebkitAnimationDelay:

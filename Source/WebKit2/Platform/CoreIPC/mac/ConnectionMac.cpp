@@ -125,7 +125,7 @@ bool Connection::open()
         // Create the receive port.
         mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &m_receivePort);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
         mach_port_set_attributes(mach_task_self(), m_receivePort, MACH_PORT_IMPORTANCE_RECEIVER, (mach_port_info_t)0, 0);
 #endif
 
@@ -179,7 +179,7 @@ static inline size_t machMessageSize(size_t bodySize, size_t numberOfPortDescrip
         if (numberOfPortDescriptors)
             size += (numberOfPortDescriptors * sizeof(mach_msg_port_descriptor_t));
         if (numberOfOOLMemoryDescriptors)
-            size += (numberOfOOLMemoryDescriptors * sizeof(mach_msg_ool_ports_descriptor_t));
+            size += (numberOfOOLMemoryDescriptors * sizeof(mach_msg_ool_descriptor_t));
     }
     return round_msg(size);
 }
@@ -202,19 +202,23 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
     }
     
     size_t messageSize = machMessageSize(encoder->bufferSize(), numberOfPortDescriptors, numberOfOOLMemoryDescriptors);
-    char buffer[inlineMessageMaxSize];
 
     bool messageBodyIsOOL = false;
-    if (messageSize > sizeof(buffer)) {
+    if (messageSize > inlineMessageMaxSize) {
         messageBodyIsOOL = true;
 
         numberOfOOLMemoryDescriptors++;
         messageSize = machMessageSize(0, numberOfPortDescriptors, numberOfOOLMemoryDescriptors);
     }
 
+    char stackBuffer[inlineMessageMaxSize];
+    char* buffer = &stackBuffer[0];
+    if (messageSize > inlineMessageMaxSize)
+        buffer = (char*)mmap(0, messageSize, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+
     bool isComplex = (numberOfPortDescriptors + numberOfOOLMemoryDescriptors > 0);
 
-    mach_msg_header_t* header = reinterpret_cast<mach_msg_header_t*>(&buffer);
+    mach_msg_header_t* header = reinterpret_cast<mach_msg_header_t*>(buffer);
     header->msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, 0);
     header->msgh_size = messageSize;
     header->msgh_remote_port = m_sendPort;
@@ -276,6 +280,9 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
     if (kr != KERN_SUCCESS) {
         // FIXME: What should we do here?
     }
+
+    if (buffer != &stackBuffer[0])
+        munmap(buffer, messageSize);
 
     return true;
 }
@@ -392,7 +399,7 @@ void Connection::receiveSourceEventHandler()
     std::unique_ptr<MessageDecoder> decoder = createMessageDecoder(header);
     ASSERT(decoder);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     decoder->setImportanceAssertion(std::make_unique<ImportanceAssertion>(header));
 #endif
 

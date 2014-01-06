@@ -39,8 +39,8 @@ public:
     explicit RenderImage(Document&, PassRef<RenderStyle>);
     virtual ~RenderImage();
 
-    // Set the style of the object if it's generated content.
-    void setPseudoStyle(PassRefPtr<RenderStyle>);
+    // Create a RenderStyle for generated content by inheriting from a pseudo style.
+    static PassRef<RenderStyle> createStyleInheritingFromPseudoStyle(const RenderStyle&);
 
     void setImageResource(PassOwnPtr<RenderImageResource>);
 
@@ -61,8 +61,9 @@ public:
 
     bool isGeneratedContent() const { return m_isGeneratedContent; }
 
-    String altText() const { return m_altText; }
-
+    const String& altText() const { return m_altText; }
+    void setAltText(const String& altText) { m_altText = altText; }
+    
 protected:
     virtual bool needsPreferredWidthsRecalculation() const OVERRIDE FINAL;
     virtual RenderBox* embeddedContentBox() const OVERRIDE FINAL;

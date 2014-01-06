@@ -32,11 +32,12 @@
 #import "DictionaryPopupInfo.h"
 #import "EditorState.h"
 #import "NativeWebKeyboardEvent.h"
-#import "PluginComplexTextInputState.h"
 #import "PageClient.h"
 #import "PageClientImpl.h"
+#import "PluginComplexTextInputState.h"
 #import "StringUtilities.h"
 #import "TextChecker.h"
+#import "WKBrowsingContextControllerInternal.h"
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
 #import <WebCore/DictationAlternative.h>
@@ -45,14 +46,14 @@
 #import <WebCore/SystemVersionMac.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebKitSystemInterface.h>
-#import <wtf/text/StringConcatenate.h>
 #import <mach-o/dyld.h>
+#import <wtf/text/StringConcatenate.h>
 
 @interface NSApplication (Details)
 - (void)speakString:(NSString *)string;
 @end
 
-#define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, process()->connection())
+#define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, process().connection())
 
 using namespace WebCore;
 
@@ -67,6 +68,10 @@ static bool shouldUseLegacyImplicitRubberBandControl()
 void WebPageProxy::platformInitialize()
 {
     m_useLegacyImplicitRubberBandControl = shouldUseLegacyImplicitRubberBandControl();
+
+#if WK_API_ENABLED
+    [WebKit::wrapper(*this) _finishInitialization];
+#endif
 }
 
 #if defined(__ppc__) || defined(__ppc64__)
@@ -145,9 +150,9 @@ void WebPageProxy::windowAndViewFramesChanged(const FloatRect& viewFrameInWindow
 
     // In case the UI client overrides getWindowFrame(), we call it here to make sure we send the appropriate window frame.
     FloatRect windowFrameInScreenCoordinates = m_uiClient.windowFrame(this);
-    FloatRect windowFrameInUnflippedScreenCoordinates = m_pageClient->convertToUserSpace(windowFrameInScreenCoordinates);
+    FloatRect windowFrameInUnflippedScreenCoordinates = m_pageClient.convertToUserSpace(windowFrameInScreenCoordinates);
 
-    process()->send(Messages::WebPage::WindowAndViewFramesChanged(windowFrameInScreenCoordinates, windowFrameInUnflippedScreenCoordinates, viewFrameInWindowCoordinates, accessibilityViewCoordinates), m_pageID);
+    process().send(Messages::WebPage::WindowAndViewFramesChanged(windowFrameInScreenCoordinates, windowFrameInUnflippedScreenCoordinates, viewFrameInWindowCoordinates, accessibilityViewCoordinates), m_pageID);
 }
 
 void WebPageProxy::viewExposedRectChanged(const FloatRect& exposedRect, bool clipsToExposedRect)
@@ -170,7 +175,7 @@ void WebPageProxy::exposedRectChangedTimerFired(Timer<WebPageProxy>*)
     if (m_exposedRect == m_lastSentExposedRect && m_clipsToExposedRect == m_lastSentClipsToExposedRect)
         return;
 
-    process()->send(Messages::WebPage::ViewExposedRectChanged(m_exposedRect, m_clipsToExposedRect), m_pageID);
+    process().send(Messages::WebPage::ViewExposedRectChanged(m_exposedRect, m_clipsToExposedRect), m_pageID);
     m_lastSentExposedRect = m_exposedRect;
     m_lastSentClipsToExposedRect = m_clipsToExposedRect;
 }
@@ -180,7 +185,7 @@ void WebPageProxy::setMainFrameIsScrollable(bool isScrollable)
     if (!isValid())
         return;
 
-    process()->send(Messages::WebPage::SetMainFrameIsScrollable(isScrollable), m_pageID);
+    process().send(Messages::WebPage::SetMainFrameIsScrollable(isScrollable), m_pageID);
 }
 
 void WebPageProxy::setComposition(const String& text, Vector<CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd)
@@ -191,7 +196,7 @@ void WebPageProxy::setComposition(const String& text, Vector<CompositionUnderlin
         return;
     }
 
-    process()->sendSync(Messages::WebPage::SetComposition(text, underlines, selectionStart, selectionEnd, replacementRangeStart, replacementRangeEnd), Messages::WebPage::SetComposition::Reply(m_editorState), m_pageID);
+    process().sendSync(Messages::WebPage::SetComposition(text, underlines, selectionStart, selectionEnd, replacementRangeStart, replacementRangeEnd), Messages::WebPage::SetComposition::Reply(m_editorState), m_pageID);
 }
 
 void WebPageProxy::confirmComposition()
@@ -199,7 +204,7 @@ void WebPageProxy::confirmComposition()
     if (!isValid())
         return;
 
-    process()->sendSync(Messages::WebPage::ConfirmComposition(), Messages::WebPage::ConfirmComposition::Reply(m_editorState), m_pageID);
+    process().sendSync(Messages::WebPage::ConfirmComposition(), Messages::WebPage::ConfirmComposition::Reply(m_editorState), m_pageID);
 }
 
 void WebPageProxy::cancelComposition()
@@ -207,7 +212,7 @@ void WebPageProxy::cancelComposition()
     if (!isValid())
         return;
 
-    process()->sendSync(Messages::WebPage::CancelComposition(), Messages::WebPage::ConfirmComposition::Reply(m_editorState), m_pageID);
+    process().sendSync(Messages::WebPage::CancelComposition(), Messages::WebPage::ConfirmComposition::Reply(m_editorState), m_pageID);
 }
 
 bool WebPageProxy::insertText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd)
@@ -216,7 +221,7 @@ bool WebPageProxy::insertText(const String& text, uint64_t replacementRangeStart
         return true;
 
     bool handled = true;
-    process()->sendSync(Messages::WebPage::InsertText(text, replacementRangeStart, replacementRangeEnd), Messages::WebPage::InsertText::Reply(handled, m_editorState), m_pageID);
+    process().sendSync(Messages::WebPage::InsertText(text, replacementRangeStart, replacementRangeEnd), Messages::WebPage::InsertText::Reply(handled, m_editorState), m_pageID);
     m_temporarilyClosedComposition = false;
 
     return handled;
@@ -235,7 +240,7 @@ bool WebPageProxy::insertDictatedText(const String& text, uint64_t replacementRa
 
     for (size_t i = 0; i < dictationAlternativesWithRange.size(); ++i) {
         const TextAlternativeWithRange& alternativeWithRange = dictationAlternativesWithRange[i];
-        uint64_t dictationContext = m_pageClient->addDictationAlternatives(alternativeWithRange.alternatives);
+        uint64_t dictationContext = m_pageClient.addDictationAlternatives(alternativeWithRange.alternatives);
         if (dictationContext)
             dictationAlternatives.append(DictationAlternative(alternativeWithRange.range.location, alternativeWithRange.range.length, dictationContext));
     }
@@ -244,7 +249,7 @@ bool WebPageProxy::insertDictatedText(const String& text, uint64_t replacementRa
         return insertText(text, replacementRangeStart, replacementRangeEnd);
 
     bool handled = true;
-    process()->sendSync(Messages::WebPage::InsertDictatedText(text, replacementRangeStart, replacementRangeEnd, dictationAlternatives), Messages::WebPage::InsertDictatedText::Reply(handled, m_editorState), m_pageID);
+    process().sendSync(Messages::WebPage::InsertDictatedText(text, replacementRangeStart, replacementRangeEnd, dictationAlternatives), Messages::WebPage::InsertDictatedText::Reply(handled, m_editorState), m_pageID);
     return handled;
 #else
     return insertText(text, replacementRangeStart, replacementRangeEnd);
@@ -259,7 +264,7 @@ void WebPageProxy::getMarkedRange(uint64_t& location, uint64_t& length)
     if (!isValid())
         return;
 
-    process()->sendSync(Messages::WebPage::GetMarkedRange(), Messages::WebPage::GetMarkedRange::Reply(location, length), m_pageID);
+    process().sendSync(Messages::WebPage::GetMarkedRange(), Messages::WebPage::GetMarkedRange::Reply(location, length), m_pageID);
 }
 
 void WebPageProxy::getSelectedRange(uint64_t& location, uint64_t& length)
@@ -270,14 +275,14 @@ void WebPageProxy::getSelectedRange(uint64_t& location, uint64_t& length)
     if (!isValid())
         return;
 
-    process()->sendSync(Messages::WebPage::GetSelectedRange(), Messages::WebPage::GetSelectedRange::Reply(location, length), m_pageID);
+    process().sendSync(Messages::WebPage::GetSelectedRange(), Messages::WebPage::GetSelectedRange::Reply(location, length), m_pageID);
 }
 
 void WebPageProxy::getAttributedSubstringFromRange(uint64_t location, uint64_t length, AttributedString& result)
 {
     if (!isValid())
         return;
-    process()->sendSync(Messages::WebPage::GetAttributedSubstringFromRange(location, length), Messages::WebPage::GetAttributedSubstringFromRange::Reply(result), m_pageID);
+    process().sendSync(Messages::WebPage::GetAttributedSubstringFromRange(location, length), Messages::WebPage::GetAttributedSubstringFromRange::Reply(result), m_pageID);
 }
 
 uint64_t WebPageProxy::characterIndexForPoint(const IntPoint point)
@@ -286,7 +291,7 @@ uint64_t WebPageProxy::characterIndexForPoint(const IntPoint point)
         return 0;
 
     uint64_t result = 0;
-    process()->sendSync(Messages::WebPage::CharacterIndexForPoint(point), Messages::WebPage::CharacterIndexForPoint::Reply(result), m_pageID);
+    process().sendSync(Messages::WebPage::CharacterIndexForPoint(point), Messages::WebPage::CharacterIndexForPoint::Reply(result), m_pageID);
     return result;
 }
 
@@ -296,7 +301,7 @@ IntRect WebPageProxy::firstRectForCharacterRange(uint64_t location, uint64_t len
         return IntRect();
 
     IntRect resultRect;
-    process()->sendSync(Messages::WebPage::FirstRectForCharacterRange(location, length), Messages::WebPage::FirstRectForCharacterRange::Reply(resultRect), m_pageID);
+    process().sendSync(Messages::WebPage::FirstRectForCharacterRange(location, length), Messages::WebPage::FirstRectForCharacterRange::Reply(resultRect), m_pageID);
     return resultRect;
 }
 
@@ -306,7 +311,7 @@ bool WebPageProxy::executeKeypressCommands(const Vector<WebCore::KeypressCommand
         return false;
 
     bool result = false;
-    process()->sendSync(Messages::WebPage::ExecuteKeypressCommands(commands), Messages::WebPage::ExecuteKeypressCommands::Reply(result, m_editorState), m_pageID);
+    process().sendSync(Messages::WebPage::ExecuteKeypressCommands(commands), Messages::WebPage::ExecuteKeypressCommands::Reply(result, m_editorState), m_pageID);
     return result;
 }
 
@@ -317,7 +322,7 @@ String WebPageProxy::stringSelectionForPasteboard()
         return value;
     
     const double messageTimeout = 20;
-    process()->sendSync(Messages::WebPage::GetStringSelectionForPasteboard(), Messages::WebPage::GetStringSelectionForPasteboard::Reply(value), m_pageID, messageTimeout);
+    process().sendSync(Messages::WebPage::GetStringSelectionForPasteboard(), Messages::WebPage::GetStringSelectionForPasteboard::Reply(value), m_pageID, messageTimeout);
     return value;
 }
 
@@ -328,7 +333,7 @@ PassRefPtr<WebCore::SharedBuffer> WebPageProxy::dataSelectionForPasteboard(const
     SharedMemory::Handle handle;
     uint64_t size = 0;
     const double messageTimeout = 20;
-    process()->sendSync(Messages::WebPage::GetDataSelectionForPasteboard(pasteboardType),
+    process().sendSync(Messages::WebPage::GetDataSelectionForPasteboard(pasteboardType),
                                                 Messages::WebPage::GetDataSelectionForPasteboard::Reply(handle, size), m_pageID, messageTimeout);
     if (handle.isNull())
         return 0;
@@ -343,7 +348,7 @@ bool WebPageProxy::readSelectionFromPasteboard(const String& pasteboardName)
 
     bool result = false;
     const double messageTimeout = 20;
-    process()->sendSync(Messages::WebPage::ReadSelectionFromPasteboard(pasteboardName), Messages::WebPage::ReadSelectionFromPasteboard::Reply(result), m_pageID, messageTimeout);
+    process().sendSync(Messages::WebPage::ReadSelectionFromPasteboard(pasteboardName), Messages::WebPage::ReadSelectionFromPasteboard::Reply(result), m_pageID, messageTimeout);
     return result;
 }
 
@@ -354,7 +359,7 @@ void WebPageProxy::setDragImage(const WebCore::IntPoint& clientPosition, const S
     if (!dragImage)
         return;
     
-    m_pageClient->setDragImage(clientPosition, dragImage.release(), isLinkDrag);
+    m_pageClient.setDragImage(clientPosition, dragImage.release(), isLinkDrag);
 }
 
 void WebPageProxy::setPromisedData(const String& pasteboardName, const SharedMemory::Handle& imageHandle, uint64_t imageSize, const String& filename, const String& extension,
@@ -368,7 +373,7 @@ void WebPageProxy::setPromisedData(const String& pasteboardName, const SharedMem
         RefPtr<SharedMemory> sharedMemoryArchive = SharedMemory::create(archiveHandle, SharedMemory::ReadOnly);;
         archiveBuffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryArchive->data()), archiveSize);
     }
-    m_pageClient->setPromisedData(pasteboardName, imageBuffer, filename, extension, title, url, visibleURL, archiveBuffer);
+    m_pageClient.setPromisedData(pasteboardName, imageBuffer, filename, extension, title, url, visibleURL, archiveBuffer);
 }
 #endif
 
@@ -377,13 +382,13 @@ void WebPageProxy::performDictionaryLookupAtLocation(const WebCore::FloatPoint& 
     if (!isValid())
         return;
 
-    process()->send(Messages::WebPage::PerformDictionaryLookupAtLocation(point), m_pageID); 
+    process().send(Messages::WebPage::PerformDictionaryLookupAtLocation(point), m_pageID);
 }
 
 void WebPageProxy::interpretQueuedKeyEvent(const EditorState& state, bool& handled, Vector<WebCore::KeypressCommand>& commands)
 {
     m_editorState = state;
-    handled = m_pageClient->interpretKeyEvent(m_keyEventQueue.first(), commands);
+    handled = m_pageClient.interpretKeyEvent(m_keyEventQueue.first(), commands);
 }
 
 // Complex text input support for plug-ins.
@@ -392,22 +397,22 @@ void WebPageProxy::sendComplexTextInputToPlugin(uint64_t pluginComplexTextInputI
     if (!isValid())
         return;
     
-    process()->send(Messages::WebPage::SendComplexTextInputToPlugin(pluginComplexTextInputIdentifier, textInput), m_pageID);
+    process().send(Messages::WebPage::SendComplexTextInputToPlugin(pluginComplexTextInputIdentifier, textInput), m_pageID);
 }
 
 void WebPageProxy::uppercaseWord()
 {
-    process()->send(Messages::WebPage::UppercaseWord(), m_pageID);
+    process().send(Messages::WebPage::UppercaseWord(), m_pageID);
 }
 
 void WebPageProxy::lowercaseWord()
 {
-    process()->send(Messages::WebPage::LowercaseWord(), m_pageID);
+    process().send(Messages::WebPage::LowercaseWord(), m_pageID);
 }
 
 void WebPageProxy::capitalizeWord()
 {
-    process()->send(Messages::WebPage::CapitalizeWord(), m_pageID);
+    process().send(Messages::WebPage::CapitalizeWord(), m_pageID);
 }
 
 void WebPageProxy::setSmartInsertDeleteEnabled(bool isSmartInsertDeleteEnabled)
@@ -417,27 +422,27 @@ void WebPageProxy::setSmartInsertDeleteEnabled(bool isSmartInsertDeleteEnabled)
 
     TextChecker::setSmartInsertDeleteEnabled(isSmartInsertDeleteEnabled);
     m_isSmartInsertDeleteEnabled = isSmartInsertDeleteEnabled;
-    process()->send(Messages::WebPage::SetSmartInsertDeleteEnabled(isSmartInsertDeleteEnabled), m_pageID);
+    process().send(Messages::WebPage::SetSmartInsertDeleteEnabled(isSmartInsertDeleteEnabled), m_pageID);
 }
 
 void WebPageProxy::didPerformDictionaryLookup(const AttributedString& text, const DictionaryPopupInfo& dictionaryPopupInfo)
 {
-    m_pageClient->didPerformDictionaryLookup(text, dictionaryPopupInfo);
+    m_pageClient.didPerformDictionaryLookup(text, dictionaryPopupInfo);
 }
     
 void WebPageProxy::registerWebProcessAccessibilityToken(const CoreIPC::DataReference& data)
 {
-    m_pageClient->accessibilityWebProcessTokenReceived(data);
+    m_pageClient.accessibilityWebProcessTokenReceived(data);
 }    
     
 void WebPageProxy::makeFirstResponder()
 {
-    m_pageClient->makeFirstResponder();
+    m_pageClient.makeFirstResponder();
 }
 
 ColorSpaceData WebPageProxy::colorSpace()
 {
-    return m_pageClient->colorSpace();
+    return m_pageClient.colorSpace();
 }
 
 void WebPageProxy::registerUIProcessAccessibilityTokens(const CoreIPC::DataReference& elementToken, const CoreIPC::DataReference& windowToken)
@@ -445,36 +450,36 @@ void WebPageProxy::registerUIProcessAccessibilityTokens(const CoreIPC::DataRefer
     if (!isValid())
         return;
 
-    process()->send(Messages::WebPage::RegisterUIProcessAccessibilityTokens(elementToken, windowToken), m_pageID);
+    process().send(Messages::WebPage::RegisterUIProcessAccessibilityTokens(elementToken, windowToken), m_pageID);
 }
 
 void WebPageProxy::pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus)
 {
-    m_pageClient->pluginFocusOrWindowFocusChanged(pluginComplexTextInputIdentifier, pluginHasFocusAndWindowHasFocus);
+    m_pageClient.pluginFocusOrWindowFocusChanged(pluginComplexTextInputIdentifier, pluginHasFocusAndWindowHasFocus);
 }
 
 void WebPageProxy::setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, uint64_t pluginComplexTextInputState)
 {
     MESSAGE_CHECK(isValidPluginComplexTextInputState(pluginComplexTextInputState));
 
-    m_pageClient->setPluginComplexTextInputState(pluginComplexTextInputIdentifier, static_cast<PluginComplexTextInputState>(pluginComplexTextInputState));
+    m_pageClient.setPluginComplexTextInputState(pluginComplexTextInputIdentifier, static_cast<PluginComplexTextInputState>(pluginComplexTextInputState));
 }
 
 void WebPageProxy::executeSavedCommandBySelector(const String& selector, bool& handled)
 {
     MESSAGE_CHECK(isValidKeypressCommandName(selector));
 
-    handled = m_pageClient->executeSavedCommandBySelector(selector);
+    handled = m_pageClient.executeSavedCommandBySelector(selector);
 }
 
 bool WebPageProxy::shouldDelayWindowOrderingForEvent(const WebKit::WebMouseEvent& event)
 {
-    if (!process()->isValid())
+    if (!process().isValid())
         return false;
 
     bool result = false;
     const double messageTimeout = 3;
-    process()->sendSync(Messages::WebPage::ShouldDelayWindowOrderingEvent(event), Messages::WebPage::ShouldDelayWindowOrderingEvent::Reply(result), m_pageID, messageTimeout);
+    process().sendSync(Messages::WebPage::ShouldDelayWindowOrderingEvent(event), Messages::WebPage::ShouldDelayWindowOrderingEvent::Reply(result), m_pageID, messageTimeout);
     return result;
 }
 
@@ -485,23 +490,23 @@ bool WebPageProxy::acceptsFirstMouse(int eventNumber, const WebKit::WebMouseEven
 
     bool result = false;
     const double messageTimeout = 3;
-    process()->sendSync(Messages::WebPage::AcceptsFirstMouse(eventNumber, event), Messages::WebPage::AcceptsFirstMouse::Reply(result), m_pageID, messageTimeout);
+    process().sendSync(Messages::WebPage::AcceptsFirstMouse(eventNumber, event), Messages::WebPage::AcceptsFirstMouse::Reply(result), m_pageID, messageTimeout);
     return result;
 }
 
 WKView* WebPageProxy::wkView() const
 {
-    return m_pageClient->wkView();
+    return m_pageClient.wkView();
 }
 
 void WebPageProxy::intrinsicContentSizeDidChange(const IntSize& intrinsicContentSize)
 {
-    m_pageClient->intrinsicContentSizeDidChange(intrinsicContentSize);
+    m_pageClient.intrinsicContentSizeDidChange(intrinsicContentSize);
 }
 
 void WebPageProxy::setAcceleratedCompositingRootLayer(PlatformLayer* rootLayer)
 {
-    m_pageClient->setAcceleratedCompositingRootLayer(rootLayer);
+    m_pageClient.setAcceleratedCompositingRootLayer(rootLayer);
 }
 
 static NSString *temporaryPDFDirectoryPath()

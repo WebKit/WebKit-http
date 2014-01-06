@@ -47,8 +47,10 @@ std::unique_ptr<DrawingArea> DrawingArea::create(WebPage* webPage, const WebPage
 {
     switch (parameters.drawingAreaType) {
 #if PLATFORM(MAC)
+#if !PLATFORM(IOS)
     case DrawingAreaTypeTiledCoreAnimation:
         return std::make_unique<TiledCoreAnimationDrawingArea>(webPage, parameters);
+#endif
     case DrawingAreaTypeRemoteLayerTree:
         return std::make_unique<RemoteLayerTreeDrawingArea>(webPage, parameters);
 #else

@@ -32,13 +32,17 @@
 
 namespace API {
 class Object;
+
+template<> struct ClientTraits<WKConnectionClientBase> {
+    typedef std::tuple<WKConnectionClientV0> Versions;
+};
 }
 
 namespace WebKit {
 
 class WebConnection;
 
-class WebConnectionClient : public APIClient<WKConnectionClient, WKConnectionClientCurrentVersion> {
+class WebConnectionClient : public API::Client<WKConnectionClientBase> {
 public:
     void didReceiveMessage(WebConnection*, const String&, API::Object*);
     void didClose(WebConnection*);

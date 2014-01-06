@@ -24,9 +24,6 @@
  */
 
 #import "config.h"
-
-#import "WKWebProcessPlugIn.h"
-#import "WKWebProcessPlugInPrivate.h"
 #import "WKWebProcessPlugInInternal.h"
 
 #if WK_API_ENABLED
@@ -39,17 +36,19 @@
 #import "WKWebProcessPlugInBrowserContextControllerInternal.h"
 #import <wtf/RetainPtr.h>
 
+using namespace WebKit;
+
 typedef HashMap<WKBundlePageRef, RetainPtr<WKWebProcessPlugInBrowserContextController *>> BundlePageWrapperCache;
 
 @interface WKWebProcessPlugInController () {
-    RetainPtr<id <WKWebProcessPlugIn> > _principalClassInstance;
-    WKRetainPtr<WKBundleRef> _bundleRef;
+    RetainPtr<id <WKWebProcessPlugIn>> _principalClassInstance;
+    RefPtr<InjectedBundle> _bundle;
     BundlePageWrapperCache _bundlePageWrapperCache;
     RetainPtr<WKConnection *> _connectionWrapper;
 }
 @end
 
-@implementation WKWebProcessPlugInController (Internal)
+@implementation WKWebProcessPlugInController
 
 static void didCreatePage(WKBundleRef bundle, WKBundlePageRef page, const void* clientInfo)
 {
@@ -87,15 +86,15 @@ static void willDestroyPage(WKBundleRef bundle, WKBundlePageRef page, const void
 
 static void setUpBundleClient(WKWebProcessPlugInController *plugInController, WKBundleRef bundleRef)
 {
-    WKBundleClient bundleClient;
+    WKBundleClientV1 bundleClient;
     memset(&bundleClient, 0, sizeof(bundleClient));
 
-    bundleClient.version = kWKBundleClientCurrentVersion;
-    bundleClient.clientInfo = plugInController;
+    bundleClient.base.version = 1;
+    bundleClient.base.clientInfo = plugInController;
     bundleClient.didCreatePage = didCreatePage;
     bundleClient.willDestroyPage = willDestroyPage;
 
-    WKBundleSetClient(bundleRef, &bundleClient);
+    WKBundleSetClient(bundleRef, &bundleClient.base);
 }
 
 static WKWebProcessPlugInController *sharedInstance;
@@ -113,8 +112,7 @@ static WKWebProcessPlugInController *sharedInstance;
         return nil;
 
     _principalClassInstance = principalClassInstance;
-    _bundleRef = bundleRef;
-    _connectionWrapper = adoptNS([[WKConnection alloc] _initWithConnectionRef:WKBundleGetApplicationConnection(_bundleRef.get())]);
+    _bundle = toImpl(bundleRef);
 
     ASSERT_WITH_MESSAGE(!sharedInstance, "WKWebProcessPlugInController initialized multiple times.");
     sharedInstance = self;
@@ -130,13 +128,9 @@ static WKWebProcessPlugInController *sharedInstance;
     return _bundlePageWrapperCache.get(pageRef).get();
 }
 
-@end
-
-@implementation WKWebProcessPlugInController
-
 - (WKConnection *)connection
 {
-    return _connectionWrapper.get();
+    return wrapper(*_bundle->webConnectionToUIProcess());
 }
 
 @end
@@ -145,7 +139,7 @@ static WKWebProcessPlugInController *sharedInstance;
 
 - (WKBundleRef)_bundleRef
 {
-    return _bundleRef.get();
+    return toAPI(_bundle.get());
 }
 
 @end

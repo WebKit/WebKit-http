@@ -26,9 +26,9 @@
 #include "config.h"
 #include "AuthenticationManager.h"
 
-#if USE(SECURITY_FRAMEWORK)
+#if HAVE(SEC_IDENTITY)
 
-#include "PlatformCertificateInfo.h"
+#include "CertificateInfo.h"
 #include <Security/SecIdentity.h>
 #include <WebCore/AuthenticationChallenge.h>
 
@@ -36,7 +36,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-bool AuthenticationManager::tryUsePlatformCertificateInfoForChallenge(const AuthenticationChallenge& challenge, const PlatformCertificateInfo& certificateInfo)
+bool AuthenticationManager::tryUseCertificateInfoForChallenge(const AuthenticationChallenge& challenge, const CertificateInfo& certificateInfo)
 {
     CFArrayRef chain = certificateInfo.certificateChain();
     if (!chain)
@@ -66,4 +66,4 @@ bool AuthenticationManager::tryUsePlatformCertificateInfoForChallenge(const Auth
 
 } // namespace WebKit
 
-#endif // USE(SECURITY_FRAMEWORK)
+#endif // HAVE(SEC_IDENTITY)

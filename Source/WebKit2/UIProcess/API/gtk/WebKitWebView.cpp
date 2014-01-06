@@ -21,8 +21,8 @@
 #include "config.h"
 #include "WebKitWebView.h"
 
+#include "CertificateInfo.h"
 #include "ImageOptions.h"
-#include "PlatformCertificateInfo.h"
 #include "WebCertificateInfo.h"
 #include "WebContextMenuItem.h"
 #include "WebContextMenuItemData.h"
@@ -513,7 +513,7 @@ static void webkitWebViewConstructed(GObject* object)
     attachContextMenuClientToView(webView);
     attachFormClientToView(webView);
 
-    priv->backForwardList = adoptGRef(webkitBackForwardListCreate(getPage(webView)->backForwardList()));
+    priv->backForwardList = adoptGRef(webkitBackForwardListCreate(&getPage(webView)->backForwardList()));
     priv->windowProperties = adoptGRef(webkitWindowPropertiesCreate());
 
     webkitWebViewUpdateSettings(webView);
@@ -1584,7 +1584,7 @@ void webkitWebViewSetEstimatedLoadProgress(WebKitWebView* webView, double estima
 
 void webkitWebViewUpdateURI(WebKitWebView* webView)
 {
-    CString activeURI = getPage(webView)->activeURL().utf8();
+    CString activeURI = getPage(webView)->pageLoadState().activeURL().utf8();
     if (webView->priv->activeURI == activeURI)
         return;
 
@@ -3028,7 +3028,7 @@ gboolean webkit_web_view_get_tls_info(WebKitWebView* webView, GTlsCertificate** 
     if (!mainFrame)
         return FALSE;
 
-    const PlatformCertificateInfo& certificateInfo = mainFrame->certificateInfo()->platformCertificateInfo();
+    const CertificateInfo& certificateInfo = mainFrame->certificateInfo()->certificateInfo();
     if (certificate)
         *certificate = certificateInfo.certificate();
     if (errors)

@@ -44,6 +44,9 @@ RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea(WebPage* webPage, const W
     , m_remoteLayerTreeContext(std::make_unique<RemoteLayerTreeContext>(webPage))
 {
     webPage->corePage()->settings().setForceCompositingMode(true);
+#if PLATFORM(IOS)
+    webPage->corePage()->settings().setDelegatesPageScaling(true);
+#endif
 }
 
 RemoteLayerTreeDrawingArea::~RemoteLayerTreeDrawingArea()
@@ -185,6 +188,23 @@ void RemoteLayerTreeDrawingArea::paintContents(const GraphicsLayer* graphicsLaye
 float RemoteLayerTreeDrawingArea::deviceScaleFactor() const
 {
     return m_webPage->corePage()->deviceScaleFactor();
+}
+
+#if PLATFORM(IOS)
+void RemoteLayerTreeDrawingArea::setDeviceScaleFactor(float deviceScaleFactor)
+{
+    m_webPage->setDeviceScaleFactor(deviceScaleFactor);
+}
+#endif
+
+void RemoteLayerTreeDrawingArea::setLayerTreeStateIsFrozen(bool isFrozen)
+{
+    m_remoteLayerTreeContext->setIsFlushingSuspended(isFrozen);
+}
+
+void RemoteLayerTreeDrawingArea::forceRepaint()
+{
+    m_remoteLayerTreeContext->forceRepaint();
 }
 
 } // namespace WebKit

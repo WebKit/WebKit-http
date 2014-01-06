@@ -92,7 +92,7 @@
 #import <WebCore/ScriptValue.h>
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SmartReplace.h>
-#import <WebCore/StylePropertySet.h>
+#import <WebCore/StyleProperties.h>
 #import <WebCore/SubframeLoader.h>
 #import <WebCore/TextIterator.h>
 #import <WebCore/ThreadCheck.h>
@@ -781,7 +781,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 {
     if (!_private->coreFrame)
         return nil;
-    RefPtr<MutableStylePropertySet> typingStyle = _private->coreFrame->selection().copyTypingStyle();
+    RefPtr<MutableStyleProperties> typingStyle = _private->coreFrame->selection().copyTypingStyle();
     if (!typingStyle)
         return nil;
     return kit(typingStyle->ensureCSSStyleDeclaration());
@@ -792,7 +792,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     if (!_private->coreFrame || !style)
         return;
     // FIXME: We shouldn't have to create a copy here.
-    Ref<MutableStylePropertySet> properties(core(style)->copyProperties());
+    Ref<MutableStyleProperties> properties(core(style)->copyProperties());
     _private->coreFrame->editor().computeAndSetTypingStyle(&properties.get(), undoAction);
 }
 
@@ -1209,10 +1209,14 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         AXObjectCache::setEnhancedUserInterfaceAccessibility([[NSApp accessibilityAttributeValue:NSAccessibilityEnhancedUserInterfaceAttribute] boolValue]);
     }
     
-    if (!_private->coreFrame || !_private->coreFrame->document())
+    if (!_private->coreFrame)
         return nil;
     
-    AccessibilityObject* rootObject = _private->coreFrame->document()->axObjectCache()->rootObjectForFrame(_private->coreFrame);
+    Document* document = _private->coreFrame->document();
+    if (!document || !document->axObjectCache())
+        return nil;
+    
+    AccessibilityObject* rootObject = document->axObjectCache()->rootObjectForFrame(_private->coreFrame);
     if (!rootObject)
         return nil;
     

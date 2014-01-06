@@ -216,10 +216,10 @@ function parseBasicShape(s)
         matches = s.match("rectangle\\((.*)\\s*,\\s*(.*)\\s*,\\s*(.*)\\,\\s*(.*)\\)");
         break;
     case "circle":
-        matches = s.match("circle\\((.*)\\s*,\\s*(.*)\\s*,\\s*(.*)\\)");
+        matches = s.match("circle\\((.*)\\s+at\\s+(.*)\\s+(.*)\\)");
         break;
     case "ellipse":
-        matches = s.match("ellipse\\((.*)\\s*,\\s*(.*)\\s*,\\s*(.*)\\,\\s*(.*)\\)");
+        matches = s.match("ellipse\\((.*)\\s+(.*)\\s+at\\s+(.*)\\s+(.*)\\)");
         break;
     case "polygon":
         matches = s.match("polygon\\(nonzero, (.*)\\s+(.*)\\s*,\\s*(.*)\\s+(.*)\\s*,\\s*(.*)\\s+(.*)\\s*,\\s*(.*)\\s+(.*)\\)");

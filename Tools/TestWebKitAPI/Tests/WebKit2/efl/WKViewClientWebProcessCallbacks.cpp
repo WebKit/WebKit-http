@@ -58,13 +58,14 @@ static void didFinishLoadForFrame(WKPageRef, WKFrameRef, WKTypeRef, const void* 
 
 static void setPageLoaderClient(WKPageRef page, const void* clientInfo)
 {
-    WKPageLoaderClient loaderClient;
+    WKPageLoaderClientV3 loaderClient;
     memset(&loaderClient, 0, sizeof(loaderClient));
 
+    loaderClient.base.version = 3;
+    loaderClient.base.clientInfo = clientInfo;
     loaderClient.didFinishLoadForFrame = didFinishLoadForFrame;
-    loaderClient.clientInfo = clientInfo;
 
-    WKPageSetPageLoaderClient(page, &loaderClient);
+    WKPageSetPageLoaderClient(page, &loaderClient.base);
 }
 
 void webProcessCrashed(WKViewRef view, WKURLRef url, const void* clientInfo)
@@ -88,15 +89,15 @@ void webProcessDidRelaunch(WKViewRef view, const void* clientInfo)
 
 static void setViewClient(WKViewRef view, const void* clientInfo)
 {
-    WKViewClient viewClient;
-    memset(&viewClient, 0, sizeof(WKViewClient));
+    WKViewClientV0 viewClient;
+    memset(&viewClient, 0, sizeof(WKViewClientV0));
 
-    viewClient.version = kWKViewClientCurrentVersion;
-    viewClient.clientInfo = clientInfo;
+    viewClient.base.version = 0;
+    viewClient.base.clientInfo = clientInfo;
     viewClient.webProcessCrashed = webProcessCrashed;
     viewClient.webProcessDidRelaunch = webProcessDidRelaunch;
 
-    WKViewSetViewClient(view, &viewClient);
+    WKViewSetViewClient(view, &viewClient.base);
 }
 
 TEST(WebKit2, WKViewClientWebProcessCallbacks)

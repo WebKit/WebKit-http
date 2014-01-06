@@ -35,11 +35,14 @@
 namespace JSC {
 
 class ExecState;
+class Register;
 class VM;
+struct ProtoCallFrame;
 
 extern "C" {
-    EncodedJSValue callToJavaScript(void*, ExecState*);
+    EncodedJSValue callToJavaScript(void*, ExecState**, ProtoCallFrame*, Register*);
     void returnFromJavaScript();
+    EncodedJSValue callToNativeFunction(void*, ExecState**, ProtoCallFrame*, Register*);
 }
 
 namespace LLInt {

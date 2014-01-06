@@ -44,7 +44,6 @@
 #include "Nodes.h"
 #include "StaticPropertyAnalyzer.h"
 #include "UnlinkedCodeBlock.h"
-#include "VMStackBounds.h"
 
 #include <functional>
 
@@ -70,17 +69,16 @@ namespace JSC {
 
         RegisterID* thisRegister() { return m_argv[0].get(); }
         RegisterID* argumentRegister(unsigned i) { return m_argv[i + 1].get(); }
-        unsigned registerOffset() { return -m_argv.last()->index() + CallFrame::offsetFor(argumentCountIncludingThis()); }
-        unsigned argumentCountIncludingThis() { return m_argv.size(); }
+        unsigned stackOffset() { return -m_argv[0]->index() + JSStack::CallFrameHeaderSize; }
+        unsigned argumentCountIncludingThis() { return m_argv.size() - m_padding; }
         RegisterID* profileHookRegister() { return m_profileHookRegister.get(); }
         ArgumentsNode* argumentsNode() { return m_argumentsNode; }
 
     private:
-        void newArgument(BytecodeGenerator&);
-
         RefPtr<RegisterID> m_profileHookRegister;
         ArgumentsNode* m_argumentsNode;
         Vector<RefPtr<RegisterID>, 8, UnsafeVectorOverflow> m_argv;
+        unsigned m_padding;
     };
 
     struct FinallyContext {
@@ -116,6 +114,11 @@ namespace JSC {
         TryData* tryData;
     };
 
+    enum CaptureMode {
+        NotCaptured,
+        IsCaptured
+    };
+
     class Local {
     public:
         Local()
@@ -124,9 +127,10 @@ namespace JSC {
         {
         }
 
-        Local(RegisterID* local, unsigned attributes)
+        Local(RegisterID* local, unsigned attributes, CaptureMode captureMode)
             : m_local(local)
             , m_attributes(attributes)
+            , m_isCaptured(captureMode == IsCaptured)
         {
         }
 
@@ -135,10 +139,14 @@ namespace JSC {
         RegisterID* get() { return m_local; }
 
         bool isReadOnly() { return m_attributes & ReadOnly; }
+        
+        bool isCaptured() { return m_isCaptured; }
+        CaptureMode captureMode() { return isCaptured() ? IsCaptured : NotCaptured; }
 
     private:
         RegisterID* m_local;
         unsigned m_attributes;
+        bool m_isCaptured;
     };
 
     struct TryRange {
@@ -173,6 +181,9 @@ namespace JSC {
         bool willResolveToArguments(const Identifier&);
         RegisterID* uncheckedRegisterForArguments();
 
+        bool isCaptured(int operand);
+        CaptureMode captureMode(int operand) { return isCaptured(operand) ? IsCaptured : NotCaptured; }
+        
         Local local(const Identifier&);
         Local constLocal(const Identifier&);
 
@@ -233,7 +244,9 @@ namespace JSC {
         {
             // Node::emitCode assumes that dst, if provided, is either a local or a referenced temporary.
             ASSERT(!dst || dst == ignoredResult() || !dst->isTemporary() || dst->refCount());
-            if (!m_stack.isSafeToRecurse()) {
+            // Should never store directly into a captured variable.
+            ASSERT(!dst || dst == ignoredResult() || !isCaptured(dst->index()));
+            if (!m_vm->isSafeToRecurse()) {
                 emitThrowExpressionTooDeepException();
                 return;
             }
@@ -249,7 +262,9 @@ namespace JSC {
         {
             // Node::emitCode assumes that dst, if provided, is either a local or a referenced temporary.
             ASSERT(!dst || dst == ignoredResult() || !dst->isTemporary() || dst->refCount());
-            if (!m_stack.isSafeToRecurse())
+            // Should never store directly into a captured variable.
+            ASSERT(!dst || dst == ignoredResult() || !isCaptured(dst->index()));
+            if (!m_vm->isSafeToRecurse())
                 return emitThrowExpressionTooDeepException();
             return n->emitBytecode(*this, dst);
         }
@@ -261,7 +276,7 @@ namespace JSC {
 
         void emitNodeInConditionContext(ExpressionNode* n, Label* trueTarget, Label* falseTarget, FallThroughMode fallThroughMode)
         {
-            if (!m_stack.isSafeToRecurse()) {
+            if (!m_vm->isSafeToRecurse()) {
                 emitThrowExpressionTooDeepException();
                 return;
             }
@@ -331,12 +346,13 @@ namespace JSC {
         RegisterID* emitNewObject(RegisterID* dst);
         RegisterID* emitNewArray(RegisterID* dst, ElementNode*, unsigned length); // stops at first elision
 
-        RegisterID* emitNewFunction(RegisterID* dst, FunctionBodyNode* body);
+        RegisterID* emitNewFunction(RegisterID* dst, CaptureMode, FunctionBodyNode*);
         RegisterID* emitLazyNewFunction(RegisterID* dst, FunctionBodyNode* body);
-        RegisterID* emitNewFunctionInternal(RegisterID* dst, unsigned index, bool shouldNullCheck);
+        RegisterID* emitNewFunctionInternal(RegisterID* dst, CaptureMode, unsigned index, bool shouldNullCheck);
         RegisterID* emitNewFunctionExpression(RegisterID* dst, FuncExprNode* func);
         RegisterID* emitNewRegExp(RegisterID* dst, RegExp*);
 
+        RegisterID* emitMove(RegisterID* dst, CaptureMode, RegisterID* src);
         RegisterID* emitMove(RegisterID* dst, RegisterID* src);
 
         RegisterID* emitToNumber(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_to_number, dst, src); }
@@ -422,9 +438,9 @@ namespace JSC {
         void pushFinallyContext(StatementNode* finallyBlock);
         void popFinallyContext();
 
-        void pushOptimisedForIn(RegisterID* expectedBase, RegisterID* iter, RegisterID* index, RegisterID* propertyRegister)
+        void pushOptimisedForIn(RegisterID* expectedSubscript, RegisterID* iter, RegisterID* index, RegisterID* propertyRegister)
         {
-            ForInContext context = { expectedBase, iter, index, propertyRegister };
+            ForInContext context = { expectedSubscript, iter, index, propertyRegister };
             m_forInContextStack.append(context);
         }
 
@@ -481,15 +497,16 @@ namespace JSC {
         RegisterID* newRegister();
 
         // Adds a var slot and maps it to the name ident in symbolTable().
-        RegisterID* addVar(const Identifier& ident, bool isConstant)
+        enum WatchMode { IsWatchable, NotWatchable };
+        RegisterID* addVar(const Identifier& ident, ConstantMode constantMode, WatchMode watchMode)
         {
             RegisterID* local;
-            addVar(ident, isConstant, local);
+            addVar(ident, constantMode, watchMode, local);
             return local;
         }
 
         // Ditto. Returns true if a new RegisterID was added, false if a pre-existing RegisterID was re-used.
-        bool addVar(const Identifier&, bool isConstant, RegisterID*&);
+        bool addVar(const Identifier&, ConstantMode, WatchMode, RegisterID*&);
         
         // Adds an anonymous var slot. To give this slot a name, add it to symbolTable().
         RegisterID* addVar()
@@ -536,7 +553,7 @@ namespace JSC {
 
         Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow>& instructions() { return m_instructions; }
 
-        SharedSymbolTable& symbolTable() { return *m_symbolTable; }
+        SymbolTable& symbolTable() { return *m_symbolTable; }
 
         bool shouldOptimizeLocals()
         {
@@ -574,12 +591,22 @@ namespace JSC {
         void createActivationIfNecessary();
         RegisterID* createLazyRegisterIfNecessary(RegisterID*);
         
+        StringImpl* watchableVariable(int operand)
+        {
+            VirtualRegister reg(operand);
+            if (!reg.isLocal())
+                return 0;
+            if (static_cast<size_t>(reg.toLocal()) >= m_watchableVariables.size())
+                return 0;
+            return m_watchableVariables[reg.toLocal()];
+        }
+        
         Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow> m_instructions;
 
         bool m_shouldEmitDebugHooks;
         bool m_shouldEmitProfileHooks;
 
-        SharedSymbolTable* m_symbolTable;
+        SymbolTable* m_symbolTable;
 
         ScopeNode* m_scopeNode;
         Strong<UnlinkedCodeBlock> m_codeBlock;
@@ -593,6 +620,7 @@ namespace JSC {
         RegisterID* m_activationRegister;
         RegisterID* m_emptyValueRegister;
         RegisterID* m_globalObjectRegister;
+        Vector<StringImpl*, 16> m_watchableVariables;
         SegmentedVector<RegisterID, 32> m_constantPoolRegisters;
         SegmentedVector<RegisterID, 32> m_calleeRegisters;
         SegmentedVector<RegisterID, 32> m_parameters;
@@ -638,8 +666,6 @@ namespace JSC {
 #ifndef NDEBUG
         size_t m_lastOpcodePosition;
 #endif
-
-        VMStackBounds m_stack;
 
         bool m_usesExceptions;
         bool m_expressionTooDeep;

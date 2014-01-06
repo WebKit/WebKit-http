@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
  */
 
 #include "config.h"
-#include "JSStack.h"
 #include "JSStackInlines.h"
 
 #include "ConservativeRoots.h"
@@ -44,14 +43,17 @@ static Mutex& stackStatisticsMutex()
 }    
 
 JSStack::JSStack(VM& vm, size_t capacity)
-    : m_end(0)
+    : m_vm(vm)
+    , m_end(0)
     , m_topCallFrame(vm.topCallFrame)
 {
     ASSERT(capacity && isPageAligned(capacity));
 
     m_reservation = PageReservation::reserve(roundUpAllocationSize(capacity * sizeof(Register), commitSize), OSAllocator::JSVMStackPages);
-    m_end = highAddress();
+    updateStackLimit(highAddress());
     m_commitEnd = highAddress();
+    
+    m_lastStackTop = getBaseOfStack();
 
     disableErrorStackReserve();
 
@@ -71,7 +73,7 @@ bool JSStack::growSlowCase(Register* newEnd)
     // If we have already committed enough memory to satisfy this request,
     // just update the end pointer and return.
     if (newEnd >= m_commitEnd) {
-        m_end = newEnd;
+        updateStackLimit(newEnd);
         return true;
     }
 
@@ -87,7 +89,7 @@ bool JSStack::growSlowCase(Register* newEnd)
     m_reservation.commit(reinterpret_cast<char*>(m_commitEnd) - delta, delta);
     addToCommittedByteCount(delta);
     m_commitEnd = reinterpret_cast_ptr<Register*>(reinterpret_cast<char*>(m_commitEnd) - delta);
-    m_end = newEnd;
+    updateStackLimit(newEnd);
     return true;
 }
 
@@ -99,6 +101,19 @@ void JSStack::gatherConservativeRoots(ConservativeRoots& conservativeRoots)
 void JSStack::gatherConservativeRoots(ConservativeRoots& conservativeRoots, JITStubRoutineSet& jitStubRoutines, CodeBlockSet& codeBlocks)
 {
     conservativeRoots.add(getBaseOfStack(), getTopOfStack(), jitStubRoutines, codeBlocks);
+}
+
+void JSStack::sanitizeStack()
+{
+    ASSERT(getTopOfStack() <= getBaseOfStack());
+    
+    if (m_lastStackTop < getTopOfStack()) {
+        char* begin = reinterpret_cast<char*>(m_lastStackTop);
+        char* end = reinterpret_cast<char*>(getTopOfStack());
+        memset(begin, 0, end - begin);
+    }
+    
+    m_lastStackTop = getTopOfStack();
 }
 
 void JSStack::releaseExcessCapacity()

@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if ENABLE(FULLSCREEN_API)
+#if ENABLE(FULLSCREEN_API) && !PLATFORM(IOS)
 
 #import "WKFullScreenWindowController.h"
 
@@ -659,4 +659,4 @@ static NSRect windowFrameFromApparentFrames(NSRect screenFrame, NSRect initialFr
 }
 @end
 
-#endif
+#endif // ENABLE(FULLSCREEN_API) && !PLATFORM(IOS)

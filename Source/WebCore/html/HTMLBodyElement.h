@@ -36,17 +36,6 @@ public:
     static PassRefPtr<HTMLBodyElement> create(const QualifiedName&, Document&);
     virtual ~HTMLBodyElement();
 
-    String aLink() const;
-    void setALink(const String&);
-    String bgColor() const;
-    void setBgColor(const String&);
-    String link() const;
-    void setLink(const String&);
-    String text() const;
-    void setText(const String&);
-    String vLink() const;
-    void setVLink(const String&);
-
     // Declared virtual in Element
     DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(blur);
     DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(error);
@@ -72,7 +61,7 @@ private:
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet&) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) OVERRIDE;
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode&) OVERRIDE;
 

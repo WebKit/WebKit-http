@@ -1,3 +1,197 @@
+2013-12-03  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Regions] Fix Layout/RegionsSelection.html in Mac platform
+        https://bugs.webkit.org/show_bug.cgi?id=124963
+
+        Reviewed by Ryosuke Niwa.
+
+        Layout/RegionsSelection.html introduced in r159488 was not working in
+        Mac platform because of it was trying to use mouse events out of the
+        window dimensions. Use collapse() and extend() methods from Selection
+        object to solve the issue.
+
+        * Layout/resources/regions.js: Use collapse() and extend() instead of
+        mouse events.
+
+2013-11-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r159805.
+
+        * resources/runner.js:
+
+2013-11-26  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Support grid-definition-{rows|columns} repeat() syntax
+        https://bugs.webkit.org/show_bug.cgi?id=103312
+
+        Reviewed by Andreas Kling.
+
+        Use the repeat() syntax to build the huge grids used by the
+        performance tests.
+
+        * Layout/auto-grid-lots-of-data.html:
+        * Layout/fixed-grid-lots-of-data.html:
+
+2013-11-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Record subtest values in Dromaeo tests
+        https://bugs.webkit.org/show_bug.cgi?id=124498
+
+        Reviewed by Andreas Kling.
+
+        Made Dromaeo's test runner report values in DRT.progress via newly added PerfTestRunner.reportValues.
+
+        * Dromaeo/resources/dromaeorunner.js:
+        (.): Moved the definition out of DRT.setup.
+        (DRT.setup): Ditto.
+        (DRT.testObject): Extracted from DRT.setup. Set the subtest name and continueTesting.
+        continueTesting is set true for subtests; i.e. when name is specified.
+        (DRT.progress): Call PerfTestRunner.reportValues to report subtest results.
+        (DRT.teardown): Call PerfTestRunner.reportValues instead of measureValueAsync.
+
+        * resources/runner.js: Made various changes for newly added PerfTestRunner.reportValues.
+        (.): Moved the initialization of completedIterations, results, jsHeapResults, and mallocHeapResults into
+        start since they need to be initialized before running each subtest. Initialize logLines here since we
+        need to use the same logger for all subtests.
+        (.start): Initialize the variables mentioned above here. Also respect doNotLogStart used by reportValues.
+        (ignoreWarmUpAndLog): Added doNotLogProgress. Used by reportValues since it reports all values at once.
+        (finish): Compute the metric name such as FrameFrame and Runs from unit. Also don't log or notify done
+        when continueTesting is set on the test object.
+        (PerfTestRunner.reportValues): Added. Reports all values for the main/sub test.
+
+2013-11-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove replay performance tests as it's not actively maintained
+        https://bugs.webkit.org/show_bug.cgi?id=124764
+
+        Reviewed by Andreas Kling.
+
+        Removed the replay performance tests. We can add them back when time comes.
+
+        * Replay/Chinese/chinaz.com.replay: Removed.
+        * Replay/Chinese/www.163.com.replay: Removed.
+        * Replay/Chinese/www.alipay.com.replay: Removed.
+        * Replay/Chinese/www.baidu.com.replay: Removed.
+        * Replay/Chinese/www.csdn.net.replay: Removed.
+        * Replay/Chinese/www.douban.com.replay: Removed.
+        * Replay/Chinese/www.hao123.com.replay: Removed.
+        * Replay/Chinese/www.xinhuanet.com.replay: Removed.
+        * Replay/Chinese/www.xunlei.com.replay: Removed.
+        * Replay/Chinese/www.youku.com.replay: Removed.
+        * Replay/English/beatonna.livejournal.com.replay: Removed.
+        * Replay/English/cakewrecks.blogspot.com.replay: Removed.
+        * Replay/English/chemistry.about.com.replay: Removed.
+        * Replay/English/digg.com.replay: Removed.
+        * Replay/English/en.wikipedia.org-rorschach_test.replay: Removed.
+        * Replay/English/icanhascheezburger.com.replay: Removed.
+        * Replay/English/imgur.com-gallery.replay: Removed.
+        * Replay/English/online.wsj.com.replay: Removed.
+        * Replay/English/stockoverflow.com-best-comment.replay: Removed.
+        * Replay/English/www.alibaba.com.replay: Removed.
+        * Replay/English/www.amazon.com-kindle.replay: Removed.
+        * Replay/English/www.apple.com.replay: Removed.
+        * Replay/English/www.cnet.com.replay: Removed.
+        * Replay/English/www.dailymotion.com.replay: Removed.
+        * Replay/English/www.ehow.com-prevent-fire.replay: Removed.
+        * Replay/English/www.filestube.com-amy-adams.replay: Removed.
+        * Replay/English/www.foxnews.replay: Removed.
+        * Replay/English/www.huffingtonpost.com.replay: Removed.
+        * Replay/English/www.imdb.com-twilight.replay: Removed.
+        * Replay/English/www.mozilla.com-all-order.replay: Removed.
+        * Replay/English/www.php.net.replay: Removed.
+        * Replay/English/www.reddit.com.replay: Removed.
+        * Replay/English/www.telegraph.co.uk.replay: Removed.
+        * Replay/English/www.w3.org-htmlcss.replay: Removed.
+        * Replay/English/www.w3schools.com-html.replay: Removed.
+        * Replay/English/www.youtube.com-music.replay: Removed.
+        * Replay/French/www.orange.fr.replay: Removed.
+        * Replay/Italian/www.repubblica.it.replay: Removed.
+        * Replay/Japanese/2ch.net-newsplus.replay: Removed.
+        * Replay/Japanese/entameblog.seesaa.net.replay: Removed.
+        * Replay/Japanese/ja.wikipedia.org.replay: Removed.
+        * Replay/Japanese/www.hatena.ne.jp.replay: Removed.
+        * Replay/Japanese/www.livedoor.com.replay: Removed.
+        * Replay/Japanese/www.nicovideo.jp.replay: Removed.
+        * Replay/Japanese/www.rakuten.co.jp.replay: Removed.
+        * Replay/Japanese/www.yahoo.co.jp.replay: Removed.
+        * Replay/Korean/www.naver.com.replay: Removed.
+        * Replay/Persian/blogfa.com.replay: Removed.
+        * Replay/Polish/www.wp.pl.replay: Removed.
+        * Replay/Portuguese/www.uol.com.br.replay: Removed.
+        * Replay/Russian/lenta.ru.replay: Removed.
+        * Replay/Russian/vkontakte.ru-help.replay: Removed.
+        * Replay/Russian/www.ixbt.com.replay: Removed.
+        * Replay/Russian/www.kp.ru.replay: Removed.
+        * Replay/Russian/www.liveinternet.ru.replay: Removed.
+        * Replay/Russian/www.pravda.ru.replay: Removed.
+        * Replay/Russian/www.rambler.ru.replay: Removed.
+        * Replay/Russian/www.ucoz.ru.replay: Removed.
+        * Replay/Russian/www.yandex.ru.replay: Removed.
+        * Replay/Spanish/www.taringa.net.replay: Removed.
+        * Replay/Swedish/www.flashback.se.replay: Removed.
+        * Replay/Swedish/www.tradera.com.replay: Removed.
+        * Replay/www.google.com.replay: Removed.
+        * Replay/www.techcrunch.com.replay: Removed.
+        * Replay/www.youtube.com.replay: Removed.
+
+2013-11-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Layout Test editing/deleting/password-delete-performance.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=124781
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a new performance test to replace editing/deleting/password-delete-performance.html.
+        We skip this test by default since it's a micro benchmark.
+
+        * Interactive/DeletingInPasswordField.html: Added.
+        * Skipped:
+
+2013-11-18  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Improve content-sized track layout
+        https://bugs.webkit.org/show_bug.cgi?id=124408
+
+        Reviewed by Dean Jackson.
+
+        From Blink r156122 by <jchaffraix@chromium.org>
+
+        New test to check the performance of layouting grids with content sized tracks.
+
+        * Layout/auto-grid-lots-of-data.html: Added.
+
+2013-11-08  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Run the content-sized tracks sizing algorithm only when required
+        https://bugs.webkit.org/show_bug.cgi?id=124039
+
+        Reviewed by Dean Jackson.
+
+        From Blink r156028 and r156168 by <jchaffraix@chromium.org>.
+
+        New performance tests for layouts in grids with fixed size tracks.
+
+        * Layout/fixed-grid-lots-of-data.html: Added.
+
+2013-11-19  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Regions] Add performance test for selection
+        https://bugs.webkit.org/show_bug.cgi?id=119230
+
+        Reviewed by Ryosuke Niwa.
+
+        Add new performance test for selection in CSS Regions. It checks a
+        selection from the first region to the last one, passing through all the
+        regions.
+
+        Test is skipped for now while implementation of selection in CSS Regions
+        is still evolving.
+
+        * Layout/RegionsSelection.html: Added.
+        * Layout/resources/regions.js:
+        (.):
+        * Skipped:
+
 2013-11-18  Ryosuke Niwa  <rniwa@webkit.org>
 
         Simplify and reformat the output of performance tests inside test runners

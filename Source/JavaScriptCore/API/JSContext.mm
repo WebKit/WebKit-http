@@ -102,7 +102,6 @@
 
 - (void)setException:(JSValue *)value
 {
-    JSC::APIEntryShim entryShim(toJS(m_context));
     if (value)
         m_exception.set(toJS(m_context)->vm(), toJS(JSValueToObject(m_context, valueInternalValue(value), 0)));
     else
@@ -165,6 +164,22 @@
 - (JSVirtualMachine *)virtualMachine
 {
     return m_virtualMachine;
+}
+
+- (NSString *)name
+{
+    JSStringRef name = JSGlobalContextCopyName(m_context);
+    if (!name)
+        return nil;
+
+    return [(NSString *)JSStringCopyCFString(kCFAllocatorDefault, name) autorelease];
+}
+
+- (void)setName:(NSString *)name
+{
+    JSStringRef nameJS = JSStringCreateWithCFString((CFStringRef)[name copy]);
+    JSGlobalContextSetName(m_context, nameJS);
+    JSStringRelease(nameJS);
 }
 
 @end
@@ -245,13 +260,14 @@
 
 - (JSValue *)wrapperForObjCObject:(id)object
 {
-    JSC::APIEntryShim entryShim(toJS(m_context));
+    // Lock access to m_wrapperMap
+    JSC::JSLockHolder lock(toJS(m_context));
     return [m_wrapperMap jsWrapperForObject:object];
 }
 
 - (JSValue *)wrapperForJSObject:(JSValueRef)value
 {
-    JSC::APIEntryShim entryShim(toJS(m_context));
+    JSC::JSLockHolder lock(toJS(m_context));
     return [m_wrapperMap objcWrapperForJSValueRef:value];
 }
 

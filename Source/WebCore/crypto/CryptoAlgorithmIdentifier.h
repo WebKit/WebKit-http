@@ -51,7 +51,8 @@ ENUM_CLASS(CryptoAlgorithmIdentifier) {
     SHA_512,
     CONCAT,
     HKDF_CTR,
-    PBKDF2
+    PBKDF2,
+    AES_KW // Not yet standardized.
 };
 
 }

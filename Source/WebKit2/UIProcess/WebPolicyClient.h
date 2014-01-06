@@ -34,12 +34,16 @@
 
 namespace API {
 class Object;
+
+template<> struct ClientTraits<WKPagePolicyClientBase> {
+    typedef std::tuple<WKPagePolicyClientV0, WKPagePolicyClientV1> Versions;
+};
 }
 
 namespace WebCore {
-    class ResourceError;
-    class ResourceRequest;
-    class ResourceResponse;
+class ResourceError;
+class ResourceRequest;
+class ResourceResponse;
 }
 
 namespace WebKit {
@@ -48,7 +52,7 @@ class WebPageProxy;
 class WebFrameProxy;
 class WebFramePolicyListenerProxy;
 
-class WebPolicyClient : public APIClient<WKPagePolicyClient, kWKPagePolicyClientCurrentVersion> {
+class WebPolicyClient : public API::Client<WKPagePolicyClientBase> {
 public:
     bool decidePolicyForNavigationAction(WebPageProxy*, WebFrameProxy*, WebCore::NavigationType, WebEvent::Modifiers, WebMouseEvent::Button, WebFrameProxy* originatingFrame, const WebCore::ResourceRequest&, WebFramePolicyListenerProxy*, API::Object* userData);
     bool decidePolicyForNewWindowAction(WebPageProxy*, WebFrameProxy*, WebCore::NavigationType, WebEvent::Modifiers, WebMouseEvent::Button, const WebCore::ResourceRequest&, const String& frameName, WebFramePolicyListenerProxy*, API::Object* userData);

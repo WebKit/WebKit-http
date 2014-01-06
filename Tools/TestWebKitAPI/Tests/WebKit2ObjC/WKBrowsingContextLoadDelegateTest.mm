@@ -35,6 +35,8 @@
 
 #import "PlatformUtilities.h"
 
+#if WK_API_ENABLED
+
 namespace {
 
 class WKBrowsingContextLoadDelegateTest : public ::testing::Test { 
@@ -198,7 +200,7 @@ TEST_F(WKBrowsingContextLoadDelegateTest, SimpleLoadOfHTMLString_NilHTMLStringAn
     return self;
 }
 
-- (void)browsingContextControllerDidFailProvisionalLoad:(WKBrowsingContextController *)sender withError:(NSError *)error
+- (void)browsingContextController:(WKBrowsingContextController *)sender didFailProvisionalLoadWithError:(NSError *)error
 {
     EXPECT_EQ(-1100, error.code);
     EXPECT_WK_STREQ(NSURLErrorDomain, error.domain);
@@ -227,3 +229,5 @@ TEST_F(WKBrowsingContextLoadDelegateTest, SimpleLoadFail)
     view.browsingContextController.loadDelegate = nil;
     [loadDelegate release];
 }
+
+#endif // WK_API_ENABLED

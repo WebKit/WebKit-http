@@ -36,7 +36,8 @@ namespace WebCore {
 
 class RTCPeerConnectionHandlerMock FINAL : public RTCPeerConnectionHandler, public TimerEventBasedMock {
 public:
-    static PassOwnPtr<RTCPeerConnectionHandler> create(RTCPeerConnectionHandlerClient*);
+    static std::unique_ptr<RTCPeerConnectionHandler> create(RTCPeerConnectionHandlerClient*);
+
     virtual ~RTCPeerConnectionHandlerMock() { }
 
     virtual bool initialize(PassRefPtr<RTCConfiguration>, PassRefPtr<MediaConstraints>) OVERRIDE;
@@ -52,12 +53,11 @@ public:
     virtual bool addStream(PassRefPtr<MediaStreamPrivate>, PassRefPtr<MediaConstraints>) OVERRIDE;
     virtual void removeStream(PassRefPtr<MediaStreamPrivate>) OVERRIDE;
     virtual void getStats(PassRefPtr<RTCStatsRequest>) OVERRIDE;
-    virtual PassOwnPtr<RTCDataChannelHandler> createDataChannel(const String& label, const RTCDataChannelInit&) OVERRIDE;
-    virtual PassOwnPtr<RTCDTMFSenderHandler> createDTMFSender(PassRefPtr<MediaStreamSource>) OVERRIDE;
+    virtual std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String& label, const RTCDataChannelInit&) OVERRIDE;
+    virtual std::unique_ptr<RTCDTMFSenderHandler> createDTMFSender(PassRefPtr<MediaStreamSource>) OVERRIDE;
     virtual void stop() OVERRIDE;
 
-protected:
-    RTCPeerConnectionHandlerMock(RTCPeerConnectionHandlerClient*);
+    explicit RTCPeerConnectionHandlerMock(RTCPeerConnectionHandlerClient*);
 
 private:
     RTCPeerConnectionHandlerClient* m_client;

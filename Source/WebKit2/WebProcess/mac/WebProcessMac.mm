@@ -29,6 +29,7 @@
 #import "CustomProtocolManager.h"
 #import "SandboxExtension.h"
 #import "SandboxInitializationParameters.h"
+#import "SecItemShim.h"
 #import "WKFullKeyboardAccessWatcher.h"
 #import "WebFrame.h"
 #import "WebInspector.h"
@@ -50,10 +51,6 @@
 #import <mach/mach_error.h>
 #import <objc/runtime.h>
 #import <stdio.h>
-
-#if USE(SECURITY_FRAMEWORK)
-#import "SecItemShim.h"
-#endif
 
 using namespace WebCore;
 
@@ -203,7 +200,7 @@ void WebProcess::platformInitializeProcess(const ChildProcessInitializationParam
 {
     WKAXRegisterRemoteApp();
 
-#if USE(SECURITY_FRAMEWORK)
+#if ENABLE(SEC_ITEM_SHIM)
     SecItemShim::shared().initialize(this);
 #endif
 }
@@ -224,11 +221,16 @@ void WebProcess::platformTerminate()
 
 void WebProcess::initializeSandbox(const ChildProcessInitializationParameters& parameters, SandboxInitializationParameters& sandboxParameters)
 {
+#if PLATFORM(IOS)
+    UNUSED_PARAM(parameters);
+    UNUSED_PARAM(sandboxParameters);
+#else
     // Need to overide the default, because service has a different bundle ID.
     NSBundle *webkit2Bundle = [NSBundle bundleForClass:NSClassFromString(@"WKView")];
     sandboxParameters.setOverrideSandboxProfilePath([webkit2Bundle pathForResource:@"com.apple.WebProcess" ofType:@"sb"]);
 
     ChildProcess::initializeSandbox(parameters, sandboxParameters);
+#endif
 }
 
 void WebProcess::updateActivePages()

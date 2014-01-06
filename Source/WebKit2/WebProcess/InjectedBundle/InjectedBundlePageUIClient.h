@@ -34,6 +34,10 @@
 
 namespace API {
 class Object;
+
+template<> struct ClientTraits<WKBundlePageUIClientBase> {
+    typedef std::tuple<WKBundlePageUIClientV0, WKBundlePageUIClientV1, WKBundlePageUIClientV2> Versions;
+};
 }
 
 namespace WebCore {
@@ -48,7 +52,7 @@ class WebFrame;
 class WebPage;
 class WebSecurityOrigin;
 
-class InjectedBundlePageUIClient : public APIClient<WKBundlePageUIClient, kWKBundlePageUIClientCurrentVersion> {
+class InjectedBundlePageUIClient : public API::Client<WKBundlePageUIClientBase> {
 public:
     void willAddMessageToConsole(WebPage*, const String& message, int32_t lineNumber);
     void willSetStatusbarText(WebPage*, const String&);

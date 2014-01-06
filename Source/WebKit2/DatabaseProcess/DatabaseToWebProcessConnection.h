@@ -27,6 +27,7 @@
 #define DatabaseToWebProcessConnection_h
 
 #include "Connection.h"
+#include "DatabaseProcessIDBConnection.h"
 #include "MessageSender.h"
 
 #include <wtf/HashMap.h>
@@ -34,8 +35,6 @@
 #if ENABLE(DATABASE_PROCESS)
 
 namespace WebKit {
-
-class DatabaseProcessIDBDatabaseBackend;
 
 class DatabaseToWebProcessConnection : public RefCounted<DatabaseToWebProcessConnection>, public CoreIPC::Connection::Client, public CoreIPC::MessageSender {
 public:
@@ -59,10 +58,11 @@ private:
 
 #if ENABLE(INDEXED_DATABASE)
     // Messages handlers
-    void establishIDBDatabaseBackend(uint64_t backendIdentifier);
+    void establishIDBConnection(uint64_t serverConnectionIdentifier);
+    void removeDatabaseProcessIDBConnection(uint64_t serverConnectionIdentifier);
 
-    typedef HashMap<uint64_t, RefPtr<DatabaseProcessIDBDatabaseBackend>> IDBDatabaseBackendMap;
-    IDBDatabaseBackendMap m_idbDatabaseBackends;
+    typedef HashMap<uint64_t, RefPtr<DatabaseProcessIDBConnection>> IDBConnectionMap;
+    IDBConnectionMap m_idbConnections;
 #endif // ENABLE(INDEXED_DATABASE)
 
     RefPtr<CoreIPC::Connection> m_connection;

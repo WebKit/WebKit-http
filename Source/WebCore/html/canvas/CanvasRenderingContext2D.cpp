@@ -50,7 +50,7 @@
 #include "RenderElement.h"
 #include "SecurityOrigin.h"
 #include "StrokeStyleApplier.h"
-#include "StylePropertySet.h"
+#include "StyleProperties.h"
 #include "StyleResolver.h"
 #include "TextMetrics.h"
 #include "TextRun.h"
@@ -1450,6 +1450,18 @@ void CanvasRenderingContext2D::drawImage(HTMLVideoElement* video, const FloatRec
 
     checkOrigin(video);
 
+#if USE(CG)
+    if (PassNativeImagePtr image = video->nativeImageForCurrentTime()) {
+        c->drawNativeImage(image, FloatSize(video->videoWidth(), video->videoHeight()), ColorSpaceDeviceRGB, dstRect, srcRect);
+        if (rectContainsCanvas(dstRect))
+            didDrawEntireCanvas();
+        else
+            didDraw(dstRect);
+
+        return;
+    }
+#endif
+
     GraphicsContextStateSaver stateSaver(*c);
     c->clip(dstRect);
     c->translate(dstRect.x(), dstRect.y());
@@ -1532,7 +1544,7 @@ template<class T> IntRect CanvasRenderingContext2D::calculateCompositingBufferRe
     return bufferRect;
 }
 
-OwnPtr<ImageBuffer> CanvasRenderingContext2D::createCompositingBuffer(const IntRect& bufferRect)
+std::unique_ptr<ImageBuffer> CanvasRenderingContext2D::createCompositingBuffer(const IntRect& bufferRect)
 {
     RenderingMode renderMode = isAccelerated() ? Accelerated : Unaccelerated;
     return ImageBuffer::create(bufferRect.size(), 1, ColorSpaceDeviceRGB, renderMode);
@@ -1581,7 +1593,7 @@ template<class T> void  CanvasRenderingContext2D::fullCanvasCompositedDrawImage(
         return;
     }
 
-    OwnPtr<ImageBuffer> buffer = createCompositingBuffer(bufferRect);
+    std::unique_ptr<ImageBuffer> buffer = createCompositingBuffer(bufferRect);
     if (!buffer)
         return;
 
@@ -1611,7 +1623,7 @@ template<class T> void CanvasRenderingContext2D::fullCanvasCompositedFill(const 
         return;
     }
 
-    OwnPtr<ImageBuffer> buffer = createCompositingBuffer(bufferRect);
+    std::unique_ptr<ImageBuffer> buffer = createCompositingBuffer(bufferRect);
     if (!buffer)
         return;
 
@@ -1981,7 +1993,7 @@ void CanvasRenderingContext2D::setFont(const String& newFont)
     if (newFont == state().m_unparsedFont && state().m_realizedFont)
         return;
 
-    RefPtr<MutableStylePropertySet> parsedStyle = MutableStylePropertySet::create();
+    RefPtr<MutableStyleProperties> parsedStyle = MutableStyleProperties::create();
     CSSParser::parseValue(parsedStyle.get(), CSSPropertyFont, newFont, true, strictToCSSParserMode(!m_usesCSSCompatibilityParseMode), 0);
     if (parsedStyle->isEmpty())
         return;
@@ -2222,7 +2234,7 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
     if (drawStyle.canvasGradient() || drawStyle.canvasPattern()) {
         IntRect maskRect = enclosingIntRect(textRect);
 
-        OwnPtr<ImageBuffer> maskImage = c->createCompatibleBuffer(maskRect.size());
+        std::unique_ptr<ImageBuffer> maskImage = c->createCompatibleBuffer(maskRect.size());
 
         GraphicsContext* maskImageContext = maskImage->context();
 

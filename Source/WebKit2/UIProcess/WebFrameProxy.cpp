@@ -73,6 +73,14 @@ bool WebFrameProxy::isMainFrame() const
     return this == m_page->mainFrame();
 }
 
+void WebFrameProxy::loadURL(const String& url)
+{
+    if (!m_page)
+        return;
+
+    m_page->process().send(Messages::WebPage::LoadURLInFrame(url, m_frameID), m_page->pageID());
+}
+
 void WebFrameProxy::stopLoading() const
 {
     if (!m_page)
@@ -81,7 +89,7 @@ void WebFrameProxy::stopLoading() const
     if (!m_page->isValid())
         return;
 
-    m_page->process()->send(Messages::WebPage::StopLoadingFrame(m_frameID), m_page->pageID());
+    m_page->process().send(Messages::WebPage::StopLoadingFrame(m_frameID), m_page->pageID());
 }
     
 bool WebFrameProxy::canProvideSource() const
@@ -131,7 +139,7 @@ void WebFrameProxy::didFailProvisionalLoad()
     m_frameLoadState.didFailProvisionalLoad();
 }
 
-void WebFrameProxy::didCommitLoad(const String& contentType, const PlatformCertificateInfo& certificateInfo)
+void WebFrameProxy::didCommitLoad(const String& contentType, const CertificateInfo& certificateInfo)
 {
     m_frameLoadState.didCommitLoad();
 

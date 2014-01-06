@@ -543,13 +543,13 @@ sub GetPropertyAttributes
     if ($codeGenerator->IsStringType($type) || IsNativeObjCType($type)) {
         push(@attributes, "copy");
     } elsif ($codeGenerator->IsSVGAnimatedType($type)) {
-        push(@attributes, "retain");
+        push(@attributes, "strong");
     } elsif (!$codeGenerator->IsStringType($type) && !$codeGenerator->IsPrimitiveType($type) && $type ne "DOMTimeStamp" && $type ne "CompareHow") {
-        push(@attributes, "retain");
+        push(@attributes, "strong");
     }
 
     return "" unless @attributes > 0;
-    return "(" . join(", ", @attributes) . ")";
+    return " (" . join(", ", @attributes) . ")";
 }
 
 sub ConversionNeeded
@@ -677,7 +677,7 @@ sub AddIncludesForType
 
     # FIXME: won't compile without these
     $implIncludes{"CSSImportRule.h"} = 1 if $type eq "CSSRule";
-    $implIncludes{"StylePropertySet.h"} = 1 if $type eq "CSSStyleDeclaration";
+    $implIncludes{"StyleProperties.h"} = 1 if $type eq "CSSStyleDeclaration";
     $implIncludes{"NameNodeList.h"} = 1 if $type eq "NodeList";
 
     # Default, include the same named file (the implementation) and the same name prefixed with "DOM". 

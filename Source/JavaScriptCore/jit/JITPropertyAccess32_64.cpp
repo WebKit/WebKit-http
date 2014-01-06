@@ -43,11 +43,6 @@
 #include "SamplingTool.h"
 #include <wtf/StringPrintStream.h>
 
-#ifndef NDEBUG
-#include <stdio.h>
-#endif
-
-using namespace std;
 
 namespace JSC {
     
@@ -807,9 +802,46 @@ void JIT::emitPutGlobalProperty(uintptr_t* operandSlot, int value)
     store32(regT2, BaseIndex(regT0, regT1, TimesEight, (firstOutOfLineOffset - 2) * sizeof(EncodedJSValue) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload)));
 }
 
-void JIT::emitPutGlobalVar(uintptr_t operand, int value)
+void JIT::emitNotifyWrite(RegisterID tag, RegisterID payload, RegisterID scratch, VariableWatchpointSet* set)
+{
+    if (!set || set->state() == IsInvalidated)
+        return;
+    
+    load8(set->addressOfState(), scratch);
+    
+    JumpList ready;
+    
+    ready.append(branch32(Equal, scratch, TrustedImm32(IsInvalidated)));
+    
+    if (set->state() == ClearWatchpoint) {
+        Jump isWatched = branch32(NotEqual, scratch, TrustedImm32(ClearWatchpoint));
+        
+        store32(tag, &set->addressOfInferredValue()->u.asBits.tag);
+        store32(payload, &set->addressOfInferredValue()->u.asBits.payload);
+        store8(TrustedImm32(IsWatched), set->addressOfState());
+        ready.append(jump());
+        
+        isWatched.link(this);
+    }
+
+    Jump definitelyNotEqual = branch32(
+        NotEqual, AbsoluteAddress(&set->addressOfInferredValue()->u.asBits.payload), payload);
+    ready.append(branch32(
+        Equal, AbsoluteAddress(&set->addressOfInferredValue()->u.asBits.tag), tag));
+    definitelyNotEqual.link(this);
+    addSlowCase(branchTest8(NonZero, AbsoluteAddress(set->addressOfSetIsNotEmpty())));
+    store8(TrustedImm32(IsInvalidated), set->addressOfState());
+    store32(
+        TrustedImm32(JSValue::EmptyValueTag), &set->addressOfInferredValue()->u.asBits.tag);
+    store32(TrustedImm32(0), &set->addressOfInferredValue()->u.asBits.payload);
+    
+    ready.link(this);
+}
+
+void JIT::emitPutGlobalVar(uintptr_t operand, int value, VariableWatchpointSet* set)
 {
     emitLoad(value, regT1, regT0);
+    emitNotifyWrite(regT1, regT0, regT2, set);
     store32(regT1, reinterpret_cast<char*>(operand) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
     store32(regT0, reinterpret_cast<char*>(operand) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
 }
@@ -840,7 +872,7 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
     case GlobalVar:
     case GlobalVarWithVarInjectionChecks:
         emitVarInjectionCheck(needsVarInjectionChecks(resolveType));
-        emitPutGlobalVar(*operandSlot, value);
+        emitPutGlobalVar(*operandSlot, value, currentInstruction[5].u.watchpointSet);
         break;
     case ClosureVar:
     case ClosureVarWithVarInjectionChecks:
@@ -856,11 +888,16 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
 void JIT::emitSlow_op_put_to_scope(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     ResolveType resolveType = ResolveModeAndType(currentInstruction[4].u.operand).type();
-
-    if (resolveType == GlobalVar || resolveType == ClosureVar)
+    unsigned linkCount = 0;
+    if (resolveType != GlobalVar && resolveType != ClosureVar)
+        linkCount++;
+    if ((resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks)
+        && currentInstruction[5].u.watchpointSet->state() != IsInvalidated)
+        linkCount++;
+    if (!linkCount)
         return;
-
-    linkSlowCase(iter);
+    while (linkCount--)
+        linkSlowCase(iter);
     callOperation(operationPutToScope, currentInstruction);
 }
 

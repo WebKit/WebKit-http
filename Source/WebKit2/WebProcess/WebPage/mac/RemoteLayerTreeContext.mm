@@ -26,6 +26,7 @@
 #import "config.h"
 #import "RemoteLayerTreeContext.h"
 
+#import "GenericCallback.h"
 #import "GraphicsLayerCARemote.h"
 #import "PlatformCALayerRemote.h"
 #import "RemoteLayerTreeTransaction.h"
@@ -43,6 +44,8 @@ namespace WebKit {
 RemoteLayerTreeContext::RemoteLayerTreeContext(WebPage* webPage)
     : m_webPage(webPage)
     , m_layerFlushTimer(this, &RemoteLayerTreeContext::layerFlushTimerFired)
+    , m_isFlushingSuspended(false)
+    , m_hasDeferredFlush(false)
 {
 }
 
@@ -114,6 +117,11 @@ void RemoteLayerTreeContext::flushLayers()
     if (!m_rootLayer)
         return;
 
+    if (m_isFlushingSuspended) {
+        m_hasDeferredFlush = true;
+        return;
+    }
+
     RemoteLayerTreeTransaction transaction;
 
     transaction.setRootLayerID(m_rootLayer->layerID());
@@ -129,6 +137,35 @@ void RemoteLayerTreeContext::flushLayers()
     m_rootLayer->recursiveBuildTransaction(transaction);
 
     m_webPage->send(Messages::RemoteLayerTreeHost::Commit(transaction));
+}
+
+void RemoteLayerTreeContext::setIsFlushingSuspended(bool isFrozen)
+{
+    if (m_isFlushingSuspended == isFrozen)
+        return;
+
+    m_isFlushingSuspended = isFrozen;
+
+    if (!m_isFlushingSuspended && m_hasDeferredFlush) {
+        m_hasDeferredFlush = false;
+        scheduleLayerFlush();
+    }
+}
+
+void RemoteLayerTreeContext::forceRepaint()
+{
+    if (m_isFlushingSuspended)
+        return;
+
+    for (Frame* frame = &m_webPage->corePage()->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        FrameView* frameView = frame->view();
+        if (!frameView || !frameView->tiledBacking())
+            continue;
+
+        frameView->tiledBacking()->forceRepaint();
+    }
+
+    flushLayers();
 }
 
 } // namespace WebKit

@@ -351,7 +351,7 @@ public:
         
     void notifyTransitionFromThisStructure() const
     {
-        m_transitionWatchpointSet.notifyWrite();
+        m_transitionWatchpointSet.fireAll();
     }
     
     InlineWatchpointSet& transitionWatchpointSet() const
@@ -508,7 +508,7 @@ private:
     unsigned m_specificFunctionThrashCount : 2;
     unsigned m_preventExtensions : 1;
     unsigned m_didTransition : 1;
-    unsigned m_staticFunctionReified;
+    unsigned m_staticFunctionReified : 1;
 };
 
 } // namespace JSC

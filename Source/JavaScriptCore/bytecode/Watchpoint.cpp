@@ -40,6 +40,7 @@ Watchpoint::~Watchpoint()
 
 WatchpointSet::WatchpointSet(WatchpointState state)
     : m_state(state)
+    , m_setIsNotEmpty(false)
 {
 }
 
@@ -60,13 +61,15 @@ void WatchpointSet::add(Watchpoint* watchpoint)
     if (!watchpoint)
         return;
     m_set.push(watchpoint);
+    m_setIsNotEmpty = true;
     m_state = IsWatched;
 }
 
-void WatchpointSet::notifyWriteSlow()
+void WatchpointSet::fireAllSlow()
 {
     ASSERT(state() == IsWatched);
     
+    WTF::storeStoreFence();
     fireAllWatchpoints();
     m_state = IsInvalidated;
     WTF::storeStoreFence();

@@ -31,7 +31,7 @@
 #include "CryptoAlgorithm.h"
 #include "CryptoAlgorithmHmacParams.h"
 #include "CryptoAlgorithmRegistry.h"
-#include "CryptoAlgorithmRsaSsaKeyParams.h"
+#include "CryptoAlgorithmRsaKeyParamsWithHash.h"
 #include "CryptoKey.h"
 #include "CryptoKeyAES.h"
 #include "CryptoKeyDataOctetSequence.h"
@@ -155,14 +155,13 @@ static std::unique_ptr<CryptoAlgorithmParameters> createHMACParameters(CryptoAlg
     return std::move(hmacParameters);
 }
 
-static std::unique_ptr<CryptoAlgorithmParameters> createRSASSAKeyParameters(CryptoAlgorithmIdentifier hashFunction)
+static std::unique_ptr<CryptoAlgorithmParameters> createRSAKeyParametersWithHash(CryptoAlgorithmIdentifier hashFunction)
 {
-    std::unique_ptr<CryptoAlgorithmRsaSsaKeyParams> rsaSSAParameters = std::make_unique<CryptoAlgorithmRsaSsaKeyParams>();
-    rsaSSAParameters->hasHash = true;
-    rsaSSAParameters->hash = hashFunction;
-    return std::move(rsaSSAParameters);
+    std::unique_ptr<CryptoAlgorithmRsaKeyParamsWithHash> rsaKeyParameters = std::make_unique<CryptoAlgorithmRsaKeyParamsWithHash>();
+    rsaKeyParameters->hasHash = true;
+    rsaKeyParameters->hash = hashFunction;
+    return std::move(rsaKeyParameters);
 }
-
 
 bool JSCryptoKeySerializationJWK::reconcileAlgorithm(std::unique_ptr<CryptoAlgorithm>& suggestedAlgorithm, std::unique_ptr<CryptoAlgorithmParameters>& suggestedParameters) const
 {
@@ -184,13 +183,16 @@ bool JSCryptoKeySerializationJWK::reconcileAlgorithm(std::unique_ptr<CryptoAlgor
         parameters = createHMACParameters(CryptoAlgorithmIdentifier::SHA_512);
     } else if (m_jwkAlgorithmName == "RS256") {
         algorithm = CryptoAlgorithmRegistry::shared().create(CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5);
-        parameters = createRSASSAKeyParameters(CryptoAlgorithmIdentifier::SHA_256);
+        parameters = createRSAKeyParametersWithHash(CryptoAlgorithmIdentifier::SHA_256);
     } else if (m_jwkAlgorithmName == "RS384") {
         algorithm = CryptoAlgorithmRegistry::shared().create(CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5);
-        parameters = createRSASSAKeyParameters(CryptoAlgorithmIdentifier::SHA_384);
+        parameters = createRSAKeyParametersWithHash(CryptoAlgorithmIdentifier::SHA_384);
     } else if (m_jwkAlgorithmName == "RS512") {
         algorithm = CryptoAlgorithmRegistry::shared().create(CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5);
-        parameters = createRSASSAKeyParameters(CryptoAlgorithmIdentifier::SHA_512);
+        parameters = createRSAKeyParametersWithHash(CryptoAlgorithmIdentifier::SHA_512);
+    } else if (m_jwkAlgorithmName == "RSA-OAEP") {
+        algorithm = CryptoAlgorithmRegistry::shared().create(CryptoAlgorithmIdentifier::RSA_OAEP);
+        parameters = createRSAKeyParametersWithHash(CryptoAlgorithmIdentifier::SHA_1);
     } else if (m_jwkAlgorithmName == "A128CBC") {
         algorithm = CryptoAlgorithmRegistry::shared().create(CryptoAlgorithmIdentifier::AES_CBC);
         parameters = std::make_unique<CryptoAlgorithmParameters>();
@@ -199,6 +201,15 @@ bool JSCryptoKeySerializationJWK::reconcileAlgorithm(std::unique_ptr<CryptoAlgor
         parameters = std::make_unique<CryptoAlgorithmParameters>();
     } else if (m_jwkAlgorithmName == "A256CBC") {
         algorithm = CryptoAlgorithmRegistry::shared().create(CryptoAlgorithmIdentifier::AES_CBC);
+        parameters = std::make_unique<CryptoAlgorithmParameters>();
+    } else if (m_jwkAlgorithmName == "A128KW") {
+        algorithm = CryptoAlgorithmRegistry::shared().create(CryptoAlgorithmIdentifier::AES_KW);
+        parameters = std::make_unique<CryptoAlgorithmParameters>();
+    } else if (m_jwkAlgorithmName == "A192KW") {
+        algorithm = CryptoAlgorithmRegistry::shared().create(CryptoAlgorithmIdentifier::AES_KW);
+        parameters = std::make_unique<CryptoAlgorithmParameters>();
+    } else if (m_jwkAlgorithmName == "A256KW") {
+        algorithm = CryptoAlgorithmRegistry::shared().create(CryptoAlgorithmIdentifier::AES_KW);
         parameters = std::make_unique<CryptoAlgorithmParameters>();
     } else {
         throwTypeError(m_exec, "Unsupported JWK algorithm " + m_jwkAlgorithmName);
@@ -219,21 +230,22 @@ bool JSCryptoKeySerializationJWK::reconcileAlgorithm(std::unique_ptr<CryptoAlgor
 
     if (algorithm->identifier() == CryptoAlgorithmIdentifier::HMAC)
         return toCryptoAlgorithmHmacParams(*parameters).hash == toCryptoAlgorithmHmacParams(*suggestedParameters).hash;
-    if (algorithm->identifier() == CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5) {
-        CryptoAlgorithmRsaSsaKeyParams& rsaSSAParameters = toCryptoAlgorithmRsaSsaKeyParams(*parameters);
-        CryptoAlgorithmRsaSsaKeyParams& suggestedRSASSAParameters = toCryptoAlgorithmRsaSsaKeyParams(*suggestedParameters);
-        ASSERT(rsaSSAParameters.hasHash);
-        if (suggestedRSASSAParameters.hasHash)
-            return suggestedRSASSAParameters.hash == rsaSSAParameters.hash;
-        suggestedRSASSAParameters.hasHash = true;
-        suggestedRSASSAParameters.hash = rsaSSAParameters.hash;
+    if (algorithm->identifier() == CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5
+        || algorithm->identifier() == CryptoAlgorithmIdentifier::RSA_OAEP) {
+        CryptoAlgorithmRsaKeyParamsWithHash& rsaKeyParameters = toCryptoAlgorithmRsaKeyParamsWithHash(*parameters);
+        CryptoAlgorithmRsaKeyParamsWithHash& suggestedRSAKeyParameters = toCryptoAlgorithmRsaKeyParamsWithHash(*suggestedParameters);
+        ASSERT(rsaKeyParameters.hasHash);
+        if (suggestedRSAKeyParameters.hasHash)
+            return suggestedRSAKeyParameters.hash == rsaKeyParameters.hash;
+        suggestedRSAKeyParameters.hasHash = true;
+        suggestedRSAKeyParameters.hash = rsaKeyParameters.hash;
     }
 
     // Other algorithms don't have parameters.
     return true;
 }
 
-void JSCryptoKeySerializationJWK::reconcileUsages(CryptoKeyUsage& suggestedUsage) const
+void JSCryptoKeySerializationJWK::reconcileUsages(CryptoKeyUsage& suggestedUsages) const
 {
     String jwkUseString;
     if (!getStringFromJSON(m_exec, m_json.get(), "use", jwkUseString)) {
@@ -241,23 +253,42 @@ void JSCryptoKeySerializationJWK::reconcileUsages(CryptoKeyUsage& suggestedUsage
         return;
     }
 
-    // FIXME: CryptoKeyUsageDeriveKey, CryptoKeyUsageDeriveBits - should these be implicitly allowed by any JWK use value?
-    // FIXME: "use" mapping is in flux, see <https://www.w3.org/Bugs/Public/show_bug.cgi?id=23796>.
-    if (jwkUseString == "sig")
-        suggestedUsage = suggestedUsage & (CryptoKeyUsageSign | CryptoKeyUsageVerify);
-    else if (jwkUseString == "enc")
-        suggestedUsage = suggestedUsage & (CryptoKeyUsageEncrypt | CryptoKeyUsageDecrypt | CryptoKeyUsageWrapKey | CryptoKeyUsageUnwrapKey);
-    else if (jwkUseString == "wrap")
-        suggestedUsage = suggestedUsage & (CryptoKeyUsageWrapKey | CryptoKeyUsageUnwrapKey);
-    else
-        suggestedUsage = 0; // Unknown usage, better be safe.
+    // Implemented according to a proposal in <https://www.w3.org/Bugs/Public/show_bug.cgi?id=23796>.
+    Vector<String> jwkUsageValues;
+    jwkUseString.split(',', jwkUsageValues);
+    CryptoKeyUsage jwkUsages = 0;
+    for (size_t i = 0, size = jwkUsageValues.size(); i < size; ++i) {
+        String jwkUse = jwkUsageValues[i];
+        if (jwkUse == "sig")
+            jwkUsages |= (CryptoKeyUsageSign | CryptoKeyUsageVerify);
+        else if (jwkUse == "enc")
+            jwkUsages |= (CryptoKeyUsageEncrypt | CryptoKeyUsageDecrypt | CryptoKeyUsageWrapKey | CryptoKeyUsageUnwrapKey);
+        else if (jwkUse == "enconly")
+            jwkUsages |= CryptoKeyUsageEncrypt;
+        else if (jwkUse == "deconly")
+            jwkUsages |= CryptoKeyUsageDecrypt;
+        else if (jwkUse == "sigonly")
+            jwkUsages |= CryptoKeyUsageSign;
+        else if (jwkUse == "vfyonly")
+            jwkUsages |= CryptoKeyUsageVerify;
+        else if (jwkUse == "drvkey")
+            jwkUsages |= CryptoKeyUsageDeriveKey;
+        else if (jwkUse == "drvbits")
+            jwkUsages |= CryptoKeyUsageDeriveBits;
+        else if (jwkUse == "wrap")
+            jwkUsages |= CryptoKeyUsageWrapKey;
+        else if (jwkUse == "unwrap")
+            jwkUsages |= CryptoKeyUsageUnwrapKey;
+    }
+
+    suggestedUsages = suggestedUsages & jwkUsages;
 }
 
 void JSCryptoKeySerializationJWK::reconcileExtractable(bool& suggestedExtractable) const
 {
     bool jwkExtractable;
-    if (!getBooleanFromJSON(m_exec, m_json.get(), "extractable", jwkExtractable)) {
-        // "extractable" is a Netflix proposal that's not in any spec yet. It will certainly be optional once specified.
+    if (!getBooleanFromJSON(m_exec, m_json.get(), "ext", jwkExtractable)) {
+        // "ext" not in JWK or WebCrypto specs yet, implemented according to a proposal in <https://www.w3.org/Bugs/Public/show_bug.cgi?id=23796>.
         return;
     }
 
@@ -278,11 +309,19 @@ bool JSCryptoKeySerializationJWK::keySizeIsValid(size_t sizeInBits) const
         return sizeInBits == 192;
     if (m_jwkAlgorithmName == "A256CBC")
         return sizeInBits == 256;
+    if (m_jwkAlgorithmName == "A128KW")
+        return sizeInBits == 128;
+    if (m_jwkAlgorithmName == "A192KW")
+        return sizeInBits == 192;
+    if (m_jwkAlgorithmName == "A256KW")
+        return sizeInBits == 256;
     if (m_jwkAlgorithmName == "RS256")
         return sizeInBits >= 2048;
     if (m_jwkAlgorithmName == "RS384")
         return sizeInBits >= 2048;
     if (m_jwkAlgorithmName == "RS512")
+        return sizeInBits >= 2048;
+    if (m_jwkAlgorithmName == "RSA_OAEP")
         return sizeInBits >= 2048;
     return true;
 }
@@ -517,6 +556,19 @@ void JSCryptoKeySerializationJWK::addJWKAlgorithmToJSON(ExecState* exec, JSObjec
             break;
         }
         break;
+    case CryptoAlgorithmIdentifier::AES_KW:
+        switch (toCryptoKeyAES(key).key().size() * 8) {
+        case 128:
+            jwkAlgorithm = "A128KW";
+            break;
+        case 192:
+            jwkAlgorithm = "A192KW";
+            break;
+        case 256:
+            jwkAlgorithm = "A256KW";
+            break;
+        }
+        break;
     case CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5: {
         const CryptoKeyRSA& rsaKey = toCryptoKeyRSA(key);
         CryptoAlgorithmIdentifier hash;
@@ -539,13 +591,23 @@ void JSCryptoKeySerializationJWK::addJWKAlgorithmToJSON(ExecState* exec, JSObjec
         }
         break;
     }
+    case CryptoAlgorithmIdentifier::RSA_OAEP: {
+        const CryptoKeyRSA& rsaKey = toCryptoKeyRSA(key);
+        CryptoAlgorithmIdentifier hash;
+        // WebCrypto RSA-OAEP keys are not tied to any particular hash, unless previously imported from JWK, which only supports SHA-1.
+        if (rsaKey.isRestrictedToHash(hash) && hash != CryptoAlgorithmIdentifier::SHA_1)
+            break;
+        if (rsaKey.keySizeInBits() < 2048)
+            break;
+        jwkAlgorithm = "RSA-OAEP";
+        break;
+    }
     default:
         break;
     }
 
     if (jwkAlgorithm.isNull()) {
         // The spec doesn't currently tell whether export should fail, or just skip "alg" (which is an optional key in JWK).
-        // Perhaps this should depend on whether the key is extractable?
         throwTypeError(exec, "Key algorithm and size do not map to any JWK algorithm identifier");
         return;
     }
@@ -553,19 +615,51 @@ void JSCryptoKeySerializationJWK::addJWKAlgorithmToJSON(ExecState* exec, JSObjec
     addToJSON(exec, json, "alg", jwkAlgorithm);
 }
 
+static bool processUseValue(StringBuilder& builder, CryptoKeyUsage& usages, const String& useString, CryptoKeyUsage usagesForUseString)
+{
+    if ((usages & usagesForUseString) != usagesForUseString)
+        return false;
+
+    if (!builder.isEmpty())
+        builder.append(',');
+    builder.append(useString);
+
+    usages &= ~usagesForUseString;
+
+    return true;
+}
+
 void JSCryptoKeySerializationJWK::addJWKUseToJSON(ExecState* exec, JSObject* json, CryptoKeyUsage usages)
 {
-    // FIXME: "use" mapping is in flux, see <https://www.w3.org/Bugs/Public/show_bug.cgi?id=23796>.
-    switch (usages) {
-    case CryptoKeyUsageEncrypt | CryptoKeyUsageDecrypt | CryptoKeyUsageWrapKey | CryptoKeyUsageUnwrapKey:
-        addToJSON(exec, json, "use", "enc");
-        break;
-    case CryptoKeyUsageSign | CryptoKeyUsageVerify:
-        addToJSON(exec, json, "use", "sig");
-        break;
-    default:
-        throwTypeError(exec, "Key usages cannot be represented in JWK. Only two variants are supported: sign+verify and encrypt+decrypt+wrapKey+unwrapKey");
+    // Use mapping implemented according to a proposal in <https://www.w3.org/Bugs/Public/show_bug.cgi?id=23796>.
+    StringBuilder useBuilder;
+    CryptoKeyUsage remainingUsages = usages;
+    while (remainingUsages) {
+        if (processUseValue(useBuilder, remainingUsages, "enc", CryptoKeyUsageEncrypt | CryptoKeyUsageDecrypt | CryptoKeyUsageWrapKey | CryptoKeyUsageUnwrapKey))
+            continue;
+        if (processUseValue(useBuilder, remainingUsages, "sig", CryptoKeyUsageSign | CryptoKeyUsageVerify))
+            continue;
+        if (processUseValue(useBuilder, remainingUsages, "enconly", CryptoKeyUsageEncrypt))
+            continue;
+        if (processUseValue(useBuilder, remainingUsages, "deconly", CryptoKeyUsageDecrypt))
+            continue;
+        if (processUseValue(useBuilder, remainingUsages, "sigonly", CryptoKeyUsageSign))
+            continue;
+        if (processUseValue(useBuilder, remainingUsages, "vfyonly", CryptoKeyUsageVerify))
+            continue;
+        if (processUseValue(useBuilder, remainingUsages, "drvkey", CryptoKeyUsageDeriveKey))
+            continue;
+        if (processUseValue(useBuilder, remainingUsages, "drvbits", CryptoKeyUsageDeriveBits))
+            continue;
+        if (processUseValue(useBuilder, remainingUsages, "wrap", CryptoKeyUsageWrapKey))
+            continue;
+        if (processUseValue(useBuilder, remainingUsages, "unwrap", CryptoKeyUsageUnwrapKey))
+            continue;
+        throwTypeError(exec, "Key usages cannot be represented in JWK.");
+        return;
     }
+
+    addToJSON(exec, json, "use", useBuilder.toString());
 }
 
 String JSCryptoKeySerializationJWK::serialize(ExecState* exec, const CryptoKey& key)
@@ -583,7 +677,7 @@ String JSCryptoKeySerializationJWK::serialize(ExecState* exec, const CryptoKey& 
     if (exec->hadException())
         return String();
 
-    addBoolToJSON(exec, result, "extractable", key.extractable());
+    addBoolToJSON(exec, result, "ext", key.extractable());
 
     addJWKUseToJSON(exec, result, key.usagesBitmap());
     if (exec->hadException())

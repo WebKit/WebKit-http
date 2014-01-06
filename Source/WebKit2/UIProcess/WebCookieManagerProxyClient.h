@@ -30,11 +30,17 @@
 #include "WKCookieManager.h"
 #include <wtf/Forward.h>
 
+namespace API {
+template<> struct ClientTraits<WKCookieManagerClientBase> {
+    typedef std::tuple<WKCookieManagerClientV0> Versions;
+};
+}
+
 namespace WebKit {
 
 class WebCookieManagerProxy;
 
-class WebCookieManagerProxyClient : public APIClient<WKCookieManagerClient, kWKCookieManagerClientCurrentVersion> {
+class WebCookieManagerProxyClient : public API::Client<WKCookieManagerClientBase> {
 public:
     void cookiesDidChange(WebCookieManagerProxy*);
 };

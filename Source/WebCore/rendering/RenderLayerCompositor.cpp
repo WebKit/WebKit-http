@@ -696,6 +696,8 @@ bool RenderLayerCompositor::updateBacking(RenderLayer& layer, CompositingChangeR
                     updateLayerForFooter(page->footerHeight());
                 }
 #endif
+                if (mainFrameBackingIsTiledWithMargin())
+                    m_rootContentLayer->setMasksToBounds(false);
             }
 
             // This layer and all of its descendants have cached repaints rects that are relative to
@@ -939,6 +941,12 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     if (layer.isFlowThreadCollectingGraphicsLayersUnderRegions()) {
         RenderFlowThread& flowThread = toRenderFlowThread(layer.renderer());
         layer.setHasCompositingDescendant(flowThread.hasCompositingRegionDescendant());
+
+        // Before returning, we need to update the lists of all child layers. This is required because,
+        // if this flow thread will not be painted (for instance because of having no regions, or only invalid regions),
+        // the child layers will never have their lists updated (which would normally happen during painting).
+        layer.updateDescendantsLayerListsIfNeeded(true);
+
         return;
     }
 
@@ -2512,6 +2520,19 @@ bool RenderLayerCompositor::mainFrameBackingIsTiled() const
         return false;
 
     return backing->usingTiledBacking();
+}
+
+bool RenderLayerCompositor::mainFrameBackingIsTiledWithMargin() const
+{
+    RenderLayer* layer = m_renderView.layer();
+    if (!layer)
+        return false;
+
+    RenderLayerBacking* backing = layer->backing();
+    if (!backing)
+        return false;
+
+    return backing->tiledBackingHasMargin();
 }
 
 bool RenderLayerCompositor::shouldCompositeOverflowControls() const

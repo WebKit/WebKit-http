@@ -32,13 +32,17 @@
 
 namespace API {
 class Object;
+
+template<> struct ClientTraits<WKContextInjectedBundleClientBase> {
+    typedef std::tuple<WKContextInjectedBundleClientV0, WKContextInjectedBundleClientV1> Versions;
+};
 }
 
 namespace WebKit {
 
 class WebContext;
 
-class WebContextInjectedBundleClient : public APIClient<WKContextInjectedBundleClient, kWKContextInjectedBundleClientCurrentVersion> {
+class WebContextInjectedBundleClient : public API::Client<WKContextInjectedBundleClientBase> {
 public:
     void didReceiveMessageFromInjectedBundle(WebContext*, const String&, API::Object*);
     void didReceiveSynchronousMessageFromInjectedBundle(WebContext*, const String&, API::Object*, RefPtr<API::Object>& returnData);

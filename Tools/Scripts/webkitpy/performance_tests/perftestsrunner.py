@@ -112,8 +112,6 @@ class PerfTestsRunner(object):
                 help="Upload the generated JSON file to the specified server when --output-json-path is present."),
             optparse.make_option("--webkit-test-runner", "-2", action="store_true",
                 help="Use WebKitTestRunner rather than DumpRenderTree."),
-            optparse.make_option("--replay", dest="replay", action="store_true", default=False,
-                help="Run replay tests."),
             optparse.make_option("--force", dest="use_skipped_list", action="store_false", default=True,
                 help="Run all tests, including the ones in the Skipped list."),
             optparse.make_option("--profile", action="store_true",
@@ -134,8 +132,6 @@ class PerfTestsRunner(object):
 
     def _collect_tests(self):
         test_extensions = ['.html', '.svg']
-        if self._options.replay:
-            test_extensions.append('.replay')
 
         def _is_test_file(filesystem, dirname, filename):
             return filesystem.splitext(filename)[1] in test_extensions
@@ -261,25 +257,22 @@ class PerfTestsRunner(object):
             if value:
                 contents[key] = value
 
-        for test, metrics in self._results:
-            for metric_name, iteration_values in metrics.iteritems():
-                if not isinstance(iteration_values, list):  # We can't reports results without individual measurements.
-                    continue
-
-                tests = contents['tests']
-                path = test.test_name_without_file_extension().split('/')
-                for i in range(0, len(path)):
-                    is_last_token = i + 1 == len(path)
-                    url = view_source_url('PerformanceTests/' + (test.test_name() if is_last_token else '/'.join(path[0:i + 1])))
-                    tests.setdefault(path[i], {'url': url})
-                    current_test = tests[path[i]]
-                    if is_last_token:
-                        current_test.setdefault('metrics', {})
-                        assert metric_name not in current_test['metrics']
-                        current_test['metrics'][metric_name] = {'current': iteration_values}
-                    else:
-                        current_test.setdefault('tests', {})
-                        tests = current_test['tests']
+        for metric in self._results:
+            tests = contents['tests']
+            path = metric.path()
+            for i in range(0, len(path)):
+                is_last_token = i + 1 == len(path)
+                url = view_source_url('PerformanceTests/' + '/'.join(path[0:i + 1]))
+                tests.setdefault(path[i], {'url': url})
+                current_test = tests[path[i]]
+                if is_last_token:
+                    current_test['url'] = view_source_url('PerformanceTests/' + metric.test_file_name())
+                    current_test.setdefault('metrics', {})
+                    assert metric.name() not in current_test['metrics']
+                    current_test['metrics'][metric.name()] = {'current': metric.grouped_iteration_values()}
+                else:
+                    current_test.setdefault('tests', {})
+                    tests = current_test['tests']
 
         return contents
 
@@ -348,7 +341,7 @@ class PerfTestsRunner(object):
             start_time = time.time()
             metrics = test.run(self._options.time_out_ms)
             if metrics:
-                self._results.append((test, metrics))
+                self._results += metrics
             else:
                 failures += 1
                 _log.error('FAILED')

@@ -37,13 +37,12 @@ DEFINE_ANIMATED_PROPERTY(AnimatedTransformList, OwnerType, DOMAttribute, DOMAttr
 
 class SVGAnimationElement;
 
-class SVGAnimatedTransformListAnimator : public SVGAnimatedTypeAnimator {
+class SVGAnimatedTransformListAnimator FINAL : public SVGAnimatedTypeAnimator {
 public:
     SVGAnimatedTransformListAnimator(SVGAnimationElement*, SVGElement*);
-    virtual ~SVGAnimatedTransformListAnimator() { }
 
-    virtual PassOwnPtr<SVGAnimatedType> constructFromString(const String&) OVERRIDE;
-    virtual PassOwnPtr<SVGAnimatedType> startAnimValAnimation(const SVGElementAnimatedPropertyList&) OVERRIDE;
+    virtual std::unique_ptr<SVGAnimatedType> constructFromString(const String&) OVERRIDE;
+    virtual std::unique_ptr<SVGAnimatedType> startAnimValAnimation(const SVGElementAnimatedPropertyList&) OVERRIDE;
     virtual void stopAnimValAnimation(const SVGElementAnimatedPropertyList&) OVERRIDE;
     virtual void resetAnimValToBaseVal(const SVGElementAnimatedPropertyList&, SVGAnimatedType*) OVERRIDE;
     virtual void animValWillChange(const SVGElementAnimatedPropertyList&) OVERRIDE;

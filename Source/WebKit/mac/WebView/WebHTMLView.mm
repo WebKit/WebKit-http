@@ -114,7 +114,7 @@
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/SimpleFontData.h>
-#import <WebCore/StylePropertySet.h>
+#import <WebCore/StyleProperties.h>
 #import <WebCore/Text.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/WebCoreObjCExtras.h>
@@ -1825,7 +1825,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
     if (!coreFrame)
         return nil;
 
-    NSImage *dragImage = [[createDragImageForSelection(*coreFrame) retain] autorelease];
+    NSImage *dragImage = [createDragImageForSelection(*coreFrame).leakRef() autorelease];
     [dragImage _web_dissolveToFraction:WebDragImageAlpha];
     return dragImage;
 }
@@ -3712,8 +3712,8 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
     // FIXME: Report an error if we fail to create a file.
     NSString *path = [[dropDestination path] stringByAppendingPathComponent:[wrapper preferredFilename]];
     path = [[NSFileManager defaultManager] _webkit_pathWithUniqueFilenameForPath:path];
-    if (![wrapper writeToFile:path atomically:NO updateFilenames:YES])
-        LOG_ERROR("Failed to create image file via -[NSFileWrapper writeToFile:atomically:updateFilenames:]");
+    if (![wrapper writeToURL:[NSURL fileURLWithPath:path] options:NSFileWrapperWritingWithNameUpdating originalContentsURL:nil error:nullptr])
+        LOG_ERROR("Failed to create image file via -[NSFileWrapper writeToURL:options:originalContentsURL:error:]");
     
     if (draggingImageURL)
         [[NSFileManager defaultManager] _webkit_setMetadataURL:[draggingImageURL absoluteString] referrer:nil atPath:path];
@@ -4374,8 +4374,8 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 - (void)_applyStyleToSelection:(DOMCSSStyleDeclaration *)style withUndoAction:(EditAction)undoAction
 {
     if (Frame* coreFrame = core([self _frame])) {
-        // FIXME: We shouldn't have to make a copy here. We want callers of this function to work directly with StylePropertySet eventually.
-        Ref<MutableStylePropertySet> properties(core(style)->copyProperties());
+        // FIXME: We shouldn't have to make a copy here. We want callers of this function to work directly with StyleProperties eventually.
+        Ref<MutableStyleProperties> properties(core(style)->copyProperties());
         coreFrame->editor().applyStyleToSelection(&properties.get(), undoAction);
     }
 }
@@ -4678,7 +4678,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     if ([[webView _editingDelegateForwarder] webView:webView shouldApplyStyle:style toElementsInDOMRange:range]) {
         if (Frame* coreFrame = core([self _frame])) {
             // FIXME: We shouldn't have to make a copy here.
-            Ref<MutableStylePropertySet> properties(core(style)->copyProperties());
+            Ref<MutableStyleProperties> properties(core(style)->copyProperties());
             coreFrame->editor().applyStyle(&properties.get(), [self _undoActionFromColorPanelWithSelector:selector]);
         }
     }
@@ -5974,7 +5974,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     Frame* coreFrame = core([self _frame]);
     if (!coreFrame)
         return nil;
-    return [[createDragImageForSelection(*coreFrame, forceBlackText) retain] autorelease];
+    return [createDragImageForSelection(*coreFrame, forceBlackText).leakRef() autorelease];
 }
 
 - (NSRect)selectionImageRect

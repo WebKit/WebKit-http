@@ -37,6 +37,7 @@
 #include "WebContext.h"
 #include "WebNavigationDataStore.h"
 #include "WebNotificationManagerProxy.h"
+#include "WebPageGroup.h"
 #include "WebPageProxy.h"
 #include "WebPluginSiteDataManager.h"
 #include "WebProcessMessages.h"
@@ -52,7 +53,7 @@
 #include "PDFPlugin.h"
 #endif
 
-#if USE(SECURITY_FRAMEWORK)
+#if ENABLE(SEC_ITEM_SHIM)
 #include "SecItemShimProxy.h"
 #endif
 
@@ -76,12 +77,12 @@ static WebProcessProxy::WebPageProxyMap& globalPageMap()
     return pageMap;
 }
 
-PassRefPtr<WebProcessProxy> WebProcessProxy::create(PassRefPtr<WebContext> context)
+PassRefPtr<WebProcessProxy> WebProcessProxy::create(WebContext& context)
 {
     return adoptRef(new WebProcessProxy(context));
 }
 
-WebProcessProxy::WebProcessProxy(PassRefPtr<WebContext> context)
+WebProcessProxy::WebProcessProxy(WebContext& context)
     : m_responsivenessTimer(this)
     , m_context(context)
     , m_mayHaveUniversalFileReadSandboxExtension(false)
@@ -111,7 +112,7 @@ void WebProcessProxy::connectionWillOpen(CoreIPC::Connection* connection)
 {
     ASSERT(this->connection() == connection);
 
-#if USE(SECURITY_FRAMEWORK)
+#if ENABLE(SEC_ITEM_SHIM)
     SecItemShimProxy::shared().initializeConnection(connection);
 #endif
 
@@ -144,10 +145,15 @@ void WebProcessProxy::disconnect()
 
     Vector<RefPtr<WebFrameProxy>> frames;
     copyValuesToVector(m_frameMap, frames);
-
-    for (size_t i = 0, size = frames.size(); i < size; ++i)
-        frames[i]->disconnect();
+    for (auto frame : frames)
+        frame->disconnect();
     m_frameMap.clear();
+
+    Vector<WebPageGroup*> pageGroups;
+    copyValuesToVector(m_pageGroups, pageGroups);
+    for (auto pageGroup : pageGroups)
+        pageGroup->disconnectProcess(*this);
+    m_pageGroups.clear();
 
     if (m_downloadProxyMap)
         m_downloadProxyMap->processDidClose();
@@ -160,10 +166,10 @@ WebPageProxy* WebProcessProxy::webPage(uint64_t pageID)
     return globalPageMap().get(pageID);
 }
 
-PassRefPtr<WebPageProxy> WebProcessProxy::createWebPage(PageClient* pageClient, WebContext*, WebPageGroup* pageGroup)
+PassRefPtr<WebPageProxy> WebProcessProxy::createWebPage(PageClient& pageClient, WebPageGroup& pageGroup)
 {
     uint64_t pageID = generatePageID();
-    RefPtr<WebPageProxy> webPage = WebPageProxy::create(pageClient, this, pageGroup, pageID);
+    RefPtr<WebPageProxy> webPage = WebPageProxy::create(pageClient, *this, pageGroup, pageID);
     m_pageMap.set(pageID, webPage.get());
     globalPageMap().set(pageID, webPage.get());
 #if PLATFORM(MAC)
@@ -207,6 +213,19 @@ Vector<WebPageProxy*> WebProcessProxy::pages() const
     Vector<WebPageProxy*> result;
     copyValuesToVector(m_pageMap, result);
     return result;
+}
+
+WebPageGroup* WebProcessProxy::webPageGroup(uint64_t pageGroupID)
+{
+    if (!HashMap<uint64_t, WebPageGroup*>::isValidKey(pageGroupID))
+        return nullptr;
+
+    return m_pageGroups.get(pageGroupID);
+}
+
+void WebProcessProxy::addWebPageGroup(WebPageGroup& pageGroup)
+{
+    m_pageGroups.add(pageGroup.pageGroupID(), &pageGroup);
 }
 
 WebBackForwardListItem* WebProcessProxy::webBackForwardItem(uint64_t itemID) const
@@ -545,7 +564,7 @@ void WebProcessProxy::didNavigateWithNavigationData(uint64_t pageID, const WebNa
     MESSAGE_CHECK(frame);
     MESSAGE_CHECK(frame->page() == page);
     
-    m_context->historyClient().didNavigateWithNavigationData(m_context.get(), page, store, frame);
+    m_context->historyClient().didNavigateWithNavigationData(&m_context.get(), page, store, frame);
 }
 
 void WebProcessProxy::didPerformClientRedirect(uint64_t pageID, const String& sourceURLString, const String& destinationURLString, uint64_t frameID)
@@ -563,7 +582,7 @@ void WebProcessProxy::didPerformClientRedirect(uint64_t pageID, const String& so
     MESSAGE_CHECK_URL(sourceURLString);
     MESSAGE_CHECK_URL(destinationURLString);
 
-    m_context->historyClient().didPerformClientRedirect(m_context.get(), page, sourceURLString, destinationURLString, frame);
+    m_context->historyClient().didPerformClientRedirect(&m_context.get(), page, sourceURLString, destinationURLString, frame);
 }
 
 void WebProcessProxy::didPerformServerRedirect(uint64_t pageID, const String& sourceURLString, const String& destinationURLString, uint64_t frameID)
@@ -581,7 +600,7 @@ void WebProcessProxy::didPerformServerRedirect(uint64_t pageID, const String& so
     MESSAGE_CHECK_URL(sourceURLString);
     MESSAGE_CHECK_URL(destinationURLString);
 
-    m_context->historyClient().didPerformServerRedirect(m_context.get(), page, sourceURLString, destinationURLString, frame);
+    m_context->historyClient().didPerformServerRedirect(&m_context.get(), page, sourceURLString, destinationURLString, frame);
 }
 
 void WebProcessProxy::didUpdateHistoryTitle(uint64_t pageID, const String& title, const String& url, uint64_t frameID)
@@ -595,7 +614,7 @@ void WebProcessProxy::didUpdateHistoryTitle(uint64_t pageID, const String& title
     MESSAGE_CHECK(frame->page() == page);
     MESSAGE_CHECK_URL(url);
 
-    m_context->historyClient().didUpdateHistoryTitle(m_context.get(), page, title, url, frame);
+    m_context->historyClient().didUpdateHistoryTitle(&m_context.get(), page, title, url, frame);
 }
 
 void WebProcessProxy::pageVisibilityChanged(WebKit::WebPageProxy *page)

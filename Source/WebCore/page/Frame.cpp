@@ -89,7 +89,7 @@
 #include "ScriptValue.h"
 #include "ScrollingCoordinator.h"
 #include "Settings.h"
-#include "StylePropertySet.h"
+#include "StyleProperties.h"
 #include "TextIterator.h"
 #include "TextNodeTraversal.h"
 #include "TextResourceDecoder.h"
@@ -386,7 +386,7 @@ String Frame::searchForLabelsBeforeElement(const Vector<String>& labels, Element
             break;
 
         if (n->hasTagName(tdTag) && !startingTableCell) {
-            startingTableCell = static_cast<HTMLTableCellElement*>(n);
+            startingTableCell = toHTMLTableCellElement(n);
         } else if (n->hasTagName(trTag) && startingTableCell) {
             String result = searchForLabelsAboveCell(regExp.get(), startingTableCell, resultDistance);
             if (!result.isEmpty()) {

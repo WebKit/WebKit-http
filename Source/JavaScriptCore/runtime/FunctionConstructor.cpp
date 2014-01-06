@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -93,9 +93,9 @@ JSObject* constructFunctionSkippingEvalEnabledCheck(ExecState* exec, JSGlobalObj
     // We also need \n before the closing } to handle // comments at the end of the last line
     String program;
     if (args.isEmpty())
-        program = ASCIILiteral("(function() { \n})");
+        program = ASCIILiteral("(function() {\n})");
     else if (args.size() == 1)
-        program = makeString("(function() { ", args.at(0).toString(exec)->value(exec), "\n})");
+        program = makeString("(function() {", args.at(0).toString(exec)->value(exec), "\n})");
     else {
         StringBuilder builder;
         builder.appendLiteral("(function(");
@@ -104,7 +104,7 @@ JSObject* constructFunctionSkippingEvalEnabledCheck(ExecState* exec, JSGlobalObj
             builder.append(',');
             builder.append(args.at(i).toString(exec)->value(exec));
         }
-        builder.appendLiteral(") { ");
+        builder.appendLiteral(") {");
         builder.append(args.at(args.size() - 1).toString(exec)->value(exec));
         builder.appendLiteral("\n})");
         program = builder.toString();
@@ -112,7 +112,7 @@ JSObject* constructFunctionSkippingEvalEnabledCheck(ExecState* exec, JSGlobalObj
 
     SourceCode source = makeSource(program, sourceURL, position);
     JSObject* exception = 0;
-    FunctionExecutable* function = FunctionExecutable::fromGlobalCode(functionName, exec, exec->dynamicGlobalObject()->debugger(), source, &exception);
+    FunctionExecutable* function = FunctionExecutable::fromGlobalCode(functionName, exec, exec->vmEntryGlobalObject()->debugger(), source, &exception);
     if (!function) {
         ASSERT(exception);
         return exec->vm().throwException(exec, exception);

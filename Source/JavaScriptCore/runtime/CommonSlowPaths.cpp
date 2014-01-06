@@ -193,6 +193,13 @@ SLOW_PATH_DECL(slow_path_construct_arityCheck)
     RETURN_TWO(0, reinterpret_cast<ExecState*>(SlotsToAdd));
 }
 
+SLOW_PATH_DECL(slow_path_touch_entry)
+{
+    BEGIN();
+    exec->codeBlock()->symbolTable()->m_functionEnteredOnce.touch();
+    END();
+}
+
 SLOW_PATH_DECL(slow_path_get_callee)
 {
     BEGIN();
@@ -235,6 +242,29 @@ SLOW_PATH_DECL(slow_path_to_this)
     else
         pc[2].u.structure.clear();
     RETURN(v1.toThis(exec, exec->codeBlock()->isStrictMode() ? StrictMode : NotStrictMode));
+}
+
+SLOW_PATH_DECL(slow_path_captured_mov)
+{
+    BEGIN();
+    JSValue value = OP_C(2).jsValue();
+    if (VariableWatchpointSet* set = pc[3].u.watchpointSet)
+        set->notifyWrite(value);
+    RETURN(value);
+}
+
+SLOW_PATH_DECL(slow_path_new_captured_func)
+{
+    BEGIN();
+    CodeBlock* codeBlock = exec->codeBlock();
+    ASSERT(
+        codeBlock->codeType() != FunctionCode
+        || !codeBlock->needsFullScopeChain()
+        || exec->uncheckedR(codeBlock->activationRegister().offset()).jsValue());
+    JSValue value = JSFunction::create(vm, codeBlock->functionDecl(pc[2].u.operand), exec->scope());
+    if (VariableWatchpointSet* set = pc[3].u.watchpointSet)
+        set->notifyWrite(value);
+    RETURN(value);
 }
 
 SLOW_PATH_DECL(slow_path_not)

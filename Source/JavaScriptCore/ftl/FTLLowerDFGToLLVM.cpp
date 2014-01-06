@@ -394,8 +394,12 @@ private:
         case PutGlobalVar:
             compilePutGlobalVar();
             break;
-        case GlobalVarWatchpoint:
-            compileGlobalVarWatchpoint();
+        case NotifyWrite:
+            compileNotifyWrite();
+            break;
+        case VariableWatchpoint:
+            break;
+        case FunctionReentryWatchpoint:
             break;
         case GetMyScope:
             compileGetMyScope();
@@ -1331,6 +1335,13 @@ private:
             return;
         }
         
+        if (JSArrayBufferView* view = m_graph.tryGetFoldableView(m_node->child1().node(), m_node->arrayMode())) {
+            if (view->mode() != FastTypedArray) {
+                setStorage(m_out.constIntPtr(view->vector()));
+                return;
+            }
+        }
+        
         setStorage(m_out.loadPtr(cell, m_heaps.JSArrayBufferView_vector));
     }
     
@@ -1447,12 +1458,10 @@ private:
             TypedArrayType type = m_node->arrayMode().typedArrayType();
             
             if (isTypedView(type)) {
-                LValue array = lowCell(m_node->child1());
-                
                 speculate(
                     OutOfBounds, noValue(), 0,
                     m_out.aboveOrEqual(
-                        index, m_out.load32(array, m_heaps.JSArrayBufferView_length)));
+                        index, typedArrayLength(m_node->child1(), m_node->arrayMode())));
                 
                 TypedPointer pointer = TypedPointer(
                     m_heaps.typedArrayProperties,
@@ -1620,7 +1629,8 @@ private:
                     speculate(
                         OutOfBounds, noValue(), 0,
                         m_out.aboveOrEqual(
-                            index, m_out.load32(base, m_heaps.JSArrayBufferView_length)));
+                            index,
+                            typedArrayLength(child1.node(), m_node->arrayMode(), base)));
                 }
                 
                 TypedPointer pointer = TypedPointer(
@@ -2114,10 +2124,67 @@ private:
             lowJSValue(m_node->child1()), m_out.absolute(m_node->registerPointer()));
     }
     
-    void compileGlobalVarWatchpoint()
+    void compileNotifyWrite()
     {
-        // FIXME: In debug mode we could emit some assertion code here.
-        // https://bugs.webkit.org/show_bug.cgi?id=123471
+        VariableWatchpointSet* set = m_node->variableWatchpointSet();
+        
+        LValue value = lowJSValue(m_node->child1());
+        
+        LBasicBlock isNotInvalidated = FTL_NEW_BLOCK(m_out, ("NotifyWrite not invalidated case"));
+        LBasicBlock isClear = FTL_NEW_BLOCK(m_out, ("NotifyWrite clear case"));
+        LBasicBlock isWatched = FTL_NEW_BLOCK(m_out, ("NotifyWrite watched case"));
+        LBasicBlock invalidate = FTL_NEW_BLOCK(m_out, ("NotifyWrite invalidate case"));
+        LBasicBlock invalidateFast = FTL_NEW_BLOCK(m_out, ("NotifyWrite invalidate fast case"));
+        LBasicBlock invalidateSlow = FTL_NEW_BLOCK(m_out, ("NotifyWrite invalidate slow case"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NotifyWrite continuation"));
+        
+        LValue state = m_out.load8(m_out.absolute(set->addressOfState()));
+        
+        m_out.branch(
+            m_out.equal(state, m_out.constInt8(IsInvalidated)),
+            continuation, isNotInvalidated);
+        
+        LBasicBlock lastNext = m_out.appendTo(isNotInvalidated, isClear);
+
+        LValue isClearValue;
+        if (set->state() == ClearWatchpoint)
+            isClearValue = m_out.equal(state, m_out.constInt8(ClearWatchpoint));
+        else
+            isClearValue = m_out.booleanFalse;
+        m_out.branch(isClearValue, isClear, isWatched);
+        
+        m_out.appendTo(isClear, isWatched);
+        
+        m_out.store64(value, m_out.absolute(set->addressOfInferredValue()));
+        m_out.store8(m_out.constInt8(IsWatched), m_out.absolute(set->addressOfState()));
+        m_out.jump(continuation);
+        
+        m_out.appendTo(isWatched, invalidate);
+        
+        m_out.branch(
+            m_out.equal(value, m_out.load64(m_out.absolute(set->addressOfInferredValue()))),
+            continuation, invalidate);
+        
+        m_out.appendTo(invalidate, invalidateFast);
+        
+        m_out.branch(
+            m_out.notZero8(m_out.load8(m_out.absolute(set->addressOfSetIsNotEmpty()))),
+            invalidateSlow, invalidateFast);
+        
+        m_out.appendTo(invalidateFast, invalidateSlow);
+        
+        m_out.store64(
+            m_out.constInt64(JSValue::encode(JSValue())),
+            m_out.absolute(set->addressOfInferredValue()));
+        m_out.store8(m_out.constInt8(IsInvalidated), m_out.absolute(set->addressOfState()));
+        m_out.jump(continuation);
+        
+        m_out.appendTo(invalidateSlow, continuation);
+        
+        vmCall(m_out.operation(operationInvalidate), m_callFrame, m_out.constIntPtr(set));
+        m_out.jump(continuation);
+        
+        m_out.appendTo(continuation, lastNext);
     }
     
     void compileGetMyScope()
@@ -2133,6 +2200,11 @@ private:
     
     void compileGetClosureRegisters()
     {
+        if (WriteBarrierBase<Unknown>* registers = m_graph.tryGetRegisters(m_node->child1().node())) {
+            setStorage(m_out.constIntPtr(registers));
+            return;
+        }
+        
         setStorage(m_out.loadPtr(
             lowCell(m_node->child1()), m_heaps.JSVariableObject_registers));
     }
@@ -2349,7 +2421,7 @@ private:
         
         LValue calleeFrame = m_out.add(
             m_callFrame,
-            m_out.constIntPtr(sizeof(Register) * virtualRegisterForLocal(codeBlock()->m_numCalleeRegisters).offset()));
+            m_out.constIntPtr(sizeof(Register) * virtualRegisterForLocal(m_graph.frameRegisterCount()).offset()));
         
         m_out.store32(
             m_out.constInt32(numPassedArgs + dummyThisArgument),
@@ -2697,6 +2769,18 @@ private:
         return ArrayValues(
             m_out.phi(m_out.intPtr, fastArray, slowArray),
             m_out.phi(m_out.intPtr, fastButterfly, slowButterfly));
+    }
+    
+    LValue typedArrayLength(Node* baseNode, ArrayMode arrayMode, LValue base)
+    {
+        if (JSArrayBufferView* view = m_graph.tryGetFoldableView(baseNode, arrayMode))
+            return m_out.constInt32(view->length());
+        return m_out.load32(base, m_heaps.JSArrayBufferView_length);
+    }
+    
+    LValue typedArrayLength(Edge baseEdge, ArrayMode arrayMode)
+    {
+        return typedArrayLength(baseEdge.node(), arrayMode, lowCell(baseEdge));
     }
     
     LValue boolify(Edge edge)

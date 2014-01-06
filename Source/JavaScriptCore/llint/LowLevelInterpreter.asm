@@ -383,10 +383,9 @@ macro functionInitialization(profileArgSkip)
     loadi CodeBlock::m_numCalleeRegisters[t1], t0
     addi 1, t0 # Account that local0 goes at slot -1
     loadp CodeBlock::m_vm[t1], t2
-    loadp VM::interpreter[t2], t2
     lshiftp 3, t0
     subp cfr, t0, t0
-    bpbeq Interpreter::m_stack + JSStack::m_end[t2], t0, .stackHeightOK
+    bpbeq VM::m_jsStackLimit[t2], t0, .stackHeightOK
 
     # Stack height check failed - need to call a slow_path.
     callSlowPath(_llint_stack_check)
@@ -422,12 +421,19 @@ macro doReturn()
     ret
 end
 
-# stub to call into JavaScript
-# EncodedJSValue callToJavaScript(void* code, Register* topOfStack)
-# Note, if this stub or one of it's related macros is changed, make the
+if C_LOOP
+else
+# stub to call into JavaScript or Native functions
+# EncodedJSValue callToJavaScript(void* code, ExecState** vm, ProtoCallFrame* protoFrame, Register* topOfStack)
+# EncodedJSValue callToNativeFunction(void* code, ExecState** vm, ProtoCallFrame* protoFrame, Register* topOfStack)
+# Note, if these stubs or one of their related macros are changed, make the
 # equivalent changes in jit/JITStubsX86.h and/or jit/JITStubsMSVC64.asm
 _callToJavaScript:
-    doCallToJavaScript()
+    doCallToJavaScript(makeJavaScriptCall, doReturnFromJavaScript)
+
+_callToNativeFunction:
+    doCallToJavaScript(makeHostFunctionCall, doReturnFromHostFunction)
+end
 
 # Indicate the beginning of LLInt.
 _llint_begin:
@@ -477,6 +483,12 @@ end
 
 
 # Value-representation-agnostic code.
+_llint_op_touch_entry:
+    traceExecution()
+    callSlowPath(_slow_path_touch_entry)
+    dispatch(1)
+
+
 _llint_op_new_array:
     traceExecution()
     callSlowPath(_llint_slow_path_new_array)
@@ -812,6 +824,7 @@ _llint_op_profile_did_call:
 
 
 _llint_op_debug:
+if JAVASCRIPT_DEBUGGER
     traceExecution()
     loadp CodeBlock[cfr], t0
     loadp CodeBlock::m_globalObject[t0], t0
@@ -822,6 +835,7 @@ _llint_op_debug:
 
     callSlowPath(_llint_slow_path_debug)
 .opDebugDone:                    
+end
     dispatch(2)
 
 

@@ -276,7 +276,10 @@ int RenderTableSection::calcRowLogicalHeight()
 
     RenderTableCell* cell;
 
-    int spacing = table()->vBorderSpacing();
+    // We ignore the border-spacing on any non-top section as it is already included in the previous section's last row position.
+    int spacing = 0;
+    if (this == table()->topSection())
+        spacing = table()->vBorderSpacing();
 
     LayoutStateMaintainer statePusher(view());
 
@@ -363,6 +366,8 @@ int RenderTableSection::calcRowLogicalHeight()
         }
 
         // Add the border-spacing to our final position.
+        // Use table border-spacing even in non-top sections
+        spacing = table()->vBorderSpacing();
         m_rowPos[r + 1] += m_grid[r].rowRenderer ? spacing : 0;
         m_rowPos[r + 1] = std::max(m_rowPos[r + 1], m_rowPos[r]);
     }

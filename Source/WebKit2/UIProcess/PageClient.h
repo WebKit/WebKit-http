@@ -43,6 +43,10 @@ OBJC_CLASS CALayer;
 OBJC_CLASS WKView;
 OBJC_CLASS NSTextAlternatives;
 #endif
+
+#if PLATFORM(IOS)
+OBJC_CLASS UIWKView;
+#endif
 #endif
 
 namespace WebCore {
@@ -116,6 +120,13 @@ public:
 
     virtual void toolTipChanged(const String&, const String&) = 0;
 
+    virtual bool decidePolicyForGeolocationPermissionRequest(WebFrameProxy&, WebSecurityOrigin&, GeolocationPermissionRequestProxy&)
+    {
+        return false;
+    }
+
+    virtual void didCommitLoadForMainFrame() = 0;
+
 #if USE(TILED_BACKING_STORE)
     virtual void pageDidRequestScroll(const WebCore::IntPoint&) = 0;
     virtual void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect) = 0;
@@ -133,8 +144,8 @@ public:
     virtual void handleDownloadRequest(DownloadProxy*) = 0;
 #endif // PLATFORM(EFL) || PLATFORM(GTK)
 
-#if PLATFORM(EFL)
-    virtual void didChangeContentsSize(const WebCore::IntSize&) = 0;
+#if PLATFORM(EFL) || PLATFORM(IOS)
+    virtual void didChangeContentSize(const WebCore::IntSize&) = 0;
 #endif
 
 #if PLATFORM(GTK)
@@ -158,9 +169,14 @@ public:
     virtual void resetSecureInputState() = 0;
     virtual void notifyInputContextAboutDiscardedComposition() = 0;
     virtual void makeFirstResponder() = 0;
+    virtual void setAcceleratedCompositingRootLayer(CALayer *) = 0;
+#endif
+
+#if USE(APPKIT)
     virtual void setPromisedData(const String& pasteboardName, PassRefPtr<WebCore::SharedBuffer> imageBuffer, const String& filename, const String& extension, const String& title,
                                  const String& url, const String& visibleUrl, PassRefPtr<WebCore::SharedBuffer> archiveBuffer) = 0;
 #endif
+
 #if PLATFORM(GTK)
     virtual void getEditorCommandsForKeyEvent(const NativeWebKeyboardEvent&, const AtomicString&, Vector<WTF::String>&) = 0;
 #endif
@@ -189,7 +205,7 @@ public:
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) = 0;
 #endif
 
-#if PLATFORM(MAC)
+#if !PLATFORM(IOS) && PLATFORM(MAC)
     virtual void pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus) = 0;
     virtual void setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, PluginComplexTextInputState) = 0;
     virtual void didPerformDictionaryLookup(const AttributedString&, const DictionaryPopupInfo&) = 0;
@@ -201,7 +217,6 @@ public:
     virtual void recommendedScrollbarStyleDidChange(int32_t newStyle) = 0;
 
     virtual ColorSpaceData colorSpace() = 0;
-    virtual void setAcceleratedCompositingRootLayer(CALayer *) = 0;
 
 #if USE(APPKIT)
     virtual WKView* wkView() const = 0;
@@ -214,6 +229,19 @@ public:
 #endif // USE(DICTATION_ALTERNATIVES)
 #endif // USE(APPKIT)
 #endif // PLATFORM(MAC)
+
+#if PLATFORM(IOS)
+    virtual void mainDocumentDidReceiveMobileDocType() = 0;
+
+    virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius) = 0;
+
+    virtual void didChangeViewportArguments(const WebCore::ViewportArguments&) = 0;
+
+    virtual void startAssistingNode(const WebCore::IntRect&, bool hasNextFocusable, bool hasPreviousFocusable) = 0;
+    virtual void stopAssistingNode() = 0;
+    virtual void selectionDidChange() = 0;
+    virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) = 0;
+#endif
 };
 
 } // namespace WebKit

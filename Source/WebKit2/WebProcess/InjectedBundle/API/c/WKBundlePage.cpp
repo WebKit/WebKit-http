@@ -61,44 +61,44 @@ WKTypeID WKBundlePageGetTypeID()
     return toAPI(WebPage::APIType);
 }
 
-void WKBundlePageSetContextMenuClient(WKBundlePageRef pageRef, WKBundlePageContextMenuClient* wkClient)
+void WKBundlePageSetContextMenuClient(WKBundlePageRef pageRef, WKBundlePageContextMenuClientBase* wkClient)
 {
 #if ENABLE(CONTEXT_MENUS)
     toImpl(pageRef)->initializeInjectedBundleContextMenuClient(wkClient);
 #endif
 }
 
-void WKBundlePageSetEditorClient(WKBundlePageRef pageRef, WKBundlePageEditorClient* wkClient)
+void WKBundlePageSetEditorClient(WKBundlePageRef pageRef, WKBundlePageEditorClientBase* wkClient)
 {
     toImpl(pageRef)->initializeInjectedBundleEditorClient(wkClient);
 }
 
-void WKBundlePageSetFormClient(WKBundlePageRef pageRef, WKBundlePageFormClient* wkClient)
+void WKBundlePageSetFormClient(WKBundlePageRef pageRef, WKBundlePageFormClientBase* wkClient)
 {
     toImpl(pageRef)->initializeInjectedBundleFormClient(wkClient);
 }
 
-void WKBundlePageSetPageLoaderClient(WKBundlePageRef pageRef, WKBundlePageLoaderClient* wkClient)
+void WKBundlePageSetPageLoaderClient(WKBundlePageRef pageRef, WKBundlePageLoaderClientBase* wkClient)
 {
     toImpl(pageRef)->initializeInjectedBundleLoaderClient(wkClient);
 }
 
-void WKBundlePageSetResourceLoadClient(WKBundlePageRef pageRef, WKBundlePageResourceLoadClient* wkClient)
+void WKBundlePageSetResourceLoadClient(WKBundlePageRef pageRef, WKBundlePageResourceLoadClientBase* wkClient)
 {
     toImpl(pageRef)->initializeInjectedBundleResourceLoadClient(wkClient);
 }
 
-void WKBundlePageSetPolicyClient(WKBundlePageRef pageRef, WKBundlePagePolicyClient* wkClient)
+void WKBundlePageSetPolicyClient(WKBundlePageRef pageRef, WKBundlePagePolicyClientBase* wkClient)
 {
     toImpl(pageRef)->initializeInjectedBundlePolicyClient(wkClient);
 }
 
-void WKBundlePageSetUIClient(WKBundlePageRef pageRef, WKBundlePageUIClient* wkClient)
+void WKBundlePageSetUIClient(WKBundlePageRef pageRef, WKBundlePageUIClientBase* wkClient)
 {
     toImpl(pageRef)->initializeInjectedBundleUIClient(wkClient);
 }
 
-void WKBundlePageSetFullScreenClient(WKBundlePageRef pageRef, WKBundlePageFullScreenClient* wkClient)
+void WKBundlePageSetFullScreenClient(WKBundlePageRef pageRef, WKBundlePageFullScreenClientBase* wkClient)
 {
 #if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
     toImpl(pageRef)->initializeInjectedBundleFullScreenClient(wkClient);
@@ -144,7 +144,7 @@ void WKBundlePageDidExitFullScreen(WKBundlePageRef pageRef)
 #endif
 }
 
-void WKBundlePageSetDiagnosticLoggingClient(WKBundlePageRef pageRef, WKBundlePageDiagnosticLoggingClient* client)
+void WKBundlePageSetDiagnosticLoggingClient(WKBundlePageRef pageRef, WKBundlePageDiagnosticLoggingClientBase* client)
 {
     toImpl(pageRef)->initializeInjectedBundleDiagnosticLoggingClient(client);
 }
@@ -166,6 +166,7 @@ void WKBundlePageClickMenuItem(WKBundlePageRef pageRef, WKContextMenuItemRef ite
 #endif
 }
 
+#if ENABLE(CONTEXT_MENUS)
 static PassRefPtr<API::Array> contextMenuItems(const WebContextMenu& contextMenu)
 {
     auto items = contextMenu.items();
@@ -178,6 +179,7 @@ static PassRefPtr<API::Array> contextMenuItems(const WebContextMenu& contextMenu
 
     return API::Array::create(std::move(menuItems));
 }
+#endif
 
 WKArrayRef WKBundlePageCopyContextMenuItems(WKBundlePageRef pageRef)
 {
@@ -345,7 +347,7 @@ void WKBundlePageUninstallPageOverlayWithAnimation(WKBundlePageRef pageRef, WKBu
 
 void WKBundlePageSetTopOverhangImage(WKBundlePageRef pageRef, WKImageRef imageRef)
 {
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !PLATFORM(IOS)
     toImpl(pageRef)->setTopOverhangImage(toImpl(imageRef));
 #else
     UNUSED_PARAM(pageRef);
@@ -355,7 +357,7 @@ void WKBundlePageSetTopOverhangImage(WKBundlePageRef pageRef, WKImageRef imageRe
 
 void WKBundlePageSetBottomOverhangImage(WKBundlePageRef pageRef, WKImageRef imageRef)
 {
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !PLATFORM(IOS)
     toImpl(pageRef)->setBottomOverhangImage(toImpl(imageRef));
 #else
     UNUSED_PARAM(pageRef);
@@ -363,6 +365,7 @@ void WKBundlePageSetBottomOverhangImage(WKBundlePageRef pageRef, WKImageRef imag
 #endif
 }
 
+#if !PLATFORM(IOS)
 void WKBundlePageSetHeaderBanner(WKBundlePageRef pageRef, WKBundlePageBannerRef bannerRef)
 {
     toImpl(pageRef)->setHeaderPageBanner(toImpl(bannerRef));
@@ -372,6 +375,7 @@ void WKBundlePageSetFooterBanner(WKBundlePageRef pageRef, WKBundlePageBannerRef 
 {
     toImpl(pageRef)->setFooterPageBanner(toImpl(bannerRef));
 }
+#endif // !PLATFORM(IOS)
 
 bool WKBundlePageHasLocalDataForURL(WKBundlePageRef pageRef, WKURLRef urlRef)
 {

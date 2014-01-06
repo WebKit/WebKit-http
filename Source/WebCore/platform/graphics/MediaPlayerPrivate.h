@@ -121,6 +121,7 @@ public:
 
     virtual void paintCurrentFrameInContext(GraphicsContext* c, const IntRect& r) { paint(c, r); }
     virtual bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject, GC3Dint, GC3Denum, GC3Denum, bool, bool) { return false; }
+    virtual PassNativeImagePtr nativeImageForCurrentTime() { return 0; }
 
     virtual void setPreload(MediaPlayer::Preload) { }
 
@@ -212,6 +213,8 @@ public:
     virtual String languageOfPrimaryAudioTrack() const { return emptyString(); }
 
     virtual size_t extraMemoryCost() const { return 0; }
+    
+    virtual unsigned long long fileSize() const { return 0; }
 };
 
 }

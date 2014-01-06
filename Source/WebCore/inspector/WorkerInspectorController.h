@@ -31,7 +31,7 @@
 #ifndef WorkerInspectorController_h
 #define WorkerInspectorController_h
 
-#if ENABLE(INSPECTOR) && ENABLE(WORKERS)
+#if ENABLE(INSPECTOR)
 
 #include "InspectorAgentRegistry.h"
 #include "InspectorBaseAgent.h"
@@ -58,7 +58,6 @@ public:
     WorkerInspectorController(WorkerGlobalScope*);
     ~WorkerInspectorController();
 
-    bool hasFrontend() const { return m_frontendChannel; }
     void connectFrontend();
     void disconnectFrontend();
     void dispatchMessageFromFrontend(const String&);
@@ -80,6 +79,6 @@ private:
 
 }
 
-#endif // ENABLE(WORKERS)
+#endif // ENABLE(INSPECTOR)
 
 #endif // !defined(WorkerInspectorController_h)

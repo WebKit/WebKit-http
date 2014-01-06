@@ -34,6 +34,12 @@
 #include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
 
+namespace API {
+template<> struct ClientTraits<WKPageUIClientBase> {
+    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2> Versions;
+};
+}
+
 namespace WebCore {
     class FloatRect;
     class IntSize;
@@ -55,7 +61,7 @@ class WebPageProxy;
 class WebSecurityOrigin;
 class WebOpenPanelResultListenerProxy;
 
-class WebUIClient : public APIClient<WKPageUIClient, kWKPageUIClientCurrentVersion> {
+class WebUIClient : public API::Client<WKPageUIClientBase> {
 public:
     PassRefPtr<WebPageProxy> createNewPage(WebPageProxy*, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, WebEvent::Modifiers, WebMouseEvent::Button);
     void showPage(WebPageProxy*);
@@ -71,8 +77,10 @@ public:
 
     void setStatusText(WebPageProxy*, const String&);
     void mouseDidMoveOverElement(WebPageProxy*, const WebHitTestResult::Data&, WebEvent::Modifiers, API::Object*);
+#if ENABLE(NETSCAPE_PLUGIN_API)
     void unavailablePluginButtonClicked(WebPageProxy*, WKPluginUnavailabilityReason, ImmutableDictionary*);
-    
+#endif // ENABLE(NETSCAPE_PLUGIN_API)
+
     bool implementsDidNotHandleKeyEvent() const;
     void didNotHandleKeyEvent(WebPageProxy*, const NativeWebKeyboardEvent&);
 

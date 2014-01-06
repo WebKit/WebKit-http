@@ -30,6 +30,10 @@
 #include <WebCore/IntRect.h>
 #include <wtf/text/WTFString.h>
 
+#if PLATFORM(IOS)
+#include <WebCore/SelectionRect.h>
+#endif
+
 namespace WebKit {
 
 struct EditorState {
@@ -42,6 +46,9 @@ struct EditorState {
         , isInPasswordField(false)
         , isInPlugin(false)
         , hasComposition(false)
+#if PLATFORM(IOS)
+    , selectedTextLength(0)
+#endif
     {
     }
 
@@ -54,6 +61,14 @@ struct EditorState {
     bool isInPasswordField;
     bool isInPlugin;
     bool hasComposition;
+
+#if PLATFORM(IOS)
+    WebCore::IntRect caretRectAtStart;
+    WebCore::IntRect caretRectAtEnd;
+    Vector<WebCore::SelectionRect> selectionRects;
+    uint64_t selectedTextLength;
+    String wordAtSelection;
+#endif
 
 #if PLATFORM(GTK)
     WebCore::IntRect cursorRect;

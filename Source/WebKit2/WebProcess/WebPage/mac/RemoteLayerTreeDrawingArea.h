@@ -64,12 +64,21 @@ private:
     virtual void setPageOverlayNeedsDisplay(PageOverlay*, const WebCore::IntRect&) OVERRIDE;
     virtual void setPageOverlayOpacity(PageOverlay*, float) OVERRIDE;
 
+    virtual void setLayerTreeStateIsFrozen(bool) OVERRIDE;
+
+    virtual void forceRepaint() OVERRIDE;
+    virtual bool forceRepaintAsync(uint64_t) OVERRIDE { return false; }
+
     // WebCore::GraphicsLayerClient
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) OVERRIDE { }
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*) OVERRIDE { }
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& clipRect) OVERRIDE;
     virtual float deviceScaleFactor() const OVERRIDE;
     virtual void didCommitChangesForLayer(const WebCore::GraphicsLayer*) const OVERRIDE { }
+#if PLATFORM(IOS)
+    virtual void setDeviceScaleFactor(float) OVERRIDE;
+    virtual bool allowCompositingLayerVisualDegradation() const OVERRIDE { return false; }
+#endif
 
     std::unique_ptr<RemoteLayerTreeContext> m_remoteLayerTreeContext;
     RefPtr<WebCore::PlatformCALayer> m_rootLayer;

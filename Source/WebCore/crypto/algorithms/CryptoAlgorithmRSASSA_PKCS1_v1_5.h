@@ -32,6 +32,9 @@
 
 namespace WebCore {
 
+class CryptoAlgorithmRsaSsaParams;
+class CryptoKeyRSA;
+
 class CryptoAlgorithmRSASSA_PKCS1_v1_5 FINAL : public CryptoAlgorithm {
 public:
     static const char* const s_name;
@@ -41,14 +44,18 @@ public:
 
     virtual CryptoAlgorithmIdentifier identifier() const OVERRIDE;
 
-    virtual void sign(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData&, std::unique_ptr<PromiseWrapper>, ExceptionCode&) OVERRIDE;
-    virtual void verify(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData& signature, const CryptoOperationData& data, std::unique_ptr<PromiseWrapper>, ExceptionCode&) OVERRIDE;
-    virtual void generateKey(const CryptoAlgorithmParameters&, bool extractable, CryptoKeyUsage, std::unique_ptr<PromiseWrapper>, ExceptionCode&) OVERRIDE;
-    virtual void importKey(const CryptoAlgorithmParameters&, const CryptoKeyData&, bool extractable, CryptoKeyUsage, std::unique_ptr<PromiseWrapper>, ExceptionCode&) OVERRIDE;
+    virtual void sign(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
+    virtual void verify(const CryptoAlgorithmParameters&, const CryptoKey&, const CryptoOperationData& signature, const CryptoOperationData& data, BoolCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
+    virtual void generateKey(const CryptoAlgorithmParameters&, bool extractable, CryptoKeyUsage, KeyOrKeyPairCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
+    virtual void importKey(const CryptoAlgorithmParameters&, const CryptoKeyData&, bool extractable, CryptoKeyUsage, KeyCallback, VoidCallback failureCallback, ExceptionCode&) OVERRIDE;
 
 private:
     CryptoAlgorithmRSASSA_PKCS1_v1_5();
     virtual ~CryptoAlgorithmRSASSA_PKCS1_v1_5();
+
+    bool keyAlgorithmMatches(const CryptoAlgorithmRsaSsaParams& algorithmParameters, const CryptoKey&) const;
+    void platformSign(const CryptoAlgorithmRsaSsaParams&, const CryptoKeyRSA&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&);
+    void platformVerify(const CryptoAlgorithmRsaSsaParams&, const CryptoKeyRSA&, const CryptoOperationData& signature, const CryptoOperationData& data, BoolCallback, VoidCallback failureCallback, ExceptionCode&);
 };
 
 }

@@ -39,7 +39,6 @@ from webkitpy.port.test import TestPort
 from webkitpy.performance_tests.perftest import PerfTest
 from webkitpy.performance_tests.perftest import PerfTestMetric
 from webkitpy.performance_tests.perftest import PerfTestFactory
-from webkitpy.performance_tests.perftest import ReplayPerfTest
 from webkitpy.performance_tests.perftest import SingleProcessPerfTest
 
 
@@ -50,22 +49,22 @@ class MockPort(TestPort):
 
 class TestPerfTestMetric(unittest.TestCase):
     def test_init_set_missing_unit(self):
-        self.assertEqual(PerfTestMetric('Time', iterations=[1, 2, 3, 4, 5]).unit(), 'ms')
-        self.assertEqual(PerfTestMetric('Malloc', iterations=[1, 2, 3, 4, 5]).unit(), 'bytes')
-        self.assertEqual(PerfTestMetric('JSHeap', iterations=[1, 2, 3, 4, 5]).unit(), 'bytes')
+        self.assertEqual(PerfTestMetric(['some', 'test'], 'some/test.html', 'Time', iterations=[1, 2, 3, 4, 5]).unit(), 'ms')
+        self.assertEqual(PerfTestMetric(['some', 'test'], 'some/test.html', 'Malloc', iterations=[1, 2, 3, 4, 5]).unit(), 'bytes')
+        self.assertEqual(PerfTestMetric(['some', 'test'], 'some/test.html', 'JSHeap', iterations=[1, 2, 3, 4, 5]).unit(), 'bytes')
 
     def test_init_set_time_metric(self):
-        self.assertEqual(PerfTestMetric('Time', 'ms').name(), 'Time')
-        self.assertEqual(PerfTestMetric('Time', 'fps').name(), 'FrameRate')
-        self.assertEqual(PerfTestMetric('Time', 'runs/s').name(), 'Runs')
+        self.assertEqual(PerfTestMetric(['some', 'test'], 'some/test.html', 'Time', 'ms').name(), 'Time')
+        self.assertEqual(PerfTestMetric(['some', 'test'], 'some/test.html', 'Time', 'fps').name(), 'FrameRate')
+        self.assertEqual(PerfTestMetric(['some', 'test'], 'some/test.html', 'Time', 'runs/s').name(), 'Runs')
 
     def test_has_values(self):
-        self.assertFalse(PerfTestMetric('Time').has_values())
-        self.assertTrue(PerfTestMetric('Time', iterations=[1]).has_values())
+        self.assertFalse(PerfTestMetric(['some', 'test'], 'some/test.html', 'Time').has_values())
+        self.assertTrue(PerfTestMetric(['some', 'test'], 'some/test.html', 'Time', iterations=[1]).has_values())
 
     def test_append(self):
-        metric = PerfTestMetric('Time')
-        metric2 = PerfTestMetric('Time')
+        metric = PerfTestMetric(['some', 'test'], 'some/test.html', 'Time')
+        metric2 = PerfTestMetric(['some', 'test'], 'some/test.html', 'Time')
         self.assertFalse(metric.has_values())
         self.assertFalse(metric2.has_values())
 
@@ -92,9 +91,12 @@ class TestPerfTestMetric(unittest.TestCase):
 class TestPerfTest(unittest.TestCase):
     def _assert_results_are_correct(self, test, output):
         test.run_single = lambda driver, path, time_out_ms: output
-        self.assertTrue(test._run_with_driver(None, None))
-        self.assertEqual(test._metrics.keys(), ['Time'])
-        self.assertEqual(test._metrics['Time'].flattened_iteration_values(), [1080, 1120, 1095, 1101, 1104])
+        self.assertTrue(test.run(10))
+        subtests = test._metrics
+        self.assertEqual(map(lambda test: test['name'], subtests), [None])
+        metrics = subtests[0]['metrics']
+        self.assertEqual(map(lambda metric: metric.name(), metrics), ['Time'])
+        self.assertEqual(metrics[0].flattened_iteration_values(), [1080, 1120, 1095, 1101, 1104] * 4)
 
     def test_parse_output(self):
         output = DriverOutput("""
@@ -109,7 +111,9 @@ class TestPerfTest(unittest.TestCase):
             actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
         self.assertEqual(actual_stdout, '')
         self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, '')
+        self.assertEqual(actual_logs, """RESULT some-test: Time= 1100.0 ms
+median= 1101.0 ms, stdev= 13.3140211016 ms, min= 1080.0 ms, max= 1120.0 ms
+""")
 
     def _assert_failed_on_line(self, output_text, expected_log):
         output = DriverOutput(output_text, image=None, image_hash=None, audio=None)
@@ -156,21 +160,56 @@ Description: this is a test description.
     def test_parse_output_with_subtests(self):
         output = DriverOutput("""
 Description: this is a test description.
-some test -> [1, 2, 3, 4, 5]
-some other test = else -> [6, 7, 8, 9, 10]
+some test:Time -> [1, 2, 3, 4, 5] ms
+some other test = else:Time -> [6, 7, 8, 9, 10] ms
+some other test = else:Malloc -> [11, 12, 13, 14, 15] bytes
+Array Construction, []:Time -> [11, 12, 13, 14, 15] ms
+Concat String:Time -> [15163, 15304, 15386, 15608, 15622] ms
+jQuery - addClass:Time -> [2785, 2815, 2826, 2841, 2861] ms
+Dojo - div:only-child:Time -> [7825, 7910, 7950, 7958, 7970] ms
+Dojo - div:nth-child(2n+1):Time -> [3620, 3623, 3633, 3641, 3658] ms
+Dojo - div > div:Time -> [10158, 10172, 10180, 10183, 10231] ms
+Dojo - div ~ div:Time -> [6673, 6675, 6714, 6848, 6902] ms
 
 :Time -> [1080, 1120, 1095, 1101, 1104] ms
 """, image=None, image_hash=None, audio=None)
         output_capture = OutputCapture()
         output_capture.capture_output()
         try:
-            test = PerfTest(MockPort(), 'some-test', '/path/some-dir/some-test')
-            self._assert_results_are_correct(test, output)
+            test = PerfTest(MockPort(), 'some-dir/some-test', '/path/some-dir/some-test')
+            test.run_single = lambda driver, path, time_out_ms: output
+            self.assertTrue(test.run(10))
         finally:
             actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
+
+        subtests = test._metrics
+        self.assertEqual(map(lambda test: test['name'], subtests), ['some test', 'some other test = else',
+            'Array Construction, []', 'Concat String', 'jQuery - addClass', 'Dojo - div:only-child',
+            'Dojo - div:nth-child(2n+1)', 'Dojo - div > div', 'Dojo - div ~ div', None])
+
+        some_test_metrics = subtests[0]['metrics']
+        self.assertEqual(map(lambda metric: metric.name(), some_test_metrics), ['Time'])
+        self.assertEqual(some_test_metrics[0].path(), ['some-dir', 'some-test', 'some test'])
+        self.assertEqual(some_test_metrics[0].flattened_iteration_values(), [1, 2, 3, 4, 5] * 4)
+
+        some_other_test_metrics = subtests[1]['metrics']
+        self.assertEqual(map(lambda metric: metric.name(), some_other_test_metrics), ['Time', 'Malloc'])
+        self.assertEqual(some_other_test_metrics[0].path(), ['some-dir', 'some-test', 'some other test = else'])
+        self.assertEqual(some_other_test_metrics[0].flattened_iteration_values(), [6, 7, 8, 9, 10] * 4)
+        self.assertEqual(some_other_test_metrics[1].path(), ['some-dir', 'some-test', 'some other test = else'])
+        self.assertEqual(some_other_test_metrics[1].flattened_iteration_values(), [11, 12, 13, 14, 15] * 4)
+
+        main_metrics = subtests[len(subtests) - 1]['metrics']
+        self.assertEqual(map(lambda metric: metric.name(), main_metrics), ['Time'])
+        self.assertEqual(main_metrics[0].path(), ['some-dir', 'some-test'])
+        self.assertEqual(main_metrics[0].flattened_iteration_values(), [1080, 1120, 1095, 1101, 1104] * 4)
+
         self.assertEqual(actual_stdout, '')
         self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, '')
+        self.assertEqual(actual_logs, """DESCRIPTION: this is a test description.
+RESULT some-dir: some-test: Time= 1100.0 ms
+median= 1101.0 ms, stdev= 13.3140211016 ms, min= 1080.0 ms, max= 1120.0 ms
+""")
 
 
 class TestSingleProcessPerfTest(unittest.TestCase):
@@ -188,241 +227,6 @@ Description: this is a test description.
         test.run_single = run_single
         self.assertTrue(test.run(0))
         self.assertEqual(called[0], 1)
-
-
-class TestReplayPerfTest(unittest.TestCase):
-    class ReplayTestPort(MockPort):
-        def __init__(self, custom_run_test=None):
-
-            class ReplayTestDriver(TestDriver):
-                def run_test(self, text_input, stop_when_done):
-                    return custom_run_test(text_input, stop_when_done) if custom_run_test else None
-
-            self._custom_driver_class = ReplayTestDriver
-            super(self.__class__, self).__init__()
-
-        def _driver_class(self):
-            return self._custom_driver_class
-
-    class MockReplayServer(object):
-        def __init__(self, wait_until_ready=True):
-            self.wait_until_ready = lambda: wait_until_ready
-
-        def stop(self):
-            pass
-
-    def _add_file(self, port, dirname, filename, content=True):
-        port.host.filesystem.maybe_make_directory(dirname)
-        port.host.filesystem.write_binary_file(port.host.filesystem.join(dirname, filename), content)
-
-    def _setup_test(self, run_test=None):
-        test_port = self.ReplayTestPort(run_test)
-        self._add_file(test_port, '/path/some-dir', 'some-test.replay', 'http://some-test/')
-        test = ReplayPerfTest(test_port, 'some-test.replay', '/path/some-dir/some-test.replay')
-        test._start_replay_server = lambda archive, record: self.__class__.MockReplayServer()
-        return test, test_port
-
-    def test_run_single(self):
-        output_capture = OutputCapture()
-        output_capture.capture_output()
-
-        loaded_pages = []
-
-        def run_test(test_input, stop_when_done):
-            if test_input.test_name == test.force_gc_test:
-                loaded_pages.append(test_input)
-                return
-            if test_input.test_name != "about:blank":
-                self.assertEqual(test_input.test_name, 'http://some-test/')
-            loaded_pages.append(test_input)
-            self._add_file(port, '/path/some-dir', 'some-test.wpr', 'wpr content')
-            return DriverOutput('actual text', 'actual image', 'actual checksum',
-                audio=None, crash=False, timeout=False, error=False, test_time=12345)
-
-        test, port = self._setup_test(run_test)
-        test._archive_path = '/path/some-dir/some-test.wpr'
-        test._url = 'http://some-test/'
-
-        try:
-            driver = port.create_driver(worker_number=1, no_timeout=True)
-            output = test.run_single(driver, '/path/some-dir/some-test.replay', time_out_ms=100)
-            self.assertTrue(output)
-        finally:
-            actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
-
-        self.assertEqual(len(loaded_pages), 2)
-        self.assertEqual(loaded_pages[0].test_name, test.force_gc_test)
-        self.assertEqual(loaded_pages[1].test_name, 'http://some-test/')
-        self.assertEqual(actual_stdout, '')
-        self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, '')
-        self.assertEqual(port.host.filesystem.read_binary_file('/path/some-dir/some-test-actual.png'), 'actual image')
-        self.assertEqual(output.test_time, 12345)
-
-    def test_run_single_fails_without_webpagereplay(self):
-        output_capture = OutputCapture()
-        output_capture.capture_output()
-
-        test, port = self._setup_test()
-        test._start_replay_server = lambda archive, record: None
-        test._archive_path = '/path/some-dir.wpr'
-        test._url = 'http://some-test/'
-
-        try:
-            driver = port.create_driver(worker_number=1, no_timeout=True)
-            self.assertEqual(test.run_single(driver, '/path/some-dir/some-test.replay', time_out_ms=100), None)
-        finally:
-            actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
-        self.assertEqual(actual_stdout, '')
-        self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, "Web page replay didn't start.\n")
-
-    def test_run_with_driver_accumulates_results(self):
-        port = MockPort()
-        test, port = self._setup_test()
-        counter = [0]
-
-        def mock_run_signle(drive, path, timeout):
-            counter[0] += 1
-            return DriverOutput('some output', image=None, image_hash=None, audio=None, test_time=counter[0], measurements={})
-
-        test.run_single = mock_run_signle
-        output_capture = OutputCapture()
-        output_capture.capture_output()
-        try:
-            driver = port.create_driver(worker_number=1, no_timeout=True)
-            self.assertTrue(test._run_with_driver(driver, None))
-        finally:
-            actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
-
-        self.assertEqual(actual_stdout, '')
-        self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, '')
-
-        self.assertEqual(test._metrics.keys(), ['Time'])
-        self.assertEqual(test._metrics['Time'].flattened_iteration_values(), [float(i * 1000) for i in range(2, 7)])
-
-    def test_run_with_driver_accumulates_memory_results(self):
-        port = MockPort()
-        test, port = self._setup_test()
-        counter = [0]
-
-        def mock_run_signle(drive, path, timeout):
-            counter[0] += 1
-            return DriverOutput('some output', image=None, image_hash=None, audio=None, test_time=counter[0], measurements={'Malloc': 10, 'JSHeap': 5})
-
-        test.run_single = mock_run_signle
-        output_capture = OutputCapture()
-        output_capture.capture_output()
-        try:
-            driver = port.create_driver(worker_number=1, no_timeout=True)
-            self.assertTrue(test._run_with_driver(driver, None))
-        finally:
-            actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
-
-        self.assertEqual(actual_stdout, '')
-        self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, '')
-
-        metrics = test._metrics
-        self.assertEqual(sorted(metrics.keys()), ['JSHeap', 'Malloc', 'Time'])
-        self.assertEqual(metrics['Time'].flattened_iteration_values(), [float(i * 1000) for i in range(2, 7)])
-        self.assertEqual(metrics['Malloc'].flattened_iteration_values(), [float(10)] * 5)
-        self.assertEqual(metrics['JSHeap'].flattened_iteration_values(), [float(5)] * 5)
-
-    def test_prepare_fails_when_wait_until_ready_fails(self):
-        output_capture = OutputCapture()
-        output_capture.capture_output()
-
-        test, port = self._setup_test()
-        test._start_replay_server = lambda archive, record: self.__class__.MockReplayServer(wait_until_ready=False)
-        test._archive_path = '/path/some-dir.wpr'
-        test._url = 'http://some-test/'
-
-        try:
-            driver = port.create_driver(worker_number=1, no_timeout=True)
-            self.assertEqual(test.run_single(driver, '/path/some-dir/some-test.replay', time_out_ms=100), None)
-        finally:
-            actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
-
-        self.assertEqual(actual_stdout, '')
-        self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, "Web page replay didn't start.\n")
-
-    def test_run_single_fails_when_output_has_error(self):
-        output_capture = OutputCapture()
-        output_capture.capture_output()
-
-        loaded_pages = []
-
-        def run_test(test_input, stop_when_done):
-            loaded_pages.append(test_input)
-            self._add_file(port, '/path/some-dir', 'some-test.wpr', 'wpr content')
-            return DriverOutput('actual text', 'actual image', 'actual checksum',
-                audio=None, crash=False, timeout=False, error='some error')
-
-        test, port = self._setup_test(run_test)
-        test._archive_path = '/path/some-dir.wpr'
-        test._url = 'http://some-test/'
-
-        try:
-            driver = port.create_driver(worker_number=1, no_timeout=True)
-            self.assertEqual(test.run_single(driver, '/path/some-dir/some-test.replay', time_out_ms=100), None)
-        finally:
-            actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
-
-        self.assertEqual(len(loaded_pages), 2)
-        self.assertEqual(loaded_pages[0].test_name, test.force_gc_test)
-        self.assertEqual(loaded_pages[1].test_name, 'http://some-test/')
-        self.assertEqual(actual_stdout, '')
-        self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, 'error: some-test.replay\nsome error\n')
-
-    def test_prepare(self):
-        output_capture = OutputCapture()
-        output_capture.capture_output()
-
-        def run_test(test_input, stop_when_done):
-            self._add_file(port, '/path/some-dir', 'some-test.wpr', 'wpr content')
-            return DriverOutput('actual text', 'actual image', 'actual checksum',
-                audio=None, crash=False, timeout=False, error=False)
-
-        test, port = self._setup_test(run_test)
-
-        try:
-            self.assertTrue(test.prepare(time_out_ms=100))
-        finally:
-            actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
-
-        self.assertEqual(actual_stdout, '')
-        self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, 'Preparing replay for some-test.replay\nPrepared replay for some-test.replay\n')
-        self.assertEqual(port.host.filesystem.read_binary_file('/path/some-dir/some-test-expected.png'), 'actual image')
-
-    def test_prepare_calls_run_single(self):
-        output_capture = OutputCapture()
-        output_capture.capture_output()
-        called = [False]
-
-        def run_single(driver, url, time_out_ms, record):
-            self.assertTrue(record)
-            self.assertEqual(url, '/path/some-dir/some-test.wpr')
-            called[0] = True
-            return False
-
-        test, port = self._setup_test()
-        test.run_single = run_single
-
-        try:
-            self.assertFalse(test.prepare(time_out_ms=100))
-        finally:
-            actual_stdout, actual_stderr, actual_logs = output_capture.restore_output()
-        self.assertTrue(called[0])
-        self.assertEqual(test._archive_path, '/path/some-dir/some-test.wpr')
-        self.assertEqual(test._url, 'http://some-test/')
-        self.assertEqual(actual_stdout, '')
-        self.assertEqual(actual_stderr, '')
-        self.assertEqual(actual_logs, "Preparing replay for some-test.replay\nFailed to prepare a replay for some-test.replay\n")
 
 
 class TestPerfTestFactory(unittest.TestCase):

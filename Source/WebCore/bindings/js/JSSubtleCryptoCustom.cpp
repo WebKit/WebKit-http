@@ -102,9 +102,9 @@ static bool cryptoKeyUsagesFromJSValue(ExecState* exec, JSValue value, CryptoKey
 
     result = 0;
 
-    JSC::JSArray* array = asArray(value);
+    JSArray* array = asArray(value);
     for (size_t i = 0; i < array->length(); ++i) {
-        JSC::JSValue element = array->getIndex(exec, i);
+        JSValue element = array->getIndex(exec, i);
         String usageString = element.toString(exec)->value(exec);
         if (exec->hadException())
             return false;
@@ -150,7 +150,7 @@ JSValue JSSubtleCrypto::encrypt(ExecState* exec)
         return throwTypeError(exec);
 
     if (!key->allows(CryptoKeyUsageEncrypt)) {
-        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key usages does not include 'encrypt'");
+        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key usages do not include 'encrypt'");
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return jsUndefined();
     }
@@ -162,10 +162,16 @@ JSValue JSSubtleCrypto::encrypt(ExecState* exec)
     }
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
-    auto promiseWrapper = PromiseWrapper::create(globalObject(), promise);
+    PromiseWrapper promiseWrapper(globalObject(), promise);
+    auto successCallback = [promiseWrapper](const Vector<uint8_t>& result) mutable {
+        promiseWrapper.fulfill(result);
+    };
+    auto failureCallback = [promiseWrapper]() mutable {
+        promiseWrapper.reject(nullptr);
+    };
 
     ExceptionCode ec = 0;
-    algorithm->encrypt(*parameters, *key, data, std::move(promiseWrapper), ec);
+    algorithm->encrypt(*parameters, *key, data, std::move(successCallback), std::move(failureCallback), ec);
     if (ec) {
         setDOMException(exec, ec);
         return jsUndefined();
@@ -196,7 +202,7 @@ JSValue JSSubtleCrypto::decrypt(ExecState* exec)
         return throwTypeError(exec);
 
     if (!key->allows(CryptoKeyUsageDecrypt)) {
-        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key usages does not include 'decrypt'");
+        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key usages do not include 'decrypt'");
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return jsUndefined();
     }
@@ -208,10 +214,16 @@ JSValue JSSubtleCrypto::decrypt(ExecState* exec)
     }
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
-    auto promiseWrapper = PromiseWrapper::create(globalObject(), promise);
+    PromiseWrapper promiseWrapper(globalObject(), promise);
+    auto successCallback = [promiseWrapper](const Vector<uint8_t>& result) mutable {
+        promiseWrapper.fulfill(result);
+    };
+    auto failureCallback = [promiseWrapper]() mutable {
+        promiseWrapper.reject(nullptr);
+    };
 
     ExceptionCode ec = 0;
-    algorithm->decrypt(*parameters, *key, data, std::move(promiseWrapper), ec);
+    algorithm->decrypt(*parameters, *key, data, std::move(successCallback), std::move(failureCallback), ec);
     if (ec) {
         setDOMException(exec, ec);
         return jsUndefined();
@@ -242,7 +254,7 @@ JSValue JSSubtleCrypto::sign(ExecState* exec)
         return throwTypeError(exec);
 
     if (!key->allows(CryptoKeyUsageSign)) {
-        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key usages does not include 'sign'");
+        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key usages do not include 'sign'");
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return jsUndefined();
     }
@@ -254,10 +266,16 @@ JSValue JSSubtleCrypto::sign(ExecState* exec)
     }
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
-    auto promiseWrapper = PromiseWrapper::create(globalObject(), promise);
+    PromiseWrapper promiseWrapper(globalObject(), promise);
+    auto successCallback = [promiseWrapper](const Vector<uint8_t>& result) mutable {
+        promiseWrapper.fulfill(result);
+    };
+    auto failureCallback = [promiseWrapper]() mutable {
+        promiseWrapper.reject(nullptr);
+    };
 
     ExceptionCode ec = 0;
-    algorithm->sign(*parameters, *key, data, std::move(promiseWrapper), ec);
+    algorithm->sign(*parameters, *key, data, std::move(successCallback), std::move(failureCallback), ec);
     if (ec) {
         setDOMException(exec, ec);
         return jsUndefined();
@@ -288,7 +306,7 @@ JSValue JSSubtleCrypto::verify(ExecState* exec)
         return throwTypeError(exec);
 
     if (!key->allows(CryptoKeyUsageVerify)) {
-        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key usages does not include 'verify'");
+        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key usages do not include 'verify'");
         setDOMException(exec, NOT_SUPPORTED_ERR);
         return jsUndefined();
     }
@@ -306,10 +324,16 @@ JSValue JSSubtleCrypto::verify(ExecState* exec)
     }
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
-    auto promiseWrapper = PromiseWrapper::create(globalObject(), promise);
+    PromiseWrapper promiseWrapper(globalObject(), promise);
+    auto successCallback = [promiseWrapper](bool result) mutable {
+        promiseWrapper.fulfill(result);
+    };
+    auto failureCallback = [promiseWrapper]() mutable {
+        promiseWrapper.reject(nullptr);
+    };
 
     ExceptionCode ec = 0;
-    algorithm->verify(*parameters, *key, signature, data, std::move(promiseWrapper), ec);
+    algorithm->verify(*parameters, *key, signature, data, std::move(successCallback), std::move(failureCallback), ec);
     if (ec) {
         setDOMException(exec, ec);
         return jsUndefined();
@@ -342,10 +366,16 @@ JSValue JSSubtleCrypto::digest(ExecState* exec)
     }
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
-    std::unique_ptr<PromiseWrapper> promiseWrapper = PromiseWrapper::create(globalObject(), promise);
+    PromiseWrapper promiseWrapper(globalObject(), promise);
+    auto successCallback = [promiseWrapper](const Vector<uint8_t>& result) mutable {
+        promiseWrapper.fulfill(result);
+    };
+    auto failureCallback = [promiseWrapper]() mutable {
+        promiseWrapper.reject(nullptr);
+    };
 
     ExceptionCode ec = 0;
-    algorithm->digest(*parameters, data, std::move(promiseWrapper), ec);
+    algorithm->digest(*parameters, data, std::move(successCallback), std::move(failureCallback), ec);
     if (ec) {
         setDOMException(exec, ec);
         return jsUndefined();
@@ -354,7 +384,7 @@ JSValue JSSubtleCrypto::digest(ExecState* exec)
     return promise;
 }
 
-JSValue JSSubtleCrypto::generateKey(JSC::ExecState* exec)
+JSValue JSSubtleCrypto::generateKey(ExecState* exec)
 {
     if (exec->argumentCount() < 1)
         return exec->vm().throwException(exec, createNotEnoughArgumentsError(exec));
@@ -387,10 +417,21 @@ JSValue JSSubtleCrypto::generateKey(JSC::ExecState* exec)
     }
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
-    auto promiseWrapper = PromiseWrapper::create(globalObject(), promise);
+    PromiseWrapper promiseWrapper(globalObject(), promise);
+    auto successCallback = [promiseWrapper](CryptoKey* key, CryptoKeyPair* keyPair) mutable {
+        ASSERT(key || keyPair);
+        ASSERT(!key || !keyPair);
+        if (key)
+            promiseWrapper.fulfill(key);
+        else
+            promiseWrapper.fulfill(keyPair);
+    };
+    auto failureCallback = [promiseWrapper]() mutable {
+        promiseWrapper.reject(nullptr);
+    };
 
     ExceptionCode ec = 0;
-    algorithm->generateKey(*parameters, extractable, keyUsages, std::move(promiseWrapper), ec);
+    algorithm->generateKey(*parameters, extractable, keyUsages, std::move(successCallback), std::move(failureCallback), ec);
     if (ec) {
         setDOMException(exec, ec);
         return jsUndefined();
@@ -399,7 +440,67 @@ JSValue JSSubtleCrypto::generateKey(JSC::ExecState* exec)
     return promise;
 }
 
-JSValue JSSubtleCrypto::importKey(JSC::ExecState* exec)
+static void importKey(ExecState* exec, CryptoKeyFormat keyFormat, CryptoOperationData data, CryptoAlgorithm* algorithmPtr, CryptoAlgorithmParameters* parametersPtr, bool extractable, CryptoKeyUsage keyUsages, CryptoAlgorithm::KeyCallback callback, CryptoAlgorithm::VoidCallback failureCallback)
+{
+    std::unique_ptr<CryptoAlgorithm> algorithm(algorithmPtr);
+    std::unique_ptr<CryptoAlgorithmParameters> parameters(parametersPtr);
+
+    std::unique_ptr<CryptoKeySerialization> keySerialization;
+    switch (keyFormat) {
+    case CryptoKeyFormat::Raw:
+        keySerialization = CryptoKeySerializationRaw::create(data);
+        break;
+    case CryptoKeyFormat::JWK: {
+        String jwkString = String::fromUTF8(data.first, data.second);
+        if (jwkString.isNull()) {
+            throwTypeError(exec, "JWK JSON serialization is not valid UTF-8");
+            return;
+        }
+        keySerialization = JSCryptoKeySerializationJWK::create(exec, jwkString);
+        if (exec->hadException())
+            return;
+        break;
+    }
+    default:
+        throwTypeError(exec, "Unsupported key format for import");
+        return;
+    }
+
+    ASSERT(keySerialization);
+
+    if (!keySerialization->reconcileAlgorithm(algorithm, parameters)) {
+        if (!exec->hadException())
+            throwTypeError(exec, "Algorithm specified in key is not compatible with one passed to importKey as argument");
+        return;
+    }
+    if (exec->hadException())
+        return;
+
+    if (!algorithm) {
+        throwTypeError(exec, "Neither key nor function argument has crypto algorithm specified");
+        return;
+    }
+    ASSERT(parameters);
+
+    keySerialization->reconcileExtractable(extractable);
+    if (exec->hadException())
+        return;
+
+    keySerialization->reconcileUsages(keyUsages);
+    if (exec->hadException())
+        return;
+
+    auto keyData = keySerialization->keyData();
+    if (exec->hadException())
+        return;
+
+    ExceptionCode ec = 0;
+    algorithm->importKey(*parameters, *keyData, extractable, keyUsages, std::move(callback), std::move(failureCallback), ec);
+    if (ec)
+        setDOMException(exec, ec);
+}
+
+JSValue JSSubtleCrypto::importKey(ExecState* exec)
 {
     if (exec->argumentCount() < 3)
         return exec->vm().throwException(exec, createNotEnoughArgumentsError(exec));
@@ -431,52 +532,12 @@ JSValue JSSubtleCrypto::importKey(JSC::ExecState* exec)
         }
     }
 
-    std::unique_ptr<CryptoKeySerialization> keySerialization;
-    switch (keyFormat) {
-    case CryptoKeyFormat::Raw:
-        keySerialization = CryptoKeySerializationRaw::create(data);
-        break;
-    case CryptoKeyFormat::JWK: {
-        String jwkString = String::fromUTF8(data.first, data.second);
-        if (jwkString.isNull()) {
-            throwTypeError(exec, "JWK JSON serialization is not valid UTF-8");
-            return jsUndefined();
-        }
-        keySerialization = JSCryptoKeySerializationJWK::create(exec, jwkString);
-        if (exec->hadException())
-            return jsUndefined();
-        break;
-    }
-    default:
-        throwTypeError(exec, "Unsupported key format for import");
-        return jsUndefined();
-    }
-
-    ASSERT(keySerialization);
-
-    if (!keySerialization->reconcileAlgorithm(algorithm, parameters)) {
-        if (!exec->hadException())
-            throwTypeError(exec, "Algorithm specified in key is not compatible with one passed to importKey as argument");
-        return jsUndefined();
-    }
-    if (exec->hadException())
-        return jsUndefined();
-
-    if (!algorithm) {
-        throwTypeError(exec, "Neither key nor function argument has crypto algorithm specified");
-        return jsUndefined();
-    }
-    ASSERT(parameters);
-
     bool extractable = false;
     if (exec->argumentCount() >= 4) {
         extractable = exec->uncheckedArgument(3).toBoolean(exec);
         if (exec->hadException())
             return jsUndefined();
     }
-    keySerialization->reconcileExtractable(extractable);
-    if (exec->hadException())
-        return jsUndefined();
 
     CryptoKeyUsage keyUsages = 0;
     if (exec->argumentCount() >= 5) {
@@ -485,28 +546,56 @@ JSValue JSSubtleCrypto::importKey(JSC::ExecState* exec)
             return jsUndefined();
         }
     }
-    keySerialization->reconcileUsages(keyUsages);
-    if (exec->hadException())
-        return jsUndefined();
-
-    auto keyData = keySerialization->keyData();
-    if (exec->hadException())
-        return jsUndefined();
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
-    auto promiseWrapper = PromiseWrapper::create(globalObject(), promise);
+    PromiseWrapper promiseWrapper(globalObject(), promise);
+    auto successCallback = [promiseWrapper](CryptoKey& result) mutable {
+        promiseWrapper.fulfill(&result);
+    };
+    auto failureCallback = [promiseWrapper]() mutable {
+        promiseWrapper.reject(nullptr);
+    };
 
-    ExceptionCode ec = 0;
-    algorithm->importKey(*parameters, *keyData, extractable, keyUsages, std::move(promiseWrapper), ec);
-    if (ec) {
-        setDOMException(exec, ec);
+    WebCore::importKey(exec, keyFormat, data, algorithm.release(), parameters.release(), extractable, keyUsages, std::move(successCallback), std::move(failureCallback));
+    if (exec->hadException())
         return jsUndefined();
-    }
 
     return promise;
 }
 
-JSValue JSSubtleCrypto::exportKey(JSC::ExecState* exec)
+static void exportKey(ExecState* exec, CryptoKeyFormat keyFormat, const CryptoKey& key, CryptoAlgorithm::VectorCallback callback, CryptoAlgorithm::VoidCallback failureCallback)
+{
+    if (!key.extractable()) {
+        throwTypeError(exec, "Key is not extractable");
+        return;
+    }
+
+    switch (keyFormat) {
+    case CryptoKeyFormat::Raw: {
+        Vector<uint8_t> result;
+        if (CryptoKeySerializationRaw::serialize(key, result))
+            callback(result);
+        else
+            failureCallback();
+        break;
+    }
+    case CryptoKeyFormat::JWK: {
+        String result = JSCryptoKeySerializationJWK::serialize(exec, key);
+        if (exec->hadException())
+            return;
+        CString utf8String = result.utf8(StrictConversion);
+        Vector<uint8_t> resultBuffer;
+        resultBuffer.append(utf8String.data(), utf8String.length());
+        callback(resultBuffer);
+        break;
+    }
+    default:
+        throwTypeError(exec, "Unsupported key format for export");
+        break;
+    }
+}
+
+JSValue JSSubtleCrypto::exportKey(ExecState* exec)
 {
     if (exec->argumentCount() < 2)
         return exec->vm().throwException(exec, createNotEnoughArgumentsError(exec));
@@ -522,37 +611,194 @@ JSValue JSSubtleCrypto::exportKey(JSC::ExecState* exec)
         return throwTypeError(exec);
 
     JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
-    auto promiseWrapper = PromiseWrapper::create(globalObject(), promise);
+    PromiseWrapper promiseWrapper(globalObject(), promise);
 
-    if (!key->extractable()) {
-        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key is not extractable");
-        promiseWrapper->reject(nullptr);
-        return promise;
+    auto successCallback = [promiseWrapper](const Vector<uint8_t>& result) mutable {
+        promiseWrapper.fulfill(result);
+    };
+    auto failureCallback = [promiseWrapper]() mutable {
+        promiseWrapper.reject(nullptr);
+    };
+
+    WebCore::exportKey(exec, keyFormat, *key, std::move(successCallback), std::move(failureCallback));
+    if (exec->hadException())
+        return jsUndefined();
+
+    return promise;
+}
+
+JSValue JSSubtleCrypto::wrapKey(ExecState* exec)
+{
+    if (exec->argumentCount() < 4)
+        return exec->vm().throwException(exec, createNotEnoughArgumentsError(exec));
+
+    CryptoKeyFormat keyFormat;
+    if (!cryptoKeyFormatFromJSValue(exec, exec->argument(0), keyFormat)) {
+        ASSERT(exec->hadException());
+        return jsUndefined();
     }
 
-    switch (keyFormat) {
-    case CryptoKeyFormat::Raw: {
-        Vector<unsigned char> result;
-        if (CryptoKeySerializationRaw::serialize(*key, result))
-            promiseWrapper->fulfill(result);
-        else {
-            m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key cannot be exported to raw format");
-            promiseWrapper->reject(nullptr);
+    RefPtr<CryptoKey> key = toCryptoKey(exec->uncheckedArgument(1));
+    if (!key)
+        return throwTypeError(exec);
+
+    RefPtr<CryptoKey> wrappingKey = toCryptoKey(exec->uncheckedArgument(2));
+    if (!key)
+        return throwTypeError(exec);
+
+
+    auto algorithm = createAlgorithmFromJSValue(exec, exec->uncheckedArgument(3));
+    if (!algorithm) {
+        ASSERT(exec->hadException());
+        return jsUndefined();
+    }
+
+    auto parameters = JSCryptoAlgorithmDictionary::createParametersForEncrypt(exec, algorithm->identifier(), exec->uncheckedArgument(3));
+    if (!parameters) {
+        ASSERT(exec->hadException());
+        return jsUndefined();
+    }
+
+    JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
+    PromiseWrapper promiseWrapper(globalObject(), promise);
+
+    CryptoAlgorithm* algorithmPtr = algorithm.release();
+    CryptoAlgorithmParameters* parametersPtr = parameters.release();
+
+    auto exportSuccessCallback = [keyFormat, algorithmPtr, parametersPtr, wrappingKey, promiseWrapper](const Vector<uint8_t>& exportedKeyData) mutable {
+        auto encryptSuccessCallback = [promiseWrapper](const Vector<uint8_t>& encryptedData) mutable {
+            promiseWrapper.fulfill(encryptedData);
+        };
+        auto encryptFailureCallback = [promiseWrapper]() mutable {
+            promiseWrapper.reject(nullptr);
+        };
+        ExceptionCode ec = 0;
+        algorithmPtr->encryptForWrapKey(*parametersPtr, *wrappingKey, std::make_pair(exportedKeyData.data(), exportedKeyData.size()), std::move(encryptSuccessCallback), std::move(encryptFailureCallback), ec);
+        if (ec) {
+            // FIXME: Report failure details to console, and possibly to calling script once there is a standardized way to pass errors to WebCrypto promise reject functions.
+            encryptFailureCallback();
         }
-        break;
+    };
+
+    auto exportFailureCallback = [promiseWrapper, algorithmPtr, parametersPtr]() mutable {
+        delete algorithmPtr;
+        delete parametersPtr;
+        promiseWrapper.reject(nullptr);
+    };
+
+    ExceptionCode ec = 0;
+    WebCore::exportKey(exec, keyFormat, *key, std::move(exportSuccessCallback), std::move(exportFailureCallback));
+    if (ec) {
+        setDOMException(exec, ec);
+        return jsUndefined();
     }
-    case CryptoKeyFormat::JWK: {
-        String result = JSCryptoKeySerializationJWK::serialize(exec, *key);
+
+    return promise;
+}
+
+JSValue JSSubtleCrypto::unwrapKey(ExecState* exec)
+{
+    if (exec->argumentCount() < 5)
+        return exec->vm().throwException(exec, createNotEnoughArgumentsError(exec));
+
+    CryptoKeyFormat keyFormat;
+    if (!cryptoKeyFormatFromJSValue(exec, exec->argument(0), keyFormat)) {
+        ASSERT(exec->hadException());
+        return jsUndefined();
+    }
+
+    CryptoOperationData wrappedKeyData;
+    if (!cryptoOperationDataFromJSValue(exec, exec->uncheckedArgument(1), wrappedKeyData)) {
+        ASSERT(exec->hadException());
+        return jsUndefined();
+    }
+
+    RefPtr<CryptoKey> unwrappingKey = toCryptoKey(exec->uncheckedArgument(2));
+    if (!unwrappingKey)
+        return throwTypeError(exec);
+
+    if (!unwrappingKey->allows(CryptoKeyUsageUnwrapKey)) {
+        m_impl->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Key usages do not include 'unwrapKey'");
+        setDOMException(exec, NOT_SUPPORTED_ERR);
+        return jsUndefined();
+    }
+
+    std::unique_ptr<CryptoAlgorithm> unwrapAlgorithm;
+    std::unique_ptr<CryptoAlgorithmParameters> unwrapAlgorithmParameters;
+    unwrapAlgorithm = createAlgorithmFromJSValue(exec, exec->uncheckedArgument(3));
+    if (!unwrapAlgorithm) {
+        ASSERT(exec->hadException());
+        return jsUndefined();
+    }
+    unwrapAlgorithmParameters = JSCryptoAlgorithmDictionary::createParametersForDecrypt(exec, unwrapAlgorithm->identifier(), exec->uncheckedArgument(3));
+    if (!unwrapAlgorithmParameters) {
+        ASSERT(exec->hadException());
+        return jsUndefined();
+    }
+
+    std::unique_ptr<CryptoAlgorithm> unwrappedKeyAlgorithm;
+    std::unique_ptr<CryptoAlgorithmParameters> unwrappedKeyAlgorithmParameters;
+    if (!exec->uncheckedArgument(4).isNull()) {
+        unwrappedKeyAlgorithm = createAlgorithmFromJSValue(exec, exec->uncheckedArgument(4));
+        if (!unwrappedKeyAlgorithm) {
+            ASSERT(exec->hadException());
+            return jsUndefined();
+        }
+        unwrappedKeyAlgorithmParameters = JSCryptoAlgorithmDictionary::createParametersForImportKey(exec, unwrappedKeyAlgorithm->identifier(), exec->uncheckedArgument(4));
+        if (!unwrappedKeyAlgorithmParameters) {
+            ASSERT(exec->hadException());
+            return jsUndefined();
+        }
+    }
+
+    bool extractable = false;
+    if (exec->argumentCount() >= 6) {
+        extractable = exec->uncheckedArgument(5).toBoolean(exec);
         if (exec->hadException())
             return jsUndefined();
-        CString utf8String = result.utf8(StrictConversion);
-        Vector<unsigned char> resultBuffer;
-        resultBuffer.append(utf8String.data(), utf8String.length());
-        promiseWrapper->fulfill(resultBuffer);
-        break;
     }
-    default:
-        throwTypeError(exec, "Unsupported key format for export");
+
+    CryptoKeyUsage keyUsages = 0;
+    if (exec->argumentCount() >= 7) {
+        if (!cryptoKeyUsagesFromJSValue(exec, exec->argument(6), keyUsages)) {
+            ASSERT(exec->hadException());
+            return jsUndefined();
+        }
+    }
+
+    JSPromise* promise = JSPromise::createWithResolver(exec->vm(), globalObject());
+    PromiseWrapper promiseWrapper(globalObject(), promise);
+    Strong<JSDOMGlobalObject> domGlobalObject(exec->vm(), globalObject());
+
+    CryptoAlgorithm* unwrappedKeyAlgorithmPtr = unwrappedKeyAlgorithm.release();
+    CryptoAlgorithmParameters* unwrappedKeyAlgorithmParametersPtr = unwrappedKeyAlgorithmParameters.release();
+
+    auto decryptSuccessCallback = [domGlobalObject, keyFormat, unwrappedKeyAlgorithmPtr, unwrappedKeyAlgorithmParametersPtr, extractable, keyUsages, promiseWrapper](const Vector<uint8_t>& result) mutable {
+        auto importSuccessCallback = [promiseWrapper](CryptoKey& key) mutable {
+            promiseWrapper.fulfill(&key);
+        };
+        auto importFailureCallback = [promiseWrapper]() mutable {
+            promiseWrapper.reject(nullptr);
+        };
+        ExecState* exec = domGlobalObject->globalExec();
+        WebCore::importKey(exec, keyFormat, std::make_pair(result.data(), result.size()), unwrappedKeyAlgorithmPtr, unwrappedKeyAlgorithmParametersPtr, extractable, keyUsages, std::move(importSuccessCallback), std::move(importFailureCallback));
+        if (exec->hadException()) {
+            // FIXME: Report exception details to console, and possibly to calling script once there is a standardized way to pass errors to WebCrypto promise reject functions.
+            exec->clearException();
+            importFailureCallback();
+        }
+    };
+
+    auto decryptFailureCallback = [promiseWrapper, unwrappedKeyAlgorithmPtr, unwrappedKeyAlgorithmParametersPtr]() mutable {
+        delete unwrappedKeyAlgorithmPtr;
+        delete unwrappedKeyAlgorithmParametersPtr;
+        promiseWrapper.reject(nullptr);
+    };
+
+    ExceptionCode ec = 0;
+    unwrapAlgorithm->decryptForUnwrapKey(*unwrapAlgorithmParameters, *unwrappingKey, wrappedKeyData, std::move(decryptSuccessCallback), std::move(decryptFailureCallback), ec);
+    if (ec) {
+        setDOMException(exec, ec);
         return jsUndefined();
     }
 

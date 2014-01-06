@@ -30,6 +30,7 @@
 #include "VM.h"
 
 #include "ArgList.h"
+#include "ArrayBufferNeuteringWatchpoint.h"
 #include "CallFrameInlines.h"
 #include "CodeBlock.h"
 #include "CodeCache.h"
@@ -195,7 +196,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , jsArrayClassInfo(JSArray::info())
     , jsFinalObjectClassInfo(JSFinalObject::info())
     , sizeOfLastScratchBuffer(0)
-    , dynamicGlobalObject(0)
+    , entryScope(0)
     , m_enabledProfiler(0)
     , m_regExpCache(new RegExpCache(this))
 #if ENABLE(REGEXP_TRACING)
@@ -215,10 +216,16 @@ VM::VM(VMType vmType, HeapType heapType)
 #if ENABLE(GC_VALIDATION)
     , m_initializingObjectClass(0)
 #endif
+    , m_stackLimit(0)
+#if USE(SEPARATE_C_AND_JS_STACK)
+    , m_jsStackLimit(0)
+#endif
     , m_inDefineOwnProperty(false)
     , m_codeCache(CodeCache::create())
 {
     interpreter = new Interpreter(*this);
+    StackBounds stack = wtfThreadData().stack();
+    setStackLimit(stack.recursionLimit());
 
     // Need to be careful to keep everything consistent here
     JSLockHolder lock(this);
@@ -239,9 +246,10 @@ VM::VM(VMType vmType, HeapType heapType)
     programExecutableStructure.set(*this, ProgramExecutable::createStructure(*this, 0, jsNull()));
     functionExecutableStructure.set(*this, FunctionExecutable::createStructure(*this, 0, jsNull()));
     regExpStructure.set(*this, RegExp::createStructure(*this, 0, jsNull()));
-    sharedSymbolTableStructure.set(*this, SharedSymbolTable::createStructure(*this, 0, jsNull()));
+    symbolTableStructure.set(*this, SymbolTable::createStructure(*this, 0, jsNull()));
     structureChainStructure.set(*this, StructureChain::createStructure(*this, 0, jsNull()));
     sparseArrayValueMapStructure.set(*this, SparseArrayValueMap::createStructure(*this, 0, jsNull()));
+    arrayBufferNeuteringWatchpointStructure.set(*this, ArrayBufferNeuteringWatchpoint::createStructure(*this));
     withScopeStructure.set(*this, JSWithScope::createStructure(*this, 0, jsNull()));
     unlinkedFunctionExecutableStructure.set(*this, UnlinkedFunctionExecutable::createStructure(*this, 0, jsNull()));
     unlinkedProgramCodeBlockStructure.set(*this, UnlinkedProgramCodeBlock::createStructure(*this, 0, jsNull()));
@@ -532,7 +540,7 @@ void VM::releaseExecutableMemory()
 {
     prepareToDiscardCode();
     
-    if (dynamicGlobalObject) {
+    if (entryScope) {
         StackPreservingRecompiler recompiler;
         HeapIterationScope iterationScope(heap);
         HashSet<JSCell*> roots;
@@ -618,7 +626,7 @@ static void appendSourceToError(CallFrame* callFrame, ErrorInstance* exception, 
     
 JSValue VM::throwException(ExecState* exec, JSValue error)
 {
-    ASSERT(exec == topCallFrame || exec == exec->lexicalGlobalObject()->globalExec() || exec == exec->dynamicGlobalObject()->globalExec());
+    ASSERT(exec == topCallFrame || exec == exec->lexicalGlobalObject()->globalExec() || exec == exec->vmEntryGlobalObject()->globalExec());
     
     Vector<StackFrame> stackTrace;
     interpreter->getStackTrace(stackTrace);

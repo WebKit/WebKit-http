@@ -43,7 +43,7 @@ WebTextChecker::WebTextChecker()
 {
 }
 
-void WebTextChecker::setClient(const WKTextCheckerClient* client)
+void WebTextChecker::setClient(const WKTextCheckerClientBase* client)
 {
     m_client.initialize(client);
 }
@@ -67,12 +67,12 @@ void WebTextChecker::grammarCheckingEnabledStateChanged(bool enabled)
     updateStateForAllContexts();
 }
 
-void WebTextChecker::checkSpelling(const WebPageProxy* page, bool startBeforeSelection)
+void WebTextChecker::checkSpelling(WebPageProxy* page, bool startBeforeSelection)
 {
     page->advanceToNextMisspelling(startBeforeSelection);
 }
 
-void WebTextChecker::changeSpellingToWord(const WebPageProxy* page, const String& text)
+void WebTextChecker::changeSpellingToWord(WebPageProxy* page, const String& text)
 {
     page->changeSpellingToWord(text);
 }

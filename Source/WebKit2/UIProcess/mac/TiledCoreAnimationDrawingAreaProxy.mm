@@ -26,6 +26,8 @@
 #import "config.h"
 #import "TiledCoreAnimationDrawingAreaProxy.h"
 
+#if !PLATFORM(IOS)
+
 #import "ColorSpaceData.h"
 #import "DrawingAreaMessages.h"
 #import "DrawingAreaProxyMessages.h"
@@ -49,12 +51,12 @@ TiledCoreAnimationDrawingAreaProxy::~TiledCoreAnimationDrawingAreaProxy()
 
 void TiledCoreAnimationDrawingAreaProxy::deviceScaleFactorDidChange()
 {
-    m_webPageProxy->process()->send(Messages::DrawingArea::SetDeviceScaleFactor(m_webPageProxy->deviceScaleFactor()), m_webPageProxy->pageID());
+    m_webPageProxy->process().send(Messages::DrawingArea::SetDeviceScaleFactor(m_webPageProxy->deviceScaleFactor()), m_webPageProxy->pageID());
 }
 
 void TiledCoreAnimationDrawingAreaProxy::layerHostingModeDidChange()
 {
-    m_webPageProxy->process()->send(Messages::DrawingArea::SetLayerHostingMode(m_webPageProxy->layerHostingMode()), m_webPageProxy->pageID());
+    m_webPageProxy->process().send(Messages::DrawingArea::SetLayerHostingMode(m_webPageProxy->layerHostingMode()), m_webPageProxy->pageID());
 }
 
 void TiledCoreAnimationDrawingAreaProxy::sizeDidChange()
@@ -75,15 +77,15 @@ void TiledCoreAnimationDrawingAreaProxy::waitForPossibleGeometryUpdate(double ti
     if (!m_isWaitingForDidUpdateGeometry)
         return;
 
-    if (m_webPageProxy->process()->isLaunching())
+    if (m_webPageProxy->process().isLaunching())
         return;
 
-    m_webPageProxy->process()->connection()->waitForAndDispatchImmediately<Messages::DrawingAreaProxy::DidUpdateGeometry>(m_webPageProxy->pageID(), timeout);
+    m_webPageProxy->process().connection()->waitForAndDispatchImmediately<Messages::DrawingAreaProxy::DidUpdateGeometry>(m_webPageProxy->pageID(), timeout);
 }
 
 void TiledCoreAnimationDrawingAreaProxy::colorSpaceDidChange()
 {
-    m_webPageProxy->process()->send(Messages::DrawingArea::SetColorSpace(m_webPageProxy->colorSpace()), m_webPageProxy->pageID());
+    m_webPageProxy->process().send(Messages::DrawingArea::SetColorSpace(m_webPageProxy->colorSpace()), m_webPageProxy->pageID());
 }
 
 void TiledCoreAnimationDrawingAreaProxy::minimumLayoutSizeDidChange()
@@ -142,8 +144,10 @@ void TiledCoreAnimationDrawingAreaProxy::sendUpdateGeometry()
     m_lastSentMinimumLayoutSize = m_webPageProxy->minimumLayoutSize();
     m_lastSentSize = m_size;
     m_lastSentLayerPosition = m_layerPosition;
-    m_webPageProxy->process()->send(Messages::DrawingArea::UpdateGeometry(m_size, m_layerPosition), m_webPageProxy->pageID());
+    m_webPageProxy->process().send(Messages::DrawingArea::UpdateGeometry(m_size, m_layerPosition), m_webPageProxy->pageID());
     m_isWaitingForDidUpdateGeometry = true;
 }
 
 } // namespace WebKit
+
+#endif // !PLATFORM(IOS)

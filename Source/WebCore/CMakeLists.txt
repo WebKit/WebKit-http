@@ -11,6 +11,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
     "${WEBCORE_DIR}/Modules/networkinfo"
     "${WEBCORE_DIR}/Modules/notifications"
+    "${WEBCORE_DIR}/Modules/plugins"
     "${WEBCORE_DIR}/Modules/proximity"
     "${WEBCORE_DIR}/Modules/quota"
     "${WEBCORE_DIR}/Modules/vibration"
@@ -193,6 +194,7 @@ set(WebCore_IDL_FILES
     Modules/mediastream/AllVideoCapabilities.idl
     Modules/mediastream/AudioStreamTrack.idl
     Modules/mediastream/CapabilityRange.idl
+    Modules/mediastream/HTMLMediaElementMediaStream.idl
     Modules/mediastream/MediaSourceStates.idl
     Modules/mediastream/MediaStream.idl
     Modules/mediastream/MediaStreamCapabilities.idl
@@ -504,6 +506,7 @@ set(WebCore_IDL_FILES
     html/canvas/OESElementIndexUint.idl
     html/canvas/OESStandardDerivatives.idl
     html/canvas/OESTextureFloat.idl
+    html/canvas/OESTextureFloatLinear.idl
     html/canvas/OESTextureHalfFloat.idl
     html/canvas/OESVertexArrayObject.idl
     html/canvas/WebGLActiveInfo.idl
@@ -833,6 +836,7 @@ set(WebCore_SOURCES
 
     Modules/mediastream/AudioStreamTrack.cpp
     Modules/mediastream/CapabilityRange.cpp
+    Modules/mediastream/HTMLMediaElementMediaStream.cpp
     Modules/mediastream/MediaConstraintsImpl.cpp
     Modules/mediastream/MediaSourceStates.cpp
     Modules/mediastream/MediaStream.cpp
@@ -1088,7 +1092,7 @@ set(WebCore_SOURCES
     css/SelectorFilter.cpp
     css/StyleInvalidationAnalysis.cpp
     css/StyleMedia.cpp
-    css/StylePropertySet.cpp
+    css/StyleProperties.cpp
     css/StylePropertyShorthand.cpp
     css/StyleResolver.cpp
     css/StyleRule.cpp
@@ -1492,6 +1496,7 @@ set(WebCore_SOURCES
     html/canvas/OESElementIndexUint.cpp
     html/canvas/OESStandardDerivatives.cpp
     html/canvas/OESTextureFloat.cpp
+    html/canvas/OESTextureFloatLinear.cpp
     html/canvas/OESTextureHalfFloat.cpp
     html/canvas/OESVertexArrayObject.cpp
     html/canvas/WebGLBuffer.cpp
@@ -1705,6 +1710,7 @@ set(WebCore_SOURCES
     mathml/MathMLElement.cpp
     mathml/MathMLInlineContainerElement.cpp
     mathml/MathMLMathElement.cpp
+    mathml/MathMLSelectElement.cpp
     mathml/MathMLTextElement.cpp
 
     page/AutoscrollController.cpp
@@ -1881,6 +1887,7 @@ set(WebCore_SOURCES
     platform/graphics/FloatPolygon.cpp
     platform/graphics/FloatQuad.cpp
     platform/graphics/FloatRect.cpp
+    platform/graphics/FloatRoundedRect.cpp
     platform/graphics/FloatSize.cpp
     platform/graphics/Font.cpp
     platform/graphics/FontCache.cpp
@@ -2030,6 +2037,7 @@ set(WebCore_SOURCES
     platform/mock/DeviceMotionClientMock.cpp
     platform/mock/DeviceOrientationClientMock.cpp
     platform/mock/GeolocationClientMock.cpp
+    platform/mock/MediaConstraintsMock.cpp
     platform/mock/MockMediaStreamCenter.cpp
     platform/mock/RTCDataChannelHandlerMock.cpp
     platform/mock/RTCNotifiersMock.cpp
@@ -2120,7 +2128,6 @@ set(WebCore_SOURCES
     rendering/InlineTextBox.cpp
     rendering/LayoutRepainter.cpp
     rendering/LayoutState.cpp
-    rendering/LineWidth.cpp
     rendering/OrderIterator.cpp
     rendering/PointerEventsHitRules.cpp
     rendering/RenderBlock.cpp
@@ -2219,6 +2226,8 @@ set(WebCore_SOURCES
 
     rendering/line/LineBreaker.cpp
     rendering/line/LineInfo.cpp
+    rendering/line/LineWidth.cpp
+    rendering/line/TrailingObjects.cpp
 
     rendering/mathml/RenderMathMLBlock.cpp
     rendering/mathml/RenderMathMLFenced.cpp
@@ -2232,6 +2241,7 @@ set(WebCore_SOURCES
     rendering/mathml/RenderMathMLSquareRoot.cpp
     rendering/mathml/RenderMathMLUnderOver.cpp
 
+    rendering/shapes/BoxShape.cpp
     rendering/shapes/PolygonShape.cpp
     rendering/shapes/RasterShape.cpp
     rendering/shapes/RectangleShape.cpp
@@ -2608,7 +2618,7 @@ set(WebCore_LIBRARIES
     WTF
 )
 
-if (ENABLE_SQL_DATABASE AND ENABLE_WORKERS)
+if (ENABLE_SQL_DATABASE)
     list(APPEND WebCore_SOURCES
         Modules/webdatabase/WorkerGlobalScopeWebDatabase.cpp
     )
@@ -2655,6 +2665,7 @@ if (ENABLE_WEBGL)
         html/canvas/OESElementIndexUint.cpp
         html/canvas/OESStandardDerivatives.cpp
         html/canvas/OESTextureFloat.cpp
+        html/canvas/OESTextureFloatLinear.cpp
         html/canvas/OESTextureHalfFloat.cpp
         html/canvas/OESVertexArrayObject.cpp
         html/canvas/WebGLBuffer.cpp
@@ -2689,6 +2700,7 @@ if (ENABLE_WEBGL)
         html/canvas/OESElementIndexUint.idl
         html/canvas/OESStandardDerivatives.idl
         html/canvas/OESTextureFloat.idl
+        html/canvas/OESTextureFloatLinear.idl
         html/canvas/OESTextureHalfFloat.idl
         html/canvas/OESVertexArrayObject.idl
         html/canvas/WebGLActiveInfo.idl
@@ -2858,14 +2870,15 @@ if (WTF_USE_3D_GRAPHICS)
         "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
         "${WEBCORE_DIR}/platform/graphics/gpu"
     )
-    if (OPENGL_FOUND)
+    # Nix may use either OpenGL or OpenGLES2 headers, so we handle this at PlatformNix.cmake.
+    if (OPENGL_FOUND AND NOT PORT STREQUAL "Nix")
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             ${OPENGL_INCLUDE_DIR}
         )
         list(APPEND WebCore_LIBRARIES
             ${OPENGL_gl_LIBRARY}
         )
-    elseif (OPENGLES2_FOUND)
+    elseif (OPENGLES2_FOUND AND NOT PORT STREQUAL "Nix")
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             ${OPENGLES2_INCLUDE_DIR}
         )
@@ -2879,7 +2892,7 @@ if (WTF_USE_3D_GRAPHICS)
         ${DERIVED_SOURCES_WEBCORE_DIR}/glslang_tab.cpp
 
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/BuiltInFunctionEmulator.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/CodeGenGLSL.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/CodeGen.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/Compiler.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/DetectCallDepth.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/DetectDiscontinuity.cpp
@@ -2889,6 +2902,7 @@ if (WTF_USE_3D_GRAPHICS)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/InfoSink.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/Initialize.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/InitializeDll.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/InitializeGLPosition.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/InitializeParseContext.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/IntermTraverse.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/Intermediate.cpp
@@ -2897,7 +2911,7 @@ if (WTF_USE_3D_GRAPHICS)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/OutputGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/OutputGLSLBase.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/OutputHLSL.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/ParseHelper.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/ParseContext.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/PoolAlloc.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/QualifierAlive.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/RemoveTree.cpp
@@ -2908,6 +2922,7 @@ if (WTF_USE_3D_GRAPHICS)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/TranslatorGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/TranslatorHLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/UnfoldShortCircuit.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/UnfoldShortCircuitAST.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/Uniform.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/ValidateLimitations.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/VariableInfo.cpp

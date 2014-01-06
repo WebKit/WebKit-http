@@ -56,6 +56,10 @@ public:
 
     LayerHostingMode layerHostingMode() const { return m_webPage->layerHostingMode(); }
 
+    void setIsFlushingSuspended(bool);
+
+    void forceRepaint();
+
 private:
     // WebCore::GraphicsLayerFactory
     virtual std::unique_ptr<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayerClient*) OVERRIDE;
@@ -71,6 +75,9 @@ private:
 
     Vector<RemoteLayerTreeTransaction::LayerCreationProperties> m_createdLayers;
     Vector<RemoteLayerTreeTransaction::LayerID> m_destroyedLayers;
+
+    bool m_isFlushingSuspended;
+    bool m_hasDeferredFlush;
 };
 
 } // namespace WebKit

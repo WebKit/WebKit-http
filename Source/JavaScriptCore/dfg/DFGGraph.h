@@ -787,6 +787,15 @@ public:
     FullBytecodeLiveness& livenessFor(InlineCallFrame*);
     bool isLiveInBytecode(VirtualRegister, CodeOrigin);
     
+    unsigned frameRegisterCount();
+    unsigned requiredRegisterCountForExit();
+    unsigned requiredRegisterCountForExecutionAndExit();
+    
+    JSActivation* tryGetActivation(Node*);
+    WriteBarrierBase<Unknown>* tryGetRegisters(Node*);
+    
+    JSArrayBufferView* tryGetFoldableView(Node*, ArrayMode);
+    
     VM& m_vm;
     Plan& m_plan;
     CodeBlock* m_codeBlock;

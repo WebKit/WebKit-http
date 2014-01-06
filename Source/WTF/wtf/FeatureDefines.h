@@ -285,6 +285,11 @@
 
 #endif /* PLATFORM(WIN_CAIRO) */
 
+/* --------- NIX port (Unix) --------- */
+#if PLATFORM(NIX)
+#include "nix/FeatureDefinesNix.h"
+#endif /* PLATFORM(NIX) */
+
 /* --------- EFL port (Unix) --------- */
 #if PLATFORM(EFL)
 
@@ -419,10 +424,6 @@
 
 #if !defined(ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED)
 #define ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED 0
-#endif
-
-#if !defined(ENABLE_CSS_VARIABLES)
-#define ENABLE_CSS_VARIABLES 0
 #endif
 
 #if !defined(ENABLE_CUSTOM_SCHEME_HANDLER)
@@ -861,10 +862,6 @@
 
 #if !defined(ENABLE_WEB_TIMING)
 #define ENABLE_WEB_TIMING 0
-#endif
-
-#if !defined(ENABLE_WORKERS)
-#define ENABLE_WORKERS 0
 #endif
 
 #if !defined(ENABLE_XHR_TIMEOUT)

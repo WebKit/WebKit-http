@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "CallFrame.h"
 #include "CodeBlock.h"
 #include "JSStack.h"
+#include "VM.h"
 
 namespace JSC {
 
@@ -48,6 +49,35 @@ inline Register* JSStack::getStartOfFrame(CallFrame* frame)
 {
     CallFrame* callerFrame = frame->callerFrameSkippingVMEntrySentinel();
     return getTopOfFrame(callerFrame);
+}
+
+inline bool JSStack::entryCheck(class CodeBlock* codeBlock, int argsCount)
+{
+    Register* oldEnd = getTopOfStack();
+
+    // Ensure that we have enough space for the parameters:
+    size_t paddedArgsCount = argsCount;
+    if (codeBlock) {
+        size_t numParameters = codeBlock->numParameters();
+        if (paddedArgsCount < numParameters)
+            paddedArgsCount = numParameters;
+    }
+
+    Register* newCallFrameSlot = oldEnd - paddedArgsCount - (2 * JSStack::CallFrameHeaderSize) + 1;
+
+#if ENABLE(DEBUG_JSSTACK)
+    newCallFrameSlot -= JSStack::FenceSize;
+#endif
+
+    Register* newEnd = newCallFrameSlot;
+    if (!!codeBlock)
+        newEnd += virtualRegisterForLocal(codeBlock->frameRegisterCount()).offset();
+
+    // Ensure that we have the needed stack capacity to push the new frame:
+    if (!grow(newEnd))
+        return false;
+
+    return true;
 }
 
 inline CallFrame* JSStack::pushFrame(CallFrame* callerFrame,
@@ -72,15 +102,15 @@ inline CallFrame* JSStack::pushFrame(CallFrame* callerFrame,
 
     Register* newEnd = newCallFrameSlot;
     if (!!codeBlock)
-        newEnd += virtualRegisterForLocal(codeBlock->m_numCalleeRegisters).offset();
+        newEnd += virtualRegisterForLocal(codeBlock->frameRegisterCount()).offset();
 
     // Ensure that we have the needed stack capacity to push the new frame:
     if (!grow(newEnd))
         return 0;
 
-    // Compute the address of the new VM sentinal frame for this invocation:
-    CallFrame* newVMEntrySentinalFrame = CallFrame::create(newCallFrameSlot + paddedArgsCount + JSStack::CallFrameHeaderSize);
-    ASSERT(!!newVMEntrySentinalFrame);
+    // Compute the address of the new VM sentinel frame for this invocation:
+    CallFrame* newVMEntrySentinelFrame = CallFrame::create(newCallFrameSlot + paddedArgsCount + JSStack::CallFrameHeaderSize);
+    ASSERT(!!newVMEntrySentinelFrame);
 
     // Compute the address of the new frame for this invocation:
     CallFrame* newCallFrame = CallFrame::create(newCallFrameSlot);
@@ -91,11 +121,11 @@ inline CallFrame* JSStack::pushFrame(CallFrame* callerFrame,
     // the top frame on the stack.
     callerFrame = m_topCallFrame;
 
-    // Initialize the VM sentinal frame header:
-    newVMEntrySentinalFrame->initializeVMEntrySentinelFrame(callerFrame);
+    // Initialize the VM sentinel frame header:
+    newVMEntrySentinelFrame->initializeVMEntrySentinelFrame(callerFrame);
 
     // Initialize the callee frame header:
-    newCallFrame->init(codeBlock, 0, scope, newVMEntrySentinalFrame, argsCount, callee);
+    newCallFrame->init(codeBlock, 0, scope, newVMEntrySentinelFrame, argsCount, callee);
 
     ASSERT(!!newCallFrame->scope());
 
@@ -119,7 +149,7 @@ inline void JSStack::popFrame(CallFrame* frame)
 {
     validateFence(frame, __FUNCTION__, __LINE__);
 
-    // Pop off the callee frame and the sentinal frame.
+    // Pop off the callee frame and the sentinel frame.
     CallFrame* callerFrame = frame->callerFrame()->vmEntrySentinelCallerFrame();
 
     // Pop to the caller:
@@ -135,6 +165,29 @@ inline void JSStack::popFrame(CallFrame* frame)
     installTrapsAfterFrame(callerFrame);
 }
 
+inline void JSStack::shrink(Register* newEnd)
+{
+    if (newEnd >= m_end)
+        return;
+    updateStackLimit(newEnd);
+    if (m_end == getBaseOfStack() && (m_commitEnd - getBaseOfStack()) >= maxExcessCapacity)
+        releaseExcessCapacity();
+}
+
+inline bool JSStack::grow(Register* newEnd)
+{
+    if (newEnd >= m_end)
+        return true;
+    return growSlowCase(newEnd);
+}
+
+inline void JSStack::updateStackLimit(Register* newEnd)
+{
+    m_end = newEnd;
+#if USE(SEPARATE_C_AND_JS_STACK)
+    m_vm.setJSStackLimit(newEnd);
+#endif
+}
 
 #if ENABLE(DEBUG_JSSTACK)
 inline JSValue JSStack::generateFenceValue(size_t argIndex)
@@ -159,7 +212,7 @@ inline JSValue JSStack::generateFenceValue(size_t argIndex)
 //                     |--------------------------------------|
 //                     | *** the Fence ***                    |
 //                     |--------------------------------------|
-//                     | VM entry sentinal frame header       |
+//                     | VM entry sentinel frame header       |
 //                     |--------------------------------------|
 //                     | Args of new frame                    |
 //                     |--------------------------------------|

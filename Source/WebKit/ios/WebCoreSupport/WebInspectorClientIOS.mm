@@ -32,7 +32,6 @@
 
 #import "WebFrameInternal.h"
 #import "WebInspector.h"
-#import "WebNSNotificationCenterExtras.h"
 #import "WebNodeHighlighter.h"
 #import "WebViewInternal.h"
 #import <WebCore/InspectorController.h>
@@ -42,35 +41,18 @@
 #import <WebCore/WebCoreThread.h>
 #import <wtf/PassOwnPtr.h>
 
-#if ENABLE(REMOTE_INSPECTOR)
-#import "WebInspectorClientRegistry.h"
-#import "WebInspectorRemoteChannel.h"
-#endif
-
 using namespace WebCore;
 
 WebInspectorClient::WebInspectorClient(WebView *webView)
     : m_webView(webView)
-    , m_highlighter(AdoptNS, [[WebNodeHighlighter alloc] initWithInspectedWebView:webView])
+    , m_highlighter(adoptNS([[WebNodeHighlighter alloc] initWithInspectedWebView:webView]))
     , m_frontendPage(0)
     , m_frontendClient(0)
-#if ENABLE(REMOTE_INSPECTOR)
-    , m_remoteChannel(0)
-    , m_pageId(0)
-#endif
 {
-#if ENABLE(REMOTE_INSPECTOR)
-    [[WebInspectorClientRegistry sharedRegistry] registerClient:this];
-#endif
 }
 
 void WebInspectorClient::inspectorDestroyed()
 {
-#if ENABLE(REMOTE_INSPECTOR)
-    [[WebInspectorClientRegistry sharedRegistry] unregisterClient:this];
-    teardownRemoteConnection(true);
-#endif
-
     delete this;
 }
 
@@ -109,101 +91,11 @@ void WebInspectorClient::hideHighlight()
 void WebInspectorClient::didSetSearchingForNode(bool enabled)
 {
     WebInspector *inspector = [m_webView inspector];
-
-    if (enabled)
-        [[NSNotificationCenter defaultCenter] postNotificationOnMainThreadWithName:WebInspectorDidStartSearchingForNode object:inspector];
-    else
-        [[NSNotificationCenter defaultCenter] postNotificationOnMainThreadWithName:WebInspectorDidStopSearchingForNode object:inspector];
+    NSString *notificationName = enabled ? WebInspectorDidStartSearchingForNode : WebInspectorDidStopSearchingForNode;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:inspector];
+    });
 }
-
-#pragma mark -
-#pragma mark Remote Web Inspector Implementation
-
-#if ENABLE(REMOTE_INSPECTOR)
-bool WebInspectorClient::sendMessageToFrontend(const String& message)
-{
-    if (m_remoteChannel) {
-        [m_remoteChannel sendMessageToFrontend:message];
-        return true;
-    }
-
-    // iOS does not have a local inspector. There should be no way to reach this.
-    ASSERT_NOT_REACHED();
-    notImplemented();
-
-    return doDispatchMessageOnFrontendPage(m_frontendPage, message);
-}
-
-void WebInspectorClient::sendMessageToBackend(const String& message)
-{
-    ASSERT(m_remoteChannel);
-
-    Page* page = core(m_webView);
-    page->inspectorController()->dispatchMessageFromFrontend(message);
-}
-
-bool WebInspectorClient::setupRemoteConnection(WebInspectorRemoteChannel *remoteChannel)
-{
-    // There is already a local session, do not allow a remote session.
-    if (hasLocalSession())
-        return false;
-
-    // There is already a remote session, do not allow a new remote session.
-    if (m_remoteChannel)
-        return false;
-
-    m_remoteChannel = remoteChannel;
-
-    Page* page = core(m_webView);
-    page->inspectorController()->connectFrontend(this);
-
-    // Force developer extras to be enabled in WebCore when a remote connection starts.
-    if (page->settings())
-        page->settings()->setDeveloperExtrasEnabled(true);
-
-    return true;
-}
-
-void WebInspectorClient::teardownRemoteConnection(bool fromLocalSide)
-{
-    ASSERT(WebThreadIsLockedOrDisabled());
-    if (!m_remoteChannel)
-        return;
-
-    if (fromLocalSide)
-        [m_remoteChannel closeFromLocalSide];
-
-    Page* page = core(m_webView);
-    if (page) {
-        page->inspectorController()->disconnectFrontend();
-
-        // Restore developer extras setting in WebCore.
-        if (page && page->settings())
-            page->settings()->setDeveloperExtrasEnabled([[m_webView preferences] developerExtrasEnabled]);
-    }
-
-    if (fromLocalSide)
-        [m_remoteChannel release];
-
-    m_remoteChannel = 0;
-}
-
-bool WebInspectorClient::hasLocalSession() const
-{
-    return m_frontendPage != 0;
-}
-
-bool WebInspectorClient::canBeRemotelyInspected() const
-{
-    return [m_webView canBeRemotelyInspected];
-}
-
-WebView *WebInspectorClient::inspectedWebView()
-{
-    return m_webView;
-}
-#endif
-
 
 #pragma mark -
 #pragma mark WebInspectorFrontendClient Implementation
@@ -228,7 +120,6 @@ void WebInspectorFrontendClient::setAttachedWindowWidth(unsigned) { }
 void WebInspectorFrontendClient::setToolbarHeight(unsigned) { }
 void WebInspectorFrontendClient::inspectedURLChanged(const String&) { }
 void WebInspectorFrontendClient::updateWindowTitle() const { }
-void WebInspectorFrontendClient::save(const String&, const String&, bool) { }
 void WebInspectorFrontendClient::append(const String&, const String&) { }
 
 #endif // PLATFORM(IOS)

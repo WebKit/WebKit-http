@@ -97,6 +97,9 @@
 #include "NetworkProcessConnection.h"
 #endif
 
+#if ENABLE(SEC_ITEM_SHIM)
+#include "SecItemShim.h"
+#endif
 
 #if ENABLE(CUSTOM_PROTOCOLS)
 #include "CustomProtocolManager.h"
@@ -120,10 +123,6 @@
 
 #if ENABLE(NETWORK_PROCESS)
 #include "WebResourceLoadScheduler.h"
-#endif
-
-#if USE(SECURITY_FRAMEWORK)
-#include "SecItemShim.h"
 #endif
 
 #if USE(SOUP)
@@ -221,7 +220,7 @@ void WebProcess::initializeConnection(CoreIPC::Connection* connection)
     m_pluginProcessConnectionManager->initializeConnection(connection);
 #endif
 
-#if USE(SECURITY_FRAMEWORK)
+#if ENABLE(SEC_ITEM_SHIM)
     SecItemShim::shared().initializeConnection(connection);
 #endif
     
@@ -721,7 +720,7 @@ WebPageGroupProxy* WebProcess::webPageGroup(uint64_t pageGroupID)
 
 WebPageGroupProxy* WebProcess::webPageGroup(const WebPageGroupData& pageGroupData)
 {
-    HashMap<uint64_t, RefPtr<WebPageGroupProxy>>::AddResult result = m_pageGroupMap.add(pageGroupData.pageGroupID, nullptr);
+    auto result = m_pageGroupMap.add(pageGroupData.pageGroupID, nullptr);
     if (result.isNewEntry) {
         ASSERT(!result.iterator->value);
         result.iterator->value = WebPageGroupProxy::create(pageGroupData);
@@ -1146,7 +1145,18 @@ void WebProcess::updateActivePages()
 }
 
 #endif
-    
+
+#if PLATFORM(IOS)
+void WebProcess::resetAllGeolocationPermissions()
+{
+    for (auto it = m_pageMap.begin(), end = m_pageMap.end(); it != end; ++it) {
+        WebPage* page = (*it).value.get();
+        if (Frame* mainFrame = page->mainFrame())
+            mainFrame->resetAllGeolocationPermission();
+    }
+}
+#endif // PLATFORM(IOS)
+
 void WebProcess::pageDidEnterWindow(uint64_t pageID)
 {
     m_pagesInWindows.add(pageID);

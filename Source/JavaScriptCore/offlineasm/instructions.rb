@@ -206,8 +206,6 @@ MACRO_INSTRUCTIONS =
      "tqs",
      "tqz",
      "tqnz",
-     "peekq",
-     "pokeq",
      "bqeq",
      "bqneq",
      "bqa",
@@ -250,13 +248,20 @@ MACRO_INSTRUCTIONS =
      "leai",
      "leap",
      "pushCalleeSaves",
-     "popCalleeSaves"
+     "popCalleeSaves",
+     "memfence"
     ]
 
 X86_INSTRUCTIONS =
     [
      "cdqi",
      "idivi"
+    ]
+
+ARM64_INSTRUCTIONS =
+    [
+     "popLRAndFP",   # ARM64 requires registers to be pushed and popped in pairs,
+     "pushLRAndFP"   # therefore we do LR (link register) and FP (frame pointer) together.
     ]
 
 RISC_INSTRUCTIONS =
@@ -308,7 +313,7 @@ CXX_INSTRUCTIONS =
      "cloopDo",              # no operands
     ]
 
-INSTRUCTIONS = MACRO_INSTRUCTIONS + X86_INSTRUCTIONS + RISC_INSTRUCTIONS + MIPS_INSTRUCTIONS + SH4_INSTRUCTIONS + CXX_INSTRUCTIONS
+INSTRUCTIONS = MACRO_INSTRUCTIONS + X86_INSTRUCTIONS + ARM64_INSTRUCTIONS + RISC_INSTRUCTIONS + MIPS_INSTRUCTIONS + SH4_INSTRUCTIONS + CXX_INSTRUCTIONS
 
 INSTRUCTION_PATTERN = Regexp.new('\\A((' + INSTRUCTIONS.join(')|(') + '))\\Z')
 

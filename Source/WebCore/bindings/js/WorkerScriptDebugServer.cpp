@@ -31,7 +31,7 @@
 
 #include "config.h"
 
-#if ENABLE(JAVASCRIPT_DEBUGGER) && ENABLE(WORKERS)
+#if ENABLE(JAVASCRIPT_DEBUGGER)
 #include "WorkerScriptDebugServer.h"
 
 #include "WorkerDebuggerAgent.h"
@@ -67,7 +67,7 @@ void WorkerScriptDebugServer::recompileAllJSFunctions(Timer<ScriptDebugServer>*)
 
     JSC::JSLockHolder lock(vm);
     // If JavaScript stack is not empty postpone recompilation.
-    if (vm->dynamicGlobalObject)
+    if (vm->entryScope)
         recompileAllJSFunctionsSoon();
     else
         JSC::Debugger::recompileAllJSFunctions(vm);
@@ -98,4 +98,4 @@ void WorkerScriptDebugServer::interruptAndRunTask(PassOwnPtr<ScriptDebugServer::
 
 } // namespace WebCore
 
-#endif // ENABLE(JAVASCRIPT_DEBUGGER) && ENABLE(WORKERS)
+#endif // ENABLE(JAVASCRIPT_DEBUGGER)

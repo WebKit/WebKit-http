@@ -30,7 +30,7 @@
 
 #include "config.h"
 
-#if ENABLE(INSPECTOR) && ENABLE(WORKERS)
+#if ENABLE(INSPECTOR)
 
 #include "WorkerInspectorController.h"
 
@@ -39,8 +39,8 @@
 #include "InspectorBackendDispatchers.h"
 #include "InspectorClient.h"
 #include "InspectorConsoleAgent.h"
+#include "InspectorForwarding.h"
 #include "InspectorFrontend.h"
-#include "InspectorFrontendChannel.h"
 #include "InspectorHeapProfilerAgent.h"
 #include "InspectorProfilerAgent.h"
 #include "InspectorTimelineAgent.h"

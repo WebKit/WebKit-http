@@ -243,6 +243,11 @@ namespace JSC {
 
         static void linkFor(ExecState*, JSFunction* callee, CodeBlock* callerCodeBlock, CodeBlock* calleeCodeBlock, CodePtr, CallLinkInfo*, VM*, CodeSpecializationKind);
         static void linkSlowCall(CodeBlock* callerCodeBlock, CallLinkInfo*);
+        
+        static unsigned frameRegisterCountFor(CodeBlock* codeBlock)
+        {
+            return codeBlock->m_numCalleeRegisters;
+        }
 
     private:
         JIT(VM*, CodeBlock* = 0);
@@ -450,6 +455,7 @@ namespace JSC {
         void emit_compareAndJump(OpcodeID, int op1, int op2, unsigned target, RelationalCondition);
         void emit_compareAndJumpSlow(int op1, int op2, unsigned target, DoubleCondition, size_t (JIT_OPERATION *operation)(ExecState*, EncodedJSValue, EncodedJSValue), bool invert, Vector<SlowCaseEntry>::iterator&);
 
+        void emit_op_touch_entry(Instruction*);
         void emit_op_add(Instruction*);
         void emit_op_bitand(Instruction*);
         void emit_op_bitor(Instruction*);
@@ -457,6 +463,7 @@ namespace JSC {
         void emit_op_call(Instruction*);
         void emit_op_call_eval(Instruction*);
         void emit_op_call_varargs(Instruction*);
+        void emit_op_captured_mov(Instruction*);
         void emit_op_catch(Instruction*);
         void emit_op_construct(Instruction*);
         void emit_op_get_callee(Instruction*);
@@ -509,6 +516,7 @@ namespace JSC {
         void emit_op_new_array_with_size(Instruction*);
         void emit_op_new_array_buffer(Instruction*);
         void emit_op_new_func(Instruction*);
+        void emit_op_new_captured_func(Instruction*);
         void emit_op_new_func_exp(Instruction*);
         void emit_op_new_object(Instruction*);
         void emit_op_new_regexp(Instruction*);
@@ -553,6 +561,7 @@ namespace JSC {
         void emitSlow_op_call(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_call_eval(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_call_varargs(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_captured_mov(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_construct(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_to_this(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_create_this(Instruction*, Vector<SlowCaseEntry>::iterator&);
@@ -613,7 +622,12 @@ namespace JSC {
         void emitGetGlobalVar(uintptr_t operand);
         void emitGetClosureVar(int scope, uintptr_t operand);
         void emitPutGlobalProperty(uintptr_t* operandSlot, int value);
-        void emitPutGlobalVar(uintptr_t operand, int value);
+#if USE(JSVALUE64)
+        void emitNotifyWrite(RegisterID value, RegisterID scratch, VariableWatchpointSet*);
+#else
+        void emitNotifyWrite(RegisterID tag, RegisterID payload, RegisterID scratch, VariableWatchpointSet*);
+#endif
+        void emitPutGlobalVar(uintptr_t operand, int value, VariableWatchpointSet*);
         void emitPutClosureVar(int scope, uintptr_t operand, int value);
 
         void emitInitRegister(int dst);

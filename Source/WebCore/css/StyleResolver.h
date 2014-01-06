@@ -92,7 +92,7 @@ class StyleScopeResolver;
 class StyleImage;
 class StyleKeyframe;
 class StylePendingImage;
-class StylePropertySet;
+class StyleProperties;
 class StyleRule;
 #if ENABLE(SHADOW_DOM)
 class StyleRuleHost;
@@ -316,7 +316,7 @@ public:
         MatchedProperties();
         ~MatchedProperties();
         
-        RefPtr<StylePropertySet> properties;
+        RefPtr<StyleProperties> properties;
         union {
             struct {
                 unsigned linkMatchType : 2;
@@ -334,7 +334,7 @@ public:
         MatchRanges ranges;
         bool isCacheable;
 
-        void addMatchedProperties(const StylePropertySet& properties, StyleRule* = 0, unsigned linkMatchType = SelectorChecker::MatchAll, PropertyWhitelistType = PropertyWhitelistNone);
+        void addMatchedProperties(const StyleProperties&, StyleRule* = 0, unsigned linkMatchType = SelectorChecker::MatchAll, PropertyWhitelistType = PropertyWhitelistNone);
     };
 
 private:
@@ -353,19 +353,13 @@ private:
     void applyMatchedProperties(const MatchResult&, const Element*);
 
     enum StyleApplicationPass {
-#if ENABLE(CSS_VARIABLES)
-        VariableDefinitions,
-#endif
         HighPriorityProperties,
         LowPriorityProperties
     };
     template <StyleApplicationPass pass>
     void applyMatchedProperties(const MatchResult&, bool important, int startIndex, int endIndex, bool inheritedOnly);
     template <StyleApplicationPass pass>
-    void applyProperties(const StylePropertySet* properties, StyleRule*, bool isImportant, bool inheritedOnly, PropertyWhitelistType = PropertyWhitelistNone);
-#if ENABLE(CSS_VARIABLES)
-    void resolveVariables(CSSPropertyID, CSSValue*, Vector<std::pair<CSSPropertyID, String>>& knownExpressions);
-#endif
+    void applyProperties(const StyleProperties*, StyleRule*, bool isImportant, bool inheritedOnly, PropertyWhitelistType = PropertyWhitelistNone);
     static bool isValidRegionStyleProperty(CSSPropertyID);
 #if ENABLE(VIDEO_TRACK)
     static bool isValidCueStyleProperty(CSSPropertyID);

@@ -1,5 +1,8 @@
 /*
- *  Copyright (C) 2013 University of Washington. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006 Alexey Proskuryakov (ap@nypop.com)
+ * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
+ * Copyright (C) 2013 University of Washington.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +29,6 @@
 
 
 #include "config.h"
-
 #include "FrameSnapshotting.h"
 
 #include "Document.h"
@@ -41,10 +43,10 @@ namespace WebCore {
 
 struct ScopedFramePaintingState {
     ScopedFramePaintingState(Frame& frame, Node* node)
-    : frame(frame)
-    , node(node)
-    , paintBehavior(frame.view()->paintBehavior())
-    , backgroundColor(frame.view()->baseBackgroundColor())
+        : frame(frame)
+        , node(node)
+        , paintBehavior(frame.view()->paintBehavior())
+        , backgroundColor(frame.view()->baseBackgroundColor())
     {
         ASSERT(!node || node->renderer());
     }
@@ -56,14 +58,19 @@ struct ScopedFramePaintingState {
         frame.view()->setNodeToDraw(nullptr);
     }
 
-    Frame& frame;
-    Node* node;
-    PaintBehavior paintBehavior;
-    Color backgroundColor;
+    const Frame& frame;
+    const Node* node;
+    const PaintBehavior paintBehavior;
+    const Color backgroundColor;
 };
 
 std::unique_ptr<ImageBuffer> snapshotFrameRect(Frame& frame, const IntRect& imageRect, SnapshotOptions options)
 {
+    if (!frame.page())
+        return nullptr;
+
+    frame.document()->updateLayout();
+
     FrameView::SelectionInSnapshot shouldIncludeSelection = FrameView::IncludeSelection;
     if (options & SnapshotOptionsExcludeSelectionHighlighting)
         shouldIncludeSelection = FrameView::ExcludeSelection;
@@ -72,22 +79,22 @@ std::unique_ptr<ImageBuffer> snapshotFrameRect(Frame& frame, const IntRect& imag
     if (options & SnapshotOptionsInViewCoordinates)
         coordinateSpace = FrameView::ViewCoordinates;
 
-    PaintBehavior textPaintBehavior = 0;
-    if (options & SnapshotOptionsForceBlackText)
-        textPaintBehavior = PaintBehaviorForceBlackText;
+    ScopedFramePaintingState state(frame, nullptr);
 
-    const ScopedFramePaintingState state(frame, nullptr);
+    PaintBehavior paintBehavior = state.paintBehavior;
+    if (options & SnapshotOptionsForceBlackText)
+        paintBehavior |= PaintBehaviorForceBlackText;
+    if (options & SnapshotOptionsPaintSelectionOnly)
+        paintBehavior |= PaintBehaviorSelectionOnly;
 
     // Other paint behaviors are set by paintContentsForSnapshot.
-    PaintBehavior existingBehavior = frame.view()->paintBehavior();
-    frame.view()->setPaintBehavior(existingBehavior | textPaintBehavior);
-    frame.document()->updateLayout();
+    frame.view()->setPaintBehavior(paintBehavior);
 
-    float deviceScaleFactor = frame.page() ? frame.page()->deviceScaleFactor() : 1;
+    float deviceScaleFactor = frame.page()->deviceScaleFactor();
     IntRect usedRect(imageRect);
     usedRect.scale(deviceScaleFactor);
 
-    std::unique_ptr<ImageBuffer> buffer = std::unique_ptr<ImageBuffer>(ImageBuffer::create(usedRect.size(), deviceScaleFactor, ColorSpaceDeviceRGB).leakPtr());
+    std::unique_ptr<ImageBuffer> buffer = ImageBuffer::create(usedRect.size(), deviceScaleFactor, ColorSpaceDeviceRGB);
     if (!buffer)
         return nullptr;
     buffer->context()->translate(-usedRect.x(), -usedRect.y());
@@ -102,10 +109,8 @@ std::unique_ptr<ImageBuffer> snapshotSelection(Frame& frame, SnapshotOptions opt
     if (!frame.selection().isRange())
         return nullptr;
 
-    // Force selection highlighting to be included.
-    options &= ~SnapshotOptionsExcludeSelectionHighlighting;
-    IntRect selectionRect = enclosingIntRect(frame.selection().bounds());
-    return snapshotFrameRect(frame, selectionRect, options);
+    options |= SnapshotOptionsPaintSelectionOnly;
+    return snapshotFrameRect(frame, enclosingIntRect(frame.selection().bounds()), options);
 }
 
 std::unique_ptr<ImageBuffer> snapshotNode(Frame& frame, Node& node)
@@ -113,20 +118,13 @@ std::unique_ptr<ImageBuffer> snapshotNode(Frame& frame, Node& node)
     if (!node.renderer())
         return nullptr;
 
-    const ScopedFramePaintingState state(frame, &node);
+    ScopedFramePaintingState state(frame, &node);
 
     frame.view()->setBaseBackgroundColor(Color::transparent);
-    frame.document()->updateLayout();
     frame.view()->setNodeToDraw(&node);
 
-    // Document::updateLayout may have blown away the original renderer.
-    RenderObject* renderer = node.renderer();
-    if (!renderer)
-        return nullptr;
-
     LayoutRect topLevelRect;
-    IntRect paintingRect = pixelSnappedIntRect(renderer->paintingRootRect(topLevelRect));
-    return snapshotFrameRect(frame, paintingRect);
+    return snapshotFrameRect(frame, pixelSnappedIntRect(node.renderer()->paintingRootRect(topLevelRect)));
 }
 
 } // namespace WebCore
