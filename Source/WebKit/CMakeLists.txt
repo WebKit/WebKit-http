@@ -18,7 +18,6 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bridge/jsc"
     "${WEBCORE_DIR}/dom/default"
     "${WEBCORE_DIR}/editing"
-    "${WEBCORE_DIR}/fileapi"
     "${WEBCORE_DIR}/history"
     "${WEBCORE_DIR}/html"
     "${WEBCORE_DIR}/html/forms"
@@ -76,7 +75,7 @@ set(WebKit_INCLUDE_DIRECTORIES
 SET(WebKit_LOCAL_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/css"
     "${WEBCORE_DIR}/dom"
-    "${WEBCORE_DIR}/Modules/filesystem"
+    "${WEBCORE_DIR}/fileapi"
     "${WEBCORE_DIR}/platform"
     "${WEBCORE_DIR}/platform/graphics"
     "${JAVASCRIPTCORE_DIR}/heap"
