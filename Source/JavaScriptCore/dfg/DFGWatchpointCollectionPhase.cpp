@@ -95,17 +95,12 @@ private:
             if (m_node->arrayMode().type() == Array::String)
                 handleStringGetByVal();
 
-            if (JSArrayBufferView* view = m_graph.tryGetFoldableView(m_node->child1().node(), m_node->arrayMode()))
+            if (JSArrayBufferView* view = m_graph.tryGetFoldableViewForChild1(m_node))
                 addLazily(view);
             break;
             
         case PutByVal:
-            if (JSArrayBufferView* view = m_graph.tryGetFoldableView(m_graph.varArgChild(m_node, 0).node(), m_node->arrayMode()))
-                addLazily(view);
-            break;
-            
-        case GetArrayLength:
-            if (JSArrayBufferView* view = m_graph.tryGetFoldableView(m_node->child1().node(), m_node->arrayMode()))
+            if (JSArrayBufferView* view = m_graph.tryGetFoldableViewForChild1(m_node))
                 addLazily(view);
             break;
             
@@ -143,16 +138,8 @@ private:
             addLazily(m_node->symbolTable()->m_functionEnteredOnce);
             break;
             
-        case GetIndexedPropertyStorage:
-            if (JSArrayBufferView* view = m_graph.tryGetFoldableView(m_node->child1().node(), m_node->arrayMode())) {
-                // FIXME: It would be awesome to be able to fold the property storage for
-                // these GC-allocated typed arrays. For now it doesn't matter because the
-                // most common use-cases for constant typed arrays involve large arrays with
-                // aliased buffer views.
-                if (view->mode() == FastTypedArray)
-                    break;
-                addLazily(view);
-            }
+        case TypedArrayWatchpoint:
+            addLazily(m_node->typedArray());
             break;
             
         default:

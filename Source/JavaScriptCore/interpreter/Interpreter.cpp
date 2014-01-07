@@ -153,7 +153,7 @@ JSValue eval(CallFrame* callFrame)
     return interpreter->execute(eval, callFrame, thisValue, callerScopeChain);
 }
 
-CallFrame* loadVarargs(CallFrame* callFrame, JSStack* stack, JSValue thisValue, JSValue arguments, int firstFreeRegister)
+CallFrame* sizeAndAllocFrameForVarargs(CallFrame* callFrame, JSStack* stack, JSValue arguments, int firstFreeRegister)
 {
     if (!arguments) { // f.apply(x, arguments), with arguments unmodified.
         unsigned argumentCountIncludingThis = callFrame->argumentCountIncludingThis();
@@ -162,11 +162,6 @@ CallFrame* loadVarargs(CallFrame* callFrame, JSStack* stack, JSValue thisValue, 
             callFrame->vm().throwException(callFrame, createStackOverflowError(callFrame));
             return 0;
         }
-
-        newCallFrame->setArgumentCountIncludingThis(argumentCountIncludingThis);
-        newCallFrame->setThisValue(thisValue);
-        for (size_t i = 0; i < callFrame->argumentCount(); ++i)
-            newCallFrame->setArgument(i, callFrame->argumentAfterCapture(i));
         return newCallFrame;
     }
 
@@ -176,8 +171,6 @@ CallFrame* loadVarargs(CallFrame* callFrame, JSStack* stack, JSValue thisValue, 
             callFrame->vm().throwException(callFrame, createStackOverflowError(callFrame));
             return 0;
         }
-        newCallFrame->setArgumentCountIncludingThis(1);
-        newCallFrame->setThisValue(thisValue);
         return newCallFrame;
     }
 
@@ -194,9 +187,6 @@ CallFrame* loadVarargs(CallFrame* callFrame, JSStack* stack, JSValue thisValue, 
             callFrame->vm().throwException(callFrame, createStackOverflowError(callFrame));
             return 0;
         }
-        newCallFrame->setArgumentCountIncludingThis(argCount + 1);
-        newCallFrame->setThisValue(thisValue);
-        argsObject->copyToArguments(callFrame, newCallFrame, argCount);
         return newCallFrame;
     }
 
@@ -208,9 +198,6 @@ CallFrame* loadVarargs(CallFrame* callFrame, JSStack* stack, JSValue thisValue, 
             callFrame->vm().throwException(callFrame, createStackOverflowError(callFrame));
             return 0;
         }
-        newCallFrame->setArgumentCountIncludingThis(argCount + 1);
-        newCallFrame->setThisValue(thisValue);
-        array->copyToArguments(callFrame, newCallFrame, argCount);
         return newCallFrame;
     }
 
@@ -221,14 +208,54 @@ CallFrame* loadVarargs(CallFrame* callFrame, JSStack* stack, JSValue thisValue, 
         callFrame->vm().throwException(callFrame,  createStackOverflowError(callFrame));
         return 0;
     }
+    return newCallFrame;
+}
+
+void loadVarargs(CallFrame* callFrame, CallFrame* newCallFrame, JSValue thisValue, JSValue arguments)
+{
+    if (!arguments) { // f.apply(x, arguments), with arguments unmodified.
+        unsigned argumentCountIncludingThis = callFrame->argumentCountIncludingThis();
+
+        newCallFrame->setArgumentCountIncludingThis(argumentCountIncludingThis);
+        newCallFrame->setThisValue(thisValue);
+        for (size_t i = 0; i < callFrame->argumentCount(); ++i)
+            newCallFrame->setArgument(i, callFrame->argumentAfterCapture(i));
+        return;
+    }
+    
+    if (arguments.isUndefinedOrNull()) {
+        newCallFrame->setArgumentCountIncludingThis(1);
+        newCallFrame->setThisValue(thisValue);
+        return;
+    }
+    
+    if (asObject(arguments)->classInfo() == Arguments::info()) {
+        Arguments* argsObject = asArguments(arguments);
+        unsigned argCount = argsObject->length(callFrame);
+        newCallFrame->setArgumentCountIncludingThis(argCount + 1);
+        newCallFrame->setThisValue(thisValue);
+        argsObject->copyToArguments(callFrame, newCallFrame, argCount);
+        return;
+    }
+    
+    if (isJSArray(arguments)) {
+        JSArray* array = asArray(arguments);
+        unsigned argCount = array->length();
+        newCallFrame->setArgumentCountIncludingThis(argCount + 1);
+        newCallFrame->setThisValue(thisValue);
+        array->copyToArguments(callFrame, newCallFrame, argCount);
+        return;
+    }
+    
+    JSObject* argObject = asObject(arguments);
+    unsigned argCount = argObject->get(callFrame, callFrame->propertyNames().length).toUInt32(callFrame);
     newCallFrame->setArgumentCountIncludingThis(argCount + 1);
     newCallFrame->setThisValue(thisValue);
     for (size_t i = 0; i < argCount; ++i) {
         newCallFrame->setArgument(i, asObject(arguments)->get(callFrame, i));
         if (UNLIKELY(callFrame->vm().exception()))
-            return 0;
+            return;
     }
-    return newCallFrame;
 }
 
 Interpreter::Interpreter(VM& vm)
@@ -862,22 +889,13 @@ failedJSONP:
     if (UNLIKELY(vm.watchdog.didFire(callFrame)))
         return throwTerminatedExecutionException(callFrame);
 
-    // Push the call frame for this invocation:
     ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
-#if ENABLE(LLINT_C_LOOP)
-    CallFrame* newCallFrame = m_stack.pushFrame(callFrame, codeBlock, scope, 1, 0);
-    if (UNLIKELY(!newCallFrame))
-        return checkedReturn(throwStackOverflowError(callFrame));
 
-    // Set the arguments for the callee:
-    newCallFrame->setThisValue(thisObj);
-#else
     if (UNLIKELY(!m_stack.entryCheck(codeBlock, 1)))
         return checkedReturn(throwStackOverflowError(callFrame));
 
     ProtoCallFrame protoCallFrame;
     protoCallFrame.init(codeBlock, scope, 0, thisObj, 1);
-#endif
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->willExecute(callFrame, program->sourceURL(), program->lineNo());
@@ -888,19 +906,11 @@ failedJSONP:
         SamplingTool::CallRecord callRecord(m_sampler.get());
         Watchdog::Scope watchdogScope(vm.watchdog);
 
-#if ENABLE(LLINT_C_LOOP)
-        result = LLInt::CLoop::execute(newCallFrame, llint_program_prologue);
-#elif ENABLE(JIT)
         result = program->generatedJITCode()->execute(&vm, &protoCallFrame, m_stack.getTopOfStack());
-#endif // ENABLE(JIT)
     }
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->didExecute(callFrame, program->sourceURL(), program->lineNo());
-
-#if ENABLE(LLINT_C_LOOP)
-    m_stack.popFrame(newCallFrame);
-#endif
 
     return checkedReturn(result);
 }
@@ -944,22 +954,11 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
     if (UNLIKELY(vm.watchdog.didFire(callFrame)))
         return throwTerminatedExecutionException(callFrame);
 
-#if ENABLE(LLINT_C_LOOP)
-    CallFrame* newCallFrame = m_stack.pushFrame(callFrame, newCodeBlock, scope, argsCount, function);
-    if (UNLIKELY(!newCallFrame))
-        return checkedReturn(throwStackOverflowError(callFrame));
-
-    // Set the arguments for the callee:
-    newCallFrame->setThisValue(thisValue);
-    for (size_t i = 0; i < args.size(); ++i)
-        newCallFrame->setArgument(i, args.at(i));
-#else
     if (UNLIKELY(!m_stack.entryCheck(newCodeBlock, argsCount)))
         return checkedReturn(throwStackOverflowError(callFrame));
 
     ProtoCallFrame protoCallFrame;
     protoCallFrame.init(newCodeBlock, scope, function, thisValue, argsCount, args.data());
-#endif
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->willExecute(callFrame, function);
@@ -970,27 +969,15 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
         Watchdog::Scope watchdogScope(vm.watchdog);
 
         // Execute the code:
-        if (isJSCall) {
-#if ENABLE(LLINT_C_LOOP)
-            result = LLInt::CLoop::execute(newCallFrame, llint_function_for_call_prologue);
-#elif ENABLE(JIT)
+        if (isJSCall)
             result = callData.js.functionExecutable->generatedJITCodeForCall()->execute(&vm, &protoCallFrame, m_stack.getTopOfStack());
-#endif // ENABLE(JIT)
-        } else {
-#if ENABLE(LLINT_C_LOOP)
-            result = JSValue::decode(callData.native.function(newCallFrame));
-#else
+        else
             result = JSValue::decode(callToNativeFunction(reinterpret_cast<void*>(callData.native.function), &vm.topCallFrame, &protoCallFrame, m_stack.getTopOfStack()));
-#endif
-        }
     }
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->didExecute(callFrame, function);
 
-#if ENABLE(LLINT_C_LOOP)
-    m_stack.popFrame(newCallFrame);
-#endif
     return checkedReturn(result);
 }
 
@@ -1034,22 +1021,12 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
 
     if (UNLIKELY(vm.watchdog.didFire(callFrame)))
         return throwTerminatedExecutionException(callFrame);
-#if ENABLE(LLINT_C_LOOP)
-    CallFrame* newCallFrame = m_stack.pushFrame(callFrame, newCodeBlock, scope, argsCount, constructor);
-    if (UNLIKELY(!newCallFrame))
-        return checkedReturn(throwStackOverflowError(callFrame));
 
-    // Set the arguments for the callee:
-    newCallFrame->setThisValue(jsUndefined());
-    for (size_t i = 0; i < args.size(); ++i)
-        newCallFrame->setArgument(i, args.at(i));
-#else
     if (UNLIKELY(!m_stack.entryCheck(newCodeBlock, argsCount)))
         return checkedReturn(throwStackOverflowError(callFrame));
 
     ProtoCallFrame protoCallFrame;
     protoCallFrame.init(newCodeBlock, scope, constructor, jsUndefined(), argsCount, args.data());
-#endif
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->willExecute(callFrame, constructor);
@@ -1060,18 +1037,11 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
         Watchdog::Scope watchdogScope(vm.watchdog);
 
         // Execute the code.
-        if (isJSConstruct) {
-#if ENABLE(LLINT_C_LOOP)
-            result = LLInt::CLoop::execute(newCallFrame, llint_function_for_construct_prologue);
-#elif ENABLE(JIT)
+        if (isJSConstruct)
             result = constructData.js.functionExecutable->generatedJITCodeForConstruct()->execute(&vm, &protoCallFrame, m_stack.getTopOfStack());
-#endif // ENABLE(JIT)
-        } else {
-#if ENABLE(LLINT_C_LOOP)
-            result = JSValue::decode(constructData.native.function(newCallFrame));
-#else
+        else {
             result = JSValue::decode(callToNativeFunction(reinterpret_cast<void*>(constructData.native.function), &vm.topCallFrame, &protoCallFrame, m_stack.getTopOfStack()));
-#endif
+
             if (!callFrame->hadException())
                 RELEASE_ASSERT(result.isObject());
         }
@@ -1080,21 +1050,13 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->didExecute(callFrame, constructor);
 
-#if ENABLE(LLINT_C_LOOP)
-    m_stack.popFrame(newCallFrame);
-#endif
-
     if (callFrame->hadException())
         return 0;
     ASSERT(result.isObject());
     return checkedReturn(asObject(result));
 }
 
-#if ENABLE(LLINT_C_LOOP)
-CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionExecutable, CallFrame* callFrame, JSFunction* function, int argumentCountIncludingThis, JSScope* scope)
-#else
 CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionExecutable, CallFrame* callFrame, ProtoCallFrame* protoCallFrame, JSFunction* function, int argumentCountIncludingThis, JSScope* scope, JSValue* args)
-#endif
 {
     VM& vm = *scope->vm();
     ASSERT(!vm.exception());
@@ -1113,17 +1075,6 @@ CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionE
 
     size_t argsCount = argumentCountIncludingThis;
 
-#if ENABLE(LLINT_C_LOOP)
-    CallFrame* newCallFrame = m_stack.pushFrame(callFrame, newCodeBlock, scope, argsCount, function);
-
-    if (UNLIKELY(!newCallFrame)) {
-        throwStackOverflowError(callFrame);
-        return CallFrameClosure();
-    }
-
-    // Return the successful closure:
-    CallFrameClosure result = { callFrame, newCallFrame, function, functionExecutable, &vm, scope, newCodeBlock->numParameters(), argumentCountIncludingThis };
-#else
     if (UNLIKELY(!m_stack.entryCheck(newCodeBlock, argsCount))) {
         throwStackOverflowError(callFrame);
         return CallFrameClosure();
@@ -1132,7 +1083,6 @@ CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionE
     protoCallFrame->init(newCodeBlock, scope, function, jsUndefined(), argsCount, args);
     // Return the successful closure:
     CallFrameClosure result = { callFrame, protoCallFrame, function, functionExecutable, &vm, scope, newCodeBlock->numParameters(), argumentCountIncludingThis };
-#endif
     return result;
 }
 
@@ -1146,13 +1096,7 @@ JSValue Interpreter::execute(CallFrameClosure& closure)
         return jsNull();
 
     StackStats::CheckPoint stackCheckPoint;
-#if ENABLE(LLINT_C_LOOP)
-    m_stack.validateFence(closure.newCallFrame, "BEFORE");
-#endif
     closure.resetCallFrame();
-#if ENABLE(LLINT_C_LOOP)
-    m_stack.validateFence(closure.newCallFrame, "STEP 1");
-#endif
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->willExecute(closure.oldCallFrame, closure.function);
@@ -1160,46 +1104,20 @@ JSValue Interpreter::execute(CallFrameClosure& closure)
     if (UNLIKELY(vm.watchdog.didFire(closure.oldCallFrame)))
         return throwTerminatedExecutionException(closure.oldCallFrame);
 
-    // The code execution below may push more frames and point the topCallFrame
-    // to those newer frames, or it may pop to the top frame to the caller of
-    // the current repeat frame, or it may leave the top frame pointing to the
-    // current repeat frame.
-    //
-    // Hence, we need to preserve the topCallFrame here ourselves before
-    // repeating this call on a second callback function.
-
-#if ENABLE(LLINT_C_LOOP)
-    TopCallFrameSetter topCallFrame(vm, closure.newCallFrame);
-#endif
-
     // Execute the code:
     JSValue result;
     {
         SamplingTool::CallRecord callRecord(m_sampler.get());
         Watchdog::Scope watchdogScope(vm.watchdog);
 
-#if ENABLE(LLINT_C_LOOP)
-        result = LLInt::CLoop::execute(closure.newCallFrame, llint_function_for_call_prologue);
-#elif ENABLE(JIT)
-        result = closure.functionExecutable->generatedJITCodeForCall()->execute(&vm, closure.newCallFrame, m_stack.getTopOfStack());
-#endif // ENABLE(JIT)
+        result = closure.functionExecutable->generatedJITCodeForCall()->execute(&vm, closure.protoCallFrame, m_stack.getTopOfStack());
     }
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->didExecute(closure.oldCallFrame, closure.function);
 
-#if ENABLE(LLINT_C_LOOP)
-    m_stack.validateFence(closure.newCallFrame, "AFTER");
-#endif
     return checkedReturn(result);
 }
-
-#if ENABLE(LLINT_C_LOOP)
-void Interpreter::endRepeatCall(CallFrameClosure& closure)
-{
-    m_stack.popFrame(closure.newCallFrame);
-}
-#endif
 
 JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue thisValue, JSScope* scope)
 {
@@ -1261,22 +1179,13 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     if (UNLIKELY(vm.watchdog.didFire(callFrame)))
         return throwTerminatedExecutionException(callFrame);
 
-    // Push the frame:
     ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
-#if ENABLE(LLINT_C_LOOP)
-    CallFrame* newCallFrame = m_stack.pushFrame(callFrame, codeBlock, scope, 1, 0);
-    if (UNLIKELY(!newCallFrame))
-        return checkedReturn(throwStackOverflowError(callFrame));
 
-    // Set the arguments for the callee:
-    newCallFrame->setThisValue(thisValue);
-#else
     if (UNLIKELY(!m_stack.entryCheck(codeBlock, 1)))
         return checkedReturn(throwStackOverflowError(callFrame));
 
     ProtoCallFrame protoCallFrame;
     protoCallFrame.init(codeBlock, scope, 0, thisValue, 1);
-#endif
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->willExecute(callFrame, eval->sourceURL(), eval->lineNo());
@@ -1287,19 +1196,12 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
         SamplingTool::CallRecord callRecord(m_sampler.get());
         Watchdog::Scope watchdogScope(vm.watchdog);
 
-#if ENABLE(LLINT_C_LOOP)
-        result = LLInt::CLoop::execute(newCallFrame, llint_eval_prologue);
-#elif ENABLE(JIT)
         result = eval->generatedJITCode()->execute(&vm, &protoCallFrame, m_stack.getTopOfStack());
-#endif // ENABLE(JIT)
     }
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->didExecute(callFrame, eval->sourceURL(), eval->lineNo());
 
-#if ENABLE(LLINT_C_LOOP)
-    m_stack.popFrame(newCallFrame);
-#endif
     return checkedReturn(result);
 }
 

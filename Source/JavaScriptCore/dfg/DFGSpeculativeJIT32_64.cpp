@@ -1767,7 +1767,7 @@ void SpeculativeJIT::compileContiguousPutByVal(Node* node, BaseOperandType& base
 
     if (arrayMode.isInBounds()) {
         speculationCheck(
-            StoreToHoleOrOutOfBounds, JSValueRegs(), 0,
+            OutOfBounds, JSValueRegs(), 0,
             m_jit.branch32(MacroAssembler::AboveOrEqual, propertyReg, MacroAssembler::Address(storageReg, Butterfly::offsetOfPublicLength())));
     } else {
         MacroAssembler::Jump inBounds = m_jit.branch32(MacroAssembler::Below, propertyReg, MacroAssembler::Address(storageReg, Butterfly::offsetOfPublicLength()));
@@ -3591,7 +3591,8 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
-    case AllocationProfileWatchpoint: {
+    case AllocationProfileWatchpoint:
+    case TypedArrayWatchpoint: {
         noResult(node);
         break;
     }
@@ -3945,6 +3946,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case ConstantStoragePointer: {
+        compileConstantStoragePointer(node);
+        break;
+    }
+        
     case GetTypedArrayByteOffset: {
         compileGetTypedArrayByteOffset(node);
         break;
@@ -4761,6 +4767,7 @@ void SpeculativeJIT::compile(Node* node)
     case CheckTierUpAndOSREnter:
     case Int52ToDouble:
     case Int52ToValue:
+    case CheckInBounds:
         RELEASE_ASSERT_NOT_REACHED();
         break;
     }

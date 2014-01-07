@@ -1,3 +1,71 @@
+2013-12-11  Javier Fernandez  <jfernandez@igalia.com>
+
+        Arithmetic overflow when computing max-height CSS property with subpixel layout
+        https://bugs.webkit.org/show_bug.cgi?id=119273
+
+        Reviewed by Martin Robinson.
+
+        Enabled SATURATED_LAYOUT_ARITHMETIC for the gtk+ port.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+
+2013-12-10  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        [CMAKE] Remove code that disables C++0x compat warnings for gcc-4.6 and above.
+        https://bugs.webkit.org/show_bug.cgi?id=125492
+
+        Reviewed by Zoltan Herczeg.
+
+        Remove the code that disables these warnings for GCC >= 4.6.0
+
+        * Source/cmake/WebKitHelpers.cmake:
+
+2013-12-10  Martin Robinson  <mrobinson@igalia.com>
+
+        Various fixes for the CMake GTK+ build
+
+        Reviewed by Gustavo Noronha.
+
+        * Source/cmake/OptionsGTK.cmake: Disable Quota support to maintain consistency with
+        autotools build.
+
+2013-12-09  Brian Holt  <brian.holt@samsung.com>
+
+        [WK2][Gtk] Add support for ENABLE_NETWORK_PROCESS to the build system
+        https://bugs.webkit.org/show_bug.cgi?id=118231
+
+        Reviewed by Martin Robinson.
+
+        Original patch by Kwang Yul Seo  <skyul@company100.net>.
+
+        Disabled ENABLE_NETWORK_PROCESS by default.
+
+        * Source/autotools/SetupAutomake.m4:
+        * Source/autotools/SetupWebKitFeatures.m4:
+
+2013-12-06  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] Enable web audio by default
+        https://bugs.webkit.org/show_bug.cgi?id=124888
+
+        Reviewed by Martin Robinson.
+
+        When building with ./configure, enable_web_audio defaults to
+        "no". However the basic functionality has been working for months
+        so it's safe to enable it now.
+
+        * Source/autotools/ReadCommandLineArguments.m4:
+
+2013-12-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable HTMLTemplateElement by default
+        https://bugs.webkit.org/show_bug.cgi?id=123851
+
+        Reviewed by Antti Koivisto.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+        * Source/cmake/WebKitFeatures.cmake:
+
 2013-12-04  László Langó  <lango@inf.u-szeged.hu>
 
         Allow --cloop option to work correctly in case of EFL.

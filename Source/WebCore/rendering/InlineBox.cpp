@@ -42,14 +42,14 @@ struct SameSizeAsInlineBox {
     FloatPoint b;
     float c;
     uint32_t d : 32;
-#if !ASSERT_DISABLED
+#if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
     bool f;
 #endif
 };
 
 COMPILE_ASSERT(sizeof(InlineBox) == sizeof(SameSizeAsInlineBox), InlineBox_size_guard);
 
-#if !ASSERT_DISABLED
+#if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
 InlineBox::~InlineBox()
 {
     if (!m_hasBadParent && m_parent)
@@ -191,6 +191,15 @@ bool InlineBox::nextOnLineExists() const
             m_bitfields.setNextOnLineExists(parent()->nextOnLineExists());
     }
     return m_bitfields.nextOnLineExists();
+}
+
+bool InlineBox::previousOnLineExists() const
+{
+    if (!parent())
+        return false;
+    if (prevOnLine())
+        return true;
+    return parent()->previousOnLineExists();
 }
 
 InlineBox* InlineBox::nextLeafChild() const

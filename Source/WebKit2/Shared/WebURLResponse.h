@@ -30,32 +30,19 @@
 #include <WebCore/ResourceResponse.h>
 #include <wtf/Forward.h>
 
-#if PLATFORM(MAC)
-typedef NSURLResponse* PlatformResponse;
-#else
-typedef void* PlatformResponse;
-#endif
-
 namespace WebKit {
 
-class WebURLResponse : public API::TypedObject<API::Object::Type::URLResponse> {
+class WebURLResponse : public API::ObjectImpl<API::Object::Type::URLResponse> {
 public:
     static PassRefPtr<WebURLResponse> create(const WebCore::ResourceResponse& response)
     {
         return adoptRef(new WebURLResponse(response));
     }
 
-    static PassRefPtr<WebURLResponse> create(PlatformResponse platformResponse)
-    {
-        return adoptRef(new WebURLResponse(platformResponse));
-    }
-
-    PlatformResponse platformResponse() const;
     const WebCore::ResourceResponse& resourceResponse() const { return m_response; }
 
 private:
     explicit WebURLResponse(const WebCore::ResourceResponse&);
-    explicit WebURLResponse(PlatformResponse);
 
     WebCore::ResourceResponse m_response;
 };

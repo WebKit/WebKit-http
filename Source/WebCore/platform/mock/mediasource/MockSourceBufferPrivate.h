@@ -50,6 +50,8 @@ public:
     static RefPtr<MockSourceBufferPrivate> create(MockMediaSourcePrivate*);
     virtual ~MockSourceBufferPrivate();
 
+    void clearMediaSource() { m_mediaSource = nullptr; }
+
     bool hasVideo() const;
     bool hasAudio() const;
 
@@ -70,14 +72,14 @@ private:
     virtual bool isFull() OVERRIDE;
 
     virtual void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AtomicString) OVERRIDE { }
-    virtual void enqueueSample(PassRefPtr<MediaSample>, AtomicString) OVERRIDE { }
+    virtual void enqueueSample(PassRefPtr<MediaSample>, AtomicString) OVERRIDE;
     virtual bool isReadyForMoreSamples() OVERRIDE { return true; }
     virtual void setActive(bool) OVERRIDE;
 
     void didReceiveInitializationSegment(const MockInitializationBox&);
     void didReceiveSample(const MockSampleBox&);
 
-    MockMediaSourcePrivate* m_parent;
+    MockMediaSourcePrivate* m_mediaSource;
     SourceBufferPrivateClient* m_client;
 
     Vector<char> m_inputBuffer;

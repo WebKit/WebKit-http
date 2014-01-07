@@ -60,14 +60,14 @@ namespace WTF {
 
 // Note: this code is harmless on little-endian machines.
 
-static void reverseBytes(uint8_t* buf, unsigned longs)
+static void toLittleEndian(uint8_t* buf, unsigned longs)
 {
     ASSERT(longs > 0);
     do {
         uint32_t t = static_cast<uint32_t>(buf[3] << 8 | buf[2]) << 16 | buf[1] << 8 | buf[0];
         ASSERT_WITH_MESSAGE(!(reinterpret_cast<uintptr_t>(buf) % sizeof(t)), "alignment error of buf");
-        *reinterpret_cast_ptr<uint32_t *>(buf) = t;
-        buf += 4;
+        memcpy(buf, &t, sizeof(t));
+        buf += sizeof(t);
     } while (--longs);
 }
 
@@ -199,7 +199,7 @@ void MD5::addBytes(const uint8_t* input, size_t length)
             return;
         }
         memcpy(p, buf, t);
-        reverseBytes(m_in, 16);
+        toLittleEndian(m_in, 16);
         MD5Transform(m_buf, reinterpret_cast_ptr<uint32_t*>(m_in)); // m_in is 4-byte aligned.
         buf += t;
         length -= t;
@@ -209,7 +209,7 @@ void MD5::addBytes(const uint8_t* input, size_t length)
 
     while (length >= 64) {
         memcpy(m_in, buf, 64);
-        reverseBytes(m_in, 16);
+        toLittleEndian(m_in, 16);
         MD5Transform(m_buf, reinterpret_cast_ptr<uint32_t*>(m_in)); // m_in is 4-byte aligned.
         buf += 64;
         length -= 64;
@@ -219,7 +219,7 @@ void MD5::addBytes(const uint8_t* input, size_t length)
     memcpy(m_in, buf, length);
 }
 
-void MD5::checksum(Vector<uint8_t, 16>& digest)
+void MD5::checksum(Digest& digest)
 {
     // Compute number of bytes mod 64
     unsigned count = (m_bits[0] >> 3) & 0x3F;
@@ -236,7 +236,7 @@ void MD5::checksum(Vector<uint8_t, 16>& digest)
     if (count < 8) {
         // Two lots of padding:  Pad the first block to 64 bytes
         memset(p, 0, count);
-        reverseBytes(m_in, 16);
+        toLittleEndian(m_in, 16);
         MD5Transform(m_buf, reinterpret_cast_ptr<uint32_t *>(m_in)); // m_in is 4-byte aligned.
 
         // Now fill the next block with 56 bytes
@@ -245,20 +245,18 @@ void MD5::checksum(Vector<uint8_t, 16>& digest)
         // Pad block to 56 bytes
         memset(p, 0, count - 8);
     }
-    reverseBytes(m_in, 14);
+    toLittleEndian(m_in, 14);
 
     // Append length in bits and transform
-    // m_in is 4-byte aligned.
-    (reinterpret_cast_ptr<uint32_t*>(m_in))[14] = m_bits[0];
-    (reinterpret_cast_ptr<uint32_t*>(m_in))[15] = m_bits[1];
+    memcpy(m_in + 56, m_bits, sizeof(m_bits));
 
     MD5Transform(m_buf, reinterpret_cast_ptr<uint32_t*>(m_in));
-    reverseBytes(reinterpret_cast<uint8_t*>(m_buf), 4);
+    toLittleEndian(reinterpret_cast<uint8_t*>(m_buf), 4);
 
     // Now, m_buf contains checksum result.
-    if (!digest.isEmpty())
-        digest.clear();
-    digest.append(reinterpret_cast<uint8_t*>(m_buf), 16);
+    uint8_t* mBufUInt8 = reinterpret_cast<uint8_t*>(m_buf);
+    for (size_t i = 0; i < hashSize; ++i)
+        digest[i] = mBufUInt8[i];
 
     // In case it's sensitive
     memset(m_buf, 0, sizeof(m_buf));

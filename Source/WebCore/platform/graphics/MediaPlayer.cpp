@@ -57,6 +57,9 @@
 #include "MediaPlayerPrivateQTKit.h"
 #if USE(AVFOUNDATION)
 #include "MediaPlayerPrivateAVFoundationObjC.h"
+#if ENABLE(MEDIA_SOURCE)
+#include "MediaPlayerPrivateMediaSourceAVFObjC.h"
+#endif
 #endif
 #elif OS(WINCE)
 #include "MediaPlayerPrivateWinCE.h"
@@ -213,6 +216,9 @@ static Vector<MediaPlayerFactory*>& installedMediaEngines(RequeryEngineOptions r
         if (Settings::isAVFoundationEnabled()) {
 #if PLATFORM(MAC) || PLATFORM(IOS)
             MediaPlayerPrivateAVFoundationObjC::registerMediaEngine(addMediaEngine);
+#if ENABLE(MEDIA_SOURCE)
+            MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine(addMediaEngine);
+#endif
 #elif PLATFORM(WIN)
             MediaPlayerPrivateAVFoundationCF::registerMediaEngine(addMediaEngine);
 #endif
@@ -1232,6 +1238,40 @@ unsigned long long MediaPlayer::fileSize() const
     
     return m_private->fileSize();
 }
+
+#if ENABLE(MEDIA_SOURCE)
+unsigned long MediaPlayer::totalVideoFrames()
+{
+    if (!m_private)
+        return 0;
+
+    return m_private->totalVideoFrames();
+}
+
+unsigned long MediaPlayer::droppedVideoFrames()
+{
+    if (!m_private)
+        return 0;
+
+    return m_private->droppedVideoFrames();
+}
+
+unsigned long MediaPlayer::corruptedVideoFrames()
+{
+    if (!m_private)
+        return 0;
+
+    return m_private->corruptedVideoFrames();
+}
+
+double MediaPlayer::totalFrameDelay()
+{
+    if (!m_private)
+        return 0;
+
+    return m_private->totalFrameDelay();
+}
+#endif
 
 void MediaPlayerFactorySupport::callRegisterMediaEngine(MediaEngineRegister registerMediaEngine)
 {

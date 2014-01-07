@@ -40,6 +40,10 @@
 #include <wtf/gobject/GOwnPtr.h>
 #include <wtf/text/CString.h>
 
+#if ENABLE(NETWORK_PROCESS)
+#include "NetworkProcessMessages.h"
+#endif
+
 namespace WebKit {
 
 static void initInspectorServer()
@@ -97,8 +101,10 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
     parameters.urlSchemesRegistered = supplement<WebSoupRequestManagerProxy>()->registeredURISchemes();
     supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
     parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
-    parameters.ignoreTLSErrors = m_ignoreTLSErrors;
     parameters.shouldTrackVisitedLinks = true;
+#if !ENABLE(NETWORK_PROCESS)
+    parameters.ignoreTLSErrors = m_ignoreTLSErrors;
+#endif
 }
 
 void WebContext::platformInvalidateContext()
@@ -138,6 +144,12 @@ String WebContext::platformDefaultCookieStorageDirectory() const
 void WebContext::setIgnoreTLSErrors(bool ignoreTLSErrors)
 {
     m_ignoreTLSErrors = ignoreTLSErrors;
+#if ENABLE(NETWORK_PROCESS)
+    if (usesNetworkProcess() && networkProcess()) {
+        networkProcess()->send(Messages::NetworkProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors), 0);
+        return;
+    }
+#endif
     sendToAllProcesses(Messages::WebProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors));
 }
 

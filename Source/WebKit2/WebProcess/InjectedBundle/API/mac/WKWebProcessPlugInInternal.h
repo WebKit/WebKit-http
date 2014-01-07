@@ -23,17 +23,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WKWebProcessPlugIn.h"
+#import "WKWebProcessPlugInPrivate.h"
 
 #if WK_API_ENABLED
 
-@interface WKWebProcessPlugInController ()
+#import "InjectedBundle.h"
+#import "WKObject.h"
 
-+ (WKWebProcessPlugInController *)_shared;
-- (id)_initWithPrincipalClassInstance:(id<WKWebProcessPlugIn>)principalClassInstance bundleRef:(WKBundleRef)bundleRef;
+namespace WebKit {
 
-- (WKWebProcessPlugInBrowserContextController *)_browserContextControllerForBundlePageRef:(WKBundlePageRef)pageRef;
+inline WKWebProcessPlugInController *wrapper(InjectedBundle& bundle)
+{
+    ASSERT([bundle.wrapper() isKindOfClass:[WKWebProcessPlugInController class]]);
+    return (WKWebProcessPlugInController *)bundle.wrapper();
+}
 
+}
+
+@interface WKWebProcessPlugInController () <WKObject>
+- (void)_setPrincipalClassInstance:(id <WKWebProcessPlugIn>)principalClassInstance;
 @end
 
 #endif // WK_API_ENABLED

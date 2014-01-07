@@ -95,6 +95,12 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/assembler/RepatchBuffer.h \
 	Source/JavaScriptCore/assembler/SH4Assembler.h \
 	Source/JavaScriptCore/assembler/X86Assembler.h \
+    Source/JavaScriptCore/bindings/ScriptFunctionCall.cpp \
+    Source/JavaScriptCore/bindings/ScriptFunctionCall.h \
+    Source/JavaScriptCore/bindings/ScriptObject.cpp \
+    Source/JavaScriptCore/bindings/ScriptObject.h \
+    Source/JavaScriptCore/bindings/ScriptValue.cpp \
+    Source/JavaScriptCore/bindings/ScriptValue.h \
 	Source/JavaScriptCore/bytecode/ArrayAllocationProfile.cpp \
 	Source/JavaScriptCore/bytecode/ArrayAllocationProfile.h \
 	Source/JavaScriptCore/bytecode/ArrayProfile.cpp \
@@ -377,8 +383,12 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGSpeculativeJIT.h \
 	Source/JavaScriptCore/dfg/DFGSSAConversionPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGSSAConversionPhase.h \
+	Source/JavaScriptCore/dfg/DFGSSALoweringPhase.cpp \
+	Source/JavaScriptCore/dfg/DFGSSALoweringPhase.h \
 	Source/JavaScriptCore/dfg/DFGStackLayoutPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGStackLayoutPhase.h \
+	Source/JavaScriptCore/dfg/DFGStrengthReductionPhase.cpp \
+	Source/JavaScriptCore/dfg/DFGStrengthReductionPhase.h \
 	Source/JavaScriptCore/dfg/DFGStructureAbstractValue.h \
 	Source/JavaScriptCore/dfg/DFGTierUpCheckInjectionPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGTierUpCheckInjectionPhase.h \
@@ -547,6 +557,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/heap/TinyBloomFilter.h \
 	Source/JavaScriptCore/heap/MarkedSpace.cpp \
 	Source/JavaScriptCore/heap/MarkedSpace.h \
+    Source/JavaScriptCore/heap/RecursiveAllocationScope.h \
 	Source/JavaScriptCore/heap/Region.h \
 	Source/JavaScriptCore/heap/Strong.h \
 	Source/JavaScriptCore/heap/StrongInlines.h \
@@ -610,7 +621,15 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/icu/unicode/utf_old.h \
 	Source/JavaScriptCore/icu/unicode/utypes.h \
 	Source/JavaScriptCore/icu/unicode/uversion.h \
+	Source/JavaScriptCore/inspector/InspectorAgentBase.h \
+	Source/JavaScriptCore/inspector/InspectorAgentRegistry.cpp \
+	Source/JavaScriptCore/inspector/InspectorAgentRegistry.h \
+	Source/JavaScriptCore/inspector/InspectorBackendDispatcher.cpp \
+	Source/JavaScriptCore/inspector/InspectorBackendDispatcher.h \
 	Source/JavaScriptCore/inspector/InspectorFrontendChannel.h \
+	Source/JavaScriptCore/inspector/InspectorTypeBuilder.h \
+	Source/JavaScriptCore/inspector/InspectorValues.cpp \
+	Source/JavaScriptCore/inspector/InspectorValues.h \
 	Source/JavaScriptCore/interpreter/AbstractPC.cpp \
 	Source/JavaScriptCore/interpreter/AbstractPC.h \
 	Source/JavaScriptCore/interpreter/CachedCall.h \

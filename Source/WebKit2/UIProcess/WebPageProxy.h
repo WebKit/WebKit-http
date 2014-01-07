@@ -314,7 +314,7 @@ private:
 #endif
 
 class WebPageProxy
-    : public API::TypedObject<API::Object::Type::Page>
+    : public API::ObjectImpl<API::Object::Type::Page>
 #if ENABLE(INPUT_TYPE_COLOR)
     , public WebColorPicker::Client
 #endif
@@ -583,6 +583,9 @@ public:
     void setRubberBandsAtTop(bool);
     bool rubberBandsAtBottom() const;
     void setRubberBandsAtBottom(bool);
+
+    void setBackgroundExtendsBeyondPage(bool);
+    bool backgroundExtendsBeyondPage() const;
 
     void setPaginationMode(WebCore::Pagination::Mode);
     WebCore::Pagination::Mode paginationMode() const { return m_paginationMode; }
@@ -1325,6 +1328,8 @@ private:
     bool m_rubberBandsAtRight;
     bool m_rubberBandsAtTop;
     bool m_rubberBandsAtBottom;
+
+    bool m_backgroundExtendsBeyondPage;
 
     bool m_mainFrameInViewSourceMode;
         

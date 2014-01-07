@@ -52,7 +52,9 @@
 #include "DFGPredictionPropagationPhase.h"
 #include "DFGResurrectionForValidationPhase.h"
 #include "DFGSSAConversionPhase.h"
+#include "DFGSSALoweringPhase.h"
 #include "DFGStackLayoutPhase.h"
+#include "DFGStrengthReductionPhase.h"
 #include "DFGTierUpCheckInjectionPhase.h"
 #include "DFGTypeCheckHoistingPhase.h"
 #include "DFGUnificationPhase.h"
@@ -203,6 +205,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         if (validationEnabled())
             validate(dfg);
         
+        changed |= performStrengthReduction(dfg);
         performCFA(dfg);
         changed |= performConstantFolding(dfg);
         changed |= performArgumentsSimplification(dfg);
@@ -264,9 +267,11 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         performLoopPreHeaderCreation(dfg);
         performCPSRethreading(dfg);
         performSSAConversion(dfg);
+        performSSALowering(dfg);
         performLivenessAnalysis(dfg);
         performCFA(dfg);
         performLICM(dfg);
+        performCSE(dfg);
         performLivenessAnalysis(dfg);
         performCFA(dfg);
         if (Options::validateFTLOSRExitLiveness())

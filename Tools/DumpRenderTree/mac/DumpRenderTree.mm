@@ -157,6 +157,7 @@ static int threaded;
 static int dumpTree = YES;
 static int useTimeoutWatchdog = YES;
 static int forceComplexText;
+static int useAcceleratedDrawing;
 static int gcBetweenTests;
 static BOOL printSeparators;
 static RetainPtr<CFStringRef> persistentUserStyleSheetLocation;
@@ -654,7 +655,7 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setAcceleratedCompositingEnabled:YES];
 #if USE(CA)
     [preferences setCanvasUsesAcceleratedDrawing:YES];
-    [preferences setAcceleratedDrawingEnabled:NO];
+    [preferences setAcceleratedDrawingEnabled:useAcceleratedDrawing];
 #endif
     [preferences setWebGLEnabled:NO];
     [preferences setCSSRegionsEnabled:YES];
@@ -669,6 +670,10 @@ static void resetWebPreferencesToConsistentValues()
 #endif
 
     [preferences setScreenFontSubstitutionEnabled:YES];
+
+#if ENABLE(MEDIA_SOURCE)
+    [preferences setMediaSourceEnabled:YES];
+#endif
 
     [WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain];
 }
@@ -783,6 +788,7 @@ static void initializeGlobalsFromCommandLineOptions(int argc, const char *argv[]
         {"tree", no_argument, &dumpTree, YES},
         {"threaded", no_argument, &threaded, YES},
         {"complex-text", no_argument, &forceComplexText, YES},
+        {"accelerated-drawing", no_argument, &useAcceleratedDrawing, YES},
         {"gc-between-tests", no_argument, &gcBetweenTests, YES},
         {"no-timeout", no_argument, &useTimeoutWatchdog, NO},
         {NULL, 0, NULL, 0}

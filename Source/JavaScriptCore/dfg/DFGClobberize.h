@@ -116,6 +116,8 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
     case ExtractOSREntryLocal:
     case Int52ToDouble:
     case Int52ToValue:
+    case CheckInBounds:
+    case ConstantStoragePointer:
         return;
         
     case MovHintAndCheck:
@@ -144,7 +146,9 @@ void clobberize(Graph& graph, Node* node, ReadFunctor& read, WriteFunctor& write
         return;
         
     case VariableWatchpoint:
+    case TypedArrayWatchpoint:
         read(Watchpoint_fire);
+        write(SideState);
         return;
         
     case NotifyWrite:

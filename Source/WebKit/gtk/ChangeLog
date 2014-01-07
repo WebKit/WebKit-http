@@ -1,3 +1,152 @@
+2013-12-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Push More Inspector Required Classes Down into JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=125324
+
+        Reviewed by Timothy Hatcher.
+
+        * webkit/webkitwebview.cpp:
+
+2013-12-11  José Dapena Paz  <jdapena@igalia.com> and Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Add a UPower-based BatteryProvider
+        https://bugs.webkit.org/show_bug.cgi?id=115719
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: Link the libwebkigtk library against the upower-glib library.
+
+2013-12-11  José Dapena Paz  <jdapena@igalia.com> and Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WK1] Add an empty BatteryClientGtk
+        https://bugs.webkit.org/show_bug.cgi?id=115628
+
+        Reviewed by Martin Robinson.
+
+        Add an empty BatteryClientGtk, implementing the WebCore's BatteryClient interface.
+        The implementation is left empty intentionally as the WebKit1 port is now in maintenance
+        mode and there's no desire to support new features under it. It's still required as the
+        WebCore implementation of the Battery Status API expects an existing BatteryClient, even
+        if the latter does not set up a provider that would then serve information about the battery
+        state.
+
+        * GNUmakefile.am: Add the BatteryClientGtk source files to the build.
+        * WebCoreSupport/BatteryClientGtk.cpp: Added.
+        (WebKit):
+        (WebKit::BatteryClientGtk::BatteryClientGtk):
+        (WebKit::BatteryClientGtk::startUpdating):
+        (WebKit::BatteryClientGtk::stopUpdating):
+        (WebKit::BatteryClientGtk::batteryControllerDestroyed):
+        * WebCoreSupport/BatteryClientGtk.h: Added.
+        (WebKit):
+        (BatteryClientGtk):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_init): Set up the BatteryClientGtk for the new WebCore::Page object.
+
+2013-12-11  Brendan Long  <b.long@cablelabs.com>
+
+        [GTK] Add "enable-mediasource" property to WebKitWebSettings
+        https://bugs.webkit.org/show_bug.cgi?id=125566
+
+        Reviewed by Philippe Normand.
+
+        * tests/testwebsettings.c:
+        (test_webkit_web_settings_copy):
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+        (webkit_web_settings_set_property):
+        (webkit_web_settings_get_property):
+        * webkit/webkitwebsettingsprivate.h:
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_update_settings):
+        (webkit_web_view_settings_notify):
+
+2013-12-10  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Convert the get_text atktest.c unit tests to layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=125497
+
+        Reviewed by Mario Sanchez Prada.
+
+        * tests/testatk.c: Remove the portions of the remaining tests which now exist as
+        layout tests.
+        (testWebkitAtkCaretOffsets):
+        (testWebkitAtkCaretOffsetsAndExtranousWhiteSpaces):
+        (testWebkitAtkComboBox):
+        (testWebkitAtkEmbeddedObjects):
+        (testWebkitAtkTextSelections):
+        (testWebkitAtkListsOfItems):
+        (main):
+
+2013-12-09  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Convert the get_{string,text}_at_offset atktest.c unit tests to layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=125451
+
+        Reviewed by Mario Sanchez Prada.
+
+        * tests/testatk.c: Remove the tests which now exist as layout tests. Note that the
+        tests for atk_text_get_text_{before,after}_offset were removed without equivalents
+        added to the layout tests. The same is true for the END AtkTextBoundary types. Both
+        have been deprecated in ATK and are not being used by AT-SPI2 assistive technologies.
+        (testGetTextFunction):
+        (main):
+
+2013-12-08  Martin Robinson  <mrobinson@igalia.com>
+
+        [WK2][Soup] Use didReceiveBuffer instead of didReceiveData
+        https://bugs.webkit.org/show_bug.cgi?id=118598
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Original patch by Kwang Yul Seo  <skyul@company100.net> and Csaba OsztrogonÃ¡c  <ossy@webkit.org>.
+
+        Switch from using didReceiveData to didReceiveBuffer for the Soup backend and
+        let SharedBuffer wrap a SoupBuffer. This is necessary because the NetworkProcess
+        only supports getting data via SharedBuffer.
+
+        * webkit/webkitdownload.cpp:
+        (DownloadClient::didReceiveData): Replace with ASSERT_NOT_REACHED.
+        (DownloadClient::didReceiveBuffer): Use this to process incoming data.
+
+2013-12-07  Gustavo Noronha Silva  <gns@gnome.org>
+
+        Fix API test expectation following 160220.
+
+        Rubber-stamped by Martin Robinson.
+
+        * tests/testatkroles.c:
+        (finish_loading): rename variable documentFrame -> document.
+        (test_webkit_atk_get_role_document_frame): check for ATK_ROLE_DOCUMENT_WEB instead of
+        ATK_ROLE_DOCUMENT_FRAME.
+        (test_webkit_atk_get_role_heading): rename variable documentFrame -> document.
+        (test_webkit_atk_get_role_image): ditto.
+        (test_webkit_atk_get_role_link): ditto.
+        (test_webkit_atk_get_role_list_and_item): ditto.
+        (test_webkit_atk_get_role_paragraph): ditto.
+        (test_webkit_atk_get_role_section): ditto.
+        (test_webkit_atk_get_role_table): ditto.
+        (test_webkit_atk_get_role_separator): ditto.
+        (test_webkit_atk_get_role_combobox): ditto.
+        (test_webkit_atk_get_role_form): ditto.
+        (test_webkit_atk_get_role_check_box): ditto.
+        (test_webkit_atk_get_role_entry): ditto.
+        (test_webkit_atk_get_role_label): ditto.
+        (test_webkit_atk_get_role_listbox): ditto.
+        (test_webkit_atk_get_role_password_text): ditto.
+        (test_webkit_atk_get_role_push_button): ditto.
+        (test_webkit_atk_get_role_radio_button): ditto.
+
+2013-12-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Fix GObject introspection warnings in webkitspellchecker
+        https://bugs.webkit.org/show_bug.cgi?id=125299
+
+        Reviewed by Philippe Normand.
+
+        * webkit/webkitspellchecker.cpp: Add missing ':' after some
+        gobject-introspection annotations.
+
 2013-12-03  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Push Remote Inspector debugging connection management into JavaScriptCore

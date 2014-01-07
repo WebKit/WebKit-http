@@ -89,7 +89,6 @@
 #import <WebCore/RenderWidget.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/ScriptController.h>
-#import <WebCore/ScriptValue.h>
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SmartReplace.h>
 #import <WebCore/StyleProperties.h>
@@ -100,6 +99,7 @@
 #import <WebCore/htmlediting.h>
 #import <WebCore/markup.h>
 #import <WebKitSystemInterface.h>
+#import <bindings/ScriptValue.h>
 #import <runtime/JSLock.h>
 #import <runtime/JSObject.h>
 #import <runtime/JSCJSValue.h>
@@ -1307,13 +1307,13 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 @implementation WebFrame
 
-- (id)init
+- (instancetype)init
 {
     return nil;
 }
 
 // Should be deprecated.
-- (id)initWithName:(NSString *)name webFrameView:(WebFrameView *)view webView:(WebView *)webView
+- (instancetype)initWithName:(NSString *)name webFrameView:(WebFrameView *)view webView:(WebView *)webView
 {
     return nil;
 }

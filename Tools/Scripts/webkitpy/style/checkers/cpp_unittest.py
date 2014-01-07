@@ -247,9 +247,8 @@ class CppStyleTestBase(unittest.TestCase):
     # Helper function to avoid needing to explicitly pass confidence
     # in all the unit test calls to cpp_style.process_file_data().
     def process_file_data(self, filename, file_extension, lines, error, unit_test_config={}):
-        """Call cpp_style.process_file_data() with the min_confidence."""
-        return cpp_style.process_file_data(filename, file_extension, lines,
-                                           error, self.min_confidence, unit_test_config)
+        checker = CppChecker(filename, file_extension, error, self.min_confidence, unit_test_config)
+        checker.check(lines)
 
     def perform_lint(self, code, filename, basic_error_rules, unit_test_config={}, lines_to_check=None):
         error_collector = ErrorCollector(self.assertTrue, FilterConfiguration(basic_error_rules), lines_to_check)
@@ -1767,6 +1766,7 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_lint('if (a = b == 1)', '')
         self.assert_multi_line_lint('#include <sys/io.h>\n', '')
         self.assert_multi_line_lint('#import <foo/bar.h>\n', '')
+        self.assert_multi_line_lint('#if __has_include(<ApplicationServices/ApplicationServicesPriv.h>)\n', '')
 
     def test_operator_methods(self):
         self.assert_lint('String operator+(const String&, const String&);', '')
@@ -1937,6 +1937,23 @@ class CppStyleTest(CppStyleTestBase):
 
         do_test(self, '// Newline\n// at EOF\n', False)
         do_test(self, '// No newline\n// at EOF', True)
+
+    def test_extra_newlines_at_eof(self):
+        def do_test(self, data, too_many_newlines):
+            error_collector = ErrorCollector(self.assertTrue)
+            self.process_file_data('foo.cpp', 'cpp', data.split('\n'),
+                                   error_collector)
+            # The warning appears only once.
+            self.assertEqual(
+                int(too_many_newlines),
+                error_collector.results().count(
+                    'There was more than one newline at the end of the file.'
+                    '  [whitespace/ending_newline] [5]'))
+
+        do_test(self, '// No Newline\n// at EOF', False)
+        do_test(self, '// One Newline\n// at EOF\n', False)
+        do_test(self, '// Two Newlines\n// at EOF\n\n', True)
+        do_test(self, '// Three Newlines\n// at EOF\n\n\n', True)
 
     def test_invalid_utf8(self):
         def do_test(self, raw_bytes, has_invalid_utf8):
@@ -2533,30 +2550,6 @@ class OrderOfIncludesTest(CppStyleTestBase):
 
         # Cheat os.path.abspath called in FileInfo class.
         self.os_path_abspath_orig = os.path.abspath
-        os.path.abspath = lambda value: value
-
-    def tearDown(self):
-        os.path.abspath = self.os_path_abspath_orig
-
-    def test_try_drop_common_suffixes(self):
-        self.assertEqual('foo/foo', cpp_style._drop_common_suffixes('foo/foo-inl.h'))
-        self.assertEqual('foo/bar/foo',
-                         cpp_style._drop_common_suffixes('foo/bar/foo_inl.h'))
-        self.assertEqual('foo/foo', cpp_style._drop_common_suffixes('foo/foo.cpp'))
-        self.assertEqual('foo/foo_unusualinternal',
-                         cpp_style._drop_common_suffixes('foo/foo_unusualinternal.h'))
-        self.assertEqual('',
-                         cpp_style._drop_common_suffixes('_test.cpp'))
-        self.assertEqual('test',
-                         cpp_style._drop_common_suffixes('test.cpp'))
-
-
-class OrderOfIncludesTest(CppStyleTestBase):
-    def setUp(self):
-        self.include_state = cpp_style._IncludeState()
-
-        # Cheat os.path.abspath called in FileInfo class.
-        self.os_path_abspath_orig = os.path.abspath
         self.os_path_isfile_orig = os.path.isfile
         os.path.abspath = lambda value: value
 
@@ -2877,8 +2870,7 @@ class OrderOfIncludesTest(CppStyleTestBase):
                          cpp_style._drop_common_suffixes('_test.cpp'))
         self.assertEqual('test',
                          cpp_style._drop_common_suffixes('test.cpp'))
-        self.assertEqual('test',
-                         cpp_style._drop_common_suffixes('test.cpp'))
+
 
 class CheckForFunctionLengthsTest(CppStyleTestBase):
     def setUp(self):
@@ -4938,7 +4930,7 @@ class WebKitStyleTest(CppStyleTestBase):
         { }''',
         ['Should be indented on a separate line, with the colon or comma first on that line.'
          '  [whitespace/indent] [4]',
-         'Comma should be at the beggining of the line in a member initialization list.'
+         'Comma should be at the beginning of the line in a member initialization list.'
          '  [whitespace/init] [4]'])
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc) :MySuperClass()
@@ -4965,6 +4957,18 @@ class WebKitStyleTest(CppStyleTestBase):
          'Wrong number of spaces before statement. (expected: 12)'
          '  [whitespace/indent] [4]',
          'Missing space after ,  [whitespace/comma] [3]'])
+
+        fine_example = (
+            'MyClass::MyClass(Document* doc)\n'
+            '    : MySuperClass()\n'
+            '#if !BLA(FOO)\n'
+            '    , MySuperClass()\n'
+            '    , m_doc(0)\n'
+            '#endif\n'
+            '    , m_myMember(0)\n'
+            '{ }')
+        self.assert_multi_line_lint(fine_example, '')
+
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc)
             :MySuperClass()
@@ -4972,9 +4976,10 @@ class WebKitStyleTest(CppStyleTestBase):
         'Missing spaces around :  [whitespace/init] [4]')
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc)
-            : MySuperClass() , m_doc(0)
+            : MySuperClass() ,
+            m_doc(0)
         { }''',
-        'Comma should be at the beggining of the line in a member initialization list.'
+        'Comma should be at the beginning of the line in a member initialization list.'
         '  [whitespace/init] [4]')
         self.assert_multi_line_lint('''\
         class MyClass : public Goo {
@@ -4986,7 +4991,13 @@ class WebKitStyleTest(CppStyleTestBase):
         , public foo {
         };''',
         '')
+        self.assert_multi_line_lint('''\
+        MyClass::MyClass(Document* doc)
+            : MySuperClass(doc, doc)
+        { }''',
+        '')
         self.assert_lint('o = foo(b ? bar() : baz());', '')
+        self.assert_lint('MYMACRO(a ? b() : c);', '')
 
     def test_other(self):
         # FIXME: Implement this.

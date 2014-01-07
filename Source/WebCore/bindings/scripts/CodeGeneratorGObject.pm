@@ -188,8 +188,7 @@ sub SkipAttribute {
     my $attribute = shift;
 
     if ($attribute->signature->extendedAttributes->{"Custom"}
-        || $attribute->signature->extendedAttributes->{"CustomGetter"}
-        || $attribute->signature->extendedAttributes->{"CustomSetter"}) {
+        || $attribute->signature->extendedAttributes->{"CustomGetter"}) {
         return 1;
     }
 
@@ -245,6 +244,7 @@ sub SkipAttribute {
 sub SkipFunction {
     my $object = shift;
     my $function = shift;
+    my $parentNode = shift;
     my $decamelize = shift;
     my $prefix = shift;
 
@@ -288,6 +288,21 @@ sub SkipFunction {
         return 1;
     }
 
+    # Skip dispatch_event methods, except the one already deprecated.
+    if ($parentNode->extendedAttributes->{"EventTarget"} && $function->signature->name eq "dispatchEvent"
+        && $functionName ne "webkit_dom_audio_track_list_dispatch_event"
+        && $functionName ne "webkit_dom_battery_manager_dispatch_event"
+        && $functionName ne "webkit_dom_dom_application_cache_dispatch_event"
+        && $functionName ne "webkit_dom_dom_window_dispatch_event"
+        && $functionName ne "webkit_dom_node_dispatch_event"
+        && $functionName ne "webkit_dom_text_track_cue_dispatch_event"
+        && $functionName ne "webkit_dom_text_track_dispatch_event"
+        && $functionName ne "webkit_dom_text_track_list_dispatch_event"
+        && $functionName ne "webkit_dom_video_track_list_dispatch_event"
+        && $functionName ne "webkit_dom_webkit_named_flow_dispatch_event"
+        && $functionName ne "webkit_dom_test_event_target_dispatch_event") {
+        return 1;
+    }
 
     if ($function->signature->name eq "set" and $parentNode->extendedAttributes->{"TypedArray"}) {
         return 1;
@@ -414,7 +429,8 @@ sub GetWriteableProperties {
         # FIXME: We are not generating setters for 'Replaceable'
         # attributes now, but we should somehow.
         my $replaceable = $property->signature->extendedAttributes->{"Replaceable"};
-        if (!$property->isReadOnly && $hasGtypeSignature && !$replaceable) {
+        my $custom = $property->signature->extendedAttributes->{"CustomSetter"};
+        if (!$property->isReadOnly && $hasGtypeSignature && !$replaceable && !$custom) {
             push(@result, $property);
         }
     }
@@ -484,12 +500,10 @@ sub GenerateProperty {
     my $writeable = !$attribute->isReadOnly;
 
     my $mutableString = "read-only";
-    my $custom = $attribute->signature->extendedAttributes->{"Custom"};
-    if ($writeable && $custom) {
+    my $hasCustomSetter = $attribute->signature->extendedAttributes->{"CustomSetter"};
+    if ($writeable && $hasCustomSetter) {
         $mutableStringconst = "read-only (due to custom functions needed in webkitdom)";
-        return;
-    }
-    if ($writeable && !$custom) {
+    } elsif ($writeable) {
         $gparamflag = "WEBKIT_PARAM_READWRITE";
         $mutableStringconst = "read-write";
     }
@@ -913,7 +927,7 @@ sub GenerateFunction {
 
     my $decamelize = decamelize($interfaceName);
 
-    if (SkipFunction($object, $function, $decamelize, $prefix)) {
+    if (SkipFunction($object, $function, $parentNode, $decamelize, $prefix)) {
         return;
     }
 
@@ -1287,7 +1301,8 @@ sub GenerateFunctions {
 
         # FIXME: We are not generating setters for 'Replaceable'
         # attributes now, but we should somehow.
-        if ($attribute->isReadOnly || $attribute->signature->extendedAttributes->{"Replaceable"}) {
+        my $custom = $attribute->signature->extendedAttributes->{"CustomSetter"};
+        if ($attribute->isReadOnly || $attribute->signature->extendedAttributes->{"Replaceable"} || $custom) {
             next TOP;
         }
         

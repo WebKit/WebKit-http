@@ -1148,6 +1148,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case FunctionReentryWatchpoint:
+    case TypedArrayWatchpoint:
         break;
     
     case CreateArguments:
@@ -1439,7 +1440,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         m_state.setHaveStructures(true);
         break;
     }
-    case GetIndexedPropertyStorage: {
+    case GetIndexedPropertyStorage:
+    case ConstantStoragePointer: {
         forNode(node).clear();
         break; 
     }
@@ -1468,6 +1470,19 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         node->setCanExit(true); // Lies! We can do better.
         filterByValue(node->child1(), node->function());
+        break;
+    }
+        
+    case CheckInBounds: {
+        JSValue left = forNode(node->child1()).value();
+        JSValue right = forNode(node->child2()).value();
+        if (left && right && left.isInt32() && right.isInt32()
+            && static_cast<uint32_t>(left.asInt32()) < static_cast<uint32_t>(right.asInt32())) {
+            m_state.setFoundConstants(true);
+            break;
+        }
+        
+        node->setCanExit(true);
         break;
     }
         

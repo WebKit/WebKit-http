@@ -296,6 +296,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Web
     , m_rubberBandsAtRight(true)
     , m_rubberBandsAtTop(true)
     , m_rubberBandsAtBottom(true)
+    , m_backgroundExtendsBeyondPage(false)
     , m_mainFrameInViewSourceMode(false)
     , m_pageCount(0)
     , m_renderTreeSize(0)
@@ -335,13 +336,13 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Web
     m_inspector = WebInspectorProxy::create(this);
 #endif
 #if ENABLE(FULLSCREEN_API)
-    m_fullScreenManager = WebFullScreenManagerProxy::create(this);
+    m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
 #if ENABLE(VIBRATION)
     m_vibration = WebVibrationProxy::create(this);
 #endif
 
-    m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, this);
+    m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
     // FIXME: If we ever expose the session storage size as a preference, we need to pass it here.
     m_process->context().storageManager().createSessionStorageNamespace(m_pageID, m_process->isValid() ? m_process->connection() : 0, std::numeric_limits<unsigned>::max());
@@ -472,13 +473,13 @@ void WebPageProxy::reattachToWebProcess()
     else
         m_process = m_process->context().createNewWebProcessRespectingProcessCountLimit();
     m_process->addExistingWebPage(this, m_pageID);
-    m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, this);
+    m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
 #if ENABLE(INSPECTOR)
     m_inspector = WebInspectorProxy::create(this);
 #endif
 #if ENABLE(FULLSCREEN_API)
-    m_fullScreenManager = WebFullScreenManagerProxy::create(this);
+    m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
 
     initializeWebPage();
@@ -599,7 +600,9 @@ bool WebPageProxy::maybeInitializeSandboxExtensionHandle(const URL& url, Sandbox
 
 void WebPageProxy::loadURL(const String& url, API::Object* userData)
 {
-    m_pageLoadState.setPendingAPIRequestURL(url);
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.setPendingAPIRequestURL(transaction, url);
 
     if (!isValid())
         reattachToWebProcess();
@@ -614,7 +617,9 @@ void WebPageProxy::loadURL(const String& url, API::Object* userData)
 
 void WebPageProxy::loadURLRequest(WebURLRequest* urlRequest, API::Object* userData)
 {
-    m_pageLoadState.setPendingAPIRequestURL(urlRequest->resourceRequest().url());
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.setPendingAPIRequestURL(transaction, urlRequest->resourceRequest().url());
 
     if (!isValid())
         reattachToWebProcess();
@@ -679,7 +684,9 @@ void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const Strin
     if (!isValid())
         reattachToWebProcess();
 
-    m_pageLoadState.setUnreachableURL(unreachableURL);
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.setUnreachableURL(transaction, unreachableURL);
 
     if (m_mainFrame)
         m_mainFrame->setUnreachableURL(unreachableURL);
@@ -722,7 +729,8 @@ void WebPageProxy::reload(bool reloadFromOrigin)
 
     if (m_backForwardList->currentItem()) {
         String url = m_backForwardList->currentItem()->url();
-        m_pageLoadState.setPendingAPIRequestURL(url);
+        auto transaction = m_pageLoadState.transaction();
+        m_pageLoadState.setPendingAPIRequestURL(transaction, url);
 
         // We may not have an extension yet if back/forward list was reinstated after a WebProcess crash or a browser relaunch
         bool createdExtension = maybeInitializeSandboxExtensionHandle(URL(URL(), url), sandboxExtensionHandle);
@@ -748,7 +756,9 @@ void WebPageProxy::goForward()
     if (!forwardItem)
         return;
 
-    m_pageLoadState.setPendingAPIRequestURL(forwardItem->url());
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.setPendingAPIRequestURL(transaction, forwardItem->url());
 
     if (!isValid()) {
         reattachToWebProcessWithItem(forwardItem);
@@ -773,7 +783,9 @@ void WebPageProxy::goBack()
     if (!backItem)
         return;
 
-    m_pageLoadState.setPendingAPIRequestURL(backItem->url());
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.setPendingAPIRequestURL(transaction, backItem->url());
 
     if (!isValid()) {
         reattachToWebProcessWithItem(backItem);
@@ -796,7 +808,9 @@ void WebPageProxy::goToBackForwardItem(WebBackForwardListItem* item)
         return;
     }
     
-    m_pageLoadState.setPendingAPIRequestURL(item->url());
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.setPendingAPIRequestURL(transaction, item->url());
 
     m_process->send(Messages::WebPage::GoToBackForwardItem(item->itemID()), m_pageID);
     m_process->responsivenessTimer()->start();
@@ -1404,8 +1418,10 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy* fr
     if (!isValid())
         return;
 
+    auto transaction = m_pageLoadState.transaction();
+
     if (action == PolicyIgnore)
-        m_pageLoadState.clearPendingAPIRequestURL();
+        m_pageLoadState.clearPendingAPIRequestURL(transaction);
 
     uint64_t downloadID = 0;
     if (action == PolicyDownload) {
@@ -1738,6 +1754,23 @@ void WebPageProxy::setRubberBandsAtBottom(bool rubberBandsAtBottom)
     m_rubberBandsAtBottom = rubberBandsAtBottom;
 }
 
+void WebPageProxy::setBackgroundExtendsBeyondPage(bool backgroundExtendsBeyondPage)
+{
+    if (backgroundExtendsBeyondPage == m_backgroundExtendsBeyondPage)
+        return;
+
+    m_backgroundExtendsBeyondPage = backgroundExtendsBeyondPage;
+
+    if (!isValid())
+        return;
+    m_process->send(Messages::WebPage::SetBackgroundExtendsBeyondPage(backgroundExtendsBeyondPage), m_pageID);
+}
+
+bool WebPageProxy::backgroundExtendsBeyondPage() const
+{
+    return m_backgroundExtendsBeyondPage;
+}
+
 void WebPageProxy::setPaginationMode(WebCore::Pagination::Mode mode)
 {
     if (mode == m_paginationMode)
@@ -2045,28 +2078,36 @@ double WebPageProxy::estimatedProgress() const
 
 void WebPageProxy::didStartProgress()
 {
-    m_pageLoadState.didStartProgress();
+    auto transaction = m_pageLoadState.transaction();
+    m_pageLoadState.didStartProgress(transaction);
 
+    m_pageLoadState.commitChanges();
     m_loaderClient.didStartProgress(this);
 }
 
 void WebPageProxy::didChangeProgress(double value)
 {
-    m_pageLoadState.didChangeProgress(value);
+    auto transaction = m_pageLoadState.transaction();
+    m_pageLoadState.didChangeProgress(transaction, value);
 
+    m_pageLoadState.commitChanges();
     m_loaderClient.didChangeProgress(this);
 }
 
 void WebPageProxy::didFinishProgress()
 {
-    m_pageLoadState.didFinishProgress();
+    auto transaction = m_pageLoadState.transaction();
+    m_pageLoadState.didFinishProgress(transaction);
 
+    m_pageLoadState.commitChanges();
     m_loaderClient.didFinishProgress(this);
 }
 
 void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, const String& url, const String& unreachableURL, CoreIPC::MessageDecoder& decoder)
 {
-    m_pageLoadState.clearPendingAPIRequestURL();
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.clearPendingAPIRequestURL(transaction);
 
     RefPtr<API::Object> userData;
     WebContextUserMessageDecoder messageDecoder(userData, process());
@@ -2078,11 +2119,12 @@ void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, const Strin
     MESSAGE_CHECK_URL(url);
 
     if (frame->isMainFrame())
-        m_pageLoadState.didStartProvisionalLoad(url, unreachableURL);
+        m_pageLoadState.didStartProvisionalLoad(transaction, url, unreachableURL);
 
     frame->setUnreachableURL(unreachableURL);
     frame->didStartProvisionalLoad(url);
 
+    m_pageLoadState.commitChanges();
     m_loaderClient.didStartProvisionalLoadForFrame(this, frame, userData.get());
 }
 
@@ -2097,11 +2139,14 @@ void WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t f
     MESSAGE_CHECK(frame);
     MESSAGE_CHECK_URL(url);
 
+    auto transaction = m_pageLoadState.transaction();
+
     if (frame->isMainFrame())
-        m_pageLoadState.didReceiveServerRedirectForProvisionalLoad(url);
+        m_pageLoadState.didReceiveServerRedirectForProvisionalLoad(transaction, url);
 
     frame->didReceiveServerRedirectForProvisionalLoad(url);
 
+    m_pageLoadState.commitChanges();
     m_loaderClient.didReceiveServerRedirectForProvisionalLoadForFrame(this, frame, userData.get());
 }
 
@@ -2115,11 +2160,14 @@ void WebPageProxy::didFailProvisionalLoadForFrame(uint64_t frameID, const Resour
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
+    auto transaction = m_pageLoadState.transaction();
+
     if (frame->isMainFrame())
-        m_pageLoadState.didFailProvisionalLoad();
+        m_pageLoadState.didFailProvisionalLoad(transaction);
 
     frame->didFailProvisionalLoad();
 
+    m_pageLoadState.commitChanges();
     m_loaderClient.didFailProvisionalLoadWithErrorForFrame(this, frame, error, userData.get());
 }
 
@@ -2146,8 +2194,10 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, const String& mimeTyp
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
+    auto transaction = m_pageLoadState.transaction();
+
     if (frame->isMainFrame()) {
-        m_pageLoadState.didCommitLoad();
+        m_pageLoadState.didCommitLoad(transaction);
         m_pageClient.didCommitLoadForMainFrame();
     }
 
@@ -2170,6 +2220,7 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, const String& mimeTyp
     if (frame->isMainFrame() && static_cast<FrameLoadType>(opaqueFrameLoadType) == FrameLoadTypeStandard)
         m_pageScaleFactor = 1;
 
+    m_pageLoadState.commitChanges();
     m_loaderClient.didCommitLoadForFrame(this, frame, userData.get());
 }
 
@@ -2196,11 +2247,14 @@ void WebPageProxy::didFinishLoadForFrame(uint64_t frameID, CoreIPC::MessageDecod
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
+    auto transaction = m_pageLoadState.transaction();
+
     if (frame->isMainFrame())
-        m_pageLoadState.didFinishLoad();
+        m_pageLoadState.didFinishLoad(transaction);
 
     frame->didFinishLoad();
 
+    m_pageLoadState.commitChanges();
     m_loaderClient.didFinishLoadForFrame(this, frame, userData.get());
 }
 
@@ -2216,11 +2270,14 @@ void WebPageProxy::didFailLoadForFrame(uint64_t frameID, const ResourceError& er
 
     clearLoadDependentCallbacks();
 
+    auto transaction = m_pageLoadState.transaction();
+
     if (frame->isMainFrame())
-        m_pageLoadState.didFailLoad();
+        m_pageLoadState.didFailLoad(transaction);
 
     frame->didFailLoad();
 
+    m_pageLoadState.commitChanges();
     m_loaderClient.didFailLoadWithErrorForFrame(this, frame, error, userData.get());
 }
 
@@ -2235,12 +2292,15 @@ void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint32_t 
     MESSAGE_CHECK(frame);
     MESSAGE_CHECK_URL(url);
 
-    if (frame->isMainFrame())
-        m_pageLoadState.didSameDocumentNavigation(url);
+    auto transaction = m_pageLoadState.transaction();
 
-    m_pageLoadState.clearPendingAPIRequestURL();
+    if (frame->isMainFrame())
+        m_pageLoadState.didSameDocumentNavigation(transaction, url);
+
+    m_pageLoadState.clearPendingAPIRequestURL(transaction);
     frame->didSameDocumentNavigation(url);
 
+    m_pageLoadState.commitChanges();
     m_loaderClient.didSameDocumentNavigationForFrame(this, frame, static_cast<SameDocumentNavigationType>(opaqueSameDocumentNavigationType), userData.get());
 }
 
@@ -2254,11 +2314,14 @@ void WebPageProxy::didReceiveTitleForFrame(uint64_t frameID, const String& title
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
+    auto transaction = m_pageLoadState.transaction();
+
     if (frame->isMainFrame())
-        m_pageLoadState.setTitle(title);
+        m_pageLoadState.setTitle(transaction, title);
 
     frame->didChangeTitle(title);
     
+    m_pageLoadState.commitChanges();
     m_loaderClient.didReceiveTitleForFrame(this, title, frame, userData.get());
 }
 
@@ -2368,8 +2431,10 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, uint32_t op
     if (!decoder.decode(messageDecoder))
         return;
 
+    auto transaction = m_pageLoadState.transaction();
+
     if (request.url() != m_pageLoadState.pendingAPIRequestURL())
-        m_pageLoadState.clearPendingAPIRequestURL();
+        m_pageLoadState.clearPendingAPIRequestURL(transaction);
 
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
@@ -3013,7 +3078,7 @@ void WebPageProxy::didFindStringMatches(const String& string, Vector<Vector<WebC
         apiRects.reserveInitialCapacity(rects.size());
 
         for (const auto& rect : rects)
-            apiRects.uncheckedAppend(WebRect::create(toAPI(rect)));
+            apiRects.uncheckedAppend(API::Rect::create(toAPI(rect)));
 
         matches.uncheckedAppend(API::Array::create(std::move(apiRects)));
     }
@@ -3663,11 +3728,12 @@ void WebPageProxy::processDidCrash()
 
     resetStateAfterProcessExited();
 
-    // FIXME: Consider calling reset after calling out to the loader client,
-    // having the page load state available could be useful.
-    m_pageLoadState.reset();
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.reset(transaction);
 
     m_pageClient.processDidCrash();
+
     m_loaderClient.processDidCrash(this);
 }
 
@@ -3825,6 +3891,7 @@ void WebPageProxy::initializeCreationParameters()
     m_creationParameters.minimumLayoutSize = m_minimumLayoutSize;
     m_creationParameters.autoSizingShouldExpandToViewHeight = m_autoSizingShouldExpandToViewHeight;
     m_creationParameters.scrollPinningBehavior = m_scrollPinningBehavior;
+    m_creationParameters.backgroundExtendsBeyondPage = m_backgroundExtendsBeyondPage;
 
 #if PLATFORM(MAC)
     m_creationParameters.layerHostingMode = m_layerHostingMode;

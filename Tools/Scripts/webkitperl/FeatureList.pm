@@ -111,6 +111,7 @@ my (
     $mouseCursorScaleSupport,
     $netscapePluginAPISupport,
     $networkInfoSupport,
+    $networkProcessSupport,
     $nosniffSupport,
     $notificationsSupport,
     $orientationEventsSupport,
@@ -165,7 +166,7 @@ my @features = (
       define => "ENABLE_ACCELERATED_2D_CANVAS", default => 0, value => \$accelerated2DCanvasSupport },
 
     { option => "battery-status", desc => "Toggle Battery Status support",
-      define => "ENABLE_BATTERY_STATUS", default => (isEfl() || isBlackBerry()), value => \$batteryStatusSupport },
+      define => "ENABLE_BATTERY_STATUS", default => (isEfl() || isBlackBerry() || isGtk()), value => \$batteryStatusSupport },
 
     { option => "blob", desc => "Toggle Blob support",
       define => "ENABLE_BLOB", default => (isAppleMacWebKit() || isGtk() || isBlackBerry() || isEfl()), value => \$blobSupport },
@@ -426,7 +427,7 @@ my @features = (
       define => "USE_SYSTEM_MALLOC", default => (isBlackBerry() || isWinCE() || isHaiku()), value => \$systemMallocSupport },
 
     { option => "template-element", desc => "Toggle HTMLTemplateElement support",
-      define => "ENABLE_TEMPLATE_ELEMENT", default => (isAppleWebKit() || isEfl() || isGtk()), value => \$templateElementSupport },
+      define => "ENABLE_TEMPLATE_ELEMENT", default => 1, value => \$templateElementSupport },
 
     { option => "text-autosizing", desc => "Toggle Text Autosizing support",
       define => "ENABLE_TEXT_AUTOSIZING", default => isBlackBerry(), value => \$textAutosizingSupport },
@@ -484,6 +485,9 @@ my @features = (
 
     { option => "cloop", desc => "Force use of the llint c loop",
       define => "ENABLE_LLINT_C_LOOP", default => 0, value => \$forceCLoop },
+
+    { option => "network-process", desc => "Toggle Network Process support",
+      define => "ENABLE_NETWORK_PROCESS", default => 0, value => \$networkProcessSupport },
 );
 
 sub getFeatureOptionList()

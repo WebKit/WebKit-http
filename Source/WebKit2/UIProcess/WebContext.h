@@ -90,7 +90,7 @@ extern NSString *SchemeForCustomProtocolRegisteredNotificationName;
 extern NSString *SchemeForCustomProtocolUnregisteredNotificationName;
 #endif
 
-class WebContext : public API::TypedObject<API::Object::Type::Context>, private CoreIPC::MessageReceiver
+class WebContext : public API::ObjectImpl<API::Object::Type::Context>, private CoreIPC::MessageReceiver
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , private PluginInfoStoreClient
 #endif
@@ -100,10 +100,6 @@ public:
 
     static PassRefPtr<WebContext> create(const String& injectedBundlePath);
     virtual ~WebContext();
-
-#if PLATFORM(IOS)
-    static WebContext *sharedProcessContext();
-#endif
 
     static const Vector<WebContext*>& allContexts();
 
@@ -119,8 +115,8 @@ public:
         m_supplements.add(T::supplementName(), T::create(this));
     }
 
-    void addMessageReceiver(CoreIPC::StringReference messageReceiverName, CoreIPC::MessageReceiver*);
-    void addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver*);
+    void addMessageReceiver(CoreIPC::StringReference messageReceiverName, CoreIPC::MessageReceiver&);
+    void addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver&);
     void removeMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID);
 
     bool dispatchMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
@@ -520,6 +516,13 @@ void WebContext::sendToNetworkingProcess(T&& message)
 {
     switch (m_processModel) {
     case ProcessModelSharedSecondaryProcess:
+#if ENABLE(NETWORK_PROCESS)
+        if (m_usesNetworkProcess) {
+            if (m_networkProcess->canSendMessage())
+                m_networkProcess->send(std::forward<T>(message), 0);
+            return;
+        }
+#endif
         if (!m_processes.isEmpty() && m_processes[0]->canSendMessage())
             m_processes[0]->send(std::forward<T>(message), 0);
         return;
@@ -540,6 +543,13 @@ void WebContext::sendToNetworkingProcessRelaunchingIfNecessary(T&& message)
 {
     switch (m_processModel) {
     case ProcessModelSharedSecondaryProcess:
+#if ENABLE(NETWORK_PROCESS)
+        if (m_usesNetworkProcess) {
+            ensureNetworkProcess();
+            m_networkProcess->send(std::forward<T>(message), 0);
+            return;
+        }
+#endif
         ensureSharedWebProcess();
         m_processes[0]->send(std::forward<T>(message), 0);
         return;

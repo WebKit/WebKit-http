@@ -33,10 +33,13 @@
 #include "DownloadProxyMessages.h"
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessMessages.h"
-#include "SecItemShimProxy.h"
 #include "WebContext.h"
 #include "WebProcessMessages.h"
 #include <wtf/RunLoop.h>
+
+#if ENABLE(SEC_ITEM_SHIM)
+#include "SecItemShimProxy.h"
+#endif
 
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, connection())
 
@@ -108,6 +111,8 @@ void NetworkProcessProxy::networkProcessCrashedOrFailedToLaunch()
 
 #if PLATFORM(MAC)
         reply->send(CoreIPC::Attachment(0, MACH_MSG_TYPE_MOVE_SEND));
+#elif USE(UNIX_DOMAIN_SOCKETS)
+        reply->send(CoreIPC::Attachment());
 #else
         notImplemented();
 #endif
@@ -158,6 +163,8 @@ void NetworkProcessProxy::didCreateNetworkConnectionToWebProcess(const CoreIPC::
 
 #if PLATFORM(MAC)
     reply->send(CoreIPC::Attachment(connectionIdentifier.port(), MACH_MSG_TYPE_MOVE_SEND));
+#elif USE(UNIX_DOMAIN_SOCKETS)
+    reply->send(connectionIdentifier);
 #else
     notImplemented();
 #endif

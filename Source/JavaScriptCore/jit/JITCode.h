@@ -46,11 +46,8 @@ class ForOSREntryJITCode;
 class JITCode;
 }
 
-#if ENABLE(JIT)
-class VM;
-class JSStack;
 struct ProtoCallFrame;
-#endif
+class VM;
 
 class JITCode : public ThreadSafeRefCounted<JITCode> {
 public:

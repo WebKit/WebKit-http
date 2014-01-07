@@ -69,10 +69,10 @@ typedef struct objc_object *id;
 #endif
 
 #if USE(CFNETWORK)
+typedef const struct _CFCachedURLResponse* CFCachedURLResponseRef;
 typedef struct _CFURLConnection* CFURLConnectionRef;
 typedef int CFHTTPCookieStorageAcceptPolicy;
 typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
-typedef struct CFURLConnectionClient_V6 CFURLConnectionClient_V6;
 #endif
 
 #if PLATFORM(MAC) || USE(CFNETWORK)
@@ -142,7 +142,6 @@ public:
     const ResourceRequest& currentRequest() const;
     static void setHostAllowsAnyHTTPSCertificate(const String&);
     static void setClientCertificate(const String& host, CFDataRef);
-    static CFURLConnectionClient_V6* connectionClientCallbacks();
 
 #if USE(QUICK_LOOK)
     QuickLookHandle* quickLookHandle() { return m_quickLook.get(); }
@@ -180,6 +179,7 @@ public:
     void sendPendingRequest();
     bool cancelledOrClientless();
     void ensureReadBuffer();
+    size_t currentStreamPosition() const;
     static SoupSession* defaultSession();
     static SoupSession* createTestingSession();
     static SoupSession* createPrivateBrowsingSession();
@@ -214,8 +214,10 @@ public:
     void continueCanAuthenticateAgainstProtectionSpace(bool);
 #endif
 
-#if PLATFORM(MAC)
     // Called in response to ResourceHandleClient::willCacheResponseAsync().
+#if USE(CFNETWORK)
+    void continueWillCacheResponse(CFCachedURLResponseRef);
+#elif PLATFORM(MAC)
     void continueWillCacheResponse(NSCachedURLResponse *);
 #endif
 

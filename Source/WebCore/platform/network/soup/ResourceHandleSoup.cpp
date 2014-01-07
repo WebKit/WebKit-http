@@ -4,7 +4,7 @@
  * Copyright (C) 2008 Xan Lopez <xan@gnome.org>
  * Copyright (C) 2008, 2010 Collabora Ltd.
  * Copyright (C) 2009 Holger Hans Peter Freyther
- * Copyright (C) 2009 Gustavo Noronha Silva <gns@gnome.org>
+ * Copyright (C) 2009, 2013 Gustavo Noronha Silva <gns@gnome.org>
  * Copyright (C) 2009 Christian Dywan <christian@imendio.com>
  * Copyright (C) 2009, 2010, 2011, 2012 Igalia S.L.
  * Copyright (C) 2009 John Kjellberg <john.kjellberg@power.alstom.com>
@@ -82,7 +82,7 @@ inline static void soupLogPrinter(SoupLogger*, SoupLoggerLogLevel, char directio
 }
 
 static bool loadingSynchronousRequest = false;
-static const size_t defaultReadBufferSize = 8192;
+static const size_t gDefaultReadBufferSize = 8192;
 
 class WebCoreSynchronousLoader : public ResourceHandleClient {
     WTF_MAKE_NONCOPYABLE(WebCoreSynchronousLoader);
@@ -146,7 +146,18 @@ public:
 
     virtual void didReceiveData(ResourceHandle*, const char* data, int length, int)
     {
-        m_data.append(data, length);
+        ASSERT_NOT_REACHED();
+    }
+
+    virtual void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer> buffer, int /* encodedLength */)
+    {
+        // This pattern is suggested by SharedBuffer.h.
+        const char* segment;
+        unsigned position = 0;
+        while (unsigned length = buffer->getSomeData(segment, position)) {
+            m_data.append(segment, length);
+            position += length;
+        }
     }
 
     virtual void didFinishLoading(ResourceHandle*, double)
@@ -205,14 +216,13 @@ private:
         if (!certificateData)
             return String();
 
-        static const size_t sha1HashSize = 20;
         SHA1 sha1;
         sha1.addBytes(certificateData->data, certificateData->len);
 
-        Vector<uint8_t, sha1HashSize> digest;
+        SHA1::Digest digest;
         sha1.computeHash(digest);
 
-        return base64Encode(reinterpret_cast<const char*>(digest.data()), sha1HashSize);
+        return base64Encode(reinterpret_cast<const char*>(digest.data()), SHA1::hashSize);
     }
 
     HashSet<String> m_certificates;
@@ -302,21 +312,20 @@ void ResourceHandle::ensureReadBuffer()
 {
     ResourceHandleInternal* d = getInternal();
 
-    size_t bufferSize;
-    char* bufferPtr = client()->getOrCreateReadBuffer(defaultReadBufferSize, bufferSize);
-    if (bufferPtr) {
-        d->m_defaultReadBuffer.clear();
-        d->m_readBufferPtr = bufferPtr;
-        d->m_readBufferSize = bufferSize;
-    } else if (!d->m_defaultReadBuffer) {
-        d->m_defaultReadBuffer.set(static_cast<char*>(g_malloc(defaultReadBufferSize)));
-        d->m_readBufferPtr = d->m_defaultReadBuffer.get();
-        d->m_readBufferSize = defaultReadBufferSize;
-    } else
-        d->m_readBufferPtr = d->m_defaultReadBuffer.get();
+    if (d->m_soupBuffer)
+        return;
 
-    ASSERT(d->m_readBufferPtr);
-    ASSERT(d->m_readBufferSize);
+    // Non-NetworkProcess clients are able to give a buffer to the ResourceHandle to avoid expensive copies. If
+    // we do get a buffer from the client, we want the client to free it, so we create the soup buffer with
+    // SOUP_MEMORY_TEMPORARY.
+    size_t bufferSize;
+    char* bufferFromClient = client()->getOrCreateReadBuffer(gDefaultReadBufferSize, bufferSize);
+    if (bufferFromClient)
+        d->m_soupBuffer.set(soup_buffer_new(SOUP_MEMORY_TEMPORARY, bufferFromClient, bufferSize));
+    else
+        d->m_soupBuffer.set(soup_buffer_new(SOUP_MEMORY_TAKE, static_cast<char*>(g_malloc(gDefaultReadBufferSize)), gDefaultReadBufferSize));
+
+    ASSERT(d->m_soupBuffer);
 }
 
 static bool isAuthenticationFailureStatusCode(int httpStatusCode)
@@ -525,7 +534,7 @@ static void redirectSkipCallback(GObject*, GAsyncResult* asyncResult, gpointer d
     }
 
     if (bytesSkipped > 0) {
-        g_input_stream_skip_async(d->m_inputStream.get(), defaultReadBufferSize, G_PRIORITY_DEFAULT,
+        g_input_stream_skip_async(d->m_inputStream.get(), gDefaultReadBufferSize, G_PRIORITY_DEFAULT,
             d->m_cancellable.get(), redirectSkipCallback, handle.get());
         return;
     }
@@ -558,6 +567,7 @@ static void cleanupSoupRequestOperation(ResourceHandle* handle, bool isDestroyin
     d->m_inputStream.clear();
     d->m_multipartInputStream.clear();
     d->m_cancellable.clear();
+    d->m_soupBuffer.clear();
 
     if (d->m_soupMessage) {
         g_signal_handlers_disconnect_matched(d->m_soupMessage.get(), G_SIGNAL_MATCH_DATA,
@@ -565,11 +575,6 @@ static void cleanupSoupRequestOperation(ResourceHandle* handle, bool isDestroyin
         g_object_set_data(G_OBJECT(d->m_soupMessage.get()), "handle", 0);
         d->m_soupMessage.clear();
     }
-
-    if (d->m_readBufferPtr)
-        d->m_readBufferPtr = 0;
-    if (!d->m_defaultReadBuffer)
-        d->m_readBufferSize = 0;
 
     if (d->m_timeoutSource) {
         g_source_destroy(d->m_timeoutSource.get());
@@ -599,6 +604,18 @@ static bool handleUnignoredTLSErrors(ResourceHandle* handle)
 
     handle->client()->didFail(handle, ResourceError::tlsError(d->m_soupRequest.get(), response.soupMessageTLSErrors(), response.soupMessageCertificate()));
     return true;
+}
+
+size_t ResourceHandle::currentStreamPosition() const
+{
+    GInputStream* baseStream = d->m_inputStream.get();
+    while (!G_IS_SEEKABLE(baseStream) && G_IS_FILTER_INPUT_STREAM(baseStream))
+        baseStream = g_filter_input_stream_get_base_stream(G_FILTER_INPUT_STREAM(baseStream));
+
+    if (!G_IS_SEEKABLE(baseStream))
+        return 0;
+
+    return g_seekable_tell(G_SEEKABLE(baseStream));
 }
 
 static void nextMultipartResponsePartCallback(GObject* /*source*/, GAsyncResult* result, gpointer data)
@@ -639,8 +656,10 @@ static void nextMultipartResponsePartCallback(GObject* /*source*/, GAsyncResult*
         return;
     }
 
+    d->m_previousPosition = 0;
+
     handle->ensureReadBuffer();
-    g_input_stream_read_async(d->m_inputStream.get(), d->m_readBufferPtr, d->m_readBufferSize,
+    g_input_stream_read_async(d->m_inputStream.get(), const_cast<char*>(d->m_soupBuffer->data), d->m_soupBuffer->length,
         G_PRIORITY_DEFAULT, d->m_cancellable.get(), readCallback, handle.get());
 }
 
@@ -670,12 +689,10 @@ static void sendRequestCallback(GObject*, GAsyncResult* result, gpointer data)
         return;
     }
 
-    ASSERT(!d->m_readBufferPtr);
-
     if (soupMessage) {
         if (SOUP_STATUS_IS_REDIRECTION(soupMessage->status_code) && shouldRedirect(handle.get())) {
             d->m_inputStream = inputStream;
-            g_input_stream_skip_async(d->m_inputStream.get(), defaultReadBufferSize, G_PRIORITY_DEFAULT,
+            g_input_stream_skip_async(d->m_inputStream.get(), gDefaultReadBufferSize, G_PRIORITY_DEFAULT,
                 d->m_cancellable.get(), redirectSkipCallback, handle.get());
             return;
         }
@@ -716,7 +733,7 @@ static void sendRequestCallback(GObject*, GAsyncResult* result, gpointer data)
     d->m_inputStream = inputStream;
 
     handle->ensureReadBuffer();
-    g_input_stream_read_async(d->m_inputStream.get(), d->m_readBufferPtr, d->m_readBufferSize,
+    g_input_stream_read_async(d->m_inputStream.get(), const_cast<char*>(d->m_soupBuffer->data), d->m_soupBuffer->length,
         G_PRIORITY_DEFAULT, d->m_cancellable.get(), readCallback, handle.get());
 }
 
@@ -1333,16 +1350,23 @@ static void readCallback(GObject*, GAsyncResult* asyncResult, gpointer data)
     // It's mandatory to have sent a response before sending data
     ASSERT(!d->m_response.isNull());
 
-    handle->client()->didReceiveData(handle.get(), d->m_readBufferPtr, bytesRead, bytesRead);
+    size_t currentPosition = handle->currentStreamPosition();
+    size_t encodedDataLength = currentPosition ? currentPosition - d->m_previousPosition : bytesRead;
 
-    // didReceiveData may cancel the load, which may release the last reference.
+    ASSERT(d->m_soupBuffer);
+    d->m_soupBuffer->length = bytesRead; // The buffer might be larger than the number of bytes read. SharedBuffer looks at the length property.
+    handle->client()->didReceiveBuffer(handle.get(), SharedBuffer::wrapSoupBuffer(d->m_soupBuffer.release()), encodedDataLength);
+
+    d->m_previousPosition = currentPosition;
+
+    // didReceiveBuffer may cancel the load, which may release the last reference.
     if (handle->cancelledOrClientless()) {
         cleanupSoupRequestOperation(handle.get());
         return;
     }
 
     handle->ensureReadBuffer();
-    g_input_stream_read_async(d->m_inputStream.get(), d->m_readBufferPtr, d->m_readBufferSize, G_PRIORITY_DEFAULT,
+    g_input_stream_read_async(d->m_inputStream.get(), const_cast<char*>(d->m_soupBuffer->data), d->m_soupBuffer->length, G_PRIORITY_DEFAULT,
         d->m_cancellable.get(), readCallback, handle.get());
 }
 

@@ -1,3 +1,114 @@
+2013-12-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Push More Inspector Required Classes Down into JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=125324
+
+        Reviewed by Timothy Hatcher.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        * WebCoreSupport/WebInspectorClient.mm:
+        * WebView/WebFrame.mm:
+        * WebView/WebView.mm:
+
+2013-12-03  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/125139> Modernize the WebKit API headers
+        <rdar://problem/15540175>
+
+        This consists of three main changes:
+        1) Converting the return type of initializer methods to instancetype.
+        2) Declaring properties rather than getters and setters.
+        3) Declaring explicitly sized enums.
+
+        Changing the declarations from getters and setters to properties also required
+        updating the headerdoc in a number of places.
+
+        Reviewed by Anders Carlsson.
+
+        * DOM/WebDOMOperations.h:
+        * History/WebBackForwardList.h:
+        * History/WebHistory.h:
+        * History/WebHistoryItem.h:
+        * History/WebHistoryItem.mm:
+        * Plugins/WebPlugin.h:
+        * Plugins/WebPluginContainer.h:
+        * WebView/WebArchive.h:
+        * WebView/WebArchive.mm:
+        * WebView/WebDataSource.h:
+        * WebView/WebDataSource.mm:
+        * WebView/WebEditingDelegate.h:
+        * WebView/WebFrame.h:
+        * WebView/WebFrame.mm:
+        * WebView/WebFrameView.h:
+        * WebView/WebPolicyDelegate.h:
+        * WebView/WebPreferences.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences cacheModel]): Cast to the enum.
+        * WebView/WebResource.h:
+        * WebView/WebResource.mm:
+        * WebView/WebUIDelegate.h:
+        * WebView/WebView.h:
+        * WebView/WebView.mm:
+        (+[WebView _didSetCacheModel]): Fix the return type.
+
+2013-12-10  Mark Rowe  <mrowe@apple.com>
+
+        <http://webkit.org/b/125556> WebKit doesn't deal with longer bundle versions correctly
+        <rdar://problem/15634192>
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebView.mm:
+        (createUserVisibleWebKitVersionString): Strip as many leading digits as is necessary to
+        bring the major component of the version down to 3 digits.
+
+2013-12-09  Sam Weinig  <sam@webkit.org>
+
+        Fix the build of projects including <WebKit/WebUIDelegatePrivate.h>
+
+        Rubber-stamped by Dan Bernstein.
+
+        * WebView/WebAllowDenyPolicyListener.h:
+        Use TARGET_OS_IPHONE rather than PLATFORM(IOS) in an exposed header.
+
+2013-12-05  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Add a runtime-setting for the MediaSource constructor.
+        https://bugs.webkit.org/show_bug.cgi?id=125336
+
+        Reviewed by Eric Carlson.
+
+        Add a private WebPreference which controls the WebCore mediaSourceEnabled setting.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences mediaSourceEnabled]):
+        (-[WebPreferences setMediaSourceEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2013-12-05  Mark Lam  <mark.lam@apple.com>
+
+        C Loop LLINT layout test regressions.
+        https://bugs.webkit.org/show_bug.cgi?id=125314.
+
+        Reviewed by Geoffrey Garen.
+
+        The regression was due to the ENABLE_LLINT_C_LOOP flag not being included
+        in the build of the WebKit and WebKit2 components. As a result, some fields
+        in JSC::VM were ifdef'ed out in WebCore and JSC, but not in WebKit and
+        WebKit2. This resulted in VM::m_initializingObjectClass having 2 different
+        offsets depending on whether it is accessed from WebCore and JSC or from
+        WebKit and WebKit2, and chaos ensued.
+
+        This issue will manifest when we pass --cloop to build-webkit.
+        The fix is simply to add ENABLE_LLINT_C_LOOP to FEATURE_DEFINES for WebKit
+        and WebKit2.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2013-12-04  Brian J. Burg  <burg@cs.washington.edu>
 
         Consolidate various frame snapshot capabilities.

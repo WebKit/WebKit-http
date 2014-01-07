@@ -39,7 +39,6 @@
 #include "GraphicsContext.h"
 #include "InspectorClient.h"
 #include "InspectorOverlayPage.h"
-#include "InspectorValues.h"
 #include "MainFrame.h"
 #include "Node.h"
 #include "Page.h"
@@ -55,10 +54,13 @@
 #include "RenderView.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
-#include "ScriptValue.h"
 #include "Settings.h"
 #include "StyledElement.h"
+#include <bindings/ScriptValue.h>
+#include <inspector/InspectorValues.h>
 #include <wtf/text/StringBuilder.h>
+
+using namespace Inspector;
 
 namespace WebCore {
 
@@ -595,12 +597,12 @@ static PassRefPtr<InspectorObject> buildObjectForShapeOutside(Frame* containingF
     LayoutRect shapeBounds = shapeOutsideInfo->computedShapePhysicalBoundingBox();
     FloatQuad shapeQuad = renderer->localToAbsoluteQuad(FloatRect(shapeBounds));
     contentsQuadToPage(containingFrame->page()->mainFrame().view(), containingFrame->view(), shapeQuad);
-    shapeObject->setArray("bounds", buildArrayForQuad(shapeQuad));
+    shapeObject->setArray(ASCIILiteral("bounds"), buildArrayForQuad(shapeQuad));
 
-    Path path;
-    shapeOutsideInfo->computedShape().buildPath(path);
+    Shape::DisplayPaths paths;
+    shapeOutsideInfo->computedShape().buildDisplayPaths(paths);
 
-    if (path.length()) {
+    if (paths.shape.length()) {
         RefPtr<InspectorArray> shapePath = InspectorArray::create();
         PathApplyInfo info;
         info.rootView = containingFrame->page()->mainFrame().view();
@@ -609,9 +611,18 @@ static PassRefPtr<InspectorObject> buildObjectForShapeOutside(Frame* containingF
         info.renderer = renderer;
         info.shapeOutsideInfo = shapeOutsideInfo;
 
-        path.apply(&info, &appendPathSegment);
+        paths.shape.apply(&info, &appendPathSegment);
 
-        shapeObject->setArray("path", shapePath.release());
+        shapeObject->setArray(ASCIILiteral("shape"), shapePath.release());
+
+        if (paths.marginShape.length()) {
+            shapePath = InspectorArray::create();
+            info.array = shapePath.get();
+
+            paths.marginShape.apply(&info, &appendPathSegment);
+
+            shapeObject->setArray(ASCIILiteral("marginShape"), shapePath.release());
+        }
     }
 
     return shapeObject.release();

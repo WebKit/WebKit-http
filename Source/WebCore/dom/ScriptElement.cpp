@@ -42,11 +42,11 @@
 #include "ScriptController.h"
 #include "ScriptRunner.h"
 #include "ScriptSourceCode.h"
-#include "ScriptValue.h"
 #include "ScriptableDocumentParser.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "TextNodeTraversal.h"
+#include <bindings/ScriptValue.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringHash.h>
@@ -75,7 +75,7 @@ ScriptElement::ScriptElement(Element* element, bool parserInserted, bool already
 {
     ASSERT(m_element);
     if (parserInserted && m_element->document().scriptableDocumentParser() && !m_element->document().isInDocumentWrite())
-        m_startLineNumber = m_element->document().scriptableDocumentParser()->lineNumber();
+        m_startLineNumber = m_element->document().scriptableDocumentParser()->textPosition().m_line;
 }
 
 ScriptElement::~ScriptElement()

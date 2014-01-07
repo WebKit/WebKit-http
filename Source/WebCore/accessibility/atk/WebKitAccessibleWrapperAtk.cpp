@@ -528,12 +528,45 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
         attributeSet = addToAtkAttributeSet(attributeSet, "sort", sortAttribute.string().utf8().data());
     }
 
+    // Landmarks will be exposed with xml-roles object attributes, with the exception
+    // of LandmarkApplicationRole, which will be exposed with ATK_ROLE_EMBEDDED.
+    AccessibilityRole role = coreObject->roleValue();
+    switch (role) {
+    case LandmarkBannerRole:
+        attributeSet = addToAtkAttributeSet(attributeSet, "xml-roles", "banner");
+        break;
+    case LandmarkComplementaryRole:
+        attributeSet = addToAtkAttributeSet(attributeSet, "xml-roles", "complementary");
+        break;
+    case LandmarkContentInfoRole:
+        attributeSet = addToAtkAttributeSet(attributeSet, "xml-roles", "contentinfo");
+        break;
+    case LandmarkMainRole:
+        attributeSet = addToAtkAttributeSet(attributeSet, "xml-roles", "main");
+        break;
+    case LandmarkNavigationRole:
+        attributeSet = addToAtkAttributeSet(attributeSet, "xml-roles", "navigation");
+        break;
+    case LandmarkSearchRole:
+        attributeSet = addToAtkAttributeSet(attributeSet, "xml-roles", "search");
+        break;
+    default:
+        break;
+    }
+
     return attributeSet;
 }
 
 static AtkRole atkRole(AccessibilityRole role)
 {
     switch (role) {
+    case ApplicationAlertDialogRole:
+    case ApplicationAlertRole:
+        return ATK_ROLE_ALERT;
+    case ApplicationDialogRole:
+        return ATK_ROLE_DIALOG;
+    case ApplicationStatusRole:
+        return ATK_ROLE_STATUSBAR;
     case UnknownRole:
         return ATK_ROLE_UNKNOWN;
     case AudioRole:
@@ -558,7 +591,10 @@ static AtkRole atkRole(AccessibilityRole role)
     case StaticTextRole:
         return ATK_ROLE_TEXT;
     case OutlineRole:
+    case TreeRole:
         return ATK_ROLE_TREE;
+    case TreeItemRole:
+        return ATK_ROLE_TREE_ITEM;
     case MenuBarRole:
         return ATK_ROLE_MENU_BAR;
     case MenuListPopupRole:
@@ -590,7 +626,7 @@ static AtkRole atkRole(AccessibilityRole role)
     case SplitGroupRole:
         return ATK_ROLE_SPLIT_PANE;
     case SplitterRole:
-        return ATK_ROLE_UNKNOWN;
+        return ATK_ROLE_SEPARATOR;
     case ColorWellRole:
         return ATK_ROLE_COLOR_CHOOSER;
     case ListRole:
@@ -621,8 +657,8 @@ static AtkRole atkRole(AccessibilityRole role)
         return ATK_ROLE_IMAGE;
     case ListMarkerRole:
         return ATK_ROLE_TEXT;
-    case WebAreaRole:
-        // return ATK_ROLE_HTML_CONTAINER; // Is this right?
+    case DocumentRole:
+    case DocumentArticleRole:
         return ATK_ROLE_DOCUMENT_FRAME;
     case HeadingRole:
         return ATK_ROLE_HEADING;
@@ -648,6 +684,21 @@ static AtkRole atkRole(AccessibilityRole role)
         return ATK_ROLE_SPIN_BUTTON;
     case TabRole:
         return ATK_ROLE_PAGE_TAB;
+    case UserInterfaceTooltipRole:
+        return ATK_ROLE_TOOL_TIP;
+    case WebAreaRole:
+        return ATK_ROLE_DOCUMENT_WEB;
+    case LandmarkApplicationRole:
+        return ATK_ROLE_EMBEDDED;
+#if ATK_CHECK_VERSION(2, 11, 3)
+    case LandmarkBannerRole:
+    case LandmarkComplementaryRole:
+    case LandmarkContentInfoRole:
+    case LandmarkMainRole:
+    case LandmarkNavigationRole:
+    case LandmarkSearchRole:
+        return ATK_ROLE_LANDMARK;
+#endif
     default:
         return ATK_ROLE_UNKNOWN;
     }

@@ -140,7 +140,7 @@ WebInspectorProxy::WebInspectorProxy(WebPageProxy* page)
 #endif
 {
     m_level = WebInspectorPageGroups::shared().inspectorLevel(m_page->pageGroup());
-    m_page->process().addMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_page->pageID(), this);
+    m_page->process().addMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_page->pageID(), *this);
 }
 
 WebInspectorProxy::~WebInspectorProxy()
@@ -365,7 +365,7 @@ static bool isMainInspectorPage(const WebInspectorProxy* webInspectorProxy, WKUR
 {
     // Use URL so we can compare just the paths.
     URL inspectorURL(URL(), webInspectorProxy->inspectorPageURL());
-    URL requestURL(URL(), toImpl(requestRef)->url());
+    URL requestURL(URL(), toImpl(requestRef)->resourceRequest().url());
 
     ASSERT(WebCore::SchemeRegistry::shouldTreatURLSchemeAsLocal(inspectorURL.protocol()));
 

@@ -138,8 +138,6 @@ public:
     virtual void stopAnimation() OVERRIDE;
     virtual void resetAnimation() OVERRIDE;
 
-    virtual unsigned decodedSize() const OVERRIDE;
-
     virtual void drawPattern(GraphicsContext*, const FloatRect& srcRect, const AffineTransform& patternTransform,
         const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator, const FloatRect& destRect, BlendMode = BlendModeNormal) OVERRIDE;
 
@@ -271,6 +269,15 @@ protected:
 #endif
 
 private:
+    virtual bool decodedDataIsPurgeable() const OVERRIDE
+    {
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+        return true;
+#else
+        return false;
+#endif
+    }
+
     ImageSource m_source;
     mutable IntSize m_size; // The size to use for the overall image (will just be the size of the first image).
     mutable IntSize m_sizeRespectingOrientation;
@@ -310,6 +317,8 @@ private:
 
     RefPtr<Image> m_cachedImage;
 };
+
+IMAGE_TYPE_CASTS(BitmapImage)
 
 }
 

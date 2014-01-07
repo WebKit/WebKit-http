@@ -361,6 +361,7 @@ webkit.org/b/86623 fast/events/bogus-dropEffect-effectAllowed.html
 webkit.org/b/86623 fast/events/click-count.html
 webkit.org/b/86623 fast/events/content-changed-during-drop.html
 webkit.org/b/86623 fast/events/crash-on-mutate-during-drop.html
+webkit.org/b/86623 fast/events/drag-and-drop-autoscroll-inner-frame.html [ Skip ]
 webkit.org/b/86623 fast/events/drag-and-drop-dataTransfer-types-nocrash.html
 webkit.org/b/86623 fast/events/drag-and-drop-fire-drag-dragover.html
 webkit.org/b/86623 fast/events/drag-and-drop.html
@@ -665,7 +666,7 @@ webkit.org/b/119042 animations/resume-after-page-cache.html [ Failure Pass ]
 
 webkit.org/b/124655 css3/masking/clip-path-animation.html [ Failure Pass ]
 
-webkit.org/b/124664 media/video-seek-with-negative-playback.html [ Failure Crash ]
+webkit.org/b/124664 media/video-seek-with-negative-playback.html [ Failure Crash Pass ]
 
 webkit.org/b/124665 media/video-ended-event-negative-playback.html [ Failure Pass ]
 
@@ -1218,7 +1219,7 @@ webkit.org/b/91339 css2.1/20110323/vertical-align-boxes-001.htm [ ImageOnlyFailu
 webkit.org/b/89845 fast/forms/input-set-composition-scroll.html [ Failure ]
 
 # These tests are failing after r122528.
-webkit.org/b/91210 http/tests/w3c/webperf/approved/navigation-timing/html/test_performance_attributes_exist_in_object.html [ Failure ]
+webkit.org/b/91210 http/tests/w3c/webperf/approved/navigation-timing/html/test_performance_attributes_exist_in_object.html [ Failure Pass ]
 webkit.org/b/91210 http/tests/w3c/webperf/approved/navigation-timing/html/test_timing_xserver_redirect.html [ Failure ]
 
 # Proximity Events is not supported.
@@ -1359,7 +1360,7 @@ webkit.org/b/100846 inspector-protocol/debugger/pause-dedicated-worker.html [ Sk
 webkit.org/b/100846 inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html [ Skip ]
 
 # New media test introduced in r133660 fails.
-webkit.org/b/101439 media/progress-events-generated-correctly.html [ Failure ]
+webkit.org/b/101439 media/progress-events-generated-correctly.html [ Failure Pass ]
 
 webkit.org/b/101456 fast/repaint/block-selection-gap-in-table-cell.html [ Missing ]
 
@@ -1548,6 +1549,7 @@ webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-cover.html [
 webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-padding.html [ ImageOnlyFailure Crash ]
 webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-position.html [ ImageOnlyFailure Crash ]
 webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-size.html [ ImageOnlyFailure Crash ]
+webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-contain-no-repeat.html [ ImageOnlyFailure Crash ]
 
 # Newly added test in r148131 is failing.
 webkit.org/b/114876 media/click-volume-bar-not-pausing.html [ Failure ]
@@ -1633,6 +1635,8 @@ webkit.org/b/123617 fast/css3-text/css3-text-decoration/getComputedStyle/getComp
 webkit.org/b/123617 fast/css3-text/css3-text-decoration/getComputedStyle/getComputedStyle-text-decoration-shorthand.html [ Failure ]
 webkit.org/b/123617 fast/css3-text/css3-text-decoration/getComputedStyle/getComputedStyle-text-decoration-style.html [ Failure ]
 webkit.org/b/123617 fast/css3-text/css3-text-decoration/getComputedStyle/getComputedStyle-text-underline-position.html [ Failure ]
+webkit.org/b/123617 fast/css3-text/css3-text-decoration/text-decoration-color.html [ ImageOnlyFailure ]
+webkit.org/b/123617 fast/css3-text/css3-text-decoration/text-decoration-line.html [ ImageOnlyFailure ]
 webkit.org/b/123617 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-roundtrip.html [ Failure ]
 
 # Known WebGL conformance test failures, fails on Intel and AMD hardware
@@ -1648,20 +1652,14 @@ webgl/1.0.1/conformance/textures/texture-size-cube-maps.html [ Failure ]
 webgl/1.0.2/conformance/attribs/gl-vertex-attrib-render.html [ Failure ]
 webgl/1.0.2/conformance/context/context-creation-and-destruction.html [ Failure ]
 webgl/1.0.2/conformance/context/premultiplyalpha-test.html [ Failure ]
-webgl/1.0.2/conformance/extensions/oes-texture-float-with-video.html [ Failure ]
 webgl/1.0.2/conformance/extensions/oes-texture-float.html [ Failure ]
 webgl/1.0.2/conformance/glsl/literals/float_literal.vert.html [ Failure ]
-webgl/1.0.2/conformance/glsl/misc/shader-varying-packing-restrictions.html [ Failure ]
 webgl/1.0.2/conformance/glsl/misc/shader-with-global-variable-precision-mismatch.html [ Failure ]
 webgl/1.0.2/conformance/glsl/misc/shaders-with-varyings.html [ Failure ]
 webgl/1.0.2/conformance/ogles/GL/sin/sin_001_to_006.html [ Failure ]
 webgl/1.0.2/conformance/renderbuffers/framebuffer-object-attachment.html [ Failure ]
 webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Failure ]
 webgl/1.0.2/conformance/textures/copy-tex-image-2d-formats.html [ Failure ]
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html [ Failure ]
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Failure ]
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Failure ]
-webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Failure ]
 webgl/1.0.2/conformance/textures/texture-attachment-formats.html [ Failure ]
 webgl/1.0.2/conformance/textures/texture-size-cube-maps.html [ Failure ]
 webgl/1.0.2/conformance/typedarrays/array-unit-tests.html [ Failure ]
@@ -1730,6 +1728,7 @@ webkit.org/b/124589 http/tests/cache/partitioned-cache-iframe.html [ Failure ]
 webkit.org/b/124589 http/tests/cache/partitioned-cache.html [ Failure ]
 
 webkit.org/b/118126 css3/flexbox/image-percent-max-height.html [ ImageOnlyFailure ]
+webkit.org/b/118126 fast/flexbox/image-percent-max-height.html [ ImageOnlyFailure ]
 
 webkit.org/b/124506 fast/block/float/float-with-fractional-height-vertical-lr.html [ ImageOnlyFailure ]
 webkit.org/b/124506 fast/block/float/float-with-fractional-height.html [ ImageOnlyFailure ]
@@ -1752,6 +1751,8 @@ webkit.org/b/124890 platform/efl/accessibility/media-emits-object-replacement.ht
 
 webkit.org/b/124894 accessibility/fieldset-element.html [ Missing ]
 
+webkit.org/b/125506 accessibility/alt-tag-on-image-with-nonimage-role.html [ Failure ]
+
 # QuickTime plug-in not relevant to this port
 plugins/quicktime-plugin-replacement.html [ Skip ]
 
@@ -1760,3 +1761,38 @@ webkit.org/b/124970 compositing/geometry/fixed-position-flipped-writing-mode.htm
 webkit.org/b/124971 compositing/repaint/repaint-on-layer-grouping-change.html [ Failure ]
 
 webkit.org/b/124971 fast/shapes/shape-inside/shape-inside-subpixel-rectangle-top.html [ ImageOnlyFailure ]
+
+webkit.org/b/125348 accessibility/document-attributes.html [ Failure ]
+
+webkit.org/b/125352 fast/css/text-input-with-webkit-border-radius.html [ Failure ]
+
+webkit.org/b/125355 fast/events/updateLayoutForHitTest.html [ Failure ]
+
+webkit.org/b/125458 fast/repaint/line-flow-with-floats-9.html [ Failure ]
+
+webkit.org/b/125459 fast/text/partial-textruns.html [ ImageOnlyFailure ]
+
+# Started failing after r154906
+webkit.org/b/125496 animations/cross-fade-border-image-source.html [ Failure ]
+webkit.org/b/125496 animations/cross-fade-list-style-image.html [ Failure ]
+webkit.org/b/125496 animations/cross-fade-webkit-mask-box-image.html [ Failure ]
+webkit.org/b/125496 animations/cross-fade-webkit-mask-image.html [ Failure ]
+
+# Added in r157725, failing due differences in media player controls rendering
+webkit.org/b/125517 compositing/regions/floated-region-with-transformed-child.html [ ImageOnlyFailure ]
+webkit.org/b/125517 compositing/regions/propagate-region-box-shadow-border-padding-for-video.html [ ImageOnlyFailure ]
+webkit.org/b/125517 compositing/regions/transform-transparent-positioned-video-inside-region.html [ ImageOnlyFailure ]
+
+# Added in r157725, failing due insigificant pixel differences on bot
+webkit.org/b/125517 compositing/regions/crash-transform-inside-region.html [ ImageOnlyFailure ]
+webkit.org/b/125517 compositing/regions/move-layer-from-one-region-to-another.html [ ImageOnlyFailure ]
+webkit.org/b/125517 compositing/regions/propagate-region-box-shadow-border-padding.html [ ImageOnlyFailure ]
+webkit.org/b/125517 compositing/regions/region-as-layer-in-another-flowthread.html [ ImageOnlyFailure ]
+webkit.org/b/125517 compositing/regions/transformed-layer-inside-transformed-layer.html [ ImageOnlyFailure ]
+webkit.org/b/125517 compositing/regions/z-index-update.html [ ImageOnlyFailure ]
+webkit.org/b/125517 compositing/regions/z-index.html [ ImageOnlyFailure ]
+
+webkit.org/b/125573 compositing/backgrounds/fixed-background-on-descendant.html [ ImageOnlyFailure ]
+webkit.org/b/125573 compositing/backgrounds/fixed-backgrounds.html [ ImageOnlyFailure ]
+
+webkit.org/b/125578 compositing/images/positioned-image-content-rect.html [ ImageOnlyFailure ]

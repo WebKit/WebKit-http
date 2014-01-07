@@ -31,29 +31,9 @@ static const char* centeredContents = "<html><body><p style='text-align: center;
 
 static const char* contents = "<html><body><p>This is a test. This is the second sentence. And this the third.</p></body></html>";
 
-static const char* contentsWithNewlines = "<html><body><p>This is a test. \n\nThis\n is the second sentence. And this the third.</p></body></html>";
-
-static const char* contentsWithPreformattedText = "<html><body><pre>\n\t\n\tfirst line\n\tsecond line\n\t\n</pre></body></html>";
-
-static const char* contentsWithSpecialChars = "<html><body><p>&laquo;&nbsp;This is a paragraph with &ldquo;special&rdquo; characters inside.&nbsp;&raquo;</p><ul><li style='max-width:100px;'>List item with some text that wraps across different lines.</li><li style='max-width:100px;'><p>List item with some text that wraps across different lines.</p></li></ul></body></html>";
-
-static const char* contentsInTextarea = "<html><body><textarea cols='80'>This is a test. This is the second sentence. And this the third.</textarea></body></html>";
-
-static const char* contentsInTextInput = "<html><body><input type='text' size='80' value='This is a test. This is the second sentence. And this the third.'/></body></html>";
-
-static const char* contentsInParagraphAndBodySimple = "<html><body><p>This is a test.</p>Hello world.</body></html>";
-
-static const char* contentsInParagraphAndBodyModerate = "<html><body><p>This is a test.</p>Hello world.<br /><font color='#00cc00'>This sentence is green.</font><br />This one is not.</body></html>";
-
-static const char* contentsInTable = "<html><body><table><tr><td>foo</td><td>bar</td></tr></table></body></html>";
-
 static const char* contentsInTableWithHeaders = "<html><body><table><tr><th>foo</th><th>bar</th><th colspan='2'>baz</th></tr><tr><th>qux</th><td>1</td><td>2</td><td>3</td></tr><tr><th rowspan='2'>quux</th><td>4</td><td>5</td><td>6</td></tr><tr><td>6</td><td>7</td><td>8</td></tr><tr><th>corge</th><td>9</td><td>10</td><td>11</td></tr></table><table><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></table></body></html>";
 
 static const char* contentsWithExtraneousWhiteSpaces = "<html><head><body><p>This\n                          paragraph\n                                                      is\n                                                                                                                                                                                                                                                                                                                                                                            borked!</p></body></html>";
-
-static const char* contentsWithWrappedLines = "<html><body><p style='max-width:150px;'>This is one line wrapped because of the maximum width of its container.</p><p>This is another line wrapped<br>because of one forced<br>line break in the middle.</body></html>";
-
-static const char* contentsWithEmbeddedObjects = "<html><body>This is one line containing two <img> embedded objects <img> in the middle.</body></html>";
 
 static const char* comboBoxSelector = "<html><body><select><option selected value='foo'>foo</option><option value='bar'>bar</option></select></body></html>";
 
@@ -122,10 +102,6 @@ static void testWebkitAtkCaretOffsets()
     g_assert(ATK_IS_TEXT(header));
     g_signal_connect(header, "text-caret-moved", G_CALLBACK(textCaretMovedCallback), 0);
 
-    gchar* text = atk_text_get_text(ATK_TEXT(header), 0, -1);
-    g_assert_cmpstr(text, ==, "A text header");
-    g_free (text);
-
     /* It should be possible to place the caret inside a header. */
     gboolean result = atk_text_set_caret_offset(ATK_TEXT(header), 5);
     g_assert_cmpint(result, ==, TRUE);
@@ -136,10 +112,6 @@ static void testWebkitAtkCaretOffsets()
     AtkObject* paragraph = atk_object_ref_accessible_child(object, 1);
     g_assert(ATK_IS_TEXT(paragraph));
     g_signal_connect(paragraph, "text-caret-moved", G_CALLBACK(textCaretMovedCallback), 0);
-
-    text = atk_text_get_text(ATK_TEXT(paragraph), 0, -1);
-    g_assert_cmpstr(text, ==, "A paragraph with a link in the middle");
-    g_free (text);
 
     /* It should be possible to place the caret inside a paragraph and a link. */
     result = atk_text_set_caret_offset(ATK_TEXT(paragraph), 5);
@@ -162,9 +134,6 @@ static void testWebkitAtkCaretOffsets()
 
     AtkObject* link = atk_object_ref_accessible_child(paragraph, 0);
     g_assert(ATK_IS_TEXT(link));
-    text = atk_text_get_text(ATK_TEXT(link), 0, -1);
-    g_assert_cmpstr(text, ==, "with a link");
-    g_free (text);
 
     result = atk_text_set_caret_offset(ATK_TEXT(link), 5);
     g_assert_cmpint(result, ==, TRUE);
@@ -179,24 +148,8 @@ static void testWebkitAtkCaretOffsets()
     g_assert_cmpint(atk_object_get_n_accessible_children(list), ==, 3);
 
     AtkObject* listItem = atk_object_ref_accessible_child(list, 0);
-    g_assert(ATK_IS_TEXT(listItem));
-    text = atk_text_get_text(ATK_TEXT(listItem), 0, -1);
-    g_assert_cmpstr(text, ==, "1. A list item");
-    g_free (text);
-    g_object_unref(listItem);
-
-    listItem = atk_object_ref_accessible_child(list, 1);
-    g_assert(ATK_IS_TEXT(listItem));
-    text = atk_text_get_text(ATK_TEXT(listItem), 0, -1);
-    g_assert_cmpstr(text, ==, "2. Block span in a list item\nInline span in a list item");
-    g_free (text);
-    g_object_unref(listItem);
-
     listItem = atk_object_ref_accessible_child(list, 2);
     g_assert(ATK_IS_TEXT(listItem));
-    text = atk_text_get_text(ATK_TEXT(listItem), 0, -1);
-    g_assert_cmpstr(text, ==, "3. Block span in a link in a list item\nInline span in a link in a list item");
-    g_free (text);
 
     /* It's not possible to place the caret inside an item's marker. */
     result = atk_text_set_caret_offset(ATK_TEXT(listItem), 1);
@@ -214,21 +167,15 @@ static void testWebkitAtkCaretOffsets()
 
     AtkObject* comboBox = atk_object_ref_accessible_child(panel, 0);
     g_assert(ATK_IS_OBJECT(comboBox));
-    g_assert(!ATK_IS_TEXT(comboBox));
     g_assert(atk_object_get_role(comboBox) == ATK_ROLE_COMBO_BOX);
 
     AtkObject* menuPopup = atk_object_ref_accessible_child(comboBox, 0);
     g_assert(ATK_IS_OBJECT(menuPopup));
-    g_assert(!ATK_IS_TEXT(menuPopup));
     g_assert(atk_object_get_role(menuPopup) == ATK_ROLE_MENU);
 
     AtkObject* comboBoxOption = atk_object_ref_accessible_child(menuPopup, 0);
     g_assert(ATK_IS_OBJECT(comboBoxOption));
     g_assert(atk_object_get_role(comboBoxOption) == ATK_ROLE_MENU_ITEM);
-    g_assert(ATK_IS_TEXT(comboBoxOption));
-    text = atk_text_get_text(ATK_TEXT(comboBoxOption), 0, -1);
-    g_assert_cmpstr(text, ==, "An option in a combo box");
-    g_free(text);
 
     /* It's not possible to place the caret inside an option for a combobox. */
     result = atk_text_set_caret_offset(ATK_TEXT(comboBoxOption), 1);
@@ -237,10 +184,6 @@ static void testWebkitAtkCaretOffsets()
     AtkObject* textEntry = atk_object_ref_accessible_child(panel, 1);
     g_assert(ATK_IS_OBJECT(textEntry));
     g_assert(atk_object_get_role(textEntry) == ATK_ROLE_ENTRY);
-    g_assert(ATK_IS_TEXT(textEntry));
-    text = atk_text_get_text(ATK_TEXT(textEntry), 0, -1);
-    g_assert_cmpstr(text, ==, "foo bar baz");
-    g_free(text);
 
     result = atk_text_set_caret_offset(ATK_TEXT(textEntry), 5);
     g_assert_cmpint(result, ==, TRUE);
@@ -249,65 +192,18 @@ static void testWebkitAtkCaretOffsets()
 
     AtkObject* table = atk_object_ref_accessible_child(object, 4);
     g_assert(ATK_IS_OBJECT(table));
-    g_assert(!ATK_IS_TEXT(table));
     g_assert(atk_object_get_role(table) == ATK_ROLE_TABLE);
     g_assert_cmpint(atk_object_get_n_accessible_children(table), ==, 4);
 
     AtkObject* tableCell = atk_object_ref_accessible_child(table, 0);
-    g_assert(ATK_IS_TEXT(tableCell));
     g_assert(atk_object_get_role(tableCell) == ATK_ROLE_TABLE_CELL);
-    text = atk_text_get_text(ATK_TEXT(tableCell), 0, -1);
-    g_assert_cmpstr(text, ==, "a table cell");
-    g_free(text);
-
     result = atk_text_set_caret_offset(ATK_TEXT(tableCell), 2);
     g_assert_cmpint(result, ==, TRUE);
     offset = atk_text_get_caret_offset(ATK_TEXT(tableCell));
     g_assert_cmpint(offset, ==, 2);
-    g_object_unref(tableCell);
-
-    /* Even empty table cells should implement AtkText, but report an empty string */
-    tableCell = atk_object_ref_accessible_child(table, 1);
-    g_assert(ATK_IS_TEXT(tableCell));
-    g_assert(atk_object_get_role(tableCell) == ATK_ROLE_TABLE_CELL);
-    text = atk_text_get_text(ATK_TEXT(tableCell), 0, -1);
-    g_assert_cmpstr(text, ==, "");
-    g_free(text);
-    g_object_unref(tableCell);
-
-    tableCell = atk_object_ref_accessible_child(table, 2);
-    g_assert(ATK_IS_TEXT(tableCell));
-    g_assert(atk_object_get_role(tableCell) == ATK_ROLE_TABLE_CELL);
-    text = atk_text_get_text(ATK_TEXT(tableCell), 0, -1);
-    g_assert_cmpstr(text, ==, "Block span in a link in a table cell\nInline span in a link in a table cell");
-    g_free(text);
-    g_object_unref(tableCell);
-
-    tableCell = atk_object_ref_accessible_child(table, 3);
-    g_assert(ATK_IS_TEXT(tableCell));
-    g_assert(atk_object_get_role(tableCell) == ATK_ROLE_TABLE_CELL);
-    text = atk_text_get_text(ATK_TEXT(tableCell), 0, -1);
-    g_assert_cmpstr(text, ==, "Block span in a table cell\nInline span in a table cell");
-    g_free(text);
-
-    header = atk_object_ref_accessible_child(object, 5);
-    g_assert(ATK_IS_TEXT(header));
-    g_assert(atk_object_get_role(header) == ATK_ROLE_HEADING);
-    text = atk_text_get_text(ATK_TEXT(header), 0, -1);
-    g_assert_cmpstr(text, ==, "Block span in a link in a heading\nInline span in a link in a heading");
-    g_free(text);
-    g_object_unref(header);
-
-    header = atk_object_ref_accessible_child(object, 6);
-    g_assert(ATK_IS_TEXT(header));
-    g_assert(atk_object_get_role(header) == ATK_ROLE_HEADING);
-    text = atk_text_get_text(ATK_TEXT(header), 0, -1);
-    g_assert_cmpstr(text, ==, "Block span in a heading\nInline span in a heading");
-    g_free(text);
 
     g_free(textCaretMovedResult);
 
-    g_object_unref(header);
     g_object_unref(paragraph);
     g_object_unref(link);
     g_object_unref(list);
@@ -342,10 +238,6 @@ static void testWebkitAtkCaretOffsetsAndExtranousWhiteSpaces()
 
     AtkText* textObject = ATK_TEXT(object);
     g_assert(ATK_IS_TEXT(textObject));
-
-    gchar* text = atk_text_get_text(textObject, 0, -1);
-    g_assert_cmpstr(text, ==, "This paragraph is borked!");
-    g_free(text);
 
     gint characterCount = atk_text_get_character_count(textObject);
     g_assert_cmpint(characterCount, ==, 25);
@@ -441,25 +333,6 @@ static void testWebkitAtkComboBox()
     g_assert(selectedItem == item2);
     g_object_unref(selectedItem);
 
-    /* Check the implementation of the AtkText interface. */
-    g_assert(ATK_IS_TEXT(item1));
-    AtkText* atkText = ATK_TEXT(item1);
-    char *text = atk_text_get_text(atkText, 0, -1);
-    g_assert_cmpstr(text, ==, "foo");
-    g_free(text);
-    text = atk_text_get_text(atkText, 0, 2);
-    g_assert_cmpstr(text, ==, "fo");
-    g_free(text);
-
-    g_assert(ATK_IS_TEXT(item2));
-    atkText = ATK_TEXT(item2);
-    text = atk_text_get_text(atkText, 0, -1);
-    g_assert_cmpstr(text, ==, "bar");
-    g_free(text);
-    text = atk_text_get_text(atkText, 1, 3);
-    g_assert_cmpstr(text, ==, "ar");
-    g_free(text);
-
     g_object_unref(formObject);
     g_object_unref(comboBox);
     g_object_unref(menuPopup);
@@ -533,11 +406,6 @@ static void testWebkitAtkEmbeddedObjects()
     g_assert(ATK_IS_TEXT(paragraph1));
     g_assert(ATK_IS_HYPERTEXT(paragraph1));
 
-    const gchar* expectedText = "Choose: \357\277\274foo \357\277\274bar (pick one)";
-    char* text = atk_text_get_text(paragraph1, 0, -1);
-    g_assert_cmpstr(text, ==, expectedText);
-    g_free(text);
-
     gint nLinks = atk_hypertext_get_n_links(ATK_HYPERTEXT(paragraph1));
     g_assert_cmpint(nLinks, ==, 2);
 
@@ -552,13 +420,7 @@ static void testWebkitAtkEmbeddedObjects()
     g_assert_cmpstr(atk_hyperlink_get_uri(hLink, 0), ==, 0);
 
     AtkText* paragraph2 = ATK_TEXT(atk_object_ref_accessible_child(object, 1));
-    g_assert(ATK_IS_TEXT(paragraph2));
     g_assert(ATK_IS_HYPERTEXT(paragraph2));
-
-    expectedText = "Choose: \357\277\274 (pick one)";
-    text = atk_text_get_text(paragraph2, 0, -1);
-    g_assert_cmpstr(text, ==, expectedText);
-    g_free(text);
 
     nLinks = atk_hypertext_get_n_links(ATK_HYPERTEXT(paragraph2));
     g_assert_cmpint(nLinks, ==, 1);
@@ -574,13 +436,7 @@ static void testWebkitAtkEmbeddedObjects()
     g_assert_cmpstr(atk_hyperlink_get_uri(hLink, 0), ==, 0);
 
     AtkText* paragraph3 = ATK_TEXT(atk_object_ref_accessible_child(object, 2));
-    g_assert(ATK_IS_TEXT(paragraph3));
     g_assert(ATK_IS_HYPERTEXT(paragraph3));
-
-    expectedText = "\357\277\274";
-    text = atk_text_get_text(paragraph3, 0, -1);
-    g_assert_cmpstr(text, ==, expectedText);
-    g_free(text);
 
     nLinks = atk_hypertext_get_n_links(ATK_HYPERTEXT(paragraph3));
     g_assert_cmpint(nLinks, ==, 1);
@@ -598,968 +454,6 @@ static void testWebkitAtkEmbeddedObjects()
     g_object_unref(paragraph1);
     g_object_unref(paragraph2);
     g_object_unref(paragraph3);
-    g_object_unref(webView);
-}
-
-#if !ATK_CHECK_VERSION(2, 10, 0)
-typedef gchar* (*AtkGetTextFunction) (AtkText*, gint, AtkTextBoundary, gint*, gint*);
-
-static void testGetTextFunction(AtkText* textObject, AtkGetTextFunction fn, AtkTextBoundary boundary, gint offset, const char* textResult, gint startOffsetResult, gint endOffsetResult)
-{
-    gint startOffset;
-    gint endOffset;
-    char* text = fn(textObject, offset, boundary, &startOffset, &endOffset);
-    g_assert_cmpstr(text, ==, textResult);
-    g_assert_cmpint(startOffset, ==, startOffsetResult);
-    g_assert_cmpint(endOffset, ==, endOffsetResult);
-    g_free(text);
-}
-
-static void runGetTextTests(AtkText* textObject)
-{
-    char* text = atk_text_get_text(textObject, 0, -1);
-    g_assert_cmpstr(text, ==, "This is a test. This is the second sentence. And this the third.");
-    g_free(text);
-
-    /* ATK_TEXT_BOUNDARY_CHAR */
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR,
-                        0, "T", 0, 1);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_CHAR,
-                        0, "h", 1, 2);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_CHAR,
-                        0, "", 0, 0);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_CHAR,
-                        1, "T", 0, 1);
-
-    /* ATK_TEXT_BOUNDARY_WORD_START */
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        0, "This ", 0, 5);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        4, "This ", 0, 5);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        10, "test. ", 10, 16);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        58, "third.", 58, 64);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        64, "third.", 58, 64);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        0, "", 0, 0);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        5, "This ", 0, 5);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        7, "This ", 0, 5);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        64, "the ", 54, 58);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        0, "is ", 5, 8);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        4, "is ", 5, 8);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        3, "is ", 5, 8);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_START,
-                        64, "", 64, 64);
-
-    /* ATK_TEXT_BOUNDARY_WORD_END */
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        0, "This", 0, 4);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        4, " is", 4, 7);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        5, " is", 4, 7);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        9, " test", 9, 14);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        58, " third", 57, 63);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        64, ".", 63, 64);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        0, "", 0, 0);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        5, "This", 0, 4);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        4, "This", 0, 4);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        7, " is", 4, 7);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        64, " third", 57, 63);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        0, " is", 4, 7);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        5, " a", 7, 9);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        4, " a", 7, 9);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_END,
-                        64, "", 64, 64);
-
-    /* ATK_TEXT_BOUNDARY_SENTENCE_START */
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_SENTENCE_START,
-                        0, "This is a test. ", 0, 16);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_SENTENCE_START,
-                        15, "This is a test. ", 0, 16);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_SENTENCE_START,
-                        0, "This is the second sentence. ", 16, 45);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_SENTENCE_START,
-                        15, "This is the second sentence. ", 16, 45);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_SENTENCE_START,
-                        16, "This is a test. ", 0, 16);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_SENTENCE_START,
-                        44, "This is a test. ", 0, 16);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_SENTENCE_START,
-                        15, "", 0, 0);
-
-    /* ATK_TEXT_BOUNDARY_SENTENCE_END */
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_SENTENCE_END,
-                        0, "This is a test.", 0, 15);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_SENTENCE_END,
-                        15, " This is the second sentence.", 15, 44);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_SENTENCE_END,
-                        16, " This is the second sentence.", 15, 44);
-
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_SENTENCE_END,
-                        17, " This is the second sentence.", 15, 44);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_SENTENCE_END,
-                        0, " This is the second sentence.", 15, 44);
-
-    testGetTextFunction(textObject, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_SENTENCE_END,
-                        15, " And this the third.", 44, 64);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_SENTENCE_END,
-                        16, "This is a test.", 0, 15);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_SENTENCE_END,
-                        15, "This is a test.", 0, 15);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_SENTENCE_END,
-                        14, "", 0, 0);
-
-    testGetTextFunction(textObject, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_SENTENCE_END,
-                        44, " This is the second sentence.", 15, 44);
-
-    /* It's tricky to test these properly right now, since our a11y
-       implementation splits different lines in different a11y items. */
-    /* ATK_TEXT_BOUNDARY_LINE_START */
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START,
-                        0, "This is a test. This is the second sentence. And this the third.", 0, 64);
-
-    /* ATK_TEXT_BOUNDARY_LINE_END */
-    testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_END,
-                        0, "This is a test. This is the second sentence. And this the third.", 0, 64);
-
-    /* For objects implementing AtkEditableText, try to change the
-       exposed text and retrieve it again as a full line.
-       (see https://bugs.webkit.org/show_bug.cgi?id=72830) */
-    if (ATK_IS_EDITABLE_TEXT(textObject)) {
-        atk_editable_text_set_text_contents(ATK_EDITABLE_TEXT(textObject), "foo bar baz");
-        testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 0, "foo bar baz", 0, 11);
-        testGetTextFunction(textObject, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_END, 0, "foo bar baz", 0, 11);
-    }
-}
-
-static void testWebkitAtkGetTextAtOffset()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contents, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    object = atk_object_ref_accessible_child(object, 0);
-    g_assert(object);
-
-    AtkText* textObject = ATK_TEXT(object);
-    g_assert(ATK_IS_TEXT(textObject));
-
-    runGetTextTests(textObject);
-
-    g_object_unref(object);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetTextAtOffsetNewlines()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsWithNewlines, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    object = atk_object_ref_accessible_child(object, 0);
-    g_assert(object);
-
-    AtkText* textObject = ATK_TEXT(object);
-    g_assert(ATK_IS_TEXT(textObject));
-
-    runGetTextTests(textObject);
-
-    g_object_unref(object);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetTextAtOffsetTextarea()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsInTextarea, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    AtkObject* child = atk_object_ref_accessible_child(object, 0);
-    g_assert(child);
-    AtkObject* grandchild = atk_object_ref_accessible_child(child, 0);
-    g_assert(grandchild);
-
-    AtkText* textObject = ATK_TEXT(grandchild);
-    g_assert(ATK_IS_TEXT(textObject));
-
-    runGetTextTests(textObject);
-
-    g_object_unref(child);
-    g_object_unref(grandchild);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetTextAtOffsetTextInput()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsInTextInput, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    AtkObject* child = atk_object_ref_accessible_child(object, 0);
-    g_assert(child);
-    AtkObject* grandchild = atk_object_ref_accessible_child(child, 0);
-    g_assert(grandchild);
-
-    AtkText* textObject = ATK_TEXT(grandchild);
-    g_assert(ATK_IS_TEXT(textObject));
-
-    runGetTextTests(textObject);
-
-    g_object_unref(child);
-    g_object_unref(grandchild);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetTextAtOffsetWithPreformattedText()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsWithPreformattedText, 0, 0, 0);
-
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-
-    AtkObject* preformattedText = atk_object_ref_accessible_child(object, 0);
-    g_assert(ATK_IS_OBJECT(preformattedText));
-    g_assert(atk_object_get_role(preformattedText) == ATK_ROLE_PANEL);
-    g_assert(ATK_IS_TEXT(preformattedText));
-    char* text = atk_text_get_text(ATK_TEXT(preformattedText), 0, -1);
-    g_assert_cmpstr(text, ==, "\t\n\tfirst line\n\tsecond line\n\t\n");
-    g_free(text);
-
-    /* Try retrieving all the lines indicating the position of the offsets at the beginning of each of them. */
-    testGetTextFunction(ATK_TEXT(preformattedText), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 0, "\t\n", 0, 2);
-    testGetTextFunction(ATK_TEXT(preformattedText), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 2, "\tfirst line\n", 2, 14);
-    testGetTextFunction(ATK_TEXT(preformattedText), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 14, "\tsecond line\n", 14, 27);
-
-    g_object_unref(preformattedText);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetTextAtOffsetWithSpecialCharacters()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsWithSpecialChars, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-
-    AtkObject* paragraph = atk_object_ref_accessible_child(object, 0);
-    g_assert(ATK_IS_TEXT(paragraph));
-
-    gchar* expectedText = g_strdup("\302\253\302\240This is a paragraph with \342\200\234special\342\200\235 characters inside.\302\240\302\273");
-    char* text = atk_text_get_text(ATK_TEXT(paragraph), 0, -1);
-    g_assert_cmpstr(text, ==, expectedText);
-    g_free(text);
-
-    /* Check that getting the text with ATK_TEXT_BOUNDARY_LINE_START
-       and ATK_TEXT_BOUNDARY_LINE_END does not crash because of not
-       properly handling characters inside the UTF-8 string. */
-    testGetTextFunction(ATK_TEXT(paragraph), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 0, expectedText, 0, 57);
-    testGetTextFunction(ATK_TEXT(paragraph), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_END, 0, expectedText, 0, 57);
-    g_free(expectedText);
-
-    AtkObject* list = atk_object_ref_accessible_child(object, 1);
-    g_assert(ATK_OBJECT(list));
-
-    AtkText* listItem = ATK_TEXT(atk_object_ref_accessible_child(list, 0));
-    g_assert(ATK_IS_TEXT(listItem));
-
-    text = atk_text_get_text(ATK_TEXT(listItem), 0, -1);
-    g_assert_cmpstr(text, ==, "\342\200\242 List item with some text that wraps across different lines.");
-    g_free(text);
-
-    /* Check that getting the text with ATK_TEXT_BOUNDARY_LINE_START
-       and ATK_TEXT_BOUNDARY_LINE_END for line items with bullets
-       (special character) and wrapped text always return the right
-       piece of text for each line. */
-    testGetTextFunction(ATK_TEXT(listItem), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 3, "\342\200\242 List item ", 0, 12);
-    testGetTextFunction(ATK_TEXT(listItem), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 13, "with some ", 12, 22);
-    testGetTextFunction(ATK_TEXT(listItem), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_END, 0, "\342\200\242 List item", 0, 11);
-    testGetTextFunction(ATK_TEXT(listItem), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_END, 12, " with some", 11, 21);
-
-    g_object_unref(listItem);
-
-    listItem = ATK_TEXT(atk_object_ref_accessible_child(list, 1));
-    g_assert(ATK_IS_TEXT(listItem));
-
-    /* Check that placing the same text in a paragraph doesn't break things. */
-    text = atk_text_get_text(ATK_TEXT(listItem), 0, -1);
-    g_assert_cmpstr(text, ==, "\342\200\242 List item with some text that wraps across different lines.");
-    g_free(text);
-
-    testGetTextFunction(ATK_TEXT(listItem), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 3, "\342\200\242 List item ", 0, 12);
-    testGetTextFunction(ATK_TEXT(listItem), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 13, "with some ", 12, 22);
-    testGetTextFunction(ATK_TEXT(listItem), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_END, 0, "\342\200\242 List item", 0, 11);
-    testGetTextFunction(ATK_TEXT(listItem), atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_END, 12, " with some", 11, 21);
-
-    g_object_unref(list);
-    g_object_unref(listItem);
-    g_object_unref(paragraph);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetTextAtOffsetWithWrappedLines()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsWithWrappedLines, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-
-    /* Check the paragraph with the text wrapped because of max-width. */
-    AtkText* paragraph1 = ATK_TEXT(atk_object_ref_accessible_child(object, 0));
-    g_assert(ATK_IS_TEXT(paragraph1));
-
-    gchar* text = atk_text_get_text(paragraph1, 0, -1);
-    g_assert_cmpstr(text, ==, "This is one line wrapped because of the maximum width of its container.");
-    g_free(text);
-
-    testGetTextFunction(paragraph1, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_CHAR, 16, "e", 15, 16);
-    testGetTextFunction(paragraph1, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR, 16, " ", 16, 17);
-    testGetTextFunction(paragraph1, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_CHAR, 16, "w", 17, 18);
-
-    testGetTextFunction(paragraph1, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_START, 16, "one ", 8, 12);
-    testGetTextFunction(paragraph1, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START, 16, "line ", 12, 17);
-    testGetTextFunction(paragraph1, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_START, 16, "wrapped ", 17, 25);
-
-    testGetTextFunction(paragraph1, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_END, 16, " line", 11, 16);
-    testGetTextFunction(paragraph1, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END, 16, " wrapped", 16, 24);
-    testGetTextFunction(paragraph1, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_END, 16, " because", 24, 32);
-
-    testGetTextFunction(paragraph1, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_LINE_START, 17, "This is one line ", 0, 17);
-    testGetTextFunction(paragraph1, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 17, "wrapped because ", 17, 33);
-    testGetTextFunction(paragraph1, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_LINE_START, 17, "of the maximum ", 33, 48);
-
-    testGetTextFunction(paragraph1, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_LINE_END, 17, "This is one line", 0, 16);
-    testGetTextFunction(paragraph1, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_END, 17, " wrapped because", 16, 32);
-    testGetTextFunction(paragraph1, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_LINE_END, 17, " of the maximum", 32, 47);
-
-    g_object_unref(paragraph1);
-
-    /* Check the paragraph with the text wrapped because of <br> elements. */
-    AtkText* paragraph2 = ATK_TEXT(atk_object_ref_accessible_child(object, 1));
-    g_assert(ATK_IS_TEXT(paragraph2));
-
-    text = atk_text_get_text(paragraph2, 0, -1);
-    g_assert_cmpstr(text, ==, "This is another line wrapped\nbecause of one forced\nline break in the middle.");
-    g_free(text);
-
-    testGetTextFunction(paragraph2, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_CHAR, 28, "d", 27, 28);
-    testGetTextFunction(paragraph2, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR, 28, "\n", 28, 29);
-    testGetTextFunction(paragraph2, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_CHAR, 28, "b", 29, 30);
-
-    testGetTextFunction(paragraph2, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_START, 28, "line ", 16, 21);
-    testGetTextFunction(paragraph2, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START, 28, "wrapped\n", 21, 29);
-    testGetTextFunction(paragraph2, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_START, 28, "because ", 29, 37);
-
-    testGetTextFunction(paragraph2, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_WORD_END, 28, " wrapped", 20, 28);
-    testGetTextFunction(paragraph2, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END, 28, "\nbecause", 28, 36);
-    testGetTextFunction(paragraph2, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_WORD_END, 28, " of", 36, 39);
-
-    testGetTextFunction(paragraph2, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_LINE_START, 30, "This is another line wrapped\n", 0, 29);
-    testGetTextFunction(paragraph2, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_START, 30, "because of one forced\n", 29, 51);
-    testGetTextFunction(paragraph2, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_LINE_START, 30, "line break in the middle.", 51, 76);
-
-    testGetTextFunction(paragraph2, atk_text_get_text_before_offset, ATK_TEXT_BOUNDARY_LINE_END, 30, "This is another line wrapped", 0, 28);
-    testGetTextFunction(paragraph2, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_LINE_END, 30, "\nbecause of one forced", 28, 50);
-    testGetTextFunction(paragraph2, atk_text_get_text_after_offset, ATK_TEXT_BOUNDARY_LINE_END, 30, "\nline break in the middle.", 50, 76);
-
-    g_object_unref(paragraph2);
-
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetTextAtOffsetWithEmbeddedObjects()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsWithEmbeddedObjects, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-
-    /* Check the paragraph with the text wrapped because of max-width. */
-    AtkText* paragraph = ATK_TEXT(atk_object_ref_accessible_child(object, 0));
-    g_assert(ATK_IS_TEXT(paragraph));
-
-    gchar* text = atk_text_get_text(paragraph, 0, -1);
-    g_assert_cmpstr(text, ==, "This is one line containing two \357\277\274 embedded objects \357\277\274 in the middle.");
-    g_free(text);
-
-    /* Check right before the first embedded object */
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR, 32, "\357\277\274", 32, 33);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START, 32, "two \357\277\274 ", 28, 34);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END, 32, " \357\277\274 embedded", 31, 42);
-
-    /* Check right after the first embedded object (and before the first word after it) */
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR, 33, " ", 33, 34);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START, 33, "two \357\277\274 ", 28, 34);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END, 33, " \357\277\274 embedded", 31, 42);
-
-    /* Check at the beginning of the first word between the two embedded objects */
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR, 34, "e", 34, 35);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START, 34, "embedded ", 34, 43);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END, 34, " \357\277\274 embedded", 31, 42);
-
-    /* Check at the end of the first word between the two embedded objects */
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR, 42, " ", 42, 43);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START, 42, "embedded ", 34, 43);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END, 42, " objects", 42, 50);
-
-    /* Check right before the second embedded object */
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR, 51, "\357\277\274", 51, 52);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START, 51, "objects \357\277\274 ", 43, 53);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END, 51, " \357\277\274 in", 50, 55);
-
-    /* Check right after the second embedded object (and before the first word after it) */
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR, 52, " ", 52, 53);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START, 52, "objects \357\277\274 ", 43, 53);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END, 52, " \357\277\274 in", 50, 55);
-
-    /* Check at the beginning of the first word after the two embedded objects */
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR, 53, "i", 53, 54);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START, 53, "in ", 53, 56);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END, 53, " \357\277\274 in", 50, 55);
-
-    /* Check at the end of the first word after the two embedded objects */
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_CHAR, 55, " ", 55, 56);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_START, 55, "in ", 53, 56);
-    testGetTextFunction(paragraph, atk_text_get_text_at_offset, ATK_TEXT_BOUNDARY_WORD_END, 55, " the", 55, 59);
-
-    g_object_unref(paragraph);
-    g_object_unref(webView);
-}
-
-#else // !ATK_CHECK_VERSION(2, 10, 0)
-
-typedef gchar* (*AtkGetStringFunction) (AtkText*, gint, AtkTextGranularity, gint*, gint*);
-
-static void testGetStringFunction(AtkText* textObject, AtkGetStringFunction fn, AtkTextGranularity granularity, gint offset, const char* textResult, gint startOffsetResult, gint endOffsetResult)
-{
-    gint startOffset;
-    gint endOffset;
-    char* text = fn(textObject, offset, granularity, &startOffset, &endOffset);
-    g_assert_cmpstr(text, ==, textResult);
-    g_assert_cmpint(startOffset, ==, startOffsetResult);
-    g_assert_cmpint(endOffset, ==, endOffsetResult);
-    g_free(text);
-}
-
-static void runGetStringTests(AtkText* textObject)
-{
-    char* text = atk_text_get_text(textObject, 0, -1);
-    g_assert_cmpstr(text, ==, "This is a test. This is the second sentence. And this the third.");
-    g_free(text);
-
-    /* ATK_TEXT_GRANULARITY_CHAR */
-    testGetStringFunction(textObject, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR,
-                        0, "T", 0, 1);
-
-    /* ATK_TEXT_GRANULARITY_WORD */
-    testGetStringFunction(textObject, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD,
-                        0, "This ", 0, 5);
-
-    testGetStringFunction(textObject, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD,
-                        4, "This ", 0, 5);
-
-    testGetStringFunction(textObject, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD,
-                        10, "test. ", 10, 16);
-
-    testGetStringFunction(textObject, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD,
-                        58, "third.", 58, 64);
-
-    testGetStringFunction(textObject, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD,
-                        64, "third.", 58, 64);
-
-    /* ATK_TEXT_GRANULARITY_SENTENCE */
-    testGetStringFunction(textObject, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_SENTENCE,
-                        0, "This is a test. ", 0, 16);
-
-    testGetStringFunction(textObject, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_SENTENCE,
-                        15, "This is a test. ", 0, 16);
-
-    /* ATK_TEXT_GRANULARITY_LINE */
-    /* It's tricky to test these properly right now, since our a11y
-       implementation splits different lines in different a11y items. */
-    testGetStringFunction(textObject, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE,
-                        0, "This is a test. This is the second sentence. And this the third.", 0, 64);
-
-    /* For objects implementing AtkEditableText, try to change the
-       exposed text and retrieve it again as a full line.
-       (see https://bugs.webkit.org/show_bug.cgi?id=72830) */
-    if (ATK_IS_EDITABLE_TEXT(textObject)) {
-        atk_editable_text_set_text_contents(ATK_EDITABLE_TEXT(textObject), "foo bar baz");
-        testGetStringFunction(textObject, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 0, "foo bar baz", 0, 11);
-    }
-}
-
-static void testWebkitAtkGetStringAtOffset()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contents, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    object = atk_object_ref_accessible_child(object, 0);
-    g_assert(object);
-
-    AtkText* textObject = ATK_TEXT(object);
-    g_assert(ATK_IS_TEXT(textObject));
-
-    runGetStringTests(textObject);
-
-    g_object_unref(object);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetStringAtOffsetNewlines()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsWithNewlines, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    object = atk_object_ref_accessible_child(object, 0);
-    g_assert(object);
-
-    AtkText* textObject = ATK_TEXT(object);
-    g_assert(ATK_IS_TEXT(textObject));
-
-    runGetStringTests(textObject);
-
-    g_object_unref(object);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetStringAtOffsetTextarea()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsInTextarea, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    AtkObject* child = atk_object_ref_accessible_child(object, 0);
-    g_assert(child);
-    AtkObject* grandchild = atk_object_ref_accessible_child(child, 0);
-    g_assert(grandchild);
-
-    AtkText* textObject = ATK_TEXT(grandchild);
-    g_assert(ATK_IS_TEXT(textObject));
-
-    runGetStringTests(textObject);
-
-    g_object_unref(child);
-    g_object_unref(grandchild);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetStringAtOffsetTextInput()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsInTextInput, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    AtkObject* child = atk_object_ref_accessible_child(object, 0);
-    g_assert(child);
-    AtkObject* grandchild = atk_object_ref_accessible_child(child, 0);
-    g_assert(grandchild);
-
-    AtkText* textObject = ATK_TEXT(grandchild);
-    g_assert(ATK_IS_TEXT(textObject));
-
-    runGetStringTests(textObject);
-
-    g_object_unref(child);
-    g_object_unref(grandchild);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetStringAtOffsetWithPreformattedText()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsWithPreformattedText, 0, 0, 0);
-
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-
-    AtkObject* preformattedText = atk_object_ref_accessible_child(object, 0);
-    g_assert(ATK_IS_OBJECT(preformattedText));
-    g_assert(atk_object_get_role(preformattedText) == ATK_ROLE_PANEL);
-    g_assert(ATK_IS_TEXT(preformattedText));
-    char* text = atk_text_get_text(ATK_TEXT(preformattedText), 0, -1);
-    g_assert_cmpstr(text, ==, "\t\n\tfirst line\n\tsecond line\n\t\n");
-    g_free(text);
-
-    /* Try retrieving all the lines indicating the position of the offsets at the beginning of each of them. */
-    testGetStringFunction(ATK_TEXT(preformattedText), atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 0, "\t\n", 0, 2);
-    testGetStringFunction(ATK_TEXT(preformattedText), atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 2, "\tfirst line\n", 2, 14);
-    testGetStringFunction(ATK_TEXT(preformattedText), atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 14, "\tsecond line\n", 14, 27);
-
-    g_object_unref(preformattedText);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetStringAtOffsetWithSpecialCharacters()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsWithSpecialChars, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-
-    AtkObject* paragraph = atk_object_ref_accessible_child(object, 0);
-    g_assert(ATK_IS_TEXT(paragraph));
-
-    gchar* expectedText = g_strdup("\302\253\302\240This is a paragraph with \342\200\234special\342\200\235 characters inside.\302\240\302\273");
-    char* text = atk_text_get_text(ATK_TEXT(paragraph), 0, -1);
-    g_assert_cmpstr(text, ==, expectedText);
-    g_free(text);
-
-    /* Check that getting the text with ATK_TEXT_BOUNDARY_LINE_START does not crash
-       because of not properly handling characters inside the UTF-8 string. */
-    testGetStringFunction(ATK_TEXT(paragraph), atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 0, expectedText, 0, 57);
-    g_free(expectedText);
-
-    AtkObject* list = atk_object_ref_accessible_child(object, 1);
-    g_assert(ATK_OBJECT(list));
-
-    AtkText* listItem = ATK_TEXT(atk_object_ref_accessible_child(list, 0));
-    g_assert(ATK_IS_TEXT(listItem));
-
-    text = atk_text_get_text(ATK_TEXT(listItem), 0, -1);
-    g_assert_cmpstr(text, ==, "\342\200\242 List item with some text that wraps across different lines.");
-    g_free(text);
-
-    /* Check that getting the text with ATK_TEXT_BOUNDARY_LINE_START
-       and ATK_TEXT_BOUNDARY_LINE_END for line items with bullets
-       (special character) and wrapped text always return the right
-       piece of text for each line. */
-    testGetStringFunction(ATK_TEXT(listItem), atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 3, "\342\200\242 List item ", 0, 12);
-    testGetStringFunction(ATK_TEXT(listItem), atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 13, "with some ", 12, 22);
-
-    g_object_unref(listItem);
-
-    listItem = ATK_TEXT(atk_object_ref_accessible_child(list, 1));
-    g_assert(ATK_IS_TEXT(listItem));
-
-    /* Check that placing the same text in a paragraph doesn't break things. */
-    text = atk_text_get_text(ATK_TEXT(listItem), 0, -1);
-    g_assert_cmpstr(text, ==, "\342\200\242 List item with some text that wraps across different lines.");
-    g_free(text);
-
-    testGetStringFunction(ATK_TEXT(listItem), atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 3, "\342\200\242 List item ", 0, 12);
-    testGetStringFunction(ATK_TEXT(listItem), atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 13, "with some ", 12, 22);
-
-    g_object_unref(list);
-    g_object_unref(listItem);
-    g_object_unref(paragraph);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetStringAtOffsetWithWrappedLines()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsWithWrappedLines, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-
-    /* Check the paragraph with the text wrapped because of max-width. */
-    AtkText* paragraph1 = ATK_TEXT(atk_object_ref_accessible_child(object, 0));
-    g_assert(ATK_IS_TEXT(paragraph1));
-
-    gchar* text = atk_text_get_text(paragraph1, 0, -1);
-    g_assert_cmpstr(text, ==, "This is one line wrapped because of the maximum width of its container.");
-    g_free(text);
-
-    testGetStringFunction(paragraph1, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR, 16, " ", 16, 17);
-    testGetStringFunction(paragraph1, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD, 16, "line ", 12, 17);
-    testGetStringFunction(paragraph1, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 17, "wrapped because ", 17, 33);
-
-    g_object_unref(paragraph1);
-
-    /* Check the paragraph with the text wrapped because of <br> elements. */
-    AtkText* paragraph2 = ATK_TEXT(atk_object_ref_accessible_child(object, 1));
-    g_assert(ATK_IS_TEXT(paragraph2));
-
-    text = atk_text_get_text(paragraph2, 0, -1);
-    g_assert_cmpstr(text, ==, "This is another line wrapped\nbecause of one forced\nline break in the middle.");
-    g_free(text);
-
-    testGetStringFunction(paragraph2, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR, 28, "\n", 28, 29);
-    testGetStringFunction(paragraph2, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD, 28, "wrapped\n", 21, 29);
-    testGetStringFunction(paragraph2, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_LINE, 30, "because of one forced\n", 29, 51);
-
-    g_object_unref(paragraph2);
-
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetStringAtOffsetWithEmbeddedObjects()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsWithEmbeddedObjects, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-
-    /* Check the paragraph with the text wrapped because of max-width. */
-    AtkText* paragraph = ATK_TEXT(atk_object_ref_accessible_child(object, 0));
-    g_assert(ATK_IS_TEXT(paragraph));
-
-    gchar* text = atk_text_get_text(paragraph, 0, -1);
-    g_assert_cmpstr(text, ==, "This is one line containing two \357\277\274 embedded objects \357\277\274 in the middle.");
-    g_free(text);
-
-    /* Check right before the first embedded object */
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR, 32, "\357\277\274", 32, 33);
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD, 32, "two \357\277\274 ", 28, 34);
-
-    /* Check right after the first embedded object (and before the first word after it) */
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR, 33, " ", 33, 34);
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD, 33, "two \357\277\274 ", 28, 34);
-
-    /* Check at the beginning of the first word between the two embedded objects */
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR, 34, "e", 34, 35);
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD, 34, "embedded ", 34, 43);
-
-    /* Check at the end of the first word between the two embedded objects */
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR, 42, " ", 42, 43);
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD, 42, "embedded ", 34, 43);
-
-    /* Check right before the second embedded object */
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR, 51, "\357\277\274", 51, 52);
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD, 51, "objects \357\277\274 ", 43, 53);
-
-    /* Check right after the second embedded object (and before the first word after it) */
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR, 52, " ", 52, 53);
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD, 52, "objects \357\277\274 ", 43, 53);
-
-    /* Check at the beginning of the first word after the two embedded objects */
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR, 53, "i", 53, 54);
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD, 53, "in ", 53, 56);
-
-    /* Check at the end of the first word after the two embedded objects */
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_CHAR, 55, " ", 55, 56);
-    testGetStringFunction(paragraph, atk_text_get_string_at_offset, ATK_TEXT_GRANULARITY_WORD, 55, "in ", 53, 56);
-
-    g_object_unref(paragraph);
-    g_object_unref(webView);
-}
-#endif // !ATK_CHECK_VERSION(2, 10, 0)
-
-static void testWebkitAtkGetTextInParagraphAndBodySimple()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsInParagraphAndBodySimple, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    AtkObject* object1 = atk_object_ref_accessible_child(object, 0);
-    g_assert(object1);
-    AtkObject* object2 = atk_object_ref_accessible_child(object, 1);
-    g_assert(object2);
-
-    AtkText* textObject1 = ATK_TEXT(object1);
-    g_assert(ATK_IS_TEXT(textObject1));
-    AtkText* textObject2 = ATK_TEXT(object2);
-    g_assert(ATK_IS_TEXT(textObject2));
-
-    char *text = atk_text_get_text(textObject1, 0, -1);
-    g_assert_cmpstr(text, ==, "This is a test.");
-    g_free(text);
-
-    text = atk_text_get_text(textObject2, 0, 12);
-    g_assert_cmpstr(text, ==, "Hello world.");
-    g_free(text);
-
-    g_object_unref(object1);
-    g_object_unref(object2);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetTextInParagraphAndBodyModerate()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsInParagraphAndBodyModerate, 0, 0, 0);
-
-    /* Get to the inner AtkText object. */
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    AtkObject* object1 = atk_object_ref_accessible_child(object, 0);
-    g_assert(object1);
-    AtkObject* object2 = atk_object_ref_accessible_child(object, 1);
-    g_assert(object2);
-
-    AtkText* textObject1 = ATK_TEXT(object1);
-    g_assert(ATK_IS_TEXT(textObject1));
-    AtkText* textObject2 = ATK_TEXT(object2);
-    g_assert(ATK_IS_TEXT(textObject2));
-
-    char *text = atk_text_get_text(textObject1, 0, -1);
-    g_assert_cmpstr(text, ==, "This is a test.");
-    g_free(text);
-
-    text = atk_text_get_text(textObject2, 0, 53);
-    g_assert_cmpstr(text, ==, "Hello world.\nThis sentence is green.\nThis one is not.");
-    g_free(text);
-
-    g_object_unref(object1);
-    g_object_unref(object2);
-    g_object_unref(webView);
-}
-
-static void testWebkitAtkGetTextInTable()
-{
-    WebKitWebView* webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    g_object_ref_sink(webView);
-    GtkAllocation allocation = { 0, 0, 800, 600 };
-    gtk_widget_size_allocate(GTK_WIDGET(webView), &allocation);
-    webkit_web_view_load_string(webView, contentsInTable, 0, 0, 0);
-
-    AtkObject* object = getWebAreaObject(webView);
-    g_assert(object);
-    object = atk_object_ref_accessible_child(object, 0);
-    g_assert(object);
-
-    /* Tables should not implement AtkText. */
-    g_assert(!G_TYPE_INSTANCE_GET_INTERFACE(object, ATK_TYPE_TEXT, AtkTextIface));
-
-    g_object_unref(object);
     g_object_unref(webView);
 }
 
@@ -1951,10 +845,6 @@ static void testWebkitAtkTextSelections()
     g_assert(atk_object_get_role(list) == ATK_ROLE_LIST);
     g_assert_cmpint(atk_object_get_n_accessible_children(list), ==, 1);
 
-    gchar* text = atk_text_get_text(listItem, 0, -1);
-    g_assert_cmpstr(text, ==, "1. A list item");
-    g_free (text);
-
     /* It's not possible to select text inside an item's marker. */
     result = atk_text_set_selection (listItem, 0, 0, 9);
     g_assert(!result);
@@ -2328,25 +1218,12 @@ static void testWebkitAtkListsOfItems()
     g_assert_cmpint(atk_object_get_n_accessible_children(uList), ==, 3);
 
     AtkObject* item1 = atk_object_ref_accessible_child(uList, 0);
-    g_assert(ATK_IS_TEXT(item1));
     AtkObject* item2 = atk_object_ref_accessible_child(uList, 1);
-    g_assert(ATK_IS_TEXT(item2));
     AtkObject* item3 = atk_object_ref_accessible_child(uList, 2);
-    g_assert(ATK_IS_TEXT(item3));
 
     g_assert_cmpint(atk_object_get_n_accessible_children(item1), ==, 0);
     g_assert_cmpint(atk_object_get_n_accessible_children(item2), ==, 1);
     g_assert_cmpint(atk_object_get_n_accessible_children(item3), ==, 1);
-
-    char* text = atk_text_get_text(ATK_TEXT(item1), 0, -1);
-    g_assert_cmpstr(text, ==, "\342\200\242 text only");
-    g_free(text);
-    text = atk_text_get_text(ATK_TEXT(item2), 0, -1);
-    g_assert_cmpstr(text, ==, "\342\200\242 link only");
-    g_free(text);
-    text = atk_text_get_text(ATK_TEXT(item3), 0, -1);
-    g_assert_cmpstr(text, ==, "\342\200\242 text and a link");
-    g_free(text);
 
     g_object_unref(item1);
     g_object_unref(item2);
@@ -2360,21 +1237,8 @@ static void testWebkitAtkListsOfItems()
     g_assert_cmpint(atk_object_get_n_accessible_children(oList), ==, 3);
 
     item1 = atk_object_ref_accessible_child(oList, 0);
-    g_assert(ATK_IS_TEXT(item1));
     item2 = atk_object_ref_accessible_child(oList, 1);
-    g_assert(ATK_IS_TEXT(item2));
     item3 = atk_object_ref_accessible_child(oList, 2);
-    g_assert(ATK_IS_TEXT(item3));
-
-    text = atk_text_get_text(ATK_TEXT(item1), 0, -1);
-    g_assert_cmpstr(text, ==, "1. text only");
-    g_free(text);
-    text = atk_text_get_text(ATK_TEXT(item2), 0, -1);
-    g_assert_cmpstr(text, ==, "2. link only");
-    g_free(text);
-    text = atk_text_get_text(ATK_TEXT(item3), 0, -1);
-    g_assert_cmpstr(text, ==, "3. text and a link");
-    g_free(text);
 
     g_assert_cmpint(atk_object_get_n_accessible_children(item1), ==, 0);
     g_assert_cmpint(atk_object_get_n_accessible_children(item2), ==, 1);
@@ -2596,28 +1460,6 @@ int main(int argc, char** argv)
     g_test_add_func("/webkit/atk/comboBox", testWebkitAtkComboBox);
     g_test_add_func("/webkit/atk/documentLoadingEvents", testWebkitAtkDocumentLoadingEvents);
     g_test_add_func("/webkit/atk/embeddedObjects", testWebkitAtkEmbeddedObjects);
-#if !ATK_CHECK_VERSION(2, 10, 0)
-    g_test_add_func("/webkit/atk/getTextAtOffset", testWebkitAtkGetTextAtOffset);
-    g_test_add_func("/webkit/atk/getTextAtOffsetNewlines", testWebkitAtkGetTextAtOffsetNewlines);
-    g_test_add_func("/webkit/atk/getTextAtOffsetTextarea", testWebkitAtkGetTextAtOffsetTextarea);
-    g_test_add_func("/webkit/atk/getTextAtOffsetTextInput", testWebkitAtkGetTextAtOffsetTextInput);
-    g_test_add_func("/webkit/atk/getTextAtOffsetWithPreformattedText", testWebkitAtkGetTextAtOffsetWithPreformattedText);
-    g_test_add_func("/webkit/atk/getTextAtOffsetWithSpecialCharacters", testWebkitAtkGetTextAtOffsetWithSpecialCharacters);
-    g_test_add_func("/webkit/atk/getTextAtOffsetWithWrappedLines", testWebkitAtkGetTextAtOffsetWithWrappedLines);
-    g_test_add_func("/webkit/atk/getTextAtOffsetWithEmbeddedObjects", testWebkitAtkGetTextAtOffsetWithEmbeddedObjects);
-#else
-    g_test_add_func("/webkit/atk/getStringAtOffset", testWebkitAtkGetStringAtOffset);
-    g_test_add_func("/webkit/atk/getStringAtOffsetNewlines", testWebkitAtkGetStringAtOffsetNewlines);
-    g_test_add_func("/webkit/atk/getStringAtOffsetTextarea", testWebkitAtkGetStringAtOffsetTextarea);
-    g_test_add_func("/webkit/atk/getStringAtOffsetTextInput", testWebkitAtkGetStringAtOffsetTextInput);
-    g_test_add_func("/webkit/atk/getStringAtOffsetWithPreformattedText", testWebkitAtkGetStringAtOffsetWithPreformattedText);
-    g_test_add_func("/webkit/atk/getStringAtOffsetWithSpecialCharacters", testWebkitAtkGetStringAtOffsetWithSpecialCharacters);
-    g_test_add_func("/webkit/atk/getStringAtOffsetWithWrappedLines", testWebkitAtkGetStringAtOffsetWithWrappedLines);
-    g_test_add_func("/webkit/atk/getStringAtOffsetWithEmbeddedObjects", testWebkitAtkGetStringAtOffsetWithEmbeddedObjects);
-#endif
-    g_test_add_func("/webkit/atk/getTextInParagraphAndBodySimple", testWebkitAtkGetTextInParagraphAndBodySimple);
-    g_test_add_func("/webkit/atk/getTextInParagraphAndBodyModerate", testWebkitAtkGetTextInParagraphAndBodyModerate);
-    g_test_add_func("/webkit/atk/getTextInTable", testWebkitAtkGetTextInTable);
     g_test_add_func("/webkit/atk/getHeadersInTable", testWebkitAtkGetHeadersInTable);
     g_test_add_func("/webkit/atk/textAttributes", testWebkitAtkTextAttributes);
     g_test_add_func("/webkit/atk/textSelections", testWebkitAtkTextSelections);

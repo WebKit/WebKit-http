@@ -407,6 +407,13 @@ struct Node {
         children.reset();
     }
     
+    void convertToConstantStoragePointer(void* pointer)
+    {
+        ASSERT(op() == GetIndexedPropertyStorage);
+        m_op = ConstantStoragePointer;
+        m_opInfo = bitwise_cast<uintptr_t>(pointer);
+    }
+    
     void convertToGetLocalUnlinked(VirtualRegister local)
     {
         m_op = GetLocalUnlinked;
@@ -971,6 +978,26 @@ struct Node {
     VariableWatchpointSet* variableWatchpointSet()
     {
         return reinterpret_cast<VariableWatchpointSet*>(m_opInfo);
+    }
+    
+    bool hasTypedArray()
+    {
+        return op() == TypedArrayWatchpoint;
+    }
+    
+    JSArrayBufferView* typedArray()
+    {
+        return reinterpret_cast<JSArrayBufferView*>(m_opInfo);
+    }
+    
+    bool hasStoragePointer()
+    {
+        return op() == ConstantStoragePointer;
+    }
+    
+    void* storagePointer()
+    {
+        return reinterpret_cast<void*>(m_opInfo);
     }
 
     bool hasStructureTransitionData()

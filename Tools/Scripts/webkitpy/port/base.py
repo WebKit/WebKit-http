@@ -51,6 +51,7 @@ except ImportError:
 from webkitpy.common import find_files
 from webkitpy.common import read_checksum_from_png
 from webkitpy.common.memoized import memoized
+from webkitpy.common.prettypatch import PrettyPatch
 from webkitpy.common.system import path
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.common.system.systemhost import SystemHost
@@ -116,6 +117,7 @@ class Port(object):
         self._filesystem = host.filesystem
         self._webkit_finder = WebKitFinder(host.filesystem)
         self._config = port_config.Config(self._executive, self._filesystem, self.port_name)
+        self.pretty_patch = PrettyPatch(self._executive, self.path_from_webkit_base(), self._filesystem)
 
         self._helper = None
         self._http_server = None
@@ -138,10 +140,6 @@ class Port(object):
         #    2008-August/505753.html
         # http://bugs.python.org/issue3210
         self._wdiff_available = None
-
-        # FIXME: prettypatch.py knows this path, why is it copied here?
-        self._pretty_patch_path = self.path_from_webkit_base("Websites", "bugs.webkit.org", "PrettyPatch", "prettify.rb")
-        self._pretty_patch_available = None
 
         if not hasattr(options, 'configuration') or not options.configuration:
             self.set_option_default('configuration', self.default_configuration())
@@ -177,11 +175,6 @@ class Port(object):
         if self._wdiff_available is None:
             self._wdiff_available = self.check_wdiff(logging=False)
         return self._wdiff_available
-
-    def pretty_patch_available(self):
-        if self._pretty_patch_available is None:
-            self._pretty_patch_available = self.check_pretty_patch(logging=False)
-        return self._pretty_patch_available
 
     def should_retry_crashes(self):
         return False
@@ -279,25 +272,6 @@ class Port(object):
         if not self._filesystem.exists(image_diff_path):
             _log.error("ImageDiff was not found at %s" % image_diff_path)
             return False
-        return True
-
-    def check_pretty_patch(self, logging=True):
-        """Checks whether we can use the PrettyPatch ruby script."""
-        try:
-            _ = self._executive.run_command(['ruby', '--version'])
-        except OSError, e:
-            if e.errno in [errno.ENOENT, errno.EACCES, errno.ECHILD]:
-                if logging:
-                    _log.warning("Ruby is not installed; can't generate pretty patches.")
-                    _log.warning('')
-                return False
-
-        if not self._filesystem.exists(self._pretty_patch_path):
-            if logging:
-                _log.warning("Unable to find %s; can't generate pretty patches." % self._pretty_patch_path)
-                _log.warning('')
-            return False
-
         return True
 
     def check_wdiff(self, logging=True):
@@ -567,6 +541,9 @@ class Port(object):
 
     def reference_files(self, test_name):
         """Return a list of expectation (== or !=) and filename pairs"""
+
+        if self.get_option('treat_ref_tests_as_pixel_tests'):
+            return []
 
         reftest_list = self._get_reftest_list(test_name)
         if not reftest_list:
@@ -1154,32 +1131,6 @@ class Port(object):
                 return ""
             raise
 
-    # This is a class variable so we can test error output easily.
-    _pretty_patch_error_html = "Failed to run PrettyPatch, see error log."
-
-    def pretty_patch_text(self, diff_path):
-        if self._pretty_patch_available is None:
-            self._pretty_patch_available = self.check_pretty_patch(logging=False)
-        if not self._pretty_patch_available:
-            return self._pretty_patch_error_html
-        command = ("ruby", "-I", self._filesystem.dirname(self._pretty_patch_path),
-                   self._pretty_patch_path, diff_path)
-        try:
-            # Diffs are treated as binary (we pass decode_output=False) as they
-            # may contain multiple files of conflicting encodings.
-            return self._executive.run_command(command, decode_output=False)
-        except OSError, e:
-            # If the system is missing ruby log the error and stop trying.
-            self._pretty_patch_available = False
-            _log.error("Failed to run PrettyPatch (%s): %s" % (command, e))
-            return self._pretty_patch_error_html
-        except ScriptError, e:
-            # If ruby failed to run for some reason, log the command
-            # output and stop trying.
-            self._pretty_patch_available = False
-            _log.error("Failed to run PrettyPatch (%s):\n%s" % (command, e.message_with_output()))
-            return self._pretty_patch_error_html
-
     def default_configuration(self):
         return self._config.default_configuration()
 
@@ -1444,11 +1395,8 @@ class Port(object):
         environment.disable_gcc_smartquotes()
         env = environment.to_dictionary()
 
-        # FIXME: We build both DumpRenderTree and WebKitTestRunner for
-        # WebKitTestRunner runs because DumpRenderTree still includes
-        # the DumpRenderTreeSupport module and the TestNetscapePlugin.
-        # These two projects should be factored out into their own
-        # projects.
+        # FIXME: We build both DumpRenderTree and WebKitTestRunner for WebKitTestRunner runs because
+        # DumpRenderTree includes TestNetscapePlugin. It should be factored out into its own project.
         try:
             self._run_script("build-dumprendertree", args=self._build_driver_flags(), env=env)
             if self.get_option('webkit_test_runner'):
@@ -1541,6 +1489,8 @@ class Port(object):
         # By current convention, the WebKit2 name is always mac-wk2, win-wk2, not mac-leopard-wk2, etc,
         return "%s-wk2" % self.port_name
 
+    def logging_patterns_to_strip(self):
+        return []
 
 class VirtualTestSuite(object):
     def __init__(self, name, base, args, tests=None):

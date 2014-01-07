@@ -95,17 +95,6 @@ private:
         }
             
         case BitOr: {
-            // Optimize X|0 -> X.
-            if (node->child2()->isConstant()) {
-                JSValue C2 = m_graph.valueOfJSConstant(node->child2().node());
-                if (C2.isInt32() && !C2.asInt32()) {
-                    m_insertionSet.insertNode(m_indexInBlock, SpecNone, Phantom, node->codeOrigin,
-                        Edge(node->child2().node(), KnownInt32Use));
-                    node->children.removeEdge(1);
-                    node->convertToIdentity();
-                    break;
-                }
-            }
             fixIntEdge(node->child1());
             fixIntEdge(node->child2());
             break;
@@ -244,11 +233,14 @@ private:
         case ArithMod: {
             if (Node::shouldSpeculateInt32ForArithmetic(node->child1().node(), node->child2().node())
                 && node->canSpeculateInt32()) {
-                if (isX86() || isARM64() || isARMv7s()) {
+                if (optimizeForX86() || optimizeForARM64() || optimizeForARMv7s()) {
                     fixEdge<Int32Use>(node->child1());
                     fixEdge<Int32Use>(node->child2());
                     break;
                 }
+                Edge child1 = node->child1();
+                Edge child2 = node->child2();
+                
                 injectInt32ToDoubleNode(node->child1());
                 injectInt32ToDoubleNode(node->child2());
 
@@ -259,6 +251,8 @@ private:
                 
                 node->setOp(DoubleAsInt32);
                 node->children.initialize(Edge(newDivision, KnownNumberUse), Edge(), Edge());
+                
+                m_insertionSet.insertNode(m_indexInBlock + 1, SpecNone, Phantom, node->codeOrigin, child1, child2);
                 break;
             }
             fixEdge<NumberUse>(node->child1());
@@ -888,6 +882,11 @@ private:
         case Int52ToValue:
         case InvalidationPoint:
         case CheckArray:
+        case CheckInBounds:
+        case ConstantStoragePointer:
+            // These are just nodes that we don't currently expect to see during fixup.
+            // If we ever wanted to insert them prior to fixup, then we just have to create
+            // fixup rules for them.
             RELEASE_ASSERT_NOT_REACHED();
             break;
 
@@ -951,6 +950,7 @@ private:
         case ExtractOSREntryLocal:
         case LoopHint:
         case FunctionReentryWatchpoint:
+        case TypedArrayWatchpoint:
             break;
 #else
         default:

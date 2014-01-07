@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebProcess.h"
 
+#include "APIFrameHandle.h"
 #include "AuthenticationManager.h"
 #include "EventDispatcher.h"
 #include "InjectedBundle.h"
@@ -33,6 +34,7 @@
 #include "Logging.h"
 #include "PluginProcessConnectionManager.h"
 #include "StatisticsData.h"
+#include "UserData.h"
 #include "WebApplicationCacheManager.h"
 #include "WebConnectionToUIProcess.h"
 #include "WebContextMessages.h"
@@ -372,11 +374,13 @@ void WebProcess::ensureNetworkProcessConnection()
 
 #if PLATFORM(MAC)
     CoreIPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
-    if (CoreIPC::Connection::identifierIsNull(connectionIdentifier))
-        return;
+#elif USE(UNIX_DOMAIN_SOCKETS)
+    CoreIPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
 #else
     ASSERT_NOT_REACHED();
 #endif
+    if (CoreIPC::Connection::identifierIsNull(connectionIdentifier))
+        return;
     m_networkProcessConnection = NetworkProcessConnection::create(connectionIdentifier);
 }
 #endif // ENABLE(NETWORK_PROCESS)
@@ -1180,6 +1184,22 @@ void WebProcess::nonVisibleProcessCleanupTimerFired(Timer<WebProcess>*)
 #if PLATFORM(MAC)
     wkDestroyRenderingResources();
 #endif
+}
+
+RefPtr<API::Object> WebProcess::apiObjectByConvertingFromHandles(API::Object* object)
+{
+    return UserData::transform(object, [this](const API::Object& object) -> RefPtr<API::Object> {
+        switch (object.type()) {
+        case API::Object::Type::FrameHandle: {
+            auto& frameHandle = static_cast<const API::FrameHandle&>(object);
+
+            return webFrame(frameHandle.frameID());
+        }
+
+        default:
+            return nullptr;
+        }
+    });
 }
 
 } // namespace WebKit

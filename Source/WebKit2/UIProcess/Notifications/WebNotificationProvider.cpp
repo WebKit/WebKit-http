@@ -27,11 +27,11 @@
 #include "WebNotificationProvider.h"
 
 #include "APIArray.h"
+#include "APINumber.h"
 #include "ImmutableDictionary.h"
 #include "WKAPICast.h"
 #include "WebNotification.h"
 #include "WebNotificationManagerProxy.h"
-#include "WebNumber.h"
 #include "WebSecurityOrigin.h"
 
 namespace WebKit {
@@ -69,7 +69,7 @@ void WebNotificationProvider::clearNotifications(const Vector<uint64_t>& notific
     arrayIDs.reserveInitialCapacity(notificationIDs.size());
 
     for (const auto& notificationID : notificationIDs)
-        arrayIDs.uncheckedAppend(WebUInt64::create(notificationID));
+        arrayIDs.uncheckedAppend(API::UInt64::create(notificationID));
 
     m_client.clearNotifications(toAPI(API::Array::create(std::move(arrayIDs)).get()), m_client.base.clientInfo);
 }

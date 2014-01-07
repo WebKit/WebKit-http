@@ -1,3 +1,164 @@
+2013-12-11  David Kilzer  <ddkilzer@apple.com>
+
+        Define m_hasBadParent in InlineBox if defined(ADDRESS_SANITIZER)
+        <http://webkit.org/b/125329>
+
+        Reviewed by Darin Adler.
+
+        * wtf/Assertions.h: Define macro
+        ASSERT_WITH_SECURITY_IMPLICATION_DISABLED based on whether
+        ASSERT_WITH_SECURITY_IMPLICATION() is enabled.
+
+2013-12-11  Brendan Long  <b.long@cablelabs.com>
+
+        Type punning error in MD5.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=125412
+
+        Reviewed by Darin Adler.
+
+        * wtf/MD5.cpp:
+        (WTF::toLittleEndian): Renamed, and use memcpy instead of casting.
+        (WTF::MD5::addBytes): Renamed reverseBytes to toLittleEndian.
+        (WTF::MD5::checksum): Same, and use memcpy instead of casting to prevent type punning error.
+
+2013-12-11  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        Store SHA1 hash in std::array
+        https://bugs.webkit.org/show_bug.cgi?id=125446
+
+        Reviewed by Darin Adler.
+
+        Change Vector to std::array and use typedef.
+
+        * wtf/SHA1.cpp:
+        (WTF::SHA1::computeHash):
+        (WTF::SHA1::hexDigest):
+        (WTF::SHA1::computeHexDigest):
+        * wtf/SHA1.h:
+
+2013-12-11  Oliver Hunt  <oliver@apple.com>
+
+        Give Unique StringImpls a meaningful data pointer
+        https://bugs.webkit.org/show_bug.cgi?id=125598
+
+        Reviewed by Michael Saboff.
+
+        Found by code inspection.  If there is a collision in an Identifier
+        table when comparing to a string literal we attempt to use the data
+        pointer (essentially this ends up being a null termination check).
+
+        Previously unique pointers just used the literal 1 as the data address
+        but this obviously fails when dereferenced.  Instead we now make the
+        data pointer point to the location of the buffer pointer itself.  As
+        the buffer pointer is initialised to 0, this satisfies the requirement
+        that the 0-length unique string is null terminated.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+
+2013-12-10  Anders Carlsson  <andersca@apple.com>
+
+        Add a HashMap constructor that takes an initializer list
+        https://bugs.webkit.org/show_bug.cgi?id=125551
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/HashMap.h:
+        (WTF::HashMap::HashMap):
+
+2013-12-10  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        Use std::array when computing MD5 checksum
+        https://bugs.webkit.org/show_bug.cgi?id=125509
+
+        Reviewed by Anders Carlsson.
+
+        Added MD5::Digest type and MD5::hashSize for computing MD5 checksum.
+
+        * wtf/MD5.cpp:
+        (WTF::MD5::checksum):
+        * wtf/MD5.h:
+
+2013-12-10  Martin Robinson  <mrobinson@igalia.com>
+
+        Various fixes for the CMake GTK+ build
+
+        Reviewed by Gustavo Noronha.
+
+        * wtf/PlatformGTK.cmake: Add Zlib library to the WTF build.
+
+2013-12-09  Sam Weinig  <sam@webkit.org>
+
+        Remove FixedArray
+        https://bugs.webkit.org/show_bug.cgi?id=125478
+
+        Reviewed by Anders Carlsson.
+
+        * GNUmakefile.list.am:
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/FixedArray.h: Removed.
+
+2013-12-09  Sam Weinig  <sam@webkit.org>
+
+        Replace use of WTF::FixedArray with std::array
+        https://bugs.webkit.org/show_bug.cgi?id=125475
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/AVLTree.h:
+        * wtf/Bitmap.h:
+        * wtf/SixCharacterHash.cpp:
+        (WTF::integerToSixCharacterHashString):
+        * wtf/SixCharacterHash.h:
+
+2013-12-06  Roger Fong <roger_fong@apple.com> and Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Support compiling with VS2013
+        https://bugs.webkit.org/show_bug.cgi?id=125353
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Compiler.h: Show proper features for VS2012 and VS2013.
+        * wtf/MathExtras.h: Don't implement common C99 routines when
+        they are available through the runtime libraries.
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr::operator bool): Added.
+        * wtf/StdLibExtras.h: Use Microsoft's version of make_unique
+        when it exists.
+
+2013-12-06  Laszlo Vidacs  <lac@inf.u-szeged.hu>
+
+        Define SHA1 hash size in SHA1.h and use it at various places.
+        https://bugs.webkit.org/show_bug.cgi?id=125345
+
+        Reviewed by Darin Adler.
+
+        Use SHA1::hashSize instead of local variables.
+
+        * wtf/SHA1.h: define SHA1 hash size
+
+2013-12-05  Iain Lane  <iain.lane@canonical.com>
+
+        Remove USE(LOCKFREE_THREADSAFEREFCOUNTED) from Atomics.cpp since it is
+        no longer defined.
+        https://bugs.webkit.org/show_bug.cgi?id=124502
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Atomics.cpp:
+
+2013-12-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable HTMLTemplateElement by default
+        https://bugs.webkit.org/show_bug.cgi?id=123851
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/FeatureDefines.h:
+
 2013-12-04  Dan Bernstein  <mitz@apple.com>
 
         Replace USE(SECURITY_FRAMEWORK) with finer-grained defines

@@ -42,13 +42,19 @@ RefPtr<MockMediaSourcePrivate> MockMediaSourcePrivate::create(MockMediaPlayerMed
 
 MockMediaSourcePrivate::MockMediaSourcePrivate(MockMediaPlayerMediaSource* parent)
     : m_player(parent)
-    , m_duration(0)
+    , m_duration(std::numeric_limits<float>::quiet_NaN())
     , m_isEnded(false)
+    , m_totalVideoFrames(0)
+    , m_droppedVideoFrames(0)
+    , m_corruptedVideoFrames(0)
+    , m_totalFrameDelay(0)
 {
 }
 
 MockMediaSourcePrivate::~MockMediaSourcePrivate()
 {
+    for (auto it = m_sourceBuffers.begin(), end = m_sourceBuffers.end(); it != end; ++it)
+        (*it)->clearMediaSource();
 }
 
 MediaSourcePrivate::AddStatus MockMediaSourcePrivate::addSourceBuffer(const ContentType& contentType, RefPtr<SourceBufferPrivate>& outPrivate)
@@ -94,7 +100,8 @@ void MockMediaSourcePrivate::setDuration(double duration)
 
 void MockMediaSourcePrivate::markEndOfStream(EndOfStreamStatus status)
 {
-    UNUSED_PARAM(status);
+    if (status == EosNoError)
+        m_player->setNetworkState(MediaPlayer::Loaded);
     m_isEnded = true;
 }
 

@@ -123,14 +123,6 @@ const Vector<WebContext*>& WebContext::allContexts()
     return contexts();
 }
 
-#if PLATFORM(IOS)
-WebContext* WebContext::sharedProcessContext()
-{
-    static WKContextRef sharedContextRef = WKContextCreate();
-    return toImpl(sharedContextRef);
-}
-#endif
-
 WebContext::WebContext(const String& injectedBundlePath)
     : m_processModel(ProcessModelSharedSecondaryProcess)
     , m_webProcessCountLimit(UINT_MAX)
@@ -163,8 +155,8 @@ WebContext::WebContext(const String& injectedBundlePath)
 {
     platformInitialize();
 
-    addMessageReceiver(Messages::WebContext::messageReceiverName(), this);
-    addMessageReceiver(WebContextLegacyMessages::messageReceiverName(), this);
+    addMessageReceiver(Messages::WebContext::messageReceiverName(), *this);
+    addMessageReceiver(WebContextLegacyMessages::messageReceiverName(), *this);
 
     // NOTE: These sub-objects must be initialized after m_messageReceiverMap..
     m_iconDatabase = WebIconDatabase::create(this);
@@ -919,12 +911,12 @@ DownloadProxy* WebContext::createDownloadProxy()
     return ensureSharedWebProcess().createDownloadProxy();
 }
 
-void WebContext::addMessageReceiver(CoreIPC::StringReference messageReceiverName, CoreIPC::MessageReceiver* messageReceiver)
+void WebContext::addMessageReceiver(CoreIPC::StringReference messageReceiverName, CoreIPC::MessageReceiver& messageReceiver)
 {
     m_messageReceiverMap.addMessageReceiver(messageReceiverName, messageReceiver);
 }
 
-void WebContext::addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver* messageReceiver)
+void WebContext::addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver& messageReceiver)
 {
     m_messageReceiverMap.addMessageReceiver(messageReceiverName, destinationID, messageReceiver);
 }

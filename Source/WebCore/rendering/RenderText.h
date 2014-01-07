@@ -37,9 +37,8 @@ class RenderText : public RenderObject {
 public:
     RenderText(Text&, const String&);
     RenderText(Document&, const String&);
-#ifndef NDEBUG
+
     virtual ~RenderText();
-#endif
 
     virtual const char* renderName() const OVERRIDE;
 
@@ -64,6 +63,9 @@ public:
 
     virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const OVERRIDE FINAL;
     Vector<IntRect> absoluteRectsForRange(unsigned startOffset = 0, unsigned endOffset = UINT_MAX, bool useSelectionHeight = false, bool* wasFixed = nullptr) const;
+#if PLATFORM(IOS)
+    virtual void collectSelectionRects(Vector<SelectionRect>&, unsigned startOffset = 0, unsigned endOffset = std::numeric_limits<unsigned>::max()) OVERRIDE;
+#endif
 
     virtual void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const OVERRIDE FINAL;
     Vector<FloatQuad> absoluteQuadsForRange(unsigned startOffset = 0, unsigned endOffset = UINT_MAX, bool useSelectionHeight = false, bool* wasFixed = nullptr) const;
@@ -103,8 +105,6 @@ public:
 
     virtual void setText(const String&, bool force = false);
     void setTextWithOffset(const String&, unsigned offset, unsigned len, bool force = false);
-
-    virtual void transformText();
 
     virtual bool canBeSelectionLeaf() const OVERRIDE { return true; }
     virtual void setSelectionState(SelectionState s) OVERRIDE FINAL;
@@ -201,6 +201,7 @@ private:
     bool m_canUseSimpleFontCodePath : 1;
     mutable bool m_knownToHaveNoOverflowAndNoFallbackFonts : 1;
     bool m_useBackslashAsYenSymbol : 1;
+    bool m_originalTextDiffersFromRendered : 1;
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     // FIXME: This should probably be part of the text sizing structures in Document instead. That would save some memory.

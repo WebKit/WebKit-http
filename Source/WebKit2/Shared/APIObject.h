@@ -26,7 +26,9 @@
 #ifndef APIObject_h
 #define APIObject_h
 
+#include <functional>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 
 #if PLATFORM(MAC)
 #include "WKFoundation.h"
@@ -62,7 +64,10 @@ public:
         Data,
         Dictionary,
         Error,
+        FrameHandle,
         Image,
+        PageGroupData,
+        PageHandle,
         ProtectionSpace,
         RenderLayer,
         RenderObject,
@@ -198,18 +203,18 @@ private:
 };
 
 template <Object::Type ArgumentType>
-class TypedObject : public Object {
+class ObjectImpl : public Object {
 public:
     static const Type APIType = ArgumentType;
 
-    virtual ~TypedObject()
+    virtual ~ObjectImpl()
     {
     }
 
 protected:
     friend class Object;
 
-    TypedObject()
+    ObjectImpl()
     {
     }
 

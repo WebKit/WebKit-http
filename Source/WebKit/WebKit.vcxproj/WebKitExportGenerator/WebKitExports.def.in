@@ -212,6 +212,7 @@ EXPORTS
         symbolWithPointer(?item@StaticNodeList@WebCore@@UBEPAVNode@2@I@Z, ?item@StaticNodeList@WebCore@@UEBAPEAVNode@2@I@Z)
         ?selectTag@HTMLNames@WebCore@@3VQualifiedName@2@B
 #if ENABLE(INSPECTOR)
+        symbolWithPointer(?buildObjectForHighlightedNode@InspectorController@WebCore@@QBE?AV?$PassRefPtr@VInspectorObject@Inspector@@@WTF@@XZ, ?buildObjectForHighlightedNode@InspectorController@WebCore@@QBE?AV?$PassRefPtr@VInspectorObject@Inspector@@@WTF@@XZ)
         symbolWithPointer(?getHighlight@InspectorController@WebCore@@QBEXPAUHighlight@2@@Z, ?getHighlight@InspectorController@WebCore@@QEBAXPEAUHighlight@2@@Z)
         symbolWithPointer(?instrumentingAgentsForPage@InspectorInstrumentation@WebCore@@CAPAVInstrumentingAgents@2@PAVPage@2@@Z, ?instrumentingAgentsForPage@InspectorInstrumentation@WebCore@@CAPEAVInstrumentingAgents@2@PEAVPage@2@@Z)
         ?s_frontendCounter@InspectorInstrumentation@WebCore@@0HA
@@ -220,7 +221,7 @@ EXPORTS
         symbolWithPointer(??1InspectorFrontendClientLocal@WebCore@@UAE@XZ, ??1InspectorFrontendClientLocal@WebCore@@UEAA@XZ)
         symbolWithPointer(?changeAttachedWindowHeight@InspectorFrontendClientLocal@WebCore@@UAEXI@Z, ?changeAttachedWindowHeight@InspectorFrontendClientLocal@WebCore@@UEAAXI@Z)
         symbolWithPointer(?changeAttachedWindowWidth@InspectorFrontendClientLocal@WebCore@@UAEXI@Z, ?changeAttachedWindowWidth@InspectorFrontendClientLocal@WebCore@@UEAAXI@Z)
-        symbolWithPointer(?connectFrontend@InspectorController@WebCore@@QAEXPAVInspectorFrontendChannel@2@@Z, ?connectFrontend@InspectorController@WebCore@@QEAAXPEAVInspectorFrontendChannel@2@@Z)
+        symbolWithPointer(?connectFrontend@InspectorController@WebCore@@QAEXPAVInspectorFrontendChannel@Inspector@@@Z, ?connectFrontend@InspectorController@WebCore@@QAEXPAVInspectorFrontendChannel@Inspector@@@Z)
         symbolWithPointer(?doDispatchMessageOnFrontendPage@InspectorClient@WebCore@@SA_NPAVPage@2@ABVString@WTF@@@Z, ?doDispatchMessageOnFrontendPage@InspectorClient@WebCore@@SA_NPEAVPage@2@AEBVString@WTF@@@Z)
         symbolWithPointer(?frontendLoaded@InspectorFrontendClientLocal@WebCore@@UAEXXZ, ?frontendLoaded@InspectorFrontendClientLocal@WebCore@@UEAAXXZ)
         symbolWithPointer(?getProperty@Settings@InspectorFrontendClientLocal@WebCore@@UAE?AVString@WTF@@ABV45@@Z, ?getProperty@Settings@InspectorFrontendClientLocal@WebCore@@UEAA?AVString@WTF@@AEBV45@@Z)
@@ -346,7 +347,12 @@ EXPORTS
         symbolWithPointer(?pageSizeAndMarginsInPixels@PrintContext@WebCore@@SA?AVString@WTF@@PAVFrame@2@HHHHHHH@Z, ?pageSizeAndMarginsInPixels@PrintContext@WebCore@@SA?AVString@WTF@@PEAVFrame@2@HHHHHHH@Z)
         symbolWithPointer(?close@DOMWindow@WebCore@@QAEXPAVScriptExecutionContext@2@@Z, ?close@DOMWindow@WebCore@@QEAAXPEAVScriptExecutionContext@2@@Z)
         symbolWithPointer(?document@DOMWindow@WebCore@@QBEPAVDocument@2@XZ, ?document@DOMWindow@WebCore@@QEBAPEAVDocument@2@XZ)
+#if _MSC_VER < 1800
         symbolWithPointer(?open@DOMWindow@WebCore@@QAE?AV?$PassRefPtr@VDOMWindow@WebCore@@@WTF@@ABVString@4@ABVAtomicString@4@0PAV12@2@Z, ?open@DOMWindow@WebCore@@QEAA?AV?$PassRefPtr@VDOMWindow@WebCore@@@WTF@@AEBVString@4@AEBVAtomicString@4@0PEAV12@2@Z)
+#else
+        symbolWithPointer(?open@DOMWindow@WebCore@@QAE?AV?$PassRefPtr@VDOMWindow@WebCore@@@WTF@@ABVString@4@ABVAtomicString@4@0AAV12@2@Z, ?open@DOMWindow@WebCore@@QEAA?AV?$PassRefPtr@VDOMWindow@WebCore@@@WTF@@AEBVString@4@AEBVAtomicString@4@0AEAV12@2@Z)
+
+#endif
         symbolWithPointer(?toJS@WebCore@@YA?AVJSValue@JSC@@PAVExecState@3@PAVJSDOMGlobalObject@1@PAVDOMWindow@1@@Z, ?toJS@WebCore@@YA?AVJSValue@JSC@@PEAVExecState@3@PEAVJSDOMGlobalObject@1@PEAVDOMWindow@1@@Z)
         symbolWithPointer(?layerTreeAsText@Frame@WebCore@@QBE?AVString@WTF@@I@Z, ?layerTreeAsText@Frame@WebCore@@QEBA?AVString@WTF@@I@Z)
         symbolWithPointer(?trackedRepaintRectsAsText@Frame@WebCore@@QBE?AVString@WTF@@XZ, ?trackedRepaintRectsAsText@Frame@WebCore@@QEBA?AVString@WTF@@XZ)
@@ -362,7 +368,6 @@ EXPORTS
         symbolWithPointer(?dataChanged@BitmapImage@WebCore@@UAE_N_N@Z, ?dataChanged@BitmapImage@WebCore@@UEAA_N_N@Z)
         symbolWithPointer(?filenameExtension@BitmapImage@WebCore@@UBE?AVString@WTF@@XZ, ?filenameExtension@BitmapImage@WebCore@@UEBA?AVString@WTF@@XZ)
         symbolWithPointer(?destroyDecodedData@BitmapImage@WebCore@@MAEX_N@Z, ?destroyDecodedData@BitmapImage@WebCore@@MEAAX_N@Z)
-        symbolWithPointer(?decodedSize@BitmapImage@WebCore@@UBEIXZ, ?decodedSize@BitmapImage@WebCore@@UEBAIXZ)
         symbolWithPointer(?startAnimation@BitmapImage@WebCore@@MAEX_N@Z, ?startAnimation@BitmapImage@WebCore@@MEAAX_N@Z)
         symbolWithPointer(?stopAnimation@BitmapImage@WebCore@@UAEXXZ, ?stopAnimation@BitmapImage@WebCore@@UEAAXXZ)
         symbolWithPointer(?resetAnimation@BitmapImage@WebCore@@UAEXXZ, ?resetAnimation@BitmapImage@WebCore@@UEAAXXZ)
@@ -445,8 +450,6 @@ EXPORTS
         symbolWithPointer(?nearest@TimeRanges@WebCore@@QBENN@Z, ?nearest@TimeRanges@WebCore@@QEBANN@Z)
         symbolWithPointer(?add@TimeRanges@WebCore@@QAEXNN@Z, ?add@TimeRanges@WebCore@@QEAAXNN@Z)
 #endif
-        symbolWithPointer(?toJSONString@InspectorValue@WebCore@@QBE?AVString@WTF@@XZ, ?toJSONString@InspectorValue@WebCore@@QEBA?AVString@WTF@@XZ)
-        symbolWithPointer(?buildObjectForHighlightedNode@InspectorController@WebCore@@QBE?AV?$PassRefPtr@VInspectorObject@WebCore@@@WTF@@XZ, ?buildObjectForHighlightedNode@InspectorController@WebCore@@QEBA?AV?$PassRefPtr@VInspectorObject@WebCore@@@WTF@@XZ)
         symbolWithPointer(?standardFontFamily@Settings@WebCore@@QBEABVAtomicString@WTF@@W4UScriptCode@@@Z, ?standardFontFamily@Settings@WebCore@@QEBAAEBVAtomicString@WTF@@W4UScriptCode@@@Z)
         symbolWithPointer(?serifFontFamily@Settings@WebCore@@QBEABVAtomicString@WTF@@W4UScriptCode@@@Z, ?serifFontFamily@Settings@WebCore@@QEBAAEBVAtomicString@WTF@@W4UScriptCode@@@Z)
         symbolWithPointer(?sansSerifFontFamily@Settings@WebCore@@QBEABVAtomicString@WTF@@W4UScriptCode@@@Z, ?sansSerifFontFamily@Settings@WebCore@@QEBAAEBVAtomicString@WTF@@W4UScriptCode@@@Z)
@@ -460,3 +463,8 @@ EXPORTS
         symbolWithPointer(?cacheStorage@WebCore@@YAAAVApplicationCacheStorage@1@XZ, ?cacheStorage@WebCore@@YAAEAVApplicationCacheStorage@1@XZ)
         symbolWithPointer(?setDefaultOriginQuota@ApplicationCacheStorage@WebCore@@QAEX_J@Z, ?setDefaultOriginQuota@ApplicationCacheStorage@WebCore@@QEAAX_J@Z)
         symbolWithPointer(?vm@ScriptExecutionContext@WebCore@@QAEPAVVM@JSC@@XZ, ?vm@ScriptExecutionContext@WebCore@@QEAAPEAVVM@JSC@@XZ)
+#if _MSC_VER >= 1800
+        symbolWithPointer(?completeURL@Document@WebCore@@UBE?AVURL@2@ABVString@WTF@@@Z, ?completeURL@Document@WebCore@@UBEA?AVURL@2@AEBVString@WTF@@@Z)
+        symbolWithPointer(??1DOMWindow@WebCore@@UAE@XZ, ??1DOMWindow@WebCore@@UEAA@XZ)
+        symbolWithPointer(?visibleContentRect@ScrollView@WebCore@@UBE?AVIntRect@2@W4VisibleContentRectIncludesScrollbars@ScrollableArea@2@@Z, ?visibleContentRect@ScrollView@WebCore@@UEAA?AVIntRect@2@W4VisibleContentRectIncludesScrollbars@ScrollableArea@2@@Z)
+#endif

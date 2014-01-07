@@ -1,3 +1,54 @@
+2013-12-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r159543.
+        http://trac.webkit.org/changeset/159543
+        https://bugs.webkit.org/show_bug.cgi?id=125371
+
+        Build fix for mac no longer needed (Requested by rfong on
+        #webkit).
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * src/compiler/glslang_tab.cpp:
+        (yysyntax_error):
+        (glslang_parse):
+        * src/compiler/glslang_tab.h:
+        * src/compiler/preprocessor/ExpressionParser.cpp:
+        (yy_symbol_print):
+        (yy_stack_print):
+        (yy_reduce_print):
+        (yytnamerr):
+        (yysyntax_error):
+        (yydestruct):
+        (yyparse):
+
+2013-12-05  Roger Fong  <roger_fong@apple.com>
+
+        [WebGL] Make sure we satisfy uniform and varying packing restrictions.
+        https://bugs.webkit.org/show_bug.cgi?id=125124.
+        <rdar://problem/15203291>
+
+        Reviewed by Brent Fulgham.
+
+        * src/compiler/Compiler.cpp: 
+        Add a check to enforcePackingRestrictions to ensure we make sure packing restrictions for varyings are satisfied as well.
+        (TCompiler::TCompiler):
+        (TCompiler::Init):
+        (TCompiler::compile):
+        (TCompiler::enforcePackingRestrictions):
+        * src/compiler/ShHandle.h: Keep track of maximum varying vectors.
+
+2013-12-05  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Fix ANGLE build failures by re-comitting the changes in http://trac.webkit.org/changeset/154223
+        on top of the library updates introduced by http://trac.webkit.org/changeset/159533.
+
+        Rubber-stamped by Babak Shafiei.
+
+        * src/compiler/glslang.l:
+        * src/compiler/glslang_lex.cpp:
+        * src/compiler/preprocessor/Tokenizer.cpp:
+        * src/compiler/preprocessor/Tokenizer.l:
+
 2013-12-03  Daniel Bates  <dabates@apple.com>
 
         ANGLE fails to build with trunk clang: unused constant kTraceBufferLen

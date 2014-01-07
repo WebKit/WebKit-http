@@ -80,6 +80,9 @@ class DisplaySleepDisabler;
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 class MediaKeys;
 #endif
+#if ENABLE(MEDIA_SOURCE)
+class VideoPlaybackQuality;
+#endif
 
 #if ENABLE(VIDEO_TRACK)
 class AudioTrackList;
@@ -201,7 +204,8 @@ public:
 #if ENABLE(MEDIA_SOURCE)
 //  Media Source.
     void closeMediaSource();
-#endif 
+    void incrementDroppedFrameCount() { ++m_droppedVideoFrames; }
+#endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void webkitGenerateKeyRequest(const String& keySystem, PassRefPtr<Uint8Array> initData, ExceptionCode&);
@@ -395,6 +399,13 @@ public:
 
     unsigned long long fileSize() const;
 
+    void mediaLoadingFailed(MediaPlayer::NetworkState);
+    void mediaLoadingFailedFatally(MediaPlayer::NetworkState);
+
+#if ENABLE(MEDIA_SOURCE)
+    RefPtr<VideoPlaybackQuality> getVideoPlaybackQuality();
+#endif
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool);
     virtual ~HTMLMediaElement();
@@ -563,14 +574,11 @@ private:
     void clearMediaPlayer(int flags);
     bool havePotentialSourceChild();
     void noneSupported();
-    void mediaEngineError(PassRefPtr<MediaError> err);
     void cancelPendingEventsAndCallbacks();
     void waitForSourceChange();
     void prepareToPlay();
 
     URL selectNextSourceChild(ContentType*, String* keySystem, InvalidURLAction);
-
-    void mediaLoadingFailed(MediaPlayer::NetworkState);
 
 #if ENABLE(VIDEO_TRACK)
     void updateActiveTextTrackCues(double);
@@ -699,6 +707,7 @@ private:
 
 #if ENABLE(MEDIA_SOURCE)
     RefPtr<HTMLMediaSource> m_mediaSource;
+    unsigned long m_droppedVideoFrames;
 #endif
 
     mutable double m_cachedTime;
