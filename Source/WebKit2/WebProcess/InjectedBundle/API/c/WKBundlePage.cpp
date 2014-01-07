@@ -28,6 +28,8 @@
 #include "WKBundlePagePrivate.h"
 
 #include "APIArray.h"
+#include "APIString.h"
+#include "APIURLRequest.h"
 #include "InjectedBundleBackForwardList.h"
 #include "InjectedBundleNodeHandle.h"
 #include "PageBanner.h"
@@ -44,9 +46,7 @@
 #include "WebPage.h"
 #include "WebRenderLayer.h"
 #include "WebRenderObject.h"
-#include "WebString.h"
 #include "WebURL.h"
-#include "WebURLRequest.h"
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/AccessibilityObject.h>
 #include <WebCore/MainFrame.h>

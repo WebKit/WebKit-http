@@ -44,7 +44,12 @@
 #import "WKNavigationDataInternal.h"
 #import "WKProcessGroupInternal.h"
 #import "WKWebProcessPlugInBrowserContextControllerInternal.h"
+#import "WKWebProcessPlugInFrameInternal.h"
+#import "WKWebProcessPlugInHitTestResultInternal.h"
 #import "WKWebProcessPlugInInternal.h"
+#import "WKWebProcessPlugInNodeHandleInternal.h"
+#import "WKWebProcessPlugInPageGroupInternal.h"
+#import "WKWebProcessPlugInScriptWorldInternal.h"
 
 namespace API {
 
@@ -133,6 +138,26 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::URL:
         wrapper = NSAllocateObject([WKNSURL class], size, nullptr);
+        break;
+
+    case Type::BundleFrame:
+        wrapper = [WKWebProcessPlugInFrame alloc];
+        break;
+
+    case Type::BundleHitTestResult:
+        wrapper = [WKWebProcessPlugInHitTestResult alloc];
+        break;
+
+    case Type::BundleNodeHandle:
+        wrapper = [WKWebProcessPlugInNodeHandle alloc];
+        break;
+
+    case Type::BundlePageGroup:
+        wrapper = [WKWebProcessPlugInPageGroup alloc];
+        break;
+
+    case Type::BundleScriptWorld:
+        wrapper = [WKWebProcessPlugInScriptWorld alloc];
         break;
 
     default:

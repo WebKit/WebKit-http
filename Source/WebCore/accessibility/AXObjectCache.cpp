@@ -121,8 +121,8 @@ AXObjectCache::~AXObjectCache()
     HashMap<AXID, RefPtr<AccessibilityObject>>::iterator end = m_objects.end();
     for (HashMap<AXID, RefPtr<AccessibilityObject>>::iterator it = m_objects.begin(); it != end; ++it) {
         AccessibilityObject* obj = (*it).value.get();
-        detachWrapper(obj, CacheDestroyed);
-        obj->detach();
+        detachWrapper(obj);
+        obj->detach(CacheDestroyed);
         removeAXID(obj);
     }
 }
@@ -493,8 +493,8 @@ void AXObjectCache::remove(AXID axID)
     if (!obj)
         return;
     
-    detachWrapper(obj, ElementDestroyed);
-    obj->detach();
+    detachWrapper(obj);
+    obj->detach(ElementDestroyed, this);
     removeAXID(obj);
     
     // finally remove the object
@@ -977,10 +977,19 @@ bool isNodeAriaVisible(Node* node)
     if (!node)
         return false;
     
-    if (!node->isElementNode())
-        return false;
+    // To determine if a node is ARIA visible, we need to check the parent hierarchy to see if anyone specifies
+    // aria-hidden explicitly.
+    for (Node* testNode = node; testNode; testNode = testNode->parentNode()) {
+        if (testNode->isElementNode()) {
+            const AtomicString& ariaHiddenValue = toElement(testNode)->fastGetAttribute(aria_hiddenAttr);
+            if (equalIgnoringCase(ariaHiddenValue, "false"))
+                return true;
+            if (equalIgnoringCase(ariaHiddenValue, "true"))
+                return false;
+        }
+    }
     
-    return equalIgnoringCase(toElement(node)->getAttribute(aria_hiddenAttr), "false");
+    return false;
 }
 
 AXAttributeCacheEnabler::AXAttributeCacheEnabler(AXObjectCache* cache)

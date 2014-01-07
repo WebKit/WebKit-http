@@ -1,3 +1,134 @@
+2013-12-18  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK][CMake] make libjavascriptcoregtk a public shared library again
+        https://bugs.webkit.org/show_bug.cgi?id=125512
+
+        Reviewed by Martin Robinson.
+
+        * CMakeLists.txt: make JavaScriptCore always be a shared library for the GTK+ port.
+        * Source/cmake/WebKitHelpers.cmake: make -fvisibility=hidden not be applied for GTK+,
+        visibility of some symbols is required for threading to be initialized properly by
+        WebKit2 processes, and we will rely on a linker script that will be added later on,
+        for production builds.
+
+2013-12-16  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Add support for building WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=116377
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/cmake/OptionsGTK.cmake: Turn off some features that do not build properly
+        for WebKit1 and stop using the version script which we haven't implemented yet. Turn
+        on WebKit1.
+
+2013-12-18  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK][CMake] Use thin archives if building on Linux, only way to get non-shared-core debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=125951
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/OptionsGTK.cmake: append T for thin archives to the flags passed to ar,
+        also use u, which is used in the autotools build (it avoids adding a file twice).
+
+2013-12-18  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK][CMake] Remove binary size optimizations we do not use in the autotools build
+        https://bugs.webkit.org/show_bug.cgi?id=125947
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/OptionsGTK.cmake: remove the relevant flags.
+
+2013-12-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and Versions.m4 for 2.3.3 release.
+
+        * Source/autotools/Versions.m4: Bump version numbers.
+
+2013-12-12  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Build the plugin process against GTK+ 2
+        https://bugs.webkit.org/show_bug.cgi?id=116374
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/cmake/FindGDK2.cmake: Added.
+        * Source/cmake/FindGTK2.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake: Look for GTK2 and GDK2.
+        * Source/cmake/WebKitMacros.cmake: Abstract WebKit2 IPC generation here so it
+        can be shared between the WebKit2 library and the plugin process.
+
+2013-12-17  Simon Pena  <simon.pena@samsung.com>
+
+        [NIX] Enable full debug builds by having ar creating thin archives
+        https://bugs.webkit.org/show_bug.cgi?id=125850
+
+        Reviewed by Csaba Osztrogonác.
+
+        By default, CMake uses ar to generate libWebCore.a with cr parameters
+        (do not warn if the library has to be created, and replace existing
+        files in the archive). That results in a very large file, and ar fails
+        with sizes over 4GB.
+
+        Previously, debug builds on NIX were overriding CFLAGS in order to reduce
+        the size of the WebCore library. Once that ar creates thin archives, overriding
+        CFLAGS is no longer needed.
+
+        * Source/cmake/OptionsNix.cmake: Remove CFLAGS override for debug builds.
+
+2013-12-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [GTK] Remove Warnings in building about duplicate INSPECTOR variables
+        https://bugs.webkit.org/show_bug.cgi?id=125710
+
+        Reviewed by Tim Horton.
+
+        * GNUmakefile.am:
+
+2013-12-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Inspector Code Generation to JavaScriptCore for Runtime Domain
+        https://bugs.webkit.org/show_bug.cgi?id=125595
+
+        Reviewed by Timothy Hatcher.
+
+        * GNUmakefile.am:
+
+2013-12-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Remove the -Wno-c++11-extensions compiler option for Clang builds
+        https://bugs.webkit.org/show_bug.cgi?id=125639
+
+        Reviewed by Anders Carlsson.
+
+        * Source/autotools/SetupCompilerFlags.m4: The -Wno-c++11-extensions compiler option was in use
+        when building with Clang. It is now removed as the C++11 standard is enabled throughout the project.
+
+2013-12-11  Martin Robinson  <mrobinson@igalia.com> and Danilo Cesar Lemes de Paula  <danilo.cesar@collabora.co.uk>
+
+        Adding a .ycm_extra_conf file for webkitGtk
+        https://bugs.webkit.org/show_bug.cgi?id=119618
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Added a YouCompleteMe flag discovery script for Vim and the GTK+ port. The script
+        read the GTK+ build files to determine dynamically what flags to compile a source
+        file with. This allows Vim to provide auto-complete for C++/C language. See
+        https://github.com/Valloric/YouCompleteMe for how to use this file.
+
+        * .gitignore: Ignore the YCM symlinks in the tree.
+
+2013-12-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Use of ar T option not supported by older binutils
+        https://bugs.webkit.org/show_bug.cgi?id=118732
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/autotools/SetupLibtool.m4: Make the AR_FLAGS value usable inside makefiles as an Automake variable.
+
 2013-12-11  Javier Fernandez  <jfernandez@igalia.com>
 
         Arithmetic overflow when computing max-height CSS property with subpixel layout

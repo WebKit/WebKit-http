@@ -78,12 +78,12 @@ JSCustomPushEventHandlerScope
 JSCustomToNativeObject
 JSGenerateToJSObject
 JSGenerateToNativeObject
-JSInlineGetOwnPropertySlot
 JSLegacyParent=*
 JSNoStaticTables
 JSWindowEventListener
 MasqueradesAsUndefined
 NamedConstructor=*
+NewImpurePropertyFiresWatchpoints
 NoInterfaceObject
 NotEnumerable
 NotDeletable

@@ -29,11 +29,11 @@
 #if WK_API_ENABLED
 
 #import "APIArray.h"
+#import "APIData.h"
 #import "APINumber.h"
+#import "APIString.h"
 #import "MutableDictionary.h"
 #import "WKRemoteObjectInterfaceInternal.h"
-#import "WebData.h"
-#import "WebString.h"
 #import <objc/runtime.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/TemporaryChange.h>
@@ -175,7 +175,7 @@ static void encodeObject(WKRemoteObjectEncoder *encoder, id object)
     if (!objectClass)
         [NSException raise:NSInvalidArgumentException format:@"-classForCoder returned nil for %@", object];
 
-    encoder->_currentDictionary->set(classNameKey, WebString::create(class_getName(objectClass)));
+    encoder->_currentDictionary->set(classNameKey, API::String::create(class_getName(objectClass)));
 
     if ([object isKindOfClass:[NSInvocation class]]) {
         // We have to special case NSInvocation since we don't want to encode the target.
@@ -237,7 +237,7 @@ static NSString *escapeKey(NSString *key)
 
 - (void)encodeBytes:(const uint8_t *)bytes length:(NSUInteger)length forKey:(NSString *)key
 {
-    _currentDictionary->set(escapeKey(key), WebData::create(bytes, length));
+    _currentDictionary->set(escapeKey(key), API::Data::create(bytes, length));
 }
 
 - (void)encodeBool:(BOOL)value forKey:(NSString *)key
@@ -434,7 +434,7 @@ static NSInvocation *decodeInvocation(WKRemoteObjectDecoder *decoder)
 
 static id decodeObject(WKRemoteObjectDecoder *decoder)
 {
-    WebString* classNameString = decoder->_currentDictionary->get<WebString>(classNameKey);
+    API::String* classNameString = decoder->_currentDictionary->get<API::String>(classNameKey);
     if (!classNameString)
         [NSException raise:NSInvalidUnarchiveOperationException format:@"Class name missing"];
 
@@ -505,7 +505,7 @@ static id decodeObject(WKRemoteObjectDecoder *decoder, const ImmutableDictionary
 
 - (const uint8_t *)decodeBytesForKey:(NSString *)key returnedLength:(NSUInteger *)length
 {
-    WebData* data = _currentDictionary->get<WebData>(escapeKey(key));
+    auto* data = _currentDictionary->get<API::Data>(escapeKey(key));
     if (!data || !data->size())
         return nullptr;
 

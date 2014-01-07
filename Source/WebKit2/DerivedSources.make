@@ -30,9 +30,10 @@ VPATH = \
     $(WebKit2)/PluginProcess/mac \
     $(WebKit2)/Shared/Plugins \
     $(WebKit2)/Shared \
-    $(WebKit2)/Shared/mac \
+    $(WebKit2)/Shared/API/Cocoa \
     $(WebKit2)/Shared/Authentication \
     $(WebKit2)/Shared/Network/CustomProtocols \
+    $(WebKit2)/Shared/mac \
     $(WebKit2)/WebProcess/ApplicationCache \
     $(WebKit2)/WebProcess/Cookies \
     $(WebKit2)/WebProcess/Databases/IndexedDB \
@@ -85,10 +86,13 @@ MESSAGE_RECEIVERS = \
     PluginProcessProxy \
     PluginProxy \
     RemoteLayerTreeHost \
+    RemoteObjectRegistry \
     SecItemShim \
     SecItemShimProxy \
     StorageAreaMap \
     StorageManager \
+    ViewGestureController \
+    ViewGestureGeometryCollector \
     WebApplicationCacheManager \
     WebApplicationCacheManagerProxy \
     WebConnection \

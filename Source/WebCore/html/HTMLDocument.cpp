@@ -70,7 +70,7 @@
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLFrameSetElement.h"
 #include "HTMLNames.h"
-#include "InspectorInstrumentation.h"
+#include "JSDOMBinding.h"
 #include "Page.h"
 #include "ScriptController.h"
 #include "Settings.h"
@@ -81,8 +81,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-HTMLDocument::HTMLDocument(Frame* frame, const URL& url, DocumentClassFlags documentClasses)
-    : Document(frame, url, documentClasses | HTMLDocumentClass)
+HTMLDocument::HTMLDocument(Frame* frame, const URL& url, DocumentClassFlags documentClasses, bool isSynthesized)
+    : Document(frame, url, documentClasses | HTMLDocumentClass, isSynthesized)
 {
     clearXMLVersion();
 }
@@ -248,8 +248,7 @@ void HTMLDocument::releaseEvents()
 
 PassRefPtr<DocumentParser> HTMLDocument::createParser()
 {
-    bool reportErrors = InspectorInstrumentation::collectingHTMLParseErrors(this->page());
-    return HTMLDocumentParser::create(*this, reportErrors);
+    return HTMLDocumentParser::create(*this);
 }
 
 // --------------------------------------------------------------------------
@@ -328,6 +327,7 @@ static HashSet<AtomicStringImpl*>* createHtmlCaseInsensitiveAttributesSet()
 void HTMLDocument::addDocumentNamedItem(const AtomicStringImpl& name, Element& item)
 {
     m_documentNamedItem.add(name, item, *this);
+    addImpureProperty(AtomicString(const_cast<AtomicStringImpl*>(&name)));
 }
 
 void HTMLDocument::removeDocumentNamedItem(const AtomicStringImpl& name, Element& item)

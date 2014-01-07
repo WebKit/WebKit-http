@@ -66,9 +66,9 @@ public:
     void setToolbarHeight(unsigned);
 
     void moveWindowBy(float x, float y) const;
-    void setInjectedScriptForOrigin(const String& origin, const String& script);
 
     String localizedStringsURL();
+    String debuggableType();
 
     void copyText(const String& text);
     void openInNewTab(const String& url);

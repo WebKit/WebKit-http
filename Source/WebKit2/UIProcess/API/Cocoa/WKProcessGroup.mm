@@ -41,6 +41,7 @@
 #import "WKRetainPtr.h"
 #import "WKStringCF.h"
 #import "WeakObjCPtr.h"
+#import "WebCertificateInfo.h"
 #import "WebFrameProxy.h"
 #import <wtf/RetainPtr.h>
 
@@ -200,6 +201,10 @@ static void setUpHistoryClient(WKProcessGroup *processGroup, WKContextRef contex
     setUpConnectionClient(self, toAPI(_context.get()));
     setUpInectedBundleClient(self, toAPI(_context.get()));
     setUpHistoryClient(self, toAPI(_context.get()));
+#if PLATFORM(IOS)
+    _context->setUsesNetworkProcess(true);
+    _context->setProcessModel(ProcessModelMultipleSecondaryProcesses);
+#endif
 
     return self;
 }
@@ -228,6 +233,11 @@ static void setUpHistoryClient(WKProcessGroup *processGroup, WKContextRef contex
 - (WKContextRef)_contextRef
 {
     return toAPI(_context.get());
+}
+
+- (void)_setAllowsSpecificHTTPSCertificate:(NSArray *)certificateChain forHost:(NSString *)host
+{
+    _context->allowSpecificHTTPSCertificateForHost(WebCertificateInfo::create(WebCore::CertificateInfo((CFArrayRef)certificateChain)).get(), host);
 }
 
 #if PLATFORM(IOS)

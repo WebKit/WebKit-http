@@ -145,6 +145,29 @@ namespace WebCore {
         static Type copy(const ResourceResponse&);
     };
 
+#if ENABLE(INDEXED_DATABASE)
+    namespace IndexedDB {
+        enum class TransactionMode;
+        enum class CursorDirection;
+        enum class CursorType;
+    }
+    template<> struct CrossThreadCopierBase<false, false, IndexedDB::TransactionMode> {
+        static IndexedDB::TransactionMode copy(const IndexedDB::TransactionMode&);
+    };
+    template<> struct CrossThreadCopierBase<false, false, IndexedDB::CursorDirection> {
+        static IndexedDB::CursorDirection copy(const IndexedDB::CursorDirection&);
+    };
+    template<> struct CrossThreadCopierBase<false, false, IndexedDB::CursorType> {
+        static IndexedDB::CursorType copy(const IndexedDB::CursorType&);
+    };
+
+    struct IDBDatabaseMetadata;
+    template<> struct CrossThreadCopierBase<false, false, IDBDatabaseMetadata> {
+        typedef IDBDatabaseMetadata Type;
+        static Type copy(const IDBDatabaseMetadata&);
+    };
+#endif
+
     template<typename T>
     struct CrossThreadCopier : public CrossThreadCopierBase<CrossThreadCopierBaseHelper::IsConvertibleToInteger<T>::value, CrossThreadCopierBaseHelper::IsThreadSafeRefCountedPointer<T>::value, T> {
     };

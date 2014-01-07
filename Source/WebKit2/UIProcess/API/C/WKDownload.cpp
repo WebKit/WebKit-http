@@ -26,9 +26,9 @@
 #include "config.h"
 #include "WKDownload.h"
 
+#include "APIURLRequest.h"
 #include "DownloadProxy.h"
 #include "WKAPICast.h"
-#include "WebURLRequest.h"
 
 using namespace WebKit;
 
@@ -44,7 +44,7 @@ uint64_t WKDownloadGetID(WKDownloadRef download)
 
 WKURLRequestRef WKDownloadCopyRequest(WKDownloadRef download)
 {
-    return toAPI(WebURLRequest::create(toImpl(download)->request()).leakRef());
+    return toAPI(API::URLRequest::create(toImpl(download)->request()).leakRef());
 }
 
 WKDataRef WKDownloadGetResumeData(WKDownloadRef download)

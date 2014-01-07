@@ -71,12 +71,12 @@ PassRefPtr<WebPageProxy> WebUIClient::createNewPage(WebPageProxy* page, const Re
     map.set("resizable", API::Boolean::create(windowFeatures.resizable));
     map.set("fullscreen", API::Boolean::create(windowFeatures.fullscreen));
     map.set("dialog", API::Boolean::create(windowFeatures.dialog));
-    RefPtr<ImmutableDictionary> featuresMap = ImmutableDictionary::adopt(map);
+    RefPtr<ImmutableDictionary> featuresMap = ImmutableDictionary::create(std::move(map));
 
     if (!m_client.base.version)
         return adoptRef(toImpl(m_client.createNewPage_deprecatedForUseWithV0(toAPI(page), toAPI(featuresMap.get()), toAPI(modifiers), toAPI(button), m_client.base.clientInfo)));
 
-    RefPtr<WebURLRequest> request = WebURLRequest::create(resourceRequest);    
+    RefPtr<API::URLRequest> request = API::URLRequest::create(resourceRequest);    
     return adoptRef(toImpl(m_client.createNewPage(toAPI(page), toAPI(request.get()), toAPI(featuresMap.get()), toAPI(modifiers), toAPI(button), m_client.base.clientInfo)));
 } 
 
@@ -141,7 +141,7 @@ String WebUIClient::runJavaScriptPrompt(WebPageProxy* page, const String& messag
     if (!m_client.runJavaScriptPrompt)
         return String();
 
-    WebString* string = toImpl(m_client.runJavaScriptPrompt(toAPI(page), toAPI(message.impl()), toAPI(defaultValue.impl()), toAPI(frame), m_client.base.clientInfo));
+    API::String* string = toImpl(m_client.runJavaScriptPrompt(toAPI(page), toAPI(message.impl()), toAPI(defaultValue.impl()), toAPI(frame), m_client.base.clientInfo));
     if (!string)
         return String();
 
@@ -183,9 +183,9 @@ void WebUIClient::unavailablePluginButtonClicked(WebPageProxy* page, WKPluginUna
         if (m_client.missingPluginButtonClicked_deprecatedForUseWithV0)
             m_client.missingPluginButtonClicked_deprecatedForUseWithV0(
                 toAPI(page),
-                toAPI(pluginInformation->get<WebString>(pluginInformationMIMETypeKey())),
-                toAPI(pluginInformation->get<WebString>(pluginInformationPluginURLKey())),
-                toAPI(pluginInformation->get<WebString>(pluginInformationPluginspageAttributeURLKey())),
+                toAPI(pluginInformation->get<API::String>(pluginInformationMIMETypeKey())),
+                toAPI(pluginInformation->get<API::String>(pluginInformationPluginURLKey())),
+                toAPI(pluginInformation->get<API::String>(pluginInformationPluginspageAttributeURLKey())),
                 m_client.base.clientInfo);
     }
 
@@ -193,9 +193,9 @@ void WebUIClient::unavailablePluginButtonClicked(WebPageProxy* page, WKPluginUna
         m_client.unavailablePluginButtonClicked_deprecatedForUseWithV1(
             toAPI(page),
             pluginUnavailabilityReason,
-            toAPI(pluginInformation->get<WebString>(pluginInformationMIMETypeKey())),
-            toAPI(pluginInformation->get<WebString>(pluginInformationPluginURLKey())),
-            toAPI(pluginInformation->get<WebString>(pluginInformationPluginspageAttributeURLKey())),
+            toAPI(pluginInformation->get<API::String>(pluginInformationMIMETypeKey())),
+            toAPI(pluginInformation->get<API::String>(pluginInformationPluginURLKey())),
+            toAPI(pluginInformation->get<API::String>(pluginInformationPluginspageAttributeURLKey())),
             m_client.base.clientInfo);
 
     if (m_client.unavailablePluginButtonClicked)
@@ -420,7 +420,7 @@ void WebUIClient::runModal(WebPageProxy* page)
     m_client.runModal(toAPI(page), m_client.base.clientInfo);
 }
 
-void WebUIClient::saveDataToFileInDownloadsFolder(WebPageProxy* page, const String& suggestedFilename, const String& mimeType, const String& originatingURLString, WebData* data)
+void WebUIClient::saveDataToFileInDownloadsFolder(WebPageProxy* page, const String& suggestedFilename, const String& mimeType, const String& originatingURLString, API::Data* data)
 {
     if (!m_client.saveDataToFileInDownloadsFolder)
         return;

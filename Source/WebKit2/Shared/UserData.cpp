@@ -27,14 +27,16 @@
 #include "UserData.h"
 
 #include "APIArray.h"
+#include "APIData.h"
 #include "APIFrameHandle.h"
 #include "APIGeometry.h"
 #include "APINumber.h"
+#include "APIString.h"
+#include "APIURLRequest.h"
 #include "ArgumentCoders.h"
 #include "ArgumentEncoder.h"
 #include "MutableDictionary.h"
 #include "WebSerializedScriptValue.h"
-#include "WebString.h"
 #include "WebURL.h"
 
 namespace WebKit {
@@ -71,7 +73,7 @@ RefPtr<API::Object> UserData::transform(API::Object* object, const std::function
         for (const auto& keyValuePair : dictionary.map())
             map.add(keyValuePair.key, transform(keyValuePair.value.get(), transformer));
 
-        return ImmutableDictionary::adopt(map);
+        return ImmutableDictionary::create(std::move(map));
     }
 
     if (auto transformedObject = transformer(*object))
@@ -118,11 +120,15 @@ void UserData::encode(CoreIPC::ArgumentEncoder& encoder, const API::Object& obje
         static_cast<const API::Boolean&>(object).encode(encoder);
         break;
 
+    case API::Object::Type::Data:
+        static_cast<const API::Data&>(object).encode(encoder);
+        break;
+    
     case API::Object::Type::Dictionary: {
         auto& dictionary = static_cast<const ImmutableDictionary&>(object);
         auto& map = dictionary.map();
 
-        encoder << map.size();
+        encoder << static_cast<uint64_t>(map.size());
         for (const auto& keyValuePair : map) {
             encoder << keyValuePair.key;
             encode(encoder, keyValuePair.value.get());
@@ -153,7 +159,7 @@ void UserData::encode(CoreIPC::ArgumentEncoder& encoder, const API::Object& obje
         break;
 
     case API::Object::Type::String: {
-        auto& string = static_cast<const WebString&>(object);
+        auto& string = static_cast<const API::String&>(object);
         encoder << string.string();
         break;
     }
@@ -163,6 +169,10 @@ void UserData::encode(CoreIPC::ArgumentEncoder& encoder, const API::Object& obje
         encoder << url.string();
         break;
     }
+
+    case API::Object::Type::URLRequest:
+        static_cast<const API::URLRequest&>(object).encode(encoder);
+        break;
 
     case API::Object::Type::UInt64:
         static_cast<const API::UInt64&>(object).encode(encoder);
@@ -203,6 +213,11 @@ bool UserData::decode(CoreIPC::ArgumentDecoder& decoder, RefPtr<API::Object>& re
             return false;
         break;
 
+    case API::Object::Type::Data:
+        if (!API::Data::decode(decoder, result))
+            return false;
+        break;
+
     case API::Object::Type::Dictionary: {
         uint64_t size;
         if (!decoder.decode(size))
@@ -222,7 +237,7 @@ bool UserData::decode(CoreIPC::ArgumentDecoder& decoder, RefPtr<API::Object>& re
                 return false;
         }
 
-        result = ImmutableDictionary::adopt(map);
+        result = ImmutableDictionary::create(std::move(map));
         break;
     }
 
@@ -274,7 +289,7 @@ bool UserData::decode(CoreIPC::ArgumentDecoder& decoder, RefPtr<API::Object>& re
         if (!decoder.decode(string))
             return false;
 
-        result = WebString::create(string);
+        result = API::String::create(string);
         break;
     }
 
@@ -285,6 +300,11 @@ bool UserData::decode(CoreIPC::ArgumentDecoder& decoder, RefPtr<API::Object>& re
         result = WebURL::create(string);
         break;
     }
+
+    case API::Object::Type::URLRequest:
+        if (!API::URLRequest::decode(decoder, result))
+            return false;
+        break;
 
     case API::Object::Type::UInt64:
         if (!API::UInt64::decode(decoder, result))

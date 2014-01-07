@@ -31,13 +31,22 @@
 
 @class WKDOMDocument;
 @class WKDOMRange;
+@class WKWebProcessPlugInFrame;
+@class WKWebProcessPlugInPageGroup;
+@protocol WKWebProcessPlugInLoadDelegate;
 
 WK_API_CLASS
 @interface WKWebProcessPlugInBrowserContextController : NSObject
 
-@property(readonly) WKDOMDocument *mainFrameDocument;
+@property (readonly) WKDOMDocument *mainFrameDocument;
 
-@property(readonly) WKDOMRange *selectedRange;
+@property (readonly) WKDOMRange *selectedRange;
+
+@property (readonly) WKWebProcessPlugInFrame *mainFrame;
+
+@property (readonly) WKWebProcessPlugInPageGroup *pageGroup;
+
+@property (weak) id <WKWebProcessPlugInLoadDelegate> loadDelegate;
 
 @end
 

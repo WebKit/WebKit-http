@@ -57,6 +57,7 @@ libWebKit2Platform_la_CPPFLAGS = \
 	-DBUILDING_WEBKIT \
 	$(global_cppflags) \
 	-fno-strict-aliasing \
+	-I$(srcdir)/Source/WebKit2 \
 	-I$(srcdir)/Source \
 	-I$(srcdir)/Source/WTF \
 	-I$(srcdir)/Source/WebKit2/Platform \
@@ -65,6 +66,7 @@ libWebKit2Platform_la_CPPFLAGS = \
 	-I$(srcdir)/Source/WebKit2/Platform/IPC \
 	-I$(srcdir)/Source/WebKit2/Platform/gtk \
 	-I$(top_builddir)/DerivedSources/WebKit2/include \
+	$(javascriptcore_cppflags) \
 	$(COVERAGE_CFLAGS) \
 	$(GLIB_CFLAGS)
 
@@ -664,13 +666,15 @@ endif
 
 webcore_layer_gtk2_archives = $(foreach lib, $(webcore_layer_gtk2_deps), $(shell echo $(lib) | sed "s/\(.*\)\.la/.libs\/\1.a/"))
 
-WebCoreLayerGtk2.a: $(webcore_layer_gtk2_deps)
+libWebCoreLayerGtk2.a: $(webcore_layer_gtk2_deps)
 	$(AM_V_GEN)
 	$(AM_V_at)$(shell rm -f $@)
-	$(AM_V_at)$(foreach archive, $(webcore_layer_gtk2_archives), $(shell ar t $(archive) | xargs -n50 ar cruT $@))
+	$(AM_V_at)$(shell find . -name "*.o" > objects_list)
+	$(AM_V_at)$(foreach archive, $(webcore_layer_gtk2_archives), $(shell $(AR) t $(archive) | xargs -n1 basename | xargs -I obj_file grep -F obj_file objects_list | xargs -n50 $(AR) $(AR_FLAGS) $@))
+	$(AM_V_at)$(shell rm -f objects_list)
 
 DISTCLEANFILES += \
-	$(top_builddir)/WebCoreLayerGtk2.a
+	$(top_builddir)/libWebCoreLayerGtk2.a
 
 Programs_WebKitPluginProcess_CPPFLAGS = \
 	-include $(srcdir)/Source/WebKit2/WebKit2Prefix.h \
@@ -731,7 +735,7 @@ Programs_WebKitPluginProcess_SOURCES = \
 Programs_WebKitPluginProcess_LDADD = \
 	-lpthread \
 	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
-	WebCoreLayerGtk2.a \
+	libWebCoreLayerGtk2.a \
 	libWebKit2Platform.la \
 	$(CAIRO_LIBS) \
 	$(COVERAGE_LDFLAGS) \

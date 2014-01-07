@@ -27,12 +27,12 @@
 #include "InjectedBundlePageEditorClient.h"
 
 #include "APIArray.h"
+#include "APIData.h"
 #include "InjectedBundleNodeHandle.h"
 #include "InjectedBundleRangeHandle.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
 #include "WKString.h"
-#include "WebData.h"
 #include <wtf/text/WTFString.h>
 
 using namespace WebCore;
@@ -154,10 +154,10 @@ void InjectedBundlePageEditorClient::getPasteboardDataForRange(WebPage* page, Ra
 
         ASSERT(typesArray->size() == dataArray->size());
 
-        for (const auto& type : typesArray->elementsOfType<WebString>())
+        for (const auto& type : typesArray->elementsOfType<API::String>())
             pasteboardTypes.append(type->string());
 
-        for (const auto& item : dataArray->elementsOfType<WebData>()) {
+        for (const auto& item : dataArray->elementsOfType<API::Data>()) {
             RefPtr<SharedBuffer> buffer = SharedBuffer::create(item->bytes(), item->size());
             pasteboardData.append(buffer);
         }

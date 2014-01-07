@@ -257,7 +257,7 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
 
     // Don't paint if we don't have kids, except if we have filters we should paint those.
     if (!firstChild()) {
-        SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(this);
+        SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(*this);
         if (!resources || !resources->filter()) {
             if (page && paintInfo.phase == PaintPhaseForeground)
                 page->addRelevantUnpaintedObject(this, visualOverflowRect());
@@ -292,9 +292,8 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
 
         if (continueRendering) {
             childPaintInfo.updateSubtreePaintRootForChildren(this);
-            auto children = childrenOfType<RenderElement>(*this);
-            for (auto child = children.begin(), end = children.end(); child != end; ++child)
-                child->paint(childPaintInfo, location());
+            for (auto& child : childrenOfType<RenderElement>(*this))
+                child.paint(childPaintInfo, location());
         }
     }
 

@@ -29,6 +29,7 @@
 
 #include "RTCNotifiersMock.h"
 
+#include "DOMError.h"
 #include "RTCDataChannelHandlerMock.h"
 #include "RTCSessionDescriptionDescriptor.h"
 #include "RTCSessionDescriptionRequest.h"
@@ -36,9 +37,10 @@
 
 namespace WebCore {
 
-SessionRequestNotifier::SessionRequestNotifier(PassRefPtr<RTCSessionDescriptionRequest> request, PassRefPtr<RTCSessionDescriptionDescriptor> descriptor)
+SessionRequestNotifier::SessionRequestNotifier(PassRefPtr<RTCSessionDescriptionRequest> request, PassRefPtr<RTCSessionDescriptionDescriptor> descriptor, const String& errorName)
     : m_request(request)
     , m_descriptor(descriptor)
+    , m_errorName(errorName)
 {
 }
 
@@ -47,12 +49,13 @@ void SessionRequestNotifier::fire()
     if (m_descriptor)
         m_request->requestSucceeded(m_descriptor);
     else
-        m_request->requestFailed("TEST_ERROR");
+        m_request->requestFailed(m_errorName);
 }
 
-VoidRequestNotifier::VoidRequestNotifier(PassRefPtr<RTCVoidRequest> request, bool success)
+VoidRequestNotifier::VoidRequestNotifier(PassRefPtr<RTCVoidRequest> request, bool success, const String& errorName)
     : m_request(request)
     , m_success(success)
+    , m_errorName(errorName)
 {
 }
 
@@ -61,7 +64,7 @@ void VoidRequestNotifier::fire()
     if (m_success)
         m_request->requestSucceeded();
     else
-        m_request->requestFailed("TEST_ERROR");
+        m_request->requestFailed(m_errorName);
 }
 
 IceConnectionNotifier::IceConnectionNotifier(RTCPeerConnectionHandlerClient* client, RTCPeerConnectionHandlerClient::IceConnectionState connectionState, RTCPeerConnectionHandlerClient::IceGatheringState gatheringState)
@@ -75,6 +78,17 @@ void IceConnectionNotifier::fire()
 {
     m_client->didChangeIceGatheringState(m_gatheringState);
     m_client->didChangeIceConnectionState(m_connectionState);
+}
+
+SignalingStateNotifier::SignalingStateNotifier(RTCPeerConnectionHandlerClient* client, RTCPeerConnectionHandlerClient::SignalingState signalingState)
+    : m_client(client)
+    , m_signalingState(signalingState)
+{
+}
+
+void SignalingStateNotifier::fire()
+{
+    m_client->didChangeSignalingState(m_signalingState);
 }
 
 RemoteDataChannelNotifier::RemoteDataChannelNotifier(RTCPeerConnectionHandlerClient* client)

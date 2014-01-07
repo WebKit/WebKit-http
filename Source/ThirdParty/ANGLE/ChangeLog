@@ -1,3 +1,47 @@
+2013-12-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix make distcheck.
+
+        * GNUmakefile.am:
+
+2013-12-17  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        [GTK] Some ANGLE headers missing from dist
+        https://bugs.webkit.org/show_bug.cgi?id=125782
+
+        Reviewed by Carlos Garcia Campos.
+
+        * GNUmakefile.am: add a few headers that were missing from the build,
+        causing build failures when the system headers were incompatible.
+
+2013-12-16  Alex Christensen  <achristensen@webkit.org>
+
+        Fixed Win64 build on VS2013.
+        https://bugs.webkit.org/show_bug.cgi?id=125753
+
+        Reviewed by Brent Fulgham.
+
+        * ANGLE.vcxproj/libGLESv2.vcxproj:
+        * ANGLE.vcxproj/preprocessor.vcxproj:
+        * ANGLE.vcxproj/translator_common.vcxproj:
+        * ANGLE.vcxproj/translator_glsl.vcxproj:
+        * ANGLE.vcxproj/translator_hlsl.vcxproj:
+        Added correct PlatformToolset for 64-bit builds.
+
+2013-12-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r160548
+
+        I missed the ANGLE files, since we aren't building these
+        on the Apple Windows port at the moment.
+
+        * ANGLE.vcxproj/libEGL.vcxproj: Update to VS2013
+        * ANGLE.vcxproj/libGLESv2.vcxproj: Ditto
+        * ANGLE.vcxproj/preprocessor.vcxproj: Ditto
+        * ANGLE.vcxproj/translator_common.vcxproj: Ditto
+        * ANGLE.vcxproj/translator_glsl.vcxproj: Ditto
+        * ANGLE.vcxproj/translator_hlsl.vcxproj: Ditto
+
 2013-12-06  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r159543.

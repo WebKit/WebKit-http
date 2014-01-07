@@ -140,6 +140,7 @@ struct WKAutoCorrectionData{
     uint64_t _latestTapHighlightID;
     BOOL _isTapHighlightIDValid;
     WKAutoCorrectionData _autocorrectionData;
+    RetainPtr<NSString> _markedText;
 }
 
 @synthesize inputDelegate = _inputDelegate;
@@ -263,22 +264,14 @@ static FloatQuad inflateQuad(const FloatQuad& quad, float inflateSize)
     RetainPtr<UIColor> highlightUIKitColor = adoptNS([[UIColor alloc] initWithRed:(color.red() / 255.0) green:(color.green() / 255.0) blue:(color.blue() / 255.0) alpha:(color.alpha() / 255.0)]);
     [_highlightView.get() setColor:highlightUIKitColor.get()];
 
-    // Like WebKit1, we don't bother highlighting items that are bigger than the constraining rect.
-    // FIXME: this should not be done in mixed coordinate systems. It should be expressed in the ScrollView coordinates.
-    CGRect constrainRect = _scrollView.bounds;
-
     bool allHighlightRectsAreRectilinear = true;
     const size_t quadCount = highlightedQuads.size();
     RetainPtr<NSMutableArray> rects = adoptNS([[NSMutableArray alloc] initWithCapacity:static_cast<const NSUInteger>(quadCount)]);
     for (size_t i = 0; i < quadCount; ++i) {
         const FloatQuad& quad = highlightedQuads[i];
         if (quad.isRectilinear()) {
-            CGRect rect = quad.boundingBox();
-            if ((CGRectGetWidth(rect) > CGRectGetWidth(constrainRect)) || (CGRectGetHeight(rect) > CGRectGetHeight(constrainRect)))
-                continue;
-
-            rect = CGRectInset(rect, -UIWebViewMinimumHighlightRadius, -UIWebViewMinimumHighlightRadius);
-            [rects.get() addObject:[NSValue valueWithCGRect:rect]];
+            CGRect rect = CGRectInset(quad.boundingBox(), -UIWebViewMinimumHighlightRadius, -UIWebViewMinimumHighlightRadius);
+            [rects addObject:[NSValue valueWithCGRect:rect]];
         } else {
             allHighlightRectsAreRectilinear = false;
             rects.clear();
@@ -820,11 +813,6 @@ static void autocorrectionData(const Vector<FloatRect>& rects, const String& fon
     autocorrectionData->completionHandler = nil;
 }
 
-// FIXME: This will be removed when we make requestAutocorrectionRectsForString non optional.
-- (void)requestAutocorrectionData:(NSString *)text withCorrection:(NSString *)correction
-{
-}
-
 // The completion handler can pass nil if input does not match the actual text preceding the insertion point.
 - (void)requestAutocorrectionRectsForString:(NSString *)input withCompletionHandler:(void (^)(UIWKAutocorrectionRects *rectsForInput))completionHandler
 {
@@ -838,12 +826,12 @@ static void autocorrectionData(const Vector<FloatRect>& rects, const String& fon
 
 - (CGRect)textFirstRect
 {
-    return _autocorrectionData.textFirstRect;
+    return (_page->editorState().hasComposition) ? _page->editorState().firstMarkedRect : _autocorrectionData.textFirstRect;
 }
 
 - (CGRect)textLastRect
 {
-    return _autocorrectionData.textLastRect;
+    return (_page->editorState().hasComposition) ? _page->editorState().lastMarkedRect : _autocorrectionData.textLastRect;
 }
 
 static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void* context)
@@ -855,11 +843,6 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
     autocorrectionData->completionHandler(correction ? [WKAutocorrectionRects autocorrectionRectsWithRects:autocorrectionData->textFirstRect lastRect:autocorrectionData->textLastRect] : nil);
     [autocorrectionData->completionHandler release];
     autocorrectionData->completionHandler = nil;
-}
-
-// FIXME: This will be removed when we make applyAutocorrection:(NSString *)correction toString:(NSString *)input withCompletionHandler:(void (^)(UIWKAutocorrectionRects *rectsForCorrection))completionHandler non optional.
-- (void)applyAutocorrection:(NSString *)newText toString:(NSString *)input withRect:(CGRect)autocorrectRect
-{
 }
 
 // The completion handler should pass the rect of the correction text after replacing the input text, or nil if the replacement could not be performed.
@@ -959,6 +942,16 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
 {
 }
 
+- (BOOL)hasMarkedText
+{
+    return _page->editorState().hasComposition || [_markedText length];
+}
+
+- (NSString *)markedText
+{
+    return _markedText.get();
+}
+
 - (UITextRange *)markedTextRange
 {
     return nil;
@@ -975,10 +968,14 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
 
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange
 {
+    _markedText = markedText;
+    _page->setComposition(markedText, Vector<WebCore::CompositionUnderline>(), selectedRange.location, selectedRange.length, 0, 0);
 }
 
 - (void)unmarkText
 {
+    _markedText = nil;
+    _page->confirmComposition();
 }
 
 - (UITextPosition *)beginningOfDocument
@@ -1301,11 +1298,6 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
     return nil;
 }
 
-- (NSString *)markedText
-{
-    return nil;
-}
-
 - (void)setMarkedText:(NSString *)text
 {
 }
@@ -1410,6 +1402,7 @@ static void autocorrectionResult(WKStringRef correction, WKErrorRef error, void*
 
 - (void)_selectionChanged
 {
+    _markedText = (_page->editorState().hasComposition) ? _page->editorState().markedText : String();
     // FIXME: We need to figure out what to do if the selection is changed by Javascript.
     if (!_showingTextStyleOptions)
         [_textSelectionAssistant selectionChanged];

@@ -27,17 +27,23 @@
 #include "ImmutableDictionary.h"
 
 #include "APIArray.h"
-#include "WebString.h"
+#include "APIString.h"
 
 namespace WebKit {
 
-ImmutableDictionary::ImmutableDictionary()
+RefPtr<ImmutableDictionary> ImmutableDictionary::create()
 {
+    return create({ });
 }
 
-ImmutableDictionary::ImmutableDictionary(MapType& map)
+RefPtr<ImmutableDictionary> ImmutableDictionary::create(MapType map)
 {
-    m_map.swap(map);
+    return adoptRef(new ImmutableDictionary(std::move(map)));
+}
+
+ImmutableDictionary::ImmutableDictionary(MapType map)
+    : m_map(std::move(map))
+{
 }
 
 ImmutableDictionary::~ImmutableDictionary()
@@ -53,7 +59,7 @@ PassRefPtr<API::Array> ImmutableDictionary::keys() const
     keys.reserveInitialCapacity(m_map.size());
 
     for (const auto& key : m_map.keys())
-        keys.uncheckedAppend(WebString::create(key));
+        keys.uncheckedAppend(API::String::create(key));
 
     return API::Array::create(std::move(keys));
 }

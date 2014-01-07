@@ -99,6 +99,9 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
     if (!isFinishedParsingChildren())
         return;
 
+#if PLATFORM(IOS)
+    UNUSED_PARAM(pluginCreationOption);
+#else
     // FIXME: It's sadness that we have this special case here.
     //        See http://trac.webkit.org/changeset/25128 and
     //        plugins/netscape-plugin-setwindow-size.html
@@ -148,19 +151,19 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
         paramValues.append(mayScript.string());
     }
 
-    auto paramChildren = childrenOfType<HTMLParamElement>(*this);
-    for (auto param = paramChildren.begin(), end = paramChildren.end(); param != end; ++param) {
-        if (param->name().isEmpty())
+    for (auto& param : childrenOfType<HTMLParamElement>(*this)) {
+        if (param.name().isEmpty())
             continue;
 
-        paramNames.append(param->name());
-        paramValues.append(param->value());
+        paramNames.append(param.name());
+        paramValues.append(param.value());
     }
 
     Frame* frame = document().frame();
     ASSERT(frame);
 
     renderer->setWidget(frame->loader().subframeLoader().createJavaAppletWidget(roundedIntSize(LayoutSize(contentWidth, contentHeight)), *this, paramNames, paramValues));
+#endif // !PLATFORM(IOS)
 }
 
 bool HTMLAppletElement::canEmbedJava() const

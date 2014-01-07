@@ -35,6 +35,7 @@
 #if HAVE(ACCESSIBILITY)
 
 #include "AXObjectCache.h"
+#include "AccessibilityList.h"
 #include "AccessibilityListBoxOption.h"
 #include "Document.h"
 #include "Frame.h"
@@ -557,8 +558,9 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     return attributeSet;
 }
 
-static AtkRole atkRole(AccessibilityRole role)
+static AtkRole atkRole(AccessibilityObject* coreObject)
 {
+    AccessibilityRole role = coreObject->roleValue();
     switch (role) {
     case ApplicationAlertDialogRole:
     case ApplicationAlertRole:
@@ -603,6 +605,8 @@ static AtkRole atkRole(AccessibilityRole role)
     case MenuListOptionRole:
     case MenuItemRole:
         return ATK_ROLE_MENU_ITEM;
+    case MenuItemCheckboxRole:
+        return ATK_ROLE_CHECK_MENU_ITEM;
     case MenuItemRadioRole:
         return ATK_ROLE_RADIO_MENU_ITEM;
     case ColumnRole:
@@ -630,6 +634,10 @@ static AtkRole atkRole(AccessibilityRole role)
     case ColorWellRole:
         return ATK_ROLE_COLOR_CHOOSER;
     case ListRole:
+#if ATK_CHECK_VERSION(2, 11, 4)
+        if (coreObject->isList() && toAccessibilityList(coreObject)->isDescriptionList())
+            return ATK_ROLE_DESCRIPTION_LIST;
+#endif
         return ATK_ROLE_LIST;
     case ScrollBarRole:
         return ATK_ROLE_SCROLL_BAR;
@@ -657,9 +665,14 @@ static AtkRole atkRole(AccessibilityRole role)
         return ATK_ROLE_IMAGE;
     case ListMarkerRole:
         return ATK_ROLE_TEXT;
-    case DocumentRole:
     case DocumentArticleRole:
+#if ATK_CHECK_VERSION(2, 11, 3)
+        return ATK_ROLE_ARTICLE;
+#endif
+    case DocumentRole:
         return ATK_ROLE_DOCUMENT_FRAME;
+    case DocumentNoteRole:
+        return ATK_ROLE_COMMENT;
     case HeadingRole:
         return ATK_ROLE_HEADING;
     case ListBoxRole:
@@ -691,6 +704,16 @@ static AtkRole atkRole(AccessibilityRole role)
     case LandmarkApplicationRole:
         return ATK_ROLE_EMBEDDED;
 #if ATK_CHECK_VERSION(2, 11, 3)
+    case ApplicationLogRole:
+        return ATK_ROLE_LOG;
+    case ApplicationMarqueeRole:
+        return ATK_ROLE_MARQUEE;
+    case ApplicationTimerRole:
+        return ATK_ROLE_TIMER;
+    case DefinitionRole:
+        return ATK_ROLE_DEFINITION;
+    case DocumentMathRole:
+        return ATK_ROLE_MATH;
     case LandmarkBannerRole:
     case LandmarkComplementaryRole:
     case LandmarkContentInfoRole:
@@ -698,6 +721,14 @@ static AtkRole atkRole(AccessibilityRole role)
     case LandmarkNavigationRole:
     case LandmarkSearchRole:
         return ATK_ROLE_LANDMARK;
+#endif
+#if ATK_CHECK_VERSION(2, 11, 4)
+    case DescriptionListRole:
+        return ATK_ROLE_DESCRIPTION_LIST;
+    case DescriptionListTermRole:
+        return ATK_ROLE_DESCRIPTION_TERM;
+    case DescriptionListDetailRole:
+        return ATK_ROLE_DESCRIPTION_VALUE;
 #endif
     default:
         return ATK_ROLE_UNKNOWN;
@@ -718,7 +749,7 @@ static AtkRole webkitAccessibleGetRole(AtkObject* object)
     if (coreObject->isPasswordField())
         return ATK_ROLE_PASSWORD_TEXT;
 
-    return atkRole(coreObject->roleValue());
+    return atkRole(coreObject);
 }
 
 static bool isTextWithCaret(AccessibilityObject* coreObject)

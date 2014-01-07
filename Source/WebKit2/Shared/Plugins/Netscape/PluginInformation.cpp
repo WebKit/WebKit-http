@@ -29,10 +29,10 @@
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
 #include "APINumber.h"
+#include "APIString.h"
 #include "PluginInfoStore.h"
 #include "PluginModuleInfo.h"
 #include "WKAPICast.h"
-#include "WebString.h"
 #include "WebURL.h"
 #include <wtf/text/WTFString.h>
 
@@ -111,8 +111,8 @@ String plugInInformationReplacementObscuredKey()
 void getPluginModuleInformation(const PluginModuleInfo& plugin, ImmutableDictionary::MapType& map)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    map.set(pluginInformationPathKey(), WebString::create(plugin.path));
-    map.set(pluginInformationDisplayNameKey(), WebString::create(plugin.info.name));
+    map.set(pluginInformationPathKey(), API::String::create(plugin.path));
+    map.set(pluginInformationDisplayNameKey(), API::String::create(plugin.info.name));
     map.set(pluginInformationDefaultLoadPolicyKey(), API::UInt64::create(toWKPluginLoadPolicy(PluginInfoStore::defaultLoadPolicyForPlugin(plugin))));
 
     getPlatformPluginModuleInformation(plugin, map);
@@ -127,7 +127,7 @@ PassRefPtr<ImmutableDictionary> createPluginInformationDictionary(const PluginMo
     ImmutableDictionary::MapType map;
     getPluginModuleInformation(plugin, map);
 
-    return ImmutableDictionary::adopt(map);
+    return ImmutableDictionary::create(std::move(map));
 }
 
 PassRefPtr<ImmutableDictionary> createPluginInformationDictionary(const PluginModuleInfo& plugin, const String& frameURLString, const String& mimeType, const String& pageURLString, const String& pluginspageAttributeURLString, const String& pluginURLString, bool replacementObscured)
@@ -138,7 +138,7 @@ PassRefPtr<ImmutableDictionary> createPluginInformationDictionary(const PluginMo
     if (!frameURLString.isEmpty())
         map.set(pluginInformationFrameURLKey(), WebURL::create(frameURLString));
     if (!mimeType.isEmpty())
-        map.set(pluginInformationMIMETypeKey(), WebString::create(mimeType));
+        map.set(pluginInformationMIMETypeKey(), API::String::create(mimeType));
     if (!pageURLString.isEmpty())
         map.set(pluginInformationPageURLKey(), WebURL::create(pageURLString));
     if (!pluginspageAttributeURLString.isEmpty())
@@ -147,7 +147,7 @@ PassRefPtr<ImmutableDictionary> createPluginInformationDictionary(const PluginMo
         map.set(pluginInformationPluginURLKey(), WebURL::create(pluginURLString));
     map.set(plugInInformationReplacementObscuredKey(), API::Boolean::create(replacementObscured));
 
-    return ImmutableDictionary::adopt(map);
+    return ImmutableDictionary::create(std::move(map));
 }
 
 PassRefPtr<ImmutableDictionary> createPluginInformationDictionary(const String& mimeType, const String& frameURLString, const String& pageURLString)
@@ -157,11 +157,11 @@ PassRefPtr<ImmutableDictionary> createPluginInformationDictionary(const String& 
     if (!frameURLString.isEmpty())
         map.set(pluginInformationFrameURLKey(), WebURL::create(frameURLString));
     if (!mimeType.isEmpty())
-        map.set(pluginInformationMIMETypeKey(), WebString::create(mimeType));
+        map.set(pluginInformationMIMETypeKey(), API::String::create(mimeType));
     if (!pageURLString.isEmpty())
         map.set(pluginInformationPageURLKey(), WebURL::create(pageURLString));
 
-    return ImmutableDictionary::adopt(map);
+    return ImmutableDictionary::create(std::move(map));
 }
 
 #if !PLATFORM(MAC)

@@ -172,7 +172,7 @@ Node* HTMLFormElement::item(unsigned index)
 
 void HTMLFormElement::submitImplicitly(Event* event, bool fromImplicitSubmissionTrigger)
 {
-    int submissionTriggerCount = 0;
+    unsigned submissionTriggerCount = 0;
     for (unsigned i = 0; i < m_associatedElements.size(); ++i) {
         FormAssociatedElement* formAssociatedElement = m_associatedElements[i];
         if (!formAssociatedElement->isFormControlElement())
@@ -186,7 +186,13 @@ void HTMLFormElement::submitImplicitly(Event* event, bool fromImplicitSubmission
         } else if (formElement->canTriggerImplicitSubmission())
             ++submissionTriggerCount;
     }
-    if (fromImplicitSubmissionTrigger && submissionTriggerCount == 1)
+
+    if (!submissionTriggerCount)
+        return;
+
+    // Older iOS apps using WebViews expect the behavior of auto submitting multi-input forms.
+    Settings* settings = document().settings();
+    if (fromImplicitSubmissionTrigger && (submissionTriggerCount == 1 || (settings && settings->allowMultiElementImplicitSubmission())))
         prepareForSubmission(event);
 }
 
@@ -377,6 +383,40 @@ void HTMLFormElement::reset()
     m_isInResetFunction = false;
 }
 
+#if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
+// FIXME: We should look to share these methods with class HTMLFormControlElement instead of duplicating them.
+
+bool HTMLFormElement::autocorrect() const
+{
+    const AtomicString& autocorrectValue = fastGetAttribute(autocorrectAttr);
+    if (!autocorrectValue.isEmpty())
+        return !equalIgnoringCase(autocorrectValue, "off");
+    if (HTMLFormElement* form = this->form())
+        return form->autocorrect();
+    return true;
+}
+
+void HTMLFormElement::setAutocorrect(bool autocorrect)
+{
+    setAttribute(autocorrectAttr, autocorrect ? AtomicString("on", AtomicString::ConstructFromLiteral) : AtomicString("off", AtomicString::ConstructFromLiteral));
+}
+
+WebAutocapitalizeType HTMLFormElement::autocapitalizeType() const
+{
+    return autocapitalizeTypeForAttributeValue(fastGetAttribute(autocapitalizeAttr));
+}
+
+const AtomicString& HTMLFormElement::autocapitalize() const
+{
+    return stringForAutocapitalizeType(autocapitalizeType());
+}
+
+void HTMLFormElement::setAutocapitalize(const AtomicString& value)
+{
+    setAttribute(autocapitalizeAttr, value);
+}
+#endif
+
 void HTMLFormElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == actionAttr)
@@ -475,8 +515,7 @@ unsigned HTMLFormElement::formElementIndex(FormAssociatedElement* associatedElem
         return currentAssociatedElementsAfterIndex;
 
     unsigned i = m_associatedElementsBeforeIndex;
-    for (auto it = descendants.begin(); it != end; ++it) {
-        HTMLElement& element = *it;
+    for (auto& element : descendants) {
         if (&element == &associatedHTMLElement)
             return i;
         if (!isHTMLFormControlElement(element) && !isHTMLObjectElement(element))

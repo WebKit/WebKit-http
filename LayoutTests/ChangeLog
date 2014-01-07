@@ -1,3 +1,1049 @@
+2013-12-19  Oliver Hunt  <oliver@apple.com>
+
+        DOM bindings should use thisValue for attributes
+        https://bugs.webkit.org/show_bug.cgi?id=126011
+
+        Reviewed by Antti Koivisto.
+
+        * js/dom/dom-attributes-on-mismatch-type.html: Added.
+        * js/dom/dom-attributes-on-mismatch-type-expected.txt: Added.
+
+2013-12-19  Brent Fulgham  <bfulgham@apple.com>
+
+        Implement ArrayBuffer.isView
+        https://bugs.webkit.org/show_bug.cgi?id=126004
+
+        Reviewed by Filip Pizlo.
+
+        * webgl/1.0.2/resources/webgl_test_files/conformance/typedarrays/array-unit-tests.html:
+        Correct test for 'isView' to actually check for 'isView' function.
+
+2013-12-19  Alexey Proskuryakov  <ap@apple.com>
+
+        Layout Test plugins/destroy-during-npp-new.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=126027
+
+        * plugins/destroy-during-npp-new.html: Streamlined the test a little bit to see
+        what changes, if anything. There should be no effect on what is tested.
+
+2013-12-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test that text-decoration-skip: ink is the same as regular underlines if no descenders
+        https://bugs.webkit.org/show_bug.cgi?id=125985
+
+        Reviewed by Simon Fraser.
+
+        If there are no descenders in the underlined text, using the text-decoration-skip: ink
+        CSS property should behave as if it wasn't specified (and the underline is a normal one)
+
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-no-descenders-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-no-descenders.html: Added.
+
+2013-12-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a failing test expectation to fast/dynamic/paused-event-dispatch.html
+        while I investigate.
+
+        * TestExpectations:
+
+2013-12-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r160842.
+        http://trac.webkit.org/changeset/160842
+        https://bugs.webkit.org/show_bug.cgi?id=126003
+
+        broke accessibility/loading-iframe-updates-axtree.html
+        (Requested by ap on #webkit).
+
+        * accessibility/deleting-iframe-destroys-axcache.html:
+        * accessibility/loading-iframe-updates-axtree-expected.txt:
+        * accessibility/loading-iframe-updates-axtree.html:
+        * accessibility/non-data-table-cell-title-ui-element.html:
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/gtk/accessibility/roles-exposed.html:
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/accessibility/search-predicate-expected.txt:
+        * platform/mac/accessibility/search-predicate.html:
+        * platform/mac/accessibility/search-when-element-starts-in-table-expected.txt:
+        * platform/mac/accessibility/search-when-element-starts-in-table.html:
+
+2013-12-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        overflowchanged event could cause a crash
+        https://bugs.webkit.org/show_bug.cgi?id=125978
+
+        Reviewed by Tim Horton.
+
+        Add a regression test.
+
+        * fast/events/overflowchanged-inside-selection-collapse-crash-expected.txt: Added.
+        * fast/events/overflowchanged-inside-selection-collapse-crash.html: Added.
+
+2013-12-19  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] [WK2] platform/gtk/accessibility/roles-exposed.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=125854
+
+        Reviewed by Chris Fleizach.
+
+        Updated tests and expectations to keep them passing after the
+        change done in DRT, without changing their actual purpose.
+
+        * platform/gtk/accessibility/roles-exposed.html: Make sure we
+        print "AXRole: (no element)" when accessibilityElementByID() does
+        not return a valid object, not to confuse it with cases where the
+        returned string for the role is an empty string.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Update
+        test expectations to reflect the "AXRole: (no element)" string
+        that is now being exposed. Also, replace the (wrongly added) PASS
+        expectations with FAIL for rowgroups, which are currently not
+        being exposed for ATK either.
+
+        * accessibility/deleting-iframe-destroys-axcache.html: Just
+        consider the first and third sons of the accessibility object for
+        the body (instead of the grandsons), so the test can run both in
+        Mac, where sons and grandsons are exposed, and ATK, where only
+        sons are exposed (no StaticText objects exposed there).
+
+        * accessibility/non-data-table-cell-title-ui-element.html: Use
+        accessibilityElementById() to get the accessibility object for the
+        "skip" table header instead of navigating with childAtIndex(),
+        since the hierarchy is not the same for Mac and ATK based ports.
+
+        * accessibility/loading-iframe-updates-axtree.html: Use the new
+        web area inside the iframe to compare against the old one, instead
+        of doing it the other way around, to avoid calling isEqual for an
+        undefined value (the old web area).
+        * accessibility/loading-iframe-updates-axtree-expected.txt:
+        Removed line comparing the old and new web areas inside the iframe.
+
+        * platform/mac/accessibility/search-predicate.html: Do not rely on
+        shouldBe() together with the string "AXRole: " when asking for the
+        role of objects that should no longer be in the accessibility
+        tree, and use shouldBeUndefined() instead.
+        * platform/mac/accessibility/search-when-element-starts-in-table.html: Ditto.
+
+        * platform/mac/accessibility/search-predicate-expected.txt: Update
+        expectations according to the usage of shouldBeUndefined().
+        * platform/mac/accessibility/search-when-element-starts-in-table-expected.txt: Ditto.
+
+        * platform/mac-wk2/TestExpectations: Add search-when-element-starts-in-table.html
+        here, since it does not return an undefined object in WebKit2 when
+        the search query should return no results (see bug 125996).
+
+2013-12-19  Alexey Proskuryakov  <ap@apple.com>
+
+        platform/mac/editing/attributed-string tests all flakily assert
+        https://bugs.webkit.org/show_bug.cgi?id=123029
+
+        * platform/mac/TestExpectations: Marked as flakily asserting.
+
+2013-12-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rebaseline the test I added in r160819.
+
+        * svg/text/select-text-inside-non-static-position-expected.txt:
+
+2013-12-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Crash in WebCore::LogicalSelectionOffsetCaches::LogicalSelectionOffsetCaches
+        https://bugs.webkit.org/show_bug.cgi?id=125970
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test.
+
+        * svg/text/select-text-inside-non-static-position-expected.txt: Added.
+        * svg/text/select-text-inside-non-static-position.html: Added.
+
+2013-12-18  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: make aria-hidden=false work with subtrees
+        https://bugs.webkit.org/show_bug.cgi?id=125592
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/mac/accessibility/aria-hidden-false-works-in-subtrees-expected.txt: Added.
+        * accessibility/aria-hidden-false-works-in-subtrees.html: Added.
+
+2013-12-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Flaky Test: media/video-buffered.html
+        https://bugs.webkit.org/show_bug.cgi?id=116277
+
+        * platform/mac/TestExpectations: Mark it as such.
+
+2013-12-18  Martin Hodovan  <mhodovan@inf.u-szeged.hu>
+
+        REGRESSION (r155536): Broken error recovery in @media at-rule
+        https://bugs.webkit.org/show_bug.cgi?id=125637
+
+        Reviewed by Darin Adler.
+
+        Test with broken @media rule.
+
+        * fast/css/media-error-recovery-expected.txt: Added.
+        * fast/css/media-error-recovery.html: Added.
+
+2013-12-18  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: WebKit not sending AXMenuClosed notification
+        https://bugs.webkit.org/show_bug.cgi?id=125783
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/mac/accessibility/aria-menu-closed-notification-expected.txt: Added.
+        * platform/mac/accessibility/aria-menu-closed-notification.html: Added.
+
+2013-12-18  Tamas Gergely  <tgergely.u-szeged@partner.samsung.com>
+
+        Fix ASSERTION FAILED in WebCore::SVGLengthContext::determineViewport
+        https://bugs.webkit.org/show_bug.cgi?id=120284
+
+        Reviewed by Philip Rogers.
+
+        Added tests of handling root <svg> elements.
+        Blink merge: https://chromium.googlesource.com/chromium/blink/+/a7dedf81eb7008276bb6854f0e46465e039788f8
+
+        * svg/custom/svg-length-value-handled-expected.txt: Added.
+        * svg/custom/svg-length-value-handled.svg: Added.
+            Tests whether root svg elements sizes are handled.
+        * svg/dom/svg-root-lengths-expected.txt: Added.
+        * svg/dom/svg-root-lengths.html: Added.
+            Tests the correct handling of root svg elements sizes.
+
+2013-12-18  Darin Adler  <darin@apple.com>
+
+        Additional refinement in MathMLSelectElement toggle implementation
+        https://bugs.webkit.org/show_bug.cgi?id=125785
+
+        Reviewed by Andreas Kling.
+
+        * mathml/presentation/maction-toggle-expected.html: Updated incorrect expected
+        result, which expected an already-handled event to be re-handled by a parent
+        element during the bubbling process.
+        * mathml/presentation/maction-toggle.html: Ditto.
+
+2013-12-18  Rob Buis  <rob.buis@samsung.com>
+
+        [CSS Shapes] Implement interpolation between keywords in basic shapes
+        https://bugs.webkit.org/show_bug.cgi?id=125108
+
+        Reviewed by Simon Fraser.
+
+        Add tests to shape-outside-animation when animating using keywords for the circle/ellipse center positions.
+        Also add tests for invalid mixing of keyword and values in the center coordinate to parsing-test-utils.js.
+
+        * fast/shapes/parsing/parsing-shape-inside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-test-utils.js:
+        * fast/shapes/shape-outside-floats/shape-outside-animation-expected.txt:
+        * fast/shapes/shape-outside-floats/shape-outside-animation.html:
+
+2013-12-18  Dániel Bátyai  <dbatyai.u-szeged@partner.samsung.com>
+
+        CSS: Null-pointer dereference with negative 'orphans' value.
+        https://bugs.webkit.org/show_bug.cgi?id=125924
+
+        Reviewed by Andreas Kling.
+
+        Test with negative orphans value.
+
+        * fast/css/negative-orphans-crash-expected.txt: Added.
+        * fast/css/negative-orphans-crash.html: Added.
+
+2013-12-18  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: HTML spec change indicates @aria-required should trump @required on any element
+        https://bugs.webkit.org/show_bug.cgi?id=122145
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/aria-required-expected.txt:
+        * accessibility/aria-required.html:
+
+2013-12-18  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Rebaseline tests after r160715.
+
+        * platform/efl/css2.1/t0905-c414-flt-wrap-00-e-expected.png:
+        * platform/efl/css2.1/t0905-c414-flt-wrap-00-e-expected.txt:
+        * platform/efl/fast/backgrounds/background-position-parsing-expected.png:
+        * platform/efl/fast/backgrounds/background-position-parsing-expected.txt:
+        * platform/efl/fast/backgrounds/size/contain-and-cover-zoomed-expected.png:
+        * platform/efl/fast/backgrounds/size/contain-and-cover-zoomed-expected.txt:
+        * platform/efl/fast/block/float/016-expected.png:
+        * platform/efl/fast/block/float/016-expected.txt:
+
+2013-12-17  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Periodically monitor source buffers.
+        https://bugs.webkit.org/show_bug.cgi?id=125898
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-monitor-source-buffers-expected.txt: Added.
+        * media/media-source/media-source-monitor-source-buffers.html: Added.
+
+2013-12-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove InspectorFrontendHost.setInjectedScriptForOrigin
+        https://bugs.webkit.org/show_bug.cgi?id=125906
+
+        Reviewed by Timothy Hatcher.
+
+        * http/tests/inspector/injected-script-for-origin-expected.txt: Removed.
+        * http/tests/inspector/injected-script-for-origin.html: Removed.
+        * http/tests/inspector/resources/injected-script-for-origin-frame.html: Removed.
+
+2013-12-17  Eric Carlson  <eric.carlson@apple.com>
+
+        ASSERT setting pseudoID with registered DOMSubtreeModified listener
+        https://bugs.webkit.org/show_bug.cgi?id=125900
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/dom/attribute-set-before-element-in-tree-expected.txt: Added.
+        * fast/dom/attribute-set-before-element-in-tree.html: Added.
+
+2013-12-17  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Update duration after appending samples, per spec.
+        https://bugs.webkit.org/show_bug.cgi?id=125703
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-duration-after-append-expected.txt: Added.
+        * media/media-source/media-source-duration-after-append.html: Added.
+
+2013-12-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Video element's width and height content attributes should not influence intrinsic width and height
+        https://bugs.webkit.org/show_bug.cgi?id=125822
+
+        Reviewed by Darin Adler.
+
+        * media/video-intrinsic-width-height-expected.txt: Added.
+        * media/video-intrinsic-width-height.html: Added.
+
+2013-12-17  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove PageVisibilityStateUnloaded
+        https://bugs.webkit.org/show_bug.cgi?id=125869
+
+        Reviewed by Anders Carlsson.
+
+        This is not currently supported by WebKit, remove this enum value.
+        We can always add this back later if/when we add support for this state.
+
+        * fast/events/page-visibility-transition-test-expected.txt:
+        * fast/events/page-visibility-transition-test.html:
+            - remove test for visibility state "unloaded"; this is no longer supported (it never really was).
+
+2013-12-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Sanitize skip entries for pop-up menu tests.
+
+        Pop-up menus are native controls on Mac, and block test progress when opened.
+
+        * platform/mac/TestExpectations: Combined entries for these tests together, and
+        updated comments.
+
+2013-12-17  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test update for Windows.
+
+        * platform/win/TestExpectations: Exclude a few more media-based
+        test files.
+
+2013-12-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Layout Test webaudio/delaynode-max-default-delay.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=121646
+
+        * platform/mac/TestExpectations: Marking as such.
+
+2013-12-17  Radu Stavila  <stavila@adobe.com>
+
+        [CSS Regions] Positioned elements in regions get clipped if they fall outside the region
+        https://bugs.webkit.org/show_bug.cgi?id=117120
+
+        Reviewed by Mihnea Ovidenie.
+
+        Added tests for the correct painting of the borders of differently positioned elements overflowing regions.
+
+        * fast/regions/absolute-in-relative-overflow-expected.html: Added.
+        * fast/regions/absolute-in-relative-overflow.html: Added.
+        * fast/regions/static-in-relative-overflow-expected.html: Added.
+        * fast/regions/static-in-relative-overflow.html: Added.
+        * fast/regions/sticky-border-overflow-expected.html: Added.
+        * fast/regions/sticky-border-overflow.html: Added.
+
+2013-12-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r160717.
+        http://trac.webkit.org/changeset/160717
+        https://bugs.webkit.org/show_bug.cgi?id=125863
+
+        New tests are failing, and possibly broke an existing test
+        (Requested by ap on #webkit).
+
+        * fast/regions/repaint/fixed-in-named-flow-cb-changed-expected.txt: Removed.
+        * fast/regions/repaint/fixed-in-named-flow-cb-changed.html: Removed.
+        * fast/regions/repaint/fixed-in-named-flow-cb-changed2-expected.txt: Removed.
+        * fast/regions/repaint/fixed-in-named-flow-cb-changed2.html: Removed.
+
+2013-12-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Invalid dir attributes should resolve to ltr
+        https://bugs.webkit.org/show_bug.cgi?id=125830
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/HTMLElement/set-and-clear-dir-attribute-expected.txt: Added.
+        * fast/dom/HTMLElement/set-and-clear-dir-attribute.html: Added.
+
+2013-12-17  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Incorrect repaint of fixed element with transformed parent
+        https://bugs.webkit.org/show_bug.cgi?id=125756
+
+        Reviewed by Darin Adler.
+
+        Add tests for a fixed positioned element with a parent that:
+        1. dynamically gets a transform, in which case the fixed positioned element should be positioned
+        relative to its parent
+        2. dynamically loses its transform, in which case the fixed positioned element should be positioned
+        relative to the view.
+
+        * fast/regions/repaint/fixed-in-named-flow-cb-changed-expected.txt: Added.
+        * fast/regions/repaint/fixed-in-named-flow-cb-changed.html: Added.
+        * fast/regions/repaint/fixed-in-named-flow-cb-changed2-expected.txt: Added.
+        * fast/regions/repaint/fixed-in-named-flow-cb-changed2.html: Added.
+
+2013-12-17  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        REGRESSION(r159166?): fast/block/float/float-with-fractional-height-vertical-lr.html, fast/block/float/float-with-fractional-height.html are failing
+        https://bugs.webkit.org/show_bug.cgi?id=124506
+
+        Reviewed by Dirk Schulze.
+
+        Remove lines for tests that have been fixed by this patch.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2013-12-17  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Expose accessibility objects for <dl>, <dt> and <dd>
+        https://bugs.webkit.org/show_bug.cgi?id=125857
+
+        Reviewed by Chris Fleizach.
+
+        Update test to update expectations.
+
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/gtk/accessibility/roles-exposed.html:
+
+        Updated test expectations for other test using description lists.
+
+        * platform/efl-wk1/accessibility/lists-expected.txt:
+        * platform/efl-wk2/accessibility/lists-expected.txt:
+        * platform/gtk/accessibility/lists-expected.txt:
+
+
+2013-12-17  Frédéric Wang  <fred.wang@free.fr>
+
+        Ensure inferred mrows for msqrt, mstyle, merror, mphantom and math.
+        https://bugs.webkit.org/show_bug.cgi?id=124841
+
+        Reviewed by Darin Adler.
+
+        * mathml/presentation/inferred-mrow-baseline-expected.txt: Added.
+        * mathml/presentation/inferred-mrow-baseline.html: Added.
+        * mathml/presentation/inferred-mrow-stretchy-expected.txt: Added.
+        * mathml/presentation/inferred-mrow-stretchy.html: Added.
+
+2013-12-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Temporarily disable mediate tests to get bots green.
+
+        * platform/win/TestExpectations: Turn off additional media-related
+        tests. These will be reactivated soon.
+
+2013-12-17  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSS Regions] Move regions tests from fast/repaint into fast/regions
+        https://bugs.webkit.org/show_bug.cgi?id=78786
+
+        Reviewed by Dirk Schulze.
+
+        Moved regions repaint tests from fast/repaint into fast/regions/repaint.
+        Moved regions repaint tests from fast/regions into fast/regions/repaint.
+        Adjusted paths, TestExpectations.
+
+        * fast/regions/repaint/element-in-named-flow-absolute-from-fixed-expected.txt: Renamed from LayoutTests/fast/regions/element-in-named-flow-absolute-from-fixed-expected.txt.
+        * fast/regions/repaint/element-in-named-flow-absolute-from-fixed.html: Renamed from LayoutTests/fast/regions/element-in-named-flow-absolute-from-fixed.html.
+        * fast/regions/repaint/element-in-named-flow-fixed-from-absolute-expected.txt: Renamed from LayoutTests/fast/regions/element-in-named-flow-fixed-from-absolute-expected.txt.
+        * fast/regions/repaint/element-in-named-flow-fixed-from-absolute.html: Renamed from LayoutTests/fast/regions/element-in-named-flow-fixed-from-absolute.html.
+        * fast/regions/repaint/element-inflow-fixed-from-outflow-static-expected.txt: Renamed from LayoutTests/fast/regions/element-inflow-fixed-from-outflow-static-expected.txt.
+        * fast/regions/repaint/element-inflow-fixed-from-outflow-static.html: Renamed from LayoutTests/fast/regions/element-inflow-fixed-from-outflow-static.html.
+        * fast/regions/repaint/element-outflow-static-from-inflow-fixed-expected.txt: Renamed from LayoutTests/fast/regions/element-outflow-static-from-inflow-fixed-expected.txt.
+        * fast/regions/repaint/element-outflow-static-from-inflow-fixed.html: Renamed from LayoutTests/fast/regions/element-outflow-static-from-inflow-fixed.html.
+        * fast/regions/repaint/fixed-in-named-flow-scroll-expected.txt: Renamed from LayoutTests/fast/regions/fixed-in-named-flow-scroll-expected.txt.
+        * fast/regions/repaint/fixed-in-named-flow-scroll.html: Renamed from LayoutTests/fast/regions/fixed-in-named-flow-scroll.html.
+        * fast/regions/repaint/increasing-region-content-height-expected.txt: Renamed from LayoutTests/fast/repaint/increasing-region-content-height-expected.txt.
+        * fast/regions/repaint/increasing-region-content-height.html: Renamed from LayoutTests/fast/repaint/increasing-region-content-height.html.
+        * fast/regions/repaint/japanese-rl-selection-repaint-in-regions.html: Renamed from LayoutTests/fast/repaint/japanese-rl-selection-repaint-in-regions.html.
+        * fast/regions/repaint/line-flow-with-floats-in-regions.html: Added.
+        * fast/regions/repaint/overflow-flipped-writing-mode-block-in-regions.html: Renamed from LayoutTests/fast/repaint/overflow-flipped-writing-mode-block-in-regions.html.
+        * fast/regions/repaint/region-painting-composited-element-expected.html: Renamed from LayoutTests/fast/repaint/region-painting-composited-element-expected.html.
+        * fast/regions/repaint/region-painting-composited-element.html: Renamed from LayoutTests/fast/repaint/region-painting-composited-element.html.
+        * fast/regions/repaint/region-painting-in-composited-view-expected.html: Renamed from LayoutTests/fast/repaint/region-painting-in-composited-view-expected.html.
+        * fast/regions/repaint/region-painting-in-composited-view.html: Renamed from LayoutTests/fast/repaint/region-painting-in-composited-view.html.
+        * fast/regions/repaint/region-painting-invalidation.html: Renamed from LayoutTests/fast/repaint/region-painting-invalidation.html.
+        * fast/regions/repaint/region-painting-via-layout.html: Renamed from LayoutTests/fast/repaint/region-painting-via-layout.html.
+        * fast/regions/repaint/repaint-regions-overflow-expected.txt: Renamed from LayoutTests/fast/repaint/repaint-regions-overflow-expected.txt.
+        * fast/regions/repaint/repaint-regions-overflow.html: Renamed from LayoutTests/fast/repaint/repaint-regions-overflow.html.
+        * fast/repaint/line-flow-with-floats-in-regions.html: Removed.
+        * platform/efl/TestExpectations:
+        * platform/efl/fast/regions/repaint/japanese-rl-selection-repaint-in-regions-expected.txt: Renamed from LayoutTests/platform/efl/fast/repaint/japanese-rl-selection-repaint-in-regions-expected.txt.
+        * platform/gtk/TestExpectations:
+        * platform/mac/fast/regions/repaint/japanese-rl-selection-repaint-in-regions-expected.png: Renamed from LayoutTests/platform/mac/fast/repaint/japanese-rl-selection-repaint-in-regions-expected.png.
+        * platform/mac/fast/regions/repaint/japanese-rl-selection-repaint-in-regions-expected.txt: Renamed from LayoutTests/platform/mac/fast/repaint/japanese-rl-selection-repaint-in-regions-expected.txt.
+        * platform/mac/fast/regions/repaint/line-flow-with-floats-in-regions-expected.png: Renamed from LayoutTests/platform/mac/fast/repaint/line-flow-with-floats-in-regions-expected.png.
+        * platform/mac/fast/regions/repaint/line-flow-with-floats-in-regions-expected.txt: Renamed from LayoutTests/platform/mac/fast/repaint/line-flow-with-floats-in-regions-expected.txt.
+        * platform/mac/fast/regions/repaint/overflow-flipped-writing-mode-block-in-regions-expected.png: Renamed from LayoutTests/platform/mac/fast/repaint/overflow-flipped-writing-mode-block-in-regions-expected.png.
+        * platform/mac/fast/regions/repaint/overflow-flipped-writing-mode-block-in-regions-expected.txt: Renamed from LayoutTests/platform/mac/fast/repaint/overflow-flipped-writing-mode-block-in-regions-expected.txt.
+        * platform/mac/fast/regions/repaint/region-painting-invalidation-expected.png: Renamed from LayoutTests/platform/mac/fast/repaint/region-painting-invalidation-expected.png.
+        * platform/mac/fast/regions/repaint/region-painting-invalidation-expected.txt: Renamed from LayoutTests/platform/mac/fast/repaint/region-painting-invalidation-expected.txt.
+        * platform/mac/fast/regions/repaint/region-painting-via-layout-expected.png: Renamed from LayoutTests/platform/mac/fast/repaint/region-painting-via-layout-expected.png.
+        * platform/mac/fast/regions/repaint/region-painting-via-layout-expected.txt: Renamed from LayoutTests/platform/mac/fast/repaint/region-painting-via-layout-expected.txt.
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2013-12-17  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK][WK2] rowAtIndex is not implemented in DRT/WKTR
+        https://bugs.webkit.org/show_bug.cgi?id=116971
+
+        Unreviewed. Moving test expectation to the right place, as this is
+        an issue that actually affects both to Webkit1 and Webkit2.
+
+        * platform/gtk-wk2/TestExpectations: Removed expectation.
+        * platform/gtk/TestExpectations: Added expectation.
+
+2013-12-17  Mihnea Ovidenie  <mihnea@adobe.com>
+
+        [CSSRegions] Remove left-over test expectations in fast/regions/layers
+        https://bugs.webkit.org/show_bug.cgi?id=125841
+
+        Reviewed by Dirk Schulze.
+
+        The original tests were removed part of https://bugs.webkit.org/show_bug.cgi?id=121828
+        and added back as expectations only when https://bugs.webkit.org/show_bug.cgi?id=118665
+        landed.
+        They should be removed.
+
+        * fast/regions/layers/dynamic-layer-added-with-no-layout-expected.txt: Removed.
+        * fast/regions/layers/dynamic-layer-removed-with-no-layout-expected.txt: Removed.
+        * fast/regions/layers/regions-promoted-to-layers-expected.txt: Removed.
+        * fast/regions/layers/regions-promoted-to-layers-horizontal-bt-expected.txt: Removed.
+        * fast/regions/layers/regions-promoted-to-layers-vertical-lr-expected.txt: Removed.
+        * fast/regions/layers/regions-promoted-to-layers-vertical-rl-expected.txt: Removed.
+
+2013-12-17  Mihai Maerean  <mmaerean@adobe.com>
+
+        Fix hit testing for divs with a hierarchy of css transformed and non-transformed elements
+        https://bugs.webkit.org/show_bug.cgi?id=124777
+
+        Reviewed by Darin Adler.
+
+        * transforms/3d/hit-testing/hover-rotated-with-children-negative-z.html: Added.
+        * transforms/3d/hit-testing/hover-rotated-with-children-negative-z-expected.txt: Added.
+        * transforms/3d/hit-testing/negative-zoffset-hit-test.html: Added.
+        * transforms/3d/hit-testing/negative-zoffset-hit-test-expected.txt: Added.
+        * transforms/3d/hit-testing/overlapping-layers-hit-test.html: Added.
+        * transforms/3d/hit-testing/overlapping-layers-hit-test-expected.txt: Added.
+
+2013-12-16  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        Checking RTCPeerConnection signalingState before setting local/remoteDescription
+        https://bugs.webkit.org/show_bug.cgi?id=125655
+
+        Reviewed by Eric Carlson.
+
+        Before setting a session description RTCPeerConnection must check if it is in valid state for that SDP type.
+
+        * fast/mediastream/RTCPeerConnection-have-local-answer.html: Added.
+        * fast/mediastream/RTCPeerConnection-have-local-offer-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-have-local-offer.html: Added.
+        * fast/mediastream/RTCPeerConnection-have-local-pranswer-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-have-local-pranswer.html: Added.
+        * fast/mediastream/RTCPeerConnection-have-remote-offer-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-have-remote-offer.html: Added.
+        * fast/mediastream/RTCPeerConnection-have-remote-pranswer-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-have-remote-pranswer.html: Added.
+        * fast/mediastream/RTCPeerConnection-remoteDescription-expected.txt:
+        * fast/mediastream/RTCPeerConnection-remoteDescription.html:
+        * fast/mediastream/RTCPeerConnection-stable-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-stable.html: Added.
+
+2013-12-16  Oliver Hunt  <oliver@apple.com>
+
+        Cache getters and custom accessors on the prototype chain
+        https://bugs.webkit.org/show_bug.cgi?id=125602
+
+        Reviewed by Michael Saboff.
+
+        Added a bunch of new tests
+
+        * js/regress/chain-custom-getter-expected.txt: Added.
+        * js/regress/chain-custom-getter.html: Added.
+        * js/regress/chain-getter-access-expected.txt: Added.
+        * js/regress/chain-getter-access.html: Added.
+        * js/regress/proto-custom-getter-expected.txt: Added.
+        * js/regress/proto-custom-getter.html: Added.
+        * js/regress/proto-getter-access-expected.txt: Added.
+        * js/regress/proto-getter-access.html: Added.
+        * js/regress/resources/regress-pre.js:
+          Made sure that noInline always exists (either using testRunner.neverInlineFunction
+          or a no-op function if nothing else is available)
+        * js/regress/script-tests/chain-custom-getter.js: Added.
+        (foo):
+        * js/regress/script-tests/chain-getter-access.js: Added.
+        (o.get value):
+        (foo):
+        * js/regress/script-tests/proto-custom-getter.js: Added.
+        (foo):
+        * js/regress/script-tests/proto-getter-access.js: Added.
+        (o.get value):
+        (foo):
+        * js/regress/script-tests/simple-custom-getter.js: Added.
+        (cycles.30000.numberObject.Number.foo):
+        * js/regress/script-tests/simple-getter-access.js: Added.
+        (o.get value):
+        (foo):
+        * js/regress/simple-custom-getter-expected.txt: Added.
+        * js/regress/simple-custom-getter.html: Added.
+        * js/regress/simple-getter-access-expected.txt: Added.
+        * js/regress/simple-getter-access.html: Added.
+
+2013-12-16  Hans Muller  <hmuller@adobe.com>
+
+        [CSS Shapes] Add support for the computing the included intervals for a BoxShape
+        https://bugs.webkit.org/show_bug.cgi?id=124605
+
+        Reviewed by Andreas Kling.
+
+        Check that shape-inside:content-box works with and without border radii.
+
+        * fast/shapes/shape-inside/shape-inside-content-box-expected.html: Added.
+        * fast/shapes/shape-inside/shape-inside-content-box.html: Added.
+
+2013-12-16  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Expose accessibility objects for more WAI-ARIA roles
+        https://bugs.webkit.org/show_bug.cgi?id=125596
+
+        Reviewed by Chris Fleizach.
+
+        Update test to update expectations.
+
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/gtk/accessibility/roles-exposed.html:
+
+2013-12-16  Eric Carlson  <eric.carlson@apple.com>
+
+        Fix QuickTime plug-in replacement scripting bugs
+        https://bugs.webkit.org/show_bug.cgi?id=125717
+
+        Reviewed by Sam Weinig.
+
+        * plugins/quicktime-plugin-replacement-expected.txt:
+        * plugins/quicktime-plugin-replacement.html: Update to test 'qtsrc' attribute, and to check
+            that relative urls are resolved correctly.
+        * plugins/resources/yellow.mov: Added.
+
+2013-12-16  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Expose accessibility objects with ATK_ROLE_CHECK_MENU_ITEM
+        https://bugs.webkit.org/show_bug.cgi?id=125594
+
+        Reviewed by Chris Fleizach.
+
+        Update test to update expectations.
+
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/gtk/accessibility/roles-exposed.html:
+
+2013-12-16  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [ATK] Expose accessibility objects with ATK_ROLE_ARTICLE
+        https://bugs.webkit.org/show_bug.cgi?id=125587
+
+        Reviewed by Chris Fleizach.
+
+        Update test to unskip article objects and update expectations.
+
+        * accessibility/aria-mappings-expected.txt:
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/gtk/accessibility/roles-exposed.html:
+
+2013-11-27  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Fix the preferred logical widths code to work with spanning grid items
+        https://bugs.webkit.org/show_bug.cgi?id=123994
+
+        Reviewed by Andreas Kling.
+
+        From Blink r159189 by <jchaffraix@chromium.org>
+
+        Extended the test case to include spanning grid items.
+
+        * fast/css-grid-layout/grid-preferred-logical-widths-expected.txt:
+        * fast/css-grid-layout/grid-preferred-logical-widths.html:
+
+2013-12-15  Frédéric Wang  <fred.wang@free.fr>
+
+        Add support for maction@toggle
+        https://bugs.webkit.org/show_bug.cgi?id=120059
+
+        Reviewed by Chris Fleizach.
+
+        * mathml/presentation/maction-toggle-expected.html: Added.
+        * mathml/presentation/maction-toggle.html: Added.
+
+2013-12-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION: 2x regression on Dromaeo DOM query tests
+        https://bugs.webkit.org/show_bug.cgi?id=125377
+
+        Reviewed by Filip Pizlo.
+
+        Added more regression tests for throwing away byte code when a new named property appears.
+        
+        * js/dom/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps-expected: Rebaselined.
+        * js/dom/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps.html: Fixed the test to use dfgShouldBe.
+        * js/dom/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps-2-expected.txt: Added.
+        * js/dom/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps-2.html: Added.
+        * js/dom/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps-3-expected.txt: Added.
+        * js/dom/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps-3.html: Added.
+        * js/dom/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps-4-expected.txt: Added.
+        * js/dom/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps-4.html: Added.
+        * js/dom/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps-5-expected.txt: Added.
+        * js/dom/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps-5.html: Added.
+        * js/dom/prototype-chain-caching-with-impure-get-own-property-slot-traps-2-expected.txt: Added.
+        * js/dom/prototype-chain-caching-with-impure-get-own-property-slot-traps-2.html: Added.
+        * js/dom/prototype-chain-caching-with-impure-get-own-property-slot-traps-3-expected.txt: Added.
+        * js/dom/prototype-chain-caching-with-impure-get-own-property-slot-traps-3.html: Added.
+        * js/dom/prototype-chain-caching-with-impure-get-own-property-slot-traps-4-expected.txt: Added.
+        * js/dom/prototype-chain-caching-with-impure-get-own-property-slot-traps-4.html: Added.
+        * js/dom/prototype-chain-caching-with-impure-get-own-property-slot-traps-5-expected.txt: Added.
+        * js/dom/prototype-chain-caching-with-impure-get-own-property-slot-traps-5.html: Added.
+        * js/dom/script-tests/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps.js: Removed.
+
+2013-12-15  Rob Buis  <rob.buis@samsung.com>
+
+        [CSS Shapes] shape-outside animation does not handle 'auto' well
+        https://bugs.webkit.org/show_bug.cgi?id=125700
+
+        Reviewed by Dirk Schulze.
+
+        Test a shape-outside animation where one keyframe uses 'auto'.
+
+        * fast/shapes/shape-outside-floats/shape-outside-animation-expected.txt:
+        * fast/shapes/shape-outside-floats/shape-outside-animation.html:
+
+2013-12-14  Darin Adler  <darin@apple.com>
+
+        Crash in CSSImageGeneratorValue and RenderScrollbar
+        https://bugs.webkit.org/show_bug.cgi?id=125702
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/css/scrollbar-image-crash-expected.txt: Added.
+        * fast/css/scrollbar-image-crash.html: Added.
+
+2013-12-14  Brent Fulgham  <bfulgham@webkit.org>
+
+        [Win] Disable media tests while we sort out QTSDK issues.
+        Unreviewed patch to get test bots green
+
+        * platform/win/TestExpectations
+
+
+2013-12-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Some Set and Map prototype functions have incorrect function lengths
+        https://bugs.webkit.org/show_bug.cgi?id=125732
+
+        Reviewed by Oliver Hunt.
+
+        * js/basic-map-expected.txt:
+        * js/basic-set-expected.txt:
+        * js/script-tests/basic-map.js:
+        * js/script-tests/basic-set.js:
+
+2013-12-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Move Inspector and Debugger protocol domains into JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=125707
+
+        Reviewed by Timothy Hatcher.
+
+        * http/tests/inspector-protocol/resources/InspectorTest.js:
+        (InspectorTest.checkForError):
+        Since having a protocol error is likely wrong, make the output
+        for it as detailed as possible.
+
+2013-12-13  Roger Fong  <roger_fong@apple.com>
+
+        [WebGL] Check for global variable precision mismatch between vertex and fragment shaders.
+        https://bugs.webkit.org/show_bug.cgi?id=125546.
+        <rdar://problem/15203364>
+
+        Reviewed by Brent Fulgham.
+
+        * platform/mac/TestExpectations: 
+        Unskip webgl/1.0.2/glsl/misc/shader-with-global-variable-precision-mismatch.html
+
+2013-12-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Inspector Code Generation to JavaScriptCore for Runtime Domain
+        https://bugs.webkit.org/show_bug.cgi?id=125595
+
+        Reviewed by Timothy Hatcher.
+
+        * http/tests/inspector-protocol/resources/InspectorTest.js:
+        (InspectorTest.importInspectorScripts):
+        Update for the new backend commands files.
+
+2013-12-13  Thiago de Barros Lacerda  <thiago.lacerda@openbossa.org>
+
+        Adding RTCPeerConnectionErrorCallback
+        https://bugs.webkit.org/show_bug.cgi?id=125574
+
+        Reviewed by Eric Carlson.
+
+        According to the spec there should be a RTCPeerConnectionErrorCallback function type for createOffer/Answer,
+        setLocal/RemoteDescription and updateIce function calls. This callback must handle a DOMError object.
+
+        * fast/mediastream/RTCPeerConnection-createAnswer-expected.txt:
+        * fast/mediastream/RTCPeerConnection-createAnswer.html:
+        * fast/mediastream/RTCPeerConnection-createOffer-expected.txt:
+        * fast/mediastream/RTCPeerConnection-createOffer.html:
+
+2013-12-13  Alexey Proskuryakov  <ap@apple.com>
+
+        WebCrypto Key.usages should be ordered alphabetically
+        https://bugs.webkit.org/show_bug.cgi?id=125696
+
+        Reviewed by Darin Adler.
+
+        * crypto/subtle/aes-cbc-192-encrypt-decrypt-expected.txt:
+        * crypto/subtle/aes-cbc-192-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-256-encrypt-decrypt-expected.txt:
+        * crypto/subtle/aes-cbc-256-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-expected.txt:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-with-padding-expected.txt:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-with-padding.html:
+        * crypto/subtle/aes-cbc-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-generate-key-expected.txt:
+        * crypto/subtle/aes-cbc-generate-key.html:
+        * crypto/subtle/aes-cbc-invalid-length-expected.txt:
+        * crypto/subtle/aes-cbc-invalid-length.html:
+        * crypto/subtle/aes-kw-wrap-unwrap-aes-expected.txt:
+        * crypto/subtle/aes-kw-wrap-unwrap-aes.html:
+        * crypto/subtle/aes-postMessage-expected.txt:
+        * crypto/subtle/aes-postMessage.html:
+        * crypto/subtle/hmac-postMessage-expected.txt:
+        * crypto/subtle/hmac-postMessage.html:
+        * crypto/subtle/jwk-import-use-values-expected.txt:
+        * crypto/subtle/jwk-import-use-values.html:
+        * crypto/subtle/postMessage-worker-expected.txt:
+        * crypto/subtle/postMessage-worker.html:
+        * crypto/subtle/resources/postMessage-worker.js:
+        (onmessage):
+        * crypto/subtle/rsa-oaep-key-manipulation-expected.txt:
+        * crypto/subtle/rsa-oaep-key-manipulation.html:
+        * crypto/subtle/rsa-oaep-wrap-unwrap-aes-expected.txt:
+        * crypto/subtle/rsa-oaep-wrap-unwrap-aes.html:
+        * crypto/subtle/rsaes-pkcs1-v1_5-wrap-unwrap-aes-expected.txt:
+        * crypto/subtle/rsaes-pkcs1-v1_5-wrap-unwrap-aes.html:
+
+2013-12-13  Rob Buis  <rob.buis@samsung.com>
+
+        Clean up SVGScriptElement
+        https://bugs.webkit.org/show_bug.cgi?id=125527
+
+        Reviewed by Darin Adler.
+
+        Add test to verify the new type getter/setter behavior on SVScriptElement.
+        Specifically, the old behavior was setting the JS type property did not reflect in
+        the actual content attribute being set, the new behavior is to do set the content
+        attribute when setting the JS type property.
+
+        * svg/dom/SVGScriptElement/script-type-attribute-expected.txt: Added.
+        * svg/dom/SVGScriptElement/script-type-attribute.svg: Added.
+
+2013-12-13  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Remove wrong http baselines.
+
+        * platform/efl/http/tests/misc/will-send-request-returns-null-on-redirect-expected.txt: Removed.
+        * platform/efl/http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-expected.txt: Removed.
+        * platform/efl/http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny-expected.txt: Removed.
+
+2013-12-12  Alexey Proskuryakov  <ap@apple.com>
+
+        WebCrypto wrapKey operation doesn't check key usage
+        https://bugs.webkit.org/show_bug.cgi?id=125675
+
+        Reviewed by Darin Adler.
+
+        * crypto/subtle/unwrapKey-check-usage-expected.txt: Added.
+        * crypto/subtle/unwrapKey-check-usage.html: Added.
+        * crypto/subtle/wrapKey-check-usage-expected.txt: Added.
+        * crypto/subtle/wrapKey-check-usage.html: Added.
+
+2013-12-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Add support for RSAES-PKCS1-v1_5
+        https://bugs.webkit.org/show_bug.cgi?id=125647
+
+        Reviewed by Anders Carlsson.
+
+        * crypto/subtle/rsaes-pkcs1-v1_5-decrypt-expected.txt: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-decrypt.html: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-wrap-unwrap-aes-expected.txt: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-wrap-unwrap-aes.html: Added.
+
+2013-12-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Public key in a generated KeyPair should always be extractable
+        https://bugs.webkit.org/show_bug.cgi?id=125643
+
+        Reviewed by Sam Weinig.
+
+        * crypto/subtle/rsa-oaep-generate-non-extractable-key-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-generate-non-extractable-key.html: Added.
+
+2013-12-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Make algorithm.name return registered name, not normalized one
+        https://bugs.webkit.org/show_bug.cgi?id=125641
+
+        Reviewed by Anders Carlsson.
+
+        * crypto/subtle/aes-cbc-192-encrypt-decrypt-expected.txt:
+        * crypto/subtle/aes-cbc-192-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-256-encrypt-decrypt-expected.txt:
+        * crypto/subtle/aes-cbc-256-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-expected.txt:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-with-padding-expected.txt:
+        * crypto/subtle/aes-cbc-encrypt-decrypt-with-padding.html:
+        * crypto/subtle/aes-cbc-encrypt-decrypt.html:
+        * crypto/subtle/aes-cbc-generate-key-expected.txt:
+        * crypto/subtle/aes-cbc-generate-key.html:
+        * crypto/subtle/aes-cbc-import-jwk-expected.txt:
+        * crypto/subtle/aes-cbc-import-jwk.html:
+        * crypto/subtle/aes-cbc-invalid-length-expected.txt:
+        * crypto/subtle/aes-cbc-invalid-length.html:
+        * crypto/subtle/aes-cbc-unwrap-failure-expected.txt:
+        * crypto/subtle/aes-cbc-unwrap-failure.html:
+        * crypto/subtle/aes-cbc-unwrap-rsa-expected.txt:
+        * crypto/subtle/aes-cbc-unwrap-rsa.html:
+        * crypto/subtle/aes-cbc-wrap-rsa-expected.txt:
+        * crypto/subtle/aes-cbc-wrap-rsa-non-extractable-expected.txt:
+        * crypto/subtle/aes-cbc-wrap-rsa-non-extractable.html:
+        * crypto/subtle/aes-cbc-wrap-rsa.html:
+        * crypto/subtle/aes-kw-key-manipulation-expected.txt:
+        * crypto/subtle/aes-kw-key-manipulation.html:
+        * crypto/subtle/aes-kw-wrap-unwrap-aes-expected.txt:
+        * crypto/subtle/aes-kw-wrap-unwrap-aes.html:
+        * crypto/subtle/aes-postMessage-expected.txt:
+        * crypto/subtle/aes-postMessage.html:
+        * crypto/subtle/hmac-generate-key-expected.txt:
+        * crypto/subtle/hmac-generate-key.html:
+        * crypto/subtle/hmac-import-jwk-expected.txt:
+        * crypto/subtle/hmac-import-jwk.html:
+        * crypto/subtle/hmac-postMessage-expected.txt:
+        * crypto/subtle/hmac-postMessage.html:
+        * crypto/subtle/hmac-sign-verify-empty-key-expected.txt:
+        * crypto/subtle/hmac-sign-verify-empty-key.html:
+        * crypto/subtle/hmac-sign-verify-expected.txt:
+        * crypto/subtle/hmac-sign-verify.html:
+        * crypto/subtle/postMessage-worker-expected.txt:
+        * crypto/subtle/postMessage-worker.html:
+        * crypto/subtle/resources/postMessage-worker.js:
+        * crypto/subtle/rsa-oaep-key-manipulation-expected.txt:
+        * crypto/subtle/rsa-oaep-key-manipulation.html:
+        * crypto/subtle/rsa-oaep-wrap-unwrap-aes-expected.txt:
+        * crypto/subtle/rsa-oaep-wrap-unwrap-aes.html:
+        * crypto/subtle/rsa-postMessage-expected.txt:
+        * crypto/subtle/rsa-postMessage.html:
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-key-expected.txt:
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-key.html:
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-expected.txt:
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk.html:
+
+2013-12-12  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Rebaseline fast/table/empty-cells.html after r160410.
+
+        * platform/efl/fast/table/empty-cells-expected.png:
+        * platform/efl/fast/table/empty-cells-expected.txt:
+
+2013-12-12  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed EFL gardening
+
+        Add test expectations for failing compositing tests.
+
+        * platform/efl-wk2/TestExpectations:
+
+2013-12-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r160446.
+        http://trac.webkit.org/changeset/160446
+        https://bugs.webkit.org/show_bug.cgi?id=125630
+
+        The upower-glib-based implementation is using API that was
+        recently removed (Requested by zdobersek1 on #webkit).
+
+        * platform/gtk/TestExpectations:
+
+2013-12-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r160417.
+        http://trac.webkit.org/changeset/160417
+        https://bugs.webkit.org/show_bug.cgi?id=125629
+
+        The patch is causing crashes (Requested by zdobersek1 on
+        #webkit).
+
+        * accessibility/children-changed-sends-notification-expected.txt: Removed.
+        * accessibility/children-changed-sends-notification.html: Removed.
+        * accessibility/loading-iframe-sends-notification.html:
+        * platform/mac/TestExpectations:
+
+2013-12-11  Darin Adler  <darin@apple.com>
+
+        StylePendingImage needs to correctly manage the CSSValue pointer lifetime
+        https://bugs.webkit.org/show_bug.cgi?id=125468
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/pending-image-crash-expected.txt: Added.
+        * fast/css/pending-image-crash.xhtml: Added.
+
 2013-12-11  Alexey Proskuryakov  <ap@apple.com>
 
         WebCrypto keys should support structured clone

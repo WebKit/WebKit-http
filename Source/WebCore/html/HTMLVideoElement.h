@@ -37,9 +37,6 @@ class HTMLVideoElement FINAL : public HTMLMediaElement {
 public:
     static PassRefPtr<HTMLVideoElement> create(const QualifiedName&, Document&, bool);
 
-    unsigned width() const;
-    unsigned height() const;
-    
     unsigned videoWidth() const;
     unsigned videoHeight() const;
     
@@ -53,6 +50,11 @@ public:
     // https://bugs.webkit.org/show_bug.cgi?id=36081
     void webkitEnterFullScreen(ExceptionCode& ec) { webkitEnterFullscreen(ec); }
     void webkitExitFullScreen() { webkitExitFullscreen(); }
+
+#if ENABLE(IOS_AIRPLAY)
+    bool webkitWirelessVideoPlaybackDisabled() const;
+    void setWebkitWirelessVideoPlaybackDisabled(bool);
+#endif
 
 #if ENABLE(MEDIA_STATISTICS)
     // Statistics

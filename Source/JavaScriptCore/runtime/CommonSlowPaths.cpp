@@ -417,7 +417,14 @@ SLOW_PATH_DECL(slow_path_urshift)
     BEGIN();
     uint32_t a = OP_C(2).jsValue().toUInt32(exec);
     uint32_t b = OP_C(3).jsValue().toUInt32(exec);
-    RETURN(jsNumber(a >> (b & 31)));
+    RETURN(jsNumber(static_cast<int32_t>(a >> (b & 31))));
+}
+
+SLOW_PATH_DECL(slow_path_unsigned)
+{
+    BEGIN();
+    uint32_t a = OP_C(2).jsValue().toUInt32(exec);
+    RETURN(jsNumber(a));
 }
 
 SLOW_PATH_DECL(slow_path_bitand)
@@ -506,6 +513,14 @@ SLOW_PATH_DECL(slow_path_to_primitive)
 {
     BEGIN();
     RETURN(OP_C(2).jsValue().toPrimitive(exec));
+}
+
+SLOW_PATH_DECL(slow_path_enter)
+{
+    BEGIN();
+    ScriptExecutable* ownerExecutable = exec->codeBlock()->ownerExecutable();
+    Heap::heap(ownerExecutable)->writeBarrier(ownerExecutable);
+    END();
 }
 
 } // namespace JSC

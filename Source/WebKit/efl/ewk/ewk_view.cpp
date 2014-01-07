@@ -1366,8 +1366,8 @@ void ewk_view_theme_set(Evas_Object* ewkView, const char* path)
     if (!eina_stringshare_replace(&priv->settings.theme, path))
         return;
 
-    WebCore::RenderThemeEfl* theme = static_cast<WebCore::RenderThemeEfl*>(priv->page->theme());
-    theme->setThemePath(path);
+    WebCore::RenderThemeEfl& theme = static_cast<WebCore::RenderThemeEfl&>(priv->page->theme());
+    theme.setThemePath(path);
 }
 
 const char* ewk_view_theme_get(const Evas_Object* ewkView)
@@ -4249,6 +4249,10 @@ Eina_Bool ewk_view_visibility_state_set(Evas_Object* ewkView, Ewk_Page_Visibilit
 #if ENABLE(PAGE_VISIBILITY_API)
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    // WebKit does not curently support the "unloaded" state.
+    if (pageVisibilityState == EWK_PAGE_VISIBILITY_STATE_UNLOADED)
+        return false;
 
     priv->page->setVisibilityState(static_cast<WebCore::PageVisibilityState>(pageVisibilityState), initialState);
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2002 Cyrus Patel <cyp@fb14.uni-mainz.de>
- *           (C) 2007 Apple Inc. All rights reserved.
+ *           (C) 2007, 2013 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -36,11 +36,7 @@ using namespace WTF;
 
 namespace WebCore {
 #if OS(WINDOWS) && !defined(gmtime_r)
-#if defined(_MSC_VER) && (_MSC_VER >= 1400) 
 #define gmtime_r(x, y) gmtime_s((y), (x))
-#else /* !_MSC_VER */ 
-#define gmtime_r(x,y) (gmtime(x)?(*(y)=*gmtime(x),(y)):0)
-#endif
 #endif
 
 static inline FTPEntryType ParsingFailed(ListState& state)
@@ -155,11 +151,7 @@ FTPEntryType parseOneFTPLine(const char* line, ListState& state, ListResult& res
               if (pos < linelen && line[pos] == ',')
               {
                 unsigned long long seconds = 0;
-#if OS(WINDOWS)
-                sscanf(p + 1, "%I64u", &seconds);
-#else
                 sscanf(p + 1, "%llu", &seconds);
-#endif
                 time_t t = static_cast<time_t>(seconds);
 
                 // FIXME: This code has the year 2038 bug

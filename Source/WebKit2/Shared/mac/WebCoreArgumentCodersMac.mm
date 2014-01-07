@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2013 Company 100 Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,14 +29,13 @@
 
 #import "ArgumentCodersCF.h"
 #import "DataReference.h"
-#import "CertificateInfo.h"
 #import "WebKitSystemInterface.h"
+#import <WebCore/CertificateInfo.h>
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/ResourceError.h>
 #import <WebCore/ResourceRequest.h>
 
 using namespace WebCore;
-using namespace WebKit;
 
 namespace CoreIPC {
 
@@ -134,9 +134,34 @@ bool ArgumentCoder<ResourceResponse>::decodePlatformData(ArgumentDecoder& decode
     return true;
 }
 
-static NSString* nsString(const String& string)
+void ArgumentCoder<CertificateInfo>::encode(ArgumentEncoder& encoder, const CertificateInfo& certificateInfo)
 {
-    return string.impl() ? [NSString stringWithCharacters:reinterpret_cast<const UniChar*>(string.characters()) length:string.length()] : @"";
+    CFArrayRef certificateChain = certificateInfo.certificateChain();
+    if (!certificateChain) {
+        encoder << false;
+        return;
+    }
+
+    encoder << true;
+    CoreIPC::encode(encoder, certificateChain);
+}
+
+bool ArgumentCoder<CertificateInfo>::decode(ArgumentDecoder& decoder, CertificateInfo& certificateInfo)
+{
+    bool hasCertificateChain;
+    if (!decoder.decode(hasCertificateChain))
+        return false;
+
+    if (!hasCertificateChain)
+        return true;
+
+    RetainPtr<CFArrayRef> certificateChain;
+    if (!CoreIPC::decode(decoder, certificateChain))
+        return false;
+
+    certificateInfo.setCertificateChain(certificateChain.get());
+
+    return true;
 }
 
 void ArgumentCoder<ResourceError>::encodePlatformData(ArgumentEncoder& encoder, const ResourceError& resourceError)
@@ -211,7 +236,7 @@ bool ArgumentCoder<ResourceError>::decodePlatformData(ArgumentDecoder& decoder, 
         CFDictionarySetValue((CFMutableDictionaryRef)userInfo.get(), CFSTR("NSErrorPeerCertificateChainKey"), (CFArrayRef)certificate.certificateChain());
     }
 
-    RetainPtr<NSError> nsError = adoptNS([[NSError alloc] initWithDomain:nsString(domain) code:code userInfo:(NSDictionary *)userInfo.get()]);
+    RetainPtr<NSError> nsError = adoptNS([[NSError alloc] initWithDomain:domain code:code userInfo:(NSDictionary *)userInfo.get()]);
 
     resourceError = ResourceError(nsError.get());
     return true;

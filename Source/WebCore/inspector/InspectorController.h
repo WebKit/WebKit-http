@@ -66,7 +66,6 @@ class InspectorResourceAgent;
 class InstrumentingAgents;
 class IntSize;
 class Page;
-class PostWorkerNotificationToFrontendTask;
 class Node;
 
 struct Highlight;
@@ -89,7 +88,6 @@ public:
     void setInspectorFrontendClient(PassOwnPtr<InspectorFrontendClient>);
     bool hasInspectorFrontendClient() const;
     void didClearWindowObjectInWorld(Frame*, DOMWrapperWorld&);
-    void setInjectedScriptForOrigin(const String& origin, const String& source);
 
     void dispatchMessageFromFrontend(const String& message);
 
@@ -138,7 +136,6 @@ public:
 private:
     InspectorController(Page*, InspectorClient*);
 
-    friend class PostWorkerNotificationToFrontendTask;
     friend InstrumentingAgents* instrumentationForPage(Page*);
 
     RefPtr<InstrumentingAgents> m_instrumentingAgents;

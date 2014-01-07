@@ -30,6 +30,7 @@
 
 #include "DFGOperations.h"
 #include "DFGOSRExitCompilerCommon.h"
+#include "DFGSpeculativeJIT.h"
 #include "Operations.h"
 #include <wtf/DataLog.h>
 
@@ -177,7 +178,6 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         
         switch (recovery.technique()) {
         case UnboxedInt32InGPR:
-        case UInt32InGPR:
         case UnboxedBooleanInGPR:
         case UnboxedCellInGPR:
             m_jit.store32(
@@ -317,28 +317,6 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
                 AssemblyHelpers::payloadFor(operand));
             break;
             
-        case UInt32InGPR: {
-            m_jit.load32(
-                &bitwise_cast<EncodedValueDescriptor*>(scratch + index)->asBits.payload,
-                GPRInfo::regT0);
-            AssemblyHelpers::Jump positive = m_jit.branch32(
-                AssemblyHelpers::GreaterThanOrEqual,
-                GPRInfo::regT0, AssemblyHelpers::TrustedImm32(0));
-            m_jit.convertInt32ToDouble(GPRInfo::regT0, FPRInfo::fpRegT0);
-            m_jit.addDouble(
-                AssemblyHelpers::AbsoluteAddress(&AssemblyHelpers::twoToThe32),
-                FPRInfo::fpRegT0);
-            m_jit.storeDouble(FPRInfo::fpRegT0, AssemblyHelpers::addressFor(operand));
-            AssemblyHelpers::Jump done = m_jit.jump();
-            positive.link(&m_jit);
-            m_jit.store32(GPRInfo::regT0, AssemblyHelpers::payloadFor(operand));
-            m_jit.store32(
-                AssemblyHelpers::TrustedImm32(JSValue::Int32Tag),
-                AssemblyHelpers::tagFor(operand));
-            done.link(&m_jit);
-            break;
-        }
-            
         case Constant:
             m_jit.store32(
                 AssemblyHelpers::TrustedImm32(recovery.constant().tag()),
@@ -471,9 +449,19 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             m_jit.store32(GPRInfo::regT0, AssemblyHelpers::payloadFor(operand));
         }
     }
-    
-    // 11) And finish.
-    
+
+#if ENABLE(GGC) 
+    // 11) Write barrier the owner executable because we're jumping into a different block.
+    for (CodeOrigin codeOrigin = exit.m_codeOrigin; ; codeOrigin = codeOrigin.inlineCallFrame->caller) {
+        CodeBlock* baselineCodeBlock = m_jit.baselineCodeBlockFor(codeOrigin);
+        m_jit.move(AssemblyHelpers::TrustedImmPtr(baselineCodeBlock->ownerExecutable()), GPRInfo::nonArgGPR0); 
+        SpeculativeJIT::osrWriteBarrier(m_jit, GPRInfo::nonArgGPR0, GPRInfo::nonArgGPR1, GPRInfo::nonArgGPR2);
+        if (!codeOrigin.inlineCallFrame)
+            break;
+    }
+#endif
+
+    // 12) And finish.
     adjustAndJumpToTarget(m_jit, exit);
 }
 

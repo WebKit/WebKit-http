@@ -24,12 +24,20 @@
  */
 
 (function() {
-    var backendCommandsURL = "InspectorBackendCommands.js";
-    if (InspectorFrontendHost.inspectorBackendCommandsURL) {
-        var suggestedBackendCommandsURL = InspectorFrontendHost.inspectorBackendCommandsURL();
-        if (suggestedBackendCommandsURL)
-            backendCommandsURL = suggestedBackendCommandsURL;
+    var backendURLs;
+    if (InspectorFrontendHost.inspectorBackendCommandsURLs) {
+        var suggestedBackendCommandsURLs = InspectorFrontendHost.inspectorBackendCommandsURLs();
+        if (suggestedBackendCommandsURLs)
+            backendURLs = suggestedBackendCommandsURLs;
     }
 
-    document.write("<script src=\"" + backendCommandsURL + "\"></script>");
+    if (!backendURLs) {
+        backendURLs = ["InspectorJSBackendCommands.js"];
+        if (InspectorFrontendHost.debuggableType() === "web")
+            backendURLs.push("InspectorWebBackendCommands.js");
+    }
+
+    console.assert(backendURLs.length);
+    for (var backendCommandsURL of backendURLs)
+        document.write("<script src=\"" + backendCommandsURL + "\"></script>");
 })();

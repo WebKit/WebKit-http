@@ -99,7 +99,7 @@ public:
     void layoutIfNeeded() { if (needsLayout()) layout(); }
 
     // Return the renderer whose background style is used to paint the root background. Should only be called on the renderer for which isRoot() is true.
-    RenderElement* rendererForRootBackground();
+    RenderElement& rendererForRootBackground();
 
     // Used only by Element::pseudoStyleCacheIsInvalid to get a first line style based off of a
     // given new style, without accessing the cache.
@@ -108,6 +108,34 @@ public:
     // Updates only the local style ptr of the object. Does not update the state of the object,
     // and so only should be called when the style is known not to have changed (or from setStyle).
     void setStyleInternal(PassRef<RenderStyle> style) { m_style = std::move(style); }
+
+    // Repaint only if our old bounds and new bounds are different. The caller may pass in newBounds and newOutlineBox if they are known.
+    bool repaintAfterLayoutIfNeeded(const RenderLayerModelObject* repaintContainer, const LayoutRect& oldBounds, const LayoutRect& oldOutlineBox, const LayoutRect* newBoundsPtr = nullptr, const LayoutRect* newOutlineBoxPtr = nullptr);
+
+    bool borderImageIsLoadedAndCanBeRendered() const;
+
+    // Returns true if this renderer requires a new stacking context.
+    bool createsGroup() const { return isTransparent() || hasMask() || hasFilter() || hasBlendMode(); }
+
+    bool isTransparent() const { return style().opacity() < 1.0f; }
+    float opacity() const { return style().opacity(); }
+
+    bool hasBackground() const { return style().hasBackground(); }
+    bool hasMask() const { return style().hasMask(); }
+    bool hasClipPath() const { return style().clipPath(); }
+    bool hasHiddenBackface() const { return style().backfaceVisibility() == BackfaceVisibilityHidden; }
+
+#if ENABLE(CSS_FILTERS)
+    bool hasFilter() const { return style().hasFilter(); }
+#else
+    bool hasFilter() const { return false; }
+#endif
+
+#if ENABLE(CSS_COMPOSITING)
+    bool hasBlendMode() const { return style().hasBlendMode(); }
+#else
+    bool hasBlendMode() const { return false; }
+#endif
 
 protected:
     enum BaseTypeFlags {
@@ -305,6 +333,18 @@ inline RenderElement* ContainerNode::renderer() const
 {
     return toRenderElement(Node::renderer());
 }
+
+inline int adjustForAbsoluteZoom(int value, const RenderElement& renderer)
+{
+    return adjustForAbsoluteZoom(value, renderer.style());
+}
+
+#if ENABLE(SUBPIXEL_LAYOUT)
+inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit value, const RenderElement& renderer)
+{
+    return adjustLayoutUnitForAbsoluteZoom(value, renderer.style());
+}
+#endif
 
 } // namespace WebCore
 

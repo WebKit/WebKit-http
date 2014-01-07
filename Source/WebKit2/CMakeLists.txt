@@ -170,9 +170,9 @@ set(WebKit2_SOURCES
     Platform/CoreIPC/MessageDecoder.cpp
     Platform/CoreIPC/MessageEncoder.cpp
     Platform/CoreIPC/MessageReceiverMap.cpp
-    Platform/CoreIPC/MessageSender.cpp
 
     Platform/IPC/DataReference.cpp
+    Platform/IPC/MessageSender.cpp
     Platform/IPC/StringReference.cpp
 
     PluginProcess/PluginControllerProxy.cpp
@@ -181,10 +181,13 @@ set(WebKit2_SOURCES
     PluginProcess/WebProcessConnection.cpp
 
     Shared/APIArray.cpp
+    Shared/APIData.cpp
     Shared/APIFrameHandle.cpp
     Shared/APIGeometry.cpp
     Shared/APIPageHandle.cpp
     Shared/APIObject.cpp
+    Shared/APIURLRequest.cpp
+    Shared/APIURLResponse.cpp
     Shared/ActivityAssertion.cpp
     Shared/CacheModel.cpp
     Shared/ChildProcess.cpp
@@ -235,8 +238,6 @@ set(WebKit2_SOURCES
     Shared/WebRenderObject.cpp
     Shared/WebResourceBuffer.cpp
     Shared/WebTouchEvent.cpp
-    Shared/WebURLRequest.cpp
-    Shared/WebURLResponse.cpp
     Shared/WebWheelEvent.cpp
 
     Shared/API/c/WKArray.cpp
@@ -682,23 +683,7 @@ endif ()
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
-# Create JavaScript C++ code given an IDL input
-foreach (_file ${WebKit2_MESSAGES_IN_FILES})
-    get_filename_component(_name ${_file} NAME_WE)
-    add_custom_command(
-        OUTPUT ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}MessageReceiver.cpp ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}Messages.h
-        MAIN_DEPENDENCY ${_file}
-        DEPENDS ${WEBKIT2_DIR}/Scripts/webkit2/__init__.py
-                ${WEBKIT2_DIR}/Scripts/webkit2/messages.py
-                ${WEBKIT2_DIR}/Scripts/webkit2/model.py
-                ${WEBKIT2_DIR}/Scripts/webkit2/parser.py
-        COMMAND ${PYTHON_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-message-receiver.py ${_file} > ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}MessageReceiver.cpp
-        COMMAND ${PYTHON_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-messages-header.py ${_file} > ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}Messages.h
-        WORKING_DIRECTORY ${WEBKIT2_DIR}
-        VERBATIM)
-
-    list(APPEND WebKit2_SOURCES ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}MessageReceiver.cpp)
-endforeach ()
+GENERATE_WEBKIT2_MESSAGE_SOURCES(WebKit2_SOURCES "${WebKit2_MESSAGES_IN_FILES}")
 
 add_definitions(-DBUILDING_WEBKIT)
 include_directories(${WebKit2_INCLUDE_DIRECTORIES})

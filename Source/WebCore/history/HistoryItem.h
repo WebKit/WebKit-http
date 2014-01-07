@@ -34,6 +34,10 @@
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
+#if PLATFORM(IOS)
+#include "ViewportArguments.h"
+#endif
+
 #if PLATFORM(MAC)
 #import <wtf/RetainPtr.h>
 typedef struct objc_object* id;
@@ -50,6 +54,7 @@ class Document;
 class FormData;
 class HistoryItem;
 class Image;
+class KeyedDecoder;
 class KeyedEncoder;
 class ResourceRequest;
 class URL;
@@ -91,6 +96,7 @@ public:
     void encodeBackForwardTree(Encoder&) const;
     void encodeBackForwardTree(KeyedEncoder&) const;
     static PassRefPtr<HistoryItem> decodeBackForwardTree(const String& urlString, const String& title, const String& originalURLString, Decoder&);
+    static PassRefPtr<HistoryItem> decodeBackForwardTree(const String& urlString, const String& title, const String& originalURLString, KeyedDecoder&);
 
     const String& originalURLString() const;
     const String& urlString() const;
@@ -206,6 +212,24 @@ public:
     const Vector<int>& dailyVisitCounts() const { return m_dailyVisitCounts; }
     const Vector<int>& weeklyVisitCounts() const { return m_weeklyVisitCounts; }
 
+#if PLATFORM(IOS)
+    float scale() const { return m_scale; }
+    bool scaleIsInitial() const { return m_scaleIsInitial; }
+    void setScale(float newScale, bool isInitial)
+    {
+        m_scale = newScale;
+        m_scaleIsInitial = isInitial;
+    }
+
+    const ViewportArguments& viewportArguments() const { return m_viewportArguments; }
+    void setViewportArguments(const ViewportArguments& viewportArguments) { m_viewportArguments = viewportArguments; }
+
+    uint32_t bookmarkID() const { return m_bookmarkID; }
+    void setBookmarkID(uint32_t bookmarkID) { m_bookmarkID = bookmarkID; }
+    String sharedLinkUniqueIdentifier() const { return m_sharedLinkUniqueIdentifier; }
+    void setSharedLinkUniqueIdentifier(const String& sharedLinkUniqueidentifier) { m_sharedLinkUniqueIdentifier = sharedLinkUniqueidentifier; }
+#endif
+
 private:
     HistoryItem();
     HistoryItem(const String& urlString, const String& title, double lastVisited);
@@ -272,7 +296,16 @@ private:
     HistoryItem* m_next;
     HistoryItem* m_prev;
     OwnPtr<CachedPage> m_cachedPage;
-    
+
+#if PLATFORM(IOS)
+    float m_scale;
+    bool m_scaleIsInitial;
+    ViewportArguments m_viewportArguments;
+
+    uint32_t m_bookmarkID;
+    String m_sharedLinkUniqueIdentifier;
+#endif
+
 #if PLATFORM(MAC)
     RetainPtr<id> m_viewState;
     OwnPtr<HashMap<String, RetainPtr<id>>> m_transientProperties;

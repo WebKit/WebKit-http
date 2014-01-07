@@ -21,11 +21,11 @@ webcore_built_sources += \
 	DerivedSources/WebCore/HTMLNames.h \
 	DerivedSources/WebCore/InjectedScriptCanvasModuleSource.h \
 	DerivedSources/WebCore/InjectedScriptSource.h \
-	DerivedSources/WebCore/InspectorBackendDispatchers.cpp \
-	DerivedSources/WebCore/InspectorBackendDispatchers.h \
-	DerivedSources/WebCore/InspectorFrontend.cpp \
-	DerivedSources/WebCore/InspectorFrontend.h \
 	DerivedSources/WebCore/InspectorOverlayPage.h \
+	DerivedSources/WebCore/InspectorWebBackendDispatchers.cpp \
+	DerivedSources/WebCore/InspectorWebBackendDispatchers.h \
+	DerivedSources/WebCore/InspectorWebFrontendDispatchers.cpp \
+	DerivedSources/WebCore/InspectorWebFrontendDispatchers.h \
 	DerivedSources/WebCore/InspectorWebTypeBuilders.cpp \
 	DerivedSources/WebCore/InspectorWebTypeBuilders.h \
 	DerivedSources/WebCore/JSAbstractWorker.cpp \
@@ -611,8 +611,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSRTCDataChannel.h \
 	DerivedSources/WebCore/JSRTCDataChannelEvent.cpp \
 	DerivedSources/WebCore/JSRTCDataChannelEvent.h \
-	DerivedSources/WebCore/JSRTCErrorCallback.cpp \
-	DerivedSources/WebCore/JSRTCErrorCallback.h \
+	DerivedSources/WebCore/JSRTCPeerConnectionErrorCallback.cpp \
+	DerivedSources/WebCore/JSRTCPeerConnectionErrorCallback.h \
 	DerivedSources/WebCore/JSRTCIceCandidate.cpp \
 	DerivedSources/WebCore/JSRTCIceCandidate.h \
 	DerivedSources/WebCore/JSRTCIceCandidateEvent.cpp \
@@ -1227,7 +1227,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/mediastream/RTCDTMFToneChangeEvent.idl \
 	$(WebCore)/Modules/mediastream/RTCDataChannel.idl \
 	$(WebCore)/Modules/mediastream/RTCDataChannelEvent.idl \
-	$(WebCore)/Modules/mediastream/RTCErrorCallback.idl \
+	$(WebCore)/Modules/mediastream/RTCPeerConnectionErrorCallback.idl \
 	$(WebCore)/Modules/mediastream/RTCIceCandidate.idl \
 	$(WebCore)/Modules/mediastream/RTCIceCandidateEvent.idl \
 	$(WebCore)/Modules/mediastream/RTCPeerConnection.idl \
@@ -1795,9 +1795,6 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/indexeddb/DOMWindowIndexedDatabase.h \
 	Source/WebCore/Modules/indexeddb/IDBAny.cpp \
 	Source/WebCore/Modules/indexeddb/IDBAny.h \
-	Source/WebCore/Modules/indexeddb/IDBBackingStoreCursorInterface.h \
-	Source/WebCore/Modules/indexeddb/IDBBackingStoreInterface.h \
-	Source/WebCore/Modules/indexeddb/IDBBackingStoreTransactionInterface.h \
 	Source/WebCore/Modules/indexeddb/leveldb/IDBBackingStoreCursorLevelDB.cpp \
 	Source/WebCore/Modules/indexeddb/leveldb/IDBBackingStoreCursorLevelDB.h \
 	Source/WebCore/Modules/indexeddb/leveldb/IDBBackingStoreLevelDB.cpp \
@@ -1827,6 +1824,7 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/indexeddb/IDBDatabaseError.h \
 	Source/WebCore/Modules/indexeddb/IDBDatabaseException.cpp \
 	Source/WebCore/Modules/indexeddb/IDBDatabaseException.h \
+	Source/WebCore/Modules/indexeddb/IDBDatabaseMetadata.cpp \
 	Source/WebCore/Modules/indexeddb/IDBDatabaseMetadata.h \
 	Source/WebCore/Modules/indexeddb/IDBEventDispatcher.cpp \
 	Source/WebCore/Modules/indexeddb/IDBEventDispatcher.h \
@@ -1936,7 +1934,7 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/mediastream/RTCDataChannel.h \
 	Source/WebCore/Modules/mediastream/RTCDataChannelEvent.cpp \
 	Source/WebCore/Modules/mediastream/RTCDataChannelEvent.h \
-	Source/WebCore/Modules/mediastream/RTCErrorCallback.h \
+	Source/WebCore/Modules/mediastream/RTCPeerConnectionErrorCallback.h \
 	Source/WebCore/Modules/mediastream/RTCIceCandidate.cpp \
 	Source/WebCore/Modules/mediastream/RTCIceCandidate.h \
 	Source/WebCore/Modules/mediastream/RTCIceCandidateEvent.cpp \
@@ -2262,7 +2260,6 @@ webcore_sources += \
 	Source/WebCore/bindings/generic/RuntimeEnabledFeatures.h \
 	Source/WebCore/bindings/js/ArrayValue.cpp \
 	Source/WebCore/bindings/js/ArrayValue.h \
-	Source/WebCore/bindings/js/BreakpointID.h \
 	Source/WebCore/bindings/js/CachedScriptSourceProvider.h \
 	Source/WebCore/bindings/js/CallbackFunction.cpp \
 	Source/WebCore/bindings/js/CallbackFunction.h \
@@ -2464,7 +2461,6 @@ webcore_sources += \
 	Source/WebCore/bindings/js/ScriptWrappableInlines.h \
 	Source/WebCore/bindings/js/SerializedScriptValue.cpp \
 	Source/WebCore/bindings/js/SerializedScriptValue.h \
-	Source/WebCore/bindings/js/SourceID.h \
 	Source/WebCore/bindings/js/WebCoreJSClientData.h \
 	Source/WebCore/bindings/js/WebCoreTypedArrayController.cpp \
 	Source/WebCore/bindings/js/WebCoreTypedArrayController.h \
@@ -2502,7 +2498,22 @@ webcore_sources += \
 	Source/WebCore/bridge/runtime_root.cpp \
 	Source/WebCore/bridge/runtime_root.h \
 	Source/WebCore/config.h \
+	Source/WebCore/crypto/CryptoAlgorithmIdentifier.h \
+	Source/WebCore/crypto/CryptoKey.h \
+	Source/WebCore/crypto/CryptoKey.cpp \
+	Source/WebCore/crypto/CryptoKeyData.h \
+	Source/WebCore/crypto/CryptoKeyType.h \
+	Source/WebCore/crypto/CryptoKeyUsage.h \
 	Source/WebCore/crypto/SubtleCrypto.h \
+	Source/WebCore/crypto/keys/CryptoKeyAES.h \
+	Source/WebCore/crypto/keys/CryptoKeyAES.cpp \
+	Source/WebCore/crypto/keys/CryptoKeyDataOctetSequence.h \
+	Source/WebCore/crypto/keys/CryptoKeyDataOctetSequence.cpp \
+	Source/WebCore/crypto/keys/CryptoKeyDataRSAComponents.h \
+	Source/WebCore/crypto/keys/CryptoKeyDataRSAComponents.cpp \
+	Source/WebCore/crypto/keys/CryptoKeyHMAC.h \
+	Source/WebCore/crypto/keys/CryptoKeyHMAC.cpp \
+	Source/WebCore/crypto/keys/CryptoKeyRSA.h \
 	Source/WebCore/css/BasicShapeFunctions.cpp \
 	Source/WebCore/css/BasicShapeFunctions.h \
 	Source/WebCore/css/Counter.h \
@@ -4156,6 +4167,8 @@ webcore_sources += \
 	Source/WebCore/page/PageActivityAssertionToken.cpp \
 	Source/WebCore/page/PageConsole.cpp \
 	Source/WebCore/page/PageConsole.h \
+	Source/WebCore/page/PageDebuggable.cpp \
+	Source/WebCore/page/PageDebuggable.h \
 	Source/WebCore/page/PageGroup.cpp \
 	Source/WebCore/page/PageGroup.h \
 	Source/WebCore/page/PageGroupLoadDeferrer.cpp \
@@ -4523,7 +4536,8 @@ webcore_sources += \
 	Source/WebCore/rendering/line/LineLayoutState.h \
 	Source/WebCore/rendering/line/LineWidth.h \
 	Source/WebCore/rendering/line/LineWidth.cpp \
-    Source/WebCore/rendering/line/TrailingObjects.cpp \
+	Source/WebCore/rendering/line/TrailingObjects.h \
+	Source/WebCore/rendering/line/TrailingObjects.cpp \
 	Source/WebCore/rendering/mathml/RenderMathMLBlock.cpp \
 	Source/WebCore/rendering/mathml/RenderMathMLBlock.h \
 	Source/WebCore/rendering/mathml/RenderMathMLFenced.cpp \
@@ -5443,6 +5457,7 @@ webcore_platform_sources += \
 	Source/WebCore/platform/network/BlobRegistryImpl.h \
 	Source/WebCore/platform/network/BlobResourceHandle.cpp \
 	Source/WebCore/platform/network/BlobResourceHandle.h \
+	Source/WebCore/platform/network/soup/CertificateInfo.h \
 	Source/WebCore/platform/network/BlobStorageData.h \
 	Source/WebCore/platform/network/FormDataBuilder.cpp \
 	Source/WebCore/platform/network/FormDataBuilder.h \
@@ -5460,8 +5475,11 @@ webcore_platform_sources += \
 	Source/WebCore/platform/network/ResourceRequestBase.h \
 	Source/WebCore/platform/network/ResourceResponseBase.cpp \
 	Source/WebCore/platform/network/ResourceResponseBase.h \
+	Source/WebCore/platform/network/SynchronousLoaderClient.cpp \
+	Source/WebCore/platform/network/SynchronousLoaderClient.h \
 	Source/WebCore/platform/network/soup/AuthenticationChallenge.h \
 	Source/WebCore/platform/network/soup/AuthenticationChallengeSoup.cpp \
+	Source/WebCore/platform/network/soup/CertificateInfo.cpp \
 	Source/WebCore/platform/network/soup/CookieJarSoup.cpp \
 	Source/WebCore/platform/network/soup/CookieJarSoup.h \
 	Source/WebCore/platform/network/soup/CookieStorageSoup.cpp \

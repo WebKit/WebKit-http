@@ -1,3 +1,257 @@
+2013-12-19  Alex Christensen  <achristensen@webkit.org>
+
+        Final preparations for GStreamer on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=125958
+
+        Reviewed by Benjamin Poulain.
+
+        * WTF.vcxproj/WTFDebugWinCairo.props:
+        * WTF.vcxproj/WTFReleaseWinCairo.props:
+        Include WinCairo.props.
+        * wtf/Platform.h:
+        Use GLib and GStreamer on WinCairo with video.
+
+2013-12-18  Daniel Bates  <dabates@apple.com>
+
+        WTF, JavaScriptCore fails to build with trunk clang: operators new, new[],
+        delete, delete[] cannot be declared inline
+        https://bugs.webkit.org/show_bug.cgi?id=124186
+        <rdar://problem/15644039>
+
+        Reviewed by Geoffrey Garen and Anders Carlsson.
+
+        Following <http://llvm.org/viewvc/llvm-project?view=revision&revision=193044>
+        (http://llvm.org/bugs/show_bug.cgi?id=17591>), Clang emits warnings when
+        operator new, delete are inlined. Such definitions cannot be inline per
+        replacement.functions (17.6.4.6/3) of the C++ standard. For now,
+        disable these warnings instead of exporting these functions.
+
+        * wtf/FastMalloc.h:
+
+2013-12-19  Hugo Parente Lima  <hugo.lima@openbossa.org>
+
+        WTF fails to compile with gcc 4.8.2 and -Werror=array-bounds
+        https://bugs.webkit.org/show_bug.cgi?id=125936
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/dtoa/double-conversion.cc: Use a unsigned instead of int on buffer_pos type.
+
+2013-12-19  Peter Szanka  <h868064@stud.u-szeged.hu>
+
+        Delete RVCT related code parts.
+        https://bugs.webkit.org/show_bug.cgi?id=125626
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Compiler.h: follow-up fix for r160648, remove an unnecessary comment.
+
+2013-12-18  Alex Christensen  <achristensen@webkit.org>
+
+        [WinCairo] Preparation for GStreamer on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=125946
+
+        Reviewed by Brent Fulgham.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        Use new GStreamer property sheets for WinCairo.
+
+2013-12-18  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        DFG should have a separate StoreBarrier node
+        https://bugs.webkit.org/show_bug.cgi?id=125530
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Platform.h: Added an #define for ENABLE(GGC) which will be used for landing things related to GenGC.
+
+2013-12-16  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Upstream WebCore/html changes
+        https://bugs.webkit.org/show_bug.cgi?id=125765
+
+        Reviewed by Darin Adler.
+
+        Defined ENABLE_IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, enabled by default on iOS.
+
+        * wtf/FeatureDefines.h:
+
+2013-12-17  Alex Christensen  <achristensen@webkit.org>
+
+        Compile fix for WebGL on Windows without GRAPHICS_SURFACE.
+        https://bugs.webkit.org/show_bug.cgi?id=125867
+
+        Reviewed by Martin Robinson.
+
+        * wtf/FeatureDefines.h:
+        Removed unused ENABLE_GLIB_SUPPORT macro.
+        * wtf/Platform.h:
+        Don't use GRAPHICS_SURFACE for WebGL on Windows.
+
+2013-12-17  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Fixed linker error with GStreamer.
+        https://bugs.webkit.org/show_bug.cgi?id=124861
+
+        Reviewed by Martin Robinson.
+
+        * wtf/gobject/GOwnPtr.cpp:
+        (WTF::GError):
+        * wtf/gobject/GOwnPtr.h:
+        Added WTF_EXPORT_PRIVATE to freeOwnedGPtr<GError> declaration and definition.
+
+2013-12-17  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add a simple register allocator to WebCore for x86_64
+        https://bugs.webkit.org/show_bug.cgi?id=125771
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h: Add a new flag "CSS_SELECTOR_JIT" to guard
+        an experimental JIT compiler in WebCore.
+
+2013-12-16  Anders Carlsson  <andersca@apple.com>
+
+        Remove EnumClass.h from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=125820
+
+        Reviewed by Darin Adler.
+
+        All compilers we build on now support real strongly typed enums, so we can remove the ENUM_CLASS version.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CheckedArithmetic.h:
+        * wtf/EnumClass.h: Removed.
+
+2013-12-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Remove dead code after conversion to VS2013
+        https://bugs.webkit.org/show_bug.cgi?id=125795
+
+        Reviewed by Darin Adler.
+
+        * wtf/Assertions.h: Include <inttypes.h> now that it exists.
+        * wtf/Compiler.h: Update compiler checks for VS2013, and
+        enable support for NEVER_INLINE
+        * wtf/HashFunctions.h:
+        (WTF::PtrHash::hash): Remove compiler workaround.
+        * wtf/MathExtras.h: Remove C99 functions that are now supplied
+        by the MS runtime library.
+        * wtf/Platform.h: Remove old MSVC support flags.
+        * wtf/StdLibExtras.h: Remove old MSVC workaround code.
+
+2013-12-16  Alex Christensen  <achristensen@webkit.org>
+
+        Fixed Win64 build on VS2013.
+        https://bugs.webkit.org/show_bug.cgi?id=125753
+
+        Reviewed by Brent Fulgham.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        Added correct PlatformToolset for 64-bit builds.
+
+2013-12-16  Peter Szanka  <h868064@stud.u-szeged.hu>
+
+        Delete RVCT related code parts.
+        https://bugs.webkit.org/show_bug.cgi?id=125626
+
+        Reviewed by Darin Adler.
+
+        * wtf/Assertions.h:
+        * wtf/Compiler.h:
+        * wtf/FastMalloc.h:
+        * wtf/Platform.h:
+
+2013-12-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Remove Pre-VS2013 support code.
+        https://bugs.webkit.org/show_bug.cgi?id=125693
+
+        Reviewed by Darin Adler.
+
+        * wtf/StringPrintStream.cpp:
+        (WTF::StringPrintStream::vprintf): Use va_copy, like a civilized person.
+
+2013-12-12  Darin Adler  <darin@apple.com>
+
+        Incorrect handling of non-ASCII characters in WTF::base64DecodeInternal
+        https://bugs.webkit.org/show_bug.cgi?id=125658
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/text/Base64.cpp:
+        (WTF::base64EncodeInternal): Use a reference to an array instead of a pointer
+        for the table argument type so we check the size of the array at the call site.
+        (WTF::base64DecodeInternal): Ditto. Also added an bounds check before using the
+        table so we don't load some random value for non-ASCII characters.
+
+2013-12-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r160548
+
+        * WTF.vcxproj/WTFGenerated.vcxproj: Specify that we are using
+        the vs12_xp target for Makefile-based projects.
+
+2013-12-13  Anders Carlsson  <andersca@apple.com>
+
+        Require variadic templates to build WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=125701
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Compiler.h:
+        Add an #error if variadic templates are disabled.
+
+        * wtf/NeverDestroyed.h:
+        * wtf/PassRef.h:
+        * wtf/StdLibExtras.h:
+        Remove a bunch of COMPILER_SUPPORTS(CXX_VARIADIC_TEMPLATES) #ifdefs.
+
+2013-12-13  Peter Szanka  <h868064@stud.u-szeged.hu>
+
+        Delete INTEL C compiler related code parts.
+        https://bugs.webkit.org/show_bug.cgi?id=125625
+
+        Reviewed by Darin Adler.
+
+        * wtf/Assertions.h:
+        * wtf/Compiler.h:
+
+2013-12-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Switch WebKit solution to Visual Studio 2013
+        https://bugs.webkit.org/show_bug.cgi?id=125192
+
+        Reviewed by Anders Carlsson.
+
+        * WTF.vcxproj/WTF.vcxproj: Update for VS2013
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto
+
+2013-12-12  Brady Eidson  <beidson@apple.com>
+
+        DatabaseProcess IndexedDB: Establish a metadata backing store on disk
+        https://bugs.webkit.org/show_bug.cgi?id=125258
+
+        Reviewed by Alexey Proskuryakov, Anders Carlsson, and Tim Horton.
+
+        * wtf/text/WTFString.h: Export toUInt64Strict().
+
+2013-12-12  Sam Weinig  <sam@webkit.org>
+
+        Replace uses of WTF::BitArray with std::bitset
+        https://bugs.webkit.org/show_bug.cgi?id=125642
+
+        Reviewed by Anders Carlsson.
+
+        * GNUmakefile.list.am:
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BitArray.h: Removed.
+        * wtf/CMakeLists.txt:
+
 2013-12-11  David Kilzer  <ddkilzer@apple.com>
 
         Define m_hasBadParent in InlineBox if defined(ADDRESS_SANITIZER)

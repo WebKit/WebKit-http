@@ -84,8 +84,8 @@
 #include "WebKitCSSKeyframesRule.h"
 #include "WebKitCSSRegionRule.h"
 #include "WebKitCSSTransformValue.h"
+#include <bitset>
 #include <limits.h>
-#include <wtf/BitArray.h>
 #include <wtf/HexNumber.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/dtoa.h>
@@ -1382,7 +1382,7 @@ bool CSSParser::parseSystemColor(RGBA32& color, const String& string, Document* 
     if (id <= 0)
         return false;
 
-    color = document->page()->theme()->systemColor(id).rgb();
+    color = document->page()->theme().systemColor(id).rgb();
     return true;
 }
 
@@ -1479,7 +1479,7 @@ PassOwnPtr<MediaQuery> CSSParser::parseMediaQuery(const String& string)
     return m_mediaQuery.release();
 }
 
-static inline void filterProperties(bool important, const CSSParser::ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, BitArray<numCSSProperties>& seenProperties)
+static inline void filterProperties(bool important, const CSSParser::ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties)
 {
     // Add properties in reverse order so that highest priority definitions are reached first. Duplicate definitions can then be ignored when found.
     for (int i = input.size() - 1; i >= 0; --i) {
@@ -1487,7 +1487,7 @@ static inline void filterProperties(bool important, const CSSParser::ParsedPrope
         if (property.isImportant() != important)
             continue;
         const unsigned propertyIDIndex = property.id() - firstCSSProperty;
-        if (seenProperties.get(propertyIDIndex))
+        if (seenProperties.test(propertyIDIndex))
             continue;
         seenProperties.set(propertyIDIndex);
         output[--unusedEntries] = property;
@@ -1496,7 +1496,7 @@ static inline void filterProperties(bool important, const CSSParser::ParsedPrope
 
 PassRef<ImmutableStyleProperties> CSSParser::createStyleProperties()
 {
-    BitArray<numCSSProperties> seenProperties;
+    std::bitset<numCSSProperties> seenProperties;
     size_t unusedEntries = m_parsedProperties.size();
     Vector<CSSProperty, 256> results(unusedEntries);
 
@@ -2217,17 +2217,18 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         break;
 
     case CSSPropertyZIndex:              // auto | <integer> | inherit
-        if (id == CSSValueAuto) {
+        if (id == CSSValueAuto)
             validPrimitive = true;
-            break;
-        }
-        /* nobreak */
+        else
+            validPrimitive = (!id && validUnit(value, FInteger, CSSQuirksMode));
+        break;
+
     case CSSPropertyOrphans: // <integer> | inherit | auto (We've added support for auto for backwards compatibility)
     case CSSPropertyWidows: // <integer> | inherit | auto (Ditto)
         if (id == CSSValueAuto)
             validPrimitive = true;
         else
-            validPrimitive = (!id && validUnit(value, FInteger, CSSQuirksMode));
+            validPrimitive = (!id && validUnit(value, FPositiveInteger, CSSQuirksMode));
         break;
 
     case CSSPropertyLineHeight:
@@ -8529,7 +8530,7 @@ bool CSSParser::parseFilterImage(CSSParserValueList* valueList, RefPtr<CSSValue>
         return false;
     value = args->next();
 
-    result = CSSFilterImageValue::create(imageValue, filterValue);
+    result = CSSFilterImageValue::create(imageValue.releaseNonNull(), filterValue.releaseNonNull());
 
     filter = result;
 
@@ -9762,8 +9763,8 @@ bool CSSParser::parseFilter(CSSParserValueList* valueList, RefPtr<CSSValue>& res
         if (value->unit == CSSPrimitiveValue::CSS_URI) {
 #if ENABLE(SVG)
             RefPtr<WebKitCSSFilterValue> referenceFilterValue = WebKitCSSFilterValue::create(WebKitCSSFilterValue::ReferenceFilterOperation);
-            list->append(referenceFilterValue);
             referenceFilterValue->append(WebKitCSSSVGDocumentValue::create(value->string));
+            list->append(referenceFilterValue.release());
 #endif
         } else {
             const CSSParserString name = value->function->name;
@@ -9795,7 +9796,7 @@ bool CSSParser::parseFilter(CSSParserValueList* valueList, RefPtr<CSSValue>& res
             if (!filterValue)
                 return false;
             
-            list->append(filterValue);
+            list->append(filterValue.release());
         }
     }
 

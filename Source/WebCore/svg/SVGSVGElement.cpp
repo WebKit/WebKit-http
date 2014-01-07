@@ -304,8 +304,8 @@ void SVGSVGElement::svgAttributeChanged(const QualifiedName& attrName)
         || SVGLangSpace::isKnownAttribute(attrName)
         || SVGExternalResourcesRequired::isKnownAttribute(attrName)
         || SVGZoomAndPan::isKnownAttribute(attrName)) {
-        if (renderer())
-            RenderSVGResource::markForLayoutAndParentResourceInvalidation(renderer());
+        if (auto renderer = this->renderer())
+            RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
         return;
     }
 
@@ -337,15 +337,13 @@ PassRefPtr<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(const Flo
 {
     Vector<Ref<Element>> elements;
 
-    auto svgDescendants = descendantsOfType<SVGElement>(*(referenceElement ? referenceElement : this));
-    for (auto it = svgDescendants.begin(), end = svgDescendants.end(); it != end; ++it) {
-        const SVGElement* svgElement = &*it;
+    for (auto& svgElement : descendantsOfType<SVGElement>(*(referenceElement ? referenceElement : this))) {
         if (collect == CollectIntersectionList) {
-            if (RenderSVGModelObject::checkIntersection(svgElement->renderer(), rect))
-                elements.append(*const_cast<SVGElement*>(svgElement));
+            if (RenderSVGModelObject::checkIntersection(svgElement.renderer(), rect))
+                elements.append(const_cast<SVGElement&>(svgElement));
         } else {
-            if (RenderSVGModelObject::checkEnclosure(svgElement->renderer(), rect))
-                elements.append(*const_cast<SVGElement*>(svgElement));
+            if (RenderSVGModelObject::checkEnclosure(svgElement.renderer(), rect))
+                elements.append(const_cast<SVGElement&>(svgElement));
         }
     }
 
@@ -685,7 +683,7 @@ AffineTransform SVGSVGElement::viewBoxToViewTransform(float viewWidth, float vie
 
 void SVGSVGElement::setupInitialView(const String& fragmentIdentifier, Element* anchorNode)
 {
-    RenderObject* renderer = this->renderer();
+    auto renderer = this->renderer();
     SVGViewSpec* view = m_viewSpec.get();
     if (view)
         view->reset();
@@ -696,7 +694,7 @@ void SVGSVGElement::setupInitialView(const String& fragmentIdentifier, Element* 
     if (fragmentIdentifier.startsWith("xpointer(")) {
         // FIXME: XPointer references are ignored (https://bugs.webkit.org/show_bug.cgi?id=17491)
         if (renderer && hadUseCurrentView)
-            RenderSVGResource::markForLayoutAndParentResourceInvalidation(renderer);
+            RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
         return;
     }
 
@@ -710,7 +708,7 @@ void SVGSVGElement::setupInitialView(const String& fragmentIdentifier, Element* 
             view->reset();
 
         if (renderer && (hadUseCurrentView || m_useCurrentView))
-            RenderSVGResource::markForLayoutAndParentResourceInvalidation(renderer);
+            RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
         return;
     }
 
@@ -725,8 +723,8 @@ void SVGSVGElement::setupInitialView(const String& fragmentIdentifier, Element* 
                 SVGSVGElement* svg = static_cast<SVGSVGElement*>(element);
                 svg->inheritViewAttributes(viewElement);
 
-                if (RenderObject* renderer = svg->renderer())
-                    RenderSVGResource::markForLayoutAndParentResourceInvalidation(renderer);
+                if (RenderElement* renderer = svg->renderer())
+                    RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
             }
         }
         return;
@@ -777,10 +775,9 @@ Element* SVGSVGElement::getElementById(const AtomicString& id)
 
     // Fall back to traversing our subtree. Duplicate ids are allowed, the first found will
     // be returned.
-    auto descendants = elementDescendants(*this);
-    for (auto element = descendants.begin(), end = descendants.end(); element != end; ++element) {
-        if (element->getIdAttribute() == id)
-            return &*element;
+    for (auto& element : elementDescendants(*this)) {
+        if (element.getIdAttribute() == id)
+            return &element;
     }
     return 0;
 }

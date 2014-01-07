@@ -43,8 +43,6 @@
 #include "FrameLoader.h"
 #include "HitTestResult.h"
 #include "HTMLFrameOwnerElement.h"
-#include "InspectorAgent.h"
-#include "InspectorController.h"
 #include "InspectorFrontendClient.h"
 #include "JSMainThreadExecState.h"
 #include "MainFrame.h"
@@ -218,15 +216,14 @@ void InspectorFrontendHost::moveWindowBy(float x, float y) const
         m_client->moveWindowBy(x, y);
 }
 
-void InspectorFrontendHost::setInjectedScriptForOrigin(const String& origin, const String& script)
-{
-    ASSERT(m_frontendPage->inspectorController());
-    m_frontendPage->inspectorController()->setInjectedScriptForOrigin(origin, script);
-}
-
 String InspectorFrontendHost::localizedStringsURL()
 {
     return m_client ? m_client->localizedStringsURL() : "";
+}
+
+String InspectorFrontendHost::debuggableType()
+{
+    return ASCIILiteral("web");
 }
 
 void InspectorFrontendHost::copyText(const String& text)

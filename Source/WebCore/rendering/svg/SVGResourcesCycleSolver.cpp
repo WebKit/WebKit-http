@@ -53,13 +53,13 @@ bool SVGResourcesCycleSolver::resourceContainsCycles(RenderElement& renderer) co
     // First operate on the resources of the given renderer.
     // <marker id="a"> <path marker-start="url(#b)"/> ...
     // <marker id="b" marker-start="url(#a)"/>
-    if (SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(&renderer)) {
+    if (SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(renderer)) {
         HashSet<RenderSVGResourceContainer*> resourceSet;
         resources->buildSetOfResources(resourceSet);
 
         // Walk all resources and check wheter they reference any resource contained in the resources set.
-        for (auto it = resourceSet.begin(), end = resourceSet.end(); it != end; ++it) {
-            if (m_allResources.contains(*it))
+        for (auto resource : resourceSet) {
+            if (m_allResources.contains(resource))
                 return true;
         }
     }
@@ -67,24 +67,23 @@ bool SVGResourcesCycleSolver::resourceContainsCycles(RenderElement& renderer) co
     // Then operate on the child resources of the given renderer.
     // <marker id="a"> <path marker-start="url(#b)"/> ...
     // <marker id="b"> <path marker-start="url(#a)"/> ...
-    auto children = childrenOfType<RenderElement>(renderer);
-    for (auto child = children.begin(), end = children.end(); child != end; ++child) {
-        SVGResources* childResources = SVGResourcesCache::cachedResourcesForRenderObject(&*child);
+    for (auto& child : childrenOfType<RenderElement>(renderer)) {
+        SVGResources* childResources = SVGResourcesCache::cachedResourcesForRenderObject(child);
         if (!childResources)
             continue;
         
         // A child of the given 'resource' contains resources. 
-        HashSet<RenderSVGResourceContainer*> childSet;
-        childResources->buildSetOfResources(childSet);
+        HashSet<RenderSVGResourceContainer*> childResourceSet;
+        childResources->buildSetOfResources(childResourceSet);
 
         // Walk all child resources and check wheter they reference any resource contained in the resources set.
-        for (auto it = childSet.begin(), end = childSet.end(); it != end; ++it) {
-            if (m_allResources.contains(*it))
+        for (auto& resource : childResourceSet) {
+            if (m_allResources.contains(resource))
                 return true;
         }
 
         // Walk children recursively, stop immediately if we found a cycle
-        if (resourceContainsCycles(*child))
+        if (resourceContainsCycles(child))
             return true;
     }
 

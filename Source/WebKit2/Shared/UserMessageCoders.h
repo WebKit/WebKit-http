@@ -27,8 +27,12 @@
 #define UserMessageCoders_h
 
 #include "APIArray.h"
+#include "APIData.h"
 #include "APIGeometry.h"
 #include "APINumber.h"
+#include "APIString.h"
+#include "APIURLRequest.h"
+#include "APIURLResponse.h"
 #include "ArgumentDecoder.h"
 #include "ArgumentEncoder.h"
 #include "DataReference.h"
@@ -36,36 +40,32 @@
 #include "ShareableBitmap.h"
 #include "WebCertificateInfo.h"
 #include "WebCoreArgumentCoders.h"
-#include "WebData.h"
 #include "WebError.h"
 #include "WebImage.h"
 #include "WebRenderLayer.h"
 #include "WebRenderObject.h"
 #include "WebSerializedScriptValue.h"
-#include "WebString.h"
 #include "WebURL.h"
-#include "WebURLRequest.h"
-#include "WebURLResponse.h"
 #include "WebUserContentURLPattern.h"
 
 namespace WebKit {
 
 //   - Null -> Null
-//   - Array -> Array
+//   - API::Array -> API::Array
 //   - Dictionary -> Dictionary
 //   - SerializedScriptValue -> SerializedScriptValue
-//   - String -> String
+//   - API::String -> API::String
 //   - UserContentURLPattern -> UserContentURLPattern
 //   - WebCertificateInfo -> WebCertificateInfo
-//   - WebData -> WebData
+//   - API::Data -> API::Data
 //   - API::Double -> API::Double
 //   - WebImage -> WebImage
 //   - WebRenderLayer -> WebRenderLayer
 //   - WebRenderObject -> WebRenderObject
 //   - API::UInt64 -> API::UInt64
 //   - WebURL -> WebURL
-//   - WebURLRequest -> WebURLRequest
-//   - WebURLResponse -> WebURLResponse
+//   - API::URLRequest -> API::URLRequest
+//   - API::URLResponse -> API::URLResponse
 //   - WebError -> WebError
 
 template<typename Owner>
@@ -103,7 +103,7 @@ public:
             return true;
         }
         case API::Object::Type::String: {
-            WebString* string = static_cast<WebString*>(m_root);
+            API::String* string = static_cast<API::String*>(m_root);
             encoder << string->string();
             return true;
         }
@@ -177,12 +177,12 @@ public:
             return true;
         }
         case API::Object::Type::URLRequest: {
-            WebURLRequest* urlRequestObject = static_cast<WebURLRequest*>(m_root);
+            API::URLRequest* urlRequestObject = static_cast<API::URLRequest*>(m_root);
             encoder << urlRequestObject->resourceRequest();
             return true;
         }
         case API::Object::Type::URLResponse: {
-            WebURLResponse* urlResponseObject = static_cast<WebURLResponse*>(m_root);
+            API::URLResponse* urlResponseObject = static_cast<API::URLResponse*>(m_root);
             encoder << urlResponseObject->resourceResponse();
             return true;
         }
@@ -209,7 +209,7 @@ public:
             return true;
         }
         case API::Object::Type::Data: {
-            WebData* data = static_cast<WebData*>(m_root);
+            API::Data* data = static_cast<API::Data*>(m_root);
             encoder << data->dataReference();
             return true;
         }
@@ -242,19 +242,19 @@ protected:
 
 // Handles
 //   - Null -> Null
-//   - Array -> Array
+//   - API::Array -> API::Array
 //   - Dictionary -> Dictionary
 //   - SerializedScriptValue -> SerializedScriptValue
-//   - String -> String
+//   - API::String -> API::String
 //   - UserContentURLPattern -> UserContentURLPattern
 //   - WebCertificateInfo -> WebCertificateInfo
-//   - WebData -> WebData
+//   - API::Data -> API::Data
 //   - API::Double -> API::Double
 //   - WebImage -> WebImage
 //   - API::UInt64 -> API::UInt64
 //   - WebURL -> WebURL
-//   - WebURLRequest -> WebURLRequest
-//   - WebURLResponse -> WebURLResponse
+//   - API::URLRequest -> API::URLRequest
+//   - API::URLResponse -> API::URLResponse
 //   - WebError -> WebError
 
 template<typename Owner>
@@ -307,14 +307,14 @@ public:
                     return false;
             }
 
-            coder.m_root = ImmutableDictionary::adopt(map);
+            coder.m_root = ImmutableDictionary::create(std::move(map));
             break;
         }
         case API::Object::Type::String: {
             String string;
             if (!decoder.decode(string))
                 return false;
-            coder.m_root = WebString::create(string);
+            coder.m_root = API::String::create(string);
             break;
         }
         case API::Object::Type::SerializedScriptValue: {
@@ -464,14 +464,14 @@ public:
             WebCore::ResourceRequest request;
             if (!decoder.decode(request))
                 return false;
-            coder.m_root = WebURLRequest::create(request);
+            coder.m_root = API::URLRequest::create(request);
             break;
         }
         case API::Object::Type::URLResponse: {
             WebCore::ResourceResponse response;
             if (!decoder.decode(response))
                 return false;
-            coder.m_root = WebURLResponse::create(response);
+            coder.m_root = API::URLResponse::create(response);
             break;
         }
         case API::Object::Type::UserContentURLPattern: {
@@ -500,11 +500,11 @@ public:
             CoreIPC::DataReference dataReference;
             if (!decoder.decode(dataReference))
                 return false;
-            coder.m_root = WebData::create(dataReference.data(), dataReference.size());
+            coder.m_root = API::Data::create(dataReference.data(), dataReference.size());
             break;
         }
         case API::Object::Type::CertificateInfo: {
-            CertificateInfo certificateInfo;
+            WebCore::CertificateInfo certificateInfo;
             if (!decoder.decode(certificateInfo))
                 return false;
             coder.m_root = WebCertificateInfo::create(certificateInfo);

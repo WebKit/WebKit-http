@@ -93,10 +93,10 @@ PassRefPtr<ImmutableDictionary> PlugInAutoStartProvider::autoStartOriginsTableCo
         }
 
         if (hashMap.size())
-            map.set(it->key, ImmutableDictionary::adopt(hashMap));
+            map.set(it->key, ImmutableDictionary::create(std::move(hashMap)));
     }
 
-    return ImmutableDictionary::adopt(map);
+    return ImmutableDictionary::create(std::move(map));
 }
 
 void PlugInAutoStartProvider::setAutoStartOriginsTable(ImmutableDictionary& table)
@@ -135,9 +135,9 @@ void PlugInAutoStartProvider::setAutoStartOriginsArray(API::Array& originList)
 {
     m_autoStartOrigins.clear();
     for (size_t i = 0, length = originList.size(); i < length; ++i) {
-        if (originList.at(i)->type() != WebString::APIType)
+        if (originList.at(i)->type() != API::String::APIType)
             continue;
-        m_autoStartOrigins.append(static_cast<WebString*>(originList.at(i))->string());
+        m_autoStartOrigins.append(static_cast<API::String*>(originList.at(i))->string());
     }
 }
 

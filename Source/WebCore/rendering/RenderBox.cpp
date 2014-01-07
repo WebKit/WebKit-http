@@ -234,12 +234,11 @@ RenderBlockFlow* RenderBox::outermostBlockContainingFloatingObject()
 {
     ASSERT(isFloating());
     RenderBlockFlow* parentBlock = nullptr;
-    auto ancestors = ancestorsOfType<RenderBlockFlow>(*this);
-    for (auto ancestor = ancestors.begin(), end = ancestors.end(); ancestor != end; ++ancestor) {
-        if (ancestor->isRenderView())
+    for (auto& ancestor : ancestorsOfType<RenderBlockFlow>(*this)) {
+        if (ancestor.isRenderView())
             break;
-        if (!parentBlock || ancestor->containsFloat(*this))
-            parentBlock = &*ancestor;
+        if (!parentBlock || ancestor.containsFloat(*this))
+            parentBlock = &ancestor;
     }
     return parentBlock;
 }
@@ -1124,12 +1123,12 @@ void RenderBox::paintRootBoxFillLayers(const PaintInfo& paintInfo)
     if (paintInfo.skipRootBackground())
         return;
 
-    auto rootBackgroundRenderer = rendererForRootBackground();
+    auto& rootBackgroundRenderer = rendererForRootBackground();
     
-    const FillLayer* bgLayer = rootBackgroundRenderer->style().backgroundLayers();
-    Color bgColor = rootBackgroundRenderer->style().visitedDependentColor(CSSPropertyBackgroundColor);
+    const FillLayer* bgLayer = rootBackgroundRenderer.style().backgroundLayers();
+    Color bgColor = rootBackgroundRenderer.style().visitedDependentColor(CSSPropertyBackgroundColor);
 
-    paintFillLayers(paintInfo, bgColor, bgLayer, view().backgroundRect(this), BackgroundBleedNone, CompositeSourceOver, rootBackgroundRenderer);
+    paintFillLayers(paintInfo, bgColor, bgLayer, view().backgroundRect(this), BackgroundBleedNone, CompositeSourceOver, &rootBackgroundRenderer);
 }
 
 BackgroundBleedAvoidance RenderBox::determineBackgroundBleedAvoidance(GraphicsContext* context) const
@@ -1204,7 +1203,7 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
     // If we have a native theme appearance, paint that before painting our background.
     // The theme will tell us whether or not we should also paint the CSS background.
     IntRect snappedPaintRect(pixelSnappedIntRect(paintRect));
-    bool themePainted = style().hasAppearance() && !theme()->paint(this, paintInfo, snappedPaintRect);
+    bool themePainted = style().hasAppearance() && !theme().paint(this, paintInfo, snappedPaintRect);
     if (!themePainted) {
         if (bleedAvoidance == BackgroundBleedBackgroundOverBorder)
             paintBorder(paintInfo, paintRect, &style(), bleedAvoidance);
@@ -1212,12 +1211,12 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
         paintBackground(paintInfo, paintRect, bleedAvoidance);
 
         if (style().hasAppearance())
-            theme()->paintDecorations(this, paintInfo, snappedPaintRect);
+            theme().paintDecorations(this, paintInfo, snappedPaintRect);
     }
     paintBoxShadow(paintInfo, paintRect, &style(), Inset);
 
     // The theme will tell us whether or not we should also paint the CSS border.
-    if (bleedAvoidance != BackgroundBleedBackgroundOverBorder && (!style().hasAppearance() || (!themePainted && theme()->paintBorderOnly(this, paintInfo, snappedPaintRect))) && style().hasBorder())
+    if (bleedAvoidance != BackgroundBleedBackgroundOverBorder && (!style().hasAppearance() || (!themePainted && theme().paintBorderOnly(this, paintInfo, snappedPaintRect))) && style().hasBorder())
         paintBorder(paintInfo, paintRect, &style(), bleedAvoidance);
 
     if (bleedAvoidance == BackgroundBleedUseTransparencyLayer)
@@ -1330,9 +1329,7 @@ bool RenderBox::foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, u
 {
     if (!maxDepthToTest)
         return false;
-    auto boxChildren = childrenOfType<RenderBox>(*this);
-    for (auto child = boxChildren.begin(), end = boxChildren.end(); child != end; ++child) {
-        const RenderBox& childBox = *child;
+    for (auto& childBox : childrenOfType<RenderBox>(*this)) {
         if (!isCandidateForOpaquenessTest(childBox))
             continue;
         LayoutPoint childLocation = childBox.location();

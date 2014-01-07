@@ -35,6 +35,7 @@ class WorkQueue;
 
 namespace WebKit {
 
+class AsyncTask;
 class DatabaseToWebProcessConnection;
 class UniqueIDBDatabase;
 
@@ -50,11 +51,15 @@ public:
     PassRefPtr<UniqueIDBDatabase> getOrCreateUniqueIDBDatabase(const UniqueIDBDatabaseIdentifier&);
     void removeUniqueIDBDatabase(const UniqueIDBDatabase&);
 
-    WorkQueue& queue() const { return const_cast<WorkQueue&>(m_queue.get()); }
+    void ensureIndexedDatabaseRelativePathExists(const String&);
+    String absoluteIndexedDatabasePathFromDatabaseRelativePath(const String&);
+
+    WorkQueue& queue() { return m_queue.get(); }
+
+    ~DatabaseProcess();
 
 private:
     DatabaseProcess();
-    ~DatabaseProcess();
 
     // ChildProcess
     virtual void initializeProcess(const ChildProcessInitializationParameters&) OVERRIDE;
@@ -72,6 +77,12 @@ private:
     void initializeDatabaseProcess(const DatabaseProcessCreationParameters&);
     void createDatabaseToWebProcessConnection();
 
+    void postDatabaseTask(std::unique_ptr<AsyncTask>);
+
+    // For execution on work queue thread only
+    void performNextDatabaseTask();
+    void ensurePathExists(const String&);
+
     Vector<RefPtr<DatabaseToWebProcessConnection>> m_databaseToWebProcessConnections;
 
     Ref<WorkQueue> m_queue;
@@ -79,6 +90,9 @@ private:
     String m_indexedDatabaseDirectory;
 
     HashMap<UniqueIDBDatabaseIdentifier, RefPtr<UniqueIDBDatabase>> m_idbDatabases;
+
+    Deque<std::unique_ptr<AsyncTask>> m_databaseTasks;
+    Mutex m_databaseTaskMutex;
 };
 
 } // namespace WebKit

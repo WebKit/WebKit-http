@@ -31,14 +31,14 @@
 #import "Connection.h"
 #import "ImmutableDictionary.h"
 #import "MutableDictionary.h"
+#import "RemoteObjectRegistry.h"
+#import "UserData.h"
 #import "WKConnectionRef.h"
 #import "WKRemoteObject.h"
 #import "WKRemoteObjectCoder.h"
 #import "WKRemoteObjectInterface.h"
 #import "WKSharedAPICast.h"
 #import "WebConnection.h"
-
-const char* const messageName = "WKRemoteObjectRegistryMessage";
 
 const char* const encodedInvocationKey = "encodedInvocation";
 const char* const interfaceIdentifierKey = "interfaceIdentifier";
@@ -48,7 +48,8 @@ NSString * const invocationKey = @"invocation";
 using namespace WebKit;
 
 @implementation WKRemoteObjectRegistry {
-    RefPtr<WebConnection> _connection;
+    std::unique_ptr<RemoteObjectRegistry> _remoteObjectRegistry;
+
     RetainPtr<NSMapTable> _remoteObjectProxies;
     HashMap<String, std::pair<RetainPtr<id>, RetainPtr<WKRemoteObjectInterface>>> _exportedObjects;
 }
@@ -82,56 +83,58 @@ using namespace WebKit;
     return [remoteObject.leakRef() autorelease];
 }
 
+- (id)_initWithMessageSender:(IPC::MessageSender&)messageSender
+{
+    if (!(self = [super init]))
+        return nil;
+
+    _remoteObjectRegistry = std::make_unique<RemoteObjectRegistry>(self, messageSender);
+
+    return self;
+}
+
+- (void)_invalidate
+{
+    _remoteObjectRegistry = nullptr;
+}
+
 - (void)_sendInvocation:(NSInvocation *)invocation interface:(WKRemoteObjectInterface *)interface
 {
     RetainPtr<WKRemoteObjectEncoder> encoder = adoptNS([[WKRemoteObjectEncoder alloc] init]);
     [encoder encodeObject:invocation forKey:invocationKey];
 
     RefPtr<MutableDictionary> body = MutableDictionary::create();
-    body->set(interfaceIdentifierKey, WebString::create(interface.identifier));
+    body->set(interfaceIdentifierKey, API::String::create(interface.identifier));
     body->set(encodedInvocationKey, [encoder rootObjectDictionary]);
 
-    [self _sendMessageWithBody:body.release()];
+    if (!_remoteObjectRegistry)
+        return;
+
+    _remoteObjectRegistry->sendInvocation(UserData(body.get()));
 }
 
-- (void)_sendMessageWithBody:(PassRefPtr<ImmutableDictionary>)body
+- (WebKit::RemoteObjectRegistry&)remoteObjectRegistry
 {
-    _connection->postMessage(messageName, body.get());
+    return *_remoteObjectRegistry;
 }
 
-@end
-
-@implementation WKRemoteObjectRegistry (WKPrivate)
-
-- (id)_initWithConnectionRef:(WKConnectionRef)connectionRef
+- (BOOL)_invokeMethod:(const UserData&)invocation
 {
-    if (!(self = [super init]))
-        return nil;
-
-    _connection = toImpl(connectionRef);
-
-    return self;
-}
-
-- (BOOL)_handleMessageWithName:(WKStringRef)name body:(WKTypeRef)body
-{
-    if (toImpl(name)->string() != messageName)
+    if (!invocation.object() || invocation.object()->type() != API::Object::Type::Dictionary)
         return NO;
+    
+    const ImmutableDictionary& dictionary = static_cast<const ImmutableDictionary&>(*invocation.object());
 
-    if (!toImpl(body) || toImpl(body)->type() != API::Object::Type::Dictionary)
-        return NO;
-
-    const ImmutableDictionary* dictionary = toImpl(static_cast<WKDictionaryRef>(body));
-
-    WebString* interfaceIdentifier = dictionary->get<WebString>(interfaceIdentifierKey);
+    API::String* interfaceIdentifier = dictionary.get<API::String>(interfaceIdentifierKey);
     if (!interfaceIdentifier)
         return NO;
 
-    const ImmutableDictionary* encodedInvocation = dictionary->get<ImmutableDictionary>(encodedInvocationKey);
+    const ImmutableDictionary* encodedInvocation = dictionary.get<ImmutableDictionary>(encodedInvocationKey);
     if (!encodedInvocationKey)
         return NO;
 
     [self _invokeMessageWithInterfaceIdentifier:interfaceIdentifier->string() encodedInvocation:encodedInvocation];
+
     return YES;
 }
 
@@ -153,7 +156,13 @@ using namespace WebKit;
         NSLog(@"Exception caught during decoding of message: %@", exception);
     }
 
-    // FIXME: Invoke the invocation.
+    invocation.target = interfaceAndObject.first.get();
+
+    @try {
+        [invocation invoke];
+    } @catch (NSException *exception) {
+        NSLog(@"%@: Warning: Exception caught during invocation of received message, dropping incoming message .\nException: %@", self, exception);
+    }
 }
 
 @end

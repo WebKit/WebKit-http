@@ -52,7 +52,7 @@ private:
     CryptoAlgorithmAES_KW();
     virtual ~CryptoAlgorithmAES_KW();
 
-    bool keyAlgorithmMatches(const CryptoAlgorithmParameters&, const CryptoKey&) const;
+    bool keyAlgorithmMatches(const CryptoKey&) const;
     void platformEncrypt(const CryptoKeyAES&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&);
     void platformDecrypt(const CryptoKeyAES&, const CryptoOperationData&, VectorCallback, VoidCallback failureCallback, ExceptionCode&);
 };

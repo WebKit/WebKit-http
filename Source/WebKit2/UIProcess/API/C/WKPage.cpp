@@ -28,11 +28,11 @@
 #include "WKPagePrivate.h"
 
 #include "APIArray.h"
+#include "APIData.h"
 #include "PrintInfo.h"
 #include "WKAPICast.h"
 #include "WKPluginInformation.h"
 #include "WebBackForwardList.h"
-#include "WebData.h"
 #include "WebPageProxy.h"
 #include "WebProcessProxy.h"
 #include <WebCore/Page.h>
@@ -315,13 +315,13 @@ void WKPageTerminate(WKPageRef pageRef)
 
 WKStringRef WKPageGetSessionHistoryURLValueType()
 {
-    static WebString* sessionHistoryURLValueType = WebString::create("SessionHistoryURL").leakRef();
+    static API::String* sessionHistoryURLValueType = API::String::create("SessionHistoryURL").leakRef();
     return toAPI(sessionHistoryURLValueType);
 }
 
 WKStringRef WKPageGetSessionBackForwardListItemValueType()
 {
-    static WebString* sessionBackForwardListValueType = WebString::create("SessionBackForwardListItem").leakRef();
+    static API::String* sessionBackForwardListValueType = API::String::create("SessionBackForwardListItem").leakRef();
     return toAPI(sessionBackForwardListValueType);
 }
 

@@ -30,6 +30,7 @@
 
 #include "DFGOperations.h"
 #include "DFGOSRExitCompilerCommon.h"
+#include "DFGSpeculativeJIT.h"
 #include "Operations.h"
 #include "VirtualRegister.h"
 
@@ -185,7 +186,6 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         switch (recovery.technique()) {
         case InGPR:
         case UnboxedInt32InGPR:
-        case UInt32InGPR:
         case UnboxedInt52InGPR:
         case UnboxedStrictInt52InGPR:
         case UnboxedCellInGPR:
@@ -279,13 +279,6 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         case UnboxedStrictInt52InGPR:
         case StrictInt52DisplacedInJSStack:
             m_jit.load64(scratch + index, GPRInfo::regT0);
-            m_jit.boxInt52(GPRInfo::regT0, GPRInfo::regT0, GPRInfo::regT1, FPRInfo::fpRegT0);
-            m_jit.store64(GPRInfo::regT0, AssemblyHelpers::addressFor(operand));
-            break;
-            
-        case UInt32InGPR:
-            m_jit.load64(scratch + index, GPRInfo::regT0);
-            m_jit.zeroExtend32ToPtr(GPRInfo::regT0, GPRInfo::regT0);
             m_jit.boxInt52(GPRInfo::regT0, GPRInfo::regT0, GPRInfo::regT1, FPRInfo::fpRegT0);
             m_jit.store64(GPRInfo::regT0, AssemblyHelpers::addressFor(operand));
             break;
@@ -410,9 +403,19 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             m_jit.store64(GPRInfo::regT0, AssemblyHelpers::addressFor(operand));
         }
     }
-    
-    // 11) And finish.
-    
+
+#if ENABLE(GGC) 
+    // 11) Write barrier the owner executable because we're jumping into a different block.
+    for (CodeOrigin codeOrigin = exit.m_codeOrigin; ; codeOrigin = codeOrigin.inlineCallFrame->caller) {
+        CodeBlock* baselineCodeBlock = m_jit.baselineCodeBlockFor(codeOrigin);
+        m_jit.move(AssemblyHelpers::TrustedImmPtr(baselineCodeBlock->ownerExecutable()), GPRInfo::nonArgGPR0); 
+        SpeculativeJIT::osrWriteBarrier(m_jit, GPRInfo::nonArgGPR0, GPRInfo::nonArgGPR1, GPRInfo::nonArgGPR2);
+        if (!codeOrigin.inlineCallFrame)
+            break;
+    }
+#endif
+
+    // 12) And finish.
     adjustAndJumpToTarget(m_jit, exit);
 }
 

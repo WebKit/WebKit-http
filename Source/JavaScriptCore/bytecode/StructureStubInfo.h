@@ -119,15 +119,6 @@ struct StructureStubInfo {
         u.getByIdSelf.baseObjectStructure.set(vm, owner, baseObjectStructure);
     }
 
-    void initGetByIdProto(VM& vm, JSCell* owner, Structure* baseObjectStructure, Structure* prototypeStructure, bool isDirect)
-    {
-        accessType = access_get_by_id_proto;
-
-        u.getByIdProto.baseObjectStructure.set(vm, owner, baseObjectStructure);
-        u.getByIdProto.prototypeStructure.set(vm, owner, prototypeStructure);
-        u.getByIdProto.isDirect = isDirect;
-    }
-
     void initGetByIdChain(VM& vm, JSCell* owner, Structure* baseObjectStructure, StructureChain* chain, unsigned count, bool isDirect)
     {
         accessType = access_get_by_id_chain;
@@ -234,7 +225,7 @@ struct StructureStubInfo {
         RegisterSet usedRegisters;
         int32_t deltaCallToDone;
         int32_t deltaCallToStorageLoad;
-        int32_t deltaCallToStructCheck;
+        int32_t deltaCallToJump;
         int32_t deltaCallToSlowCase;
         int32_t deltaCheckImmToCall;
 #if USE(JSVALUE64)
@@ -291,7 +282,6 @@ struct StructureStubInfo {
 
     RefPtr<JITStubRoutine> stubRoutine;
     CodeLocationCall callReturnLocation;
-    CodeLocationLabel hotPathBegin; // FIXME: This is only used by DFG In IC.
     RefPtr<WatchpointsOnStructureStubInfo> watchpoints;
 };
 

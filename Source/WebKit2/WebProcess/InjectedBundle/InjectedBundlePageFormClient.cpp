@@ -102,8 +102,8 @@ void InjectedBundlePageFormClient::willSendSubmitEvent(WebPage* page, HTMLFormEl
 
     ImmutableDictionary::MapType map;
     for (size_t i = 0; i < values.size(); ++i)
-        map.set(values[i].first, WebString::create(values[i].second));
-    RefPtr<ImmutableDictionary> textFieldsMap = ImmutableDictionary::adopt(map);
+        map.set(values[i].first, API::String::create(values[i].second));
+    auto textFieldsMap = ImmutableDictionary::create(std::move(map));
 
     m_client.willSendSubmitEvent(toAPI(page), toAPI(nodeHandle.get()), toAPI(frame), toAPI(sourceFrame), toAPI(textFieldsMap.get()), m_client.base.clientInfo);
 }
@@ -117,8 +117,8 @@ void InjectedBundlePageFormClient::willSubmitForm(WebPage* page, HTMLFormElement
 
     ImmutableDictionary::MapType map;
     for (size_t i = 0; i < values.size(); ++i)
-        map.set(values[i].first, WebString::create(values[i].second));
-    RefPtr<ImmutableDictionary> textFieldsMap = ImmutableDictionary::adopt(map);
+        map.set(values[i].first, API::String::create(values[i].second));
+    auto textFieldsMap = ImmutableDictionary::create(std::move(map));
 
     WKTypeRef userDataToPass = 0;
     m_client.willSubmitForm(toAPI(page), toAPI(nodeHandle.get()), toAPI(frame), toAPI(sourceFrame), toAPI(textFieldsMap.get()), &userDataToPass, m_client.base.clientInfo);

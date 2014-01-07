@@ -137,7 +137,7 @@ void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const Ato
             setNeedsWillValidateCheck();
             setNeedsStyleRecalc();
             if (renderer() && renderer()->style().hasAppearance())
-                renderer()->theme()->stateChanged(renderer(), ReadOnlyState);
+                renderer()->theme().stateChanged(renderer(), ReadOnlyState);
         }
     } else if (name == requiredAttr) {
         bool wasRequired = m_isRequired;
@@ -157,7 +157,7 @@ void HTMLFormControlElement::disabledAttributeChanged()
     setNeedsWillValidateCheck();
     didAffectSelector(AffectedSelectorDisabled | AffectedSelectorEnabled);
     if (renderer() && renderer()->style().hasAppearance())
-        renderer()->theme()->stateChanged(renderer(), EnabledState);
+        renderer()->theme().stateChanged(renderer(), EnabledState);
 }
 
 void HTMLFormControlElement::requiredAttributeChanged()
@@ -468,6 +468,45 @@ bool HTMLFormControlElement::isDefaultButtonForForm() const
 {
     return isSuccessfulSubmitButton() && form() && form()->defaultButton() == this;
 }
+
+#if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
+// FIXME: We should look to share these methods with class HTMLFormElement instead of duplicating them.
+
+bool HTMLFormControlElement::autocorrect() const
+{
+    const AtomicString& autocorrectValue = fastGetAttribute(autocorrectAttr);
+    if (!autocorrectValue.isEmpty())
+        return !equalIgnoringCase(autocorrectValue, "off");
+    if (HTMLFormElement* form = this->form())
+        return form->autocorrect();
+    return true;
+}
+
+void HTMLFormControlElement::setAutocorrect(bool autocorrect)
+{
+    setAttribute(autocorrectAttr, autocorrect ? AtomicString("on", AtomicString::ConstructFromLiteral) : AtomicString("off", AtomicString::ConstructFromLiteral));
+}
+
+WebAutocapitalizeType HTMLFormControlElement::autocapitalizeType() const
+{
+    WebAutocapitalizeType type = autocapitalizeTypeForAttributeValue(fastGetAttribute(autocapitalizeAttr));
+    if (type == WebAutocapitalizeTypeDefault) {
+        if (HTMLFormElement* form = this->form())
+            return form->autocapitalizeType();
+    }
+    return type;
+}
+
+const AtomicString& HTMLFormControlElement::autocapitalize() const
+{
+    return stringForAutocapitalizeType(autocapitalizeType());
+}
+
+void HTMLFormControlElement::setAutocapitalize(const AtomicString& value)
+{
+    setAttribute(autocapitalizeAttr, value);
+}
+#endif
 
 HTMLFormControlElement* HTMLFormControlElement::enclosingFormControlElement(Node* node)
 {

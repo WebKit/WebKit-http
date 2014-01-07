@@ -774,6 +774,15 @@
             "eustas"
          ]
       },
+      "Eunmi Lee" : {
+         "emails" : [
+            "eunmi15.lee@samsung.com"
+         ],
+         "expertise" : "The EFLWebKit Port, Touch and Gesture",
+         "nicks" : [
+            "eunmi"
+         ]
+      },
       "Evan Martin" : {
          "emails" : [
             "evan@chromium.org"
@@ -1454,6 +1463,15 @@
          ],
          "nicks" : [
             "kkristof"
+         ]
+      },
+      "Krzysztof Czech" : {
+         "emails" : [
+            "k.czech@samsung.com"
+         ],
+         "expertise" : "WebKit-EFL, Accessibility",
+         "nicks" : [
+            "kczech"
          ]
       },
       "Krzysztof Kowalczyk" : {
@@ -2240,6 +2258,15 @@
          ],
          "nicks" : [
             "tdanderson"
+         ]
+      },
+      "Thiago de Barros Lacerda" : {
+         "emails" : [
+            "thiago.lacerda@openbossa.org"
+         ],
+         "expertise" : "Nix port, WebRTC, MediaStream",
+         "nicks" : [
+            "lacerda"
          ]
       },
       "Thiago Marcos P. Santos" : {
@@ -4116,6 +4143,7 @@
          "emails" : [
             "rwlbuis@gmail.com",
             "rwlbuis@webkit.org",
+            "rob.buis@samsung.com",
             "rbuis@blackberry.com",
             "rbuis@rim.com"
          ],

@@ -315,8 +315,13 @@ Node::~Node()
 
 void Node::willBeDeletedFrom(Document* document)
 {
-    if (hasEventTargetData())
+    if (hasEventTargetData()) {
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+        if (document)
+            document->removeTouchEventListener(this, true);
+#endif
         clearEventTargetData();
+    }
 
     if (document) {
         if (AXObjectCache* cache = document->existingAXObjectCache())
@@ -783,7 +788,7 @@ void Node::checkSetPrefix(const AtomicString& prefix, ExceptionCode& ec)
     // Attribute-specific checks are in Attr::setPrefix().
 }
 
-bool Node::isDescendantOf(const Node *other) const
+bool Node::isDescendantOf(const Node* other) const
 {
     // Return true if other is an ancestor of this, otherwise false
     if (!other || !other->hasChildNodes() || inDocument() != other->inDocument())
@@ -795,6 +800,18 @@ bool Node::isDescendantOf(const Node *other) const
             return true;
     }
     return false;
+}
+
+bool Node::isDescendantOrShadowDescendantOf(const Node* other) const
+{
+    if (!other) 
+        return false;
+    if (isDescendantOf(other))
+        return true;
+    const Node* shadowAncestorNode = deprecatedShadowAncestorNode();
+    if (!shadowAncestorNode)
+        return false;
+    return shadowAncestorNode == other || shadowAncestorNode->isDescendantOf(other);
 }
 
 bool Node::contains(const Node* node) const
@@ -884,9 +901,13 @@ Node* Node::pseudoAwareLastChild() const
     return lastChild();
 }
 
-RenderStyle* Node::virtualComputedStyle(PseudoId pseudoElementSpecifier)
+RenderStyle* Node::computedStyle(PseudoId pseudoElementSpecifier)
 {
-    return parentOrShadowHostNode() ? parentOrShadowHostNode()->computedStyle(pseudoElementSpecifier) : 0;
+    for (Node* node = this; node; node = node->parentOrShadowHostNode()) {
+        if (node->isElementNode())
+            return toElement(node)->computedStyle(pseudoElementSpecifier);
+    }
+    return nullptr;
 }
 
 int Node::maxCharacterOffset() const
@@ -1764,8 +1785,10 @@ void Node::didMoveToNewDocument(Document* oldDocument)
     }
 }
 
-static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
+static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eventType, PassRefPtr<EventListener> prpListener, bool useCapture)
 {
+    RefPtr<EventListener> listener = prpListener;
+
     if (!targetNode->EventTarget::addEventListener(eventType, listener, useCapture))
         return false;
 
@@ -1774,6 +1797,28 @@ static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eve
         targetNode->document().didAddWheelEventHandler();
     else if (eventNames().isTouchEventType(eventType))
         targetNode->document().didAddTouchEventHandler(targetNode);
+
+#if PLATFORM(IOS)
+    if (targetNode == &targetNode->document() && eventType == eventNames().scrollEvent)
+        targetNode->document().domWindow()->incrementScrollEventListenersCount();
+
+    // FIXME: Would it be sufficient to special-case this code for <body> and <frameset>?
+    //
+    // This code was added to address <rdar://problem/5846492> Onorientationchange event not working for document.body.
+    // Forward this call to addEventListener() to the window since these are window-only events.
+    if (eventType == eventNames().orientationchangeEvent || eventType == eventNames().resizeEvent)
+        targetNode->document().domWindow()->addEventListener(eventType, listener, useCapture);
+
+#if ENABLE(TOUCH_EVENTS)
+    if (eventNames().isTouchEventType(eventType))
+        targetNode->document().addTouchEventListener(targetNode);
+#endif
+#endif // PLATFORM(IOS)
+
+#if ENABLE(IOS_GESTURE_EVENTS) && ENABLE(TOUCH_EVENTS)
+    if (eventType == eventNames().gesturestartEvent || eventType == eventNames().gesturechangeEvent || eventType == eventNames().gestureendEvent)
+        targetNode->document().addTouchEventListener(targetNode);
+#endif
 
     return true;
 }
@@ -1794,6 +1839,27 @@ static inline bool tryRemoveEventListener(Node* targetNode, const AtomicString& 
         targetNode->document().didRemoveWheelEventHandler();
     else if (eventNames().isTouchEventType(eventType))
         targetNode->document().didRemoveTouchEventHandler(targetNode);
+
+#if PLATFORM(IOS)
+    if (targetNode == &targetNode->document() && eventType == eventNames().scrollEvent)
+        targetNode->document().domWindow()->decrementScrollEventListenersCount();
+
+    // FIXME: Would it be sufficient to special-case this code for <body> and <frameset>? See <rdar://problem/15647823>.
+    // This code was added to address <rdar://problem/5846492> Onorientationchange event not working for document.body.
+    // Forward this call to removeEventListener() to the window since these are window-only events.
+    if (eventType == eventNames().orientationchangeEvent || eventType == eventNames().resizeEvent)
+        targetNode->document().domWindow()->removeEventListener(eventType, listener, useCapture);
+
+#if ENABLE(TOUCH_EVENTS)
+    if (eventNames().isTouchEventType(eventType))
+        targetNode->document().removeTouchEventListener(targetNode);
+#endif
+#endif // PLATFORM(IOS)
+
+#if ENABLE(IOS_GESTURE_EVENTS) && ENABLE(TOUCH_EVENTS)
+    if (eventType == eventNames().gesturestartEvent || eventType == eventNames().gesturechangeEvent || eventType == eventNames().gestureendEvent)
+        targetNode->document().removeTouchEventListener(targetNode);
+#endif
 
     return true;
 }
@@ -1965,7 +2031,7 @@ void Node::dispatchScopedEvent(PassRefPtr<Event> event)
 
 bool Node::dispatchEvent(PassRefPtr<Event> event)
 {
-#if ENABLE(TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
     if (event->isTouchEvent())
         return dispatchTouchEvent(adoptRef(toTouchEvent(event.leakRef())));
 #endif
@@ -1981,8 +2047,11 @@ void Node::dispatchSubtreeModifiedEvent()
 
     if (!document().hasListenerType(Document::DOMSUBTREEMODIFIED_LISTENER))
         return;
+    const AtomicString& subtreeModifiedEventName = eventNames().DOMSubtreeModifiedEvent;
+    if (!parentNode() && !hasEventListeners(subtreeModifiedEventName))
+        return;
 
-    dispatchScopedEvent(MutationEvent::create(eventNames().DOMSubtreeModifiedEvent, true));
+    dispatchScopedEvent(MutationEvent::create(subtreeModifiedEventName, true));
 }
 
 bool Node::dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent)
@@ -1994,7 +2063,7 @@ bool Node::dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEven
     return event->defaultHandled();
 }
 
-#if ENABLE(TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
 bool Node::dispatchTouchEvent(PassRefPtr<TouchEvent> event)
 {
     return EventDispatcher::dispatchEvent(this, event);
@@ -2077,6 +2146,19 @@ void Node::defaultEventHandler(Event* event)
         if (startNode && startNode->renderer())
             if (Frame* frame = document().frame())
                 frame->eventHandler().defaultWheelEventHandler(startNode, wheelEvent);
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+    } else if (event->eventInterface() == TouchEventInterfaceType && eventNames().isTouchEventType(eventType)) {
+        TouchEvent* touchEvent = static_cast<TouchEvent*>(event);
+
+        RenderObject* renderer = this->renderer();
+        while (renderer && (!renderer->isBox() || !toRenderBox(renderer)->canBeScrolledAndHasScrollableArea()))
+            renderer = renderer->parent();
+
+        if (renderer && renderer->node()) {
+            if (Frame* frame = document().frame())
+                frame->eventHandler().defaultTouchEventHandler(renderer->node(), touchEvent);
+        }
+#endif
     } else if (event->type() == eventNames().webkitEditableContentChangedEvent) {
         dispatchInputEvent();
     }
@@ -2084,20 +2166,33 @@ void Node::defaultEventHandler(Event* event)
 
 bool Node::willRespondToMouseMoveEvents()
 {
+    // FIXME: Why is the iOS code path different from the non-iOS code path?
+#if !PLATFORM(IOS)
     if (!isElementNode())
         return false;
     if (toElement(this)->isDisabledFormControl())
         return false;
+#endif
     return hasEventListeners(eventNames().mousemoveEvent) || hasEventListeners(eventNames().mouseoverEvent) || hasEventListeners(eventNames().mouseoutEvent);
 }
 
 bool Node::willRespondToMouseClickEvents()
 {
+    // FIXME: Why is the iOS code path different from the non-iOS code path?
+#if PLATFORM(IOS)
+    return isContentEditable() || hasEventListeners(eventNames().mouseupEvent) || hasEventListeners(eventNames().mousedownEvent) || hasEventListeners(eventNames().clickEvent);
+#else
     if (!isElementNode())
         return false;
     if (toElement(this)->isDisabledFormControl())
         return false;
     return isContentEditable(UserSelectAllIsAlwaysNonEditable) || hasEventListeners(eventNames().mouseupEvent) || hasEventListeners(eventNames().mousedownEvent) || hasEventListeners(eventNames().clickEvent) || hasEventListeners(eventNames().DOMActivateEvent);
+#endif
+}
+
+bool Node::willRespondToMouseWheelEvents()
+{
+    return hasEventListeners(eventNames().mousewheelEvent);
 }
 
 bool Node::willRespondToTouchEvents()

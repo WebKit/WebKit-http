@@ -40,6 +40,10 @@
 #include <wtf/Assertions.h>
 #include <wtf/text/WTFString.h>
 
+#if ENABLE(INDEXED_DATABASE)
+#include "IDBDatabaseMetadata.h"
+#endif
+
 namespace WebCore {
 
 CrossThreadCopierBase<false, false, URL>::Type CrossThreadCopierBase<false, false, URL>::copy(const URL& url)
@@ -66,6 +70,30 @@ CrossThreadCopierBase<false, false, ResourceResponse>::Type CrossThreadCopierBas
 {
     return response.copyData();
 }
+
+#if ENABLE(INDEXED_DATABASE)
+
+IndexedDB::TransactionMode CrossThreadCopierBase<false, false, IndexedDB::TransactionMode>::copy(const IndexedDB::TransactionMode& mode)
+{
+    return mode;
+}
+
+IndexedDB::CursorDirection CrossThreadCopierBase<false, false, IndexedDB::CursorDirection>::copy(const IndexedDB::CursorDirection& direction)
+{
+    return direction;
+}
+
+IndexedDB::CursorType CrossThreadCopierBase<false, false, IndexedDB::CursorType>::copy(const IndexedDB::CursorType& type)
+{
+    return type;
+}
+
+CrossThreadCopierBase<false, false, IDBDatabaseMetadata>::Type CrossThreadCopierBase<false, false, IDBDatabaseMetadata>::copy(const IDBDatabaseMetadata& metadata)
+{
+    return metadata.isolatedCopy();
+}
+
+#endif
 
 // Test CrossThreadCopier using COMPILE_ASSERT.
 

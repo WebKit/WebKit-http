@@ -313,6 +313,8 @@ const gchar* roleToString(AtkObject* object)
         return "AXColumnHeader";
     case ATK_ROLE_COMBO_BOX:
         return "AXComboBox";
+    case ATK_ROLE_COMMENT:
+        return "AXComment";
     case ATK_ROLE_DOCUMENT_FRAME:
         return "AXDocument";
     case ATK_ROLE_DOCUMENT_WEB:
@@ -369,6 +371,8 @@ const gchar* roleToString(AtkObject* object)
         return "AXRadioMenuItem";
     case ATK_ROLE_ROW_HEADER:
         return "AXRowHeader";
+    case ATK_ROLE_CHECK_MENU_ITEM:
+        return "AXCheckMenuItem";
     case ATK_ROLE_RULER:
         return "AXRuler";
     case ATK_ROLE_SCROLL_BAR:
@@ -411,6 +415,28 @@ const gchar* roleToString(AtkObject* object)
         return "AXWindow";
     case ATK_ROLE_UNKNOWN:
         return "AXUnknown";
+#if ATK_CHECK_VERSION(2, 11, 3)
+    case ATK_ROLE_ARTICLE:
+        return "AXArticle";
+    case ATK_ROLE_DEFINITION:
+        return "AXDefinition";
+    case ATK_ROLE_LOG:
+        return "AXLog";
+    case ATK_ROLE_MARQUEE:
+        return "AXMarquee";
+    case ATK_ROLE_MATH:
+        return "AXMath";
+    case ATK_ROLE_TIMER:
+        return "AXTimer";
+#endif
+#if ATK_CHECK_VERSION(2, 11, 4)
+    case ATK_ROLE_DESCRIPTION_LIST:
+        return "AXDescriptionList";
+    case ATK_ROLE_DESCRIPTION_TERM:
+        return "AXDescriptionTerm";
+    case ATK_ROLE_DESCRIPTION_VALUE:
+        return "AXDescriptionValue";
+#endif
     default:
         // We want to distinguish ATK_ROLE_UNKNOWN from a known AtkRole which
         // our DRT isn't properly handling.

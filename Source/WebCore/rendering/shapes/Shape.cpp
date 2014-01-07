@@ -46,10 +46,10 @@
 
 namespace WebCore {
 
-static PassOwnPtr<Shape> createBoxShape(const FloatRoundedRect& bounds, float shapeMargin, float shapePadding)
+static PassOwnPtr<Shape> createBoxShape(const FloatRoundedRect& bounds)
 {
     ASSERT(bounds.rect().width() >= 0 && bounds.rect().height() >= 0);
-    return adoptPtr(new BoxShape(bounds, shapeMargin, shapePadding));
+    return adoptPtr(new BoxShape(bounds));
 }
 
 static PassOwnPtr<Shape> createRectangleShape(const FloatRect& bounds, const FloatSize& radii)
@@ -58,13 +58,13 @@ static PassOwnPtr<Shape> createRectangleShape(const FloatRect& bounds, const Flo
     return adoptPtr(new RectangleShape(bounds, radii));
 }
 
-static PassOwnPtr<Shape> createShapeCircle(const FloatPoint& center, float radius)
+static PassOwnPtr<Shape> createCircleShape(const FloatPoint& center, float radius)
 {
     ASSERT(radius >= 0);
     return adoptPtr(new RectangleShape(FloatRect(center.x() - radius, center.y() - radius, radius*2, radius*2), FloatSize(radius, radius)));
 }
 
-static PassOwnPtr<Shape> createShapeEllipse(const FloatPoint& center, const FloatSize& radii)
+static PassOwnPtr<Shape> createEllipseShape(const FloatPoint& center, const FloatSize& radii)
 {
     ASSERT(radii.width() >= 0 && radii.height() >= 0);
     return adoptPtr(new RectangleShape(FloatRect(center.x() - radii.width(), center.y() - radii.height(), radii.width()*2, radii.height()*2), radii));
@@ -146,7 +146,7 @@ PassOwnPtr<Shape> Shape::createShape(const BasicShape* basicShape, const LayoutS
         float radius = floatValueForLength(circle->radius(), sqrtf((boxWidth * boxWidth + boxHeight * boxHeight) / 2));
         FloatPoint logicalCenter = physicalPointToLogical(FloatPoint(centerX, centerY), logicalBoxSize.height(), writingMode);
 
-        shape = createShapeCircle(logicalCenter, radius);
+        shape = createCircleShape(logicalCenter, radius);
         break;
     }
 
@@ -157,7 +157,7 @@ PassOwnPtr<Shape> Shape::createShape(const BasicShape* basicShape, const LayoutS
         float radius = circle->floatValueForRadiusInBox(boxWidth, boxHeight);
         FloatPoint logicalCenter = physicalPointToLogical(FloatPoint(centerX, centerY), logicalBoxSize.height(), writingMode);
 
-        shape = createShapeCircle(logicalCenter, radius);
+        shape = createCircleShape(logicalCenter, radius);
         break;
     }
 
@@ -170,7 +170,7 @@ PassOwnPtr<Shape> Shape::createShape(const BasicShape* basicShape, const LayoutS
         FloatPoint logicalCenter = physicalPointToLogical(FloatPoint(centerX, centerY), logicalBoxSize.height(), writingMode);
         FloatSize logicalRadii = physicalSizeToLogical(FloatSize(radiusX, radiusY), writingMode);
 
-        shape = createShapeEllipse(logicalCenter, logicalRadii);
+        shape = createEllipseShape(logicalCenter, logicalRadii);
         break;
     }
 
@@ -182,7 +182,7 @@ PassOwnPtr<Shape> Shape::createShape(const BasicShape* basicShape, const LayoutS
         float radiusY = ellipse->floatValueForRadiusInBox(ellipse->radiusY(), centerY, boxHeight);
         FloatPoint logicalCenter = physicalPointToLogical(FloatPoint(centerX, centerY), logicalBoxSize.height(), writingMode);
 
-        shape = createShapeEllipse(logicalCenter, FloatSize(radiusX, radiusY));
+        shape = createEllipseShape(logicalCenter, FloatSize(radiusX, radiusY));
         break;
     }
 
@@ -240,10 +240,7 @@ PassOwnPtr<Shape> Shape::createShape(const BasicShape* basicShape, const LayoutS
             rectangle->bottomLeftRadius().floatSize(),
             rectangle->bottomRightRadius().floatSize());
 
-        float shapeMargin = floatValueForLength(margin, 0);
-        float shapePadding = floatValueForLength(padding, 0);
-
-        shape = createBoxShape(logicalBounds, shapeMargin, shapePadding);
+        shape = createBoxShape(logicalBounds);
         break;
     }
 
@@ -305,13 +302,11 @@ PassOwnPtr<Shape> Shape::createShape(const RoundedRect& roundedRect, WritingMode
 {
     FloatRect rect(0, 0, roundedRect.rect().width(), roundedRect.rect().height());
     FloatRoundedRect bounds(rect, roundedRect.radii().topLeft(), roundedRect.radii().topRight(), roundedRect.radii().bottomLeft(), roundedRect.radii().bottomRight());
-    float shapeMargin = floatValueForLength(margin, 0);
-    float shapePadding = floatValueForLength(padding, 0);
 
-    OwnPtr<Shape> shape = createBoxShape(bounds, shapeMargin, shapePadding);
+    OwnPtr<Shape> shape = createBoxShape(bounds);
     shape->m_writingMode = writingMode;
-    shape->m_margin = shapeMargin;
-    shape->m_padding = shapePadding;
+    shape->m_margin = floatValueForLength(margin, 0);
+    shape->m_padding = floatValueForLength(padding, 0);
 
     return shape.release();
 }

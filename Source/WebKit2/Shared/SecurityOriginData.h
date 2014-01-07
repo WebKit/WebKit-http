@@ -52,6 +52,8 @@ struct SecurityOriginData {
     String protocol;
     String host;
     int port;
+
+    SecurityOriginData isolatedCopy() const;
 };
 
 void performAPICallbackWithSecurityOriginDataVector(const Vector<SecurityOriginData>&, ArrayCallback*);

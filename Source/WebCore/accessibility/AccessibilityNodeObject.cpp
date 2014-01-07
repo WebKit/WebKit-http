@@ -120,10 +120,10 @@ PassRefPtr<AccessibilityNodeObject> AccessibilityNodeObject::create(Node* node)
     return adoptRef(new AccessibilityNodeObject(node));
 }
 
-void AccessibilityNodeObject::detach()
+void AccessibilityNodeObject::detach(AccessibilityDetachmentType detachmentType, AXObjectCache* cache)
 {
-    clearChildren();
-    AccessibilityObject::detach();
+    // AccessibilityObject calls clearChildren.
+    AccessibilityObject::detach(detachmentType, cache);
     m_node = 0;
 }
 
@@ -411,6 +411,18 @@ bool AccessibilityNodeObject::computeAccessibilityIsIgnored() const
     ASSERT(m_initialized);
 #endif
 
+    // Handle non-rendered text that is exposed through aria-hidden=false.
+    if (m_node && m_node->isTextNode() && !renderer()) {
+        // Fallback content in iframe nodes should be ignored.
+        if (m_node->parentNode() && m_node->parentNode()->hasTagName(iframeTag) && m_node->parentNode()->renderer())
+            return true;
+
+        // Whitespace only text elements should be ignored when they have no renderer.
+        String string = stringValue().stripWhiteSpace().simplifyWhiteSpace();
+        if (!string.length())
+            return true;
+    }
+    
     // If this element is within a parent that cannot have children, it should not be exposed.
     if (isDescendantOfBarrenParent())
         return true;
@@ -730,8 +742,12 @@ bool AccessibilityNodeObject::isReadOnly() const
 
 bool AccessibilityNodeObject::isRequired() const
 {
-    if (equalIgnoringCase(getAttribute(aria_requiredAttr), "true"))
+    // Explicit aria-required values should trump native required attributes.
+    const AtomicString& requiredValue = getAttribute(aria_requiredAttr);
+    if (equalIgnoringCase(requiredValue, "true"))
         return true;
+    if (equalIgnoringCase(requiredValue, "false"))
+        return false;
 
     Node* n = this->node();
     if (n && (n->isElementNode() && toElement(n)->isFormControlElement()))
@@ -1026,15 +1042,14 @@ Element* AccessibilityNodeObject::mouseButtonListener() const
 
     // check if our parent is a mouse button listener
     // FIXME: Do the continuation search like anchorElement does
-    auto lineage = elementLineage(node->isElementNode() ? toElement(node) : node->parentElement());
-    for (auto element = lineage.begin(), end = lineage.end(); element != end; ++element) {
+    for (auto& element : elementLineage(node->isElementNode() ? toElement(node) : node->parentElement())) {
         // If we've reached the body and this is not a control element, do not expose press action for this element.
         // It can cause false positives, where every piece of text is labeled as accepting press actions. 
-        if (element->hasTagName(bodyTag) && isStaticText())
+        if (element.hasTagName(bodyTag) && isStaticText())
             break;
         
-        if (element->hasEventListeners(eventNames().clickEvent) || element->hasEventListeners(eventNames().mousedownEvent) || element->hasEventListeners(eventNames().mouseupEvent))
-            return &*element;
+        if (element.hasEventListeners(eventNames().clickEvent) || element.hasEventListeners(eventNames().mousedownEvent) || element.hasEventListeners(eventNames().mouseupEvent))
+            return &element;
     }
 
     return 0;
@@ -1166,21 +1181,21 @@ static Element* siblingWithAriaRole(String role, Node* node)
 {
     ContainerNode* parent = node->parentNode();
     if (!parent)
-        return 0;
-    auto children = elementChildren(*parent);
-    for (auto sibling = children.begin(), end = children.end(); sibling != end; ++sibling) {
-        const AtomicString& siblingAriaRole = sibling->fastGetAttribute(roleAttr);
+        return nullptr;
+
+    for (auto& sibling : elementChildren(*parent)) {
+        const AtomicString& siblingAriaRole = sibling.fastGetAttribute(roleAttr);
         if (equalIgnoringCase(siblingAriaRole, role))
-            return &*sibling;
+            return &sibling;
     }
 
-    return 0;
+    return nullptr;
 }
 
 Element* AccessibilityNodeObject::menuElementForMenuButton() const
 {
     if (ariaRoleAttribute() != MenuButtonRole)
-        return 0;
+        return nullptr;
 
     return siblingWithAriaRole("menu", node());
 }

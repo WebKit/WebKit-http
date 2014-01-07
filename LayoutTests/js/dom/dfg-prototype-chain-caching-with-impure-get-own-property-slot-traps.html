@@ -1,10 +1,25 @@
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<!DOCTYPE html>
 <html>
-<head>
-<script src="../../resources/js-test-pre.js"></script>
-</head>
 <body>
-<script src="script-tests/dfg-prototype-chain-caching-with-impure-get-own-property-slot-traps.js"></script>
+<script src="../../resources/js-test-pre.js"></script>
+<script>
+description("Tests what happens when you make prototype chain accesses with impure GetOwnPropertySlot traps in the way.");
+
+var doc = document;
+
+function f() {
+    return doc.getElementsByTagName;
+}
+
+dfgShouldBe(f, "typeof f()", "\"function\"");
+
+var img = new Image();
+img.name = "getElementsByTagName";
+document.body.appendChild(img);
+
+shouldBe("typeof f()", "\"object\"");
+
+</script>
 <script src="../../resources/js-test-post.js"></script>
 </body>
 </html>

@@ -226,7 +226,7 @@ static PassRefPtr<RenderStyle> firstLineStyleForCachedUncachedType(StyleCacheSta
 PassRefPtr<RenderStyle> RenderElement::uncachedFirstLineStyle(RenderStyle* style) const
 {
     if (!document().styleSheetCollection().usesFirstLineRules())
-        return 0;
+        return nullptr;
 
     return firstLineStyleForCachedUncachedType(Uncached, *this, style);
 }
@@ -302,11 +302,10 @@ StyleDifference RenderElement::adjustStyleDifference(StyleDifference diff, unsig
 
 inline bool RenderElement::hasImmediateNonWhitespaceTextChildOrBorderOrOutline() const
 {
-    auto children = childrenOfType<RenderObject>(*this);
-    for (auto child = children.begin(), end = children.end(); child != end; ++child) {
-        if (child->isText() && !toRenderText(*child).isAllCollapsibleWhitespace())
+    for (auto& child : childrenOfType<RenderObject>(*this)) {
+        if (child.isText() && !toRenderText(child).isAllCollapsibleWhitespace())
             return true;
-        if (child->style().hasOutline() || child->style().hasBorder())
+        if (child.style().hasOutline() || child.style().hasBorder())
             return true;
     }
     return false;
@@ -349,7 +348,7 @@ void RenderElement::updateImage(StyleImage* oldImage, StyleImage* newImage)
 void RenderElement::updateShapeImage(const ShapeValue* oldShapeValue, const ShapeValue* newShapeValue)
 {
     if (oldShapeValue || newShapeValue)
-        updateImage(oldShapeValue ? oldShapeValue->image() : 0, newShapeValue ? newShapeValue->image() : 0);
+        updateImage(oldShapeValue ? oldShapeValue->image() : nullptr, newShapeValue ? newShapeValue->image() : nullptr);
 }
 #endif
 
@@ -385,11 +384,8 @@ void RenderElement::initializeStyle()
 
     styleDidChange(StyleDifferenceEqual, nullptr);
 
-#if !ASSERT_DISABLED
     // We shouldn't have any text children that would need styleDidChange at this point.
-    auto textChildren = childrenOfType<RenderText>(*this);
-    ASSERT(textChildren.begin() == textChildren.end());
-#endif
+    ASSERT(!childrenOfType<RenderText>(*this).first());
 
     // It would be nice to assert that !parent() here, but some RenderLayer subrenderers
     // have their parent set before getting a call to initializeStyle() :|
@@ -397,11 +393,19 @@ void RenderElement::initializeStyle()
 
 void RenderElement::setStyle(PassRef<RenderStyle> style)
 {
+    // FIXME: Should change RenderView so it can use initializeStyle too.
+    // If we do that, we can assert m_hasInitializedStyle unconditionally,
+    // and remove the check of m_hasInitializedStyle below too.
+    ASSERT(m_hasInitializedStyle || isRenderView());
+
     if (&m_style.get() == &style.get()) {
+        // FIXME: Can we change things so we never hit this code path?
 #if USE(ACCELERATED_COMPOSITING)
         // We need to run through adjustStyleDifference() for iframes, plugins, and canvas so
         // style sharing is disabled for them. That should ensure that we never hit this code path.
-        ASSERT(!isRenderIFrame() && !isEmbeddedObject() && !isCanvas());
+        ASSERT(!isRenderIFrame());
+        ASSERT(!isEmbeddedObject());
+        ASSERT(!isCanvas());
 #endif
         style.dropRef();
         return;
@@ -439,9 +443,8 @@ void RenderElement::setStyle(PassRef<RenderStyle> style)
     styleDidChange(diff, &oldStyle.get());
 
     // Text renderers use their parent style. Notify them about the change.
-    auto textChildren = childrenOfType<RenderText>(*this);
-    for (auto child = textChildren.begin(), end = textChildren.end(); child != end; ++child)
-        child->styleDidChange(diff, &oldStyle.get());
+    for (auto& child : childrenOfType<RenderText>(*this))
+        child.styleDidChange(diff, &oldStyle.get());
 
     // FIXME: |this| might be destroyed here. This can currently happen for a RenderTextFragment when
     // its first-letter block gets an update in RenderTextFragment::styleDidChange. For RenderTextFragment(s),
@@ -538,13 +541,13 @@ void RenderElement::destroyLeftoverChildren()
         if (m_firstChild->isListMarker() || (m_firstChild->style().styleType() == FIRST_LETTER && !m_firstChild->isText()))
             m_firstChild->removeFromParent(); // List markers are owned by their enclosing list and so don't get destroyed by this container. Similarly, first letters are destroyed by their remaining text fragment.
         else if (m_firstChild->isRunIn() && m_firstChild->node()) {
-            m_firstChild->node()->setRenderer(0);
+            m_firstChild->node()->setRenderer(nullptr);
             m_firstChild->node()->setNeedsStyleRecalc();
             m_firstChild->destroy();
         } else {
             // Destroy any anonymous children remaining in the render tree, as well as implicit (shadow) DOM elements like those used in the engine-based text fields.
             if (m_firstChild->node())
-                m_firstChild->node()->setRenderer(0);
+                m_firstChild->node()->setRenderer(nullptr);
             m_firstChild->destroy();
         }
     }
@@ -678,9 +681,8 @@ static void addLayers(RenderElement& renderer, RenderLayer* parentLayer, RenderE
         return;
     }
 
-    auto children = childrenOfType<RenderElement>(renderer);
-    for (auto child = children.begin(), end = children.end(); child != end; ++child)
-        addLayers(*child, parentLayer, newObject, beforeChild);
+    for (auto& child : childrenOfType<RenderElement>(renderer))
+        addLayers(child, parentLayer, newObject, beforeChild);
 }
 
 void RenderElement::addLayers(RenderLayer* parentLayer)
@@ -703,9 +705,8 @@ void RenderElement::removeLayers(RenderLayer* parentLayer)
         return;
     }
 
-    auto children = childrenOfType<RenderElement>(*this);
-    for (auto child = children.begin(), end = children.end(); child != end; ++child)
-        child->removeLayers(parentLayer);
+    for (auto& child : childrenOfType<RenderElement>(*this))
+        child.removeLayers(parentLayer);
 }
 
 void RenderElement::moveLayers(RenderLayer* oldParent, RenderLayer* newParent)
@@ -722,16 +723,15 @@ void RenderElement::moveLayers(RenderLayer* oldParent, RenderLayer* newParent)
         return;
     }
 
-    auto children = childrenOfType<RenderElement>(*this);
-    for (auto child = children.begin(), end = children.end(); child != end; ++child)
-        child->moveLayers(oldParent, newParent);
+    for (auto& child : childrenOfType<RenderElement>(*this))
+        child.moveLayers(oldParent, newParent);
 }
 
 RenderLayer* RenderElement::findNextLayer(RenderLayer* parentLayer, RenderObject* startPoint, bool checkParent)
 {
     // Error check the parent layer passed in. If it's null, we can't find anything.
     if (!parentLayer)
-        return 0;
+        return nullptr;
 
     // Step 1: If our layer is a child of the desired parent, then return our layer.
     RenderLayer* ourLayer = hasLayer() ? toRenderLayerModelObject(this)->layer() : nullptr;
@@ -780,9 +780,7 @@ bool RenderElement::layerCreationAllowedForSubtree() const
 void RenderElement::propagateStyleToAnonymousChildren(StylePropagationType propagationType)
 {
     // FIXME: We could save this call when the change only affected non-inherited properties.
-    auto children = childrenOfType<RenderElement>(*this);
-    for (auto child = children.begin(), end = children.end(); child != end; ++child) {
-        RenderElement& elementChild = *child;
+    for (auto& elementChild : childrenOfType<RenderElement>(*this)) {
         if (!elementChild.isAnonymous() || elementChild.style().styleType() != NOPSEUDO)
             continue;
 
@@ -1075,7 +1073,7 @@ void RenderElement::setNeedsSimplifiedNormalFlowLayout()
         setLayerNeedsFullRepaint();
 }
 
-RenderElement* RenderElement::rendererForRootBackground()
+RenderElement& RenderElement::rendererForRootBackground()
 {
     ASSERT(isRoot());
     if (!hasBackground() && element() && element()->hasTagName(HTMLNames::htmlTag)) {
@@ -1086,11 +1084,11 @@ RenderElement* RenderElement::rendererForRootBackground()
         if (auto body = document().body()) {
             if (body->hasLocalName(HTMLNames::bodyTag)) {
                 if (auto renderer = body->renderer())
-                    return renderer;
+                    return *renderer;
             }
         }
     }
-    return this;
+    return *this;
 }
 
 RenderElement* RenderElement::hoverAncestor() const
@@ -1129,6 +1127,175 @@ void RenderElement::layout()
         child = child->nextSibling();
     }
     clearNeedsLayout();
+}
+
+static bool mustRepaintFillLayers(const RenderElement& renderer, const FillLayer* layer)
+{
+    // Nobody will use multiple layers without wanting fancy positioning.
+    if (layer->next())
+        return true;
+
+    // Make sure we have a valid image.
+    StyleImage* image = layer->image();
+    if (!image || !image->canRender(&renderer, renderer.style().effectiveZoom()))
+        return false;
+
+    if (!layer->xPosition().isZero() || !layer->yPosition().isZero())
+        return true;
+
+    EFillSizeType sizeType = layer->sizeType();
+
+    if (sizeType == Contain || sizeType == Cover)
+        return true;
+
+    if (sizeType == SizeLength) {
+        LengthSize size = layer->sizeLength();
+        if (size.width().isPercent() || size.height().isPercent())
+            return true;
+        // If the image has neither an intrinsic width nor an intrinsic height, its size is determined as for 'contain'.
+        if ((size.width().isAuto() || size.height().isAuto()) && image->isGeneratedImage())
+            return true;
+    } else if (image->usesImageContainerSize())
+        return true;
+
+    return false;
+}
+
+static bool mustRepaintBackgroundOrBorder(const RenderElement& renderer)
+{
+    if (renderer.hasMask() && mustRepaintFillLayers(renderer, renderer.style().maskLayers()))
+        return true;
+
+    // If we don't have a background/border/mask, then nothing to do.
+    if (!renderer.hasBoxDecorations())
+        return false;
+
+    if (mustRepaintFillLayers(renderer, renderer.style().backgroundLayers()))
+        return true;
+
+    // Our fill layers are ok. Let's check border.
+    if (renderer.style().hasBorder() && renderer.borderImageIsLoadedAndCanBeRendered())
+        return true;
+
+    return false;
+}
+
+bool RenderElement::repaintAfterLayoutIfNeeded(const RenderLayerModelObject* repaintContainer, const LayoutRect& oldBounds, const LayoutRect& oldOutlineBox, const LayoutRect* newBoundsPtr, const LayoutRect* newOutlineBoxRectPtr)
+{
+    if (view().printing())
+        return false; // Don't repaint if we're printing.
+
+    // This ASSERT fails due to animations. See https://bugs.webkit.org/show_bug.cgi?id=37048
+    // ASSERT(!newBoundsPtr || *newBoundsPtr == clippedOverflowRectForRepaint(repaintContainer));
+    LayoutRect newBounds = newBoundsPtr ? *newBoundsPtr : clippedOverflowRectForRepaint(repaintContainer);
+    LayoutRect newOutlineBox;
+
+    bool fullRepaint = selfNeedsLayout();
+    // Presumably a background or a border exists if border-fit:lines was specified.
+    if (!fullRepaint && style().borderFit() == BorderFitLines)
+        fullRepaint = true;
+    if (!fullRepaint) {
+        // This ASSERT fails due to animations. See https://bugs.webkit.org/show_bug.cgi?id=37048
+        // ASSERT(!newOutlineBoxRectPtr || *newOutlineBoxRectPtr == outlineBoundsForRepaint(repaintContainer));
+        newOutlineBox = newOutlineBoxRectPtr ? *newOutlineBoxRectPtr : outlineBoundsForRepaint(repaintContainer);
+        if (newOutlineBox.location() != oldOutlineBox.location() || (mustRepaintBackgroundOrBorder(*this) && (newBounds != oldBounds || newOutlineBox != oldOutlineBox)))
+            fullRepaint = true;
+    }
+
+    if (!repaintContainer)
+        repaintContainer = &view();
+
+    if (fullRepaint) {
+        repaintUsingContainer(repaintContainer, pixelSnappedIntRect(oldBounds));
+        if (newBounds != oldBounds)
+            repaintUsingContainer(repaintContainer, pixelSnappedIntRect(newBounds));
+        return true;
+    }
+
+    if (newBounds == oldBounds && newOutlineBox == oldOutlineBox)
+        return false;
+
+    LayoutUnit deltaLeft = newBounds.x() - oldBounds.x();
+    if (deltaLeft > 0)
+        repaintUsingContainer(repaintContainer, pixelSnappedIntRect(oldBounds.x(), oldBounds.y(), deltaLeft, oldBounds.height()));
+    else if (deltaLeft < 0)
+        repaintUsingContainer(repaintContainer, pixelSnappedIntRect(newBounds.x(), newBounds.y(), -deltaLeft, newBounds.height()));
+
+    LayoutUnit deltaRight = newBounds.maxX() - oldBounds.maxX();
+    if (deltaRight > 0)
+        repaintUsingContainer(repaintContainer, pixelSnappedIntRect(oldBounds.maxX(), newBounds.y(), deltaRight, newBounds.height()));
+    else if (deltaRight < 0)
+        repaintUsingContainer(repaintContainer, pixelSnappedIntRect(newBounds.maxX(), oldBounds.y(), -deltaRight, oldBounds.height()));
+
+    LayoutUnit deltaTop = newBounds.y() - oldBounds.y();
+    if (deltaTop > 0)
+        repaintUsingContainer(repaintContainer, pixelSnappedIntRect(oldBounds.x(), oldBounds.y(), oldBounds.width(), deltaTop));
+    else if (deltaTop < 0)
+        repaintUsingContainer(repaintContainer, pixelSnappedIntRect(newBounds.x(), newBounds.y(), newBounds.width(), -deltaTop));
+
+    LayoutUnit deltaBottom = newBounds.maxY() - oldBounds.maxY();
+    if (deltaBottom > 0)
+        repaintUsingContainer(repaintContainer, pixelSnappedIntRect(newBounds.x(), oldBounds.maxY(), newBounds.width(), deltaBottom));
+    else if (deltaBottom < 0)
+        repaintUsingContainer(repaintContainer, pixelSnappedIntRect(oldBounds.x(), newBounds.maxY(), oldBounds.width(), -deltaBottom));
+
+    if (newOutlineBox == oldOutlineBox)
+        return false;
+
+    // We didn't move, but we did change size. Invalidate the delta, which will consist of possibly
+    // two rectangles (but typically only one).
+    const RenderStyle& outlineStyle = outlineStyleForRepaint();
+    LayoutUnit outlineWidth = outlineStyle.outlineSize();
+    LayoutBoxExtent insetShadowExtent = style().getBoxShadowInsetExtent();
+    LayoutUnit width = absoluteValue(newOutlineBox.width() - oldOutlineBox.width());
+    if (width) {
+        LayoutUnit shadowLeft;
+        LayoutUnit shadowRight;
+        style().getBoxShadowHorizontalExtent(shadowLeft, shadowRight);
+        int borderRight = isBox() ? toRenderBox(this)->borderRight() : 0;
+        LayoutUnit boxWidth = isBox() ? toRenderBox(this)->width() : LayoutUnit();
+        LayoutUnit minInsetRightShadowExtent = std::min<LayoutUnit>(-insetShadowExtent.right(), std::min<LayoutUnit>(newBounds.width(), oldBounds.width()));
+        LayoutUnit borderWidth = std::max<LayoutUnit>(borderRight, std::max<LayoutUnit>(valueForLength(style().borderTopRightRadius().width(), boxWidth, &view()), valueForLength(style().borderBottomRightRadius().width(), boxWidth)));
+        LayoutUnit decorationsWidth = std::max<LayoutUnit>(-outlineStyle.outlineOffset(), borderWidth + minInsetRightShadowExtent) + std::max<LayoutUnit>(outlineWidth, shadowRight);
+        LayoutRect rightRect(newOutlineBox.x() + std::min(newOutlineBox.width(), oldOutlineBox.width()) - decorationsWidth,
+            newOutlineBox.y(),
+            width + decorationsWidth,
+            std::max(newOutlineBox.height(), oldOutlineBox.height()));
+        LayoutUnit right = std::min<LayoutUnit>(newBounds.maxX(), oldBounds.maxX());
+        if (rightRect.x() < right) {
+            rightRect.setWidth(std::min(rightRect.width(), right - rightRect.x()));
+            repaintUsingContainer(repaintContainer, pixelSnappedIntRect(rightRect));
+        }
+    }
+    LayoutUnit height = absoluteValue(newOutlineBox.height() - oldOutlineBox.height());
+    if (height) {
+        LayoutUnit shadowTop;
+        LayoutUnit shadowBottom;
+        style().getBoxShadowVerticalExtent(shadowTop, shadowBottom);
+        int borderBottom = isBox() ? toRenderBox(this)->borderBottom() : 0;
+        LayoutUnit boxHeight = isBox() ? toRenderBox(this)->height() : LayoutUnit();
+        LayoutUnit minInsetBottomShadowExtent = std::min<LayoutUnit>(-insetShadowExtent.bottom(), std::min<LayoutUnit>(newBounds.height(), oldBounds.height()));
+        LayoutUnit borderHeight = std::max<LayoutUnit>(borderBottom, std::max<LayoutUnit>(valueForLength(style().borderBottomLeftRadius().height(), boxHeight), valueForLength(style().borderBottomRightRadius().height(), boxHeight, &view())));
+        LayoutUnit decorationsHeight = std::max<LayoutUnit>(-outlineStyle.outlineOffset(), borderHeight + minInsetBottomShadowExtent) + std::max<LayoutUnit>(outlineWidth, shadowBottom);
+        LayoutRect bottomRect(newOutlineBox.x(),
+            std::min(newOutlineBox.maxY(), oldOutlineBox.maxY()) - decorationsHeight,
+            std::max(newOutlineBox.width(), oldOutlineBox.width()),
+            height + decorationsHeight);
+        LayoutUnit bottom = std::min(newBounds.maxY(), oldBounds.maxY());
+        if (bottomRect.y() < bottom) {
+            bottomRect.setHeight(std::min(bottomRect.height(), bottom - bottomRect.y()));
+            repaintUsingContainer(repaintContainer, pixelSnappedIntRect(bottomRect));
+        }
+    }
+    return false;
+}
+
+bool RenderElement::borderImageIsLoadedAndCanBeRendered() const
+{
+    ASSERT(style().hasBorder());
+
+    StyleImage* borderImage = style().borderImage().image();
+    return borderImage && borderImage->canRender(this, style().effectiveZoom()) && borderImage->isLoaded();
 }
 
 }

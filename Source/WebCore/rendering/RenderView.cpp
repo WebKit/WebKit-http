@@ -310,9 +310,7 @@ void RenderView::layout()
     if (relayoutChildren) {
         setChildNeedsLayout(MarkOnlyThis);
 
-        auto boxChildren = childrenOfType<RenderBox>(*this);
-        for (auto child = boxChildren.begin(), end = boxChildren.end(); child != end; ++child) {
-            RenderBox& box = *child;
+        for (auto& box : childrenOfType<RenderBox>(*this)) {
             if (box.hasRelativeLogicalHeight()
                 || box.hasViewportPercentageLogicalHeight()
                 || box.style().logicalHeight().isPercent()
@@ -487,8 +485,7 @@ static inline bool rendererObscuresBackground(RenderElement* rootObject)
     if (isComposited(rootObject))
         return false;
 
-    const RenderElement* rootRenderer = rootObject->rendererForRootBackground();
-    if (rootRenderer->style().backgroundClip() == TextFillBox)
+    if (rootObject->rendererForRootBackground().style().backgroundClip() == TextFillBox)
         return false;
 
     return true;
@@ -1006,8 +1003,7 @@ bool RenderView::rootBackgroundIsEntirelyFixed() const
     if (!rootObject)
         return false;
 
-    RenderElement* rootRenderer = rootObject->rendererForRootBackground();
-    return rootRenderer->hasEntirelyFixedBackground();
+    return rootObject->rendererForRootBackground().hasEntirelyFixedBackground();
 }
 
 LayoutRect RenderView::backgroundRect(RenderBox* backgroundRenderer) const

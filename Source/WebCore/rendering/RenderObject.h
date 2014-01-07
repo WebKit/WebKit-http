@@ -159,7 +159,7 @@ public:
     explicit RenderObject(Node&);
     virtual ~RenderObject();
 
-    RenderTheme* theme() const;
+    RenderTheme& theme() const;
 
     virtual const char* renderName() const = 0;
 
@@ -541,9 +541,6 @@ public:
     };
     bool hasBoxDecorations() const { return m_bitfields.boxDecorationState() != NoBoxDecorations; }
     bool backgroundIsKnownToBeObscured();
-    bool borderImageIsLoadedAndCanBeRendered() const;
-    bool mustRepaintBackgroundOrBorder() const;
-    bool hasBackground() const { return style().hasBackground(); }
     bool hasEntirelyFixedBackground() const;
 
     bool needsLayout() const
@@ -573,21 +570,6 @@ public:
     bool hasClipOrOverflowClip() const { return hasClip() || hasOverflowClip(); }
 
     bool hasTransform() const { return m_bitfields.hasTransform(); }
-    bool hasMask() const { return style().hasMask(); }
-    bool hasClipPath() const { return style().clipPath(); }
-    bool hasHiddenBackface() const { return style().backfaceVisibility() == BackfaceVisibilityHidden; }
-
-#if ENABLE(CSS_FILTERS)
-    bool hasFilter() const { return style().hasFilter(); }
-#else
-    bool hasFilter() const { return false; }
-#endif
-
-#if ENABLE(CSS_COMPOSITING)
-    bool hasBlendMode() const { return style().hasBlendMode(); }
-#else
-    bool hasBlendMode() const { return false; }
-#endif
 
     inline bool preservesNewline() const;
 
@@ -769,9 +751,6 @@ public:
     // Repaint a specific subrectangle within a given object.  The rect |r| is in the object's coordinate space.
     void repaintRectangle(const LayoutRect&, bool immediate = false) const;
 
-    // Repaint only if our old bounds and new bounds are different. The caller may pass in newBounds and newOutlineBox if they are known.
-    bool repaintAfterLayoutIfNeeded(const RenderLayerModelObject* repaintContainer, const LayoutRect& oldBounds, const LayoutRect& oldOutlineBox, const LayoutRect* newBoundsPtr = 0, const LayoutRect* newOutlineBoxPtr = 0);
-
     bool checkForRepaintDuringLayout() const;
 
     // Returns the rect that should be repainted whenever this object changes.  The rect is in the view's
@@ -809,9 +788,6 @@ public:
     virtual unsigned int length() const { return 1; }
 
     bool isFloatingOrOutOfFlowPositioned() const { return (isFloating() || isOutOfFlowPositioned()); }
-
-    bool isTransparent() const { return style().opacity() < 1.0f; }
-    float opacity() const { return style().opacity(); }
 
     bool hasReflection() const { return m_bitfields.hasReflection(); }
 
@@ -908,9 +884,6 @@ public:
     
     bool shouldUseTransformFromContainer(const RenderObject* container) const;
     void getTransformFromContainer(const RenderObject* container, const LayoutSize& offsetInContainer, TransformationMatrix&) const;
-    
-    // return true if this object requires a new stacking context
-    bool createsGroup() const { return isTransparent() || hasMask() || hasFilter() || hasBlendMode(); } 
     
     virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint& /* additionalOffset */, const RenderLayerModelObject* /* paintContainer */ = 0) { };
 
@@ -1175,18 +1148,6 @@ inline bool RenderObject::backgroundIsKnownToBeObscured()
     }
     return m_bitfields.boxDecorationState() == HasBoxDecorationsAndBackgroundIsKnownToBeObscured;
 }
-
-inline int adjustForAbsoluteZoom(int value, RenderObject* renderer)
-{
-    return adjustForAbsoluteZoom(value, &renderer->style());
-}
-
-#if ENABLE(SUBPIXEL_LAYOUT)
-inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit value, RenderObject* renderer)
-{
-    return adjustLayoutUnitForAbsoluteZoom(value, &renderer->style());
-}
-#endif
 
 #define RENDER_OBJECT_TYPE_CASTS(ToValueTypeName, predicate) \
     TYPE_CASTS_BASE(ToValueTypeName, RenderObject, object, object->predicate, object.predicate)

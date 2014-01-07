@@ -28,13 +28,22 @@
 
 #if WK_API_ENABLED
 
+#import "RemoteObjectRegistry.h"
+#import "RemoteObjectRegistryMessages.h"
 #import "WKBrowsingContextHandleInternal.h"
 #import "WKBundleAPICast.h"
 #import "WKBundlePage.h"
 #import "WKBundlePagePrivate.h"
 #import "WKDOMInternals.h"
+#import "WKRemoteObjectRegistryInternal.h"
 #import "WKRetainPtr.h"
+#import "WKURLRequestNS.h"
+#import "WKWebProcessPluginFrameInternal.h"
 #import "WKWebProcessPlugInInternal.h"
+#import "WKWebProcessPlugInLoadDelegate.h"
+#import "WKWebProcessPlugInPageGroupInternal.h"
+#import "WKWebProcessPlugInScriptWorldInternal.h"
+#import "WeakObjCPtr.h"
 #import "WebPage.h"
 #import "WebProcess.h"
 #import <WebCore/Document.h>
@@ -45,6 +54,98 @@ using namespace WebKit;
 
 @implementation WKWebProcessPlugInBrowserContextController {
     API::ObjectStorage<WebPage> _page;
+    WeakObjCPtr<id <WKWebProcessPlugInLoadDelegate>> _loadDelegate;
+    
+    RetainPtr<WKRemoteObjectRegistry> _remoteObjectRegistry;
+}
+
+static void didStartProvisionalLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userDataRef, const void *clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didStartProvisionalLoadForFrame:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didStartProvisionalLoadForFrame:wrapper(*toImpl(frame))];
+}
+
+static void didFinishLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didFinishLoadForFrame:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFinishLoadForFrame:wrapper(*toImpl(frame))];
+}
+
+static void globalObjectIsAvailableForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKBundleScriptWorldRef scriptWorld, const void* clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:globalObjectIsAvailableForFrame:inScriptWorld:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController globalObjectIsAvailableForFrame:wrapper(*toImpl(frame)) inScriptWorld:wrapper(*toImpl(scriptWorld))];
+}
+
+static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *contextController, WebPage& page)
+{
+    WKBundlePageLoaderClientV7 client;
+    memset(&client, 0, sizeof(client));
+
+    client.base.version = 7;
+    client.base.clientInfo = contextController;
+    client.didStartProvisionalLoadForFrame = didStartProvisionalLoadForFrame;
+    client.didFinishLoadForFrame = didFinishLoadForFrame;
+    client.globalObjectIsAvailableForFrame = globalObjectIsAvailableForFrame;
+
+    page.initializeInjectedBundleLoaderClient(&client.base);
+}
+
+static WKURLRequestRef willSendRequestForFrame(WKBundlePageRef page, WKBundleFrameRef frame, uint64_t, WKURLRequestRef request, WKURLResponseRef redirectResponse, const void* clientInfo)
+{
+    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:frame:willSendRequest:redirectResponse:)]) {
+        NSURLRequest *originalRequest = toImpl(request)->resourceRequest().nsURLRequest(DoNotUpdateHTTPBody);
+        RetainPtr<NSURLRequest> substituteRequest = [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*toImpl(frame)) willSendRequest:originalRequest
+            redirectResponse:toImpl(redirectResponse)->resourceResponse().nsURLResponse()];
+
+        if (substituteRequest != originalRequest)
+            return substituteRequest ? WKURLRequestCreateWithNSURLRequest(substituteRequest.get()) : nullptr;
+    }
+
+    WKRetain(request);
+    return request;
+}
+
+static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *contextController, WebPage& page)
+{
+    WKBundlePageResourceLoadClientV1 client;
+    memset(&client, 0, sizeof(client));
+
+    client.base.version = 1;
+    client.base.clientInfo = contextController;
+    client.willSendRequestForFrame = willSendRequestForFrame;
+
+    page.initializeInjectedBundleResourceLoadClient(&client.base);
+}
+
+- (id <WKWebProcessPlugInLoadDelegate>)loadDelegate
+{
+    return _loadDelegate.getAutoreleased();
+}
+
+- (void)setLoadDelegate:(id <WKWebProcessPlugInLoadDelegate>)loadDelegate
+{
+    _loadDelegate = loadDelegate;
+
+    if (loadDelegate) {
+        setUpPageLoaderClient(self, *_page);
+        setUpResourceLoadClient(self, *_page);
+    } else {
+        _page->initializeInjectedBundleLoaderClient(nullptr);
+        _page->initializeInjectedBundleResourceLoadClient(nullptr);
+    }
 }
 
 - (void)dealloc
@@ -70,6 +171,20 @@ using namespace WebKit;
         return nil;
 
     return toWKDOMRange(range.get());
+}
+
+- (WKWebProcessPlugInFrame *)mainFrame
+{
+    WebFrame *webKitMainFrame = _page->mainWebFrame();
+    if (!webKitMainFrame)
+        return nil;
+
+    return wrapper(*webKitMainFrame);
+}
+
+- (WKWebProcessPlugInPageGroup *)pageGroup
+{
+    return wrapper(*_page->pageGroup());
 }
 
 #pragma mark WKObject protocol implementation
@@ -100,6 +215,16 @@ using namespace WebKit;
         return nil;
 
     return wrapper(*webPage);
+}
+
+- (WKRemoteObjectRegistry *)remoteObjectRegistry
+{
+    if (!_remoteObjectRegistry) {
+        _remoteObjectRegistry = [[WKRemoteObjectRegistry alloc] _initWithMessageSender:*_page];
+        WebProcess::shared().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID(), [_remoteObjectRegistry remoteObjectRegistry]);
+    }
+
+    return _remoteObjectRegistry.get();
 }
 
 @end

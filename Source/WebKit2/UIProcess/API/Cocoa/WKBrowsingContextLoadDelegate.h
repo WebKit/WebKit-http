@@ -23,9 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <Foundation/Foundation.h>
+#import <WebKit2/WKFoundation.h>
 
-@class WKBrowsingContextController;
+#if WK_API_ENABLED
+
+#import <Foundation/Foundation.h>
+#import <WebKit2/WKBrowsingContextController.h>
+
 @class WKBackForwardListItem;
 
 @protocol WKBrowsingContextLoadDelegate <NSObject>
@@ -55,4 +59,8 @@
 
 - (void)browsingContextControllerDidChangeBackForwardList:(WKBrowsingContextController *)sender addedItem:(WKBackForwardListItem *)addedItem removedItems:(NSArray *)removedItems;
 
+- (void)browsingContextController:(WKBrowsingContextController *)sender renderingProgressDidChange:(WKRenderingProgressEvents)progressEvent;
+
 @end
+
+#endif // WK_API_ENABLED

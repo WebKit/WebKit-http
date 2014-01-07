@@ -15,16 +15,15 @@
                     
                     { "name": "apple-mini-129", "platform": "mac-mavericks"},
                     { "name": "apple-mini-130", "platform": "mac-mavericks"},
-                    { "name": "apple-macpro-5", "platform": "mac-mavericks" },
-                    { "name": "apple-macpro-8", "platform": "mac-mavericks" },
+                    { "name": "apple-mini-137", "platform": "mac-mavericks"},
+                    { "name": "apple-mini-138", "platform": "mac-mavericks"},
+                    { "name": "apple-mini-142", "platform": "mac-mavericks"},
+                    { "name": "apple-mini-178", "platform": "mac-mavericks"},
+                    { "name": "apple-mini-179", "platform": "mac-mavericks"},
                     { "name": "apple-mini-211", "platform": "mac-mavericks" },
                     { "name": "apple-mini-212", "platform": "mac-mavericks" },
+                    { "name": "apple-mini-213", "platform": "mac-mavericks" },
                     
-                    { "name": "apple-seo-01", "platform": "mac-mavericks"},
-                    { "name": "apple-seo-02", "platform": "mac-mavericks"},
-                    { "name": "apple-seo-03", "platform": "mac-mavericks"},
-                    { "name": "apple-seo-06", "platform": "mac-mavericks"},
-
                     { "name": "apple-windows-1", "platform": "win"},
                     { "name": "apple-windows-2", "platform": "win"},
                     { "name": "apple-windows-3", "platform": "win"},
@@ -85,19 +84,19 @@
                     { "name": "Apple Mavericks Debug (Build)", "type": "Build", "builddir": "mavericks-debug",
                       "platform": "mac-mavericks", "configuration": "debug", "architectures": ["x86_64"],
                       "triggers": ["mavericks-debug-tests-wk1", "mavericks-debug-tests-wk2"],
-                      "slavenames": ["apple-seo-01", "apple-seo-06"]
+                      "slavenames": ["apple-mini-178", "apple-mini-179"]
                     },
                     { "name": "Apple Mavericks Debug WK1 (Tests)", "type": "Test", "builddir": "mavericks-debug-tests-wk1",
                       "platform": "mac-mavericks", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["apple-seo-02", "apple-macpro-5"]
+                      "slavenames": ["apple-mini-137", "apple-mini-138"]
                     },
                     { "name": "Apple Mavericks Debug WK2 (Tests)", "type": "TestWebKit2", "builddir": "mavericks-debug-tests-wk2",
                       "platform": "mac-mavericks", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["apple-seo-03", "apple-macpro-8", "apple-mini-211"]
+                      "slavenames": ["apple-mini-142", "apple-mini-211"]
                     },
                     { "name": "Apple Mavericks Release (Build)", "type": "Build", "builddir": "mavericks-release",
                       "platform": "mac-mavericks", "configuration": "release", "architectures": ["x86_64"],
-                      "triggers": ["mavericks-release-tests-wk1", "mavericks-release-tests-wk2"],
+                      "triggers": ["mavericks-release-tests-wk1", "mavericks-release-tests-wk2", "mavericks-release-perf"],
                       "slavenames": ["apple-mini-212"]
                     },
                     { "name": "Apple Mavericks Release WK1 (Tests)", "type": "Test", "builddir": "mavericks-release-tests-wk1",
@@ -108,6 +107,11 @@
                     { "name": "Apple Mavericks Release WK2 (Tests)", "type": "TestWebKit2", "builddir": "mavericks-release-tests-wk2",
                       "platform": "mac-mavericks", "configuration": "release", "architectures": ["x86_64"],
                       "slavenames": ["apple-mini-130"]
+                    },
+                    {
+                      "name": "Apple Mavericks Release (Perf)", "type": "DownloadAndPerfTest", "builddir": "mavericks-release-perf-tests",
+                      "platform": "mac-mavericks", "configuration": "release", "architectures": ["x86_64"],
+                      "slavenames": ["apple-mini-213"]
                     },
                     {
                       "name": "Apple MountainLion Release (Perf)", "type": "DownloadAndPerfTest", "builddir": "mountainlion-release-perf-tests",
@@ -227,6 +231,9 @@
                     },
                     { "type": "Triggerable", "name": "mavericks-debug-tests-wk2",
                       "builderNames": ["Apple Mavericks Debug WK2 (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "mavericks-release-perf",
+                      "builderNames": ["Apple Mavericks Release (Perf)"]
                     },
                     { "type": "Triggerable", "name": "win-release-tests",
                       "builderNames": ["Apple Win 7 Release (Tests)"]

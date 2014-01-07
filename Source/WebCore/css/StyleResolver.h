@@ -345,21 +345,19 @@ private:
     void checkForTextSizeAdjust(RenderStyle*);
 #endif
 
-    void adjustRenderStyle(RenderStyle* styleToAdjust, RenderStyle* parentStyle, Element*);
-    void adjustGridItemPosition(RenderStyle* styleToAdjust, RenderStyle* parentStyle) const;
+    void adjustRenderStyle(RenderStyle& styleToAdjust, const RenderStyle& parentStyle, Element*);
+    void adjustGridItemPosition(RenderStyle& styleToAdjust, const RenderStyle& parentStyle) const;
 
     bool fastRejectSelector(const RuleData&) const;
 
-    void applyMatchedProperties(const MatchResult&, const Element*);
+    enum ShouldUseMatchedPropertiesCache { DoNotUseMatchedPropertiesCache = 0, UseMatchedPropertiesCache };
+    void applyMatchedProperties(const MatchResult&, const Element*, ShouldUseMatchedPropertiesCache = UseMatchedPropertiesCache);
 
-    enum StyleApplicationPass {
-        HighPriorityProperties,
-        LowPriorityProperties
-    };
-    template <StyleApplicationPass pass>
-    void applyMatchedProperties(const MatchResult&, bool important, int startIndex, int endIndex, bool inheritedOnly);
-    template <StyleApplicationPass pass>
-    void applyProperties(const StyleProperties*, StyleRule*, bool isImportant, bool inheritedOnly, PropertyWhitelistType = PropertyWhitelistNone);
+    class CascadedProperties;
+
+    void applyCascadedProperties(CascadedProperties&, int firstProperty, int lastProperty);
+    void cascadeMatches(CascadedProperties&, const MatchResult&, bool important, int startIndex, int endIndex, bool inheritedOnly);
+
     static bool isValidRegionStyleProperty(CSSPropertyID);
 #if ENABLE(VIDEO_TRACK)
     static bool isValidCueStyleProperty(CSSPropertyID);
@@ -499,11 +497,13 @@ public:
         Color m_backgroundColor;
     };
 
+    State& state() { return m_state; }
+
     static RenderStyle* styleNotYetAvailable() { return s_styleNotYetAvailable; }
 
     PassRefPtr<StyleImage> styleImage(CSSPropertyID, CSSValue*);
     PassRefPtr<StyleImage> cachedOrPendingFromValue(CSSPropertyID, CSSImageValue*);
-    PassRefPtr<StyleImage> generatedOrPendingFromValue(CSSPropertyID, CSSImageGeneratorValue*);
+    PassRefPtr<StyleImage> generatedOrPendingFromValue(CSSPropertyID, CSSImageGeneratorValue&);
 #if ENABLE(CSS_IMAGE_SET)
     PassRefPtr<StyleImage> setOrPendingFromValue(CSSPropertyID, CSSImageSetValue*);
 #endif

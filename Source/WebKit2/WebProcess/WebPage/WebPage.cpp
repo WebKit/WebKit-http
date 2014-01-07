@@ -220,7 +220,8 @@ PassRefPtr<WebPage> WebPage::create(uint64_t pageID, const WebPageCreationParame
 }
 
 WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
-    : m_viewSize(parameters.viewSize)
+    : m_pageID(pageID)
+    , m_viewSize(parameters.viewSize)
     , m_hasSeenPlugin(false)
     , m_useFixedLayout(false)
     , m_drawsBackground(true)
@@ -245,6 +246,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_hasCachedWindowFrame(false)
     , m_layerHostingMode(parameters.layerHostingMode)
     , m_keyboardEventBeingInterpreted(0)
+    , m_viewGestureGeometryCollector(*this)
 #elif PLATFORM(GTK)
     , m_accessibilityObject(0)
 #endif
@@ -257,7 +259,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(GEOLOCATION)
     , m_geolocationPermissionRequestManager(this)
 #endif
-    , m_pageID(pageID)
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
     , m_canRunModal(parameters.canRunModal)
     , m_isRunningModal(false)
@@ -624,6 +625,18 @@ EditorState WebPage::editorState() const
 
 #if PLATFORM(IOS)
     FrameSelection& selection = frame.selection();
+    if (frame.editor().hasComposition()) {
+        RefPtr<Range> compositionRange = frame.editor().compositionRange();
+        Vector<WebCore::SelectionRect> compositionRects;
+        compositionRange->collectSelectionRects(compositionRects);
+        if (compositionRects.size())
+            result.firstMarkedRect = compositionRects[0].rect();
+        if (compositionRects.size() > 1)
+            result.lastMarkedRect = compositionRects.last().rect();
+        else
+            result.lastMarkedRect = result.firstMarkedRect;
+        result.markedText = plainText(compositionRange.get());
+    }
     if (selection.isCaret()) {
         result.caretRectAtStart = selection.absoluteCaretBounds();
         result.caretRectAtEnd = result.caretRectAtStart;
@@ -899,10 +912,21 @@ void WebPage::loadDataImpl(PassRefPtr<SharedBuffer> sharedBuffer, const String& 
 
     // Let the InjectedBundle know we are about to start the load, passing the user data from the UIProcess
     // to all the client to set up any needed state.
-    m_loaderClient.willLoadDataRequest(this, request, substituteData.content(), substituteData.mimeType(), substituteData.textEncoding(), substituteData.failingURL(), userData.get());
+    m_loaderClient.willLoadDataRequest(this, request, const_cast<SharedBuffer*>(substituteData.content()), substituteData.mimeType(), substituteData.textEncoding(), substituteData.failingURL(), userData.get());
 
     // Initate the load in WebCore.
     m_mainFrame->coreFrame()->loader().load(FrameLoadRequest(m_mainFrame->coreFrame(), request, substituteData));
+}
+
+void WebPage::loadString(const String& htmlString, const String& MIMEType, const URL& baseURL, const URL& unreachableURL, CoreIPC::MessageDecoder& decoder)
+{
+    if (!htmlString.isNull() && htmlString.is8Bit()) {
+        RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(htmlString.characters8()), htmlString.length() * sizeof(LChar));
+        loadDataImpl(sharedBuffer, MIMEType, ASCIILiteral("latin1"), baseURL, unreachableURL, decoder);
+    } else {
+        RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(htmlString.characters16()), htmlString.length() * sizeof(UChar));
+        loadDataImpl(sharedBuffer, MIMEType, ASCIILiteral("utf-16"), baseURL, unreachableURL, decoder);
+    }
 }
 
 void WebPage::loadData(const CoreIPC::DataReference& data, const String& MIMEType, const String& encodingName, const String& baseURLString, CoreIPC::MessageDecoder& decoder)
@@ -914,29 +938,26 @@ void WebPage::loadData(const CoreIPC::DataReference& data, const String& MIMETyp
 
 void WebPage::loadHTMLString(const String& htmlString, const String& baseURLString, CoreIPC::MessageDecoder& decoder)
 {
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(htmlString.characters()), htmlString.length() * sizeof(UChar));
     URL baseURL = baseURLString.isEmpty() ? blankURL() : URL(URL(), baseURLString);
-    loadDataImpl(sharedBuffer, "text/html", "utf-16", baseURL, URL(), decoder);
+    loadString(htmlString, ASCIILiteral("text/html"), baseURL, URL(), decoder);
 }
 
 void WebPage::loadAlternateHTMLString(const String& htmlString, const String& baseURLString, const String& unreachableURLString, CoreIPC::MessageDecoder& decoder)
 {
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(htmlString.characters()), htmlString.length() * sizeof(UChar));
     URL baseURL = baseURLString.isEmpty() ? blankURL() : URL(URL(), baseURLString);
     URL unreachableURL = unreachableURLString.isEmpty() ? URL() : URL(URL(), unreachableURLString);
-    loadDataImpl(sharedBuffer, "text/html", "utf-16", baseURL, unreachableURL, decoder);
+    loadString(htmlString, ASCIILiteral("text/html"), baseURL, unreachableURL, decoder);
 }
 
 void WebPage::loadPlainTextString(const String& string, CoreIPC::MessageDecoder& decoder)
 {
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(string.characters()), string.length() * sizeof(UChar));
-    loadDataImpl(sharedBuffer, "text/plain", "utf-16", blankURL(), URL(), decoder);
+    loadString(string, ASCIILiteral("text/plain"), blankURL(), URL(), decoder);
 }
 
 void WebPage::loadWebArchiveData(const CoreIPC::DataReference& webArchiveData, CoreIPC::MessageDecoder& decoder)
 {
     RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(webArchiveData.data()), webArchiveData.size() * sizeof(uint8_t));
-    loadDataImpl(sharedBuffer, "application/x-webarchive", "utf-16", blankURL(), URL(), decoder);
+    loadDataImpl(sharedBuffer, ASCIILiteral("application/x-webarchive"), ASCIILiteral("utf-16"), blankURL(), URL(), decoder);
 }
 
 void WebPage::linkClicked(const String& url, const WebMouseEvent& event)

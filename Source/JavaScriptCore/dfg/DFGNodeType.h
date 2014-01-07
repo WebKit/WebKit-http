@@ -105,7 +105,7 @@ namespace JSC { namespace DFG {
     /* Bitwise operators call ToInt32 on their operands. */\
     macro(ValueToInt32, NodeResultInt32) \
     /* Used to box the result of URShift nodes (result has range 0..2^32-1). */\
-    macro(UInt32ToNumber, NodeResultNumber | NodeExitsForward) \
+    macro(UInt32ToNumber, NodeResultNumber) \
     \
     /* Used to cast known integers to doubles, so as to separate the double form */\
     /* of the value from the integer form. */\
@@ -291,6 +291,10 @@ namespace JSC { namespace DFG {
     /* Checks the watchdog timer. If the timer has fired, we OSR exit to the */ \
     /* baseline JIT to redo the watchdog timer check, and service the timer. */ \
     macro(CheckWatchdogTimer, NodeMustGenerate) \
+    /* Write barriers ! */\
+    macro(StoreBarrier, NodeMustGenerate) \
+    macro(ConditionalStoreBarrier, NodeMustGenerate) \
+    macro(StoreBarrierWithNullCheck, NodeMustGenerate) \
 
 // This enum generates a monotonically increasing id for all Node types,
 // and is used by the subsequent enum to fill out the id (as accessed via the NodeIdMask).

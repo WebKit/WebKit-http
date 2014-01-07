@@ -41,7 +41,6 @@
 #include "InjectedScriptManager.h"
 #include "InspectorAgent.h"
 #include "InspectorApplicationCacheAgent.h"
-#include "InspectorBackendDispatchers.h"
 #include "InspectorCSSAgent.h"
 #include "InspectorCanvasAgent.h"
 #include "InspectorClient.h"
@@ -50,7 +49,6 @@
 #include "InspectorDOMStorageAgent.h"
 #include "InspectorDatabaseAgent.h"
 #include "InspectorDebuggerAgent.h"
-#include "InspectorFrontend.h"
 #include "InspectorFrontendClient.h"
 #include "InspectorHeapProfilerAgent.h"
 #include "InspectorIndexedDBAgent.h"
@@ -63,13 +61,15 @@
 #include "InspectorProfilerAgent.h"
 #include "InspectorResourceAgent.h"
 #include "InspectorTimelineAgent.h"
+#include "InspectorWebBackendDispatchers.h"
+#include "InspectorWebFrontendDispatchers.h"
 #include "InspectorWorkerAgent.h"
 #include "InstrumentingAgents.h"
 #include "MainFrame.h"
+#include "Page.h"
 #include "PageConsoleAgent.h"
 #include "PageDebuggerAgent.h"
 #include "PageRuntimeAgent.h"
-#include "Page.h"
 #include "Settings.h"
 #include <inspector/InspectorBackendDispatcher.h>
 
@@ -89,7 +89,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     , m_hasRemoteFrontend(false)
 #endif
 {
-    OwnPtr<InspectorAgent> inspectorAgentPtr(InspectorAgent::create(page, m_injectedScriptManager.get(), m_instrumentingAgents.get()));
+    OwnPtr<InspectorAgent> inspectorAgentPtr(InspectorAgent::create(page, m_instrumentingAgents.get()));
     m_inspectorAgent = inspectorAgentPtr.get();
     m_agents.append(inspectorAgentPtr.release());
 
@@ -172,7 +172,6 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
 #endif
         , domStorageAgent
         , m_domAgent
-        , m_debuggerAgent
     );
 
 #if ENABLE(JAVASCRIPT_DEBUGGER)
@@ -357,11 +356,6 @@ bool InspectorController::enabled() const
 Page* InspectorController::inspectedPage() const
 {
     return m_page;
-}
-
-void InspectorController::setInjectedScriptForOrigin(const String& origin, const String& source)
-{
-    m_inspectorAgent->setInjectedScriptForOrigin(origin, source);
 }
 
 void InspectorController::dispatchMessageFromFrontend(const String& message)

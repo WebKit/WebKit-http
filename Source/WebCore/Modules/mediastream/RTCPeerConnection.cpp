@@ -49,10 +49,10 @@
 #include "RTCDataChannel.h"
 #include "RTCDataChannelEvent.h"
 #include "RTCDataChannelHandler.h"
-#include "RTCErrorCallback.h"
 #include "RTCIceCandidate.h"
 #include "RTCIceCandidateDescriptor.h"
 #include "RTCIceCandidateEvent.h"
+#include "RTCPeerConnectionErrorCallback.h"
 #include "RTCSessionDescription.h"
 #include "RTCSessionDescriptionCallback.h"
 #include "RTCSessionDescriptionDescriptor.h"
@@ -62,6 +62,8 @@
 #include "RTCVoidRequestImpl.h"
 #include "ScriptExecutionContext.h"
 #include "VoidCallback.h"
+#include <wtf/Functional.h>
+#include <wtf/MainThread.h>
 
 namespace WebCore {
 
@@ -170,7 +172,7 @@ RTCPeerConnection::~RTCPeerConnection()
         (*stream)->removeObserver(this);
 }
 
-void RTCPeerConnection::createOffer(PassRefPtr<RTCSessionDescriptionCallback> successCallback, PassRefPtr<RTCErrorCallback> errorCallback, const Dictionary& mediaConstraints, ExceptionCode& ec)
+void RTCPeerConnection::createOffer(PassRefPtr<RTCSessionDescriptionCallback> successCallback, PassRefPtr<RTCPeerConnectionErrorCallback> errorCallback, const Dictionary& mediaConstraints, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingStateClosed) {
         ec = INVALID_STATE_ERR;
@@ -190,7 +192,7 @@ void RTCPeerConnection::createOffer(PassRefPtr<RTCSessionDescriptionCallback> su
     m_peerHandler->createOffer(request.release(), constraints);
 }
 
-void RTCPeerConnection::createAnswer(PassRefPtr<RTCSessionDescriptionCallback> successCallback, PassRefPtr<RTCErrorCallback> errorCallback, const Dictionary& mediaConstraints, ExceptionCode& ec)
+void RTCPeerConnection::createAnswer(PassRefPtr<RTCSessionDescriptionCallback> successCallback, PassRefPtr<RTCPeerConnectionErrorCallback> errorCallback, const Dictionary& mediaConstraints, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingStateClosed) {
         ec = INVALID_STATE_ERR;
@@ -210,7 +212,31 @@ void RTCPeerConnection::createAnswer(PassRefPtr<RTCSessionDescriptionCallback> s
     m_peerHandler->createAnswer(request.release(), constraints.release());
 }
 
-void RTCPeerConnection::setLocalDescription(PassRefPtr<RTCSessionDescription> prpSessionDescription, PassRefPtr<VoidCallback> successCallback, PassRefPtr<RTCErrorCallback> errorCallback, ExceptionCode& ec)
+bool RTCPeerConnection::checkStateForLocalDescription(RTCSessionDescription* localDescription)
+{
+    if (localDescription->type() == "offer")
+        return m_signalingState == SignalingStateStable || m_signalingState == SignalingStateHaveLocalOffer;
+    if (localDescription->type() == "answer")
+        return m_signalingState == SignalingStateHaveRemoteOffer || m_signalingState == SignalingStateHaveLocalPrAnswer;
+    if (localDescription->type() == "pranswer")
+        return m_signalingState == SignalingStateHaveLocalPrAnswer || m_signalingState == SignalingStateHaveRemoteOffer;
+
+    return false;
+}
+
+bool RTCPeerConnection::checkStateForRemoteDescription(RTCSessionDescription* remoteDescription)
+{
+    if (remoteDescription->type() == "offer")
+        return m_signalingState == SignalingStateStable || m_signalingState == SignalingStateHaveRemoteOffer;
+    if (remoteDescription->type() == "answer")
+        return m_signalingState == SignalingStateHaveLocalOffer || m_signalingState == SignalingStateHaveRemotePrAnswer;
+    if (remoteDescription->type() == "pranswer")
+        return m_signalingState == SignalingStateHaveRemotePrAnswer || m_signalingState == SignalingStateHaveLocalOffer;
+
+    return false;
+}
+
+void RTCPeerConnection::setLocalDescription(PassRefPtr<RTCSessionDescription> prpSessionDescription, PassRefPtr<VoidCallback> successCallback, PassRefPtr<RTCPeerConnectionErrorCallback> errorCallback, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingStateClosed) {
         ec = INVALID_STATE_ERR;
@@ -220,6 +246,12 @@ void RTCPeerConnection::setLocalDescription(PassRefPtr<RTCSessionDescription> pr
     RefPtr<RTCSessionDescription> sessionDescription = prpSessionDescription;
     if (!sessionDescription) {
         ec = TYPE_MISMATCH_ERR;
+        return;
+    }
+
+    if (!checkStateForLocalDescription(sessionDescription.get())) {
+        RefPtr<DOMError> error = DOMError::create(RTCPeerConnectionHandler::invalidSessionDescriptionErrorName());
+        callOnMainThread(bind(&RTCPeerConnectionErrorCallback::handleEvent, errorCallback.get(), error.release()));
         return;
     }
 
@@ -239,7 +271,7 @@ PassRefPtr<RTCSessionDescription> RTCPeerConnection::localDescription(ExceptionC
     return sessionDescription.release();
 }
 
-void RTCPeerConnection::setRemoteDescription(PassRefPtr<RTCSessionDescription> prpSessionDescription, PassRefPtr<VoidCallback> successCallback, PassRefPtr<RTCErrorCallback> errorCallback, ExceptionCode& ec)
+void RTCPeerConnection::setRemoteDescription(PassRefPtr<RTCSessionDescription> prpSessionDescription, PassRefPtr<VoidCallback> successCallback, PassRefPtr<RTCPeerConnectionErrorCallback> errorCallback, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingStateClosed) {
         ec = INVALID_STATE_ERR;
@@ -249,6 +281,12 @@ void RTCPeerConnection::setRemoteDescription(PassRefPtr<RTCSessionDescription> p
     RefPtr<RTCSessionDescription> sessionDescription = prpSessionDescription;
     if (!sessionDescription) {
         ec = TYPE_MISMATCH_ERR;
+        return;
+    }
+
+    if (!checkStateForRemoteDescription(sessionDescription.get())) {
+        RefPtr<DOMError> error = DOMError::create(RTCPeerConnectionHandler::invalidSessionDescriptionErrorName());
+        callOnMainThread(bind(&RTCPeerConnectionErrorCallback::handleEvent, errorCallback.get(), error.release()));
         return;
     }
 
@@ -288,7 +326,7 @@ void RTCPeerConnection::updateIce(const Dictionary& rtcConfiguration, const Dict
         ec = SYNTAX_ERR;
 }
 
-void RTCPeerConnection::addIceCandidate(RTCIceCandidate* iceCandidate, PassRefPtr<VoidCallback> successCallback, PassRefPtr<RTCErrorCallback> errorCallback, ExceptionCode& ec)
+void RTCPeerConnection::addIceCandidate(RTCIceCandidate* iceCandidate, PassRefPtr<VoidCallback> successCallback, PassRefPtr<RTCPeerConnectionErrorCallback> errorCallback, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingStateClosed) {
         ec = INVALID_STATE_ERR;

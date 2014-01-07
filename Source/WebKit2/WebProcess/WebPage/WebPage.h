@@ -89,6 +89,7 @@
 #if PLATFORM(MAC)
 #include "DictionaryPopupInfo.h"
 #include "LayerHostingContext.h"
+#include "ViewGestureGeometryCollector.h"
 #include <wtf/RetainPtr.h>
 OBJC_CLASS CALayer;
 OBJC_CLASS NSDictionary;
@@ -410,6 +411,8 @@ public:
     void requestAutocorrectionData(const String& textForAutocorrection, uint64_t callbackID);
     void applyAutocorrection(const String& correction, const String& originalText, uint64_t callbackID);
     void insertText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
+    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd);
+    void confirmComposition();
 #endif
 
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
@@ -479,11 +482,11 @@ public:
     
     void sendComplexTextInputToPlugin(uint64_t pluginComplexTextInputIdentifier, const String& textInput);
 
-    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd, EditorState& newState);
-    void confirmComposition(EditorState& newState);
     void cancelComposition(EditorState& newState);
 #if !PLATFORM(IOS)
     void insertText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd, bool& handled, EditorState& newState);
+    void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd, EditorState& newState);
+    void confirmComposition(EditorState& newState);
 #endif
     void getMarkedRange(uint64_t& location, uint64_t& length);
     void getSelectedRange(uint64_t& location, uint64_t& length);
@@ -698,6 +701,7 @@ private:
     String sourceForFrame(WebFrame*);
 
     void loadDataImpl(PassRefPtr<WebCore::SharedBuffer>, const String& MIMEType, const String& encodingName, const WebCore::URL& baseURL, const WebCore::URL& failingURL, CoreIPC::MessageDecoder&);
+    void loadString(const String&, const String& MIMEType, const WebCore::URL& baseURL, const WebCore::URL& failingURL, CoreIPC::MessageDecoder&);
 
     bool platformHasLocalDataForURL(const WebCore::URL&);
 
@@ -856,6 +860,8 @@ private:
 
     void reportUsedFeatures();
 
+    uint64_t m_pageID;
+
     OwnPtr<WebCore::Page> m_page;
     RefPtr<WebFrame> m_mainFrame;
     RefPtr<InjectedBundleBackForwardList> m_backForwardList;
@@ -929,6 +935,8 @@ private:
 
     WebCore::KeyboardEvent* m_keyboardEventBeingInterpreted;
 
+    ViewGestureGeometryCollector m_viewGestureGeometryCollector;
+
 #elif HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
     GRefPtr<WebPageAccessibilityObject> m_accessibilityObject;
 
@@ -994,7 +1002,6 @@ private:
 #endif
 
     SandboxExtensionTracker m_sandboxExtensionTracker;
-    uint64_t m_pageID;
 
     RefPtr<SandboxExtension> m_pendingDropSandboxExtension;
     Vector<RefPtr<SandboxExtension>> m_pendingDropExtensionsForFileUpload;

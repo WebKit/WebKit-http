@@ -3,9 +3,12 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${WEBKIT_DIR}"
     "${WEBCORE_DIR}"
+    "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/mediastream"
+    "${WEBCORE_DIR}/Modules/navigatorcontentutils"
     "${WEBCORE_DIR}/Modules/networkinfo"
     "${WEBCORE_DIR}/Modules/webdatabase"
+    "${WEBCORE_DIR}/Modules/websockets"
     "${WEBCORE_DIR}/accessibility"
     "${WEBCORE_DIR}/bindings/generic"
     "${WEBCORE_DIR}/bindings/js"
@@ -15,12 +18,14 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bridge/jsc"
     "${WEBCORE_DIR}/dom/default"
     "${WEBCORE_DIR}/editing"
+    "${WEBCORE_DIR}/fileapi"
     "${WEBCORE_DIR}/history"
     "${WEBCORE_DIR}/html"
     "${WEBCORE_DIR}/html/forms"
     "${WEBCORE_DIR}/html/shadow"
     "${WEBCORE_DIR}/inspector"
     "${WEBCORE_DIR}/loader"
+    "${WEBCORE_DIR}/loader/archive"
     "${WEBCORE_DIR}/loader/appcache"
     "${WEBCORE_DIR}/loader/icon"
     "${WEBCORE_DIR}/loader/cache"
@@ -33,6 +38,7 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opengl"
     "${WEBCORE_DIR}/platform/graphics/transforms"
     "${WEBCORE_DIR}/platform/mediastream"
+    "${WEBCORE_DIR}/platform/mock"
     "${WEBCORE_DIR}/platform/network"
     "${WEBCORE_DIR}/platform/sql"
     "${WEBCORE_DIR}/platform/text"
@@ -44,6 +50,7 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/storage"
     "${WEBCORE_DIR}/style"
     "${WEBCORE_DIR}/svg"
+    "${WEBCORE_DIR}/svg/animation"
     "${WEBCORE_DIR}/svg/graphics"
     "${WEBCORE_DIR}/svg/properties"
     "${WEBCORE_DIR}/workers"
@@ -105,7 +112,7 @@ ENDIF (HAIKU)
 add_library(WebKit ${WebKit_LIBRARY_TYPE} ${WebKit_SOURCES})
 add_dependencies(WebKit WebCore)
 target_link_libraries(WebKit ${WebKit_LIBRARIES})
-set_target_properties(WebKit PROPERTIES COMPILE_DEFINITIONS "BUILDING_WebKit")
+set_target_properties(WebKit PROPERTIES COMPILE_DEFINITIONS "BUILDING_WebKit;BUILDING_WEBKIT")
 set_target_properties(WebKit PROPERTIES FOLDER "WebKit")
 set_target_properties(WebKit PROPERTIES LINK_INTERFACE_LIBRARIES "")
 

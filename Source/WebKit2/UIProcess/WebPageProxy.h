@@ -34,6 +34,7 @@
 #include "EditorState.h"
 #include "GeolocationPermissionRequestManagerProxy.h"
 #include "LayerTreeContext.h"
+#include "MessageSender.h"
 #include "NotificationPermissionRequestManagerProxy.h"
 #include "PageLoadState.h"
 #include "PlatformProcessIdentifier.h"
@@ -95,6 +96,10 @@
 #include <WebCore/PlatformLayer.h>
 #endif
 
+namespace API {
+class URLRequest;
+}
+
 namespace CoreIPC {
 class ArgumentDecoder;
 class Connection;
@@ -136,7 +141,6 @@ class WebBackForwardList;
 class WebBackForwardListItem;
 class WebColorPickerResultListenerProxy;
 class WebContextMenuProxy;
-class WebData;
 class WebEditCommandProxy;
 class WebFullScreenManagerProxy;
 class WebKeyboardEvent;
@@ -144,7 +148,6 @@ class WebMouseEvent;
 class WebOpenPanelResultListenerProxy;
 class WebPageGroup;
 class WebProcessProxy;
-class WebURLRequest;
 class WebWheelEvent;
 struct AttributedString;
 struct ColorSpaceData;
@@ -313,13 +316,13 @@ private:
 };
 #endif
 
-class WebPageProxy
-    : public API::ObjectImpl<API::Object::Type::Page>
+class WebPageProxy : public API::ObjectImpl<API::Object::Type::Page>
 #if ENABLE(INPUT_TYPE_COLOR)
     , public WebColorPicker::Client
 #endif
     , public WebPopupMenuProxy::Client
-    , public CoreIPC::MessageReceiver {
+    , public CoreIPC::MessageReceiver
+    , public CoreIPC::MessageSender {
 public:
 
     static PassRefPtr<WebPageProxy> create(PageClient&, WebProcessProxy&, WebPageGroup&, uint64_t pageID);
@@ -367,13 +370,13 @@ public:
     bool isClosed() const { return m_isClosed; }
 
     void loadURL(const String&, API::Object* userData = nullptr);
-    void loadURLRequest(WebURLRequest*, API::Object* userData = nullptr);
+    void loadURLRequest(API::URLRequest*, API::Object* userData = nullptr);
     void loadFile(const String& fileURL, const String& resourceDirectoryURL, API::Object* userData = nullptr);
-    void loadData(WebData*, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
+    void loadData(API::Data*, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
     void loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData = nullptr);
     void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, API::Object* userData = nullptr);
     void loadPlainTextString(const String&, API::Object* userData = nullptr);
-    void loadWebArchiveData(const WebData*, API::Object* userData = nullptr);
+    void loadWebArchiveData(API::Data*, API::Object* userData = nullptr);
 
     void stopLoading();
     void reload(bool reloadFromOrigin);
@@ -534,8 +537,8 @@ public:
     void terminateProcess();
 
     typedef bool (*WebPageProxySessionStateFilterCallback)(WKPageRef, WKStringRef type, WKTypeRef object, void* context);
-    PassRefPtr<WebData> sessionStateData(WebPageProxySessionStateFilterCallback, void* context) const;
-    void restoreFromSessionStateData(WebData*);
+    PassRefPtr<API::Data> sessionStateData(WebPageProxySessionStateFilterCallback, void* context) const;
+    void restoreFromSessionStateData(API::Data*);
 
     bool supportsTextZoom() const;
     double textZoomFactor() const { return m_textZoomFactor; }
@@ -777,7 +780,7 @@ public:
     void handleAlternativeTextUIResult(const String& result);
 #endif
 
-    void saveDataToFileInDownloadsFolder(const String& suggestedFilename, const String& mimeType, const String& originatingURLString, WebData*);
+    void saveDataToFileInDownloadsFolder(const String& suggestedFilename, const String& mimeType, const String& originatingURLString, API::Data*);
     void savePDFToFileInDownloadsFolder(const String& suggestedFilename, const String& originatingURLString, const CoreIPC::DataReference&);
 #if PLATFORM(MAC)
     void savePDFToTemporaryFolderAndOpenWithNativeApplicationRaw(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size, const String& pdfUUID);
@@ -863,6 +866,11 @@ private:
     virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
     virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, std::unique_ptr<CoreIPC::MessageEncoder>&) OVERRIDE;
 
+    // CoreIPC::MessageSender
+    virtual bool sendMessage(std::unique_ptr<CoreIPC::MessageEncoder>, unsigned messageSendFlags) OVERRIDE;
+    virtual CoreIPC::Connection* messageSenderConnection() OVERRIDE;
+    virtual uint64_t messageSenderDestinationID() OVERRIDE;
+
     // WebPopupMenuProxy::Client
     virtual void valueChangedForPopupMenu(WebPopupMenuProxy*, int32_t newSelectedIndex);
     virtual void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index);
@@ -880,7 +888,7 @@ private:
     void didStartProvisionalLoadForFrame(uint64_t frameID, const String& url, const String& unreachableURL, CoreIPC::MessageDecoder&);
     void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, const String&, CoreIPC::MessageDecoder&);
     void didFailProvisionalLoadForFrame(uint64_t frameID, const WebCore::ResourceError&, CoreIPC::MessageDecoder&);
-    void didCommitLoadForFrame(uint64_t frameID, const String& mimeType, uint32_t frameLoadType, const CertificateInfo&, CoreIPC::MessageDecoder&);
+    void didCommitLoadForFrame(uint64_t frameID, const String& mimeType, uint32_t frameLoadType, const WebCore::CertificateInfo&, CoreIPC::MessageDecoder&);
     void didFinishDocumentLoadForFrame(uint64_t frameID, CoreIPC::MessageDecoder&);
     void didFinishLoadForFrame(uint64_t frameID, CoreIPC::MessageDecoder&);
     void didFailLoadForFrame(uint64_t frameID, const WebCore::ResourceError&, CoreIPC::MessageDecoder&);
@@ -898,7 +906,7 @@ private:
     void didChangeProgress(double);
     void didFinishProgress();
 
-    void decidePolicyForNavigationAction(uint64_t frameID, uint32_t navigationType, uint32_t modifiers, int32_t mouseButton, uint64_t originatingFrameID, const WebCore::ResourceRequest&, uint64_t listenerID, CoreIPC::MessageDecoder&, bool& receivedPolicyAction, uint64_t& policyAction, uint64_t& downloadID);
+    void decidePolicyForNavigationAction(uint64_t frameID, uint32_t navigationType, uint32_t modifiers, int32_t mouseButton, uint64_t originatingFrameID, const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceRequest& request, uint64_t listenerID, CoreIPC::MessageDecoder&, bool& receivedPolicyAction, uint64_t& policyAction, uint64_t& downloadID);
     void decidePolicyForNewWindowAction(uint64_t frameID, uint32_t navigationType, uint32_t modifiers, int32_t mouseButton, const WebCore::ResourceRequest&, const String& frameName, uint64_t listenerID, CoreIPC::MessageDecoder&);
     void decidePolicyForResponse(uint64_t frameID, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, CoreIPC::MessageDecoder&);
     void decidePolicyForResponseSync(uint64_t frameID, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, CoreIPC::MessageDecoder&, bool& receivedPolicyAction, uint64_t& policyAction, uint64_t& downloadID);
@@ -1115,6 +1123,7 @@ private:
 
     void startAssistingNode(const WebCore::IntRect&, bool hasNextFocusable, bool hasPreviousFocusable);
     void stopAssistingNode();
+    void notifyRevealedSelection();
 #endif // PLATFORM(IOS)
 
 #if USE(SOUP)

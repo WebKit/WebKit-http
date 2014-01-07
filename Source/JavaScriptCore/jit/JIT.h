@@ -316,11 +316,17 @@ namespace JSC {
         void addStructureTransitionCheck(JSCell*, Structure*, StructureStubInfo*, JumpList& failureCases, RegisterID scratch);
         void testPrototype(JSValue, JumpList& failureCases, StructureStubInfo*);
 
-        enum WriteBarrierMode { UnconditionalWriteBarrier, ShouldFilterImmediates };
+        enum WriteBarrierMode { UnconditionalWriteBarrier, ShouldFilterValue, ShouldFilterBaseAndValue };
         // value register in write barrier is used before any scratch registers
         // so may safely be the same as either of the scratch registers.
-        void emitWriteBarrier(RegisterID owner, RegisterID valueTag, RegisterID scratch, RegisterID scratch2, WriteBarrierMode, WriteBarrierUseKind);
-        void emitWriteBarrier(JSCell* owner, RegisterID value, RegisterID scratch, WriteBarrierMode, WriteBarrierUseKind);
+        Jump checkMarkWord(RegisterID owner, RegisterID scratch1, RegisterID scratch2);
+        Jump checkMarkWord(JSCell* owner);
+        void emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode);
+        void emitWriteBarrier(JSCell* owner, unsigned value, WriteBarrierMode);
+/*
+        void emitWriteBarrier(RegisterID owner, RegisterID valueTag, RegisterID scratch1, RegisterID scratch2, WriteBarrierMode);
+        void emitWriteBarrier(JSCell* owner, RegisterID value, WriteBarrierMode);
+*/
 
         template<typename StructureType> // StructureType can be RegisterID or ImmPtr.
         void emitAllocateJSObject(RegisterID allocator, StructureType, RegisterID result, RegisterID scratch);
@@ -552,6 +558,7 @@ namespace JSC {
         void emit_op_to_number(Instruction*);
         void emit_op_to_primitive(Instruction*);
         void emit_op_unexpected_load(Instruction*);
+        void emit_op_unsigned(Instruction*);
         void emit_op_urshift(Instruction*);
 
         void emitSlow_op_add(Instruction*, Vector<SlowCaseEntry>::iterator&);
@@ -603,6 +610,7 @@ namespace JSC {
         void emitSlow_op_sub(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_to_number(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_to_primitive(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_unsigned(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_urshift(Instruction*, Vector<SlowCaseEntry>::iterator&);
 
         void emit_op_resolve_scope(Instruction*);
@@ -676,6 +684,7 @@ namespace JSC {
         MacroAssembler::Call callOperation(J_JITOperation_EAapJcpZ, int, ArrayAllocationProfile*, GPRReg, int32_t);
         MacroAssembler::Call callOperation(J_JITOperation_EAapJcpZ, int, ArrayAllocationProfile*, const JSValue*, int32_t);
         MacroAssembler::Call callOperation(J_JITOperation_EC, int, JSCell*);
+        MacroAssembler::Call callOperation(V_JITOperation_EC, JSCell*);
         MacroAssembler::Call callOperation(J_JITOperation_EJ, int, GPRReg);
 #if USE(JSVALUE64)
         MacroAssembler::Call callOperation(WithProfileTag, J_JITOperation_ESsiJI, int, StructureStubInfo*, GPRReg, StringImpl*);

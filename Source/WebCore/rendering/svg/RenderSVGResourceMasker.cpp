@@ -59,10 +59,9 @@ void RenderSVGResourceMasker::removeAllClientsFromCache(bool markForInvalidation
     markAllClientsForInvalidation(markForInvalidation ? LayoutAndBoundariesInvalidation : ParentOnlyInvalidation);
 }
 
-void RenderSVGResourceMasker::removeClientFromCache(RenderObject* client, bool markForInvalidation)
+void RenderSVGResourceMasker::removeClientFromCache(RenderObject& client, bool markForInvalidation)
 {
-    ASSERT(client);
-    m_masker.remove(client);
+    m_masker.remove(&client);
 
     markClientForInvalidation(client, markForInvalidation ? BoundariesInvalidation : ParentOnlyInvalidation);
 }
@@ -116,9 +115,7 @@ bool RenderSVGResourceMasker::drawContentIntoMaskImage(MaskerData* maskerData, C
     }
 
     // Draw the content into the ImageBuffer.
-    auto children = childrenOfType<SVGElement>(maskElement());
-    for (auto it = children.begin(), end = children.end(); it != end; ++it) {
-        SVGElement& child = *it;
+    for (auto& child : childrenOfType<SVGElement>(maskElement())) {
         auto renderer = child.renderer();
         if (!renderer)
             continue;

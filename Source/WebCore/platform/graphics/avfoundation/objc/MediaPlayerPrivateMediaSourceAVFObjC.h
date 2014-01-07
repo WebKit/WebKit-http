@@ -31,9 +31,12 @@
 #include "MediaPlayerPrivate.h"
 #include "SourceBufferPrivateClient.h"
 #include <wtf/MediaTime.h>
+#include <wtf/Vector.h>
 
 OBJC_CLASS AVAsset;
+OBJC_CLASS AVSampleBufferAudioRenderer;
 OBJC_CLASS AVSampleBufferDisplayLayer;
+OBJC_CLASS AVSampleBufferRenderSynchronizer;
 
 typedef struct OpaqueCMTimebase* CMTimebaseRef;
 
@@ -52,6 +55,9 @@ public:
     void addDisplayLayer(AVSampleBufferDisplayLayer*);
     void removeDisplayLayer(AVSampleBufferDisplayLayer*);
 
+    void addAudioRenderer(AVSampleBufferAudioRenderer*);
+    void removeAudioRenderer(AVSampleBufferAudioRenderer*);
+
     virtual MediaPlayer::NetworkState networkState() const OVERRIDE;
     virtual MediaPlayer::ReadyState readyState() const OVERRIDE;
     void setReadyState(MediaPlayer::ReadyState);
@@ -60,6 +66,9 @@ public:
     void seekInternal(double, double, double);
     void setLoadingProgresssed(bool flag) { m_loadingProgressed = flag; }
     void setHasAvailableVideoFrame(bool flag) { m_hasAvailableVideoFrame = flag; }
+    void durationChanged();
+
+    void effectiveRateChanged();
 
 private:
     // MediaPlayerPrivateInterface
@@ -80,6 +89,10 @@ private:
     void pauseInternal();
 
     virtual bool paused() const OVERRIDE;
+
+    virtual void setVolume(float volume) OVERRIDE;
+    virtual bool supportsMuting() const OVERRIDE { return true; }
+    virtual void setMuted(bool) OVERRIDE;
 
     virtual bool supportsScanning() const OVERRIDE;
 
@@ -136,7 +149,6 @@ private:
 
     void ensureLayer();
     void destroyLayer();
-    void durationChanged();
 
     // MediaPlayer Factory Methods
     static PassOwnPtr<MediaPlayerPrivateInterface> create(MediaPlayer*);
@@ -151,9 +163,13 @@ private:
     RefPtr<MediaSourcePrivateAVFObjC> m_mediaSourcePrivate;
     RetainPtr<AVAsset> m_asset;
     RetainPtr<AVSampleBufferDisplayLayer> m_sampleBufferDisplayLayer;
-    std::unique_ptr<PlatformClockCM> m_clock;
+    Vector<RetainPtr<AVSampleBufferAudioRenderer>> m_sampleBufferAudioRenderers;
+    RetainPtr<AVSampleBufferRenderSynchronizer> m_synchronizer;
+    RetainPtr<id> m_timeJumpedObserver;
     MediaPlayer::NetworkState m_networkState;
     MediaPlayer::ReadyState m_readyState;
+    double m_rate;
+    bool m_playing;
     bool m_seeking;
     mutable bool m_loadingProgressed;
     bool m_hasAvailableVideoFrame;

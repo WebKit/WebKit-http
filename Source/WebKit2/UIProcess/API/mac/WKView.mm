@@ -49,6 +49,7 @@
 #import "TextChecker.h"
 #import "TextCheckerState.h"
 #import "TiledCoreAnimationDrawingAreaProxy.h"
+#import "ViewGestureController.h"
 #import "WKAPICast.h"
 #import "WKFullScreenWindowController.h"
 #import "WKPrintingView.h"
@@ -95,16 +96,6 @@
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKBrowsingContextGroupPrivate.h"
 #import "WKProcessGroupPrivate.h"
-
-inline bool isWKContentAnchorRight(WKContentAnchor x)
-{
-    return x == WKContentAnchorTopRight || x == WKContentAnchorBottomRight;
-}
-
-inline bool isWKContentAnchorBottom(WKContentAnchor x)
-{
-    return x == WKContentAnchorBottomLeft || x == WKContentAnchorBottomRight;
-}
 
 @interface NSApplication (WKNSApplicationDetails)
 - (void)speakString:(NSString *)string;
@@ -218,19 +209,15 @@ struct WKViewInterpretKeyEventsParameters {
     RefPtr<WebCore::Image> _promisedImage;
     String _promisedFilename;
     String _promisedURL;
-
-    // The frame origin can be seen as a position within the layer of painted page content where the
-    // top left corner of the frame will be positioned. This is usually 0,0 - but if the content
-    // anchor is set to a corner other than the top left, the origin will implicitly move as the
-    // the frame size is modified.
-    NSPoint _frameOrigin;
-    WKContentAnchor _contentAnchor;
     
     NSSize _intrinsicContentSize;
     BOOL _clipsToVisibleRect;
     NSRect _contentPreparationRect;
     BOOL _useContentPreparationRectForVisibleRect;
     BOOL _windowOcclusionDetectionEnabled;
+
+    std::unique_ptr<ViewGestureController> _gestureController;
+    BOOL _allowsMagnification;
 }
 
 @end
@@ -411,35 +398,9 @@ struct WKViewInterpretKeyEventsParameters {
     if (!NSEqualSizes(size, [self frame].size))
         _data->_windowHasValidBackingStore = NO;
 
-    bool frameSizeUpdatesEnabled = ![self frameSizeUpdatesDisabled];
-    NSPoint newFrameOrigin;
-
-    // If frame updates are enabled we'll synchronously wait on the repaint, so we can reposition
-    // the layers back to the origin. If frame updates are disabled then shift the layer position
-    // so that the currently painted contents remain anchored appropriately.
-    if (frameSizeUpdatesEnabled)
-        newFrameOrigin = NSZeroPoint;
-    else {
-        newFrameOrigin = _data->_frameOrigin;
-        if (isWKContentAnchorRight(_data->_contentAnchor))
-            newFrameOrigin.x += [self frame].size.width - size.width;
-        if (isWKContentAnchorBottom(_data->_contentAnchor))
-            newFrameOrigin.y += [self frame].size.height - size.height;
-    }
-    
-    // If the frame origin has changed then update the layer position.
-    if (_data->_layerHostingView && !NSEqualPoints(_data->_frameOrigin, newFrameOrigin)) {
-        _data->_frameOrigin = newFrameOrigin;
-        CALayer *rootLayer = [[_data->_layerHostingView layer].sublayers objectAtIndex:0];
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        rootLayer.position = CGPointMake(-newFrameOrigin.x, -newFrameOrigin.y);
-        [CATransaction commit];
-    }
-
     [super setFrameSize:size];
 
-    if (frameSizeUpdatesEnabled) {
+    if (![self frameSizeUpdatesDisabled]) {
         if (_data->_clipsToVisibleRect)
             [self _updateViewExposedRect];
         [self _setDrawingAreaSize:size];
@@ -2197,13 +2158,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     if (!_data->_page->drawingArea())
         return;
     
-    NSSize layerOffset = NSMakeSize(_data->_frameOrigin.x, _data->_frameOrigin.y);
-    if (isWKContentAnchorRight(_data->_contentAnchor))
-        layerOffset.width += [self frame].size.width - size.width;
-    if (isWKContentAnchorBottom(_data->_contentAnchor))
-        layerOffset.height += [self frame].size.height - size.height;
-
-    _data->_page->drawingArea()->setSize(IntSize(size), IntSize(layerOffset), IntSize(_data->_resizeScrollOffset));
+    _data->_page->drawingArea()->setSize(IntSize(size), IntSize(0, 0), IntSize(_data->_resizeScrollOffset));
     _data->_resizeScrollOffset = NSZeroSize;
 }
 
@@ -2512,7 +2467,6 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     _data->_findIndicatorWindow->setFindIndicator(findIndicator, fadeOut, animate);
 }
 
-
 - (void)_setAcceleratedCompositingModeRootLayer:(CALayer *)rootLayer
 {
     [CATransaction begin];
@@ -2545,7 +2499,6 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
             [_data->_layerHostingView setWantsLayer:NO];
 
             _data->_layerHostingView = nullptr;
-            _data->_frameOrigin = NSZeroPoint;
         }
     }
 
@@ -2921,8 +2874,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_intrinsicContentSize = NSMakeSize(NSViewNoInstrinsicMetric, NSViewNoInstrinsicMetric);
 
     _data->_needsViewFrameInWindowCoordinates = _data->_page->pageGroup().preferences()->pluginsEnabled();
-    _data->_frameOrigin = NSZeroPoint;
-    _data->_contentAnchor = WKContentAnchorTopLeft;
     
     [self _registerDraggedTypes];
 
@@ -3204,16 +3155,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_windowOcclusionDetectionEnabled = flag;
 }
 
-- (void)setContentAnchor:(WKContentAnchor)contentAnchor
-{
-    _data->_contentAnchor = contentAnchor;
-}
-
-- (WKContentAnchor)contentAnchor
-{
-    return _data->_contentAnchor;
-}
-
 // This method forces a drawing area geometry update, even if frame size updates are disabled.
 // The updated is performed asynchronously; we don't wait for the geometry update before returning.
 // The area drawn need not match the current frame size - if it differs it will be anchored to the
@@ -3234,7 +3175,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (void)waitForAsyncDrawingAreaSizeUpdate
 {
     if (DrawingAreaProxy* drawingArea = _data->_page->drawingArea()) {
-        // If a geometry update is still pending then the action of recieving the
+        // If a geometry update is still pending then the action of receiving the
         // first geometry update may result in another update being scheduled -
         // we should wait for this to complete too.
         drawingArea->waitForPossibleGeometryUpdate(DrawingAreaProxy::didUpdateBackingStoreStateTimeout * 0.5);
@@ -3248,6 +3189,65 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         return drawingArea->type() == DrawingAreaTypeRemoteLayerTree;
 
     return NO;
+}
+
+- (void)_ensureGestureController
+{
+    if (_data->_gestureController)
+        return;
+
+    _data->_gestureController = std::make_unique<ViewGestureController>(*_data->_page);
+}
+
+- (void)setAllowsMagnification:(BOOL)allowsMagnification
+{
+    _data->_allowsMagnification = allowsMagnification;
+}
+
+- (BOOL)allowsMagnification
+{
+    return _data->_allowsMagnification;
+}
+
+- (void)magnifyWithEvent:(NSEvent *)event
+{
+    if (!_data->_allowsMagnification) {
+        [super magnifyWithEvent:event];
+        return;
+    }
+
+    [self _ensureGestureController];
+
+    _data->_gestureController->handleMagnificationGesture(event.magnification, [self convertPoint:event.locationInWindow fromView:nil]);
+}
+
+-(void)endGestureWithEvent:(NSEvent *)event
+{
+    if (!_data->_gestureController) {
+        [super endGestureWithEvent:event];
+        return;
+    }
+
+    _data->_gestureController->endActiveGesture();
+}
+
+- (void)setMagnification:(double)magnification centeredAtPoint:(NSPoint)point
+{
+    _data->_page->scalePage(magnification, roundedIntPoint(point));
+}
+
+- (void)setMagnification:(double)magnification
+{
+    FloatPoint viewCenter(NSMidX([self bounds]), NSMidY([self bounds]));
+    _data->_page->scalePage(magnification, roundedIntPoint(viewCenter));
+}
+
+- (double)magnification
+{
+    if (_data->_gestureController)
+        return _data->_gestureController->magnification();
+
+    return _data->_page->pageScaleFactor();
 }
 
 @end

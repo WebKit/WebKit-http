@@ -141,15 +141,15 @@ static RenderLayer::UpdateLayerPositionsFlags updateLayerPositionFlags(RenderLay
     return flags;
 }
 
-Pagination::Mode paginationModeForRenderStyle(RenderStyle* style)
+Pagination::Mode paginationModeForRenderStyle(const RenderStyle& style)
 {
-    EOverflow overflow = style->overflowY();
+    EOverflow overflow = style.overflowY();
     if (overflow != OPAGEDX && overflow != OPAGEDY)
         return Pagination::Unpaginated;
 
-    bool isHorizontalWritingMode = style->isHorizontalWritingMode();
-    TextDirection textDirection = style->direction();
-    WritingMode writingMode = style->writingMode();
+    bool isHorizontalWritingMode = style.isHorizontalWritingMode();
+    TextDirection textDirection = style.direction();
+    WritingMode writingMode = style.writingMode();
 
     // paged-x always corresponds to LeftToRightPaginated or RightToLeftPaginated. If the WritingMode
     // is horizontal, then we use TextDirection to choose between those options. If the WritingMode
@@ -199,7 +199,6 @@ FrameView::FrameView(Frame& frame)
     , m_milestonesPendingPaint(0)
     , m_visualUpdatesAllowedByClient(true)
     , m_scrollPinningBehavior(DoNotPin)
-    , m_scheduledEventSuppressionCount(0)
 {
     init();
 
@@ -226,11 +225,8 @@ PassRefPtr<FrameView> FrameView::create(Frame& frame, const IntSize& initialSize
 
 FrameView::~FrameView()
 {
-    if (m_postLayoutTasksTimer.isActive()) {
+    if (m_postLayoutTasksTimer.isActive())
         m_postLayoutTasksTimer.stop();
-        m_scheduledEventSuppressionCount = 0;
-        m_scheduledEvents.clear();
-    }
     
     removeFromAXObjectCache();
     resetScrollbars();
@@ -243,7 +239,6 @@ FrameView::~FrameView()
     setHasVerticalScrollbar(false);
     
     ASSERT(!m_scrollCorner);
-    ASSERT(m_scheduledEvents.isEmpty());
 
     ASSERT(frame().view() != this || !frame().contentRenderer());
 }
@@ -673,7 +668,7 @@ void FrameView::applyPaginationToViewport()
 
     EOverflow overflowY = documentOrBodyRenderer->style().overflowY();
     if (overflowY == OPAGEDX || overflowY == OPAGEDY) {
-        pagination.mode = WebCore::paginationModeForRenderStyle(&documentOrBodyRenderer->style());
+        pagination.mode = WebCore::paginationModeForRenderStyle(documentOrBodyRenderer->style());
         pagination.gap = static_cast<unsigned>(documentOrBodyRenderer->style().columnGap());
     }
 
@@ -1241,8 +1236,6 @@ void FrameView::layout(bool allowSubtree)
 
         layer = root->enclosingLayer();
 
-        pauseScheduledEvents();
-
         bool disableLayoutState = false;
         if (subtree) {
             disableLayoutState = root->view().shouldDisableLayoutStateForSubtree(root);
@@ -1327,9 +1320,7 @@ void FrameView::layout(bool allowSubtree)
     if (document.hasListenerType(Document::OVERFLOWCHANGED_LISTENER))
         updateOverflowStatus(layoutWidth() < contentsWidth(), layoutHeight() < contentsHeight());
 
-    if (m_postLayoutTasksTimer.isActive())
-        resumeScheduledEvents();
-    else {
+    if (!m_postLayoutTasksTimer.isActive()) {
         if (!m_inSynchronousPostLayout) {
             if (inChildFrameLayoutWithFrameFlattening)
                 updateWidgetPositions();
@@ -1345,10 +1336,8 @@ void FrameView::layout(bool allowSubtree)
             // can make us need to update again, and we can get stuck in a nasty cycle unless
             // we call it through the timer here.
             m_postLayoutTasksTimer.startOneShot(0);
-            if (needsLayout()) {
-                pauseScheduledEvents();
+            if (needsLayout())
                 layout();
-            }
         }
     }
 
@@ -1645,8 +1634,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
 
     // Get the rects of the fixed objects visible in the rectToScroll
     Region regionToUpdate;
-    for (auto it = m_viewportConstrainedObjects->begin(), end = m_viewportConstrainedObjects->end(); it != end; ++it) {
-        RenderElement* renderer = *it;
+    for (auto& renderer : *m_viewportConstrainedObjects) {
         if (!renderer->style().hasViewportConstrainedPosition())
             continue;
 #if USE(ACCELERATED_COMPOSITING)
@@ -1745,8 +1733,8 @@ void FrameView::repaintSlowRepaintObjects()
 
     // Renderers with fixed backgrounds may be in compositing layers, so we need to explicitly
     // repaint them after scrolling.
-    for (auto it = m_slowRepaintObjects->begin(), end = m_slowRepaintObjects->end(); it != end; ++it)
-        (*it)->repaint();
+    for (auto& renderer : *m_slowRepaintObjects)
+        renderer->repaint();
 }
 
 // Note that this gets called at painting time.
@@ -1945,8 +1933,8 @@ void FrameView::setViewportConstrainedObjectsNeedLayout()
     if (!hasViewportConstrainedObjects())
         return;
 
-    for (auto it = m_viewportConstrainedObjects->begin(), end = m_viewportConstrainedObjects->end(); it != end; ++it)
-        (*it)->setNeedsLayout();
+    for (auto& renderer : *m_viewportConstrainedObjects)
+        renderer->setNeedsLayout();
 }
 
 void FrameView::scrollPositionChangedViaPlatformWidget()
@@ -2563,42 +2551,6 @@ bool FrameView::shouldUpdate(bool immediateRequested) const
     return true;
 }
 
-struct FrameView::ScheduledEvent {
-    ScheduledEvent(PassRefPtr<Event> e, PassRefPtr<Node> t) : event(e), target(t) { }
-    RefPtr<Event> event;
-    RefPtr<Node> target;
-};
-
-void FrameView::scheduleEvent(PassRefPtr<Event> event, PassRefPtr<Node> eventTarget)
-{
-    if (!m_scheduledEventSuppressionCount) {
-        eventTarget->dispatchEvent(event, IGNORE_EXCEPTION);
-        return;
-    }
-    m_scheduledEvents.append(ScheduledEvent(event, eventTarget));
-}
-
-void FrameView::pauseScheduledEvents()
-{
-    ++m_scheduledEventSuppressionCount;
-}
-
-void FrameView::resumeScheduledEvents()
-{
-    ASSERT(m_scheduledEventSuppressionCount);
-    --m_scheduledEventSuppressionCount;
-    if (m_scheduledEventSuppressionCount)
-        return;
-
-    Vector<ScheduledEvent> eventsToDispatch = std::move(m_scheduledEvents);
-    for (auto it = eventsToDispatch.begin(), end = eventsToDispatch.end(); it != end; ++it) {
-        ScheduledEvent& scheduledEvent = *it;
-        if (!scheduledEvent.target->inDocument())
-            continue;
-        scheduledEvent.target->dispatchEvent(scheduledEvent.event.release(), IGNORE_EXCEPTION);
-    }
-}
-
 void FrameView::scrollToAnchor()
 {
     RefPtr<Node> anchorNode = m_maintainScrollPositionAnchor;
@@ -2765,8 +2717,6 @@ void FrameView::performPostLayoutTasks()
 #endif
 
     scrollToAnchor();
-
-    resumeScheduledEvents();
 
     sendResizeEventIfNeeded();
 }
@@ -2957,9 +2907,12 @@ void FrameView::updateOverflowStatus(bool horizontalOverflow, bool verticalOverf
     if (horizontalOverflowChanged || verticalOverflowChanged) {
         m_horizontalOverflow = horizontalOverflow;
         m_verticalOverflow = verticalOverflow;
-        
-        scheduleEvent(OverflowEvent::create(horizontalOverflowChanged, horizontalOverflow,
-            verticalOverflowChanged, verticalOverflow), m_viewportRenderer->element());
+
+        RefPtr<OverflowEvent> overflowEvent = OverflowEvent::create(horizontalOverflowChanged, horizontalOverflow,
+            verticalOverflowChanged, verticalOverflow);
+        overflowEvent->setTarget(m_viewportRenderer->element());
+
+        frame().document()->enqueueOverflowEvent(overflowEvent.release());
     }
     
 }
@@ -3168,10 +3121,8 @@ void FrameView::notifyPageThatContentAreaWillPaint() const
     if (!m_scrollableAreas)
         return;
 
-    for (HashSet<ScrollableArea*>::const_iterator it = m_scrollableAreas->begin(), end = m_scrollableAreas->end(); it != end; ++it) {
-        ScrollableArea* scrollableArea = *it;
+    for (auto& scrollableArea : *m_scrollableAreas)
         scrollableArea->contentAreaWillPaint();
-    }
 }
 
 bool FrameView::scrollAnimatorEnabled() const
@@ -3318,14 +3269,12 @@ Color FrameView::documentBackgroundColor() const
 
 bool FrameView::hasCustomScrollbars() const
 {
-    for (auto it = children().begin(), end = children().end(); it != end; ++it) {
-        Widget* widget = it->get();
+    for (auto& widget : children()) {
         if (widget->isFrameView()) {
-            if (toFrameView(widget)->hasCustomScrollbars())
+            if (toFrameView(*widget).hasCustomScrollbars())
                 return true;
         } else if (widget->isScrollbar()) {
-            Scrollbar* scrollbar = static_cast<Scrollbar*>(widget);
-            if (scrollbar->isCustomScrollbar())
+            if (toScrollbar(*widget).isCustomScrollbar())
                 return true;
         }
     }
@@ -3404,7 +3353,7 @@ void FrameView::updateControlTints()
         return;
 
     RenderView* renderView = this->renderView();
-    if ((renderView && renderView->theme()->supportsControlTints()) || hasCustomScrollbars())
+    if ((renderView && renderView->theme().supportsControlTints()) || hasCustomScrollbars())
         paintControlTints();
 }
 
@@ -3631,9 +3580,9 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     // and thus mutates the children() set.
     Vector<Ref<FrameView>, 16> childViews;
     childViews.reserveInitialCapacity(children().size());
-    for (auto it = children().begin(), end = children().end(); it != end; ++it) {
-        if (it->get()->isFrameView())
-            childViews.uncheckedAppend(*toFrameView(it->get()));
+    for (auto& widget : children()) {
+        if (widget->isFrameView())
+            childViews.uncheckedAppend(toFrameView(*widget));
     }
 
     for (unsigned i = 0; i < childViews.size(); ++i)

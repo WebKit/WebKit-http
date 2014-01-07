@@ -105,7 +105,7 @@ void RenderSVGContainer::removeChild(RenderObject& child)
 
 bool RenderSVGContainer::selfWillPaint()
 {
-    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(this);
+    SVGResources* resources = SVGResourcesCache::cachedResourcesForRenderObject(*this);
     return resources && resources->filter();
 }
 
@@ -140,9 +140,8 @@ void RenderSVGContainer::paint(PaintInfo& paintInfo, const LayoutPoint&)
 
         if (continueRendering) {
             childPaintInfo.updateSubtreePaintRootForChildren(this);
-            auto children = childrenOfType<RenderElement>(*this);
-            for (auto child = children.begin(), end = children.end(); child != end; ++child)
-                child->paint(childPaintInfo, IntPoint());
+            for (auto& child : childrenOfType<RenderElement>(*this))
+                child.paint(childPaintInfo, IntPoint());
         }
     }
     

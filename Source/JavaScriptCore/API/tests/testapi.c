@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "JavaScriptCore.h"
@@ -41,22 +41,6 @@
 
 #if OS(WINDOWS)
 #include <windows.h>
-#endif
-
-#if COMPILER(MSVC)
-
-#if _MSC_VER < 1800
-#include <wtf/MathExtras.h>
-
-static double nan(const char*)
-{
-    return std::numeric_limits<double>::quiet_NaN();
-}
-
-using std::isinf;
-using std::isnan;
-#endif
-
 #endif
 
 #if JSC_OBJC_API_ENABLED
@@ -1083,6 +1067,34 @@ static bool valueToObjectExceptionTest()
     return true;
 }
 
+static bool globalContextNameTest()
+{
+    bool result = true;
+    JSGlobalContextRef context = JSGlobalContextCreate(0);
+
+    JSStringRef str = JSGlobalContextCopyName(context);
+    result &= assertTrue(!str, "Default context name is NULL");
+
+    JSStringRef name1 = JSStringCreateWithUTF8CString("name1");
+    JSStringRef name2 = JSStringCreateWithUTF8CString("name2");
+
+    JSGlobalContextSetName(context, name1);
+    JSStringRef fetchName1 = JSGlobalContextCopyName(context);
+    JSGlobalContextSetName(context, name2);
+    JSStringRef fetchName2 = JSGlobalContextCopyName(context);
+
+    result &= assertTrue(JSStringIsEqual(name1, fetchName1), "Unexpected Context name");
+    result &= assertTrue(JSStringIsEqual(name2, fetchName2), "Unexpected Context name");
+    result &= assertTrue(!JSStringIsEqual(fetchName1, fetchName2), "Unexpected Context name");
+
+    JSStringRelease(name1);
+    JSStringRelease(name2);
+    JSStringRelease(fetchName1);
+    JSStringRelease(fetchName2);
+
+    return result;
+}
+
 static void checkConstnessInJSObjectNames()
 {
     JSStaticFunction fun;
@@ -2017,6 +2029,9 @@ int main(int argc, char* argv[])
     }
     if (valueToObjectExceptionTest())
         printf("PASS: throwException did not crash when handling an error with appendMessageToError set and no codeBlock available.\n");
+
+    if (globalContextNameTest())
+        printf("PASS: global context name behaves as expected.\n");
 
     if (failed) {
         printf("FAIL: Some tests failed.\n");

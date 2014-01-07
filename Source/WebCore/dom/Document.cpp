@@ -172,6 +172,23 @@
 #include "TouchList.h"
 #endif
 
+#if PLATFORM(IOS)
+#include "CSSFontSelector.h"
+#include "DeviceMotionClientIOS.h"
+#include "DeviceMotionController.h"
+#include "DeviceOrientationClientIOS.h"
+#include "DeviceOrientationController.h"
+#include "Geolocation.h"
+#include "Navigator.h"
+#include "NavigatorGeolocation.h"
+#include "WKContentObservation.h"
+#include "WebCoreSystemInterface.h"
+#endif
+
+#if ENABLE(IOS_GESTURE_EVENTS)
+#include "GestureEvent.h"
+#endif
+
 #if ENABLE(MATHML)
 #include "MathMLElement.h"
 #include "MathMLElementFactory.h"
@@ -213,11 +230,6 @@ using namespace HTMLNames;
 // #define INSTRUMENT_LAYOUT_SCHEDULING 1
 
 static const unsigned cMaxWriteRecursionDepth = 21;
-
-// This amount of time must have elapsed before we will even consider scheduling a layout without a delay.
-// FIXME: For faster machines this value can really be lowered to 200.  250 is adequate, but a little high
-// for dual G5s. :)
-static const int cLayoutScheduleThreshold = 250;
 
 // DOM Level 2 says (letters added):
 //
@@ -378,9 +390,14 @@ bool TextAutoSizingTraits::isDeletedValue(const TextAutoSizingKey& value)
 }
 #endif
 
-Document::Document(Frame* frame, const URL& url, unsigned documentClasses)
+Document::Document(Frame* frame, const URL& url, unsigned documentClasses, bool isSynthesized)
     : ContainerNode(nullptr, CreateDocument)
     , TreeScope(this)
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+    , m_handlingTouchEvent(false)
+    , m_touchEventRegionsDirty(false)
+    , m_touchEventsChangedTimer(this, &Document::touchEventsChangedTimerFired)
+#endif
     , m_styleResolverThrowawayTimer(this, &Document::styleResolverThrowawayTimerFired, timeBeforeThrowingAwayStyleResolverAfterLastUseInSeconds)
     , m_didCalculateStyleResolver(false)
     , m_hasNodesWithPlaceholderStyle(false)
@@ -436,6 +453,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses)
     , m_inPageCache(false)
     , m_accessKeyMapValid(false)
     , m_documentClasses(documentClasses)
+    , m_isSynthesized(isSynthesized)
     , m_isViewSource(false)
     , m_sawElementsInKnownNamespaces(false)
     , m_isSrcdocDocument(false)
@@ -458,6 +476,15 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses)
     , m_writeRecursionDepth(0)
     , m_wheelEventHandlerCount(0)
     , m_lastHandledUserGestureTimestamp(0)
+#if PLATFORM(IOS)
+#if ENABLE(DEVICE_ORIENTATION)
+    , m_deviceMotionClient(DeviceMotionClientIOS::create())
+    , m_deviceMotionController(DeviceMotionController::create(m_deviceMotionClient.get()))
+    , m_deviceOrientationClient(DeviceOrientationClientIOS::create())
+    , m_deviceOrientationController(DeviceOrientationController::create(frame ? frame->page() : nullptr, m_deviceOrientationClient.get()))
+#endif
+    , m_isTelephoneNumberParsingAllowed(true)
+#endif
     , m_pendingTasksTimer(this, &Document::pendingTasksTimerFired)
     , m_scheduledTasksAreSuspended(false)
     , m_visualUpdatesAllowed(true)
@@ -535,6 +562,11 @@ Document::~Document()
     ASSERT(!m_styleRecalcTimer.isActive());
     ASSERT(!m_parentTreeScope);
 
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
+    m_deviceMotionClient->deviceMotionControllerDestroyed();
+    m_deviceOrientationClient->deviceOrientationControllerDestroyed();
+#endif
+    
 #if ENABLE(TEMPLATE_ELEMENT)
     if (m_templateDocument)
         m_templateDocument->setTemplateDocumentHost(nullptr); // balanced in templateDocument().
@@ -656,13 +688,12 @@ void Document::buildAccessKeyMap(TreeScope* scope)
 {
     ASSERT(scope);
     ContainerNode* rootNode = scope->rootNode();
-    auto descendant = elementDescendants(*rootNode);
-    for (auto element = descendant.begin(), end = descendant.end(); element != end; ++element) {
-        const AtomicString& accessKey = element->fastGetAttribute(accesskeyAttr);
+    for (auto& element : elementDescendants(*rootNode)) {
+        const AtomicString& accessKey = element.fastGetAttribute(accesskeyAttr);
         if (!accessKey.isEmpty())
-            m_elementsByAccessKey.set(accessKey.impl(), &*element);
+            m_elementsByAccessKey.set(accessKey.impl(), &element);
 
-        if (ShadowRoot* root = element->shadowRoot())
+        if (ShadowRoot* root = element.shadowRoot())
             buildAccessKeyMap(root);
     }
 }
@@ -1714,7 +1745,6 @@ void Document::recalcStyle(Style::Change change)
         PostAttachCallbackDisabler disabler(*this);
         WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
 
-        frameView.pauseScheduledEvents();
         frameView.beginDeferredRepaints();
 
         if (m_pendingStyleRecalcShouldForce)
@@ -1741,7 +1771,6 @@ void Document::recalcStyle(Style::Change change)
         if (m_styleResolver)
             m_styleSheetCollection.resetCSSFeatureFlags();
 
-        frameView.resumeScheduledEvents();
         frameView.endDeferredRepaints();
     }
 
@@ -1979,6 +2008,17 @@ void Document::didBecomeCurrentDocumentInFrame()
         page()->chrome().client().needTouchEvents(true);
 #endif
 
+#if PLATFORM(IOS)
+    // Ensure that document scheduled task state matches frame timer state. It can be out of sync
+    // if timers state changed while the document was not in the frame (possibly in page cache,
+    // or simply newly created).
+    // FIXME: How does this interact with cross-platform code below?
+    if (m_frame->timersPaused())
+        suspendScheduledTasks(ActiveDOMObject::DocumentWillBePaused);
+    else
+        resumeScheduledTasks(ActiveDOMObject::DocumentWillBePaused);
+#endif
+
     if (m_frame->activeDOMObjectsAndAnimationsSuspended()) {
         suspendScriptedAnimationControllerCallbacks();
         m_frame->animation().suspendAnimationsForDocument(this);
@@ -2035,6 +2075,10 @@ void Document::destroyRenderTree()
 
 void Document::prepareForDestruction()
 {
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+    clearTouchEventListeners();
+#endif
+
     disconnectDescendantFrames();
     if (m_domWindow && m_frame)
         m_domWindow->willDetachDocumentFromFrame();
@@ -2079,18 +2123,54 @@ void Document::removeAllEventListeners()
 
     if (m_domWindow)
         m_domWindow->removeAllEventListeners();
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
+    clearTouchEventListeners();
+#endif
     for (Node* node = firstChild(); node; node = NodeTraversal::next(node))
         node->removeAllEventListeners();
+}
+
+void Document::platformSuspendOrStopActiveDOMObjects()
+{
+#if PLATFORM(IOS)
+#if ENABLE(DEVICE_ORIENTATION)
+    if (m_deviceMotionController)
+        m_deviceMotionController->suspendUpdates();
+    if (m_deviceOrientationController)
+        m_deviceOrientationController->suspendUpdates();
+#endif
+
+    if (WebThreadCountOfObservedContentModifiers() > 0) {
+        Frame* frame = this->frame();
+        if (Page* page = frame ? frame->page() : nullptr)
+            page->chrome().client().clearContentChangeObservers(frame);
+    }
+#endif
 }
 
 void Document::suspendActiveDOMObjects(ActiveDOMObject::ReasonForSuspension why)
 {
     ScriptExecutionContext::suspendActiveDOMObjects(why);
+    platformSuspendOrStopActiveDOMObjects();
 }
 
 void Document::resumeActiveDOMObjects(ActiveDOMObject::ReasonForSuspension why)
 {
     ScriptExecutionContext::resumeActiveDOMObjects(why);
+
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
+    if (m_deviceMotionController)
+        m_deviceMotionController->resumeUpdates();
+    if (m_deviceOrientationController)
+        m_deviceOrientationController->resumeUpdates();
+#endif
+    // FIXME: For iOS, do we need to add content change observers that were removed in Document::suspendActiveDOMObjects()?
+}
+
+void Document::stopActiveDOMObjects()
+{
+    ScriptExecutionContext::stopActiveDOMObjects();
+    platformSuspendOrStopActiveDOMObjects();
 }
 
 void Document::clearAXObjectCache()
@@ -2368,7 +2448,7 @@ void Document::implicitClose()
     // fires. This will improve onload scores, and other browsers do it.
     // If they wanna cheat, we can too. -dwh
 
-    if (frame()->navigationScheduler().locationChangePending() && elapsedTime() < cLayoutScheduleThreshold) {
+    if (frame()->navigationScheduler().locationChangePending() && elapsedTime() < settings()->layoutInterval()) {
         // Just bail out. Before or during the onload we were shifted to another page.
         // The old i-Bench suite does this. When this happens don't bother painting or laying out.        
         m_processingLoadEvent = false;
@@ -2454,10 +2534,10 @@ int Document::minimumLayoutDelay()
         return 0;
     
     int elapsed = elapsedTime();
-    m_overMinimumLayoutThreshold = elapsed > cLayoutScheduleThreshold;
-    
+    m_overMinimumLayoutThreshold = elapsed > settings()->layoutInterval();
+
     // We'll want to schedule the timer to fire at the minimum layout threshold.
-    return std::max(0, cLayoutScheduleThreshold - elapsed);
+    return std::max(0, settings()->layoutInterval() - elapsed);
 }
 
 int Document::elapsedTime() const
@@ -2579,9 +2659,8 @@ void Document::updateBaseURL()
     if (!equalIgnoringFragmentIdentifier(oldBaseURL, m_baseURL)) {
         // Base URL change changes any relative visited links.
         // FIXME: There are other URLs in the tree that would need to be re-evaluated on dynamic base URL change. Style should be invalidated too.
-        auto anchorDescendants = descendantsOfType<HTMLAnchorElement>(*this);
-        for (auto anchor = anchorDescendants.begin(), end = anchorDescendants.end(); anchor != end; ++anchor)
-            anchor->invalidateCachedVisitedLinkHash();
+        for (auto& anchor : descendantsOfType<HTMLAnchorElement>(*this))
+            anchor.invalidateCachedVisitedLinkHash();
     }
 }
 
@@ -2870,6 +2949,14 @@ void Document::processViewport(const String& features, ViewportArguments::Type o
     m_viewportArguments = ViewportArguments(origin);
     processArguments(features, (void*)&m_viewportArguments, &setViewportFeature);
 
+#if PLATFORM(IOS)
+    // FIXME: <rdar://problem/8955959> Investigate moving to ToT WebKit's extended Viewport Implementation
+    // Moving to ToT's implementation would mean calling findConfigurationForViewportData, which does
+    // bounds checking and determining concrete values for ValueAuto which we already do in UIKit.
+    // To maintain old behavior, we just need to update a few values, leaving Auto's for UIKit.
+    finalizeViewportArguments(m_viewportArguments);
+#endif
+
     updateViewportArguments();
 }
 
@@ -2880,8 +2967,32 @@ void Document::updateViewportArguments()
         m_didDispatchViewportPropertiesChanged = true;
 #endif
         page()->chrome().dispatchViewportPropertiesDidChange(m_viewportArguments);
+#if PLATFORM(IOS)
+        page()->chrome().didReceiveDocType(frame());
+#endif
     }
 }
+
+#if PLATFORM(IOS)
+// FIXME: Find a better place for this functionality.
+void setParserFeature(const String& key, const String& value, Document* document, void*)
+{
+    if (key == "telephone" && equalIgnoringCase(value, "no"))
+        document->setIsTelephoneNumberParsingAllowed(false);
+}
+
+void Document::processFormatDetection(const String& features)
+{
+    ASSERT(!features.isNull());
+    processArguments(features, nullptr, &setParserFeature);
+}
+
+void Document::processWebAppOrientations()
+{
+    if (Page* page = this->page())
+        page->chrome().client().webAppOrientationsUpdated();
+}
+#endif
 
 void Document::processReferrerPolicy(const String& policy)
 {
@@ -3599,6 +3710,11 @@ void Document::enqueueWindowEvent(PassRefPtr<Event> event)
 void Document::enqueueDocumentEvent(PassRefPtr<Event> event)
 {
     event->setTarget(this);
+    m_eventQueue.enqueueEvent(event);
+}
+
+void Document::enqueueOverflowEvent(PassRefPtr<Event> event)
+{
     m_eventQueue.enqueueEvent(event);
 }
 
@@ -4406,6 +4522,25 @@ void Document::styleResolverThrowawayTimerFired(DeferrableOneShotTimer<Document>
     clearStyleResolver();
 }
 
+#if PLATFORM(IOS)
+// FIXME: Find a better place for this functionality.
+bool Document::isTelephoneNumberParsingEnabled() const
+{
+    Settings* settings = this->settings();
+    return settings && settings->telephoneNumberParsingEnabled() && m_isTelephoneNumberParsingAllowed;
+}
+
+void Document::setIsTelephoneNumberParsingAllowed(bool isTelephoneNumberParsingAllowed)
+{
+    m_isTelephoneNumberParsingAllowed = isTelephoneNumberParsingAllowed;
+}
+
+bool Document::isTelephoneNumberParsingAllowed() const
+{
+    return m_isTelephoneNumberParsingAllowed;
+}
+#endif
+
 PassRefPtr<XPathExpression> Document::createExpression(const String& expression,
                                                        XPathNSResolver* resolver,
                                                        ExceptionCode& ec)
@@ -4514,6 +4649,17 @@ void Document::initSecurityContext()
     // loading URL with a fresh content security policy.
     m_cookieURL = m_url;
     enforceSandboxFlags(m_frame->loader().effectiveSandboxFlags());
+
+#if PLATFORM(IOS)
+    // On iOS we display attachments inline regardless of whether the response includes
+    // the HTTP header "Content-Disposition: attachment". So, we enforce a unique
+    // security origin for such documents. As an optimization, we don't need to parse
+    // the responde header (i.e. call ResourceResponse::isAttachment()) for a synthesized
+    // document because such documents cannot be an attachment.
+    if (!m_isSynthesized && m_frame->loader().activeDocumentLoader()->response().isAttachment())
+        enforceSandboxFlags(SandboxOrigin);
+#endif
+
     setSecurityOrigin(isSandboxed(SandboxOrigin) ? SecurityOrigin::createUnique() : SecurityOrigin::create(m_url));
     setContentSecurityPolicy(ContentSecurityPolicy::create(this));
 
@@ -4826,6 +4972,13 @@ void Document::pendingTasksTimerFired(Timer<Document>*)
 
 void Document::suspendScheduledTasks(ActiveDOMObject::ReasonForSuspension reason)
 {
+#if PLATFORM(IOS)
+    if (m_scheduledTasksAreSuspended) {
+        ASSERT(reasonForSuspendingActiveDOMObjects() == ActiveDOMObject::DocumentWillBePaused);
+        return;
+    }
+#endif
+
     ASSERT(!m_scheduledTasksAreSuspended);
 
     suspendScriptedAnimationControllerCallbacks();
@@ -4967,6 +5120,18 @@ MediaCanStartListener* Document::takeAnyMediaCanStartListener()
     m_mediaCanStartListeners.remove(slot);
     return listener;
 }
+
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
+DeviceMotionController* Document::deviceMotionController() const
+{
+    return m_deviceMotionController.get();
+}
+
+DeviceOrientationController* Document::deviceOrientationController() const
+{
+    return m_deviceOrientationController.get();
+}
+#endif
 
 #if ENABLE(FULLSCREEN_API)
 bool Document::fullScreenIsAllowedForElement(Element* element) const
@@ -5504,6 +5669,7 @@ void Document::clearScriptedAnimationController()
 }
 #endif
 
+#if !PLATFORM(IOS)
 #if ENABLE(TOUCH_EVENTS)
 PassRefPtr<Touch> Document::createTouch(DOMWindow* window, EventTarget* target, int identifier, int pageX, int pageY, int screenX, int screenY, int radiusX, int radiusY, float rotationAngle, float force, ExceptionCode&) const
 {
@@ -5515,6 +5681,7 @@ PassRefPtr<Touch> Document::createTouch(DOMWindow* window, EventTarget* target, 
     return Touch::create(frame, target, identifier, screenX, screenY, pageX, pageY, radiusX, radiusY, rotationAngle, force);
 }
 #endif
+#endif // !PLATFORM(IOS)
 
 static void wheelEventHandlerCountChanged(Document* document)
 {
@@ -5683,7 +5850,11 @@ void Document::adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(Vector<Floa
     if (frame())
         inverseFrameScale = 1 / frame()->frameScaleFactor();
 
+#if PLATFORM(IOS)
+    LayoutRect visibleContentRect = view()->actualVisibleContentRect();
+#else
     LayoutRect visibleContentRect = view()->visibleContentRect();
+#endif
     for (size_t i = 0; i < quads.size(); ++i) {
         quads[i].move(-visibleContentRect.x(), -visibleContentRect.y());
         if (zoom != 1)
@@ -5703,7 +5874,11 @@ void Document::adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(FloatRect& r
     if (frame())
         inverseFrameScale = 1 / frame()->frameScaleFactor();
 
+#if PLATFORM(IOS)
+    LayoutRect visibleContentRect = view()->actualVisibleContentRect();
+#else
     LayoutRect visibleContentRect = view()->visibleContentRect();
+#endif
     rect.move(-visibleContentRect.x(), -visibleContentRect.y());
     if (zoom != 1)
         rect.scale(1 / zoom);

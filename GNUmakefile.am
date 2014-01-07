@@ -41,12 +41,14 @@ GENSOURCES_WEBKITDOM := $(top_builddir)/DerivedSources/webkitdom
 GENSOURCES_PLATFORM := $(top_builddir)/DerivedSources/Platform
 GENPROGRAMS := $(top_builddir)/Programs
 GENSOURCES_INSPECTOR := $(GENPROGRAMS)/resources/inspector
+JavaScriptCore := $(srcdir)/Source/JavaScriptCore
 WebCore := $(srcdir)/Source/WebCore
 WebInspectorUI := $(srcdir)/Source/WebInspectorUI
 WebKit := $(srcdir)/Source/WebKit/gtk
 WebKit2 := $(srcdir)/Source/WebKit2
 pkgconfigdir := $(libdir)/pkgconfig
 libwebkitgtkincludedir := $(prefix)/include/webkitgtk-@WEBKITGTK_API_VERSION@
+INSPECTOR_SCRIPTS_DIR := $(JavaScriptCore)/inspector/scripts
 
 # Libraries and support components
 bin_PROGRAMS :=

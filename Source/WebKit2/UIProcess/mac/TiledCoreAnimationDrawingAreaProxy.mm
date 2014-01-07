@@ -148,6 +148,16 @@ void TiledCoreAnimationDrawingAreaProxy::sendUpdateGeometry()
     m_isWaitingForDidUpdateGeometry = true;
 }
 
+void TiledCoreAnimationDrawingAreaProxy::adjustTransientZoom(double scale, FloatPoint origin)
+{
+    m_webPageProxy->process().send(Messages::DrawingArea::AdjustTransientZoom(scale, origin), m_webPageProxy->pageID());
+}
+
+void TiledCoreAnimationDrawingAreaProxy::commitTransientZoom(double scale, FloatPoint origin)
+{
+    m_webPageProxy->process().send(Messages::DrawingArea::CommitTransientZoom(scale, origin), m_webPageProxy->pageID());
+}
+
 } // namespace WebKit
 
 #endif // !PLATFORM(IOS)

@@ -983,9 +983,14 @@ def check_for_extra_new_line_at_eof(lines, error):
     """
     # The array lines() was created by adding two newlines to the
     # original file (go figure), then splitting on \n.
-    if len(lines) > 3 and not lines[-3]:
-        error(len(lines) - 2, 'whitespace/ending_newline', 5,
-              'There was more than one newline at the end of the file.')
+    # len(lines) < 3 means that the original file contain one or less lines,
+    # so there is no way to be 'more then one newline at the end'.
+    # The case when the -2. line is non-empty should addressed in the
+    # check_for_missing_new_line_at_eof so it can be ignored here.
+    if len(lines) > 3:
+        if not lines[-2] and not lines[-3]:
+            error(len(lines) - 2, 'whitespace/ending_newline', 5,
+                  'There was more than one newline at the end of the file.')
 
 
 def check_for_multiline_comments_and_strings(clean_lines, line_number, error):
@@ -1207,7 +1212,7 @@ class _EnumState(object):
         expr_all_uppercase = r'\s*[A-Z0-9_]+\s*(?:=\s*[a-zA-Z0-9]+\s*)?,?\s*$'
         expr_starts_lowercase = r'\s*[a-z]'
         expr_enum_end = r'}\s*(?:[a-zA-Z0-9]+\s*(?:=\s*[a-zA-Z0-9]+)?)?\s*;\s*'
-        expr_enum_start = r'\s*(?:enum(?:\s+[a-zA-Z0-9]+)?|ENUM_CLASS\s*\([a-zA-Z0-9]+\))\s*\{?\s*'
+        expr_enum_start = r'\s*(?:enum(?:\s+class)?(?:\s+[a-zA-Z0-9]+)?)\s*\{?\s*'
         if self.in_enum_decl:
             if match(r'\s*' + expr_enum_end + r'$', line):
                 self.in_enum_decl = False
@@ -1845,10 +1850,10 @@ def check_spacing(file_extension, clean_lines, line_number, error):
     # FIXME: It's not ok to have spaces around binary operators like .
 
     # You should always have whitespace around binary operators.
-    # Alas, we can't test <, >, <<, or >> because they're legitimately used sans spaces
-    # (a->b, vector<int> a).  The only time we can tell is a < with no >, and
+    # Alas, we can't test <, >, <<, >>, or && because they're legitimately used sans spaces
+    # (a->b, vector<int> a, Foo&& a).  The only time we can tell is a < with no >, and
     # only if it's not template params list spilling into the next line.
-    matched = search(r'[^<>=!\s](==|!=|\+=|-=|\*=|/=|/|\|=|&=|<<=|>>=|<=|>=|\|\||\||&&)[^<>=!\s]', line)
+    matched = search(r'[^<>=!\s](==|!=|\+=|-=|\*=|/=|/|\|=|&=|<<=|>>=|<=|>=|\|\||\|)[^<>=!\s]', line)
     if not matched:
         # Note that while it seems that the '<[^<]*' term in the following
         # regexp could be simplified to '<.*', which would indeed match
@@ -1919,8 +1924,8 @@ def check_spacing(file_extension, clean_lines, line_number, error):
 
     if file_extension == 'cpp':
         # C++ should have the & or * beside the type not the variable name.
-        matched = match(r'\s*\w+(?<!\breturn|\bdelete)\s+(?P<pointer_operator>\*|\&)\w+', line)
-        if matched:
+        matched = match(r'\s*(?P<pre_part>[\w\s]+)\s+(?P<pointer_operator>\*|\&)\s*\w+', line)
+        if matched and not matched.group('pre_part').startswith('return') and not matched.group('pre_part').startswith('delete'):
             error(line_number, 'whitespace/declaration', 3,
                   'Declaration has space between type name and %s in %s' % (matched.group('pointer_operator'), matched.group(0).strip()))
 
@@ -2358,14 +2363,14 @@ def check_braces(clean_lines, line_number, error):
         # ')', or ') const' and doesn't begin with 'if|for|while|switch|else'.
         # We also allow '#' for #endif and '=' for array initialization.
         previous_line = get_previous_non_blank_line(clean_lines, line_number)[0]
-        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|OVERRIDE)\s*)*\s*$', previous_line)
-             or search(r'\b(if|for|foreach|while|switch|else|NS_ENUM|ENUM_CLASS)\b', previous_line))
+        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|OVERRIDE)\s*)?(->\s*\S+)?\s*$', previous_line)
+             or search(r'\b(if|for|foreach|while|switch|else|NS_ENUM)\b', previous_line))
             and previous_line.find('#') < 0):
             error(line_number, 'whitespace/braces', 4,
                   'This { should be at the end of the previous line')
     elif (search(r'\)\s*(((const|OVERRIDE)\s*)*\s*)?{\s*$', line)
           and line.count('(') == line.count(')')
-          and not search(r'\b(if|for|foreach|while|switch|NS_ENUM|ENUM_CLASS)\b', line)
+          and not search(r'\b(if|for|foreach|while|switch|NS_ENUM)\b', line)
           and not match(r'\s+[A-Z_][A-Z_0-9]+\b', line)):
         error(line_number, 'whitespace/braces', 4,
               'Place brace on its own line for function definitions.')
@@ -2409,7 +2414,7 @@ def check_braces(clean_lines, line_number, error):
             break
     if (search(r'{.*}\s*;', line)
         and line.count('{') == line.count('}')
-        and not search(r'struct|class|enum|ENUM_CLASS|\s*=\s*{', line)):
+        and not search(r'struct|class|enum|\s*=\s*{', line)):
         error(line_number, 'readability/braces', 4,
               "You don't need a ; after a }")
 
@@ -3214,12 +3219,15 @@ def check_identifier_name_in_declaration(filename, line_number, line, file_state
     character_after_identifier_regexp = r'(?P<character_after_identifier>[[;()=,])(?!=)'
     declaration_without_type_regexp = r'\s*' + identifier_regexp + r'\s*' + maybe_bitfield_regexp + character_after_identifier_regexp
     declaration_with_type_regexp = r'\s*' + type_regexp + r'\s' + declaration_without_type_regexp
+    constructor_regexp = r'\s*([\w_]*::)*(?P<pre_part>[\w_]+)::(?P<post_part>[\w_]+)[(]'
     is_function_arguments = False
     number_of_identifiers = 0
     while True:
         # If we are seeing the first identifier or arguments of a
         # function, there should be a type name before an identifier.
-        if not number_of_identifiers or is_function_arguments:
+        constructor_check = match(constructor_regexp, line)
+        is_constructor = constructor_check and constructor_check.group('pre_part') == constructor_check.group('post_part')
+        if not is_constructor and (not number_of_identifiers or is_function_arguments):
             declaration_regexp = declaration_with_type_regexp
         else:
             declaration_regexp = declaration_without_type_regexp
