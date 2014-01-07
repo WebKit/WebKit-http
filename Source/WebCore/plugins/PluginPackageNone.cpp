@@ -28,15 +28,6 @@
 
 namespace WebCore {
 
-PassRefPtr<PluginPackage> PluginPackage::createPackage(const String& path, const time_t& lastModified)
-{
-    return 0;
-}
-
-PluginPackage::~PluginPackage()
-{
-}
-
 void PluginPackage::determineQuirks(const String&)
 {
 }
@@ -49,11 +40,6 @@ bool PluginPackage::fetchInfo()
 bool PluginPackage::load()
 {
     return false;
-}
-
-int PluginPackage::compare(const PluginPackage& compareTo) const
-{
-    return 0;
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

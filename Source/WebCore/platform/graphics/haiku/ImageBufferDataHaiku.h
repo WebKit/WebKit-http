@@ -44,7 +44,7 @@ public:
     ~ImageBufferData();
 
     BBitmap m_bitmap;
-    BView m_view;
+    BView* m_view;
     
     RefPtr<Image> m_image;
 };

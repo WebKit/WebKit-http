@@ -43,11 +43,12 @@ namespace WebCore {
 
 ImageBufferData::ImageBufferData(const IntSize& size)
     : m_bitmap(BRect(0, 0, size.width() - 1, size.height() - 1), B_RGBA32, true)
-    , m_view(m_bitmap.Bounds(), "WebKit ImageBufferData", 0, 0)
+    , m_view(new BView(m_bitmap.Bounds(), "WebKit ImageBufferData", 0, 0))
 {
     // Always keep the bitmap locked, we are the only client.
     m_bitmap.Lock();
-    m_bitmap.AddChild(&m_view);
+    ASSERT(m_bitmap.IsLocked());
+    m_bitmap.AddChild(m_view);
 
     // Fill with completely transparent color.
     memset(m_bitmap.Bits(), 0, m_bitmap.BitsLength());
@@ -55,18 +56,18 @@ ImageBufferData::ImageBufferData(const IntSize& size)
     // Since ImageBuffer is used mainly for Canvas, explicitly initialize
     // its view's graphics state with the corresponding canvas defaults
     // NOTE: keep in sync with CanvasRenderingContext2D::State
-    m_view.SetLineMode(B_BUTT_CAP, B_MITER_JOIN, 10);
-    m_view.SetDrawingMode(B_OP_ALPHA);
-    m_view.SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
+    m_view->SetLineMode(B_BUTT_CAP, B_MITER_JOIN, 10);
+    m_view->SetDrawingMode(B_OP_ALPHA);
+    m_view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
 
     m_image = StillImage::createForRendering(&m_bitmap);
 }
 
 ImageBufferData::~ImageBufferData()
 {
-    // Remove the view from the bitmap, keeping it from being free'd twice.
-    m_view.RemoveSelf();
+    m_view = NULL;
     m_bitmap.Unlock();
+        // m_bitmap owns m_view and deletes it when going out of this destructor.
 }
 
 ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, bool& success)
@@ -74,7 +75,7 @@ ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, Color
     , m_size(size)
     , m_logicalSize(size)
 {
-    m_context = adoptPtr(new GraphicsContext(&m_data.m_view));
+    m_context = adoptPtr(new GraphicsContext(m_data.m_view));
     success = true;
 }
 
@@ -84,7 +85,7 @@ ImageBuffer::~ImageBuffer()
 
 GraphicsContext* ImageBuffer::context() const
 {
-    ASSERT(m_data.m_view.Window());
+    ASSERT(m_data.m_view->Window());
 
     return m_context.get();
 }
@@ -92,18 +93,23 @@ GraphicsContext* ImageBuffer::context() const
 PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
 {
     ASSERT(context());
-    m_data.m_view.Sync();
+    m_data.m_view->Sync();
     if (copyBehavior == CopyBackingStore)
         return StillImage::create(m_data.m_bitmap);
 
     return StillImage::createForRendering(&m_data.m_bitmap);
 }
 
+BackingStoreCopy ImageBuffer::fastCopyImageMode()
+{
+    return DontCopyBackingStore;
+}
+
 void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
                        CompositeOperator op, BlendMode, bool useLowQualityScale)
 {
     ASSERT(context());
-    m_data.m_view.Sync();
+    m_data.m_view->Sync();
     if (destContext == context()) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
@@ -116,7 +122,7 @@ void ImageBuffer::drawPattern(GraphicsContext* destContext, const FloatRect& src
                               const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect)
 {
     ASSERT(context());
-    m_data.m_view.Sync();
+    m_data.m_view->Sync();
     if (destContext == context()) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
@@ -283,21 +289,21 @@ static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const Ima
 PassRefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem) const
 {
     // Make sure all asynchronous drawing has finished
-    m_data.m_view.Sync();
+    m_data.m_view->Sync();
     return getImageData(rect, m_data, m_size, false);
 }
 
 PassRefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem) const
 {
     // Make sure all asynchronous drawing has finished
-    m_data.m_view.Sync();
+    m_data.m_view->Sync();
     return getImageData(rect, m_data, m_size, true);
 }
 
 void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem)
 {
     // Make sure all asynchronous drawing has finished
-    m_data.m_view.Sync();
+    m_data.m_view->Sync();
 
     // If the source image is outside the destination image, we can return at
     // this point.

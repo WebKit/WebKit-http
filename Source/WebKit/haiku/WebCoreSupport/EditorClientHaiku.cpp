@@ -150,7 +150,7 @@ bool EditorClientHaiku::shouldChangeSelectedRange(Range* fromRange, Range* toRan
     return true;
 }
 
-bool EditorClientHaiku::shouldApplyStyle(WebCore::StylePropertySet*,
+bool EditorClientHaiku::shouldApplyStyle(WebCore::StyleProperties*,
                                       WebCore::Range*)
 {
     notImplemented();
