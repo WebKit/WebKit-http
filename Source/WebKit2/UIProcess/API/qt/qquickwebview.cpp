@@ -1063,6 +1063,11 @@ void QQuickWebViewFlickablePrivate::pageDidRequestScroll(const QPoint& pos)
         m_pageViewportController->pageDidRequestScroll(pos);
 }
 
+void QQuickWebViewFlickablePrivate::handleMouseEvent(QMouseEvent* event)
+{
+    pageEventHandler->handleInputEvent(event);
+}
+
 QQuickWebViewExperimental::QQuickWebViewExperimental(QQuickWebView *webView, QQuickWebViewPrivate* webViewPrivate)
     : QObject(webView)
     , q_ptr(webView)
