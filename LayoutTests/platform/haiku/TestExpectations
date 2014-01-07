@@ -8,6 +8,10 @@
 
 # Accessibility support. Missing "AX"/"ARIA" stuff and related support in DRT.
 Bug(Haiku) accessibility/ [ Failure ]
+
+# Flaky test ?
+accessibility/image-map-with-indirect-area-crash.html [ Pass ]
+
 accessibility/anchor-linked-anonymous-block-crash.html [ Pass ]
 accessibility/aria-activedescendant-crash.html [ Pass ]
 accessibility/aria-checkbox-sends-notification.html [ Pass ]
@@ -60,47 +64,466 @@ Bug(Haiku) animations/cross-fade-background-image.html [ ImageOnlyFailure ]
 animations/cross-fade-list-style-image.html [ Pass Failure ]
 animations/cross-fade-webkit-mask-image.html [ Pass Failure ]
 animations/cross-fade-border-image-source.html [ Pass Failure ]
+animations/missing-values-last-keyframe.html [ Pass Failure ]
 
-animations/3d/matrix-transform-type-animation.html [ Pass ]
+#animations/cross-fade-border-image.html [ Pass ]
+
 animations/3d/state-at-end-event-transform.html [ Pass ]
 animations/3d/change-transform-in-end-event.html [ Pass ]
+animations/3d/matrix-transform-type-animation.html [ Pass ]
+animations/added-while-suspended.html [ Pass ]
 animations/additive-transform-animations.html [ Pass ]
-animations/animation-shorthand.html [ Pass ]
+animations/animation-add-events-in-handler.html [ Pass ]
+animations/animation-controller-drt-api.html [ Pass ]
 animations/animation-css-rule-types.html [ Pass ]
+animations/animation-end-event-destroy-renderer.html [ Pass ]
+animations/animation-end-event-short-iterations.html [ Pass ]
 animations/animation-events-create.html [ Pass ]
+animations/animation-internals-api.html [ Pass ]
+animations/animation-internals-api-multiple-keyframes.html [ Pass ]
+animations/animation-iteration-event-destroy-renderer.html [ Pass ]
 animations/animation-on-inline-crash.html [ Pass ]
+animations/animation-shorthand.html [ Pass ]
+animations/animation-shorthand-name-order.html [ Pass ]
 animations/animation-shorthand-overriding.html [ Pass ]
+animations/animation-shorthand-removed.html [ Pass ]
 animations/animation-start-event-destroy-renderer.html [ Pass ]
+animations/animation-welcome-safari.html [ Pass ]
 animations/body-removal-crash.html [ Pass ]
 animations/computed-style.html [ Pass ]
 animations/cross-fade-webkit-mask-box-image.html [ Pass ]
 animations/empty-keyframes.html [ Pass ]
+animations/fill-mode-forwards.html [ Pass ]
+animations/fill-mode-removed.html [ Pass ]
 animations/fill-unset-properties.html [ Pass ]
 animations/import-crash.html [ Pass ]
 animations/keyframe-autoclose-brace.html [ Pass ]
 animations/keyframes-rule.html [ Pass ]
 animations/keyframe-selector-negative-percentage.html [ Pass ]
-animations/missing-values-last-keyframe.html [ Pass ]
+animations/keyframes-invalid-keys.html [ Pass ]
+animations/keyframes-iteration-count-non-integer.html [ Pass ]
+animations/matrix-anim.html [ Pass ]
 animations/missing-values-first-keyframe.html [ Pass ]
+animations/pause-crash.html [ Pass ]
 animations/opacity-transform-animation.html [ Pass ]
 animations/state-at-end-event.html [ Pass ]
+animations/suspend-resume-animation-events.html [ Pass ]
 animations/suspend-transform-animation.html [ Pass ]
+animations/transition-and-animation-1.html [ Pass ]
+animations/transition-and-animation-2.html [ Pass ]
 
 
-# Transitions - Probably the same problem as with animations.
-Bug(Haiku) transitions/ [ Failure ]
-transitions/override-transition-crash.html [ Pass ]
-transitions/transition-duration-cleared-in-transitionend-crash.html [ Pass ]
-transitions/transitions-parsing.html [ Pass ]
-transitions/move-after-transition.html [ Pass ]
-transitions/svg-text-shadow-transition.html [ Pass ]
-transitions/bad-transition-shorthand-crash.html [ Pass ]
-transitions/zero-duration-without-units.html [ Pass ]
-transitions/transition-end-event-create.html [ Pass ]
-transitions/default-timing-function.html [ Pass ]
-transitions/transition-end-event-rendering.html [ Pass ]
-transitions/inherit-other-props.html [ Pass ]
-transitions/inherit.html [ Pass ]
+# Transitions - Working now, so list failing tests explicitly.
+# Bug(Haiku) transitions/ [ Failure ]
+
+
+# Canvas - Missing or wrong compositing operations
+Bug(Haiku) canvas/philip/tests/2d.composite.canvas.destination-out.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.canvas.lighter.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.canvas.source-over.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.globalAlpha.canvas.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.globalAlpha.fill.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.globalAlpha.image.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.image.copy.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.image.destination-atop.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.image.destination-in.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.image.destination-out.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.image.destination-over.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.image.lighter.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.image.source-atop.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.image.source-in.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.image.source-out.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.image.xor.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.solid.destination-atop.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.solid.destination-in.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.solid.destination-out.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.solid.destination-over.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.solid.source-out.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.solid.xor.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.transparent.destination-atop.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.transparent.destination-in.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.transparent.destination-out.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.transparent.destination-over.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.transparent.lighter.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.transparent.source-atop.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.transparent.source-in.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.transparent.source-out.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.transparent.xor.html [ Failure ]
+
+Bug(Haiku) canvas/philip/tests/2d.composite.operation.clear.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.composite.operation.darker.html [ Failure ]
+
+# Canvas - Alpha support
+Bug(Haiku) canvas/philip/tests/2d.drawImage.alpha.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.drawImage.composite.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.drawImage.floatsource.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.drawImage.image.incomplete.omitted.html [ Failure ]
+
+# Canvas - other missing features
+canvas/philip/tests/2d.drawImage.outsidesource.html [ Failure ]
+canvas/philip/tests/2d.fillRect.shadow.html [ Failure ]
+canvas/philip/tests/2d.fillRect.transform.html [ Failure ]
+canvas/philip/tests/2d.fillStyle.parse.rgb-eof.html [ Failure ]
+canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html [ Failure ]
+canvas/philip/tests/2d.gradient.interpolate.alpha.html [ Failure ]
+canvas/philip/tests/2d.gradient.interpolate.colour.html [ Failure ]
+canvas/philip/tests/2d.gradient.interpolate.colouralpha.html [ Failure ]
+canvas/philip/tests/2d.gradient.interpolate.multiple.html [ Failure ]
+canvas/philip/tests/2d.gradient.interpolate.outside.html [ Failure ]
+canvas/philip/tests/2d.gradient.interpolate.overlap.html [ Failure ]
+canvas/philip/tests/2d.gradient.interpolate.overlap2.html [ Failure ]
+canvas/philip/tests/2d.gradient.interpolate.solid.html [ Failure ]
+canvas/philip/tests/2d.gradient.interpolate.vertical.html [ Failure ]
+canvas/philip/tests/2d.gradient.linear.transform.1.html [ Failure ]
+canvas/philip/tests/2d.gradient.linear.transform.2.html [ Failure ]
+canvas/philip/tests/2d.gradient.linear.transform.3.html [ Failure ]
+canvas/philip/tests/2d.gradient.object.crosscanvas.html [ Failure ]
+canvas/philip/tests/2d.gradient.object.current.html [ Failure ]
+canvas/philip/tests/2d.gradient.object.update.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.bottom.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.cylinder.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.front.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.shape1.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.top.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.inside1.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.inside2.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.inside3.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.outside1.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.outside2.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.outside3.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.touch2.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.transform.1.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.transform.2.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.transform.3.html [ Failure ]
+canvas/philip/tests/2d.imageData.put.dirty.rect2.html [ Failure ]
+canvas/philip/tests/2d.imageData.put.modified.html [ Failure ]
+canvas/philip/tests/2d.line.cap.butt.html [ Failure ]
+canvas/philip/tests/2d.line.cap.closed.html [ Failure ]
+canvas/philip/tests/2d.line.cap.round.html [ Failure ]
+canvas/philip/tests/2d.line.cap.square.html [ Failure ]
+canvas/philip/tests/2d.line.cross.html [ Failure ]
+canvas/philip/tests/2d.line.join.bevel.html [ Failure ]
+canvas/philip/tests/2d.line.join.miter.html [ Failure ]
+canvas/philip/tests/2d.line.join.open.html [ Failure ]
+canvas/philip/tests/2d.line.join.round.html [ Failure ]
+canvas/philip/tests/2d.line.miter.acute.html [ Failure ]
+canvas/philip/tests/2d.line.miter.exceeded.html [ Failure ]
+canvas/philip/tests/2d.line.miter.lineedge.html [ Failure ]
+canvas/philip/tests/2d.line.miter.obtuse.html [ Failure ]
+canvas/philip/tests/2d.line.miter.rightangle.html [ Failure ]
+canvas/philip/tests/2d.line.miter.within.html [ Failure ]
+canvas/philip/tests/2d.line.width.basic.html [ Failure ]
+canvas/philip/tests/2d.line.width.transformed.html [ Failure ]
+canvas/philip/tests/2d.missingargs.html [ Failure ]
+canvas/philip/tests/2d.path.arc.angle.3.html [ Failure ]
+canvas/philip/tests/2d.path.arc.angle.6.html [ Failure ]
+canvas/philip/tests/2d.path.arc.nonempty.html [ Failure ]
+canvas/philip/tests/2d.path.arc.scale.1.html [ Failure ]
+canvas/philip/tests/2d.path.arc.shape.3.html [ Failure ]
+canvas/philip/tests/2d.path.arc.twopie.2.html [ Failure ]
+canvas/philip/tests/2d.path.arcTo.collinear.2.html [ Failure ]
+canvas/philip/tests/2d.path.arcTo.collinear.3.html [ Failure ]
+canvas/philip/tests/2d.path.arcTo.scale.html [ Failure ]
+canvas/philip/tests/2d.path.arcTo.shape.curve1.html [ Failure ]
+canvas/philip/tests/2d.path.arcTo.shape.curve2.html [ Failure ]
+canvas/philip/tests/2d.path.arcTo.transformation.html [ Failure ]
+canvas/philip/tests/2d.path.clip.intersect.html [ Failure ]
+canvas/philip/tests/2d.path.clip.winding.1.html [ Failure ]
+canvas/philip/tests/2d.path.isPointInPath.edge.html [ Failure ]
+canvas/philip/tests/2d.path.quadraticCurveTo.scaled.html [ Failure ]
+canvas/philip/tests/2d.path.quadraticCurveTo.shape.html [ Failure ]
+canvas/philip/tests/2d.path.rect.selfintersect.html [ Failure ]
+canvas/philip/tests/2d.path.stroke.prune.corner.html [ Failure ]
+canvas/philip/tests/2d.path.stroke.scale1.html [ Failure ]
+canvas/philip/tests/2d.path.stroke.scale2.html [ Failure ]
+canvas/philip/tests/2d.path.stroke.skew.html [ Failure ]
+canvas/philip/tests/2d.path.transformation.changing.html [ Failure ]
+canvas/philip/tests/2d.pattern.animated.gif.html [ Failure ]
+canvas/philip/tests/2d.pattern.basic.canvas.html [ Failure ]
+canvas/philip/tests/2d.pattern.basic.image.html [ Failure ]
+canvas/philip/tests/2d.pattern.basic.nocontext.html [ Failure ]
+canvas/philip/tests/2d.pattern.crosscanvas.html [ Failure ]
+canvas/philip/tests/2d.pattern.image.broken.html [ Failure ]
+canvas/philip/tests/2d.pattern.image.incomplete.empty.html [ Failure ]
+canvas/philip/tests/2d.pattern.image.incomplete.omitted.html [ Failure ]
+canvas/philip/tests/2d.pattern.modify.canvas1.html [ Failure ]
+canvas/philip/tests/2d.pattern.modify.canvas2.html [ Failure ]
+canvas/philip/tests/2d.pattern.modify.image1.html [ Failure ]
+canvas/philip/tests/2d.pattern.modify.image2.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.norepeat.basic.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.norepeat.coord1.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.norepeat.coord2.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.orientation.canvas.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.orientation.image.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.repeat.basic.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.repeat.coord1.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.repeat.coord2.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.repeat.coord3.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.repeat.outside.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.repeatx.basic.html [ Failure ]
+canvas/philip/tests/2d.pattern.paint.repeaty.basic.html [ Failure ]
+canvas/philip/tests/2d.pattern.repeat.empty.html [ Failure ]
+canvas/philip/tests/2d.pattern.repeat.null.html [ Failure ]
+canvas/philip/tests/2d.shadow.alpha.2.html [ Failure ]
+canvas/philip/tests/2d.shadow.alpha.3.html [ Failure ]
+canvas/philip/tests/2d.shadow.alpha.4.html [ Failure ]
+canvas/philip/tests/2d.shadow.alpha.5.html [ Failure ]
+canvas/philip/tests/2d.shadow.canvas.alpha.html [ Failure ]
+canvas/philip/tests/2d.shadow.canvas.basic.html [ Failure ]
+canvas/philip/tests/2d.shadow.canvas.transparent.2.html [ Failure ]
+canvas/philip/tests/2d.shadow.clip.1.html [ Failure ]
+canvas/philip/tests/2d.shadow.clip.3.html [ Failure ]
+canvas/philip/tests/2d.shadow.enable.blur.html [ Failure ]
+canvas/philip/tests/2d.shadow.enable.x.html [ Failure ]
+canvas/philip/tests/2d.shadow.enable.y.html [ Failure ]
+canvas/philip/tests/2d.shadow.gradient.alpha.html [ Failure ]
+canvas/philip/tests/2d.shadow.gradient.basic.html [ Failure ]
+canvas/philip/tests/2d.shadow.gradient.transparent.2.html [ Failure ]
+canvas/philip/tests/2d.shadow.image.alpha.html [ Failure ]
+canvas/philip/tests/2d.shadow.image.basic.html [ Failure ]
+canvas/philip/tests/2d.shadow.image.scale.html [ Failure ]
+canvas/philip/tests/2d.shadow.image.transparent.2.html [ Failure ]
+canvas/philip/tests/2d.shadow.offset.negativeX.html [ Failure ]
+canvas/philip/tests/2d.shadow.offset.negativeY.html [ Failure ]
+canvas/philip/tests/2d.shadow.offset.positiveX.html [ Failure ]
+canvas/philip/tests/2d.shadow.offset.positiveY.html [ Failure ]
+canvas/philip/tests/2d.shadow.outside.html [ Failure ]
+canvas/philip/tests/2d.shadow.pattern.alpha.html [ Failure ]
+canvas/philip/tests/2d.shadow.pattern.basic.html [ Failure ]
+canvas/philip/tests/2d.shadow.pattern.transparent.2.html [ Failure ]
+canvas/philip/tests/2d.shadow.stroke.basic.html [ Failure ]
+canvas/philip/tests/2d.shadow.stroke.cap.2.html [ Failure ]
+canvas/philip/tests/2d.shadow.stroke.join.2.html [ Failure ]
+canvas/philip/tests/2d.shadow.transform.1.html [ Failure ]
+canvas/philip/tests/2d.shadow.transform.2.html [ Failure ]
+canvas/philip/tests/2d.state.saverestore.clip.html [ Failure ]
+canvas/philip/tests/2d.strokeRect.globalalpha.html [ Failure ]
+canvas/philip/tests/2d.strokeRect.globalcomposite.html [ Failure ]
+canvas/philip/tests/2d.strokeRect.shadow.html [ Failure ]
+canvas/philip/tests/2d.strokeRect.transform.html [ Failure ]
+canvas/philip/tests/2d.strokeRect.zero.4.html [ Failure ]
+# Seems all the text tests are failing. Wrong font maybe?
+canvas/philip/tests/2d.text.draw.align.center.html [ Failure ]
+canvas/philip/tests/2d.text.draw.align.end.ltr.html [ Failure ]
+canvas/philip/tests/2d.text.draw.align.end.rtl.html [ Failure ]
+canvas/philip/tests/2d.text.draw.align.left.html [ Failure ]
+canvas/philip/tests/2d.text.draw.align.right.html [ Failure ]
+canvas/philip/tests/2d.text.draw.align.start.ltr.html [ Failure ]
+canvas/philip/tests/2d.text.draw.align.start.rtl.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.alphabetic.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.bottom.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.hanging.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.ideographic.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.middle.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.top.html [ Failure ]
+canvas/philip/tests/2d.text.draw.fill.maxWidth.bound.html [ Failure ]
+canvas/philip/tests/2d.text.draw.fill.maxWidth.fontface.html [ Failure ]
+canvas/philip/tests/2d.text.draw.fill.unaffected.html [ Failure ]
+canvas/philip/tests/2d.text.draw.fontface.html [ Failure ]
+canvas/philip/tests/2d.text.draw.fontface.notinpage.html [ Failure ]
+canvas/philip/tests/2d.text.draw.fontface.repeat.html [ Failure ]
+canvas/philip/tests/2d.text.draw.space.basic.html [ Failure ]
+canvas/philip/tests/2d.text.draw.space.collapse.end.html [ Failure ]
+canvas/philip/tests/2d.text.draw.space.collapse.nonspace.html [ Failure ]
+canvas/philip/tests/2d.text.draw.space.collapse.other.html [ Failure ]
+canvas/philip/tests/2d.text.draw.space.collapse.space.html [ Failure ]
+canvas/philip/tests/2d.text.draw.space.collapse.start.html [ Failure ]
+canvas/philip/tests/2d.text.draw.stroke.unaffected.html [ Failure ]
+canvas/philip/tests/2d.text.measure.width.basic.html [ Failure ]
+canvas/philip/tests/2d.text.measure.width.space.html [ Failure ]
+canvas/philip/tests/2d.transformation.order.html [ Failure ]
+canvas/philip/tests/2d.transformation.rotate.direction.html [ Failure ]
+canvas/philip/tests/2d.transformation.rotate.nonfinite.html [ Failure ]
+canvas/philip/tests/2d.transformation.rotate.radians.html [ Failure ]
+canvas/philip/tests/2d.transformation.rotate.wrap.html [ Failure ]
+canvas/philip/tests/2d.transformation.rotate.wrapnegative.html [ Failure ]
+canvas/philip/tests/2d.transformation.rotate.zero.html [ Failure ]
+canvas/philip/tests/2d.transformation.scale.basic.html [ Failure ]
+canvas/philip/tests/2d.transformation.scale.large.html [ Failure ]
+canvas/philip/tests/2d.transformation.scale.multiple.html [ Failure ]
+canvas/philip/tests/2d.transformation.scale.negative.html [ Failure ]
+canvas/philip/tests/2d.transformation.scale.nonfinite.html [ Failure ]
+canvas/philip/tests/2d.transformation.setTransform.multiple.html [ Failure ]
+canvas/philip/tests/2d.transformation.setTransform.nonfinite.html [ Failure ]
+canvas/philip/tests/2d.transformation.setTransform.skewed.html [ Failure ]
+canvas/philip/tests/2d.transformation.transform.identity.html [ Failure ]
+canvas/philip/tests/2d.transformation.transform.multiply.html [ Failure ]
+canvas/philip/tests/2d.transformation.transform.nonfinite.html [ Failure ]
+canvas/philip/tests/2d.transformation.transform.skewed.html [ Failure ]
+canvas/philip/tests/2d.transformation.translate.basic.html [ Failure ]
+canvas/philip/tests/2d.transformation.translate.nonfinite.html [ Failure ]
+canvas/philip/tests/initial.reset.clip.html [ Failure ]
+canvas/philip/tests/initial.reset.gradient.html [ Failure ]
+canvas/philip/tests/initial.reset.pattern.html [ Failure ]
+canvas/philip/tests/security.dataURI.html [ Failure ]
+canvas/philip/tests/toDataURL.jpeg.alpha.html [ Failure ]
+canvas/philip/tests/toDataURL.jpeg.primarycolours.html [ Failure ]
+canvas/philip/tests/toDataURL.jpeg.quality.basic.html [ Failure ]
+canvas/philip/tests/toDataURL.png.complexcolours.html [ Failure ]
+canvas/philip/tests/toDataURL.png.primarycolours.html [ Failure ]
+
+
+
+# Canvas - These test pass, but the testsuite engine doesn't wait for the test end.
+Bug(Haiku) canvas/philip/tests/2d.drawImage.broken.html [ Failure ]
+
+# Canvas - Some tests do work, but the green is drawn as 00FE00 instead of 00FF00.
+# Maybe we're not resetting something between tests?
+Bug(Haiku) canvas/philip/tests/2d.coordinatespace.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.fillRect.negative.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.fillStyle.invalidstring.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.fillStyle.invalidtype.html [ Failure ]
+canvas/philip/tests/2d.imageData.get.clamp.html [ Failure ]
+canvas/philip/tests/2d.imageData.get.range.html [ Failure ]
+canvas/philip/tests/2d.imageData.get.source.negative.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.line.join.parallel.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.line.union.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.line.width.scaledefault.html [ Failure ]
+canvas/philip/tests/2d.path.arc.angle.4.html [ Failure ]
+canvas/philip/tests/2d.path.arc.end.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arc.nonfinite.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arc.twopie.4.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arc.twopie.3.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arc.scale.2.html [ Failure ]
+canvas/philip/tests/2d.path.arc.shape.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arc.shape.4.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arc.selfintersect.2.html [ Failure ]
+canvas/philip/tests/2d.path.arc.zeroradius.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arcTo.coincide.1.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arcTo.coincide.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arcTo.collinear.1.html [ Failure ]
+canvas/philip/tests/2d.path.arcTo.ensuresubpath.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arcTo.shape.start.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arcTo.zero.1.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.arcTo.zero.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.bezierCurveTo.basic.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.bezierCurveTo.ensuresubpath.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.bezierCurveTo.scaled.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.bezierCurveTo.shape.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.clip.basic.1.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.clip.unaffected.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.clip.winding.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.closePath.newline.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.closePath.nextpoint.html [ Failure ]
+#Bug(Haiku) canvas/philip/tests/2d.path.ensuresubpath.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.fill.closed.basic.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.fill.closed.unaffected.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.fill.winding.add.html [ Failure ]
+#Bug(Haiku) canvas/philip/tests/2d.path.fill.winding.substract.html [ Failure ]
+canvas/philip/tests/2d.path.fill.winding.subtract.3.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.lineTo.basic.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.lineTo.ensuresubpath.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.lineTo.nextpoint.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.moveTo.basic.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.moveTo.multiple.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.quadraticCurveTo.basic.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.quadraticCurveTo.ensuresubpath.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.rect.basic.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.rect.closed.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.rect.end.1.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.rect.end.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.rect.negative.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.rect.zero.1.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.rect.zero.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.rect.zero.4.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.stroke.unaffected.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.stroke.union.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.path.transformation.basic.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.pattern.paint.norepeat.outside.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.shadow.clip.2.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.state.saverestore.bitmap.html [ Failure ]
+Bug(Haiku) canvas/philip/tests/2d.state.saverestore.path.html [ Failure ]
+canvas/philip/tests/2d.strokeRect.negative.html [ Failure ]
+
+# CSS - A lot of size problems. Maybe because our font rendering isn't quite the
+# same as on other platforms. Having a custom reference for the tests where this
+# is the only problem would be ok.
+css1/font_properties/font_size.html [ Failure ]
+css1/text_properties/vertical_align.html [ Failure ]
+Bug(Haiku) css1/units/rounding.html [ Failure ]
+
+css2.1/20110323/abspos-containing-block-initial-001.htm [ Failure ]
+css2.1/20110323/abspos-containing-block-initial-007.htm [ Failure ]
+css2.1/20110323/abspos-non-replaced-width-margin-000.htm [ Failure ]
+css2.1/20110323/abspos-replaced-width-margin-000.htm [ Failure ]
+css2.1/20110323/c543-txt-decor-000.html [ Failure ]
+css2.1/20110323/outline-color-001.htm [ ImageOnlyFailure ]
+css2.1/20110323/replaced-intrinsic-002.htm [ Failure ]
+css2.1/20110323/replaced-intrinsic-ratio-001.htm [ Failure ]
+css2.1/20110323/vertical-align-boxes-001.htm [ ImageOnlyFailure ]
+
+css2.1/t09-c5526c-display-00-e.html [ Failure ]
+Bug(Haiku) css2.1/t1001-abs-pos-cb-01-b.html [ Failure ]
+Bug(Haiku) css2.1/t1001-abs-pos-cb-02-b.html [ Failure ]
+Bug(Haiku) css2.1/t1001-abs-pos-cb-03-b.html [ Failure ]
+Bug(Haiku) css2.1/t1001-abs-pos-cb-04-b.html [ Failure ]
+Bug(Haiku) css2.1/t1001-abs-pos-cb-05-b.html [ Failure ]
+Bug(Haiku) css2.1/t1001-abs-pos-cb-06-b.html [ Failure ]
+Bug(Haiku) css2.1/t1001-abs-pos-cb-07-b.html [ Failure ]
+Bug(Haiku) css2.1/t1001-abs-pos-cb-08-b.html [ Failure ]
+Bug(Haiku) css2.1/t1001-abs-pos-cb-09-b.html [ Failure ]
+Bug(Haiku) css2.1/t1205-c566-list-stl-01-c-g.html [ Failure ]
+css2.1/t1507-c526-font-sz-00-b.html [ Failure ]
+Bug(Haiku) css2.1/t1508-c527-font-00-b.html [ Failure ]
+Bug(Haiku) css2.1/t1508-c527-font-01-b.html [ Failure ]
+Bug(Haiku) css2.1/t1508-c527-font-02-b.html [ Failure ]
+Bug(Haiku) css2.1/t1508-c527-font-03-b.html [ Failure ]
+Bug(Haiku) css2.1/t1508-c527-font-04-b.html [ Failure ]
+Bug(Haiku) css2.1/t1508-c527-font-05-b.html [ Failure ]
+#Bug(Haiku) css2.1/t1508-c527-font-06-b.html [ Failure ]
+Bug(Haiku) css2.1/t1508-c527-font-07-b.html [ Failure ]
+Bug(Haiku) css2.1/t1508-c527-font-08-b.html [ Failure ]
+Bug(Haiku) css2.1/t1508-c527-font-09-b.html [ Failure ]
+css2.1/t1508-c527-font-10-c.html [ Failure ]
+
+# CSS - Things with wrong size. May be related to our problems with SVG.
+Bug(Haiku) css3/background/background-repeat-space-border.html [ ImageOnlyFailure ]
+Bug(Haiku) css3/background/background-repeat-space-content.html [ ImageOnlyFailure ]
+Bug(Haiku) css3/background/background-repeat-space-padding.html [ ImageOnlyFailure ]
+
+css3/calc/table-calcs.html [ Failure ]
+css3/calc/transitions-dependent.html [ Failure ]
+css3/calc/transitions.html [ Failure ]
+css3/compositing/background-blend-mode-background-attachement-fixed.html [ ImageOnlyFailure ]
+css3/compositing/background-blend-mode-background-clip-content-box.html [ ImageOnlyFailure ]
+css3/compositing/background-blend-mode-background-clip-padding-box.html [ ImageOnlyFailure ]
+css3/compositing/background-blend-mode-background-origin-border-box.html [ ImageOnlyFailure ]
+css3/compositing/background-blend-mode-background-position-percentage.html [ ImageOnlyFailure ]
+css3/compositing/background-blend-mode-background-repeat-no-repeat.html [ ImageOnlyFailure ]
+css3/compositing/background-blend-mode-background-size-contain.html [ ImageOnlyFailure ]
+css3/compositing/background-blend-mode-background-size-cover.html [ ImageOnlyFailure ]
+css3/compositing/background-blend-mode-property-parsing.html [ Failure ]
+css3/compositing/background-blend-mode-property.html [ Failure ]
+css3/compositing/background-blend-mode-separate-layer-declaration.html [ ImageOnlyFailure ]
+css3/compositing/blend-mode-property-parsing.html [ Failure ]
+css3/compositing/blend-mode-property.html [ Failure ]
+css3/compositing/should-have-compositing-layer.html [ Failure ]
+
+css3/device-adapt/ [ Failure ]
+css3/filters/ [ Failure ]
+
+css3/flexbox/button.html [ Failure ]
+css3/flexbox/cross-axis-scrollbar.html [ ImageOnlyFailure ]
+css3/flexbox/flex-rounding.html [ Failure ]
+css3/flexbox/flexbox-baseline-margins.html [ Failure ]
+css3/flexbox/flexbox-baseline.html [ Failure ]
+css3/flexbox/flexitem.html [ Failure ]
+css3/images/cross-fade-background-size.html [ Failure ]
+css3/images/cross-fade-svg-with-opacity.html [ ImageOnlyFailure ]
+css3/masking/clip-path-polygon-percentage.html [ ImageOnlyFailure ]
+css3/masking/clip-path-reference-userSpaceOnUse.html [ ImageOnlyFailure ]
+css3/masking/clip-path-reference.html [ ImageOnlyFailure ]
+css3/masking/clip-path-restore.html [ ImageOnlyFailure ]
+css3/masking/mask-luminance-gradient.html [ ImageOnlyFailure ]
+css3/masking/mask-luminance-png.html [ Failure ]
+css3/masking/mask-repeat-space-border.html [ ImageOnlyFailure ]
+css3/masking/mask-repeat-space-content.html [ ImageOnlyFailure ]
+css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
+css3/supports-cssom.html [ Failure ]
+css3/supports-dom-api.html [ Failure ]
+css3/supports.html [ Failure ]
+css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]
+css3/viewport-percentage-lengths/vh-resize.html [ ImageOnlyFailure ]
 
 
 # Editing - Testsuite support missing!
@@ -134,22 +557,25 @@ editing/input/set-value-on-input-and-forward-delete.html [ Pass ]
 editing/input/set-value-on-input-and-type-input.html [ Pass ]
 editing/input/set-value-on-input-and-type-textarea.html [ Pass ]
 
-editing/spelling/inline-spelling-markers.html [ Pass ]
+editing/spelling/inline_spelling_markers.html [ Pass ]
 editing/spelling/inline-spelling-markers-hidpi.html [ Pass ]
 editing/spelling/spelling.html [ Pass ]
 editing/spelling/spellcheck-api-crash.html [ Pass ]
 editing/spelling/spellcheck-async-remove-frame.html [ Pass ]
 editing/spelling/spellcheck-sequencenum.html [ Pass ]
 
+editing/text-iterator/backward-textiterator-first-letter-crash.html [ Pass ]
 editing/text-iterator/basic-iteration.html [ Pass ]
 editing/text-iterator/find-after-mutation.html [ Pass ]
 editing/text-iterator/first-letter-rtl-crash.html [ Pass ]
 editing/text-iterator/first-letter-word-boundary.html [ Pass ]
 editing/text-iterator/range-to-from-location-and-length.html [ Pass ]
+editing/text-iterator/rtl-first-letter-text-iterator-crash.html [ Pass ]
 editing/text-iterator/rtl-selection-crash.html [ Pass ]
 
 editing/undo/4063751.html [ Pass ]
 editing/undo/orphaned-selection-crash-bug32823-4.html [ Pass ]
+editing/undo/undo-after-event-edited.html [ Pass ]
 editing/undo/undo-combined-delete.html [ Pass ]
 editing/undo/undo-combined-delete-boundary.html [ Pass ]
 editing/undo/undo-delete.html [ Pass ]
@@ -157,6 +583,7 @@ editing/undo/undo-delete-boundary.html [ Pass ]
 editing/undo/undo-deleteWord.html [ Pass ]
 editing/undo/undo-forward-delete.html [ Pass ]
 editing/undo/undo-forward-delete-boundary.html [ Pass ]
+editing/undo/undo-iframe-location-change.html [ Pass ]
 
 editing/unsupported-content/list-delete-001.html [ Pass ]
 editing/unsupported-content/list-delete-003.html [ Pass ]
@@ -168,34 +595,463 @@ editing/unsupported-content/table-type-before.html [ Pass ]
 editing/unsupported-content/table-type-after.html [ Pass ]
 
 
+fast/xsl/xslt_unicode.xml [ Failure ] # Font metrics
+
+
+# Fonts - works ok, but metrics are not right.
+fonts/serif.html [ Failure ]
+fonts/sans-serif.html [ Failure ]
+fonts/monospace.html [ Failure ]
+fonts/font-fallback-prefers-pictographs.html [ ImageOnlyFailure ]
+fonts/fantasy.html [ Failure ]
+fonts/default.html [ Failure ]
+fonts/cursive.html [ Failure ]
+
+
+# Fullscreen
+fullscreen/ [ Failure ]
+fullscreen/empty-anonymous-block-continuation-crash.html [ Pass ]
+
+
+# Gamepad
+gamepad/gamepad-polling-access.html [ Failure ]
+gamepad/gamepad-out-of-range-crasher.html [ Failure ]
+gamepad/gamepad-api.html [ Failure ]
+
+
+# Html5 - These are passing, but showing extra alerts or console messages.
+html5lib/webkit-resumer.html [ Failure ] # Lots of verbose console logs we don't expect?
+html5lib/generated/run-webkit01-write.html [ Failure ] # Extra console message
+html5lib/generated/run-tests_innerHTML_1-write.html [ Failure ] # Unexpected alert
+html5lib/generated/run-tests_innerHTML_1-data.html [ Failure ] # Unexpected alert
+html5lib/generated/run-tests7-write.html [ Failure ]
+
+# IE Test center
+ietestcenter/css3/valuesandunits/units-000.htm [ ImageOnlyFailure ]
+ietestcenter/css3/text/textshadow-008.htm [ Failure ]
+ietestcenter/css3/text/textshadow-007.htm [ Failure ]
+ietestcenter/css3/text/textshadow-005.htm [ Failure ]
+ietestcenter/css3/text/textshadow-001.htm [ Failure ]
+ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
+ietestcenter/css3/multicolumn/column-width-applies-to-015.htm [ ImageOnlyFailure ]
+ietestcenter/css3/multicolumn/column-width-applies-to-012.htm [ ImageOnlyFailure ]
+ietestcenter/css3/multicolumn/column-width-applies-to-010.htm [ ImageOnlyFailure ]
+ietestcenter/css3/multicolumn/column-width-applies-to-009.htm [ ImageOnlyFailure ]
+ietestcenter/css3/multicolumn/column-width-applies-to-007.htm [ ImageOnlyFailure ]
+ietestcenter/css3/multicolumn/column-filling-001.htm [ ImageOnlyFailure ]
+ietestcenter/css3/multicolumn/column-containing-block-003.htm [ ImageOnlyFailure ]
+ietestcenter/css3/multicolumn/column-containing-block-002.htm [ ImageOnlyFailure ]
+ietestcenter/css3/multicolumn/column-containing-block-001.htm [ ImageOnlyFailure ]
+ietestcenter/css3/grid/grid-items-003.htm [ ImageOnlyFailure ]
+ietestcenter/css3/grid/grid-items-002.htm [ ImageOnlyFailure ]
+ietestcenter/css3/grid/grid-column-003.htm [ ImageOnlyFailure ]
+ietestcenter/css3/grid/grid-column-002.htm [ ImageOnlyFailure ]
+ietestcenter/css3/grid/grid-column-001.htm [ ImageOnlyFailure ]
+#ietestcenter/css3/flexbox/flexbox-layout-003.htm [ ImageOnlyFailure ]
+ietestcenter/css3/flexbox/flexbox-layout-002.htm [ ImageOnlyFailure ]
+ietestcenter/css3/flexbox/flexbox-layout-001.htm [ ImageOnlyFailure ]
+ietestcenter/css3/flexbox/flexbox-align-stretch-001.htm [ ImageOnlyFailure ]
+
+# Encoding problems again - We expect file:// to be utf-8 but these are ISO or something.
+# Maybe we should sniff this?
+ietestcenter/Javascript/15.4.4.14-3-22.html [ Failure ]
+ietestcenter/Javascript/15.4.4.14-5-6.html [ Failure ]
+ietestcenter/Javascript/15.4.4.14-5-24.html [ Failure ]
+ietestcenter/Javascript/15.4.4.14-9-11.html [ Failure ]
+ietestcenter/Javascript/15.4.4.15-3-22.html [ Failure ]
+ietestcenter/Javascript/15.4.4.15-5-6.html [ Failure ]
+ietestcenter/Javascript/15.4.4.15-8-11.html [ Failure ]
+
+ietestcenter/Javascript/10.4.2-2-c-1.html [ Failure ] # Some other unexpected character problem.
+
+
+# IndieUI
+indieui/create-uirequestevent.html [ Failure ]
+indieui/uiactions.html [ Failure ]
+
+
+# JQuery - Missing alerts displaying result counts.
+jquery/attributes.html [ Failure ]
+jquery/core.html [ Failure ]
+jquery/css.html [ Failure ]
+jquery/data.html [ Failure ]
+jquery/deferred.html [ Failure ]
+jquery/dimensions.html [ Failure ]
+jquery/event.html [ Failure ]
+jquery/manipulation.html [ Failure ]
+jquery/offset.html [ Failure ]
+jquery/traversing.html [ Failure ]
+
+
+# JS
+js/dom/basic-weakmap.html [ Failure ]
+js/dom/custom-constructors.html [ Failure ] # Missing Audio
+js/dom/document-all-between-frames.html [ Failure ]
+js/dom/dom-static-property-for-in-iteration.html [ Failure ] # Font metrics differences
+js/dom/function-length.html [ Failure ] # Missing showModalDialog.length ?
+js/dom/global-constructors-attributes.html [ Failure ] # Missing some PASS logs, but test completes anyway?
+js/dom/global-constructors-attributes-shared-worker.html [ Failure ]
+js/dom/global-constructors-attributes-dedicated-worker.html [ Failure ] 
+js/dom/instanceof-XMLHttpRequest.html [ Failure ] # Missing Audio support.
+js/dom/navigator-language.html [ Failure Pass ] # Default language should alwas be en-us or so, but currently DRT is locale-aware.
+js/dom/regexp-overflow.html [ Failure ] # Default encoding is utf-8 for us, ref has iso8859
+js/dom/toString-stack-overflow.html [ Failure ] # expects a stack overflow which doesn't happen.
+js/names.html [ Failure ]
+
+
+# Loader
+loader/image-loader-adoptNode-assert.html [ Failure ] 
+    # Non-local loading should be blocked in DRT.
+    # FrameLoaderClientHaiku::dispatchWillSendRequest is the place where EFL
+    # plugs for this (see DumpRenderTreeChrome::onWillSendRequest)
+loader/reload-subresource-when-type-changes.html [ Failure ] # unicode problem
+
+
+# MathML
+mathml/presentation/attributes-background-color.html [ Failure ]
+mathml/presentation/attributes-style.html [ Failure ]
+mathml/presentation/bug95404.html [ Failure ]
+mathml/presentation/bug97990.html [ Failure ]
+mathml/presentation/mo-stacked-glyphs.html [ Failure ]
+mathml/presentation/mspace-units.html [ Failure ]
+
+
+# Media - Not implemented!
+media/ [ Failure ]
+
+
+media/audio-controls-rendering.html [ Pass ]
+media/audio-repaint.html [ Pass ]
+media/broken-video.html [ Pass ]
+media/controls-after-reload.html [ Pass ]
+media/controls-drag-timebar.html [ Pass ]
+media/controls-strict.html [ Pass ]
+media/controls-styling.html [ Pass ]
+media/controls-styling-strict.html [ Pass ]
+media/controls-without-preload.html [ Pass ]
+media/encrypted-media/encrypted-media-can-play-type.html [ Pass ]
+media/encrypted-media/encrypted-media-events.html [ Pass ]
+media/encrypted-media/encrypted-media-not-loaded.html [ Pass ]
+#media/media-can-play-mpeg4-video.html [ Pass ]
+media/media-can-play-octet-stream.html [ Pass ]
+#media/media-can-play-type.html [ Pass ]
+#media/media-can-play-webm.html [ Pass ]
+media/media-continues-playing-after-replace-source.html [ Pass ]
+media/media-controls-clone.html [ Pass ]
+media/media-controls-clone-crash.html [ Pass ]
+media/media-reparent.html [ Pass ]
+media/remove-from-document-before-load.html [ Pass ]
+media/svg-as-image-with-media-blocked.html [ Pass ]
+media/track/opera/ [ Pass ] # list passing tests explicitly
+media/track/getCueAsHTMLCrash.html
+media/video-aspect-ratio.html [ Pass ]
+media/video-controls-captions-trackmenu.html [ Pass ]
+media/video-controls-captions-trackmenu-hide-on-click.html [ Pass ]
+media/video-controls-captions-trackmenu-localized.html [ Pass ]
+media/video-controls-captions-trackmenu-sorted.html [ Pass ]
+media/video-controls-rendering.html [ Pass ]
+media/video-dom-src.html [ Pass ]
+media/video-display-toggle.html [ Pass ]
+media/video-empty-source.html [ Pass ]
+media/video-layer-crash.html [ Pass ]
+media/video-muted.html [ Pass ]
+media/video-no-audio.html [ Pass ]
+media/video-object-fit-change.html [ Pass ]
+media/video-playing-and-pause.html [ Pass ]
+media/video-poster.html [ Pass ]
+media/video-rtl.html [ Pass ]
+media/video-transformed.html [ Pass ]
+media/video-volume-slider.html [ Pass ]
+media/video-zoom.html [ Pass ]
+media/video-zoom-controls.html [ Pass ]
+#media/W3C/audio/currentSrc/currentSrc_nonempty_after_setting_src.html [ Pass ]
+#media/W3C/video/currentSrc/currentSrc_property_exists.html [ Pass ]
+
+
+# Most of these fail because the refs expect a different text height or font
+# rasterizer or something. We may generate platform-specific results for those.
+tables/mozilla/bugs/adforce_imgis_com.html [ Failure ]
+tables/mozilla/bugs/bug1188.html [ Failure ]
+tables/mozilla/bugs/bug1318.html [ Failure ]
+tables/mozilla/bugs/bug2123.html [ Failure ]
+tables/mozilla/bugs/bug2886-2.html [ Failure ]
+tables/mozilla/bugs/bug7342.html [ Failure ]
+tables/mozilla/bugs/bug8858.html [ Failure ]
+tables/mozilla/bugs/bug10633.html [ Failure ]
+tables/mozilla/bugs/bug14323.html [ Failure ]
+tables/mozilla/bugs/bug17138.html [ Failure ]
+tables/mozilla/bugs/bug18664.html [ Failure ] # Timeout error. The test uses setTimeout but never notifyDone?
+tables/mozilla/bugs/bug23151.html [ Failure ]
+tables/mozilla/bugs/bug26553.html [ Failure ]
+tables/mozilla/bugs/bug27038-3.html [ Failure ]
+tables/mozilla/bugs/bug29314.html [ Failure ]
+tables/mozilla/bugs/bug43204.html [ Failure ]
+tables/mozilla/bugs/bug46623-1.html [ Failure ]
+tables/mozilla/bugs/bug48028-2.html [ Failure ]
+tables/mozilla/bugs/bug56201.html [ Failure ]
+tables/mozilla/bugs/bug57828-2.html [ Failure ]
+tables/mozilla/bugs/bug60804.html [ Failure ]
+tables/mozilla/bugs/bug60807.html [ Failure ]
+tables/mozilla/bugs/bug73321.html [ Failure ]
+tables/mozilla/bugs/bug83786.html [ Failure ]
+tables/mozilla/bugs/bug92647-2.html [ Failure ]
+tables/mozilla/bugs/bug113235-1.html [ Failure ]
+tables/mozilla/bugs/bug113235-2.html [ Failure ]
+tables/mozilla/bugs/bug133756-1.html [ Failure ]
+tables/mozilla/bugs/bug133756-2.html [ Failure ]
+tables/mozilla/bugs/bug137388-2.html [ Failure ]
+tables/mozilla/bugs/bug149275-2.html [ Failure ]
+tables/mozilla/bugs/bug157890.html [ Failure ]
+tables/mozilla/bugs/bug220536.html [ Failure ]
+
+#TYPO Bug(Haiku) tables/mozilla/collapsing-borders/bug41262-3.html [ Failure ]
+#TYPO Bug(Haiku) tables/mozilla/collapsing-borders/bug41262-4.html [ Failure ]
+#TYPO Bug(Haiku) tables/mozilla/collapsing-borders/bug127040.html [ Failure ]
+
+Bug(Haiku) tables/mozilla/core/bloomberg.html [ Failure ] # Unexpected scrollbars?
+Bug(Haiku) tables/mozilla/core/row_span.html [ Failure ] # Wrong scrollbar size?
+
+#Bug(Haiku) tables/mozilla/dom/ [ Failure ]
+# list failing tests specifically
+#
+Bug(Haiku) tables/mozilla/marvin/table_overflow_hidden_td.html [ Failure ] # Font metrics problem?
+
+Bug(Haiku) tables/mozilla_expected_failures/bugs/    [ Failure ]
+tables/mozilla_expected_failures/bugs/97619.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug1010.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug1055-2.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug1128.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug1164.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug1262.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug1647.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug1725.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug2479-5.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3105.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-1.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-2.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-3.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-4.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-5.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-6.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-7.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-8.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-9.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-10.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-11.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-12.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-13.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-14.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-15.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-16.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-17.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3166-18.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug3517.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug4294.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug6933.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug7113.html [ Pass ]
+#tables/mozilla_expected_failures/bugs/bug7121-2.html [ Pass ] Font sizing variation
+tables/mozilla_expected_failures/bugs/bug7243.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug8499.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug9879-1.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug10140.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug10216.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug11331.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug11945.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug14007-1.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug14007-2.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug14159-2.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug17826.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug18770.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug19526.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug21518.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug22122.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug23847.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug24880-1.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug25707.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug27993-2.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug29058-2.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug32205-1.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug32205-4.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug33784.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug42043.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug45621.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug46268-4.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug47163.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug51000.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug56024.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug58402-2.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug59252.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug61042-1.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug61042-2.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug67915-2.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug72393.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug73629.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug80762-2.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug89315.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug91057.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug92647-1.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug92868_1.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug101759.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug104898.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug106336.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug106966.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug128876.html [ Pass ]
+tables/mozilla_expected_failures/bugs/bug14489.html [ Pass ] #5s
+tables/mozilla_expected_failures/bugs/bug178855.xml [ Pass ]
+tables/mozilla_expected_failures/bugs/bug220653.html [ Pass ] #5s
+
+#TYPO Bug(Haiku) tables/mozilla_expected_failures/collapsing-borders/bug41262-1.html [ Failure ]
+#TYPO Bug(Haiku) tables/mozilla_expected_failures/collapsing-borders/bug41262-5.html [ Failure ]
+#TYPO Bug(Haiku) tables/mozilla_expected_failures/collapsing-borders/bug41262-6.html [ Failure ]
+#5s Bug(Haiku) tables/mozilla_expected_failures/core/backgrounds.html [ Failure ]
+#5s Bug(Haiku) tables/mozilla_expected_failures/core/captions1.html [ Failure ]
+#5s Bug(Haiku) tables/mozilla_expected_failures/core/captions2.html [ Failure ]
+#5s Bug(Haiku) tables/mozilla_expected_failures/core/captions3.html [ Failure ]
+#5s Bug(Haiku) tables/mozilla_expected_failures/core/col_span2.html [ Failure ]
+#5s Bug(Haiku) tables/mozilla_expected_failures/core/cols1.html [ Failure ]
+#5s Bug(Haiku) tables/mozilla_expected_failures/core/columns.html [ Failure ]
+#5s Bug(Haiku) tables/mozilla_expected_failures/core/conflicts.html [ Failure ]
+#10s Bug(Haiku) tables/mozilla_expected_failures/core/standards1.html [ Failure ]
+
+#OK Bug(Haiku) tables/mozilla_expected_failures/dom/appendCells1.html [ Failure ]
+#OK Bug(Haiku) tables/mozilla_expected_failures/dom/appendCellsRebuild1.html [ Failure ]
+#OK Bug(Haiku) tables/mozilla_expected_failures/dom/appendCol1.html [ Failure ]
+#OK Bug(Haiku) tables/mozilla_expected_failures/dom/appendColGroup1.html [ Failure ]
+#OK Bug(Haiku) tables/mozilla_expected_failures/dom/insertTbodyExpand1.html [ Failure ]
+#OK Bug(Haiku) tables/mozilla_expected_failures/dom/insertTbodyRebuild1.html [ Failure ]
+
+#5s tables/mozilla_expected_failures/other/empty_cells.html [ Failure ]
+#5s tables/mozilla_expected_failures/other/test4.html [ Failure ]
+
+Bug(Haiku) tables/mozilla_expected_failures/marvin/ [ Failure ]
+tables/mozilla_expected_failures/marvin/backgr_border-table.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_border-table-cell.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_border-table-column.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_border-table-column-group.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_border-table-quirks.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_border-table-row.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_border-table-row-group.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_fixed-bg.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_layers-hide.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_layers-show.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_position-table-cell.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_position-table-column.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_position-table-column-group.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_position-table-row.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/backgr_position-table-row-group.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/table_frame_above.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_frame_below.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_frame_hsides.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_frame_lhs.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_frame_rhs.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_frame_void.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_frame_vsides.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_rules_cols.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_rules_rows.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_caption.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_caption_bottom.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_caption_hidden.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_caption_hidden_table.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_caption_left.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_caption_right.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_caption_top.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_dirty_reflow.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_dirty_reflow_row.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/table_overflow_dirty_reflow_table.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_dirty_reflow_tbody.html [ Pass ] #10s
+
+tables/mozilla_expected_failures/marvin/table_overflow_style_reflow_cell.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_style_reflow_table.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_style_reflow_table_caption.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_style_reflow_tbody.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_style_reflow_tbody_sibling.html [ Pass ] #5s
+tables/mozilla_expected_failures/marvin/table_overflow_td_align_right.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_td_dynamic_deactivate.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_td_valign_bottom.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_td_valign_middle.html [ Pass ]
+tables/mozilla_expected_failures/marvin/table_overflow_td_valign_top.html [ Pass ]
+tables/mozilla_expected_failures/marvin/tables_caption_align_left.html [ Pass ]
+tables/mozilla_expected_failures/marvin/tables_caption_align_right.html [ Pass ]
+tables/mozilla_expected_failures/marvin/tables_cellspacing_pct.html [ Pass ]
+tables/mozilla_expected_failures/marvin/x_caption_align_left.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_caption_align_right.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_colgroup_width_px.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_frame_above.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_frame_below.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_frame_border.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_frame_box.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_frame_hsides.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_frame_lhs.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_frame_rhs.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_frame_vsides.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_rules_all.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_rules_cols.xml [ Pass ]
+tables/mozilla_expected_failures/marvin/x_table_rules_rows.xml [ Pass ]
+
+
+# User scripts
+
+# User scripts - actual failures
+Bug(Haiku) userscripts/mixed-case-stylesheet.html [ Failure ]
+Bug(Haiku) userscripts/simple-stylesheet.html [ Failure ]
+Bug(Haiku) userscripts/user-stylesheet-invalidate.html [ Failure ]
+
+# User scripts - Frame numbering starts at 1 instead of 0?
+# The number is from FrameTree::childCount. So it seems our frames have an extra child?
+Bug(Haiku) userscripts/user-script-all-frames.html [ Failure ]
+Bug(Haiku) userscripts/user-script-top-frame-only.html [ Failure ]
+Bug(Haiku) userscripts/user-style-all-frames.html [ Failure ]
+Bug(Haiku) userscripts/user-style-top-frame-only.html [ Failure ]
+
+# User scripts - "End Script" console message shows the full URL instead of just the file name.
+Bug(Haiku) userscripts/script-not-run-for-fragments.html [ Failure ]
+Bug(Haiku) userscripts/user-script-audio-document.html [ Failure ]
+Bug(Haiku) userscripts/user-script-image-document.html [ Failure ]
+Bug(Haiku) userscripts/user-script-plugin-document.html [ Failure ]
+Bug(Haiku) userscripts/user-script-video-document.html [ Failure ]
+
+
 # Web Audio - Part of it needs stream decoding, but there's also low-level stuff.
 Bug(Haiku) webaudio/ [ Failure ]
-webaudio/codec-tests [ Pass ]
-webaudio/gain.html [ Pass ]
+
+# These are technically passing, but sometimes scrollbars are shown wheer they
+# shouldn't, leading to a wrong layer size.
+webaudio/codec-tests/aac/vbr-128kbps-44khz.html [ Pass Failure ]
+webaudio/codec-tests/mp3/128kbps-44khz.html [ Pass Failure ]
+webaudio/codec-tests/wav/24bit-22khz-resample.html [ Pass Failure ]
+webaudio/codec-tests/wav/24bit-44khz.html [ Pass Failure ]
+webaudio/mixing.html [ Pass Failure ]
+webaudio/oscillator-custom.html [ Pass Failure ]
+webaudio/oscillator-sawtooth.html [ Pass Failure ]
+webaudio/oscillator-sine.html [ Pass Failure ]
+webaudio/oscillator-square.html [ Pass Failure ]
+webaudio/oscillator-triangle.html [ Pass Failure ]
+webaudio/up-mixing-mono-stereo.html [ Pass Failure ]
+webaudio/up-mixing-mono-51.html [ Pass Failure ]
+webaudio/up-mixing-stereo-51.html [ Pass Failure ]
+webaudio/gain.html [ Pass Failure ]
+webaudio/audiobuffersource.html [ Pass Failure ]
+webaudio/audiobuffersource-multi-channels.html [ Pass Failure ]
+webaudio/audiobuffersource-playbackrate.html [ Pass Failure ]
+webaudio/audiobuffersource-loop-points.html [ Pass Failure ]
+webaudio/codec-tests/vorbis/vbr-70kbps-44khz.html [ Pass Failure ]
+webaudio/codec-tests/vorbis/vbr-96kbps-44khz.html [ Pass Failure ]
+webaudio/codec-tests/vorbis/vbr-128kbps-44khz.html [ Pass Failure ]
+
 webaudio/test-basic.html [ Pass ]
-webaudio/audiobuffersource.html [ Pass ]
-webaudio/audiobuffersource-multi-channels.html [ Pass ]
-webaudio/audiobuffersource-loop-points.html [ Pass ]
-webaudio/audiobuffersource-playbackrate.html [ Pass ]
-webaudio/mixing.html [ Pass ]
-webaudio/oscillator-sawtooth.html [ Pass ]
-webaudio/oscillator-sine.html [ Pass ]
-webaudio/oscillator-triangle.html [ Pass ]
-webaudio/oscillator-custom.html [ Pass ]
-webaudio/oscillator-square.html [ Pass ]
-webaudio/up-mixing-stereo-51.html [ Pass ]
-webaudio/up-mixing-mono-stereo.html [ Pass ]
-webaudio/up-mixing-mono-51.html [ Pass ]
 
 
 # WebGL support - Should be possible by embedding a BGLView. May need OpenGLES?
 Bug(Haiku) compositing/backface-visibility/backface-visibility-webgl.html [ Failure ]
+#Bug(Haiku) webgl/conformance/typedarrays/typed-arrays-in-workers.html [ Failure ]
 Bug(Haiku) fast/canvas/webgl [ Failure ]
 Bug(Haiku) webgl/ [ Failure ]
 # ... some already passing tests - Can't hurt to keep those working
+fast/canvas/webgl/css-webkit-canvas.html [ Pass ]
+fast/canvas/webgl/css-webkit-canvas-repaint.html [ Pass ]
+#webgl/conformance/ [ Pass ] # TODO list specific passing tests
 webgl/conformance/more/glsl/uniformOutOfBounds.html [ Pass ]
 webgl/conformance/typedarrays [ Pass ]
-Bug(Haiku) webgl/conformance/typedarrays/typed-arrays-in-workers.html [ Failure ]
 
 webgl/1.0.1/conformance/more/conformance/constants.html      [ Pass ]
 webgl/1.0.1/conformance/more/conformance/methods.html        [ Pass ]
@@ -209,7 +1065,7 @@ webgl/1.0.2/conformance/more/glsl/uniformOutOfBounds.html    [ Pass ]
 webgl/1.0.2/conformance/typedarrays/data-view-crash.html     [ Pass ]
 webgl/1.0.2/conformance/typedarrays/array-buffer-crash.html  [ Pass ]
 webgl/1.0.2/conformance/typedarrays/array-buffer-view-crash.html [ Pass ]
-Bug(Haiku) webgl/1.0.2/conformance/typedarrays/typed-arrays-in-workers.html [ Crash ]
+webgl/1.0.2/conformance/typedarrays/typed-arrays-in-workers.html [ Pass ]
 
 
 # This should not crash, when we add web inspector support.
@@ -219,6 +1075,7 @@ Bug(Haiku) inspector-protocol [ Crash ]
 # Crypto - the webCrypto API is still a draft at W3C, and this is disabled in
 # all WebKit ports so far.
 crypto [ Failure ]
+crypto/crypto-gc.html [ Pass ]
 crypto/crypto-random-values-limits.html [ Pass ]
 crypto/crypto-random-values.html [ Pass ]
 crypto/crypto-random-values-types.html [ Pass ]
@@ -235,12 +1092,200 @@ mathml/presentation/mo.xhtml [ Pass ]
 networkinformation [ Failure ]
 
 
+perf/accessibility-title-ui-element.html [ Failure ] # Missing accessibility support.
+perf/nested-combined-selectors.html [ Failure ] # The ref is failed, and so is our result (with slightly different timings)
+
+
+# Pointer lock - May be implemented, and even useful for some browser games.
+pointer-lock/mouse-event-api.html [ Failure ]
+pointer-lock/pointer-lock-api.html [ Failure ]
+
+# No printing support, yet.
+printing/iframe-print.html [ Failure ]
+printing/page-rule-selection.html [ Failure ]
+printing/quirks-percentage-height.html [ Failure ]
+printing/quirks-percentage-height-body.html [ Failure ]
+printing/standards-percentage-heights.html [ Failure ]
+
+
+# Scrolling - These should definitely work. I think part of the problem is we
+# don't properly inject mouse events to test the scrollbars from DRT.
+Bug(Haiku) scrollbars/scroll-rtl-or-bt-layer.html [ Failure ]
+Bug(Haiku) scrollbars/scrollbar-drag-thumb-with-large-content.html [ Failure ]
+Bug(Haiku) scrollbars/scrollbar-iframe-click-does-not-blur-content.html [ Failure ]
+Bug(Haiku) scrollbars/scrollbar-miss-mousemove-disabled.html [ Failure ]
+Bug(Haiku) scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ Failure ]
+Bug(Haiku) scrollingcoordinator/non-fast-scrollable-region-scaled-iframe.html [ Failure ]
+
+
+# Storage - this may be useful, but right now it isn't working.
+storage/ [ Failure ]
+storage/domstorage/sessionstorage/delete-removal.html [ Pass ]
+storage/domstorage/sessionstorage/enumerate-storage.html [ Pass ]
+storage/domstorage/sessionstorage/enumerate-with-length-and-key.html [ Pass ]
+storage/domstorage/sessionstorage/index-get-and-set.html [ Pass ]
+storage/domstorage/sessionstorage/simple-usage.html [ Pass ]
+storage/domstorage/sessionstorage/string-conversion.html [ Pass ]
+storage/websql/open-database-over-quota.html [ Pass ]
+
+
+# SVG
+# Drawing SVG works, but we're missing GraphicsContext::concatCTM so they end
+# up in the wrong place, and most of the time, out of the viewport.
+# The pixel tests will get ImageOnlyFailure...
+svg/ [ Failure ]
+
+svg/as-image/ [ Pass ] # 20 passing tests
+svg/as-image/svg-as-image-canvas.html [ ImageOnlyFailure ]
+svg/as-image/svg-as-image-with-relative-size.html [ ImageOnlyFailure ]
+svg/as-image/svg-intrinsic-size-rectangular-vertical.html [ ImageOnlyFailure ]
+svg/as-image/svg-intrinsic-size-rectangular.html [ ImageOnlyFailure ]
+svg/as-image/svg-intrinsic-size.html [ ImageOnlyFailure ]
+
+svg/clip-path/ [ Pass ]
+#svg/clip-path/clip-path-shape-circle-1.svg [ ImageOnlyFailure ]
+svg/clip-path/clip-path-shape-ellipse-2.svg [ ImageOnlyFailure ]
+svg/clip-path/opacity-assertion.svg [ ImageOnlyFailure ]
+
+svg/custom/ [ Pass ]
+svg/custom/anchor-on-use.svg [ ImageOnlyFailure ]
+svg/custom/circular-clip-path-references-crash.svg [ ImageOnlyFailure ]
+svg/custom/clamped-masking-clipping.svg [ ImageOnlyFailure ]
+svg/custom/marker-zero-length-linecaps.svg [ ImageOnlyFailure ]
+svg/custom/masking-clipping-hidpi.svg [ ImageOnlyFailure ]
+svg/custom/object-data-href.html [ ImageOnlyFailure ]
+svg/custom/pattern-reference.svg [ ImageOnlyFailure ]
+svg/custom/resources-css-scaled.html [ ImageOnlyFailure ]
+svg/custom/root-size-attribute-changes.html [ ImageOnlyFailure ]
+svg/custom/svg-image-initial-size.html [ ImageOnlyFailure ]
+svg/custom/svg-root-padding-border-margin.html [ ImageOnlyFailure ]
+svg/custom/textPath-change-reference2-pattern.svg [ ImageOnlyFailure ]
+svg/custom/use-css-events.svg [ ImageOnlyFailure ]
+svg/custom/use-nested.svg [ ImageOnlyFailure ]
+
+svg/dom/ [ Pass ] # The DOM is not afected by rendering problems.
+svg/dom/complex-svgView-specification.html [ ImageOnlyFailure ]
+
+svg/filters/color-space-conversion.svg [ ImageOnlyFailure ]
+svg/filters/feComposite-arithmetic-invalid-rgba.svg [ ImageOnlyFailure ]
+svg/filters/feConvolveMatrix-invalid-targetX.svg [ ImageOnlyFailure ]
+svg/filters/feConvolveMatrix-invalid-targetY.svg [ ImageOnlyFailure ]
+svg/filters/feConvolveMatrix-negative-kernelUnitLengthX.svg [ ImageOnlyFailure ]
+svg/filters/feConvolveMatrix-negative-kernelUnitLengthY.svg [ ImageOnlyFailure ]
+svg/filters/feConvolveMatrix-negative-orderX.svg [ ImageOnlyFailure ]
+svg/filters/feConvolveMatrix-negative-orderY.svg [ ImageOnlyFailure ]
+svg/filters/feConvolveMatrix-non-integral-order.svg [ ImageOnlyFailure ]
+svg/filters/feConvolveMatrix-zero-divisor.svg [ ImageOnlyFailure ]
+svg/filters/feDisplacementMap-color-interpolation-filters.svg [ ImageOnlyFailure ]
+svg/filters/feDisplacementMap-filterUnits.svg [ ImageOnlyFailure ]
+svg/filters/feDropShadow-negative-deviation.svg [ ImageOnlyFailure ]
+svg/filters/feFlood-color-interpolation.svg [ ImageOnlyFailure ]
+svg/filters/feGaussianBlur-negative-deviation.svg [ ImageOnlyFailure ]
+svg/filters/feImage-self-and-other-referencing.html [ ImageOnlyFailure ]
+svg/filters/feImage-self-referencing.html [ ImageOnlyFailure ]
+svg/filters/feSpecularLight-premultiplied.svg [ ImageOnlyFailure ]
+svg/filters/svg-gaussianblur-edgeMode-duplicate.svg [ ImageOnlyFailure ]
+svg/masking/mask-type-alpha.svg [ ImageOnlyFailure ]
+svg/masking/mask-type-luminance.svg [ ImageOnlyFailure ]
+svg/masking/mask-type-not-set.svg [ ImageOnlyFailure ]
+svg/stroke/non-scaling-stroke-pattern.svg [ ImageOnlyFailure ]
+svg/text/add-tspan-position-bug.html [ ImageOnlyFailure ]
+svg/text/modify-tspan-position-bug.html [ ImageOnlyFailure ]
+svg/transforms/change-transform-origin-css.xhtml [ ImageOnlyFailure ]
+svg/transforms/change-transform-origin-presentation-attribute.xhtml [ ImageOnlyFailure ]
+svg/transforms/transform-origin-css-property.xhtml [ ImageOnlyFailure ]
+svg/transforms/transformed-text-fill-gradient.html [ ImageOnlyFailure ]
+svg/transforms/transformed-text-fill-pattern.html [ ImageOnlyFailure ]
+
+# Tests that pass anyway
+svg/animations/ [ Pass ]
+
+svg/as-background-image/background-image-preserveaspectRatio-support.html [ Pass ]
+svg/as-background-image/background-image-tiled.html [ Pass ]
+svg/as-background-image/same-image-two-instances-background-image.html [ Pass ]
+svg/as-background-image/svg-as-background-body.html [ Pass ]
+svg/as-background-image/svg-background-crash-on-refresh.html [ Pass ]
+svg/as-background-image/svg-transformed-background.html [ Pass ]
+svg/as-background-image/tiled-background-image.html [ Pass ]
+svg/as-border-image/svg-as-border-image.html [ Pass ]
+svg/as-border-image/svg-as-border-image-2.html [ Pass ]
+svg/canvas/canvas-pattern-svg.html [ Pass ]
+svg/carto.net/frameless-svg-parse-error.html [ Pass ]
+
+svg/dynamic-updates/ [ Pass ]
+
+svg/filters/container-with-filters.svg [ Pass ]
+svg/filters/feColorMatrix-invalid-value.svg [ Pass ]
+svg/filters/feImage-animated-transform-on-target-rect.svg [ Pass ]
+svg/filters/feImage-zero-size-crash.svg [ Pass ]
+svg/filters/feMorphology-crash.html [ Pass ]
+svg/filters/feMorphology-invalid-radius.svg [ Pass ]
+svg/filters/feMorphology-zero-radius.svg [ Pass ]
+svg/filters/filter-after-transform-crash.svg [ Pass ]
+svg/filters/filter-cycle.html [ Pass ]
+svg/filters/filter-reference-crash.html [ Pass ]
+svg/filters/svg-transform-blur-crash.svg [ Pass ]
+
+svg/hittest/foreign-object-background.svg [ Pass ]
+svg/hittest/svg-ellipse.xhtml [ Pass ]
+svg/hittest/svg-ellipse-non-scale-stroke.xhtml [ Pass ]
+svg/hittest/svg-ellipse-rect-stroke.xhtml [ Pass ]
+svg/hittest/svg-inside-display-table.xhtml [ Pass ]
+svg/hittest/svg-inside-table.xhtml [ Pass ]
+svg/hittest/svg-padding.xhtml [ Pass ]
+svg/hittest/svg-small-viewbox.xhtml [ Pass ]
+svg/hittest/svg-use-element-from-point.html [ Pass ]
+svg/hittest/zero-length-butt-cap-path.xhtml [ Pass ]
+svg/path-arc-invalid.html [ Pass ]
+svg/stroke/animated-non-scaling-stroke.html [ Pass ]
+svg/stroke/zero-length-arc-linecaps-rendering.svg [ Pass ]
+svg/stroke/zero-width-hang.html [ Pass ]
+svg/transforms/animated-path-inside-transformed-html.xhtml [ Pass ]
+svg/transforms/svg-css-transforms.xhtml [ Pass ]
+svg/transforms/svg-css-transforms-clip-path.xhtml [ Pass ]
+svg/transforms/svgsvgelement-transform.svg [ Pass ]
+svg/transforms/text-with-pattern-inside-transformed-html.xhtml [ Pass ]
+svg/transforms/transform-origin-presentation-attribute.xhtml [ Pass ]
+svg/transforms/percent-transform-values.xhtml [ Pass ]
+svg/wicd/rightsizing-grid.xhtml [ Pass ]
+svg/wicd/test-rightsizing-a.xhtml [ Pass ]
+svg/wicd/test-rightsizing-b.xhtml [ Pass ]
+svg/wicd/test-scalable-background-image1.xhtml [ Pass ]
+svg/wicd/test-scalable-background-image2.xhtml [ Pass ]
+
+# Refine these, probably not that good...
+svg/as-object/ [ Pass ] # 10 passing tests
+svg/css/ [ Pass ] # ~30 passing tests
+svg/foreignObject/ [ Pass ] # 19 passing tests
+svg/hixie/ [ Pass ]
+svg/in-html/ [ Pass ] # 6 passing tests
+svg/overflow/ [ Pass ] # 8 passing tests
+svg/repaint/ [ Pass ] # 11 passing tests
+svg/text/ [ Pass ]
+svg/W3C-SVG-1.1/ [ Pass ] # 18 passing tests
+svg/zoom/ [ Pass ] # 18 passing tests in page and text subdirs
+
+
+# Transforms
+transforms/2d/compound-transforms-vs-containers.html [ Failure ]
+transforms/3d/general/perspective-non-layer.html [ Failure ]
+transforms/3d/general/perspective-units.html [ Failure ]
+transforms/3d/hit-testing/perspective-clipped.html [ Failure ]
+transforms/3d/hit-testing/rotated-hit-test.html [ Failure ]
+transforms/3d/hit-testing/rotated-hit-test2.html [ Failure ]
+#TYPO transforms/svg-vs-css.html [ Failure ] # unexpected scrollbars
+
+
 # Battery status - probably we'll never do it...
 batterystatus [ WontFix ]
 # Hardware Compositing - we don't have any hardware acceleration for this.
 compositing [ WontFix ]
+# Java to javascript integration - who cares?
+java [ WontFix ]
 # Plugins - disabled for now, not sure we'll use the Netscape API anyway.
 plugins [ WontFix ]
+
+proximity [ WontFix ]
 # Touch adjustement - No touchscreen for us!
 touchadjustment [ WontFix ]
 # Vibration API - Sorry, no hardware for this!
