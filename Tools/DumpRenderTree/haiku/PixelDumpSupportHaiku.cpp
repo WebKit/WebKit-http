@@ -70,7 +70,7 @@ void computeMD5HashStringForBitmapContext(BitmapContext* context, char hashStrin
         pixelData += bytesPerRow;
     }
 
-    Vector<uint8_t, 16> hash;
+    MD5::Digest hash;
     md5.checksum(hash);
 
     hashString[0] = '\0';
