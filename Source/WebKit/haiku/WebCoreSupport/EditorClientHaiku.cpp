@@ -247,7 +247,6 @@ bool EditorClientHaiku::canRedo() const
 
 void EditorClientHaiku::undo()
 {
-printf("EditorClientHaiku::undo()\n");
     if (canUndo()) {
         RefPtr<WebCore::UndoStep> step(*(--m_undoStack.end()));
         m_undoStack.remove(--m_undoStack.end());
@@ -258,7 +257,6 @@ printf("EditorClientHaiku::undo()\n");
 
 void EditorClientHaiku::redo()
 {
-printf("EditorClientHaiku::redo()\n");
     if (canRedo()) {
         RefPtr<WebCore::UndoStep> step(*(--m_redoStack.end()));
         m_redoStack.remove(--m_redoStack.end());
