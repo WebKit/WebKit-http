@@ -3,6 +3,7 @@ SET(PROJECT_VERSION_MINOR 2)
 SET(PROJECT_VERSION_PATCH 2)
 SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
+add_definitions(-DHAIKU_WEBKIT_VERSION=\"${PROJECT_VERSION}\")
 add_definitions(-DBUILDING_HAIKU__=1)
 
 # Force libstdc++ to export std::isinf and friends. This should be fixed on

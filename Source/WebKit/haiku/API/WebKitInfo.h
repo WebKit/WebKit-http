@@ -11,11 +11,9 @@
 class __attribute__ ((visibility ("default"))) WebKitInfo {
 public:
 	static	BString				HaikuWebKitVersion();
-	static	BString				HaikuWebKitRevision();
 	static	BString				WebKitVersion();
 	static	int					WebKitMajorVersion();
 	static	int					WebKitMinorVersion();
-	static	BString				WebKitRevision();
 };
 
 
