@@ -32,6 +32,7 @@
 #include "FontDescription.h"
 #include "GlyphBuffer.h"
 #include <interface/Font.h>
+#include <support/String.h>
 
 namespace WebCore {
 
@@ -47,6 +48,11 @@ public:
     FontPlatformData(const FontPlatformData&, float size);
 
     ~FontPlatformData();
+
+    static void SetFallBackSerifFont(const BString& font);
+    static void SetFallBackSansSerifFont(const BString& font);
+    static void SetFallBackFixedFont(const BString& font);
+    static void SetFallBackStandardFont(const BString& font);
 
     FontPlatformData& operator=(const FontPlatformData&);
     bool operator==(const FontPlatformData&) const;
@@ -67,8 +73,15 @@ public:
     String description() const;
 
 private:
+    static void findMatchingFontFamily(const AtomicString& familyName, font_family* fontFamily);
     class FontPlatformDataPrivate;
     FontPlatformDataPrivate* m_data;
+
+    static font_family m_FallbackSerifFontFamily;
+    static font_family m_FallbackSansSerifFontFamily;
+    static font_family m_FallbackFixedFontFamily;
+    static font_family m_FallbackStandardFontFamily;
+
 };
 
 } // namespace WebCore

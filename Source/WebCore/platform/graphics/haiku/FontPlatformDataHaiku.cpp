@@ -28,6 +28,10 @@
 #include <wtf/text/CString.h>
 
 namespace WebCore {
+font_family FontPlatformData::m_FallbackSansSerifFontFamily= "DejaVu Sans";
+font_family FontPlatformData::m_FallbackSerifFontFamily = "DejaVu Serif";
+font_family FontPlatformData::m_FallbackFixedFontFamily = "DejaVu Mono";
+font_family FontPlatformData::m_FallbackStandardFontFamily = "DejaVu Serif";
 
 static inline bool isEmtpyValue(const float size, const bool bold, const bool oblique)
 {
@@ -35,21 +39,22 @@ static inline bool isEmtpyValue(const float size, const bool bold, const bool ob
     return !bold && !oblique && size == 0;
 }
 
-static void findMatchingFontFamily(const AtomicString& familyName, font_family* fontFamily)
+void
+FontPlatformData::findMatchingFontFamily(const AtomicString& familyName, font_family* fontFamily)
 {
     if (BFont().SetFamilyAndStyle(familyName.string().utf8().data(), 0) == B_OK)
         strncpy(*fontFamily, familyName.string().utf8().data(), B_FONT_FAMILY_LENGTH + 1);
     else {
         // If no font family is found for the given name, we use a generic font.
         if (familyName.contains("Sans", false) != B_ERROR)
-            strncpy(*fontFamily, "DejaVu Sans", B_FONT_FAMILY_LENGTH + 1);
+            strncpy(*fontFamily, m_FallbackSansSerifFontFamily, B_FONT_FAMILY_LENGTH + 1);
         else if (familyName.contains("Serif", false) != B_ERROR)
-            strncpy(*fontFamily, "DejaVu Serif", B_FONT_FAMILY_LENGTH + 1);
+            strncpy(*fontFamily, m_FallbackSerifFontFamily, B_FONT_FAMILY_LENGTH + 1);
         else if (familyName.contains("Mono", false) != B_ERROR)
-            strncpy(*fontFamily, "DejaVu Mono", B_FONT_FAMILY_LENGTH + 1);
+            strncpy(*fontFamily, m_FallbackFixedFontFamily, B_FONT_FAMILY_LENGTH + 1);
         else {
             // This is the fallback font.
-            strncpy(*fontFamily, "DejaVu Serif", B_FONT_FAMILY_LENGTH + 1);
+            strncpy(*fontFamily, m_FallbackStandardFontFamily, B_FONT_FAMILY_LENGTH + 1);
         }
     }
 }
@@ -315,6 +320,30 @@ String FontPlatformData::description() const
 		memset(&fontStyle, 0, sizeof(fontStyle));
 	}
     return String(fontFamily) + "/" + String(fontStyle) + String::format("/%.1f/%d&%d", size, isBold, isOblique);
+}
+
+void
+FontPlatformData::SetFallBackSerifFont(const BString& font)
+{
+	strncpy(m_FallbackSerifFontFamily, font.String(), B_FONT_FAMILY_LENGTH + 1);
+}
+
+void
+FontPlatformData::SetFallBackSansSerifFont(const BString& font)
+{
+	strncpy(m_FallbackSansSerifFontFamily, font.String(), B_FONT_FAMILY_LENGTH + 1);
+}
+
+void
+FontPlatformData::SetFallBackFixedFont(const BString& font)
+{
+	strncpy(m_FallbackFixedFontFamily, font.String(), B_FONT_FAMILY_LENGTH + 1);
+}
+
+void
+FontPlatformData::SetFallBackStandardFont(const BString& font)
+{
+	strncpy(m_FallbackStandardFontFamily, font.String(), B_FONT_FAMILY_LENGTH + 1);
 }
 
 } // namespace WebCore

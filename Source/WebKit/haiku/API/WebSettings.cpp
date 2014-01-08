@@ -31,6 +31,7 @@
 #include "ApplicationCacheStorage.h"
 #include "BitmapImage.h"
 #include "DatabaseTracker.h"
+#include "FontPlatformData.h"
 #include "IconDatabase.h"
 #include "Image.h"
 #include "IntSize.h"
@@ -441,18 +442,22 @@ void BWebSettings::_HandleSetFont(BMessage* message)
 	case SERIF_FONT:
         fData->serifFontFamily = font;
         fData->serifFontFamilySet = true;
+        WebCore::FontPlatformData::SetFallBackSerifFont(font);
         break;
 	case SANS_SERIF_FONT:
         fData->sansSerifFontFamily = font;
         fData->sansSerifFontFamilySet = true;
+        WebCore::FontPlatformData::SetFallBackSansSerifFont(font);
         break;
 	case FIXED_FONT:
         fData->fixedFontFamily = font;
         fData->fixedFontFamilySet = true;
+        WebCore::FontPlatformData::SetFallBackFixedFont(font);
         break;
 	case STANDARD_FONT:
         fData->standardFontFamily = font;
         fData->standardFontFamilySet = true;
+        WebCore::FontPlatformData::SetFallBackStandardFont(font);
         break;
 	}
 }
