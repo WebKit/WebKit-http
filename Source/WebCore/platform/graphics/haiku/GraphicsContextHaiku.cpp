@@ -477,10 +477,6 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     	BRect bRect(rect);
     	BRect clipPathBounds(m_data->clipShape()->Bounds());
 
-        if (clipPathBounds.IsValid() && !bRect.Intersects(clipPathBounds)) {
-            // Nothing to draw.
-            return;
-        }
     	// NOTE: BShapes do not suffer the weird coordinate mixup
     	// of other drawing primitives, since the conversion would be
     	// too expensive in the app_server. Thus the right/bottom edge
