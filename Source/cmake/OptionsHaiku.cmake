@@ -177,10 +177,14 @@ if (CMAKE_BUILD_TYPE STREQUAL release AND CMAKE_COMPILER_IS_GNUCC AND UNIX AND N
     set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--gc-sections ${CMAKE_SHARED_LINKER_FLAGS}")
 endif ()
 
-# i686 is the official requirement for Haiku, let's try to keep this working for everyone
-# Moreover, our stack isn't 16-byte aligned so this avoid crashes where gcc would otherwise use SSE2 instructions.
-set(CMAKE_C_FLAGS "-march=i686 ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "-march=i686 ${CMAKE_CXX_FLAGS}")
+string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR)
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86")
+    # i686 is the official requirement for Haiku, let's try to keep this working
+    # for everyone. Moreover, our stack isn't 16-byte aligned so this avoid
+    # crashes where gcc would otherwise use SSE2 instructions.
+    set(CMAKE_C_FLAGS "-march=i686 ${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "-march=i686 ${CMAKE_CXX_FLAGS}")
+endif()
 
 if (WTF_USE_TILED_BACKING_STORE)
     add_definitions(-DWTF_USE_ACCELERATED_COMPOSITING=1)
