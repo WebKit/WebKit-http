@@ -59,7 +59,7 @@ public:
             : view(_view)
             , bitmap(0)
             , clipping()
-            , cippingSet(false)
+            , clippingSet(false)
             , globalAlpha(255)
             , currentShape(0)
             , clipShape(0)
@@ -72,7 +72,7 @@ public:
             : view(0)
             , bitmap(0)
             , clipping()
-            , cippingSet(false)
+            , clippingSet(false)
             , globalAlpha(255)
             , currentShape(0)
             , clipShape(previous->clipShape ? new BShape(*previous->clipShape) : 0)
@@ -119,7 +119,7 @@ public:
         BView* view;
         BBitmap* bitmap;
         BRegion clipping;
-        bool cippingSet;
+        bool clippingSet;
         uint8 globalAlpha;
         BShape* currentShape;
         BShape* clipShape;
@@ -180,14 +180,14 @@ public:
 
     void setClipping(const BRegion& region)
     {
-    	// If we are supposed to set an empty region, but never
-    	// have set any region on this layer before, comparing
-    	// the two empty regions alone will prevent us from setting
-    	// the clipping, that's why there is the additional "cippingSet" flag.
-    	if (m_currentLayer->cippingSet && region == m_currentLayer->clipping)
+        // If we are supposed to set an empty region, but never
+        // have set any region on this layer before, comparing
+        // the two empty regions alone will prevent us from setting
+        // the clipping, that's why there is the additional "clippingSet" flag.
+        if (m_currentLayer->clippingSet && region == m_currentLayer->clipping)
     	    return;
 
-        m_currentLayer->cippingSet = true;
+        m_currentLayer->clippingSet = true;
     	m_currentLayer->clipping = region;
   	    m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
     }
@@ -199,7 +199,7 @@ public:
 
     void resetClipping()
     {
-        m_currentLayer->cippingSet = false;
+        m_currentLayer->clippingSet = false;
     	m_currentLayer->clipping = BRegion();
     }
 
@@ -212,6 +212,28 @@ public:
     	// get proper clipping path support in the future.
         delete m_currentLayer->clipShape;
         m_currentLayer->clipShape = shape;
+
+#if 0
+        // This sort of works, but there are several problems with it:
+        // - ClipToPicture doesn't do antialias.
+        // - The picture will be constrained to the current viewport, and
+        // will not follow scrolling. So everything made visible by scrolling
+        // is clipped out.
+        // - The way this is implemented seems slow, making scrolling much less
+        // smooth.
+        // A better solution is to improve BView so it can clip directly on a
+        // BShape or a BPolygon, without rasterizing it first, as agg can do
+        // that just fine.
+        BPicture picture;
+        BBitmap bmp(shape->Bounds(), B_CMAP8, true);
+        BView* off = new BView(shape->Bounds(), "clipper", 0, 0);
+        bmp.AddChild(off);
+        off->LockLooper();
+        off->BeginPicture(&picture);
+        off->FillShape(shape);
+        m_currentLayer->view->ClipToPicture(off->EndPicture());
+        off->UnlockLooper();
+#endif
     }
 
     BShape* clipShape() const
@@ -323,17 +345,14 @@ void GraphicsContext::drawRect(const IntRect& rect)
     if (paintingDisabled())
         return;
 
-    if (m_state.fillPattern || m_state.fillGradient || fillColor().alpha()) {
-//        TODO: What's this shadow business?
-        if (m_state.fillPattern)
-            notImplemented();
-        else if (m_state.fillGradient) {
-            BGradient* gradient = m_state.fillGradient->platformGradient();
-//            gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
-            m_data->view()->FillRect(rect, *gradient);
-        } else
-            m_data->view()->FillRect(rect);
-    }
+    if (m_state.fillPattern)
+        notImplemented();
+    else if (m_state.fillGradient) {
+        BGradient* gradient = m_state.fillGradient->platformGradient();
+//      gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
+        m_data->view()->FillRect(rect, *gradient);
+    } else if (fillColor().alpha())
+        m_data->view()->FillRect(rect);
 
     // TODO: Support gradients
     if (strokeStyle() != NoStroke && strokeThickness() > 0.0f && strokeColor().alpha())
@@ -426,11 +445,17 @@ void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* p
 
 void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* points, bool antialiased)
 {
-    // FIXME: implement
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    BShape* shape = new BShape();
+    shape->MoveTo(points[0]);
+    for(int i = 1; i < numPoints; i ++)
+    {
+        shape->LineTo(points[i]);
+    }
+    shape->Close();
+    m_data->setClipShape(shape);
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace colorSpace)
@@ -611,6 +636,16 @@ void GraphicsContext::clip(const Path& path, WindRule)
     // FIXME: Support actual clipping paths in the BView API...
     // ClipToPicture/ClipInverseToPicture may be used?
     FloatRect rect(path.platformPath()->Bounds());
+
+    // NOTE: BShapes do not suffer the weird coordinate mixup
+    // of other drawing primitives, since the conversion would be
+    // too expensive in the app_server. Thus the right/bottom edge
+    // can be considered one pixel smaller. On screen, it will be
+    // the same again.
+    // Here, we have to exactly match the clipping we apply to
+    // GraphicsContext::fillRect(const FloatRect&) so everything draws at
+    // the same size.
+    rect.contract(1, 1);
     clip(rect);
 }
 
