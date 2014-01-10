@@ -48,6 +48,7 @@ BFormDataIO::BFormDataIO(FormData& form)
 	, m_currentFile(NULL)
 	, m_currentOffset(0)
 {
+    _ParseCurrentElement();
 }
 
 BFormDataIO::~BFormDataIO()
@@ -144,15 +145,24 @@ BFormDataIO::_NextElement()
     m_currentFileSize = 0;
     m_formElements.remove(0);
 
-    if (m_formElements.isEmpty() || m_formElements[0].m_type == FormDataElement::data)
+    _ParseCurrentElement();
+}
+
+
+void
+BFormDataIO::_ParseCurrentElement()
+{
+    if (m_formElements.isEmpty() || m_formElements[0].m_type != FormDataElement::encodedFile)
         return;
 
+    // If the next element is an encodedFile, prepare the BFile for reading it.
     if (m_currentFile == NULL)
-        m_currentFile = new BFile;
+        m_currentFile = new BFile();
 
     m_currentFile->SetTo(BString(m_formElements[0].m_filename).String(), B_READ_ONLY);
     m_currentFile->GetSize(&m_currentFileSize);
 }
+
 
 BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context, ResourceHandle* handle, bool synchronous)
     : BUrlProtocolAsynchronousListener(!synchronous)

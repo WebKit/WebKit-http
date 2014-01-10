@@ -47,6 +47,7 @@ public:
 	
 private:
 	void _NextElement();
+    void _ParseCurrentElement();
 	
 private:
 	Vector<FormDataElement> m_formElements;
