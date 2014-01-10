@@ -250,14 +250,14 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
 
         if (httpStatusCode) {
             ResourceError error("HTTP", httpStatusCode,
-                caller->Url().UrlString().String(), caller->StatusString(caller->Status()));
+                caller->Url().UrlString().String(), strerror(caller->Status()));
 
             client->didFail(m_resourceHandle, error);
             return;
         }
     }
     
-    ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), caller->StatusString(caller->Status()));
+    ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), strerror(caller->Status()));
     client->didFail(m_resourceHandle, error);
 }
 
@@ -333,8 +333,8 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
     if(httpRequest)
     {
-        if (m_request->Status() != B_PROT_SUCCESS
-                && m_request->Status() != B_PROT_RUNNING
+        if (m_request->Status() != B_OK
+                && m_request->Status() != B_BUSY
                 && !ignoreHttpError(httpRequest, m_responseDataSent))
             return;
     }
