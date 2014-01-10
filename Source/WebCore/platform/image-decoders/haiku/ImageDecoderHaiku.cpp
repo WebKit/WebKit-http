@@ -35,7 +35,7 @@ PassNativeImagePtr ImageFrame::asNewNativeImage() const
 {
     int bytesPerRow = width() * sizeof(PixelData);
     BBitmap* bitmap = new BBitmap(BRect(0, 0, width() - 1, height() - 1), 0, B_RGBA32, bytesPerRow);
-    if (!bitmap || !bitmap->IsValid()) {
+    if (!bitmap || !bitmap->IsValid() || !m_bytes) {
         delete bitmap;
         return NULL;
      }
