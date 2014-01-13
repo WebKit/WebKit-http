@@ -80,6 +80,7 @@
 #include <Message.h>
 #include <MimeType.h>
 #include <String.h>
+#include <Url.h>
 #include <assert.h>
 #include <debugger.h>
 
@@ -98,8 +99,9 @@ FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage)
     : m_webPage(webPage)
     , m_messenger()
     , m_loadingErrorPage(false)
-    , m_pluginView(0)
+    , m_pluginView(nullptr)
     , m_hasSentResponseToPlugin(false)
+    , m_uidna_context(nullptr)
 {
     CALLED("BWebPage: %p", webPage);
     ASSERT(m_webPage);
@@ -118,6 +120,9 @@ BWebPage* FrameLoaderClientHaiku::page() const
 void FrameLoaderClientHaiku::frameLoaderDestroyed()
 {
     CALLED();
+
+    uidna_close(m_uidna_context);
+
     // No one else feels responsible for the BWebFrame instance that created us.
     // Through Shutdown(), we initiate the deletion sequence, after this method returns,
     // this object will be gone.
@@ -391,7 +396,23 @@ void FrameLoaderClientHaiku::dispatchDidCommitLoad()
     }
 
     BMessage message(LOAD_COMMITTED);
-    message.AddString("url", m_webFrame->Frame()->loader().documentLoader()->request().url().string());
+    URL url = m_webFrame->Frame()->loader().documentLoader()->request().url();
+    BUrl decoded(url);
+
+    // In WebKit URL, the host may be IDN-encoded. Decode it for displaying.
+    char dest[2048];
+    UErrorCode error = U_ZERO_ERROR;
+    if (!m_uidna_context)
+        m_uidna_context = uidna_openUTS46(UIDNA_DEFAULT, &error);
+    UIDNAInfo info = UIDNA_INFO_INITIALIZER;
+
+    uidna_nameToUnicodeUTF8(m_uidna_context, url.host().utf8().data(),
+        -1 /* NULL-terminated */, dest, sizeof(dest), &info, &error);
+   
+    if (U_SUCCESS(error) && info.errors == 0)
+        decoded.SetHost(dest);
+
+    message.AddString("url", decoded);
     dispatchMessage(message);
 
     // We should assume first the frame has no title. If it has, then the above
@@ -451,7 +472,7 @@ void FrameLoaderClientHaiku::dispatchDidFinishLoad()
     BMessage message(LOAD_FINISHED);
     message.AddPointer("frame", m_webFrame);
     message.AddString("url", m_webFrame->Frame()->document()->url().string());
-    status_t err = dispatchMessage(message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFirstLayout()

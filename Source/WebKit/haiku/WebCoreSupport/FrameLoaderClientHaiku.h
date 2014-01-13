@@ -36,6 +36,7 @@
 #include "URL.h"
 #include "ResourceResponse.h"
 #include <Messenger.h>
+#include <unicode/uidna.h>
 #include <wtf/Forward.h>
 
 class BWebFrame;
@@ -251,6 +252,9 @@ private:
     // Plugin view to redirect data to
     PluginView* m_pluginView;
     bool m_hasSentResponseToPlugin;
+
+    // IDNA domain encoding and decoding.
+    UIDNA* m_uidna_context;
 };
 
 } // namespace WebCore
