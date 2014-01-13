@@ -116,7 +116,7 @@ void BWebFrame::LoadURL(BString urlString)
         url.setProtocol("file");
         url.setPath(urlString);
     } else
-		url = WebCore::URL(WebCore::URL(), urlString.Trim().String());
+		url = WebCore::URL(WebCore::URL(), urlString.Trim());
 
 	if (!url.protocolIsInHTTPFamily() && !url.isLocalFile()) {
 		url = WebCore::URL();
