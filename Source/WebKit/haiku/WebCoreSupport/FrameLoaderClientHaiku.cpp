@@ -564,8 +564,16 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
     // then, since we create it ourself.
     BMessage message(NEW_WINDOW_REQUESTED);
     message.AddString("url", request.url().string());
-    // Don't switch to the new tab, but load it in the background.
-    message.AddBool("primary", false);
+
+    bool switchTab = false;
+
+    // Switch to the new tab, when shift is pressed.
+    if (action.event() && action.event()->isMouseEvent()) {
+        const MouseEvent* mouseEvent = dynamic_cast<const MouseEvent*>(action.event());
+        switchTab = (mouseEvent && mouseEvent->shiftKey());
+    }
+
+    message.AddBool("primary", switchTab);
     dispatchMessage(message, true);
 
     if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
