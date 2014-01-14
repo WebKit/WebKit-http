@@ -200,10 +200,6 @@ void BUrlProtocolHandler::abort()
 
 static bool ignoreHttpError(BHttpRequest* reply, bool receivedData)
 {
-    // Not an HTTP request - the error can't be relevant
-    if(reply == NULL)
-        return true;
-
     int httpStatusCode = static_cast<const BHttpResult&>(reply->Result()).StatusCode();
 
     if (httpStatusCode == 401 || httpStatusCode == 407)
@@ -237,7 +233,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
         return;
     }
 
-    if (success || ignoreHttpError(httpRequest, m_responseDataSent)) {
+    if (success || (httpRequest && ignoreHttpError(httpRequest, m_responseDataSent))) {
         client->didFinishLoading(m_resourceHandle, 0);
             // TODO put the actual finish time instead of 0
             // (this isn't done on other platforms either...)
