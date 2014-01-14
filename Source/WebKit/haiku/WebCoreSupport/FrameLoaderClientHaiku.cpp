@@ -1013,6 +1013,7 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url, const Stri
     data->page = m_webPage->page();
 
     BWebFrame* frame = new BWebFrame(m_webPage, m_webFrame, data);
+    frame->SetListener(m_messenger);
     // The ownership of "frame" is implicitely transferred to the FrameLoadClientHaiku
     // instance which is created in the BWebFrame consructor.
 
