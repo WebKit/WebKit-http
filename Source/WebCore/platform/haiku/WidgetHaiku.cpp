@@ -81,12 +81,11 @@ void Widget::setFrameRect(const IntRect& rect)
     m_frame = rect;
 }
 
-// FIXME: do something with focused
 void Widget::setFocus(bool focused)
 {
     AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
     if (locker.isLocked())
-        topLevelPlatformWidget()->MakeFocus();
+        topLevelPlatformWidget()->MakeFocus(focused);
 }
 
 void Widget::setCursor(const Cursor& cursor)
