@@ -566,7 +566,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
     message.AddString("url", request.url().string());
     // Don't switch to the new tab, but load it in the background.
     message.AddBool("primary", false);
-    dispatchMessage(message);
+    dispatchMessage(message, true);
 
     if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
         m_webFrame->Frame()->loader().resetMultipleFormSubmissionProtection();
@@ -938,7 +938,7 @@ WTF::PassRefPtr<DocumentLoader> FrameLoaderClientHaiku::createDocumentLoader(con
 
 void FrameLoaderClientHaiku::setTitle(const StringWithDirection&, const URL&)
 {
-    notImplemented();
+    // no need for, dispatchDidReceiveTitle is the right callback
 }
 
 void FrameLoaderClientHaiku::savePlatformDataToCachedFrame(CachedFrame* cachedPage)
@@ -1204,10 +1204,20 @@ status_t FrameLoaderClientHaiku::dispatchNavigationRequested(const ResourceReque
     return dispatchMessage(message);
 }
 
-status_t FrameLoaderClientHaiku::dispatchMessage(BMessage& message) const
+status_t FrameLoaderClientHaiku::dispatchMessage(BMessage& message, bool allowChildFrame) const
 {
     message.AddPointer("view", m_webPage->WebView());
-    return m_messenger.SendMessage(&message);
+    message.AddPointer("frame", m_webFrame);
+
+    // Most messages are only relevant when they come from the main frame
+    // (setting the title, favicon, url, loading progress, etc). We intercept
+    // the ones coming from child frames here.
+    // Currently, the only exception is the message for navigation policy. This
+    // allows opening a new tab by middle-clicking a link that's in a frame.
+    if (allowChildFrame || m_webFrame == m_webPage->MainFrame())
+        return m_messenger.SendMessage(&message);
+    else
+        return B_NOT_ALLOWED;
 }
 
 } // namespace WebCore

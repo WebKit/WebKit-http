@@ -239,7 +239,7 @@ private:
     bool isTertiaryMouseButton(const NavigationAction& action) const;
 
 	status_t dispatchNavigationRequested(const ResourceRequest& request) const;
-    status_t dispatchMessage(BMessage& message) const;
+    status_t dispatchMessage(BMessage& message, bool allowChildFrame = false) const;
 
 private:
     BWebPage* m_webPage;
