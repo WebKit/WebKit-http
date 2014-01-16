@@ -64,18 +64,29 @@ String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: Request for %s\n", url.string().utf8().data());
 #endif
-    // TODO should include HttpOnly ?
-	return cookieRequestHeaderFieldValue(session, firstParty, url);
+
+	BString result;
+	BUrl hUrl(url);
+
+	BNetworkCookie* c;
+	for (BNetworkCookieJar::UrlIterator it(
+            session.context()->context()->GetCookieJar().GetUrlIterator(hUrl));
+		    (c = it.Next()); ) {
+		result << "; " << c->RawCookie(false);
+	}
+	result.Remove(0, 2);
+
+    return result;
 }
 
 String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL&, const URL& url)
 {
-	BString result;
-	BUrl hUrl(url.string().utf8().data());
-
 #if TRACE_COOKIE_JAR
-	printf("CookieJar: RequestHeaderField for %s\n", hUrl.UrlString().String());
+	printf("CookieJar: RequestHeaderField for %s\n", url.string().utf8().data());
 #endif
+
+	BString result;
+	BUrl hUrl(url);
 
 	BNetworkCookie* c;
 	for (BNetworkCookieJar::UrlIterator it(
