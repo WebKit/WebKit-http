@@ -72,7 +72,8 @@ QWEBKIT_EXPORT void qt_networkAccessAllowed(bool isAllowed)
 class QWebSettingsPrivate {
 public:
     QWebSettingsPrivate(WebCore::Settings* wcSettings = 0)
-        : settings(wcSettings)
+        : offlineStorageDefaultQuota(0)
+        , settings(wcSettings)
     {
     }
 
@@ -83,6 +84,7 @@ public:
     QString defaultTextEncoding;
     QString localStoragePath;
     QString offlineWebApplicationCachePath;
+    QString offlineDatabasePath;
     QString mediaType;
     qint64 offlineStorageDefaultQuota;
     QWebSettings::ThirdPartyCookiePolicy thirdPartyCookiePolicy;
@@ -246,9 +248,9 @@ void QWebSettingsPrivate::apply()
                                       global->attributes.value(QWebSettings::PrintElementBackgrounds));
         settings->setShouldPrintBackgrounds(value);
 
-#if ENABLE(SQL_DATABASE)
         value = attributes.value(QWebSettings::OfflineStorageDatabaseEnabled,
                                       global->attributes.value(QWebSettings::OfflineStorageDatabaseEnabled));
+#if ENABLE(SQL_DATABASE)
         WebCore::DatabaseManager::manager().setIsAvailable(value);
 #endif
 
@@ -576,7 +578,6 @@ QWebSettings::QWebSettings()
 QWebSettings::QWebSettings(WebCore::Settings* settings)
     : d(new QWebSettingsPrivate(settings))
 {
-    d->settings = settings;
     d->apply();
     allSettings()->append(d);
 }
@@ -1066,6 +1067,7 @@ void QWebSettings::resetAttribute(WebAttribute attr)
 void QWebSettings::setOfflineStoragePath(const QString& path)
 {
     WebCore::initializeWebCoreQt();
+    QWebSettings::globalSettings()->d->offlineDatabasePath = path;
 #if ENABLE(SQL_DATABASE)
     WebCore::DatabaseManager::manager().setDatabaseDirectoryPath(path);
 #endif
@@ -1082,11 +1084,7 @@ void QWebSettings::setOfflineStoragePath(const QString& path)
 QString QWebSettings::offlineStoragePath()
 {
     WebCore::initializeWebCoreQt();
-#if ENABLE(SQL_DATABASE)
-    return WebCore::DatabaseManager::manager().databaseDirectoryPath();
-#else
-    return QString();
-#endif
+    return QWebSettings::globalSettings()->d->offlineDatabasePath;
 }
 
 /*!
@@ -1201,7 +1199,7 @@ void QWebSettings::setLocalStoragePath(const QString& path)
     \since 4.6
 
     Returns the path for HTML5 local storage.
-    
+
     \sa setLocalStoragePath()
 */
 QString QWebSettings::localStoragePath() const
