@@ -93,7 +93,6 @@ void BWebWindow::MessageReceived(BMessage* message)
         BString url;
         if (message->FindString("url", &url) == B_OK) {
             NavigationRequested(url, _WebViewForMessage(message));
-            _FetchIconForURL(url, *message);
         }
         break;
     }
@@ -140,7 +139,6 @@ void BWebWindow::MessageReceived(BMessage* message)
         BString url;
         if (message->FindString("url", &url) == B_OK) {
             LoadNegotiating(url, _WebViewForMessage(message));
-            _FetchIconForURL(url, *message);
         }
         break;
     }
