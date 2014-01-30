@@ -333,12 +333,14 @@ PlatformGraphicsContext* GraphicsContext::platformContext() const
     return m_data->p();
 }
 
-AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
+AffineTransform GraphicsContext::getCTM(IncludeDeviceScale includeScale) const
 {
     if (paintingDisabled())
         return AffineTransform();
 
-    const QTransform& matrix = platformContext()->combinedTransform();
+    const QTransform& matrix = (includeScale == DefinitelyIncludeDeviceScale)
+        ? platformContext()->combinedTransform()
+        : platformContext()->worldTransform();
     return AffineTransform(matrix.m11(), matrix.m12(), matrix.m21(),
                            matrix.m22(), matrix.dx(), matrix.dy());
 }
@@ -1554,7 +1556,7 @@ TransformationMatrix GraphicsContext::get3DTransform() const
     if (paintingDisabled())
         return TransformationMatrix();
 
-    return platformContext()->combinedTransform();
+    return platformContext()->worldTransform();
 }
 
 void GraphicsContext::concat3DTransform(const TransformationMatrix& transform)
