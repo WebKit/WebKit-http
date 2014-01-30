@@ -115,9 +115,10 @@ void TextureMapperImageBuffer::drawNumber(int /* number */, const Color&, const 
     notImplemented();
 }
 
-PassRefPtr<BitmapTexture> BitmapTextureImageBuffer::applyFilters(TextureMapper&, const FilterOperations&)
+PassRefPtr<BitmapTexture> BitmapTextureImageBuffer::applyFilters(TextureMapper&, const FilterOperations& filters)
 {
-    ASSERT_NOT_REACHED();
+    ASSERT_UNUSED(filters, filters.isEmpty());
+
     return this;
 }
 
