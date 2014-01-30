@@ -39,7 +39,7 @@ public:
     void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) final;
     void beginClip(const TransformationMatrix&, const FloatRect&) final;
     void bindSurface(BitmapTexture* surface) final { m_currentSurface = surface;}
-    void endClip() final { graphicsContext()->restore(); }
+    void endClip() final;
     IntRect clipBounds() final { return currentContext()->clipBounds(); }
     IntSize maxTextureSize() const final;
     PassRefPtr<BitmapTexture> createTexture() final { return BitmapTextureImageBuffer::create(); }
