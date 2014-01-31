@@ -1337,6 +1337,10 @@ QWebPageAdapter::ViewportAttributes QWebPageAdapter::viewportAttributesForSize(c
     return result;
 }
 
+void QWebPageAdapter::setDevicePixelRatio(int devicePixelRatio)
+{
+    page->setDeviceScaleFactor(devicePixelRatio);
+}
 
 bool QWebPageAdapter::handleKeyEvent(QKeyEvent *ev)
 {

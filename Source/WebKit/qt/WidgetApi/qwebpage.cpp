@@ -1928,6 +1928,8 @@ void QWebPage::setViewportSize(const QSize &size) const
     if (!mainFrame->hasView())
         return;
 
+    d->setDevicePixelRatio(d->view->devicePixelRatio());
+
     mainFrame->setViewportSize(size);
 }
 
