@@ -49,11 +49,13 @@ struct TransparencyLayer {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     TransparencyLayer(const QPainter* p, const QRect &rect, qreal opacity, QPixmap& alphaMask)
-        : pixmap(rect.width(), rect.height())
-        , opacity(opacity)
+        : opacity(opacity)
         , alphaMask(alphaMask)
         , saveCounter(1) // see the comment for saveCounter
     {
+        int devicePixelRatio = p->device()->devicePixelRatio();
+        pixmap = QPixmap(rect.width() * devicePixelRatio, rect.height() * devicePixelRatio);
+        pixmap.setDevicePixelRatio(devicePixelRatio);
         offset = rect.topLeft();
         pixmap.fill(Qt::transparent);
         painter.begin(&pixmap);
